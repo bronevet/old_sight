@@ -1,0 +1,25 @@
+Installation
+------------
+This is the dbglog library. dbgLogTester.C contains a representative application 
+that illustrates the use of the library. To compile the library and the example, 
+just type 
+
+make
+
+Example code
+------------
+To view the results of the example, run:
+
+./dbgLogTester
+
+This produces directory dbg/ with the debug output. View file dbg/index.1-0.html 
+with Firefox (other browsers currently have issues with dbglog output) to read 
+the output produced by dbgLogTester.
+
+Graphviz support
+----------------
+The example includes the generation of graphviz dot graphs. To identify the path 
+of the graphviz library modify line 5 of the Makefile to specify this path. The 
+default setting corresponds to the graphviz bin directory being on the PATH. If 
+graphviz is not available, comment line 5 out and dbglog will emit warnings for 
+all the dot graphs the user wishes to print.
