@@ -1,9 +1,10 @@
 #include "dbglog.h"
-
+#include <map>
+#include <assert.h>
 using namespace std;
 using namespace dbglog;
 
-int fibscope(int a, scope::scopeLevel level, int verbosityLevel);
+int fibscope(int a, scope::scopeLevel level, int verbosityLevel, list<int>& stack, map<list<int>, scopeID>& scopes, map<list<int>, scopeID>& linkScopes);
 int fibIndent(int a, int verbosityLevel);
 
 class dottableExample: public dottable
@@ -83,14 +84,22 @@ int main(int argc, char** argv)
   {
     scope regFibIndent("Nested scopes due to recursive calls to fib");
     dbg << "<u>Medium level scopes, colors change</u>"<<endl;
-    fibscope(4, scope::medium, 0);
+    list<int> stack;
+    map<list<int>, scopeID> scopes0, scopes1, scopes2;
+    fibscope(4, scope::high, 0, stack, scopes1, scopes0);
+    cout << "-------------\n";
+    assert(stack.size()==0);
+    fibscope(4, scope::high, 0, stack, scopes2, scopes1);
+    cout << "-------------\n";
   }
   
   // Call the fib function, which generates a single mid-level scope for a=6
   {
     scope regFibIndent("Nested scopes due to recursive calls to fib, 2 level of scope hierarchy");
     dbg << "<u>Low level scopes, colors do not change</u>"<<endl;
-    fibscope(6, scope::low, 5);
+    list<int> stack;
+    map<list<int>, scopeID> scopes0, scopes1;
+    fibscope(6, scope::low, 5, stack, scopes0, scopes1);
   }
   
   // Dot graph
@@ -112,17 +121,27 @@ int main(int argc, char** argv)
   return 0;
 }
 
-int fibscope(int a, scope::scopeLevel level, int verbosityLevel) {
+int fibscope(int a, scope::scopeLevel level, int verbosityLevel, list<int>& stack, map<list<int>, scopeID>& scopes, map<list<int>, scopeID>& linkScopes) {
   // Each recursive call to fibscope generates a new mid-level scope. To reduce the amount of text printed, we only 
   // generate scopes if the value of a is >= verbosityLevel
   scope reg(label()<<"fib("<<a<<")", level, a, verbosityLevel);
   
+  stack.push_back(a);
+  scopes[stack] = reg.getID();
+  
   if(a==0 || a==1) { 
-    dbg << "=1"<<endl;
+    dbg << "=1."<<endl;
+    dbg << "link="<<dbg.linkTo(linkScopes[stack], "go")<<endl;
+    //cout << "link="<<dbg.linkTo(linkScopes[stack], "go")<<endl;
+    stack.pop_back();
     return 1;
   } else {
-    int val = fibscope(a-1, level, verbosityLevel) + fibscope(a-2, level, verbosityLevel);
+    int val = fibscope(a-1, level, verbosityLevel, stack, scopes, linkScopes) + 
+              fibscope(a-2, level, verbosityLevel, stack, scopes, linkScopes);
     dbg << "="<<val<<endl;
+    dbg << "link="<<dbg.linkTo(linkScopes[stack], "go")<<endl;
+    //cout << "link="<<dbg.linkTo(linkScopes[stack], "go")<<endl;
+    stack.pop_back();
     return val;
   }
 }

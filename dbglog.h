@@ -11,19 +11,21 @@ namespace dbglog {
 
 class printable
 {
-        public:
-        virtual ~printable() {}
-        virtual std::string str(std::string indent="")=0;
+  public:
+  virtual ~printable() {}
+  virtual std::string str(std::string indent="")=0;
 };
 
 class dottable
 {
-        public:
-        virtual ~dottable() {}
-        // Returns a string that containts the representation of the object as a graph in the DOT language
-        // that has the given name
-        virtual std::string toDOT(std::string graphName)=0;
+  public:
+  virtual ~dottable() {}
+  // Returns a string that containts the representation of the object as a graph in the DOT language
+  // that has the given name
+  virtual std::string toDOT(std::string graphName)=0;
 };
+
+class scopeID;
 
 class dbgStream;
 
@@ -107,6 +109,7 @@ class dbgStream : public std::ostream
   std::list<std::ofstream*> dbgFiles;
   std::list<std::string>    detailFileRelFNames; // Relative names of all the dbg files on the stack
   std::list<std::ofstream*> summaryFiles;
+  std::list<std::ofstream*> scriptFiles;
   std::list<std::string>    flTitles;
   std::list<int>            fileLevel;
   std::list<dbgBuf*>        fileBufs;
@@ -136,7 +139,16 @@ public:
   ~dbgStream();
 
   // Returns the string representation of the current file level
-  std::string fileLevelStr();
+  std::string fileLevelStr(const std::list<int>& myFileLevel) const;
+    
+  const std::list<int>& getFileLevel() const;
+    
+  // Returns the unique ID string of the current region, including all the files that it may be contained in
+  std::string regionGlobalStr() const;
+
+  // Returns a string that encodes a Javascript array of integers that together form the unique ID string of 
+  // the current file within the hierarchy of files
+  std::string fileLevelJSIntArray(const std::list<int>& myFileLevel) const;
 
   // Enter a new file level
   void enterFileLevel(std::string flTitle, bool topLevel=false);
@@ -150,7 +162,7 @@ public:
   void printDetailFileTrailer();*/
   
   // Indicates that the application has entered or exited a function
-  void enterScope(std::string funcName, bool advanceColor=true, std::string detailContentURL="", std::string summaryContentURL="");
+  void enterScope(std::string funcName, bool advanceColor=true, std::string fileID="", std::string fileIDJSArray="");//std::string detailContentURL="", std::string summaryContentURL="");
   void exitScope(std::string funcName, bool advanceColor=true);
 
   // Adds an image to the output with the given extension and returns the path of this image
@@ -173,7 +185,10 @@ public:
   void addIndent(std::string indent);
   // Remove the most recently added indent
   void remIndent();
-};
+  
+  // Creates a link to a given scope, which may be in another file
+  std::string linkTo(const scopeID& id, std::string text) const;
+}; // dbgStream
 
 extern bool initializedDebug;
 extern dbgStream dbg;
@@ -207,6 +222,18 @@ struct label : std::string {
   std::ostringstream _stream;
 };
 
+// Uniquely identifies a scope within all the files 
+class scopeID
+{
+  public:
+  std::list<int> fileLevel;
+  std::string divID;
+  scopeID() {
+    fileLevel = dbg.getFileLevel();
+    divID     = dbg.regionGlobalStr();
+  }
+};
+
 class scope {
 public:
   bool active;
@@ -218,15 +245,15 @@ public:
   scope(scopeLevel level=medium, int curDebugLevel=0, int targetDebugLevel=0);
   //scope(std::string label, scopeLevel level);
   
+  scopeID getID() { return scopeID(); }
+  
   std::ostringstream labelStream;
   /*std::ostringstream& operator<<(std::string s);
   std::ostringstream& operator<<(std::ostringstream& oss);*/
   
   ~scope();
 };
-
-
-        
+     
 // Initializes the debug sub-system
 void initializeDebug(std::string title, std::string workDir, std::string fName="debug");
 

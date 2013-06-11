@@ -349,15 +349,75 @@ dbgStream::~dbgStream()
 }
 
 // Returns the unique ID string of the current file within the hierarchy of files
-string dbgStream::fileLevelStr()
-{
+string dbgStream::fileLevelStr(const std::list<int>& myFileLevel) const
+/*{
   ostringstream oss;
-  for(list<int>::iterator i=fileLevel.begin(); i!=fileLevel.end(); ) { 
+  for(list<int>::const_iterator i=fileLevel.begin(); i!=fileLevel.end(); ) { 
     oss << *i;
     i++;
     if(i!=fileLevel.end()) oss << "-";
   }
   return oss.str();
+}*/
+
+{
+  if(myFileLevel.size()<=1) return "";
+
+  ostringstream oss;
+  list<int>::const_iterator i=myFileLevel.begin(); 
+  int lastFileID = *i;
+  i++;
+  while(i!=myFileLevel.end()) { 
+    oss << *i;
+    lastFileID = *i;
+    i++;
+    if(i!=myFileLevel.end()) oss << "-";
+  }
+  return oss.str();
+}
+
+const list<int>& dbgStream::getFileLevel() const
+{ return fileLevel; }
+
+// Returns a string that encodes a Javascript array of integers that together form the unique ID string of 
+// the current file within the hierarchy of files
+string dbgStream::fileLevelJSIntArray(const std::list<int>& myFileLevel) const
+{
+  ostringstream oss;
+  oss << "[";
+  list<int>::const_iterator i=myFileLevel.begin(); 
+  int lastFileID = *i;
+  i++;
+  while(i!=myFileLevel.end()) { 
+    oss << lastFileID;
+    lastFileID = *i;
+    i++;
+    if(i!=myFileLevel.end()) oss << ", ";
+  }
+  oss << "]";
+  return oss.str();
+}
+
+// Returns the unique ID string of the current region, including all the files that it may be contained in
+string dbgStream::regionGlobalStr() const {
+  ostringstream divName;
+  
+  for(std::list<dbgBuf*>::const_iterator fb=fileBufs.begin(); fb!=fileBufs.end(); ) {
+    assert((*fb)->parentDivs.size()>0);
+    list<int>::const_iterator d=(*fb)->parentDivs.begin();
+    int lastDivID=*d;
+    d++;
+    while(d!=(*fb)->parentDivs.end()) {
+      divName << lastDivID;
+      lastDivID=*d;
+      d++;
+      if(d!=(*fb)->parentDivs.end()) divName << "_";
+    }
+    fb++;
+    if(fb!=fileBufs.end()) divName << ":";
+  }
+  
+  return divName.str();
 }
 
 // Enter a new file level
@@ -372,19 +432,24 @@ void dbgStream::enterFileLevel(string flTitle, bool topLevel)
   // Each file unit consists of three files: 
   //    - the detail file that contains all the text output and regions inside the file,
   //    - the summary file that lists these regions
+  //    - the script file that contains all the code that needs to be run as the regions in the detail file 
+  //      are loaded (substitute for having an explicit onload callback for each region's div)
   //    - the index file that contains both of these
   // The detail and summary files can be viewed on their own via the index file or can be loaded into higher-level 
   // detail and summary files, where they appear like regular regions.
   // These are the absolute and relative names of these files.
-  ostringstream indexAbsFName;   indexAbsFName  << dbgFileName << "."     << fileLevelStr() << ".html";
-  ostringstream detailAbsFName;  detailAbsFName << workDir << "/detail."  << fileLevelStr();
-  ostringstream detailRelFName;  detailRelFName << "detail."  << fileLevelStr();
-  ostringstream sumAbsFName;     sumAbsFName    << workDir << "/summary." << fileLevelStr();
-  ostringstream sumRelFName;     sumRelFName    << "summary."  << fileLevelStr();
+  string fileID = fileLevelStr(fileLevel);
+  ostringstream indexAbsFName;   indexAbsFName  << dbgFileName << "."     << fileID << ".html";
+  ostringstream detailAbsFName;  detailAbsFName << workDir << "/detail."  << fileID;
+  ostringstream detailRelFName;  detailRelFName << "detail."  << fileID;
+  ostringstream sumAbsFName;     sumAbsFName    << workDir << "/summary." << fileID;
+  ostringstream sumRelFName;     sumRelFName    << "summary."  << fileID;
+  ostringstream scriptAbsFName;  scriptAbsFName << workDir << "/script." << fileID;
+  ostringstream scriptRelFName;  scriptRelFName << "script."  << fileID;
   
   //cout << "enterFileLevel("<<flTitle<<") topLevel="<<topLevel<<" #flTitles="<<flTitles.size()<<" #fileLevel="<<fileLevel.size()<<endl;
   // Add a new function level within the parent file unit that will refer to the child file unit
-  if(!topLevel) enterScope(flTitle, true, detailRelFName.str(), sumRelFName.str());
+  if(!topLevel) enterScope(flTitle, true, fileID, fileLevelJSIntArray(fileLevel)); // detailRelFName.str(), sumRelFName.str());
   flTitles.push_back(flTitle);
   
   // Create the index file, which is a frameset that refers to the detail and summary files
@@ -418,24 +483,41 @@ void dbgStream::enterFileLevel(string flTitle, bool topLevel)
   ostream::init(nextBuf);
   
   // Create the html file container for the detail html text
-  printDetailFileContainerHTML(detailAbsFName.str(), detailRelFName.str(), flTitle);
+  printDetailFileContainerHTML(detailAbsFName.str(), fileLevelStr(fileLevel), flTitle);
   
   // Create the summary file. It is initially set to be an empty table and is filled with entries each time
   // a region is opened inside the detail file.
-  ofstream *summaryFile = new ofstream();
-  try {
-    //cout << "    sumAbsFName="<<fullFileName.str()<<endl;
-    summaryFile->open((sumAbsFName.str()+".body").c_str());
-  } catch (ofstream::failure e)
-  { cout << "dbgStream::init() ERROR opening file \""<<sumAbsFName.str()<<"\" for writing!"; exit(-1); }
-  summaryFiles.push_back(summaryFile);
-  
-  // Start the table in the current summary file
-  (*summaryFiles.back()) << "\t\t<table width=\"100%\">\n";
-  (*summaryFiles.back()) << "\t\t\t<tr width=\"100%\"><td width=50></td><td width=\"100%\">\n";
+  {
+    ofstream *summaryFile = new ofstream();
+    try {
+      //cout << "    sumAbsFName="<<fullFileName.str()<<endl;
+      summaryFile->open((sumAbsFName.str()+".body").c_str());
+    } catch (ofstream::failure e)
+    { cout << "dbgStream::init() ERROR opening file \""<<sumAbsFName.str()<<"\" for writing!"; exit(-1); }
+    summaryFiles.push_back(summaryFile);
+    
+    // Start the table in the current summary file
+    (*summaryFiles.back()) << "\t\t<table width=\"100%\">\n";
+    (*summaryFiles.back()) << "\t\t\t<tr width=\"100%\"><td width=50></td><td width=\"100%\">\n";
+    
+    // Create the html file container for the summary html text
+    printSummaryFileContainerHTML(sumAbsFName.str(), sumRelFName.str(), flTitle);
+  }
 
-  // Create the html file container for the summary html text
-  printSummaryFileContainerHTML(sumAbsFName.str(), sumRelFName.str(), flTitle);
+  // Create the script file. It is initially set to be an empty <html> tag and filled with entries each time
+  // a region is opened inside the detail file.
+  {
+    ofstream *scriptFile = new ofstream();
+    try {
+      //cout << "    sumAbsFName="<<fullFileName.str()<<endl;
+      scriptFile->open((scriptAbsFName.str()).c_str());
+    } catch (ofstream::failure e)
+    { cout << "dbgStream::init() ERROR opening file \""<<sumAbsFName.str()<<"\" for writing!"; exit(-1); }
+    scriptFiles.push_back(scriptFile);
+    
+    // The script file starts out with a command to record that the file was loaded
+    (*scriptFiles.back()) << "\trecordFile("<<fileLevelJSIntArray(fileLevel)<<", 'loaded', 1);\n";
+  }
 }
 
 // Exit a current file level
@@ -451,11 +533,15 @@ void dbgStream::exitFileLevel(string flTitle, bool topLevel)
   (*summaryFiles.back()) << "\t\t</table>\n";
   summaryFiles.back()->close();
   
+  // Complete the current script file
+  scriptFiles.back()->close();
+  
   fileLevel.pop_back();
   indexFiles.pop_back();
   dbgFiles.pop_back();
   detailFileRelFNames.pop_back();
   summaryFiles.pop_back();
+  scriptFiles.pop_back();
   fileBufs.pop_back();
   // Call the ostream class initialization function to connect it dbgBuf of the parent detail file
   ostream::init(fileBufs.back());
@@ -491,7 +577,7 @@ void dbgStream::printSummaryFileContainerHTML(string absoluteFileName, string re
   sum << "\t}\n";
   sum << "\n";
   sum << "\tfunction focusLinkHref(divID) {\n";
-  sum << "\t\ttop.detail.location = \"detail." << fileLevelStr() << ".html#anchor\"+divID;\n";
+  sum << "\t\ttop.detail.location = \"detail." << fileLevelStr(fileLevel) << ".html#anchor\"+divID;\n";
   sum << "\t}\n";
   sum << "\n";
   sum << "// Set this page's initial contents\n";
@@ -505,7 +591,7 @@ void dbgStream::printSummaryFileContainerHTML(string absoluteFileName, string re
   sum << "</html>\n\n";
 }
 
-void dbgStream::printDetailFileContainerHTML(string absoluteFileName, string relativeFileName, string title)
+void dbgStream::printDetailFileContainerHTML(string absoluteFileName, string fileID, string title)
 {
   ofstream det;
   ostringstream fullFName; fullFName << absoluteFileName << ".html";
@@ -516,6 +602,8 @@ void dbgStream::printDetailFileContainerHTML(string absoluteFileName, string rel
   det << "<html>\n";
   det << "\t<head>\n";
   det << "\t<title>"<<title<<"</title>\n";
+  det << "\t<script src=\"script/hashtable.js\"></script>\n";
+  det << "\t<script src=\"script/core.js\"></script>\n";
   det << "\t<STYLE TYPE=\"text/css\">\n";
   det << "\tBODY\n";
   det << "\t\t{\n";
@@ -525,48 +613,10 @@ void dbgStream::printDetailFileContainerHTML(string absoluteFileName, string rel
   det << "\t.unhidden { display: block; }\n";
   det << "\t</style>\n";
   det << "\t<script type=\"text/javascript\">\n";
-  det << "\tfunction unhide(divID) {\n";
-  det << "\t  var parentDiv = document.getElementById(\"div\"+divID);\n";
-  det << "\t\tif (parentDiv) {\n";
-  det << "\t\t\t// Hide the parent div\n";
-  det << "\t\t\tparentDiv.className=(parentDiv.className=='hidden')?'unhidden':'hidden';\n";
-  det << "\t\t\t// Get all the tables\n";
-  det << "\t\t\tvar childTbls = document.getElementsByTagName(\"table\");\n";
-  det << "\t\t\tcondition = new RegExp(\"table\"+divID+\"*\");\n";
-  det << "\t\t\tfor (var i=0; i<childTbls.length; i++){ \n";
-  det << "\t\t\t\tvar child = childTbls[i];\n";
-  det << "\t\t\t\t// Set the visibility status of each child table to be the same as its parent div\n";
-  det << "\t\t\t\tif (\"table\"+divID!=child.id && child.nodeType==1 && child.id!=undefined && child.id.match(condition)) {\n";
-  det << "\t\t\t\t    child.className=parentDiv.className;\n";
-  det << "\t\t\t\t}\n";
-  det << "\t\t\t}\n";
+  det << "\t\twindow.onload=function () { \n";
+  det << "\t\t\tloadURLIntoDiv(document, 'detail."<<fileID<<".body', 'detailContents');\n";
+  det << "\t\t\tloadjscssfile('script."<<fileID<<"', 'js')\n";
   det << "\t\t}\n";
-  det << "\t}\n";
-  det << "\n";
-  det << "\tfunction loadURLIntoDiv(doc, url, divName) {\n";
-  det << "\t\tvar xhr= new XMLHttpRequest();\n";
-  det << "\t\txhr.open('GET', url, true);\n";
-  det << "\t\txhr.onreadystatechange= function() {\n";
-  det << "\t\t\t//Wait until the data is fully loaded\n";
-  det << "\t\t\tif (this.readyState!==4) return;\n";
-  det << "\t\t\tdoc.getElementById(divName).innerHTML= this.responseText;\n";
-  det << "\t\t};\n";
-  det << "\t\txhr.send();\n";
-  det << "\t}\n";
-  det << "\n";
-  det << "\tfunction highlightLink(divID, newcolor) {\n";
-  det << "\t\tvar sumLink = top.summary.document.getElementById(\"link\"+divID);\n";
-  det << "\t\tsumLink.style.backgroundColor= newcolor;\n";
-  det << "\t}\n";
-  det << "\tfunction focusLink(divID, e) {\n";
-  det << "\t\te = e || window.event;\n";
-  det << "\t\tif('cancelBubble' in e) {\n";
-  det << "\t\t\te.cancelBubble = true;\n";
-  det << "\t\t\ttop.summary.location = \"summary." << fileLevelStr() << ".html#anchor\"+divID;\n";
-  det << "\t\t}\n";
-  det << "\t}\n";
-  det << "// Set this page's initial contents\n";
-  det << "window.onload=function () { loadURLIntoDiv(document, '"<<relativeFileName<<".body', 'detailContents'); }\n";
   det << "\t</script>\n";
   det << "\t</head>\n";
   det << "\t<body>\n";
@@ -582,11 +632,11 @@ void dbgStream::printDetailFileContainerHTML(string absoluteFileName, string rel
   det.close();
 }
 
-void dbgStream::enterScope(string funcName, bool advanceColor, string detailContentURL, string summaryContentURL)
+void dbgStream::enterScope(string funcName, bool advanceColor, string fileID, string fileIDJSArray)//string detailContentURL, string summaryContentURL)
 {
-  // Either both URLs are provided or neither is
+  /* // Either both URLs are provided or neither is
   assert((detailContentURL=="" && summaryContentURL=="") ||
-         (detailContentURL!="" && summaryContentURL!=""));
+         (detailContentURL!="" && summaryContentURL!=""));*/
   
   fileBufs.back()->ownerAccessing();
   
@@ -596,49 +646,65 @@ void dbgStream::enterScope(string funcName, bool advanceColor, string detailCont
   
   // Create the name of the new div that will hold the contents of the new scope.
   // This name is a concatenation of the indexes of all of its parent divs.
-  ostringstream divName;
+  /*ostringstream divName;
   for(std::list<dbgBuf*>::iterator fb=fileBufs.begin(); fb!=fileBufs.end(); ) {
-    for(list<int>::iterator d=(*fb)->parentDivs.begin(); d!=(*fb)->parentDivs.end(); ) {
-      divName << *d;
+    assert((*fb)->parentDivs.size()>0);
+    list<int>::iterator d=(*fb)->parentDivs.begin();
+    int lastDivID=*d;
+    d++;
+    while(d!=(*fb)->parentDivs.end()) {
+      divName << lastDivID;
+      lastDivID=*d;
       d++;
       if(d!=(*fb)->parentDivs.end()) divName << "_";
     }
     fb++;
     if(fb!=fileBufs.end()) divName << ":";
-  }
+  }*/
+  string divName = regionGlobalStr();
   
   *(this) << "\t\t\t"<<tabs(fileBufs.back()->funcs.size())<<"</td></tr>\n";
   *(this) << "\t\t\t"<<tabs(fileBufs.back()->funcs.size())<<"<tr width=\"100%\"><td width=50></td><td width=\"100%\">\n";
-  *(this) << "\t\t\t"<<tabs(fileBufs.back()->funcs.size()+1)<<"<table bgcolor=\"#"<<colors[(colorIdx-1)%colors.size()]<<"\" width=\"100%\" id=\"table"<<divName.str()<<"\" style=\"border:1px solid white\" onmouseover=\"this.style.border='1px solid black'; highlightLink('"<<divName.str()<<"', '#F4FBAA');\" onmouseout=\"this.style.border='1px solid white'; highlightLink('"<<divName.str()<<"', '#FFFFFF');\" onclick=\"focusLink('"<<divName.str()<<"', event);\">\n";
-  *(this) << "\t\t\t"<<tabs(fileBufs.back()->funcs.size()+1)<<"<tr width=\"100%\"><td width=50></td><td width=\"100%\"><h2><a name=\"anchor"<<divName.str()<<"\" href=\"javascript:unhide('"<<divName.str()<<"');\">";
+  *(this) << "\t\t\t"<<tabs(fileBufs.back()->funcs.size()+1)<<"<table bgcolor=\"#"<<colors[(colorIdx-1)%colors.size()]<<"\" width=\"100%\" id=\"table"<<divName<<"\" style=\"border:1px solid white\" onmouseover=\"this.style.border='1px solid black'; highlightLink('"<<divName<<"', '#F4FBAA');\" onmouseout=\"this.style.border='1px solid white'; highlightLink('"<<divName<<"', '#FFFFFF');\" onclick=\"focusLink('"<<divName<<"', event);\">\n";
+  *(this) << "\t\t\t"<<tabs(fileBufs.back()->funcs.size()+1)<<"<tr width=\"100%\"><td width=50></td><td width=\"100%\"><h2><a name=\"anchor"<<divName<<"\" href=\"javascript:unhide('"<<divName<<"');\">";
   fileBufs.back()->userAccessing();
   *(this) << funcName;
   fileBufs.back()->ownerAccessing();
   *(this) << "</a>\n";
-  if(detailContentURL != "") {
+  ostringstream loadCmd;
+  if(fileID != "") {
     *(this) << "\t\t\t"<<tabs(fileBufs.back()->funcs.size()+1);
-    *(this) << "<a href=\"javascript:loadURLIntoDiv(top.detail.document, '"<<detailContentURL<<".body', 'div"<<divName.str()<<"'); loadURLIntoDiv(top.summary.document, '"<<summaryContentURL<<".body', 'sumdiv"<<divName.str()<<"')\">";
+    loadCmd << "loadSubFile(top.detail.document, 'detail."<<fileID<<".body', 'div"<<divName<<"', "<<
+                           "top.summary.document, 'summary."<<fileID<<".body', 'sumdiv"<<divName<<"', "<<
+                           "'script."<<fileID<<"'";
+    *(this) << "<a href=\"javascript:"<<loadCmd.str()<<")\">";
+    //*(this) << "<a href=\"javascript:loadURLIntoDiv(top.detail.document, '"<<detailContentURL<<".body', 'div"<<divName<<"'); loadURLIntoDiv(top.summary.document, '"<<summaryContentURL<<".body', 'sumdiv"<<divName<<"')\">";
     *(this) << "<img src=\"img/divDL.gif\" width=25 height=35></a>\n";
-    *(this) << "<a target=\"_top\" href=\"index."<<fileLevelStr()<<".html\">";
+    *(this) << "\t\t\t<a target=\"_top\" href=\"index."<<fileLevelStr(fileLevel)<<".html\">";
     *(this) << "<img src=\"img/divGO.gif\" width=35 height=25></a>\n";
   }
   *(this) << "\t\t\t"<<tabs(fileBufs.back()->funcs.size()+1)<<"</h2></td></tr>\n";
-  *(this) << "\t\t\t"<<tabs(fileBufs.back()->funcs.size()+1)<<"<tr width=\"100%\"><td width=50></td><td width=\"100%\"><div id=\"div"<<divName.str()<<"\" class=\"unhidden\">\n";
+  *(this) << "\t\t\t"<<tabs(fileBufs.back()->funcs.size()+1)<<"<tr width=\"100%\"><td width=50></td><td width=\"100%\"><div id=\"div"<<divName<<"\" class=\"unhidden\">\n";
   this->flush();
 
-  //summaryFiles.back() << "<li><a target=\"detail\" href=\"detail.html#"<<divName.str()<<"\">"<<funcName<<"</a><br>\n";
+  //summaryFiles.back() << "<li><a target=\"detail\" href=\"detail.html#"<<divName<<"\">"<<funcName<<"</a><br>\n";
   //summaryFiles.back() << "<ul>\n";
   *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->funcs.size())<<"</td></tr>\n";
   *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->funcs.size())<<"<tr width=\"100%\"><td width=50></td><td width=\"100%\">\n";
   *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->funcs.size()+1)<<"<table width=\"100%\" style=\"border:0px\">\n";
-  *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->funcs.size()+1)<<"<tr width=\"100%\"><td width=50></td><td id=\"link"<<divName.str()<<"\" width=\"100%\">";
-  *summaryFiles.back() <<     "<a name=\"anchor"<<divName.str()<<"\" href=\"javascript:focusLinkHref('"<<divName.str()<<"')\">"<<funcName<<"</a> ("<<divName.str()<<")</td></tr>\n";
+  *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->funcs.size()+1)<<"<tr width=\"100%\"><td width=50></td><td id=\"link"<<divName<<"\" width=\"100%\">";
+  *summaryFiles.back() <<     "<a name=\"anchor"<<divName<<"\" href=\"javascript:focusLinkHref('"<<divName<<"')\">"<<funcName<<"</a> ("<<divName<<")</td></tr>\n";
   *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->funcs.size()+1)<<"<tr width=\"100%\"><td width=50></td><td width=\"100%\">\n";
   /*// If the corresponding div in the detail page may be filled in with additional content, we create another summary
   // div to fill in with the corresponding summary content
-  if(detailContentURL != "") */*summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->funcs.size()+1)<<"<div id=\"sumdiv"<<divName.str()<<"\">\n";
+  if(detailContentURL != "") */*summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->funcs.size()+1)<<"<div id=\"sumdiv"<<divName<<"\">\n";
   summaryFiles.back()->flush();
-
+  
+  if(fileID != "") {
+    (*scriptFiles.back()) << "\trecordFile("<<fileIDJSArray<<", 'loadFunc', function(continuationFunc) {"<<loadCmd.str()<<", continuationFunc)});\n";
+    scriptFiles.back()->flush();
+  }
+  
   fileBufs.back()->userAccessing();
 }
 
@@ -749,10 +815,67 @@ void dbgStream::addDOT(string imgFName, string graphName, string dot, ostream& r
   #else
   scope dotScope("Warning:", scope::medium);\
   *this << "graphviz not available" << endl;
-  #endif
-  
-  
+  #endif  
 }
+
+// Creates a link to a given scope, which may be in another file
+string dbgStream::linkTo(const scopeID& id, string text) const
+{
+  // Initialize fileIDPrefix to be the common prefix between fileLevel and id.fileLevel
+  list<int> fileIDPrefix;
+  //cout << "fileLevel = "<<fileLevelJSIntArray(fileLevel)<<endl;
+  //cout << "id.fileLevel = "<<fileLevelJSIntArray(id.fileLevel)<<endl;
+  list<int>::const_iterator iThis = fileLevel.begin(),
+                            iThat = id.fileLevel.begin();
+  while(iThis!=fileLevel.end() & iThat!=id.fileLevel.end() &&
+        *iThis == *iThat)
+  { 
+    //cout << "pushing "<<*iThis<<endl;
+    fileIDPrefix.push_back(*iThis);
+    iThis++, iThat++;
+  }
+  /*if(iThat!=id.fileLevel.end()) {
+    cout << "pushing "<<*iThat<<endl;
+    fileIDPrefix.push_back(*iThat);
+  }*/
+  
+  ostringstream ret;
+  ret << "<a href=\"javascript:";
+  // The command iteratively opens more and more of the target files, beyond the file that is 
+  // shared by the current scope and the target scope
+  string suffix;
+  while(fileIDPrefix.size() < id.fileLevel.size()-1) {
+    fileIDPrefix.push_back(*iThat);
+    list<int> curID = fileIDPrefix;
+    curID.push_back(1);
+    //cout << "curID = "<<fileLevelJSIntArray(curID)<<endl;
+    
+    // The command is a sequence of calls that use getFile to obtain a function pointer to the function that loads a given 
+    // file at a given nesting level and then calls this function. Since each step takes time, subsequent steps are 
+    // passed in as continuations so that they're only called when the prior steps have completed (requires callbacks from
+    // the browser). This ensures that we only attempt to load a file's children once's its text and scripts have been loaded,
+    // registering code to load its children in the fileInfo hash.
+    if(fileIDPrefix.size()>2) ret << "function() { ";
+    ret << "var next = ";
+    if(fileIDPrefix.size() == id.fileLevel.size()-1)
+      ret << "undefined;";
+    
+    suffix = string("")+
+             "console.debug('Loaded "+fileLevelJSIntArray(curID)+"='+getFile("+fileLevelJSIntArray(curID)+", 'loaded')); "+
+             "if(!getFile("+fileLevelJSIntArray(curID)+", 'loaded')) { console.debug('Loading "+fileLevelJSIntArray(curID)+"'); getFile("+fileLevelJSIntArray(curID)+", 'loadFunc')(next); } "+
+             "else if(typeof next !== 'undefined') { next(); } undefined; " + 
+             (fileIDPrefix.size()>2? "};": "") +
+             suffix;
+    //suffix << ")";
+    iThat++;
+  }
+    
+  ret << suffix << ";\">";
+  ret << text;
+  ret << "</a>";
+  return ret.str();
+}
+
 
 dbgStream dbg;
 
@@ -839,22 +962,27 @@ void initializeDebug(string title, string workDir, string fName)
     if(ret == -1) { cout << "Dbg::init() ERROR creating directory \""<<imgPath.str()<<"\"!"; exit(-1); }
   }
   
-  // Directory where the default images go
+  // Copy the default images directory to the work directory
   {
     ostringstream defImgPath; defImgPath << workDir << "/img";
-    {
-      ostringstream cmd; cmd << "mkdir -p "<<defImgPath.str();
-      //cout << "Command \""<<cmd.str()<<"\"\n";
-      int ret = system(cmd.str().c_str());
-      if(ret == -1) { cout << "Dbg::init() ERROR creating directory \""<<defImgPath.str()<<"\"!"; exit(-1); }
-    }
     
-    // Copy the default images to this directory
     {
-      ostringstream cmd; cmd << "cp -f "<<ROOT_PATH<<"/img/* "<<defImgPath.str();
+      ostringstream cmd; cmd << "cp -fr "<<ROOT_PATH<<"/img "<<defImgPath.str();
       //cout << "Command \""<<cmd.str()<<"\"\n";
       int ret = system(cmd.str().c_str());
       if(ret == -1) { cout << "Dbg::init() ERROR copying files from directory \""<<ROOT_PATH<<"/img\" directory \""<<defImgPath.str()<<"\"!"; exit(-1); }
+    }
+  }
+
+  // Copy the default scripts directory to the work directory
+  {
+    ostringstream defImgPath; defImgPath << workDir << "/script";
+    
+    {
+      ostringstream cmd; cmd << "cp -fr "<<ROOT_PATH<<"/script "<<defImgPath.str();
+      //cout << "Command \""<<cmd.str()<<"\"\n";
+      int ret = system(cmd.str().c_str());
+      if(ret == -1) { cout << "Dbg::init() ERROR copying files from directory \""<<ROOT_PATH<<"/script\" directory \""<<defImgPath.str()<<"\"!"; exit(-1); }
     }
   }
 
