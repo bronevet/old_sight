@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <iostream>
 
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -243,13 +244,6 @@ void dbgBuf::enterScope(string funcName)
   // Increment the index of this function within its parent
   //cout << "Incrementing parentDivs (len="<<parentDivs.size()<<") from "<<*(parentDivs.rbegin())<<" to ";
   (*(parentDivs.rbegin()))++;
-  /*cout << *(parentDivs.rbegin())<<": div=";
-  ostringstream divName;
-  for(list<int>::iterator d=parentDivs.begin(); d!=parentDivs.end(); d++) {
-    if(d!=parentDivs.end())
-      divName << *d << "_";
-  }
-  cout << divName.str()<<"\n";*/
   // Add a new level to the parentDivs list, starting the index at 0
   parentDivs.push_back(0);
   //numDivs++;
@@ -295,22 +289,21 @@ string tabs(int n)
 
 dbgStream::dbgStream() : std::ostream(&defaultFileBuf), initialized(false)
 {
-  if(!initializedDebug) initializeDebug("Debug Output", "dbg", "index");
+  if(!initializedDebug) initializeDebug("Debug Output", "dbg");
 }
 
-dbgStream::dbgStream(string title, string dbgFileName, string workDir, string imgPath)
+dbgStream::dbgStream(string title, string workDir, string imgPath)
   : std::ostream(&defaultFileBuf)
 {
-  init(title, dbgFileName, workDir, imgPath);
+  init(title, workDir, imgPath);
 }
 
-void dbgStream::init(string title, string dbgFileName, string workDir, string imgPath)
+void dbgStream::init(string title, string workDir, string imgPath)
 {
   // Initialize fileLevel with a 0 to make it possible to count top-level files
   fileLevel.push_back(0);
   
   this->title       = title;
-  this->dbgFileName = dbgFileName;
   this->workDir     = workDir;
   this->imgPath     = imgPath;
 
@@ -335,6 +328,12 @@ void dbgStream::init(string title, string dbgFileName, string workDir, string im
 
   numImages++;
   
+  ostringstream anchorScriptFName; anchorScriptFName << workDir << "/html/script/anchor_script";
+  try {
+    anchorScriptFile.open(anchorScriptFName.str().c_str());
+  } catch (ofstream::failure e)
+  { cout << "dbgStream::init() ERROR opening file \""<<anchorScriptFName.str()<<"\" for writing!"; exit(-1); }
+  
   enterFileLevel(title, true);
   
   initialized = true;
@@ -346,6 +345,8 @@ dbgStream::~dbgStream()
     return;
 
   exitFileLevel(title, true);
+  
+  anchorScriptFile.close();
 }
 
 // Returns the unique ID string of the current file within the hierarchy of files
@@ -414,7 +415,7 @@ string dbgStream::regionGlobalStr() const {
       if(d!=(*fb)->parentDivs.end()) divName << "_";
     }
     fb++;
-    if(fb!=fileBufs.end()) divName << ":";
+    if(fb!=fileBufs.end() && (*fb)->parentDivs.size()>1) divName << ":";
   }
   
   return divName.str();
@@ -439,13 +440,13 @@ void dbgStream::enterFileLevel(string flTitle, bool topLevel)
   // detail and summary files, where they appear like regular regions.
   // These are the absolute and relative names of these files.
   string fileID = fileLevelStr(fileLevel);
-  ostringstream indexAbsFName;   indexAbsFName  << dbgFileName << "."     << fileID << ".html";
-  ostringstream detailAbsFName;  detailAbsFName << workDir << "/detail."  << fileID;
-  ostringstream detailRelFName;  detailRelFName << "detail."  << fileID;
-  ostringstream sumAbsFName;     sumAbsFName    << workDir << "/summary." << fileID;
-  ostringstream sumRelFName;     sumRelFName    << "summary."  << fileID;
-  ostringstream scriptAbsFName;  scriptAbsFName << workDir << "/script." << fileID;
-  ostringstream scriptRelFName;  scriptRelFName << "script."  << fileID;
+  ostringstream indexAbsFName;  indexAbsFName  << workDir << "/html/index." << fileID << ".html";
+  ostringstream detailAbsFName; detailAbsFName << workDir << "/html/detail."  << fileID;
+  ostringstream detailRelFName; detailRelFName << "detail."  << fileID;
+  ostringstream sumAbsFName;    sumAbsFName    << workDir << "/html/summary." << fileID;
+  ostringstream sumRelFName;    sumRelFName    << "summary."  << fileID;
+  ostringstream scriptAbsFName; scriptAbsFName << workDir << "/html/script/script." << fileID;
+  ostringstream scriptRelFName; scriptRelFName << "script/script."  << fileID;
   
   //cout << "enterFileLevel("<<flTitle<<") topLevel="<<topLevel<<" #flTitles="<<flTitles.size()<<" #fileLevel="<<fileLevel.size()<<endl;
   // Add a new function level within the parent file unit that will refer to the child file unit
@@ -457,7 +458,7 @@ void dbgStream::enterFileLevel(string flTitle, bool topLevel)
   try {
     indexFile.open(indexAbsFName.str().c_str());
   } catch (ofstream::failure e)
-  { cout << "dbgStream::init() ERROR opening file \""<<indexAbsFName<<"\" for writing!"; exit(-1); }
+  { cout << "dbgStream::init() ERROR opening file \""<<indexAbsFName.str()<<"\" for writing!"; exit(-1); }
   indexFiles.push_back(&indexFile);
   
   indexFile << "<frameset cols=\"20%,80%\">\n";
@@ -483,7 +484,7 @@ void dbgStream::enterFileLevel(string flTitle, bool topLevel)
   ostream::init(nextBuf);
   
   // Create the html file container for the detail html text
-  printDetailFileContainerHTML(detailAbsFName.str(), fileLevelStr(fileLevel), flTitle);
+  printDetailFileContainerHTML(detailAbsFName.str(), flTitle);
   
   // Create the summary file. It is initially set to be an empty table and is filled with entries each time
   // a region is opened inside the detail file.
@@ -553,6 +554,11 @@ void dbgStream::exitFileLevel(string flTitle, bool topLevel)
   flTitles.pop_back();
 }
 
+// Record the mapping from the given anchor ID to the given string in the global script file
+void dbgStream::writeToAnchorScript(int anchorID, list<int>& fileLevel, string divID) {
+  anchorScriptFile << "anchors.setItem("<<anchorID<<", new anchor("<<fileLevelJSIntArray(fileLevel)<<", \""<<divID<<"\"));"<<endl;
+}
+
 void dbgStream::printSummaryFileContainerHTML(string absoluteFileName, string relativeFileName, string title)
 {
   ofstream sum;
@@ -564,6 +570,8 @@ void dbgStream::printSummaryFileContainerHTML(string absoluteFileName, string re
   sum << "<html>\n";
   sum << "\t<head>\n";
   sum << "\t<title>"<<title<<"</title>\n";
+  sum << "\t<script src=\"script/hashtable.js\"></script>\n";
+  sum << "\t<script src=\"script/core.js\"></script>\n";
   sum << "\t<script type=\"text/javascript\">\n";
   sum << "\tfunction loadURLIntoDiv(doc, url, divName) {\n";
   sum << "\t\tvar xhr= new XMLHttpRequest();\n";
@@ -574,10 +582,6 @@ void dbgStream::printSummaryFileContainerHTML(string absoluteFileName, string re
   sum << "\t\t\tdoc.getElementById(divName).innerHTML= this.responseText;\n";
   sum << "\t\t};\n";
   sum << "\t\txhr.send();\n";
-  sum << "\t}\n";
-  sum << "\n";
-  sum << "\tfunction focusLinkHref(divID) {\n";
-  sum << "\t\ttop.detail.location = \"detail." << fileLevelStr(fileLevel) << ".html#anchor\"+divID;\n";
   sum << "\t}\n";
   sum << "\n";
   sum << "// Set this page's initial contents\n";
@@ -591,7 +595,7 @@ void dbgStream::printSummaryFileContainerHTML(string absoluteFileName, string re
   sum << "</html>\n\n";
 }
 
-void dbgStream::printDetailFileContainerHTML(string absoluteFileName, string fileID, string title)
+void dbgStream::printDetailFileContainerHTML(string absoluteFileName, string title)
 {
   ofstream det;
   ostringstream fullFName; fullFName << absoluteFileName << ".html";
@@ -614,8 +618,10 @@ void dbgStream::printDetailFileContainerHTML(string absoluteFileName, string fil
   det << "\t</style>\n";
   det << "\t<script type=\"text/javascript\">\n";
   det << "\t\twindow.onload=function () { \n";
-  det << "\t\t\tloadURLIntoDiv(document, 'detail."<<fileID<<".body', 'detailContents');\n";
-  det << "\t\t\tloadjscssfile('script."<<fileID<<"', 'js')\n";
+  string fileID = fileLevelStr(fileLevel);
+  det << "\t\t\tloadURLIntoDiv(document, 'detail."<<fileID<<".body', 'detailContents', \n";
+  det << "\t\t\t\tfunction() { loadjscssfile('script/script."<<fileID<<"', 'js', \n";
+  det << "\t\t\t\t\tfunction() { loadjscssfile('script/anchor_script', 'js'); }); });\n";
   det << "\t\t}\n";
   det << "\t</script>\n";
   det << "\t</head>\n";
@@ -661,12 +667,12 @@ void dbgStream::enterScope(string funcName, bool advanceColor, string fileID, st
     fb++;
     if(fb!=fileBufs.end()) divName << ":";
   }*/
-  string divName = regionGlobalStr();
+  string divID = regionGlobalStr();
   
   *(this) << "\t\t\t"<<tabs(fileBufs.back()->funcs.size())<<"</td></tr>\n";
   *(this) << "\t\t\t"<<tabs(fileBufs.back()->funcs.size())<<"<tr width=\"100%\"><td width=50></td><td width=\"100%\">\n";
-  *(this) << "\t\t\t"<<tabs(fileBufs.back()->funcs.size()+1)<<"<table bgcolor=\"#"<<colors[(colorIdx-1)%colors.size()]<<"\" width=\"100%\" id=\"table"<<divName<<"\" style=\"border:1px solid white\" onmouseover=\"this.style.border='1px solid black'; highlightLink('"<<divName<<"', '#F4FBAA');\" onmouseout=\"this.style.border='1px solid white'; highlightLink('"<<divName<<"', '#FFFFFF');\" onclick=\"focusLink('"<<divName<<"', event);\">\n";
-  *(this) << "\t\t\t"<<tabs(fileBufs.back()->funcs.size()+1)<<"<tr width=\"100%\"><td width=50></td><td width=\"100%\"><h2><a name=\"anchor"<<divName<<"\" href=\"javascript:unhide('"<<divName<<"');\">";
+  *(this) << "\t\t\t"<<tabs(fileBufs.back()->funcs.size()+1)<<"<table bgcolor=\"#"<<colors[(colorIdx-1)%colors.size()]<<"\" width=\"100%\" id=\"table"<<divID<<"\" style=\"border:1px solid white\" onmouseover=\"this.style.border='1px solid black'; highlightLink('"<<divID<<"', '#F4FBAA');\" onmouseout=\"this.style.border='1px solid white'; highlightLink('"<<divID<<"', '#FFFFFF');\" onclick=\"focusLinkSummary('"<<divID<<"', event);\">\n";
+  *(this) << "\t\t\t"<<tabs(fileBufs.back()->funcs.size()+1)<<"<tr width=\"100%\"><td width=50></td><td width=\"100%\"><h2><a name=\"anchor"<<divID<<"\" href=\"javascript:unhide('"<<divID<<"');\">";
   fileBufs.back()->userAccessing();
   *(this) << funcName;
   fileBufs.back()->ownerAccessing();
@@ -674,30 +680,30 @@ void dbgStream::enterScope(string funcName, bool advanceColor, string fileID, st
   ostringstream loadCmd;
   if(fileID != "") {
     *(this) << "\t\t\t"<<tabs(fileBufs.back()->funcs.size()+1);
-    loadCmd << "loadSubFile(top.detail.document, 'detail."<<fileID<<".body', 'div"<<divName<<"', "<<
-                           "top.summary.document, 'summary."<<fileID<<".body', 'sumdiv"<<divName<<"', "<<
+    loadCmd << "loadSubFile(top.detail.document, 'detail."<<fileID<<".body', 'div"<<divID<<"', "<<
+                           "top.summary.document, 'summary."<<fileID<<".body', 'sumdiv"<<divID<<"', "<<
                            "'script."<<fileID<<"'";
     *(this) << "<a href=\"javascript:"<<loadCmd.str()<<")\">";
-    //*(this) << "<a href=\"javascript:loadURLIntoDiv(top.detail.document, '"<<detailContentURL<<".body', 'div"<<divName<<"'); loadURLIntoDiv(top.summary.document, '"<<summaryContentURL<<".body', 'sumdiv"<<divName<<"')\">";
+    //*(this) << "<a href=\"javascript:loadURLIntoDiv(top.detail.document, '"<<detailContentURL<<".body', 'div"<<divID<<"'); loadURLIntoDiv(top.summary.document, '"<<summaryContentURL<<".body', 'sumdiv"<<divID<<"')\">";
     *(this) << "<img src=\"img/divDL.gif\" width=25 height=35></a>\n";
     *(this) << "\t\t\t<a target=\"_top\" href=\"index."<<fileLevelStr(fileLevel)<<".html\">";
     *(this) << "<img src=\"img/divGO.gif\" width=35 height=25></a>\n";
   }
   *(this) << "\t\t\t"<<tabs(fileBufs.back()->funcs.size()+1)<<"</h2></td></tr>\n";
-  *(this) << "\t\t\t"<<tabs(fileBufs.back()->funcs.size()+1)<<"<tr width=\"100%\"><td width=50></td><td width=\"100%\"><div id=\"div"<<divName<<"\" class=\"unhidden\">\n";
+  *(this) << "\t\t\t"<<tabs(fileBufs.back()->funcs.size()+1)<<"<tr width=\"100%\"><td width=50></td><td width=\"100%\"><div id=\"div"<<divID<<"\" class=\"unhidden\">\n";
   this->flush();
 
-  //summaryFiles.back() << "<li><a target=\"detail\" href=\"detail.html#"<<divName<<"\">"<<funcName<<"</a><br>\n";
+  //summaryFiles.back() << "<li><a target=\"detail\" href=\"detail.html#"<<divID<<"\">"<<funcName<<"</a><br>\n";
   //summaryFiles.back() << "<ul>\n";
   *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->funcs.size())<<"</td></tr>\n";
   *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->funcs.size())<<"<tr width=\"100%\"><td width=50></td><td width=\"100%\">\n";
   *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->funcs.size()+1)<<"<table width=\"100%\" style=\"border:0px\">\n";
-  *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->funcs.size()+1)<<"<tr width=\"100%\"><td width=50></td><td id=\"link"<<divName<<"\" width=\"100%\">";
-  *summaryFiles.back() <<     "<a name=\"anchor"<<divName<<"\" href=\"javascript:focusLinkHref('"<<divName<<"')\">"<<funcName<<"</a> ("<<divName<<")</td></tr>\n";
+  *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->funcs.size()+1)<<"<tr width=\"100%\"><td width=50></td><td id=\"link"<<divID<<"\" width=\"100%\">";
+  *summaryFiles.back() <<     "<a name=\"anchor"<<divID<<"\" href=\"javascript:focusLinkDetail('"<<divID<<"')\">"<<funcName<<"</a> ("<<divID<<")</td></tr>\n";
   *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->funcs.size()+1)<<"<tr width=\"100%\"><td width=50></td><td width=\"100%\">\n";
   /*// If the corresponding div in the detail page may be filled in with additional content, we create another summary
   // div to fill in with the corresponding summary content
-  if(detailContentURL != "") */*summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->funcs.size()+1)<<"<div id=\"sumdiv"<<divName<<"\">\n";
+  if(detailContentURL != "") */*summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->funcs.size()+1)<<"<div id=\"sumdiv"<<divID<<"\">\n";
   summaryFiles.back()->flush();
   
   if(fileID != "") {
@@ -808,8 +814,7 @@ void dbgStream::addDOT(string imgFName, string graphName, string dot, ostream& r
   //cout << "Command \""<<cmd.str()<<"\"\n";
   system(cmd.str().c_str());
 
-  ret << /*"\t\t\t"<<tabs(fileBufs.back()->funcs.size()+1)<<"image_"<<numImages<<":"*/"<img src=\""<<imgFName<<"\" "; 
-  ret << "><br>\n";
+  ret << "<img src=\""<<imgFName<<"\"><br>\n";
   
   numImages++;
   #else
@@ -819,7 +824,7 @@ void dbgStream::addDOT(string imgFName, string graphName, string dot, ostream& r
 }
 
 // Creates a link to a given scope, which may be in another file
-string dbgStream::linkTo(const scopeID& id, string text) const
+/*string dbgStream::linkTo(const anchor& id, string text) const
 {
   // Initialize fileIDPrefix to be the common prefix between fileLevel and id.fileLevel
   list<int> fileIDPrefix;
@@ -837,7 +842,7 @@ string dbgStream::linkTo(const scopeID& id, string text) const
   /*if(iThat!=id.fileLevel.end()) {
     cout << "pushing "<<*iThat<<endl;
     fileIDPrefix.push_back(*iThat);
-  }*/
+  }* /
   
   ostringstream ret;
   ret << "<a href=\"javascript:";
@@ -874,7 +879,7 @@ string dbgStream::linkTo(const scopeID& id, string text) const
   ret << text;
   ret << "</a>";
   return ret.str();
-}
+}*/
 
 
 dbgStream dbg;
@@ -910,10 +915,141 @@ indent::~indent() {
   }
 }
 
+/******************
+ ***** anchor *****
+ ******************/
+int anchor::maxAnchorID=0;
+anchor anchor::noAnchor(false, -1);
+
+anchor::anchor(/*dbgStream& myDbg, */bool reached) /*: myDbg(myDbg)*/ {
+  anchorID = maxAnchorID++;
+  //dbg << "anchor="<<anchorID<<endl;
+  // Initialize this->reached to false so that reachedAnchor() doesn't think we're calling it for multiple locations
+  this->reached = false;
+  if(reached) reachedAnchor();
+}
+
+anchor::anchor(const anchor& that) {
+  anchorID  = that.anchorID;
+  //myDbg     = that.myDbg;
+  fileLevel = that.fileLevel;
+  divID     = that.divID;
+  reached   = that.reached;
+}
+
+anchor::anchor(/*dbgStream& myDbg, */bool reached, int anchorID) : 
+  reached(reached), anchorID(anchorID)
+{ }
+
+void anchor::init(bool reached) {
+  anchorID = maxAnchorID++;
+  // Initialize this->reached to false so that reachedAnchor() doesn't think we're calling it for multiple locations
+  this->reached = false;
+  if(reached) reachedAnchor();
+}
+
+void anchor::operator=(const anchor& that) {
+  anchorID  = that.anchorID;
+  //myDbg     = that.myDbg;
+  fileLevel = that.fileLevel;
+  divID     = that.divID;
+  reached   = that.reached;
+}
+
+bool anchor::operator==(const anchor& that) const {
+  // anchorID of -1 indicates that this is the noAnchor object and any copies of it are equivalent
+  assert(anchorID>=-1); assert(that.anchorID>=-1);
+  if(anchorID==-1 && that.anchorID==-1) return true;
+   
+  return anchorID  == that.anchorID &&
+         fileLevel == that.fileLevel &&
+         divID     == that.divID &&
+         reached   == that.reached;
+}
+bool anchor::operator!=(const anchor& that) const
+{ return !(*this == that); }
+
+// Called when the file location of this anchor has been reached
+void anchor::reachedAnchor() {
+  // If this anchor has already been set to point to its target location, emit a warning
+  if(reached) 
+    cerr << "Warning: anchor "<<anchorID<<" is being set to multiple target locations" << endl;
+  else {
+    reached = true; // We've now reached this anchor's location in the output
+    fileLevel = dbg.getFileLevel();
+    divID     = dbg.regionGlobalStr();
+    
+    //dbg << "anchor="<<anchorID<<" reached. fileLevel="<<dbg.fileLevelJSIntArray(fileLevel)<<", divID="<<divID<<endl;
+    dbg.writeToAnchorScript(anchorID, fileLevel, divID);
+  }
+}
+
+// Emits to the output dbgStream the string that denotes a link to this anchor
+// Embed the given text in the link.
+void anchor::link(string text) const {
+  dbg << "<a href=\"javascript:";
+  // If we've already reached this link's location (this is a backward link)
+  if(reached) {
+    dbg << "goToAnchor([], "<<dbg.fileLevelJSIntArray(fileLevel)<<"); ";
+    dbg << "focusLinkDetail('"<<divID<<"'); focusLinkSummary('"<<divID<<"');";
+  // If we have not yet reached this anchor's location in the output (it is a forward link)
+  } else {
+    dbg << "if(anchors.hasItem("<<anchorID<<")) { goToAnchor([], anchors.getItem("<<anchorID<<").fileID); } ";
+    dbg << "else { undefined; } ";
+    dbg << "focusLinkDetail(anchors.getItem("<<anchorID<<").divID); focusLinkSummary(anchors.getItem("<<anchorID<<").divID);";
+  }
+  dbg << "\">"<<text<<"</a>";
+}
+
+std::string anchor::str() const {
+  ostringstream oss;
+  if(anchorID==-1)
+    oss << "[noAnchor]";
+  else {
+    oss << "[anchor: ID="<<anchorID<<", fileID=&lt;";
+    for(list<int>::const_iterator f=fileLevel.begin(); f!=fileLevel.end(); f++) {
+      if(f!=fileLevel.begin()) oss << ", ";
+      oss << *f;
+    }
+    oss << "&gt;, divID=\""<<divID<<"\", reached=\""<<reached<<"\"]";
+  }
+  return oss.str();
+}
+
 /*****************
  ***** scope *****
  *****************/
-scope::scope(std::string label, scopeLevel level, int curDebugLevel, int targetDebugLevel)
+scope::scope(std::string label, scopeLevel level, int curDebugLevel, int targetDebugLevel) : 
+  // startA is initialized before init is called to ensure that the anchor's divID is the same as 
+  // the scope's divID, rather than a divID inside the scope.
+  startA(true) 
+{
+  init(label, level, curDebugLevel, targetDebugLevel);
+}
+
+scope::scope(std::string label, anchor& pointsTo, scopeLevel level, int curDebugLevel, int targetDebugLevel): 
+  startA(anchor::noAnchor) // initialize startA to be noAnchor
+{
+  init(label, level, curDebugLevel, targetDebugLevel);
+  // If we're given an anchor from a forward link to this region,
+  // inform the anchor that it is pointing to the location of this scope's start.
+  // This is done before the initialization to ensure that the anchor's divID is 
+  // the same as the scope's divID, rather than a divID inside the scope.
+  if(pointsTo != anchor::noAnchor) {
+    startA = pointsTo;
+    pointsTo.reachedAnchor();
+  // Else, if there are no forward links to this node, initialize startA to be
+  // a fresh anchor that refers to the start of this scope
+  } else {
+    startA.init(true);
+  }
+    
+  
+  //dbg << "scope: pointsTo="<<pointsTo.str()<<endl;
+}
+
+// Common initialization code
+void scope::init(std::string label, scopeLevel level, int curDebugLevel, int targetDebugLevel)
 {
   if(curDebugLevel >= targetDebugLevel) {
     active = true;
@@ -930,6 +1066,9 @@ scope::scope(std::string label, scopeLevel level, int curDebugLevel, int targetD
     active = false;  
 }
 
+anchor scope::getAnchor() const
+{ return startA; }
+
 scope::~scope()
 {
   if(active) {
@@ -942,65 +1081,77 @@ scope::~scope()
   }
 }
 
+// Create the directory workDir/dirName and return the string that contains the absolute
+// path of the created directory
+string createDir(string workDir, string dirName) {
+  ostringstream fullDirName; fullDirName<<workDir<<"/"<<dirName;
+  ostringstream cmd; cmd << "mkdir -p "<<fullDirName.str();
+  int ret = system(cmd.str().c_str());
+  if(ret == -1) { cout << "ERROR creating directory \""<<workDir<<"/"<<dirName<<"\"!"; exit(-1); }
+  return fullDirName.str();
+}
+
+// Copy dirName from the ROOT_PATH to the workDir
+string copyDir(string workDir, string dirName) {
+  ostringstream fullDirName; fullDirName << workDir << "/" << dirName;
+  
+  ostringstream cmd; cmd << "cp -fr "<<ROOT_PATH<<"/"<<dirName<<" "<<workDir;
+  //cout << "Command \""<<cmd.str()<<"\"\n";
+  int ret = system(cmd.str().c_str());
+  if(ret == -1) { cout << "ERROR copying files from directory \""<<ROOT_PATH<<"/"<<dirName<<"\" directory \""<<fullDirName.str()<<"\"!"; exit(-1); }
+    
+  return fullDirName.str();
+}
+
+
 // Initializes the debug sub-system
-void initializeDebug(string title, string workDir, string fName)
+void initializeDebug(string title, string workDir)
 {
   if(initializedDebug) return;
   
-  {
-    ostringstream cmd; cmd << "mkdir -p "<<workDir;
-    int ret = system(cmd.str().c_str());
-    if(ret == -1) { cout << "Dbg::init() ERROR creating directory \""<<workDir<<"\"!"; exit(-1); }
-  }
+  // Main output directory
+  createDir(workDir, "");
+  
+  // Directory where the html files go
+  createDir(workDir, "html");
+  
+  // Directory where the detail files go
+  //createDir(workDir, "html/detail");
+  
+  // Directory where the summary files go
+  //createDir(workDir, "html/summary");
   
   // Directory where client-generated images will go
-  ostringstream imgPath; imgPath << workDir << "/dbg_imgs";
-  {
-    ostringstream cmd; cmd << "mkdir -p "<<imgPath.str();
-    //cout << "Command \""<<cmd.str()<<"\"\n";
-    int ret = system(cmd.str().c_str());
-    if(ret == -1) { cout << "Dbg::init() ERROR creating directory \""<<imgPath.str()<<"\"!"; exit(-1); }
-  }
+  string imgPath = createDir(workDir, "html/dbg_imgs");
   
   // Copy the default images directory to the work directory
-  {
-    ostringstream defImgPath; defImgPath << workDir << "/img";
-    
-    {
-      ostringstream cmd; cmd << "cp -fr "<<ROOT_PATH<<"/img "<<defImgPath.str();
-      //cout << "Command \""<<cmd.str()<<"\"\n";
-      int ret = system(cmd.str().c_str());
-      if(ret == -1) { cout << "Dbg::init() ERROR copying files from directory \""<<ROOT_PATH<<"/img\" directory \""<<defImgPath.str()<<"\"!"; exit(-1); }
-    }
-  }
+  copyDir(workDir+"/html", "img");
 
   // Copy the default scripts directory to the work directory
-  {
-    ostringstream defImgPath; defImgPath << workDir << "/script";
-    
-    {
-      ostringstream cmd; cmd << "cp -fr "<<ROOT_PATH<<"/script "<<defImgPath.str();
-      //cout << "Command \""<<cmd.str()<<"\"\n";
-      int ret = system(cmd.str().c_str());
-      if(ret == -1) { cout << "Dbg::init() ERROR copying files from directory \""<<ROOT_PATH<<"/script\" directory \""<<defImgPath.str()<<"\"!"; exit(-1); }
-    }
-  }
-
-  ostringstream dbgFileName; dbgFileName << workDir << "/" << fName;
-  dbg.init(title, dbgFileName.str(), workDir, imgPath.str());
+  copyDir(workDir+"/html", "script");
+  
+  // Create an index.html file that refers to the root html file
+  copyDir(workDir, "html/index.html");
+  /*{
+    ostringstream cmd; cmd << "ln -s "<<workDir<<"/html/index.0.html "<<workDir<<"/index.html";
+    int ret = system(cmd.str().c_str());
+    if(ret == -1) { cout << "Dbg::init() ERROR creating link \""<<workDir<<"/index.html\"!"; exit(-1); }
+  }*/
+  
+  dbg.init(title, workDir, imgPath);
   initializedDebug = true;
 }
 
 // Indicates that the application has entered or exited a file
 void enterFile(std::string funcName)
 {
-  if(!initializedDebug) initializeDebug("Debug Output", "dbg", "index");
+  if(!initializedDebug) initializeDebug("Debug Output", "dbg");
   dbg.enterFileLevel(funcName);
 }
 
 void exitFile(std::string funcName)
 {
-  if(!initializedDebug) initializeDebug("Debug Output", "dbg", "index");
+  if(!initializedDebug) initializeDebug("Debug Output", "dbg");
   dbg.exitFileLevel(funcName);
 }
 
@@ -1008,13 +1159,13 @@ void exitFile(std::string funcName)
 // Indicates that the application has entered or exited a function
 void enterScope(std::string funcName, bool advanceColor)
 {
-  if(!initializedDebug) initializeDebug("Debug Output", "dbg", "index");
+  if(!initializedDebug) initializeDebug("Debug Output", "dbg");
   dbg.enterScope(funcName, advanceColor);
 }
 
 void exitScope(std::string funcName, bool advanceColor)
 {
-  if(!initializedDebug) initializeDebug("Debug Output", "dbg", "index");
+  if(!initializedDebug) initializeDebug("Debug Output", "dbg");
   dbg.exitScope(funcName, advanceColor);
 }
 
@@ -1022,7 +1173,7 @@ void exitScope(std::string funcName, bool advanceColor)
 // so that the caller can write to it.
 std::string addImage(std::string ext)
 {
-  if(!initializedDebug) initializeDebug("Debug Output", "dbg", "index");
+  if(!initializedDebug) initializeDebug("Debug Output", "dbg");
   return dbg.addImage(ext);
 }
 
@@ -1030,7 +1181,7 @@ std::string addImage(std::string ext)
 // Return the path of the image.
 std::string addDOT(dottable& obj)
 {
-  if(!initializedDebug) initializeDebug("Debug Output", "dbg", "index");
+  if(!initializedDebug) initializeDebug("Debug Output", "dbg");
   return dbg.addDOT(obj);
 }
 
@@ -1038,14 +1189,14 @@ std::string addDOT(dottable& obj)
 // that must be added to the output to include this image.
 std::string addDOTStr(dottable& obj)
 {
-  if(!initializedDebug) initializeDebug("Debug Output", "dbg", "index");
+  if(!initializedDebug) initializeDebug("Debug Output", "dbg");
   return dbg.addDOTStr(obj);
 }
 
 // Given a representation of a graph in dot format, create an image from it and add it to the output.
 // Return the path of the image.
 std::string addDOT(std::string dot) {
-  if(!initializedDebug) initializeDebug("Debug Output", "dbg", "index");
+  if(!initializedDebug) initializeDebug("Debug Output", "dbg");
   return dbg.addDOT(dot);
 }
 

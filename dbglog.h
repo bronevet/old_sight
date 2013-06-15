@@ -25,7 +25,7 @@ class dottable
   virtual std::string toDOT(std::string graphName)=0;
 };
 
-class scopeID;
+class anchor;
 
 class dbgStream;
 
@@ -110,6 +110,8 @@ class dbgStream : public std::ostream
   std::list<std::string>    detailFileRelFNames; // Relative names of all the dbg files on the stack
   std::list<std::ofstream*> summaryFiles;
   std::list<std::ofstream*> scriptFiles;
+  // Global script file that stores the mapping between anchor IDs and their referents
+  std::ofstream             anchorScriptFile;
   std::list<std::string>    flTitles;
   std::list<int>            fileLevel;
   std::list<dbgBuf*>        fileBufs;
@@ -123,8 +125,6 @@ class dbgStream : public std::ostream
   std::string workDir;
   // The directory where all images will be stored
   std::string imgPath;
-  // The name of the output debug file
-  std::string dbgFileName;
   // The total number of images in the output file
   int numImages;
   
@@ -134,8 +134,8 @@ public:
   // Construct an ostream which tees output to the supplied
   // ostreams.
   dbgStream();
-  dbgStream(std::string title, std::string dbgFileName, std::string workDir, std::string imgPath);
-  void init(std::string title, std::string dbgFileName, std::string workDir, std::string imgPath);
+  dbgStream(std::string title, std::string workDir, std::string imgPath);
+  void init(std::string title, std::string workDir, std::string imgPath);
   ~dbgStream();
 
   // Returns the string representation of the current file level
@@ -155,9 +155,12 @@ public:
   
   // Exit a current file level
   void exitFileLevel(std::string flTitle, bool topLevel=false);
+    
+  // Record the mapping from the given anchor ID to the given string in the global script file
+  void writeToAnchorScript(int anchorID, std::list<int>& fileLevel, std::string divID);
 
   void printSummaryFileContainerHTML(std::string absoluteFileName, std::string relativeFileName, std::string title);
-  void printDetailFileContainerHTML(std::string absoluteFileName, std::string relativeFileName, std::string title);
+  void printDetailFileContainerHTML(std::string absoluteFileName, std::string title);
   /*void printDetailFileHeader(std::string title);
   void printDetailFileTrailer();*/
   
@@ -187,7 +190,7 @@ public:
   void remIndent();
   
   // Creates a link to a given scope, which may be in another file
-  std::string linkTo(const scopeID& id, std::string text) const;
+  //std::string linkTo(const anchor& id, std::string text) const;
 }; // dbgStream
 
 extern bool initializedDebug;
@@ -204,15 +207,15 @@ public:
 // Class that makes it possible to generate string labels by using the << syntax.
 // Examples: Label() << "a=" << (5+2) << "!"
 //           Label("a=") << (5+2) << "!"
-struct label : std::string {
-  label() {}
-  label(const std::string& initLabel) {
-  	 _stream << initLabel;
+struct txt : std::string {
+  txt() {}
+  txt(const std::string& initTxt) {
+  	 _stream << initTxt;
   	 assign(_stream.str());
   }
   
   template <typename T>
-  label& operator<<(T const& t) {
+  txt& operator<<(T const& t) {
     _stream << t;
     assign(_stream.str());
     return *this;
@@ -222,16 +225,57 @@ struct label : std::string {
   std::ostringstream _stream;
 };
 
-// Uniquely identifies a scope within all the files 
-class scopeID
+// Uniquely identifies a location with the debug information, including the file and region hierarchy
+// Anchors can be created in two ways:
+// - When their host output locations are reached. In this case the anchor's full file and region location is available
+// - Before their host locations are reached (when forward links are created). In this case the anchor's location info
+//   is not available at anchor creation time and must be initialized subsequently. We'll need to generate output for
+//   links to anchors either before (forward links) or after (backward links) the anchor's output location has been 
+//   reached. For backward links we can generate code easily since the anchor's target is known at output generation time.
+//   To support forward links we do the following:
+//   - When the output location is reached, we emit a piece of code to the script file that register's the location
+//     in a data sctructure. There is one anchor script file for the entire output (not one per sub-file) to make it
+//     easier to deal with anchors that cross files.
+//   - When forward links are created we generate code that looks the link's destination in the data structure. If
+//     the destination has already been loaded in the data structure, we go directly there. If the destination has not
+//     been loaded, this means that the application generating the debug log has crashed and thus, we shouldn't follow
+//     the link.
+class anchor
 {
   public:
+  static int maxAnchorID;
+  int anchorID;
+  
+  // The debug stream this anchor is associated with
+  //dbgStream& myDbg;
+  
+  // Itentifies this anchor's location in the file and region hierarchies
   std::list<int> fileLevel;
   std::string divID;
-  scopeID() {
-    fileLevel = dbg.getFileLevel();
-    divID     = dbg.regionGlobalStr();
-  }
+  
+  // Flag that indicates whether we've already reached this anchor's location in the output
+  bool reached;
+  
+  public:
+  anchor(/*dbgStream& myDbg, */bool reached=false);
+  anchor(const anchor& that);
+  anchor(/*dbgStream& myDbg, */bool reached, int anchorID);
+  
+  void init(bool reached);
+  
+  static anchor noAnchor;
+  
+  void operator=(const anchor& that);
+  
+  bool operator==(const anchor& that) const;
+  bool operator!=(const anchor& that) const;
+    
+  // Called when the file location of this anchor has been reached
+  void reachedAnchor();
+  // Emits to the output dbgStream the string that denotes a link to this anchor.
+  // Embed the given text in the link.
+  void link(std::string text) const;
+  std::string str() const;
 };
 
 class scope {
@@ -241,11 +285,18 @@ public:
   typedef enum {high, medium, low} scopeLevel;
   scopeLevel level;
   
-  scope(std::string label, scopeLevel level=medium, int curDebugLevel=0, int targetDebugLevel=0);
-  scope(scopeLevel level=medium, int curDebugLevel=0, int targetDebugLevel=0);
-  //scope(std::string label, scopeLevel level);
+  // The anchor that denotes the starting point of this scope
+  anchor startA;
   
-  scopeID getID() { return scopeID(); }
+  scope(std::string label, scopeLevel level=medium, int curDebugLevel=0, int targetDebugLevel=0);
+  scope(std::string label, anchor& pointsTo, scopeLevel level=medium, int curDebugLevel=0, int targetDebugLevel=0);
+  
+  private:
+  // Common initialization code
+  void init(std::string label, scopeLevel level, int curDebugLevel, int targetDebugLevel);
+  
+  public:
+  anchor getAnchor() const;
   
   std::ostringstream labelStream;
   /*std::ostringstream& operator<<(std::string s);
@@ -255,7 +306,7 @@ public:
 };
      
 // Initializes the debug sub-system
-void initializeDebug(std::string title, std::string workDir, std::string fName="debug");
+void initializeDebug(std::string title, std::string workDir);
 
 // Indicates that the application has entered or exited a file
 void enterFile(std::string funcName);

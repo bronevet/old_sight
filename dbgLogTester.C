@@ -4,7 +4,13 @@
 using namespace std;
 using namespace dbglog;
 
-int fibscope(int a, scope::scopeLevel level, int verbosityLevel, list<int>& stack, map<list<int>, scopeID>& scopes, map<list<int>, scopeID>& linkScopes);
+int fibScope(int a, scope::scopeLevel level, int verbosityLevel);
+int fibScopeLinks(int a, scope::scopeLevel level, int verbosityLevel, list<int>& stack, 
+                  map<list<int>, anchor>& InFW, 
+                  map<list<int>, anchor>& InBW, 
+                  map<list<int>, anchor>& OutFW, 
+                  map<list<int>, anchor>& OutBW,
+                  bool doFWLinks);
 int fibIndent(int a, int verbosityLevel);
 
 class dottableExample: public dottable
@@ -72,34 +78,40 @@ int main(int argc, char** argv)
     
     // This is a medium-level scope (default) that occurs inside the high-level scope. It also lasts until
     // the end of the scope of object regMed. This object's label is generated using the << syntax, which
-    // is used by placing a label object at the left of all the <<'s.
-    scope regMid(label("This is") << " a lower " << "level scope");
+    // is used by placing a txt object at the left of all the <<'s.
+    scope regMid(txt("This is") << " a lower " << "level scope");
     
     // Write some text into this mid-level scope
     for(int i=0; i<5; i++)
       dbg << "i="<<i<<endl;
   }
   
-  // Call the fibscope function, which generates a hierarchy of mid-level scopes, on
+  // Call the fibScope function, which generates a hierarchy of mid-level scopes, on
   {
     scope regFibIndent("Nested scopes due to recursive calls to fib");
     dbg << "<u>Medium level scopes, colors change</u>"<<endl;
-    list<int> stack;
-    map<list<int>, scopeID> scopes0, scopes1, scopes2;
-    fibscope(4, scope::high, 0, stack, scopes1, scopes0);
-    cout << "-------------\n";
-    assert(stack.size()==0);
-    fibscope(4, scope::high, 0, stack, scopes2, scopes1);
-    cout << "-------------\n";
+    fibScope(4, scope::high, 0);
   }
   
-  // Call the fib function, which generates a single mid-level scope for a=6
+   // Call the fib function, which generates a single low-level scope for a=5 and 6
   {
     scope regFibIndent("Nested scopes due to recursive calls to fib, 2 level of scope hierarchy");
     dbg << "<u>Low level scopes, colors do not change</u>"<<endl;
+    fibScope(6, scope::low, 5);
+  }
+  
+  // Call the fibScopeLinks function, which generates two hierarchies of high-level scopes with scopes
+  // in each level of one hierarchy linking to the same level in the other hierarchy
+  {
+    scope regFibIndent("Nested scopes due to recursive calls to fib");
+    dbg << "<u>High level scopes, colors change and each scope in a new file</u>"<<endl;
+    dbg << "There are two hierarchy nests. Sub-scopes at each level of one hierarchy link to the corresponding sub-scopes in the other. Clicking on these links will load up the corresponding scope and its parent scopes."<<endl;
     list<int> stack;
-    map<list<int>, scopeID> scopes0, scopes1;
-    fibscope(6, scope::low, 5, stack, scopes0, scopes1);
+    map<list<int>, anchor> InFW, InBW, OutFW, OutBW;
+    fibScopeLinks(4, scope::high, 0, stack, InFW, InBW, OutFW, OutBW, true);
+    assert(stack.size()==0);
+    map<list<int>, anchor> OutBW2, OutFW2;
+    fibScopeLinks(4, scope::high, 0, stack, OutFW, OutBW, OutBW2, OutFW2, false);
   }
   
   // Dot graph
@@ -121,33 +133,83 @@ int main(int argc, char** argv)
   return 0;
 }
 
-int fibscope(int a, scope::scopeLevel level, int verbosityLevel, list<int>& stack, map<list<int>, scopeID>& scopes, map<list<int>, scopeID>& linkScopes) {
-  // Each recursive call to fibscope generates a new mid-level scope. To reduce the amount of text printed, we only 
+int fibScope(int a, scope::scopeLevel level, int verbosityLevel) {
+  // Each recursive call to fibScope() generates a new scope at the desired level. To reduce the amount of text printed, we only 
   // generate scopes if the value of a is >= verbosityLevel
-  scope reg(label()<<"fib("<<a<<")", level, a, verbosityLevel);
-  
-  stack.push_back(a);
-  scopes[stack] = reg.getID();
+  scope reg(txt()<<"fib("<<a<<")", level, a, verbosityLevel);
   
   if(a==0 || a==1) { 
     dbg << "=1."<<endl;
-    dbg << "link="<<dbg.linkTo(linkScopes[stack], "go")<<endl;
-    //cout << "link="<<dbg.linkTo(linkScopes[stack], "go")<<endl;
-    stack.pop_back();
     return 1;
   } else {
-    int val = fibscope(a-1, level, verbosityLevel, stack, scopes, linkScopes) + 
-              fibscope(a-2, level, verbosityLevel, stack, scopes, linkScopes);
+    int val = fibScope(a-1, level, verbosityLevel) + 
+              fibScope(a-2, level, verbosityLevel);
     dbg << "="<<val<<endl;
-    dbg << "link="<<dbg.linkTo(linkScopes[stack], "go")<<endl;
+    return val;
+  }
+}
+
+// InFW links: links from prior fib call to this one. These need to be anchored to the regions in this next.
+// InBW links: links from this fib call nest to the prior one. These have already been anchored to the prior nest.
+// OutBW links: links from the next nest to this one. These are anchored to established regions.
+// OutFW links: links from this nest to the next one. These are un-anchored and will be anchored to the next nest
+int fibScopeLinks(int a, scope::scopeLevel level, int verbosityLevel, list<int>& stack, 
+                  map<list<int>, anchor>& InFW, 
+                  map<list<int>, anchor>& InBW, 
+                  map<list<int>, anchor>& OutFW,
+                  map<list<int>, anchor>& OutBW,
+                  bool doFWLinks) {
+  stack.push_back(a); // Add this call to stack
+  
+  /*dbg << "stack=&lt;";
+  for(list<int>::iterator i=stack.begin(); i!=stack.end(); i++) {
+    if(i!=stack.begin()) dbg << ", ";
+    dbg << *i;
+  }
+  dbg << "&gt; inFW="<<(InFW.find(stack)!=InFW.end())<< endl;*/
+  
+  // Each recursive call to fibScopeLinks generates a new scope at the desired level. To reduce the amount of text printed, we only 
+  // generate scopes if the value of a is >= verbosityLevel
+  scope reg(txt()<<"fib("<<a<<")", 
+            (InFW.find(stack)!=InFW.end()? InFW[stack]: anchor::noAnchor),
+            level, a, verbosityLevel);
+  
+  OutBW[stack] = reg.getAnchor();
+  
+  if(a==0 || a==1) { 
+    dbg << "=1."<<endl;
+    if(doFWLinks) {
+      anchor fwLink;
+      fwLink.link("Forward link"); dbg << endl;
+      OutFW[stack] = fwLink;
+    }
+    if(InBW.find(stack)!=InBW.end())
+    { InBW[stack].link("Backward link"); dbg<<endl; }
+    
     //cout << "link="<<dbg.linkTo(linkScopes[stack], "go")<<endl;
-    stack.pop_back();
+    stack.pop_back(); // Remove this call from stack
+    return 1;
+  } else {
+    int val = fibScopeLinks(a-1, level, verbosityLevel, stack, InFW, InBW, OutFW, OutBW, doFWLinks) + 
+              fibScopeLinks(a-2, level, verbosityLevel, stack, InFW, InBW, OutFW, OutBW, doFWLinks);
+    dbg << "="<<val<<endl;
+    
+    if(doFWLinks) {
+      anchor fwLink;
+      fwLink.link("Forward link"); dbg << endl;
+      OutFW[stack] = fwLink;
+    }
+    if(InBW.find(stack)!=InBW.end())
+    { InBW[stack].link("Backward link"); dbg<<endl; }
+    
+    //cout << "link="<<dbg.linkTo(linkScopes[stack], "go")<<endl;
+    stack.pop_back(); // Remove this call from stack
     return val;
   }
 }
 
 int fibIndent(int a, int verbosityLevel) {
-  // Each recursive call to fibscope adds an indent level, prepending ":" to text printed by deeper calls to fibIndent. 
+  // Each recursive call to fibScopeLinks adds an indent level, prepending ":" to text printed by deeper calls to fibIndent. 
   // To reduce the amount of text printed, we only add indentation if the value of a is >= verbosityLevel
   indent ind(": ", a, verbosityLevel);
   
