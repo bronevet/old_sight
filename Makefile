@@ -11,4 +11,4 @@ dbglog.o: dbglog.C dbglog.h
 	g++ -g dbglog.C -DROOT_PATH="\"${CURDIR}\"" -DDOT_PATH=${DOT_PATH} -c -o dbglog.o
 	
 clean:
-	rm -rf dbg *.o dbgLogTester
+	rm -rf dbg *.o dbgLogTester *.exe
