@@ -12,7 +12,7 @@ To view the results of the example, run:
 
 ./dbgLogTester
 
-This produces directory dbg/ with the debug output. View file dbg/index.1-0.html 
+This produces directory dbg/ with the debug output. View file dbg/index.html 
 with Firefox (other browsers currently have issues with dbglog output) to read 
 the output produced by dbgLogTester.
 
