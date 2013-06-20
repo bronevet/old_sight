@@ -166,9 +166,16 @@
   // The file ID is encoded in the pair prefix/suffix. Initially prefix is empty and suffix contains the entire
   // fileID. In each iteration we shift one element from suffix to prefix, open the file at that ID and repeat.
   // The function modifies the arguments, so they cannot be used again after this call.
-  function goToAnchor(prefix, suffix) {
+  // When the anchor opens all the required files, it called continuationFunc, if it is provided
+  function goToAnchor(prefix, suffix, continuationFunc) {
+    console.debug("goToAnchor("+prefix+", "+suffix+")");
     // If the suffix is empty, we're done
-    if(suffix.length == 0) return undefined;
+    if(suffix.length == 0) {
+      if(typeof continuationFunc !== 'undefined')
+        return continuationFunc();
+      else 
+        return undefined;
+    }
     
     // Move an entry from suffix to prefix
     prefix.push(suffix.splice(0, 1)[0]);
@@ -178,11 +185,11 @@
       console.debug('Loading '+prefix); 
       var nextFunc = getFile(prefix, 'loadFunc');
       getFile(prefix, 'loadFunc')(
-        function() { goToAnchor(prefix, suffix); }
+        function() { goToAnchor(prefix, suffix, continuationFunc); }
       );
     // Otherwise, if it has already been loaded, load its child file within the file ID
     } else {
-      goToAnchor(prefix, suffix);
+      goToAnchor(prefix, suffix, continuationFunc);
     }
     return undefined;
   }

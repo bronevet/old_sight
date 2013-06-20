@@ -90,7 +90,7 @@ int main(int argc, char** argv)
   {
     scope regFibIndent("Nested scopes due to recursive calls to fib");
     dbg << "<u>Medium level scopes, colors change</u>"<<endl;
-    fibScope(4, scope::high, 0);
+    fibScope(4, scope::medium, 0);
   }
   
    // Call the fib function, which generates a single low-level scope for a=5 and 6

@@ -29,6 +29,35 @@ class anchor;
 
 class dbgStream;
 
+// A block out debug output, which may be filled by various visual elements
+class block
+{
+  std::string label;
+  std::string divID;
+  std::list<int> fileLevel;
+  
+  public:
+  block(std::string label);
+  
+  std::string getLabel() const { return label; }
+    
+  std::string getDivID() const { return divID; }
+  void setDivID(std::string divID) { this->divID = divID; }
+    
+  const std::list<int>& getFileLevel() const { return fileLevel; }
+  void setFileLevel(const std::list<int>& fileLevel) { this->fileLevel = fileLevel; }
+  
+  // Called to notify this block that a sub-block was started/completed inside of it. 
+  // Returns true of this notification should be propagated to the blocks 
+  // that contain this block and false otherwise.
+  virtual bool subBlockStartNotify(const block& subBlock) { return true; }
+  virtual bool subBlockEndNotify  (const block& subBlock) { return true; }
+  
+  // Called to enable the block to print its entry and exit text
+  virtual void printEntry(std::string loadCmd) {}
+  virtual void printExit() {}
+};
+
 // Adopted from http://wordaligned.org/articles/cpp-streambufs
 // A extension of stream that corresponds to a single file produced by dbglog
 class dbgBuf: public std::streambuf
@@ -39,12 +68,17 @@ class dbgBuf: public std::streambuf
   // True if the owner dbgStream is writing text and false if the user is
   bool ownerAccess;
   std::streambuf* baseBuf;
-  std::list<std::string> funcs;
+  std::list<block*> blocks;
 
   // The number of observed '<' characters that have not yet been balanced out by '>' characters.
   //      numOpenAngles = 1 means that we're inside an HTML tag
   //      numOpenAngles > 1 implies an error or text inside a comment
   int numOpenAngles;
+  
+  public:
+  int getNumOpenAngles() const { return numOpenAngles; }
+  
+  protected:
 
   // The number of divs that have been inserted into the output
   std::list<int> parentDivs;
@@ -95,12 +129,16 @@ protected:
   void userAccessing();
   void ownerAccessing();
 
-  // Indicates that the application has entered or exited a function
-  void enterScope(std::string funcName);
-  void exitScope(std::string funcName);
-  // Returns the depth of enterScope calls that have not yet been matched by exitScopeCalls
-  int funcDepth();
+  // Called when a block is entered.
+  void enterBlock(block* b);
+  // Called when a block is exited. Returns the block that was exited.
+  block* exitBlock();
+  
+  // Returns the depth of enterBlock calls that have not yet been matched by exitBlock calls
+  int blockDepth();
 };
+
+class scope;
 
 // Stream that uses dbgBuf
 class dbgStream : public std::ostream
@@ -112,13 +150,12 @@ class dbgStream : public std::ostream
   std::list<std::ofstream*> scriptFiles;
   // Global script file that stores the mapping between anchor IDs and their referents
   std::ofstream             anchorScriptFile;
-  std::list<std::string>    flTitles;
   std::list<int>            fileLevel;
   std::list<dbgBuf*>        fileBufs;
-  int colorIdx; // The current index into the list of colors 
+  // The scopes inside which sub-files are loaded
+  std::list<block*>         fileBlocks;
   dbgBuf defaultFileBuf;
   
-  std::vector<std::string> colors;
   // The title of the file
   std::string title;
   // The root working directory
@@ -138,6 +175,10 @@ public:
   void init(std::string title, std::string workDir, std::string imgPath);
   ~dbgStream();
 
+  // Switch between the owner class and user code writing text into this stream
+  void userAccessing();
+  void ownerAccessing();
+
   // Returns the string representation of the current file level
   std::string fileLevelStr(const std::list<int>& myFileLevel) const;
     
@@ -150,11 +191,16 @@ public:
   // the current file within the hierarchy of files
   std::string fileLevelJSIntArray(const std::list<int>& myFileLevel) const;
 
-  // Enter a new file level
-  void enterFileLevel(std::string flTitle, bool topLevel=false);
+  // Returns the depth of enterBlock calls that have not yet been matched by exitBlock calls within the current file
+  int blockDepth() const;
+  // Index of the current block in the current fil
+  int blockIndex() const;
+
+  // Enter a new file level. Return a string that contains the JavaScript command to open this file in the current view.
+  std::string enterFileLevel(block* b, bool topLevel=false);
   
   // Exit a current file level
-  void exitFileLevel(std::string flTitle, bool topLevel=false);
+  block* exitFileLevel(bool topLevel=false);
     
   // Record the mapping from the given anchor ID to the given string in the global script file
   void writeToAnchorScript(int anchorID, std::list<int>& fileLevel, std::string divID);
@@ -164,9 +210,10 @@ public:
   /*void printDetailFileHeader(std::string title);
   void printDetailFileTrailer();*/
   
-  // Indicates that the application has entered or exited a function
-  void enterScope(std::string funcName, bool advanceColor=true, std::string fileID="", std::string fileIDJSArray="");//std::string detailContentURL="", std::string summaryContentURL="");
-  void exitScope(std::string funcName, bool advanceColor=true);
+  // Called when a block is entered.
+  std::string enterBlock(block* b, bool newFileEntered);//, std::string fileIDJSArray="");//std::string detailContentURL="", std::string summaryContentURL="");
+    // Called when a block is exited. Returns the block that was exited.
+  block* exitBlock();
 
   // Adds an image to the output with the given extension and returns the path of this image
   // so that the caller can write to it.
@@ -278,10 +325,13 @@ class anchor
   std::string str() const;
 };
 
-class scope {
-public:
+class scope: public block
+{
+  static std::vector<std::string> colors;
+  static int colorIdx; // The current index into the list of colors 
+  
+  public:
   bool active;
-  std::string label;
   typedef enum {high, medium, low} scopeLevel;
   scopeLevel level;
   
@@ -293,28 +343,40 @@ public:
   
   private:
   // Common initialization code
-  void init(std::string label, scopeLevel level, int curDebugLevel, int targetDebugLevel);
+  void init(scopeLevel level, int curDebugLevel, int targetDebugLevel);
   
   public:
+    
+  // Called to notify this block that a sub-block was started/completed inside of it. 
+  // Returns true of this notification should be propagated to the blocks 
+  // that contain this block and false otherwise.
+  bool subBlockStartNotify(const block& subBlock) { return true; }
+  bool subBlockEndNotify  (const block& subBlock) { return true; }
+  
+  // Called to enable the block to print its entry and exit text
+  void printEntry(std::string loadCmd);
+  void printExit();
+
   anchor getAnchor() const;
   
-  std::ostringstream labelStream;
+  /*std::ostringstream labelStream;
   /*std::ostringstream& operator<<(std::string s);
   std::ostringstream& operator<<(std::ostringstream& oss);*/
   
   ~scope();
-};
-     
+}; // scope
+
 // Initializes the debug sub-system
 void initializeDebug(std::string title, std::string workDir);
 
 // Indicates that the application has entered or exited a file
-void enterFile(std::string funcName);
-void exitFile(std::string funcName);
+/*void enterFile(std::string funcName);
+void exitFile(std::string funcName);*/
         
-// Indicates that the application has entered or exited a function
-void enterScope(std::string funcName, bool advanceColor=true);
-void exitScope(std::string funcName, bool advanceColor=true);
+/* // Called when a block is entered.
+void enterBlock(block* b, bool advanceColor=true);
+// Called when a block is exited. Returns the block that was exited.
+block* exitBlock(bool advanceColor=true);*/
 
 // Adds an image to the output with the given extension and returns the path of this image
 // so that the caller can write to it.
