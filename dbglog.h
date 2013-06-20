@@ -2,6 +2,7 @@
 
 #include <list>
 #include <vector>
+#include <set>
 #include <string>
 #include <iostream>
 #include <sstream>
@@ -28,25 +29,25 @@ class dottable
 class anchor;
 
 class dbgStream;
+typedef std::list<std::pair<int, std::list<int> > > location;
 
 // A block out debug output, which may be filled by various visual elements
 class block
 {
   std::string label;
-  std::string divID;
-  std::list<int> fileLevel;
+  location    loc;
+  std::string fileID;
+  std::string blockID;
   
   public:
   block(std::string label);
   
   std::string getLabel() const { return label; }
+  const location& getLocation() const { return loc; }
+  void setLocation(const location& loc);
+  std::string getFileID() const { return fileID; }
+  std::string getBlockID() const { return blockID; }
     
-  std::string getDivID() const { return divID; }
-  void setDivID(std::string divID) { this->divID = divID; }
-    
-  const std::list<int>& getFileLevel() const { return fileLevel; }
-  void setFileLevel(const std::list<int>& fileLevel) { this->fileLevel = fileLevel; }
-  
   // Called to notify this block that a sub-block was started/completed inside of it. 
   // Returns true of this notification should be propagated to the blocks 
   // that contain this block and false otherwise.
@@ -138,7 +139,6 @@ protected:
   int blockDepth();
 };
 
-class scope;
 
 // Stream that uses dbgBuf
 class dbgStream : public std::ostream
@@ -151,6 +151,7 @@ class dbgStream : public std::ostream
   // Global script file that stores the mapping between anchor IDs and their referents
   std::ofstream             anchorScriptFile;
   std::list<int>            fileLevel;
+  location                  loc;
   std::list<dbgBuf*>        fileBufs;
   // The scopes inside which sub-files are loaded
   std::list<block*>         fileBlocks;
@@ -180,16 +181,17 @@ public:
   void ownerAccessing();
 
   // Returns the string representation of the current file level
-  std::string fileLevelStr(const std::list<int>& myFileLevel) const;
-    
-  const std::list<int>& getFileLevel() const;
-    
-  // Returns the unique ID string of the current region, including all the files that it may be contained in
-  std::string regionGlobalStr() const;
-
+  std::string fileLevelStr(const location& myLoc) const;
+  
   // Returns a string that encodes a Javascript array of integers that together form the unique ID string of 
   // the current file within the hierarchy of files
-  std::string fileLevelJSIntArray(const std::list<int>& myFileLevel) const;
+  std::string fileLevelJSIntArray(const location& myLoc) const;
+  
+  ///const std::list<int>& getFileLevel() const;
+  const location& getLocation() const;
+    
+  // Returns the unique ID string of the current region, including all the files that it may be contained in
+  std::string blockGlobalStr(const location& myLoc) const;
 
   // Returns the depth of enterBlock calls that have not yet been matched by exitBlock calls within the current file
   int blockDepth() const;
@@ -203,7 +205,7 @@ public:
   block* exitFileLevel(bool topLevel=false);
     
   // Record the mapping from the given anchor ID to the given string in the global script file
-  void writeToAnchorScript(int anchorID, std::list<int>& fileLevel, std::string divID);
+  void writeToAnchorScript(int anchorID, const location& myLoc, std::string blockID);
 
   void printSummaryFileContainerHTML(std::string absoluteFileName, std::string relativeFileName, std::string title);
   void printDetailFileContainerHTML(std::string absoluteFileName, std::string title);
@@ -297,8 +299,8 @@ class anchor
   //dbgStream& myDbg;
   
   // Itentifies this anchor's location in the file and region hierarchies
-  std::list<int> fileLevel;
-  std::string divID;
+  location loc;
+  std::string blockID;
   
   // Flag that indicates whether we've already reached this anchor's location in the output
   bool reached;
@@ -365,6 +367,12 @@ class scope: public block
   
   ~scope();
 }; // scope
+
+class graph: public block
+{
+  std::set<block*> nodes;
+  std::set<std::pair<block*, block*> > edges;
+};
 
 // Initializes the debug sub-system
 void initializeDebug(std::string title, std::string workDir);

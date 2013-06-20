@@ -78,12 +78,24 @@ void initializeDebug(string title, string workDir)
   dbg.init(title, workDir, imgPath);
 }
 
+/***************
+ ***** dbg *****
+ ***************/
+
+dbgStream dbg;
+
 /*****************
  ***** block *****
  *****************/
 
 block::block(std::string label) : label(label) {
   if(!initializedDebug) initializeDebug("Debug Output", "dbg");
+}
+
+void block::setLocation(const location& loc) { 
+  this->loc = loc;
+  blockID = dbg.blockGlobalStr(loc);
+  fileID = dbg.fileLevelStr(loc);
 }
 
 /******************
@@ -106,13 +118,9 @@ void dbgBuf::init(std::streambuf* baseBuf)
   synched = true;
   ownerAccess = false;
   numOpenAngles = 0;
-  //numDivs = 0;
-  parentDivs.empty();
-  parentDivs.push_back(0);
   //justSynched = false;
   needIndent = false;
   indents.push_back(std::list<std::string>());
-  //cout << "Initially parentDivs (len="<<parentDivs.size()<<")\n";
 }
 
 // This dbgBuf has no buffer. So every character "overflows"
@@ -309,11 +317,6 @@ void dbgBuf::enterBlock(block* b)
   //cout << "enterBlock("<<b.getLabel()<<") numOpenAngles="<<numOpenAngles<<endl;
   blocks.push_back(b);
   
-  //cout << "Incrementing parentDivs (len="<<parentDivs.size()<<") from "<<*(parentDivs.rbegin())<<" to ";
-  (*(parentDivs.rbegin()))++;
-  // Add a new level to the parentDivs list, starting the index at 0
-  parentDivs.push_back(0);
-
   indents.push_back(std::list<std::string>());
 }
 
@@ -334,7 +337,6 @@ block* dbgBuf::exitBlock()
   assert(blocks.size()>0);
   block* lastB = blocks.back();
   blocks.pop_back();
-  parentDivs.pop_back();
   indents.pop_back();
   needIndent=false;
   return lastB;
@@ -371,7 +373,7 @@ dbgStream::dbgStream(string title, string workDir, string imgPath)
 void dbgStream::init(string title, string workDir, string imgPath)
 {
   // Initialize fileLevel with a 0 to make it possible to count top-level files
-  fileLevel.push_back(0);
+  loc.push_back(make_pair(0, list<int>(1, 0)));
   
   this->title       = title;
   this->workDir     = workDir;
@@ -413,98 +415,93 @@ void dbgStream::ownerAccessing()  {
 }
 
 // Returns the unique ID string of the current file within the hierarchy of files
-string dbgStream::fileLevelStr(const std::list<int>& myFileLevel) const
-/*{
-  ostringstream oss;
-  for(list<int>::const_iterator i=fileLevel.begin(); i!=fileLevel.end(); ) { 
-    oss << *i;
-    i++;
-    if(i!=fileLevel.end()) oss << "-";
-  }
-  return oss.str();
-}*/
-
+string dbgStream::fileLevelStr(const location& myLoc) const
 {
-  if(myFileLevel.size()<=1) return "";
+  if(myLoc.size()<=1) return "";
 
   ostringstream oss;
-  list<int>::const_iterator i=myFileLevel.begin(); 
-  int lastFileID = *i;
+  list<pair<int, list<int> > >::const_iterator i=myLoc.begin(); 
+  int lastFileID = i->first;
   i++;
-  while(i!=myFileLevel.end()) { 
-    oss << *i;
-    lastFileID = *i;
+  while(i!=myLoc.end()) { 
+    oss << i->first;
+    lastFileID = i->first;
     i++;
-    if(i!=myFileLevel.end()) oss << "-";
+    if(i!=myLoc.end()) oss << "-";
   }
   return oss.str();
 }
-
-const list<int>& dbgStream::getFileLevel() const
-{ return fileLevel; }
-
-// Returns the unique ID string of the current region, including all the files that it may be contained in
-string dbgStream::regionGlobalStr() const {
-  ostringstream divName;
-  
-  for(std::list<dbgBuf*>::const_iterator fb=fileBufs.begin(); fb!=fileBufs.end(); ) {
-    assert((*fb)->parentDivs.size()>0);
-    list<int>::const_iterator d=(*fb)->parentDivs.begin();
-    int lastDivID=*d;
-    d++;
-    while(d!=(*fb)->parentDivs.end()) {
-      divName << lastDivID;
-      lastDivID=*d;
-      d++;
-      if(d!=(*fb)->parentDivs.end()) divName << "_";
-    }
-    fb++;
-    if(fb!=fileBufs.end() && (*fb)->parentDivs.size()>1) divName << ":";
-  }
-  
-  return divName.str();
-}
-
 
 // Returns a string that encodes a Javascript array of integers that together form the unique ID string of 
 // the current file within the hierarchy of files
-string dbgStream::fileLevelJSIntArray(const std::list<int>& myFileLevel) const
+string dbgStream::fileLevelJSIntArray(const location& myLoc) const
 {
   ostringstream oss;
   oss << "[";
-  list<int>::const_iterator i=myFileLevel.begin(); 
-  int lastFileID = *i;
-  i++;
-  while(i!=myFileLevel.end()) { 
+  list<pair<int, list<int> > >::const_iterator l=myLoc.begin(); 
+  int lastFileID = l->first;
+  l++;
+  while(l!=myLoc.end()) { 
     oss << lastFileID;
-    lastFileID = *i;
-    i++;
-    if(i!=myFileLevel.end()) oss << ", ";
+    lastFileID = l->first;
+    l++;
+    if(l!=myLoc.end()) oss << ", ";
   }
   oss << "]";
   return oss.str();
 }
 
+const location& dbgStream::getLocation() const
+{ return loc; }
+
+// Returns the unique ID string of the current region, including all the files that it may be contained in
+string dbgStream::blockGlobalStr(const location& myLoc) const {
+  ostringstream blockStr;
+  
+  for(list<pair<int, list<int> > >::const_iterator l=myLoc.begin(); l!=myLoc.end(); ) {
+    assert(l->second.size()>0);
+    list<int>::const_iterator b=l->second.begin();
+    blockStr << l->first << "<";
+    int lastBlock=*b;
+    b++;
+    while(b!=l->second.end()) {
+      blockStr << lastBlock;
+      lastBlock=*b;
+      b++;
+      if(b!=l->second.end()) blockStr << "_";
+    }
+    blockStr << ">";
+    l++;
+    //if(l!=myLoc.end() && l->second.size()>1) blockStr << ":";
+  }
+  
+  return blockStr.str();
+}
+
 // Returns the depth of enterBlock calls that have not yet been matched by exitBlock calls within the current file
 int dbgStream::blockDepth() const {
-  return fileBufs.back()->blockDepth();
+  assert(loc.size()>0);
+  return loc.back().second.size();
 }
 
 // Index of the current block in the current file
 int dbgStream::blockIndex() const {
-  if(fileLevel.size()==0) return 0;
-  else return fileLevel.back();
+  if(loc.size()==0) return 0;
+  else {
+    assert(loc.back().second.size()>0);
+    return loc.back().second.back();
+  }
 }
 
 // Enter a new file level. Return a string that contains the JavaScript command to open this file in the current view.
 string dbgStream::enterFileLevel(block* b, bool topLevel)
 {
-  assert(fileLevel.size()>0);
+  assert(loc.size()>0);
   // Increment the index of this file unit within the current nesting level
-  (*fileLevel.rbegin())++;
-  // Add a fresh level to the fileLevel list
-  fileLevel.push_back(0);
-
+  (loc.back().first)++;
+  // Add a fresh file level to the location
+  loc.push_back(make_pair(0, list<int>(1, 0)));
+  
   if(!topLevel) (*this)<< "dbgStream::enterFileLevel("<<b->getLabel()<<") <<<<<\n";
   
   // Each file unit consists of three files: 
@@ -516,9 +513,9 @@ string dbgStream::enterFileLevel(block* b, bool topLevel)
   // The detail and summary files can be viewed on their own via the index file or can be loaded into higher-level 
   // detail and summary files, where they appear like regular regions.
   // These are the absolute and relative names of these files.
-  string fileID = fileLevelStr(fileLevel);
-  string divID = regionGlobalStr();
-  if(!topLevel) (*this)<< "fileID="<<fileID<<" divID="<<divID<<endl;
+  string fileID = fileLevelStr(loc);
+  string blockID = blockGlobalStr(loc);
+  if(!topLevel) (*this)<< "fileID="<<fileID<<" blockID="<<blockID<<endl;
   ostringstream indexAbsFName;  indexAbsFName  << workDir << "/html/index." << fileID << ".html";
   ostringstream detailAbsFName; detailAbsFName << workDir << "/html/detail."  << fileID;
   ostringstream detailRelFName; detailRelFName << "detail."  << fileID;
@@ -527,11 +524,11 @@ string dbgStream::enterFileLevel(block* b, bool topLevel)
   ostringstream scriptAbsFName; scriptAbsFName << workDir << "/html/script/script." << fileID;
   ostringstream scriptRelFName; scriptRelFName << "script/script."  << fileID;
   
-  //cout << "enterFileLevel("<<b->getLabel()<<") topLevel="<<topLevel<<" #fileBlocks="<<fileBlocks.size()<<" #fileLevel="<<fileLevel.size()<<endl;
+  //cout << "enterFileLevel("<<b->getLabel()<<") topLevel="<<topLevel<<" #fileBlocks="<<fileBlocks.size()<<" #location="<<loc.size()<<endl;
   // Add a new function level within the parent file unit that will refer to the child file unit
   string loadCmd="";
   if(!topLevel)
-    loadCmd = enterBlock(b, true);//, fileLevelJSIntArray(fileLevel)); // detailRelFName.str(), sumRelFName.str());*/
+    loadCmd = enterBlock(b, true);//, fileLevelJSIntArray(location)); // detailRelFName.str(), sumRelFName.str());*/
   fileBlocks.push_back(b);
   
   if(!topLevel) (*this)<< "dbgStream::enterFileLevel("<<b->getLabel()<<") >>>>>\n";
@@ -600,7 +597,7 @@ string dbgStream::enterFileLevel(block* b, bool topLevel)
     scriptFiles.push_back(scriptFile);
     
     // The script file starts out with a command to record that the file was loaded
-    (*scriptFiles.back()) << "\trecordFile("<<fileLevelJSIntArray(fileLevel)<<", 'loaded', 1);\n";
+    (*scriptFiles.back()) << "\trecordFile("<<fileLevelJSIntArray(loc)<<", 'loaded', 1);\n";
   }
   
   return loadCmd;
@@ -609,8 +606,8 @@ string dbgStream::enterFileLevel(block* b, bool topLevel)
 // Exit a current file level
 block* dbgStream::exitFileLevel(bool topLevel)
 {
-  //cout << "exitFileLevel("<<b->getLabel()<<") topLevel="<<topLevel<<" #fileBlocks="<<fileBlocks.size()<<" #fileLevel="<<fileLevel.size()<<endl;
-  assert(fileLevel.size()>1);
+  //cout << "exitFileLevel("<<b->getLabel()<<") topLevel="<<topLevel<<" #fileBlocks="<<fileBlocks.size()<<" #location="<<loc.size()<<endl;
+  assert(loc.size()>1);
   
   dbgFiles.back()->close();
   
@@ -621,8 +618,7 @@ block* dbgStream::exitFileLevel(bool topLevel)
   
   // Complete the current script file
   scriptFiles.back()->close();
-  
-  fileLevel.pop_back();
+
   indexFiles.pop_back();
   dbgFiles.pop_back();
   detailFileRelFNames.pop_back();
@@ -640,14 +636,16 @@ block* dbgStream::exitFileLevel(bool topLevel)
     //delete topBlock;
   }
   
+  loc.pop_back();
+  
   block* lastB = fileBlocks.back();
   fileBlocks.pop_back();
   return lastB;
 }
 
 // Record the mapping from the given anchor ID to the given string in the global script file
-void dbgStream::writeToAnchorScript(int anchorID, list<int>& fileLevel, string divID) {
-  anchorScriptFile << "anchors.setItem("<<anchorID<<", new anchor("<<fileLevelJSIntArray(fileLevel)<<", \""<<divID<<"\"));"<<endl;
+void dbgStream::writeToAnchorScript(int anchorID, const location& myLoc, string blockID) {
+  anchorScriptFile << "anchors.setItem("<<anchorID<<", new anchor("<<fileLevelJSIntArray(myLoc)<<", \""<<blockID<<"\"));"<<endl;
 }
 
 void dbgStream::printSummaryFileContainerHTML(string absoluteFileName, string relativeFileName, string title)
@@ -709,7 +707,7 @@ void dbgStream::printDetailFileContainerHTML(string absoluteFileName, string tit
   det << "\t</style>\n";
   det << "\t<script type=\"text/javascript\">\n";
   det << "\t\twindow.onload=function () { \n";
-  string fileID = fileLevelStr(fileLevel);
+  string fileID = fileLevelStr(loc);
   det << "\t\t\tloadURLIntoDiv(document, 'detail."<<fileID<<".body', 'detailContents', \n";
   det << "\t\t\t\tfunction() { loadjscssfile('script/script."<<fileID<<"', 'js', \n";
   det << "\t\t\t\t\tfunction() { loadjscssfile('script/anchor_script', 'js'); }); });\n";
@@ -737,32 +735,37 @@ string dbgStream::enterBlock(block* b, bool newFileEntered)
   
   fileBufs.back()->enterBlock(b);
   
+  assert(loc.size()>0);
+  // Increment the index of this block unit within the current nesting level of this file
+  loc.back().second.back()++;
+  // Add a new level to the block list, starting the index at 0
+  loc.back().second.push_back(0);
+  
   ostringstream loadCmd; // The command to open this file in the current view
-  string divID = regionGlobalStr();
-  b->setDivID(divID);
-  b->setFileLevel(fileLevel);
-  string fileID = fileLevelStr(b->getFileLevel());
+  string blockID = blockGlobalStr(loc);
+  b->setLocation(loc);
+  string fileID = fileLevelStr(b->getLocation());
   if(newFileEntered)
-    loadCmd << "loadSubFile(top.detail.document, 'detail."<<fileID<<".body', 'div"<<divID<<"', "<<
-               "top.summary.document, 'summary."<<fileID<<".body', 'sumdiv"<<divID<<"', "<<
+    loadCmd << "loadSubFile(top.detail.document, 'detail."<<fileID<<".body', 'div"<<blockID<<"', "<<
+               "top.summary.document, 'summary."<<fileID<<".body', 'sumdiv"<<blockID<<"', "<<
                "'script/script."<<fileID<<"'";
   
-  (*this) << "divID="<<divID<<" loadCmd="<<loadCmd<<endl;
+  (*this) << "blockID="<<blockID<<" loadCmd="<<loadCmd<<endl;
   b->printEntry(loadCmd.str());  
 
   *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->blockDepth())<<"</td></tr>\n";
   *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->blockDepth())<<"<tr width=\"100%\"><td width=50></td><td width=\"100%\">\n";
   *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->blockDepth()+1)<<"<table width=\"100%\" style=\"border:0px\">\n";
-  *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->blockDepth()+1)<<"<tr width=\"100%\"><td width=50></td><td id=\"link"<<divID<<"\" width=\"100%\">";
-  *summaryFiles.back() <<     "<a name=\"anchor"<<divID<<"\" href=\"javascript:focusLinkDetail('"<<divID<<"')\">"<<b->getLabel()<<"</a> ("<<divID<<")</td></tr>\n";
+  *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->blockDepth()+1)<<"<tr width=\"100%\"><td width=50></td><td id=\"link"<<blockID<<"\" width=\"100%\">";
+  *summaryFiles.back() <<     "<a name=\"anchor"<<blockID<<"\" href=\"javascript:focusLinkDetail('"<<blockID<<"')\">"<<b->getLabel()<<"</a> ("<<blockID<<")</td></tr>\n";
   *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->blockDepth()+1)<<"<tr width=\"100%\"><td width=50></td><td width=\"100%\">\n";
   /*// If the corresponding div in the detail page may be filled in with additional content, we create another summary
   // div to fill in with the corresponding summary content
-  if(detailContentURL != "") */*summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->blockDepth()+1)<<"<div id=\"sumdiv"<<divID<<"\">\n";
+  if(detailContentURL != "") */*summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->blockDepth()+1)<<"<div id=\"sumdiv"<<blockID<<"\">\n";
   summaryFiles.back()->flush();
   
   if(newFileEntered) {
-    (*scriptFiles.back()) << "\trecordFile("<<fileLevelJSIntArray(fileLevel)<<", 'loadFunc', function(continuationFunc) {"<<loadCmd.str()<<", continuationFunc)});\n";
+    (*scriptFiles.back()) << "\trecordFile("<<fileLevelJSIntArray(loc)<<", 'loadFunc', function(continuationFunc) {"<<loadCmd.str()<<", continuationFunc)});\n";
     scriptFiles.back()->flush();
   }
   
@@ -776,6 +779,11 @@ block* dbgStream::exitBlock()
   //{ cout << "exitBlock("<<b->getLabel()<<", "<<contentURL<<")"<<endl; }
   fileBufs.back()->ownerAccessing();
   block* lastB = fileBufs.back()->exitBlock();
+  
+  assert(loc.size()>0);
+  assert(loc.back().second.size()>0);
+  loc.back().second.pop_back();
+  
   lastB->printExit();
     
   // We enfore the invariant that the number of open and close angle brackets must be balanced
@@ -882,8 +890,6 @@ void dbgStream::addDOT(string imgFName, string graphName, string dot, ostream& r
   #endif  
 }
 
-dbgStream dbg;
-
 /******************
  ***** indent *****
  ******************/
@@ -936,11 +942,11 @@ anchor::anchor(/*dbgStream& myDbg, */bool reached) /*: myDbg(myDbg)*/ {
 anchor::anchor(const anchor& that) {
   if(!initializedDebug) initializeDebug("Debug Output", "dbg");
   
-  anchorID  = that.anchorID;
-  //myDbg     = that.myDbg;
-  fileLevel = that.fileLevel;
-  divID     = that.divID;
-  reached   = that.reached;
+  anchorID = that.anchorID;
+  //myDbg    = that.myDbg;
+  loc      = that.loc;
+  blockID  = that.blockID;
+  reached  = that.reached;
 }
 
 anchor::anchor(/*dbgStream& myDbg, */bool reached, int anchorID) : 
@@ -957,11 +963,11 @@ void anchor::init(bool reached) {
 }
 
 void anchor::operator=(const anchor& that) {
-  anchorID  = that.anchorID;
-  //myDbg     = that.myDbg;
-  fileLevel = that.fileLevel;
-  divID     = that.divID;
-  reached   = that.reached;
+  anchorID = that.anchorID;
+  //myDbg    = that.myDbg;
+  loc      = that.loc;
+  blockID  = that.blockID;
+  reached  = that.reached;
 }
 
 bool anchor::operator==(const anchor& that) const {
@@ -969,10 +975,10 @@ bool anchor::operator==(const anchor& that) const {
   assert(anchorID>=-1); assert(that.anchorID>=-1);
   if(anchorID==-1 && that.anchorID==-1) return true;
    
-  return anchorID  == that.anchorID &&
-         fileLevel == that.fileLevel &&
-         divID     == that.divID &&
-         reached   == that.reached;
+  return anchorID == that.anchorID &&
+         loc      == that.loc &&
+         blockID  == that.blockID &&
+         reached  == that.reached;
 }
 bool anchor::operator!=(const anchor& that) const
 { return !(*this == that); }
@@ -984,11 +990,11 @@ void anchor::reachedAnchor() {
     cerr << "Warning: anchor "<<anchorID<<" is being set to multiple target locations" << endl;
   else {
     reached = true; // We've now reached this anchor's location in the output
-    fileLevel = dbg.getFileLevel();
-    divID     = dbg.regionGlobalStr();
+    loc   = dbg.getLocation();
+    blockID = dbg.blockGlobalStr(loc);
     
-    //dbg << "anchor="<<anchorID<<" reached. fileLevel="<<dbg.fileLevelJSIntArray(fileLevel)<<", divID="<<divID<<endl;
-    dbg.writeToAnchorScript(anchorID, fileLevel, divID);
+    //dbg << "anchor="<<anchorID<<" reached. loc="<<dbg.fileLevelJSIntArray(loc)<<", blockID="<<blockID<<endl;
+    dbg.writeToAnchorScript(anchorID, loc, blockID);
   }
 }
 
@@ -998,13 +1004,13 @@ void anchor::link(string text) const {
   dbg << "<a href=\"javascript:";
   // If we've already reached this link's location (this is a backward link)
   if(reached) {
-    dbg << "goToAnchor([], "<<dbg.fileLevelJSIntArray(fileLevel)<<",  ";
-    dbg << "function() { focusLinkDetail('"<<divID<<"'); focusLinkSummary('"<<divID<<"');});";
+    dbg << "goToAnchor([], "<<dbg.fileLevelJSIntArray(loc)<<",  ";
+    dbg << "function() { focusLinkDetail('"<<blockID<<"'); focusLinkSummary('"<<blockID<<"');});";
   // If we have not yet reached this anchor's location in the output (it is a forward link)
   } else {
     dbg << "if(anchors.hasItem("<<anchorID<<")) { goToAnchor([], anchors.getItem("<<anchorID<<").fileID, "<<
-                    "function() { focusLinkDetail(anchors.getItem("<<anchorID<<").divID); focusLinkSummary(anchors.getItem("<<anchorID<<").divID); }); } ";
-    dbg << "else { focusLinkDetail(anchors.getItem("<<anchorID<<").divID); focusLinkSummary(anchors.getItem("<<anchorID<<").divID); } ";
+                    "function() { focusLinkDetail(anchors.getItem("<<anchorID<<").blockID); focusLinkSummary(anchors.getItem("<<anchorID<<").blockID); }); } ";
+    dbg << "else { focusLinkDetail(anchors.getItem("<<anchorID<<").blockID); focusLinkSummary(anchors.getItem("<<anchorID<<").blockID); } ";
   }
   dbg << "\">"<<text<<"</a>";
 }
@@ -1014,12 +1020,7 @@ std::string anchor::str() const {
   if(anchorID==-1)
     oss << "[noAnchor]";
   else {
-    oss << "[anchor: ID="<<anchorID<<", fileID=&lt;";
-    for(list<int>::const_iterator f=fileLevel.begin(); f!=fileLevel.end(); f++) {
-      if(f!=fileLevel.begin()) oss << ", ";
-      oss << *f;
-    }
-    oss << "&gt;, divID=\""<<divID<<"\", reached=\""<<reached<<"\"]";
+    oss << "[anchor: ID="<<anchorID<<", loc=&lt;"<<dbg.blockGlobalStr(loc)<<"&gt;, reached=\""<<reached<<"\"]";
   }
   return oss.str();
 }
@@ -1029,8 +1030,8 @@ std::string anchor::str() const {
  *****************/
 scope::scope(std::string label, scopeLevel level, int curDebugLevel, int targetDebugLevel) : 
   block(label),
-  // startA is initialized before init is called to ensure that the anchor's divID is the same as 
-  // the scope's divID, rather than a divID inside the scope.
+  // startA is initialized before init is called to ensure that the anchor's blockID is the same as 
+  // the scope's blockID, rather than a blockID inside the scope.
   startA(true) 
 {
   init(level, curDebugLevel, targetDebugLevel);
@@ -1043,8 +1044,8 @@ scope::scope(std::string label, anchor& pointsTo, scopeLevel level, int curDebug
   init(level, curDebugLevel, targetDebugLevel);
   // If we're given an anchor from a forward link to this region,
   // inform the anchor that it is pointing to the location of this scope's start.
-  // This is done before the initialization to ensure that the anchor's divID is 
-  // the same as the scope's divID, rather than a divID inside the scope.
+  // This is done before the initialization to ensure that the anchor's blockID is 
+  // the same as the scope's blockID, rather than a blockID inside the scope.
   if(pointsTo != anchor::noAnchor) {
     startA = pointsTo;
     pointsTo.reachedAnchor();
@@ -1128,12 +1129,12 @@ scope::~scope()
 // Called to enable the block to print its entry and exit text
 void scope::printEntry(string loadCmd) {
   dbg.ownerAccessing();
-  dbg << "diviD="<<getDivID()<<endl;
+  dbg << "blockID="<<getBlockID()<<endl;
   if(dbg.blockIndex()==0) dbg << "\t\t\t"<<tabs(dbg.blockDepth())<<"</td></tr>\n";
   dbg << "\t\t\t"<<tabs(dbg.blockDepth())<<"<tr width=\"100%\"><td width=50></td><td width=\"100%\">\n";
-  dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"<table bgcolor=\"#"<<colors[(colorIdx-1)%colors.size()]<<"\" width=\"100%\" id=\"table"<<getDivID()<<"\" style=\"border:1px solid white\" onmouseover=\"this.style.border='1px solid black'; highlightLink('"<<getDivID()<<"', '#F4FBAA');\" onmouseout=\"this.style.border='1px solid white'; highlightLink('"<<getDivID()<<"', '#FFFFFF');\" onclick=\"focusLinkSummary('"<<getDivID()<<"', event);\">\n";
+  dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"<table bgcolor=\"#"<<colors[(colorIdx-1)%colors.size()]<<"\" width=\"100%\" id=\"table"<<getBlockID()<<"\" style=\"border:1px solid white\" onmouseover=\"this.style.border='1px solid black'; highlightLink('"<<getBlockID()<<"', '#F4FBAA');\" onmouseout=\"this.style.border='1px solid white'; highlightLink('"<<getBlockID()<<"', '#FFFFFF');\" onclick=\"focusLinkSummary('"<<getBlockID()<<"', event);\">\n";
   dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"<tr width=\"100%\"><td width=50></td><td width=\"100%\"><h2>\n";
-  dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"<a name=\"anchor"<<getDivID()<<"\" href=\"javascript:unhide('"<<getDivID()<<"');\">";
+  dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"<a name=\"anchor"<<getBlockID()<<"\" href=\"javascript:unhide('"<<getBlockID()<<"');\">";
   dbg.userAccessing();
   dbg << getLabel();
   dbg.ownerAccessing();
@@ -1142,14 +1143,14 @@ void scope::printEntry(string loadCmd) {
   if(loadCmd != "") {
     dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1);
     dbg << "<a href=\"javascript:"<<loadCmd<<")\">";
-    //dbg << "<a href=\"javascript:loadURLIntoDiv(top.detail.document, '"<<detailContentURL<<".body', 'div"<<getDivID()<<"'); loadURLIntoDiv(top.summary.document, '"<<summaryContentURL<<".body', 'sumdiv"<<getDivID()<<"')\">";
+    //dbg << "<a href=\"javascript:loadURLIntoDiv(top.detail.document, '"<<detailContentURL<<".body', 'div"<<getBlockID()<<"'); loadURLIntoDiv(top.summary.document, '"<<summaryContentURL<<".body', 'sumdiv"<<getBlockID()<<"')\">";
     dbg << "<img src=\"img/divDL.gif\" width=25 height=35></a>\n";
-    dbg << "\t\t\t<a target=\"_top\" href=\"index."<<dbg.fileLevelStr(getFileLevel())<<".html\">";
+    dbg << "\t\t\t<a target=\"_top\" href=\"index."<<getFileID()<<".html\">";
     dbg << "<img src=\"img/divGO.gif\" width=35 height=25></a>\n";
   }
   dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"</h2></td></tr>\n";
   dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"<tr width=\"100%\"><td width=50></td><td width=\"100%\">\n";
-  dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"<div id=\"div"<<getDivID()<<"\" class=\"unhidden\">\n";
+  dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"<div id=\"div"<<getBlockID()<<"\" class=\"unhidden\">\n";
   dbg.flush();
   dbg.userAccessing();  
 }

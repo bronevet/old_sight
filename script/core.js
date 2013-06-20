@@ -1,15 +1,15 @@
-  function unhide(divID) {
-    var parentDiv = document.getElementById("div"+divID);
+  function unhide(blockID) {
+    var parentDiv = document.getElementById("div"+blockID);
     if (parentDiv) {
       // Hide the parent div
       parentDiv.className=(parentDiv.className=='hidden')?'unhidden':'hidden';
       // Get all the tables
       var childTbls = document.getElementsByTagName("table");
-      condition = new RegExp("table"+divID+"[0-9_-]*");
+      condition = new RegExp("table"+blockID+"[0-9_-]*");
       for (var i=0; i<childTbls.length; i++){ 
         var child = childTbls[i];
         // Set the visibility status of each child table to be the same as its parent div
-        if ("table"+divID!=child.id && child.nodeType==1 && child.id!=undefined && child.id.match(condition)) {
+        if ("table"+blockID!=child.id && child.nodeType==1 && child.id!=undefined && child.id.match(condition)) {
             child.className=parentDiv.className;
         }
       }
@@ -132,34 +132,34 @@
     
   }
 
-  function highlightLink(divID, newcolor) {
-    var sumLink = top.summary.document.getElementById("link"+divID);
+  function highlightLink(blockID, newcolor) {
+    var sumLink = top.summary.document.getElementById("link"+blockID);
     sumLink.style.backgroundColor= newcolor;
   }
-  function focusLinkSummary(divID, e) {
+  function focusLinkSummary(blockID, e) {
     if(typeof e !== 'undefined') {
       e = e || window.event;
       if('cancelBubble' in e) {
         e.cancelBubble = true;
-        top.summary.location = "summary.0.html#anchor"+divID;
+        top.summary.location = "summary.0.html#anchor"+blockID;
       }
     } else {
-      top.summary.location = "summary.0.html#anchor"+divID;
+      top.summary.location = "summary.0.html#anchor"+blockID;
     }
   }
   
-	function focusLinkDetail(divID) {
-		top.detail.location = "detail.0.html#anchor"+divID;
+	function focusLinkDetail(blockID) {
+		top.detail.location = "detail.0.html#anchor"+blockID;
 	}
 
   
   // Anchors
   var anchors = new HashTable();
   
-  function anchor(fileID, divID) {
-    this.fileID   = fileID;
-    this.divID    = divID;
-    console.debug("anchor("+fileID+", "+divID+")");
+  function anchor(fileID, blockID) {
+    this.fileID  = fileID;
+    this.blockID = blockID;
+    console.debug("anchor("+fileID+", "+blockID+")");
   }
   
   // Opens the given file ID (if needed) and shifts the browser's focus to it.
