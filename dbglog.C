@@ -51,14 +51,11 @@ void initializeDebug(string title, string workDir)
   // Directory where the html files go
   createDir(workDir, "html");
   
-  // Directory where the detail files go
-  //createDir(workDir, "html/detail");
-  
-  // Directory where the summary files go
-  //createDir(workDir, "html/summary");
+  // Directory where the files from the individual widgets go
+  createDir(workDir, "html/widgets");
   
   // Directory where client-generated images will go
-  string imgPath = createDir(workDir, "html/dbg_imgs");
+  string imgDir = createDir(workDir, "html/dbg_imgs");
   
   // Copy the default images directory to the work directory
   copyDir(workDir+"/html", "img");
@@ -68,15 +65,23 @@ void initializeDebug(string title, string workDir)
   
   // Create an index.html file that refers to the root html file
   copyDir(workDir, "html/index.html");
-  /*{
-    ostringstream cmd; cmd << "ln -s "<<workDir<<"/html/index.0.html "<<workDir<<"/index.html";
-    int ret = system(cmd.str().c_str());
-    if(ret == -1) { cout << "Dbg::init() ERROR creating link \""<<workDir<<"/index.html\"!"; exit(-1); }
-  }*/
+  
+  // Directory that widgets can use as temporary scratch space
+  string tmpDir = createDir(workDir, "html/tmp");
   
   initializedDebug = true;
-  dbg.init(title, workDir, imgPath);
+  dbg.init(title, workDir, imgDir, tmpDir);
 }
+
+// Returns a string that contains n tabs
+string tabs(int n)
+{
+  string s;
+  for(int i=0; i<n; i++)
+    s+="\t";
+  return s;
+}
+
 
 /***************
  ***** dbg *****
@@ -84,19 +89,240 @@ void initializeDebug(string title, string workDir)
 
 dbgStream dbg;
 
+
+/******************
+ ***** anchor *****
+ ******************/
+int anchor::maxAnchorID=0;
+anchor anchor::noAnchor(false, -1);
+map<int, location> anchor::anchorLocs;
+  
+anchor::anchor(/*dbgStream& myDbg, */bool located) /*: myDbg(myDbg)*/ {
+  if(!initializedDebug) initializeDebug("Debug Output", "dbg");
+  
+  anchorID = maxAnchorID++;
+  //dbg << "anchor="<<anchorID<<endl;
+  // Initialize this->located to false so that reachedAnchor() doesn't think we're calling it for multiple locations
+  this->located = false;
+  if(located) reachedAnchor();
+}
+
+anchor::anchor(const anchor& that) {
+  if(!initializedDebug) initializeDebug("Debug Output", "dbg");
+  
+  anchorID = that.anchorID;
+  loc      = that.loc;
+  located  = that.located;
+  
+  //cout << "anchor::anchor() >>> this="<<str()<<" that="<<that.str()<<endl;
+}
+
+anchor::anchor(/*dbgStream& myDbg, */bool located, int anchorID) : 
+  located(located), anchorID(anchorID)
+{
+  if(!initializedDebug) initializeDebug("Debug Output", "dbg");  
+}
+
+void anchor::init(bool located) {
+  anchorID = maxAnchorID++;
+  // Initialize this->located to false so that reachedAnchor() doesn't think we're calling it for multiple locations
+  this->located = false;
+  if(located) reachedAnchor();
+}
+
+// If this anchor is unlocated, checks anchorLocs to see if a location has been found and updates this
+// object accordingly;
+void anchor::update() {
+  /*cout << "anchor::update() located="<<located<<" anchorID="<<anchorID<<endl;
+  cout << "        anchorLocs="<<endl;
+  for(map<int, location>::iterator i=anchorLocs.begin(); i!=anchorLocs.end(); i++)
+    cout << "            "<<i->first<<" => "<<dbg.blockGlobalStr(i->second)<<endl;*/
+  if(!located && (anchorLocs.find(anchorID) != anchorLocs.end())) {
+    located = true;
+    loc = anchorLocs[anchorID];
+  }
+}
+
+void anchor::operator=(const anchor& that) {
+  anchorID = that.anchorID;
+  loc      = that.loc;
+  located  = that.located;
+}
+
+bool anchor::operator==(const anchor& that) const {
+  // anchorID of -1 indicates that this is the noAnchor object and any copies of it are equivalent
+  assert(anchorID>=-1); assert(that.anchorID>=-1);
+  if(anchorID==-1 && that.anchorID==-1) return true;
+
+  const_cast<anchor*>(this)->update();
+  const_cast<anchor &>(that).update();
+  
+  // If we'ver identified the locations of both anchors
+  if(located && that.located)
+    // They're equal if they refer to the same location
+    return loc == that.loc;
+  // If we've identified the location of neither object 
+  else if(!located && !that.located)
+    // They're equal if they have the same ID
+    return anchorID == that.anchorID;
+  // If one has been located while the other has not, they're definitely not equal
+  else
+    return false;
+}
+
+bool anchor::operator!=(const anchor& that) const
+{ return !(*this == that); }
+
+bool anchor::operator<(const anchor& that) const
+{
+  // anchorID of -1 indicates that this is the noAnchor object and any copies of it are equivalent
+  assert(anchorID>=-1); assert(that.anchorID>=-1);
+  if(anchorID==-1 && that.anchorID==-1) return false;
+  
+  const_cast<anchor*>(this)->update();
+  const_cast<anchor &>(that).update();
+  
+  // If we'ver identified the locations of both anchors
+  if(located && that.located)
+    // Compare their locations
+    return loc < that.loc;
+  // If we've identified the location of neither object 
+  else if(!located && !that.located)
+    // Compare their IDs
+    return anchorID < that.anchorID;
+  // If one has been located while the other has not, compare their located-ness statuses
+  else
+    return located < that.located;
+}
+
+const location& anchor::getLocation() const
+{ 
+  const_cast<anchor*>(this)->update();
+  return loc;
+}
+
+// Called when the file location of this anchor has been reached
+void anchor::reachedAnchor() {
+  //dbg << "    reachedAnchor() located="<<located<<", anchorID="<<anchorID<<" dbg.getLocation()="<<dbg.blockGlobalStr(dbg.getLocation())<<"<BR>"<<endl;
+  // If this anchor has already been set to point to its target location, emit a warning
+  if(located) 
+    cerr << "Warning: anchor "<<anchorID<<" is being set to multiple target locations" << endl;
+  else {
+    located = true; // We've now reached this anchor's location in the output
+    loc     = dbg.getLocation();
+    //cout << "        loc="<<dbg.blockGlobalStr(loc)<<endl;
+    
+    dbg.writeToAnchorScript(anchorID, loc);
+    
+    // Record the connection between this anchor ID and the location in the global table
+    anchorLocs[anchorID] = loc;
+  }
+  //cout << "        this="<<str()<<endl;
+}
+
+// Returns an <a href> tag that denotes a link to this anchor. Embeds the given text in the link.
+std::string anchor::link(string text) const {
+  const_cast<anchor*>(this)->update();
+  
+  ostringstream oss; oss << "<a href=\"javascript:" << getLinkJS() << "\">"<<text<<"</a>";
+  return oss.str();
+}
+
+// Returns the JavaScript code that links to this anchor, which can be embedded on other javascript code.
+std::string anchor::getLinkJS() const {
+  const_cast<anchor*>(this)->update();
+  
+  ostringstream oss;
+  // If we've already reached this link's location (this is a backward link)
+  if(located) {
+    oss << "goToAnchor([], "<<dbg.fileLevelJSIntArray(loc)<<",  ";
+    oss << "function() { focusLinkDetail('"<<dbg.blockGlobalStr(loc)<<"'); focusLinkSummary('"<<dbg.blockGlobalStr(loc)<<"');});";
+  // If we have not yet reached this anchor's location in the output (it is a forward link)
+  } else {
+    oss << "if(anchors.hasItem("<<anchorID<<")) { goToAnchor([], anchors.getItem("<<anchorID<<").fileID, "<<
+                    "function() { focusLinkDetail(anchors.getItem("<<anchorID<<").blockID); focusLinkSummary(anchors.getItem("<<anchorID<<").blockID); }); } ";
+    oss << "else { focusLinkDetail(anchors.getItem("<<anchorID<<").blockID); focusLinkSummary(anchors.getItem("<<anchorID<<").blockID); } ";
+  }
+  return oss.str();
+}
+
+std::string anchor::str(std::string indent) const {
+  const_cast<anchor*>(this)->update();
+  
+  ostringstream oss;
+  if(anchorID==-1)
+    oss << "[noAnchor]";
+  else {
+    oss << "[anchor: ID="<<anchorID<<", loc=&lt;"<<dbg.blockGlobalStr(loc)<<"&gt;, located=\""<<located<<"\"]";
+  }
+  return oss.str();
+}
+
+
 /*****************
  ***** block *****
  *****************/
 
-block::block(std::string label) : label(label) {
+// Initializes this block with the given label
+block::block(string label) : label(label), startA(false, -1) /*=noAnchor, except that noAnchor may not yet bee initialized)*/ {
   if(!initializedDebug) initializeDebug("Debug Output", "dbg");
+}
+
+// Initializes this block with the given label.
+// Includes one or more incoming anchors thas should now be connected to this block.
+block::block(string label, const anchor& pointsTo) : 
+  label(label), startA(false, -1) /*=noAnchor, except that noAnchor may not yet bee initialized)*/
+{
+  if(!initializedDebug) initializeDebug("Debug Output", "dbg");
+  
+  // If we're given an anchor from a forward link to this region,
+  // inform the anchor that it is pointing to the location of this scope's start.
+  // This is done before the initialization to ensure that the anchor's blockID is 
+  // the same as the scope's blockID, rather than a blockID inside the scope.
+  //dbg << "block::block() pointsTo != anchor::noAnchor="<<(pointsTo != anchor::noAnchor)<<", pointsTo="<<pointsTo.str()<<", anchor::noAnchor="<<anchor::noAnchor.str()<<endl;
+  if(pointsTo != anchor::noAnchor)
+    pointsToAnchors.insert(pointsTo);
+  // Else, if there are no forward links to this node, initialize startA to be
+  // a fresh anchor that refers to the start of this scope
+}
+
+// Initializes this block with the given label.
+// Includes one or more incoming anchors thas should now be connected to this block.
+block::block(string label, const set<anchor>& pointsTo) : 
+  label(label), startA(false, -1) /*=noAnchor, except that noAnchor may not yet bee initialized)*/
+{
+  if(!initializedDebug) initializeDebug("Debug Output", "dbg");
+  
+  // If we're given an anchor from a forward link to this region,
+  // inform the anchor that it is pointing to the location of this scope's start.
+  // This is done before the initialization to ensure that the anchor's blockID is 
+  // the same as the scope's blockID, rather than a blockID inside the scope.
+  pointsToAnchors = pointsTo;
+  // Else, if there are no forward links to this node, initialize startA to be
+  // a fresh anchor that refers to the start of this scope
+  
+  //cout << "block::block() anchor="<<getAnchorRef().str()<<endl;
 }
 
 void block::setLocation(const location& loc) { 
   this->loc = loc;
   blockID = dbg.blockGlobalStr(loc);
   fileID = dbg.fileLevelStr(loc);
+  
+  startA.init(true);
+  //cout << "block("<<getLabel()<<")::setLocation() <<< #pointsToAnchors="<<pointsToAnchors.size()<<"\n";
+  for(set<anchor>::iterator a=pointsToAnchors.begin(); a!=pointsToAnchors.end(); a++) {
+    anchor a2 = *a;
+    a2.reachedAnchor();
+  }
+  //cout << "block::setLocation() >>> \n";
 }
+
+anchor& block::getAnchorRef()
+{ return startA; }
+
+anchor block::getAnchor() const
+{ return startA; }
 
 /******************
  ***** dbgBuf *****
@@ -350,34 +576,26 @@ int dbgBuf::blockDepth()
  ***** dbgStream *****
  *********************/
 
-// Returns a string that contains n tabs
-string tabs(int n)
-{
-  string s;
-  for(int i=0; i<n; i++)
-    s+="\t";
-  return s;
-}
-
 dbgStream::dbgStream() : std::ostream(&defaultFileBuf), initialized(false)
 {
   if(!initializedDebug) initializeDebug("Debug Output", "dbg");
 }
 
-dbgStream::dbgStream(string title, string workDir, string imgPath)
+dbgStream::dbgStream(string title, string workDir, string imgDir, std::string tmpDir)
   : std::ostream(&defaultFileBuf)
 {
-  init(title, workDir, imgPath);
+  init(title, workDir, imgDir, tmpDir);
 }
 
-void dbgStream::init(string title, string workDir, string imgPath)
+void dbgStream::init(string title, string workDir, string imgDir, std::string tmpDir)
 {
   // Initialize fileLevel with a 0 to make it possible to count top-level files
   loc.push_back(make_pair(0, list<int>(1, 0)));
   
-  this->title       = title;
-  this->workDir     = workDir;
-  this->imgPath     = imgPath;
+  this->title   = title;
+  this->workDir = workDir;
+  this->imgDir  = imgDir;
+  this->tmpDir  = tmpDir;
 
   numImages++;
   
@@ -386,6 +604,12 @@ void dbgStream::init(string title, string workDir, string imgPath)
     anchorScriptFile.open(anchorScriptFName.str().c_str());
   } catch (ofstream::failure e)
   { cout << "dbgStream::init() ERROR opening file \""<<anchorScriptFName.str()<<"\" for writing!"; exit(-1); }
+  
+  stringstream scriptIncludesFName; scriptIncludesFName << workDir << "/html/script/script_includes";
+  try {
+    scriptIncludesFile.open(scriptIncludesFName.str().c_str());
+  } catch (ofstream::failure e)
+  { cout << "dbgStream::init() ERROR opening file \""<<scriptIncludesFName.str()<<"\" for writing!"; exit(-1); }
   
   enterFileLevel(new block(title), true);
   
@@ -401,6 +625,12 @@ dbgStream::~dbgStream()
   delete topB;
   
   anchorScriptFile.close();
+  scriptIncludesFile.close();
+  
+  { ostringstream cmd;
+    cmd << "rm -rf " << tmpDir;
+    system(cmd.str().c_str());
+  }
 }
 
 // Switch between the owner class and user code writing text into this stream
@@ -412,6 +642,50 @@ void dbgStream::userAccessing() {
 void dbgStream::ownerAccessing()  { 
   assert(fileBufs.size()>0);
   fileBufs.back()->ownerAccessing();
+}
+
+// Creates an output directory for the given widget and returns its path as a pair:
+// <path relative to the current working directory that can be used to create paths for writing files,
+//  path relative to the output directory that can be used inside generated HTML>
+pair<std::string, std::string> dbgStream::createWidgetDir(std::string widgetName) {
+  if(widgetDirs.find(widgetName) == widgetDirs.end()) {
+    createDir(workDir, "html/widgets/"+widgetName);
+    widgetDirs.insert(widgetName);
+  }
+  
+  return make_pair(workDir+"/html/widgets/"+widgetName, "widgets/"+widgetName);
+}
+
+// Add an include of the given script in the generated HTML output. The path of the script must be relative
+// to the output HTML directory
+void dbgStream::includeWidgetScript(std::string scriptPath, std::string scriptType) {
+  // If we have not yet included this script, do so now
+  if(includedScripts.find(scriptPath) == includedScripts.end()) {
+    includedScripts[scriptPath] = scriptType;
+    // Write out command to include the given script file.
+    // !!! Note that this is highly sensitive to where it is placed in the generated HTML. In the typical use-case
+    // !!! this function will be called at the start of a block, where the inserted <script> tag will be processed normally.
+    // !!! However, if we insert this text in the middle of another tag, we'll cause an error. Checking for this condition 
+    // !!! part of future work.
+    scriptIncludesFile << "widgets/" << scriptPath << " " << scriptType << endl;
+  }
+}
+
+// Adds the given JavaScript command text to the script that will be loaded with the current file.
+// This command is guaranteed to run after the body of the file is loaded but before the anchors
+// referents are loaded.
+void dbgStream::widgetScriptCommand(std::string command) {
+  (*scriptFiles.back()) << command << endl;
+}
+
+// Includes the given file or directory into the generated HTML output by copying it from its relative
+// path within the widgets code directory into the widgets subdirectory of the generated output directory
+void dbgStream::includeFile(std::string path) {
+  // If we have not yet included this file, do so now
+  if(includedFiles.find(path) == includedFiles.end()) {
+    ostringstream cmd; cmd << "cp -r "<<ROOT_PATH<<"/widgets/"<<path<<" "<<workDir<<"/html/widgets/"<<path;
+    system(cmd.str().c_str());
+  }
 }
 
 // Returns the unique ID string of the current file within the hierarchy of files
@@ -455,7 +729,7 @@ const location& dbgStream::getLocation() const
 { return loc; }
 
 // Returns the unique ID string of the current region, including all the files that it may be contained in
-string dbgStream::blockGlobalStr(const location& myLoc) const {
+string dbgStream::blockGlobalStr(const location& myLoc) {
   ostringstream blockStr;
   
   for(list<pair<int, list<int> > >::const_iterator l=myLoc.begin(); l!=myLoc.end(); ) {
@@ -476,6 +750,81 @@ string dbgStream::blockGlobalStr(const location& myLoc) const {
   }
   
   return blockStr.str();
+}
+
+// Given two location objects, returns the longest prefix location that is common to both of them
+location dbgStream::commonSubLocation(const location& a, const location& b) {
+  list<pair<int, list<int> > >::const_iterator itA = a.begin(),
+                                               itB = b.begin();
+  list<pair<int, list<int> > > common;
+  
+  for(; itA != a.end() && itB != b.end(); itA++, itB++) {
+    // If we've reached the point where the two locations no longer align, return the 
+    // common prefix identified so far
+    if(itA->first != itB->first) return common;
+    int commonFileID = itA->first;
+    
+    // If a and b are still aligned at the file level, look at the blocks inside the file
+    list<int>::const_iterator it2A = itA->second.begin(),
+                              it2B = itB->second.begin();
+    for(; it2A != itA->second.end() && it2B != itB->second.end(); it2A++, it2B++) {
+      // If we've reached the point where the two locations no longer align, return the 
+      // common prefix identified so far
+      if(*it2A != *it2A) return common;
+      int commonBlockID = *it2A;
+      
+      // If a and b are still aligned at the block level within the current file, add the current 
+      // block to common
+      
+      // If this is the first block within the current file, first add a new entry for the file 
+      // (until now we didn't know if there'd be any common blocks to add within this file)
+      if(it2A == itA->second.begin())
+        common.push_back(make_pair(commonFileID, list<int>()));
+      
+      // Now add the common block ID
+      assert(common.size()>0);
+      common.back().second.push_back(commonBlockID);
+    }
+    
+    // If we've reached the end of the blocks in this file for one location but not the other,
+    // we've found the point of disagreement, so return the common prefix identified so far
+    if(it2A != itA->second.end() || it2B != itB->second.end())
+      return common;
+  }
+  
+  // We've reached the end of the file list of either location or both locations. There are no more
+  // files or blocks that are common, so return what we've found so far
+  return common;
+}
+
+// Called to inform the blocks that contain the given block that it has been entered
+void dbgStream::subBlockEnterNotify(block* subBlock)
+{
+  // Walk backwards through the current location stack, informing each block about the new arrival until the block's
+  // subBlockEnterNotify() function returns false to indicate that the notification should not be propagated further.
+  for(list<pair<block*, list<block*> > >::const_reverse_iterator fb=blocks.rbegin(); fb!=blocks.rend(); fb++) {
+    // Iterate through the sub-blocks of this file
+    for(list<block*>::const_reverse_iterator sb=fb->second.rbegin(); sb!=fb->second.rend(); sb++)
+      if(!(*sb)->subBlockEnterNotify(subBlock)) return;
+    
+    // Now call subBlockEnterNotify on the block that contains the current file within its parent file
+    if(!fb->first->subBlockEnterNotify(subBlock)) return;
+  }  
+}
+
+// Called to inform the blocks that contain the given block that it has been exited
+void dbgStream::subBlockExitNotify(block* subBlock)
+{
+  // Walk backwards through the current location stack, informing each block about the new arrival until the block's
+  // subBlockExitNotify() function returns false to indicate that the notification should not be propagated further.
+  for(list<pair<block*, list<block*> > >::const_reverse_iterator fb=blocks.rbegin(); fb!=blocks.rend(); fb++) {
+    // Iterate through the sub-blocks of this file
+    for(list<block*>::const_reverse_iterator sb=fb->second.rbegin(); sb!=fb->second.rend(); sb++)
+      if(!(*sb)->subBlockExitNotify(subBlock)) return;
+    
+    // Now call subBlockExitNotify on the block that contains the current file within its parent file
+    if(!fb->first->subBlockExitNotify(subBlock)) return;
+  }
 }
 
 // Returns the depth of enterBlock calls that have not yet been matched by exitBlock calls within the current file
@@ -502,7 +851,7 @@ string dbgStream::enterFileLevel(block* b, bool topLevel)
   // Add a fresh file level to the location
   loc.push_back(make_pair(0, list<int>(1, 0)));
   
-  if(!topLevel) (*this)<< "dbgStream::enterFileLevel("<<b->getLabel()<<") <<<<<\n";
+  //if(!topLevel) (*this)<< "dbgStream::enterFileLevel("<<b->getLabel()<<") <<<<<\n";
   
   // Each file unit consists of three files: 
   //    - the detail file that contains all the text output and regions inside the file,
@@ -515,7 +864,7 @@ string dbgStream::enterFileLevel(block* b, bool topLevel)
   // These are the absolute and relative names of these files.
   string fileID = fileLevelStr(loc);
   string blockID = blockGlobalStr(loc);
-  if(!topLevel) (*this)<< "fileID="<<fileID<<" blockID="<<blockID<<endl;
+  //if(!topLevel) (*this)<< "fileID="<<fileID<<" blockID="<<blockID<<endl;
   ostringstream indexAbsFName;  indexAbsFName  << workDir << "/html/index." << fileID << ".html";
   ostringstream detailAbsFName; detailAbsFName << workDir << "/html/detail."  << fileID;
   ostringstream detailRelFName; detailRelFName << "detail."  << fileID;
@@ -527,11 +876,12 @@ string dbgStream::enterFileLevel(block* b, bool topLevel)
   //cout << "enterFileLevel("<<b->getLabel()<<") topLevel="<<topLevel<<" #fileBlocks="<<fileBlocks.size()<<" #location="<<loc.size()<<endl;
   // Add a new function level within the parent file unit that will refer to the child file unit
   string loadCmd="";
+  blocks.push_back(make_pair(b, list<block*>()));
   if(!topLevel)
     loadCmd = enterBlock(b, true);//, fileLevelJSIntArray(location)); // detailRelFName.str(), sumRelFName.str());*/
   fileBlocks.push_back(b);
   
-  if(!topLevel) (*this)<< "dbgStream::enterFileLevel("<<b->getLabel()<<") >>>>>\n";
+  //if(!topLevel) (*this)<< "dbgStream::enterFileLevel("<<b->getLabel()<<") >>>>>\n";
   
   // Create the index file, which is a frameset that refers to the detail and summary files
   ofstream indexFile;
@@ -640,12 +990,13 @@ block* dbgStream::exitFileLevel(bool topLevel)
   
   block* lastB = fileBlocks.back();
   fileBlocks.pop_back();
+  blocks.pop_back();
   return lastB;
 }
 
 // Record the mapping from the given anchor ID to the given string in the global script file
-void dbgStream::writeToAnchorScript(int anchorID, const location& myLoc, string blockID) {
-  anchorScriptFile << "anchors.setItem("<<anchorID<<", new anchor("<<fileLevelJSIntArray(myLoc)<<", \""<<blockID<<"\"));"<<endl;
+void dbgStream::writeToAnchorScript(int anchorID, const location& myLoc) {
+  anchorScriptFile << "anchors.setItem("<<anchorID<<", new anchor("<<fileLevelJSIntArray(myLoc)<<", \""<<blockGlobalStr(myLoc)<<"\"));"<<endl;
 }
 
 void dbgStream::printSummaryFileContainerHTML(string absoluteFileName, string relativeFileName, string title)
@@ -708,9 +1059,13 @@ void dbgStream::printDetailFileContainerHTML(string absoluteFileName, string tit
   det << "\t<script type=\"text/javascript\">\n";
   det << "\t\twindow.onload=function () { \n";
   string fileID = fileLevelStr(loc);
-  det << "\t\t\tloadURLIntoDiv(document, 'detail."<<fileID<<".body', 'detailContents', \n";
-  det << "\t\t\t\tfunction() { loadjscssfile('script/script."<<fileID<<"', 'js', \n";
-  det << "\t\t\t\t\tfunction() { loadjscssfile('script/anchor_script', 'js'); }); });\n";
+  det << "\t\t\tloadScriptsInFile(document, 'script/script_includes', \n";
+  det << "\t\t\t\tfunction() { loadURLIntoDiv(document, 'detail."<<fileID<<".body', 'detailContents', \n";
+  det << "\t\t\t\t\tfunction() { loadjscssfile('script/script."<<fileID<<"', 'text/javascript', \n";
+  det << "\t\t\t\t\t\tfunction() { loadjscssfile('script/anchor_script', 'text/javascript'); } \n";
+  det << "\t\t\t\t\t); }\n";
+  det << "\t\t\t\t); }\n";
+  det << "\t\t\t);\n";
   det << "\t\t}\n";
   det << "\t</script>\n";
   det << "\t</head>\n";
@@ -729,7 +1084,7 @@ void dbgStream::printDetailFileContainerHTML(string absoluteFileName, string tit
 
 string dbgStream::enterBlock(block* b, bool newFileEntered)
 {
-  (*this) << "dbgStream::enterBlock("<<(b? b->getLabel(): "NULL")<<")"<<endl;
+  //(*this) << "dbgStream::enterBlock("<<(b? b->getLabel(): "NULL")<<")"<<endl;
   
   fileBufs.back()->ownerAccessing();
   
@@ -741,16 +1096,26 @@ string dbgStream::enterBlock(block* b, bool newFileEntered)
   // Add a new level to the block list, starting the index at 0
   loc.back().second.push_back(0);
   
-  ostringstream loadCmd; // The command to open this file in the current view
+  // Initialize this block's location (ust be done before the call to 
+  // subBlockEnterNotify() to make sure b's containers know there it is located)
   string blockID = blockGlobalStr(loc);
   b->setLocation(loc);
+  
+  // Inform this block's container blocks that we have entered it
+  subBlockEnterNotify(b);
+  
+  // Add this block to the record of the block nesting structure
+  // (after the call to subBlockEnterNotify to keep the block from being informed about itself)
+  assert(blocks.size()>0);
+  blocks.back().second.push_back(b);
+  
+  ostringstream loadCmd; // The command to open this file in the current view
   string fileID = fileLevelStr(b->getLocation());
   if(newFileEntered)
     loadCmd << "loadSubFile(top.detail.document, 'detail."<<fileID<<".body', 'div"<<blockID<<"', "<<
                "top.summary.document, 'summary."<<fileID<<".body', 'sumdiv"<<blockID<<"', "<<
                "'script/script."<<fileID<<"'";
   
-  (*this) << "blockID="<<blockID<<" loadCmd="<<loadCmd<<endl;
   b->printEntry(loadCmd.str());  
 
   *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->blockDepth())<<"</td></tr>\n";
@@ -759,9 +1124,7 @@ string dbgStream::enterBlock(block* b, bool newFileEntered)
   *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->blockDepth()+1)<<"<tr width=\"100%\"><td width=50></td><td id=\"link"<<blockID<<"\" width=\"100%\">";
   *summaryFiles.back() <<     "<a name=\"anchor"<<blockID<<"\" href=\"javascript:focusLinkDetail('"<<blockID<<"')\">"<<b->getLabel()<<"</a> ("<<blockID<<")</td></tr>\n";
   *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->blockDepth()+1)<<"<tr width=\"100%\"><td width=50></td><td width=\"100%\">\n";
-  /*// If the corresponding div in the detail page may be filled in with additional content, we create another summary
-  // div to fill in with the corresponding summary content
-  if(detailContentURL != "") */*summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->blockDepth()+1)<<"<div id=\"sumdiv"<<blockID<<"\">\n";
+  *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->blockDepth()+1)<<"<div id=\"sumdiv"<<blockID<<"\">\n";
   summaryFiles.back()->flush();
   
   if(newFileEntered) {
@@ -784,6 +1147,16 @@ block* dbgStream::exitBlock()
   assert(loc.back().second.size()>0);
   loc.back().second.pop_back();
   
+  // Remove this block from the record of the block nesting structure
+  assert(blocks.size()>0);
+  assert(blocks.back().second.size()>0);
+  block* topB = blocks.back().second.back();
+  blocks.back().second.pop_back();
+  
+  // Inform this block's container blocks that we have exited it
+  // (after the removal of this block from blocks to keep the block from being informed about itself)
+  subBlockExitNotify(topB);
+  
   lastB->printExit();
     
   // We enfore the invariant that the number of open and close angle brackets must be balanced
@@ -794,7 +1167,6 @@ block* dbgStream::exitBlock()
   this->flush();
   fileBufs.back()->userAccessing();
 
-  //summaryFiles.back() << "</ul>\n";
   *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->blockDepth()+1)<<"</div></td></tr>\n";
   *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->blockDepth()+1)<<"</table>\n";
   *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->blockDepth())<<"</td></tr>\n";
@@ -808,21 +1180,13 @@ block* dbgStream::exitBlock()
 // so that the caller can write to it.
 string dbgStream::addImage(string ext)
 {
+  if(!initializedDebug) initializeDebug("Debug Output", "dbg");
+  
   assert(fileBufs.size()>0);
-  ostringstream imgFName; imgFName << imgPath << "/image_" << numImages << "." << ext;
+  ostringstream imgFName; imgFName << imgDir << "/image_" << numImages << "." << ext;
   fileBufs.back()->ownerAccessing();
-  *(this) << "\t\t\t"<<tabs(fileBufs.back()->blockDepth()+1)<<"<img src="<<imgFName.str()<<">\n";
+  *(this) << "\t\t\t"<<tabs(fileBufs.back()->blockDepth()+1)<<"<img src=\"dbg_imgs/image_" << numImages << "." << ext <<"\">\n";
   fileBufs.back()->userAccessing();
-  return imgFName.str();
-}
-
-// Given a reference to an object that can be represented as a dot graph, create an image from it and add it to the output.
-// Return the path of the image.
-string dbgStream::addDOT(dottable& obj)
-{
-  ostringstream imgFName; imgFName << "dbg_imgs/image_" << numImages << ".svg";
-  ostringstream graphName; graphName << "graph_"<<numImages;
-  addDOT(imgFName.str(), graphName.str(), obj.toDOT(graphName.str()), *this);
   return imgFName.str();
 }
 
@@ -840,56 +1204,6 @@ void dbgStream::remIndent()
   fileBufs.back()->remIndent();
 }
 
-// Given a reference to an object that can be represented as a dot graph, create an image of it and return the string
-// that must be added to the output to include this image.
-std::string dbgStream::addDOTStr(dottable& obj)
-{
-  ostringstream imgFName; imgFName << "dbg_imgs/image_" << numImages << ".svg";
-  ostringstream graphName; graphName << "graph_"<<numImages;
-  ostringstream ret;
-  addDOT(imgFName.str(), graphName.str(), obj.toDOT(graphName.str()), ret);
-
-  return ret.str();
-}
-
-// Given a representation of a graph in dot format, create an image from it and add it to the output.
-// Return the path of the image.
-std::string dbgStream::addDOT(string dot)
-{
-  ostringstream imgFName; imgFName << "dbg_imgs/image_" << numImages << ".svg";
-  ostringstream graphName; graphName << "graph_"<<numImages;
-
-  addDOT(imgFName.str(), graphName.str(), dot, *this);
-
-  return imgFName.str();
-}
-
-// The common work code for all the addDOT methods
-void dbgStream::addDOT(string imgFName, string graphName, string dot, ostream& ret)
-{
-  #ifdef DOT_PATH
-  ostringstream dotFName; dotFName << imgPath << "/image_" << numImages << ".dot";
-  ostringstream mapFName; mapFName << imgPath<<"/image_" << numImages << ".map";
-
-  ofstream dotFile;
-  dotFile.open(dotFName.str().c_str());
-  dotFile << dot;
-  dotFile.close();
-
-  // Create the SVG file's picture of the dot file
-  ostringstream cmd; cmd << DOT_PATH << "dot -Tsvg -o"<<imgPath<<"/image_" << numImages << ".svg "<<dotFName.str() << "&"; 
-  //cout << "Command \""<<cmd.str()<<"\"\n";
-  system(cmd.str().c_str());
-
-  ret << "<img src=\""<<imgFName<<"\"><br>\n";
-  
-  numImages++;
-  #else
-  scope dotScope("Warning:", scope::medium);
-  *this << "graphviz not available" << endl;
-  #endif  
-}
-
 /******************
  ***** indent *****
  ******************/
@@ -905,322 +1219,11 @@ indent::indent(std::string space, int curDebugLevel, int targetDebugLevel) {
   else
     active = false;
 }
-/*indent::indent() {
-  std::string space = "&nbsp;&nbsp;&nbsp;&nbsp;";
-  active = true;
-  //dbg << "Entering indent space=\""<<space<<"\""<<endl;
-  dbg.addIndent(space);
-}* /
-indent::indent(std::string space) {
-  active = true;
-  //dbg << "Entering indent space=\""<<space<<"\""<<endl;
-  dbg.addIndent(space);
-}*/
 indent::~indent() {
   if(active) {
     //cout << "Exiting indent"<<std::endl;
     dbg.remIndent();
   }
-}
-
-/******************
- ***** anchor *****
- ******************/
-int anchor::maxAnchorID=0;
-anchor anchor::noAnchor(false, -1);
-
-anchor::anchor(/*dbgStream& myDbg, */bool reached) /*: myDbg(myDbg)*/ {
-  if(!initializedDebug) initializeDebug("Debug Output", "dbg");
-  
-  anchorID = maxAnchorID++;
-  //dbg << "anchor="<<anchorID<<endl;
-  // Initialize this->reached to false so that reachedAnchor() doesn't think we're calling it for multiple locations
-  this->reached = false;
-  if(reached) reachedAnchor();
-}
-
-anchor::anchor(const anchor& that) {
-  if(!initializedDebug) initializeDebug("Debug Output", "dbg");
-  
-  anchorID = that.anchorID;
-  //myDbg    = that.myDbg;
-  loc      = that.loc;
-  blockID  = that.blockID;
-  reached  = that.reached;
-}
-
-anchor::anchor(/*dbgStream& myDbg, */bool reached, int anchorID) : 
-  reached(reached), anchorID(anchorID)
-{ 
-  if(!initializedDebug) initializeDebug("Debug Output", "dbg");  
-}
-
-void anchor::init(bool reached) {
-  anchorID = maxAnchorID++;
-  // Initialize this->reached to false so that reachedAnchor() doesn't think we're calling it for multiple locations
-  this->reached = false;
-  if(reached) reachedAnchor();
-}
-
-void anchor::operator=(const anchor& that) {
-  anchorID = that.anchorID;
-  //myDbg    = that.myDbg;
-  loc      = that.loc;
-  blockID  = that.blockID;
-  reached  = that.reached;
-}
-
-bool anchor::operator==(const anchor& that) const {
-  // anchorID of -1 indicates that this is the noAnchor object and any copies of it are equivalent
-  assert(anchorID>=-1); assert(that.anchorID>=-1);
-  if(anchorID==-1 && that.anchorID==-1) return true;
-   
-  return anchorID == that.anchorID &&
-         loc      == that.loc &&
-         blockID  == that.blockID &&
-         reached  == that.reached;
-}
-bool anchor::operator!=(const anchor& that) const
-{ return !(*this == that); }
-
-// Called when the file location of this anchor has been reached
-void anchor::reachedAnchor() {
-  // If this anchor has already been set to point to its target location, emit a warning
-  if(reached) 
-    cerr << "Warning: anchor "<<anchorID<<" is being set to multiple target locations" << endl;
-  else {
-    reached = true; // We've now reached this anchor's location in the output
-    loc   = dbg.getLocation();
-    blockID = dbg.blockGlobalStr(loc);
-    
-    //dbg << "anchor="<<anchorID<<" reached. loc="<<dbg.fileLevelJSIntArray(loc)<<", blockID="<<blockID<<endl;
-    dbg.writeToAnchorScript(anchorID, loc, blockID);
-  }
-}
-
-// Emits to the output dbgStream the string that denotes a link to this anchor
-// Embed the given text in the link.
-void anchor::link(string text) const {
-  dbg << "<a href=\"javascript:";
-  // If we've already reached this link's location (this is a backward link)
-  if(reached) {
-    dbg << "goToAnchor([], "<<dbg.fileLevelJSIntArray(loc)<<",  ";
-    dbg << "function() { focusLinkDetail('"<<blockID<<"'); focusLinkSummary('"<<blockID<<"');});";
-  // If we have not yet reached this anchor's location in the output (it is a forward link)
-  } else {
-    dbg << "if(anchors.hasItem("<<anchorID<<")) { goToAnchor([], anchors.getItem("<<anchorID<<").fileID, "<<
-                    "function() { focusLinkDetail(anchors.getItem("<<anchorID<<").blockID); focusLinkSummary(anchors.getItem("<<anchorID<<").blockID); }); } ";
-    dbg << "else { focusLinkDetail(anchors.getItem("<<anchorID<<").blockID); focusLinkSummary(anchors.getItem("<<anchorID<<").blockID); } ";
-  }
-  dbg << "\">"<<text<<"</a>";
-}
-
-std::string anchor::str() const {
-  ostringstream oss;
-  if(anchorID==-1)
-    oss << "[noAnchor]";
-  else {
-    oss << "[anchor: ID="<<anchorID<<", loc=&lt;"<<dbg.blockGlobalStr(loc)<<"&gt;, reached=\""<<reached<<"\"]";
-  }
-  return oss.str();
-}
-
-/*****************
- ***** scope *****
- *****************/
-scope::scope(std::string label, scopeLevel level, int curDebugLevel, int targetDebugLevel) : 
-  block(label),
-  // startA is initialized before init is called to ensure that the anchor's blockID is the same as 
-  // the scope's blockID, rather than a blockID inside the scope.
-  startA(true) 
-{
-  init(level, curDebugLevel, targetDebugLevel);
-}
-
-scope::scope(std::string label, anchor& pointsTo, scopeLevel level, int curDebugLevel, int targetDebugLevel): 
-  block(label),
-  startA(anchor::noAnchor) // initialize startA to be noAnchor
-{
-  init(level, curDebugLevel, targetDebugLevel);
-  // If we're given an anchor from a forward link to this region,
-  // inform the anchor that it is pointing to the location of this scope's start.
-  // This is done before the initialization to ensure that the anchor's blockID is 
-  // the same as the scope's blockID, rather than a blockID inside the scope.
-  if(pointsTo != anchor::noAnchor) {
-    startA = pointsTo;
-    pointsTo.reachedAnchor();
-  // Else, if there are no forward links to this node, initialize startA to be
-  // a fresh anchor that refers to the start of this scope
-  } else {
-    startA.init(true);
-  }
-    
-  
-  //dbg << "scope: pointsTo="<<pointsTo.str()<<endl;
-}
-
-std::vector<std::string> scope::colors;
-int scope::colorIdx=0; // The current index into the list of colors 
-
-// Common initialization code
-void scope::init(scopeLevel level, int curDebugLevel, int targetDebugLevel)
-{
-  // If the colors list has not yet been initialized, do so now
-  if(colors.size() == 0) {
-    // Initialize colors with a list of light pastel colors 
-    colors.push_back("FF97E8");
-    colors.push_back("75D6FF");
-    colors.push_back("72FE95");
-    colors.push_back("8C8CFF");
-    colors.push_back("57BCD9");
-    colors.push_back("99FD77");
-    colors.push_back("EDEF85");
-    colors.push_back("B4D1B6");
-    colors.push_back("FF86FF");
-    colors.push_back("4985D6");
-    colors.push_back("D0BCFE");
-    colors.push_back("FFA8A8");
-    colors.push_back("A4F0B7");
-    colors.push_back("F9FDFF");
-    colors.push_back("FFFFC8");
-    colors.push_back("5757FF");
-    colors.push_back("6FFF44");
-  }
-  
-  if(curDebugLevel >= targetDebugLevel) {
-    active = true;
-    this->level = level;
-    // If this block corresponds to a new file, this string will be set to the Javascript command to 
-    // load this file into the current view
-    string loadCmd="";
-    if(level == high) {
-      colorIdx++; // Advance to a new color for this func
-      loadCmd = dbg.enterFileLevel(this);
-    } else if(level == medium) {
-      colorIdx++; // Advance to a new color for this func
-      dbg.enterBlock(this, false);
-    }
-    else if(level == low)
-      dbg.enterBlock(this, false);
-  }
-  else
-    active = false;  
-}
-
-anchor scope::getAnchor() const
-{ return startA; }
-
-scope::~scope()
-{ 
-  if(active) {
-    if(level == high) {
-      dbg.exitFileLevel();
-      colorIdx--; // Return to the last color for this func's parent
-    }
-    else if(level == medium) {
-      dbg.exitBlock();
-      colorIdx--; // Return to the last color for this func's parent
-    } else if(level == low)
-      dbg.exitBlock();
-    assert(colorIdx>=0);
-  }
-}
-
-// Called to enable the block to print its entry and exit text
-void scope::printEntry(string loadCmd) {
-  dbg.ownerAccessing();
-  dbg << "blockID="<<getBlockID()<<endl;
-  if(dbg.blockIndex()==0) dbg << "\t\t\t"<<tabs(dbg.blockDepth())<<"</td></tr>\n";
-  dbg << "\t\t\t"<<tabs(dbg.blockDepth())<<"<tr width=\"100%\"><td width=50></td><td width=\"100%\">\n";
-  dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"<table bgcolor=\"#"<<colors[(colorIdx-1)%colors.size()]<<"\" width=\"100%\" id=\"table"<<getBlockID()<<"\" style=\"border:1px solid white\" onmouseover=\"this.style.border='1px solid black'; highlightLink('"<<getBlockID()<<"', '#F4FBAA');\" onmouseout=\"this.style.border='1px solid white'; highlightLink('"<<getBlockID()<<"', '#FFFFFF');\" onclick=\"focusLinkSummary('"<<getBlockID()<<"', event);\">\n";
-  dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"<tr width=\"100%\"><td width=50></td><td width=\"100%\"><h2>\n";
-  dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"<a name=\"anchor"<<getBlockID()<<"\" href=\"javascript:unhide('"<<getBlockID()<<"');\">";
-  dbg.userAccessing();
-  dbg << getLabel();
-  dbg.ownerAccessing();
-  dbg << "</a>\n";
-  
-  if(loadCmd != "") {
-    dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1);
-    dbg << "<a href=\"javascript:"<<loadCmd<<")\">";
-    //dbg << "<a href=\"javascript:loadURLIntoDiv(top.detail.document, '"<<detailContentURL<<".body', 'div"<<getBlockID()<<"'); loadURLIntoDiv(top.summary.document, '"<<summaryContentURL<<".body', 'sumdiv"<<getBlockID()<<"')\">";
-    dbg << "<img src=\"img/divDL.gif\" width=25 height=35></a>\n";
-    dbg << "\t\t\t<a target=\"_top\" href=\"index."<<getFileID()<<".html\">";
-    dbg << "<img src=\"img/divGO.gif\" width=35 height=25></a>\n";
-  }
-  dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"</h2></td></tr>\n";
-  dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"<tr width=\"100%\"><td width=50></td><td width=\"100%\">\n";
-  dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"<div id=\"div"<<getBlockID()<<"\" class=\"unhidden\">\n";
-  dbg.flush();
-  dbg.userAccessing();  
-}
-
-void scope::printExit() {
- // Close this scope
-  dbg.ownerAccessing();
-  dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"</td></tr>\n";
-  dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"</table>\n";
-  dbg << "\t\t\t"<<tabs(dbg.blockDepth())<<"</td></tr>\n";
-  dbg << "\t\t\t"<<tabs(dbg.blockDepth())<<"<tr width=\"100%\"><td width=50></td><td width=\"100%\">\n";
-  dbg.userAccessing();  
-}
-
-/* // Indicates that the application has entered or exited a file
-void enterFile(std::string funcName)
-{
-  if(!initializedDebug) initializeDebug("Debug Output", "dbg");
-  dbg.enterFileLevel(funcName);
-}
-
-void exitFile(std::string funcName)
-{
-  if(!initializedDebug) initializeDebug("Debug Output", "dbg");
-  dbg.exitFileLevel(funcName);
-}
-*/
-
-// Indicates that the application has entered or exited a function
-/*void enterBlock(block* b)
-{
-  if(!initializedDebug) initializeDebug("Debug Output", "dbg");
-  dbg.enterBlock(b);
-}
-
-block* exitBlock()
-{
-  if(!initializedDebug) initializeDebug("Debug Output", "dbg");
-  return dbg.exitBlock(b);
-}*/
-
-// Adds an image to the output with the given extension and returns the path of this image
-// so that the caller can write to it.
-std::string addImage(std::string ext)
-{
-  if(!initializedDebug) initializeDebug("Debug Output", "dbg");
-  return dbg.addImage(ext);
-}
-
-// Given a representation of a graph in dot format, create an image from it and add it to the output.
-// Return the path of the image.
-std::string addDOT(dottable& obj)
-{
-  if(!initializedDebug) initializeDebug("Debug Output", "dbg");
-  return dbg.addDOT(obj);
-}
-
-// Given a representation of a graph in dot format, create an image of it and return the string
-// that must be added to the output to include this image.
-std::string addDOTStr(dottable& obj)
-{
-  if(!initializedDebug) initializeDebug("Debug Output", "dbg");
-  return dbg.addDOTStr(obj);
-}
-
-// Given a representation of a graph in dot format, create an image from it and add it to the output.
-// Return the path of the image.
-std::string addDOT(std::string dot) {
-  if(!initializedDebug) initializeDebug("Debug Output", "dbg");
-  return dbg.addDOT(dot);
 }
 
 // Given a string, returns a version of the string with all the control characters that may appear in the 

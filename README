@@ -1,20 +1,23 @@
 Installation
 ------------
-This is the dbglog library. dbgLogTester.C contains a representative application 
-that illustrates the use of the library. To compile the library and the example, 
-just type 
+This is the dbglog library. dbgLogTester.C and dbgLogGraphTester.C contain representative  
+applications that illustrates the use of the library. To compile the library and the 
+example, just type:
 
 make
 
 Example code
 ------------
-To view the results of the example, run:
+To view the results of the example, run the following example codes:
 
 ./dbgLogTester
+./dbgLogGraphTester
 
-This produces directory dbg/ with the debug output. View file dbg/index.html 
+Each one produce directory dbg/ with the debug output. View file dbg/index.html 
 with Firefox (other browsers currently have issues with dbglog output) to read 
-the output produced by dbgLogTester.
+the output produced by the testers. dbgLogTester focuses on visualizing debug
+output and application scopes. dbgLogGraphTester shows how to use graphs to 
+visualize program executions.
 
 Graphviz support
 ----------------

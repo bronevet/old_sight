@@ -84,32 +84,40 @@
     return str + "\n" + indent + "}";
   }
 
+  var scriptEltID=0;
   function loadURLIntoDiv(doc, url, divName, continuationFunc) {
     var xhr= new XMLHttpRequest();
     xhr.open('GET', url, true);
     xhr.onreadystatechange= function() {
       //Wait until the data is fully loaded
       if (this.readyState!==4) return;
-      doc.getElementById(divName).innerHTML= this.responseText;
+      // Option 1:
+      //doc.getElementById(divName).innerHTML= this.responseText;
+      // Option 2:
+      var scriptNode = document.createElement('script_'+scriptEltID);
+      scriptEltID++;
+      scriptNode.innerHTML = this.responseText;
+      doc.getElementById(divName).appendChild(scriptNode);
+            
       if(typeof continuationFunc !== 'undefined')
         continuationFunc();
     };
     xhr.send();
   }
-  
+    
   // From http://www.javascriptkit.com/javatutors/loadjavascriptcss.shtml
   //  and http://stackoverflow.com/questions/950087/how-to-include-a-javascript-file-in-another-javascript-file
   function loadjscssfile(filename, filetype, continuationFunc){
-    if (filetype=="js"){ //if filename is a external JavaScript file
-      var fileref=document.createElement('script')
-      fileref.setAttribute("type","text/javascript")
-      fileref.setAttribute("src", filename)
-    }
-    else if (filetype=="css"){ //if filename is an external CSS file
+    if (filetype=="css"){ //if filename is an external CSS file
       var fileref=document.createElement("link")
       fileref.setAttribute("rel", "stylesheet")
       fileref.setAttribute("type", "text/css")
       fileref.setAttribute("href", filename)
+    //if filename is a external script file
+    } else { 
+      var fileref=document.createElement('script')
+      fileref.setAttribute("type", filetype)
+      fileref.setAttribute("src", filename)
     }
     
     if(typeof continuationFunc !== 'undefined') {
@@ -121,12 +129,45 @@
       document.getElementsByTagName("head")[0].appendChild(fileref)
   }
   
+  // Loads the given file and calls continuationFunc() on its contents
+  function loadFile(url, continuationFunc) {
+    var xhr= new XMLHttpRequest();
+    xhr.open('GET', url, true);
+    xhr.onreadystatechange= function() {
+      //Wait until the data is fully loaded
+      if (this.readyState!==4) return;
+      continuationFunc(this.responseText);
+    };
+    xhr.send();
+  }
+  
+  // Loads the given file. The file is assumed to contain the paths of scripts, one per line.
+  // After the loading is finished, calls continuationFunc()
+  function loadScriptsInFile(doc, url, continuationFunc) {
+    loadFile(url, function(text) {
+        var lines=text.split("\n");
+        
+        function recursiveLoad(lines, i) {
+          if(i<lines.length && lines[i] != "") {
+            var fields = lines[i].split(" ");
+            loadjscssfile(fields[0], fields[1],
+              function() {
+                recursiveLoad(lines, i+1);
+              }
+            )
+          } else 
+            continuationFunc();
+        }
+        recursiveLoad(lines, 0);
+      });
+  }
+  
   function loadSubFile(detailDoc, detailURL, detailDivName, sumDoc, sumURL, sumDivName, scriptURL, continuationFunc) {
     loadURLIntoDiv(detailDoc, detailURL, detailDivName,
                    function() { 
                      loadURLIntoDiv(sumDoc, sumURL, sumDivName,
                                     function() { 
-                                      loadjscssfile(scriptURL, "js", continuationFunc);
+                                      loadjscssfile(scriptURL, "text/javascript", continuationFunc);
                                     } ); } );
     
     

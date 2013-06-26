@@ -1,4 +1,5 @@
 #include "dbglog.h"
+#include "widgets.h"
 #include <map>
 #include <assert.h>
 using namespace std;
@@ -12,26 +13,6 @@ int fibScopeLinks(int a, scope::scopeLevel level, int verbosityLevel, list<int>&
                   map<list<int>, anchor>& OutBW,
                   bool doFWLinks);
 int fibIndent(int a, int verbosityLevel);
-
-class dottableExample: public dottable
-{
-  public:
-  // Returns a string that containts the representation of the object as a graph in the DOT language
-  // that has the given name
-  std::string toDOT(std::string graphName) {
-    ostringstream oss;
-    oss << "graph ethane {"<<endl;
-    oss << "     C_0 -- H_0 [type=s];"<<endl;
-    oss << "     C_0 -- H_1 [type=s];"<<endl;
-    oss << "     C_0 -- H_2 [type=s];"<<endl;
-    oss << "     C_0 -- C_1 [type=s];"<<endl;
-    oss << "     C_1 -- H_3 [type=s];"<<endl;
-    oss << "     C_1 -- H_4 [type=s];"<<endl;
-    oss << "     C_1 -- H_5 [type=s];"<<endl;
-    oss << " }";
-    return oss.str();
-  }
-};
 
 int main(int argc, char** argv)
 {
@@ -108,27 +89,13 @@ int main(int argc, char** argv)
     dbg << "There are two hierarchy nests. Sub-scopes at each level of one hierarchy link to the corresponding sub-scopes in the other. Clicking on these links will load up the corresponding scope and its parent scopes."<<endl;
     list<int> stack;
     map<list<int>, anchor> InFW, InBW, OutFW, OutBW;
-    fibScopeLinks(4, scope::high, 0, stack, InFW, InBW, OutFW, OutBW, true);
+    fibScopeLinks(5, scope::high, 0, stack, InFW, InBW, OutFW, OutBW, true);
     assert(stack.size()==0);
     map<list<int>, anchor> OutBW2, OutFW2;
-    fibScopeLinks(4, scope::high, 0, stack, OutFW, OutBW, OutBW2, OutFW2, false);
+    fibScopeLinks(5, scope::high, 0, stack, OutFW, OutBW, OutBW2, OutFW2, false);
   }
   
-  // Dot graph
-  dbg << "It is possible to generate dot graphs that describe relevant aspects of the code state.";
-  
-  {
-    scope dotStr("This graph was generated from a string:", scope::medium);
-    string imgPath = addDOT(string("graph graphname {\n     a -- b -- c;\n     b -- d;\n}"));
-    dbg << "imgPath=\""<<imgPath<<"\"\n";
-  }
-  
-  {
-    scope dotStr("This graph was generated from a dottable object:", scope::medium);
-    dottableExample ex;
-    string imgPath = addDOT(ex);
-    dbg << "imgPath=\""<<imgPath<<"\"\n";
-  }
+  dbg << "<h1>It is also possible to generate dot graphs that describe relevant aspects of the code state. Look at dbgLogGraphTester.C</h1>"<<endl;
   
   return 0;
 }
@@ -161,7 +128,7 @@ int fibScopeLinks(int a, scope::scopeLevel level, int verbosityLevel, list<int>&
                   bool doFWLinks) {
   stack.push_back(a); // Add this call to stack
   
-  /*dbg << "stack=&lt;";
+  /*dbg << "doFWLinks="<<doFWLinks<<", stack=&lt;";
   for(list<int>::iterator i=stack.begin(); i!=stack.end(); i++) {
     if(i!=stack.begin()) dbg << ", ";
     dbg << *i;
@@ -180,11 +147,11 @@ int fibScopeLinks(int a, scope::scopeLevel level, int verbosityLevel, list<int>&
     dbg << "=1."<<endl;
     if(doFWLinks) {
       anchor fwLink;
-      fwLink.link("Forward link"); dbg << endl;
+      dbg << fwLink.link("Forward link"); dbg << endl;
       OutFW[stack] = fwLink;
     }
     if(InBW.find(stack)!=InBW.end())
-    { InBW[stack].link("Backward link"); dbg<<endl; }
+    { dbg << InBW[stack].link("Backward link"); dbg<<endl; }
     
     //cout << "link="<<dbg.linkTo(linkScopes[stack], "go")<<endl;
     stack.pop_back(); // Remove this call from stack
@@ -196,11 +163,11 @@ int fibScopeLinks(int a, scope::scopeLevel level, int verbosityLevel, list<int>&
     
     if(doFWLinks) {
       anchor fwLink;
-      fwLink.link("Forward link"); dbg << endl;
+      dbg << fwLink.link("Forward link"); dbg << endl;
       OutFW[stack] = fwLink;
     }
     if(InBW.find(stack)!=InBW.end())
-    { InBW[stack].link("Backward link"); dbg<<endl; }
+    { dbg << InBW[stack].link("Backward link"); dbg<<endl; }
     
     //cout << "link="<<dbg.linkTo(linkScopes[stack], "go")<<endl;
     stack.pop_back(); // Remove this call from stack
