@@ -173,9 +173,17 @@
     
   }
 
+  function loadAnchorScriptsFile(anchorFileID, continuationFunc) {
+    if(!(anchorFileID in loadedAnchors))
+      return loadjscssfile('script/anchor_script.'+anchorFileID, 'text/javascript', 
+                function() { loadedAnchors[anchorFileID]=1; return continuationFunc(); } );
+    else
+      return continuationFunc();
+  }
+  
   function highlightLink(blockID, newcolor) {
     var sumLink = top.summary.document.getElementById("link"+blockID);
-    sumLink.style.backgroundColor= newcolor;
+    if(sumLink) sumLink.style.backgroundColor=newcolor;
   }
   function focusLinkSummary(blockID, e) {
     if(typeof e !== 'undefined') {
@@ -196,6 +204,7 @@
   
   // Anchors
   var anchors = new HashTable();
+  var loadedAnchors = {};
   
   function anchor(fileID, blockID) {
     this.fileID  = fileID;

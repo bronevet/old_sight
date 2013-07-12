@@ -26,3 +26,4 @@ of the graphviz library modify line 5 of the Makefile to specify this path. The
 default setting corresponds to the graphviz bin directory being on the PATH. If 
 graphviz is not available, comment line 5 out and dbglog will emit warnings for 
 all the dot graphs the user wishes to print.
+

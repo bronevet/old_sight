@@ -28,7 +28,7 @@ string createDir(string workDir, string dirName) {
   return fullDirName.str();
 }
 
-// Copy dirName from the ROOT_PATH to the workDir
+// Copy dirName from the source code path to the workDir
 string copyDir(string workDir, string dirName) {
   ostringstream fullDirName; fullDirName << workDir << "/" << dirName;
   
@@ -95,7 +95,19 @@ dbgStream dbg;
  ******************/
 int anchor::maxAnchorID=0;
 anchor anchor::noAnchor(false, -1);
+
+// Associates each anchor with its location (if known). Useful for connecting anchor objects with started out
+// unlocated (e.g. forward links) and then were located when we reached their target. Since there may be multiple
+// copies of the original unlocated anchor running around, these copies won't be automatically updated. However,
+// this map will always keep the latest information.
+// Note: an alternative design would use smart pointers, since it would remove the need for keeping copies of anchors
+//       around since no anchor would ever go out of scope. However, a dependence on boost or C++11 seems too much to add.
 map<int, location> anchor::anchorLocs;
+
+// Associates each anchor with a unique anchor ID. Useful for connecting multiple anchors that were created
+// independently but then ended up referring to the same location. We'll record the ID of the first one to reach
+// this location on locAnchorIDs and the others will be able to adjust themselves by adopting this ID.
+map<location, int> anchor::locAnchorIDs;
   
 anchor::anchor(/*dbgStream& myDbg, */bool located) /*: myDbg(myDbg)*/ {
   if(!initializedDebug) initializeDebug("Debug Output", "dbg");
@@ -113,7 +125,7 @@ anchor::anchor(const anchor& that) {
   anchorID = that.anchorID;
   loc      = that.loc;
   located  = that.located;
-  
+  update();
   //cout << "anchor::anchor() >>> this="<<str()<<" that="<<that.str()<<endl;
 }
 
@@ -137,9 +149,22 @@ void anchor::update() {
   cout << "        anchorLocs="<<endl;
   for(map<int, location>::iterator i=anchorLocs.begin(); i!=anchorLocs.end(); i++)
     cout << "            "<<i->first<<" => "<<dbg.blockGlobalStr(i->second)<<endl;*/
+  
+  // If this copy of the anchor object is not yet located, check if another copy of this object has reached
+  // a location and if so, copy it over here.
   if(!located && (anchorLocs.find(anchorID) != anchorLocs.end())) {
     located = true;
     loc = anchorLocs[anchorID];
+  }
+  
+  // If this is the first anchor at this location, associate this location with this anchor ID 
+  if(located) {
+    if(locAnchorIDs.find(loc) == locAnchorIDs.end())
+      locAnchorIDs[loc] = anchorID;
+    // If this is not the first anchor here, update this anchor object's ID to be the same as all
+    // the other anchors at this location
+    else
+      anchorID = locAnchorIDs[loc];
   }
 }
 
@@ -147,6 +172,7 @@ void anchor::operator=(const anchor& that) {
   anchorID = that.anchorID;
   loc      = that.loc;
   located  = that.located;
+  update();
 }
 
 bool anchor::operator==(const anchor& that) const {
@@ -205,8 +231,8 @@ const location& anchor::getLocation() const
 void anchor::reachedAnchor() {
   //dbg << "    reachedAnchor() located="<<located<<", anchorID="<<anchorID<<" dbg.getLocation()="<<dbg.blockGlobalStr(dbg.getLocation())<<"<BR>"<<endl;
   // If this anchor has already been set to point to its target location, emit a warning
-  if(located) 
-    cerr << "Warning: anchor "<<anchorID<<" is being set to multiple target locations" << endl;
+  if(located && loc != dbg.getLocation())
+    cerr << "Warning: anchor "<<anchorID<<" is being set to multiple target locations! current location="<<dbg.blockGlobalStr(loc)<<", new location="<<dbg.blockGlobalStr(dbg.getLocation())<< endl;
   else {
     located = true; // We've now reached this anchor's location in the output
     loc     = dbg.getLocation();
@@ -214,8 +240,16 @@ void anchor::reachedAnchor() {
     
     dbg.writeToAnchorScript(anchorID, loc);
     
-    // Record the connection between this anchor ID and the location in the global table
+    // Record the connection between this anchor ID and the location in the global table.
+    // If there are other copies of this anchor object with the same anchor ID they'll notice
+    // this new location when they call update and use this object's location. 
     anchorLocs[anchorID] = loc;
+    
+    // Update this anchor object based on the currently known about its location. 
+    // Since this object is known to be located, all that we'll do here is check if this is not
+    // the first anchor at this location and if so, update its anchorID to be the same as all
+    // the anchors at this location.
+    update();
   }
   //cout << "        this="<<str()<<endl;
 }
@@ -239,9 +273,16 @@ std::string anchor::getLinkJS() const {
     oss << "function() { focusLinkDetail('"<<dbg.blockGlobalStr(loc)<<"'); focusLinkSummary('"<<dbg.blockGlobalStr(loc)<<"');});";
   // If we have not yet reached this anchor's location in the output (it is a forward link)
   } else {
-    oss << "if(anchors.hasItem("<<anchorID<<")) { goToAnchor([], anchors.getItem("<<anchorID<<").fileID, "<<
-                    "function() { focusLinkDetail(anchors.getItem("<<anchorID<<").blockID); focusLinkSummary(anchors.getItem("<<anchorID<<").blockID); }); } ";
-    oss << "else { focusLinkDetail(anchors.getItem("<<anchorID<<").blockID); focusLinkSummary(anchors.getItem("<<anchorID<<").blockID); } ";
+    oss << "loadAnchorScriptsFile("<<(anchorID/dbg.getAnchorsPerScriptFile())<<", "<<
+             "function() { "<<
+               "if(anchors.hasItem("<<anchorID<<")) { "<<
+                 "goToAnchor([], anchors.getItem("<<anchorID<<").fileID, "<<
+                   "function() { focusLinkDetail(anchors.getItem("<<anchorID<<").blockID); focusLinkSummary(anchors.getItem("<<anchorID<<").blockID); }); "<<
+               "} else { "<<
+                 "focusLinkDetail(anchors.getItem("<<anchorID<<").blockID); focusLinkSummary(anchors.getItem("<<anchorID<<").blockID); "<<
+               "} "<<
+             "}"<<
+           ");";
   }
   return oss.str();
 }
@@ -599,12 +640,8 @@ void dbgStream::init(string title, string workDir, string imgDir, std::string tm
 
   numImages++;
   
-  ostringstream anchorScriptFName; anchorScriptFName << workDir << "/html/script/anchor_script";
-  try {
-    anchorScriptFile.open(anchorScriptFName.str().c_str());
-  } catch (ofstream::failure e)
-  { cout << "dbgStream::init() ERROR opening file \""<<anchorScriptFName.str()<<"\" for writing!"; exit(-1); }
-  
+  anchorsPerScriptFile = 1000;
+    
   stringstream scriptIncludesFName; scriptIncludesFName << workDir << "/html/script/script_includes";
   try {
     scriptIncludesFile.open(scriptIncludesFName.str().c_str());
@@ -624,7 +661,6 @@ dbgStream::~dbgStream()
   block* topB = exitFileLevel(true);
   delete topB;
   
-  anchorScriptFile.close();
   scriptIncludesFile.close();
   
   { ostringstream cmd;
@@ -667,7 +703,8 @@ void dbgStream::includeWidgetScript(std::string scriptPath, std::string scriptTy
     // !!! this function will be called at the start of a block, where the inserted <script> tag will be processed normally.
     // !!! However, if we insert this text in the middle of another tag, we'll cause an error. Checking for this condition 
     // !!! part of future work.
-    scriptIncludesFile << "widgets/" << scriptPath << " " << scriptType << endl;
+    scriptIncludesFile << "widgets/" << scriptPath << " " << scriptType << "\n";
+    scriptIncludesFile.flush();
   }
 }
 
@@ -996,7 +1033,18 @@ block* dbgStream::exitFileLevel(bool topLevel)
 
 // Record the mapping from the given anchor ID to the given string in the global script file
 void dbgStream::writeToAnchorScript(int anchorID, const location& myLoc) {
-  anchorScriptFile << "anchors.setItem("<<anchorID<<", new anchor("<<fileLevelJSIntArray(myLoc)<<", \""<<blockGlobalStr(myLoc)<<"\"));"<<endl;
+// Open the file that holds the anchorID's within this ID's block
+  ostringstream anchorScriptFName; anchorScriptFName << workDir << "/html/script/anchor_script."<<(anchorID/anchorsPerScriptFile);
+  try {
+    ofstream anchorScriptFile(anchorScriptFName.str().c_str(), std::fstream::app);
+
+    // Write the anchor's record into this file
+    anchorScriptFile << "anchors.setItem("<<anchorID<<", new anchor("<<fileLevelJSIntArray(myLoc)<<", \""<<blockGlobalStr(myLoc)<<"\"));"<<endl;
+
+    anchorScriptFile.close();
+
+  } catch (ofstream::failure e)
+  { cout << "dbgStream::init() ERROR opening file \""<<anchorScriptFName.str()<<"\" for writing!"; exit(-1); }
 }
 
 void dbgStream::printSummaryFileContainerHTML(string absoluteFileName, string relativeFileName, string title)
@@ -1061,8 +1109,8 @@ void dbgStream::printDetailFileContainerHTML(string absoluteFileName, string tit
   string fileID = fileLevelStr(loc);
   det << "\t\t\tloadScriptsInFile(document, 'script/script_includes', \n";
   det << "\t\t\t\tfunction() { loadURLIntoDiv(document, 'detail."<<fileID<<".body', 'detailContents', \n";
-  det << "\t\t\t\t\tfunction() { loadjscssfile('script/script."<<fileID<<"', 'text/javascript', \n";
-  det << "\t\t\t\t\t\tfunction() { loadjscssfile('script/anchor_script', 'text/javascript'); } \n";
+  det << "\t\t\t\t\tfunction() { loadjscssfile('script/script."<<fileID<<"', 'text/javascript'\n";//, \n";
+  //det << "\t\t\t\t\t\tfunction() { loadjscssfile('script/anchor_script', 'text/javascript'); } \n";
   det << "\t\t\t\t\t); }\n";
   det << "\t\t\t\t); }\n";
   det << "\t\t\t);\n";
@@ -1159,13 +1207,14 @@ block* dbgStream::exitBlock()
   
   lastB->printExit();
     
+  fileBufs.back()->userAccessing();
+  
   // We enfore the invariant that the number of open and close angle brackets must be balanced
   // between the entry into and exit from a block
   while(fileBufs.back()->getNumOpenAngles() > 0)
     (*this) << ">";
   
   this->flush();
-  fileBufs.back()->userAccessing();
 
   *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->blockDepth()+1)<<"</div></td></tr>\n";
   *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->blockDepth()+1)<<"</table>\n";
@@ -1219,6 +1268,19 @@ indent::indent(std::string space, int curDebugLevel, int targetDebugLevel) {
   else
     active = false;
 }
+
+indent::indent(int curDebugLevel, int targetDebugLevel) {
+  if(!initializedDebug) initializeDebug("Debug Output", "dbg");
+  
+  if(curDebugLevel >= targetDebugLevel) {
+    active = true;
+    //cout << "Entering indent space=\""<<space<<"\""<<endl;
+    dbg.addIndent("&nbsp;&nbsp;&nbsp;&nbsp;");
+  }
+  else
+    active = false;
+}
+
 indent::~indent() {
   if(active) {
     //cout << "Exiting indent"<<std::endl;

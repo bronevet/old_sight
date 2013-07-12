@@ -8,6 +8,7 @@
 #include <iostream>
 #include <sstream>
 #include <fstream>
+#include "dbglog.h"
 
 namespace dbglog {
 
@@ -58,6 +59,9 @@ class graphEdge {
     from(from), to(to), directed(directed)
   {}
   
+  const anchor& getFrom() { return from; }
+  const anchor& getTo()   { return to; }
+  
   bool operator<(const graphEdge& that) const {
     return (from < that.from) ||
            (from == that.from && to < that.to) ||
@@ -76,6 +80,7 @@ class dottable
 
 class graph: public block
 {
+  protected:
   class node {
     public:
     int ID;
@@ -112,6 +117,9 @@ class graph: public block
   
   graph();
   ~graph();
+
+  // Generates and returns the dot graph code for this graphgenDotGraph
+  virtual std::string genDotGraph();
   
   // Given a string representation of a dot graph, emits the graph's visual representation 
   // as a Canviz widget into the debug output.

@@ -10,10 +10,12 @@
 
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/time.h>
 
 using namespace std;
 
 //#define ROOT_PATH "/cygdrive/c/work/code/dbglog"
+#define DOT_PATH ""
 
 namespace dbglog {
 
@@ -202,51 +204,52 @@ void graph::initEnvironment() {
 }
 
 graph::~graph() {
-  #ifdef DOT_PATH
-  if(!graphOutput) { 
-    ostringstream dot;
-    dot << "digraph G {"<<endl;
-    
-    /*cout << "nodes="<<endl;
-    for(map<location, pair<int, string> >::iterator b=nodes.begin(); b!=nodes.end(); b++)
-      cout << "    " << dbg.blockGlobalStr(b->first)<< " => [" << b->second.first << ", " << b->second.second << "]"<<endl;*/
-    
-    for(map<location, node>::iterator b=nodes.begin(); b!=nodes.end(); b++)
-      dot << "\tnode_"<<b->second.ID<<" [shape=box, label=\""<<b->second.label<<"\", href=\"javascript:"<<b->second.a.getLinkJS()<<"\"];\n";
-    
-    // Between the time when an edge was inserted into edges and now, the anchors on both sides of each
-    // edge should have been located (attached to a concrete location in the output). This means that
-    // some of the edges are now redundant (e.g. multiple forward edges from one location that end up
-    // arriving at the same location). We thus create a new set of edges based on the original list.
-    // The set's equality checks will eliminate all duplicates.
-    
-    set<graphEdge> uniqueEdges;
-    for(list<graphEdge>::iterator e=edges.begin(); e!=edges.end(); e++)
-      uniqueEdges.insert(*e);
-    
-    /*cout << "edges="<<endl;
-    for(set<graphEdge>::iterator e=uniqueEdges.begin(); e!=uniqueEdges.end(); e++) {
-      cout << "    from="<<e->from.str("    ")<<" : found="<<(nodes.find(e->from.getLocation())!=nodes.end())<<" : "<<dbg.blockGlobalStr(e->from.getLocation())<<endl;
-      cout << "    to="<<e->to.str("    ")    <<" : found="<<(nodes.find(e->to.getLocation())!=nodes.end())  <<" : "<<dbg.blockGlobalStr(e->to.getLocation())  <<endl;
-      cout << "    from="<<e->from.str("    ")<<" : "<<nodes[e->from.getLocation()].first<<endl;
-      cout << "    to="<<e->to.str("    ")    <<" : "<<nodes[e->to.getLocation()].first<<endl;
-    }*/
-    for(set<graphEdge>::iterator e=uniqueEdges.begin(); e!=uniqueEdges.end(); e++) {
-      dot << "\tnode_" << nodes[e->from.getLocation()].ID << 
-             " -> "<<
-             "node_" << nodes[e->to.getLocation()].ID << 
-             (e->directed? "": "[dir=none]") << ";\n";
-    }
-    
-    dot << " }";
-    
-    //cout << "nodes="<<nodes.size()<<" dot=\""<<dot.str()<<"\"\n";
-    
-    outputCanvizDotGraph(dot.str());
+  if(!graphOutput) {
+    outputCanvizDotGraph(genDotGraph());
   }
-  #endif
   
   dbg.exitBlock();
+}
+
+// Generates and returns the dot graph code for this graph
+string graph::genDotGraph() {
+  ostringstream dot;
+  dot << "digraph G {"<<endl;
+
+  /*cout << "nodes="<<endl;
+  for(map<location, pair<int, string> >::iterator b=nodes.begin(); b!=nodes.end(); b++)
+    cout << "    " << dbg.blockGlobalStr(b->first)<< " => [" << b->second.first << ", " << b->second.second << "]"<<endl;*/
+
+  for(map<location, node>::iterator b=nodes.begin(); b!=nodes.end(); b++)
+    dot << "\tnode_"<<b->second.ID<<" [shape=box, label=\""<<b->second.label<<"\", href=\"javascript:"<<b->second.a.getLinkJS()<<"\"];\n";
+
+  // Between the time when an edge was inserted into edges and now, the anchors on both sides of each
+  // edge should have been located (attached to a concrete location in the output). This means that
+  // some of the edges are now redundant (e.g. multiple forward edges from one location that end up
+  // arriving at the same location). We thus create a new set of edges based on the original list.
+  // The set's equality checks will eliminate all duplicates.
+
+  set<graphEdge> uniqueEdges;
+  for(list<graphEdge>::iterator e=edges.begin(); e!=edges.end(); e++)
+    uniqueEdges.insert(*e);
+
+  /*cout << "edges="<<endl;
+  for(set<graphEdge>::iterator e=uniqueEdges.begin(); e!=uniqueEdges.end(); e++) {
+    cout << "    from="<<e->from.str("    ")<<" : found="<<(nodes.find(e->from.getLocation())!=nodes.end())<<" : "<<dbg.blockGlobalStr(e->from.getLocation())<<endl;
+    cout << "    to="<<e->to.str("    ")    <<" : found="<<(nodes.find(e->to.getLocation())!=nodes.end())  <<" : "<<dbg.blockGlobalStr(e->to.getLocation())  <<endl;
+    cout << "    from="<<e->from.str("    ")<<" : "<<nodes[e->from.getLocation()].first<<endl;
+    cout << "    to="<<e->to.str("    ")    <<" : "<<nodes[e->to.getLocation()].first<<endl;
+  }*/
+  for(set<graphEdge>::iterator e=uniqueEdges.begin(); e!=uniqueEdges.end(); e++) {
+    dot << "\tnode_" << nodes[e->from.getLocation()].ID << 
+           " -> "<<
+           "node_" << nodes[e->to.getLocation()].ID << 
+           (e->directed? "": "[dir=none]") << ";\n";
+  }
+
+  dot << " }";
+
+  return dot.str();
 }
 
 // Given a string representation of a dot graph, emits the graph's visual representation 

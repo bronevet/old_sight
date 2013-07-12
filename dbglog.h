@@ -44,7 +44,7 @@ typedef std::list<std::pair<int, std::list<int> > > location;
 //     the link.
 class anchor
 {
-  public:
+  protected:
   static int maxAnchorID;
   int anchorID;
   
@@ -55,6 +55,11 @@ class anchor
   // Note: an alternative design would use smart pointers, since it would remove the need for keeping copies of anchors
   //       around since no anchor would ever go out of scope. However, a dependence on boost or C++11 seems too much to add.
   static std::map<int, location> anchorLocs;
+  
+  // Associates each anchor with a unique anchor ID. Useful for connecting multiple anchors that were created
+  // independently but then ended up referring to the same location. We'll record the ID of the first one to reach
+  // this location on locAnchorIDs and the others will be able to adjust themselves by adopting this ID.
+  static std::map<location, int> locAnchorIDs;
   
   // The debug stream this anchor is associated with
   //dbgStream& myDbg;
@@ -71,6 +76,10 @@ class anchor
   anchor(/*dbgStream& myDbg, */bool located, int anchorID);
   
   void init(bool located);
+  
+  int getID() const { return anchorID; }
+  
+  bool isLocated() const { return located; }
   
   protected:
   // If this anchor is unlocated, checks anchorLocs to see if a location has been found and updates this
@@ -245,8 +254,11 @@ class dbgStream : public std::ostream
   std::map<std::string, std::string> includedScripts;
   // Records the paths of the files/directories that have been included/copied into the generated output
   std::set<std::string>     includedFiles;
-  // Global script file that stores the mapping between anchor IDs and their referents
-  std::ofstream             anchorScriptFile;
+  // Number of anchor IDs to store in a single anchor script file
+  int                       anchorsPerScriptFile;
+  public:
+  int getAnchorsPerScriptFile() const { return anchorsPerScriptFile; }
+  private:
   std::list<int>            fileLevel;
   location                  loc;
   // All the blocks within the current location. The top-level list denotes files.
@@ -279,7 +291,7 @@ public:
   dbgStream(std::string title, std::string workDir, std::string imgDir, std::string tmpDir);
   void init(std::string title, std::string workDir, std::string imgDir, std::string tmpDir);
   ~dbgStream();
-
+  
   // Switch between the owner class and user code writing text into this stream
   void userAccessing();
   void ownerAccessing();
@@ -370,8 +382,8 @@ extern dbgStream dbg;
 class indent {
 public:
   bool active;
-  indent(std::string space="&nbsp;&nbsp;&nbsp;&nbsp;", int curDebugLevel=0, int targetDebugLevel=0);
-  //indent(std::string space="&nbsp;&nbsp;&nbsp;&nbsp;");
+  indent(std::string space, int curDebugLevel=0, int targetDebugLevel=0);
+  indent(int curDebugLevel=0, int targetDebugLevel=0);
   ~indent();
 };
 
