@@ -1,0 +1,8 @@
+set pagination off
+set logging on
+set breakpoint pending on
+file /g/g15/bronevet/code/dbglog/dbgLogTester
+break dbglog.C:447
+cond 1 blockCount==12
+r 
+bt

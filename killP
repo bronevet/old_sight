@@ -1,0 +1,22 @@
+#!/usr/bin/perl
+
+if(scalar(@ARGV)==0) { die "ERROR: need at least one argument to identify processes to kill"; }
+
+my $ps = `ps -ef |grep $ENV{USER}`;
+my @lines = split(/\n/, $ps);
+
+foreach my $line (@lines)
+{
+	my @fields = split(/\s+/, $line);
+	if($fields[1] != $$) {
+		foreach my $field (@fields) {
+			foreach my $killStr (@ARGV) {
+				if($field =~ /$killStr/) { 
+					print  "kill -9 $fields[1]\n"; 
+					`kill -9 $fields[1]`; 
+					next;
+				}
+			}
+		}
+	}
+}
