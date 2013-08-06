@@ -27,6 +27,8 @@ class dottableExample: public dottable
 
 int main(int argc, char** argv)
 {
+  initializeDebug(argc, argv);
+
   // It is possible to write arbitrary text to the debug output
   dbg << "Welcome to the dbgLogLogTester" << endl;
   

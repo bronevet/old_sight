@@ -6,10 +6,12 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <iostream>
-
+#include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-
+#include "binreloc.h"
+#include <errno.h>
+#include "getAllHostnames.h" 
 using namespace std;
 
 //#define ROOT_PATH "/cygdrive/c/work/code/dbglog"
@@ -40,14 +42,90 @@ string copyDir(string workDir, string dirName) {
   return fullDirName.str();
 }
 
+void initializeDebug_internal(string title, string workDir);
+
+// Records the information needed to call the application
+bool saved_appExecInfo=false; // Indicates whether the application execution info has been saved
+int saved_argc = 0;
+char** saved_argv = NULL;
+char* saved_execFile = NULL;
+
+// The name of the host that this application is currently executing on
+char hostname[10000];
+
+// The current user's user name 
+char username[10000];
+
+void initializeDebug(int argc, char** argv, string title, string workDir) {
+  if(initializedDebug) return;
+
+  /*char fname[1000];
+  sprintf(fname, 1000, "%s/.dbginit", workDir); 
+  FILE* dbginit = fopen(fname, "w");
+  if(dbginit == NULL) { fprintf(stderr, "ERROR opening file \"%s\" for writing! %s\n", fname, strerror(errno)); exit(-1); }
+  
+  fclose(dbginit);*/
+  saved_argc = argc;
+  if(argc>0)
+    saved_argv = (char**)malloc(sizeof(char*) * argc);  
+  for(int i=0; i<argc; i++)
+    saved_argv[i] = strdup(argv[i]);
+
+  BrInitError error;
+  int ret = br_init_lib(&error);
+  if(!ret){ 
+    cerr << "ERROR reading application's executable name! "<<
+                 (error==BR_INIT_ERROR_NOMEM? "Cannot allocate memory." :
+                 (error==BR_INIT_ERROR_OPEN_MAPS? "Cannot open /proc/self/maps "+string(strerror(errno)) :
+                 (error==BR_INIT_ERROR_READ_MAPS? "The file format of /proc/self/maps is invalid; kernel bug?" :
+                 (error==BR_INIT_ERROR_DISABLED? "BinReloc is disabled (the ENABLE_BINRELOC macro is not defined)" :
+                  "???"
+            ))))<<endl;
+    exit(-1);
+  }
+  saved_execFile = br_find_exe(NULL);
+  if(saved_execFile==NULL) { cerr << "ERROR reading application's executable name after successful initialization!"<<endl; exit(-1); }
+
+  saved_appExecInfo=true;
+
+  if(!isPortUsed(GDB_PORT)) {
+    ostringstream cmd; cmd << ROOT_PATH << "/widgets/mongoose/mongoose -document_root "<<ROOT_PATH<<" -listening_ports "<<GDB_PORT<<"&";
+    system(cmd.str().c_str());
+  }
+  
+  initializeDebug_internal(title, workDir);
+}
+
 // Initializes the debug sub-system
 void initializeDebug(string title, string workDir)
 {
   if(initializedDebug) return;
-  
+ 
+  initializeDebug_internal(title, workDir);
+}
+
+void initializeDebug_internal(string title, string workDir)
+{
+  // Get the name of the current host
+  int ret = gethostname(hostname, 10000);
+
+  // Get the current user's username
+  if(getenv("USER")) 
+    strncpy(username, getenv("USER"), sizeof(username));
+  else if(getenv("USERNAME"))
+    strncpy(username, getenv("USERNAME"), sizeof(username));
+  else {
+    ostringstream cmd;
+    cmd << "id --user --name";
+    FILE* fp = popen(cmd.str().c_str(), "r");
+    if(fp == NULL) { cerr << "Failed to run command \""<<cmd.str()<<"\"!"<<endl; exit(-1); }
+    
+    if(fgets(username, sizeof(username), fp) == NULL) { cerr << "Failed to read output of \""<<cmd.str()<<"\"!"<<endl; exit(-1); }
+  }
+ 
   // Main output directory
   createDir(workDir, "");
-  
+
   // Directory where the html files go
   createDir(workDir, "html");
   
@@ -110,7 +188,7 @@ map<int, location> anchor::anchorLocs;
 map<location, int> anchor::locAnchorIDs;
   
 anchor::anchor(/*dbgStream& myDbg, */bool located) /*: myDbg(myDbg)*/ {
-  if(!initializedDebug) initializeDebug("Debug Output", "dbg");
+  //if(!initializedDebug) initializeDebug("Debug Output", "dbg");
   
   anchorID = maxAnchorID++;
   //dbg << "anchor="<<anchorID<<endl;
@@ -120,7 +198,7 @@ anchor::anchor(/*dbgStream& myDbg, */bool located) /*: myDbg(myDbg)*/ {
 }
 
 anchor::anchor(const anchor& that) {
-  if(!initializedDebug) initializeDebug("Debug Output", "dbg");
+  //if(!initializedDebug) initializeDebug("Debug Output", "dbg");
   
   anchorID = that.anchorID;
   loc      = that.loc;
@@ -132,7 +210,7 @@ anchor::anchor(const anchor& that) {
 anchor::anchor(/*dbgStream& myDbg, */bool located, int anchorID) : 
   located(located), anchorID(anchorID)
 {
-  if(!initializedDebug) initializeDebug("Debug Output", "dbg");  
+  //if(!initializedDebug) initializeDebug("Debug Output", "dbg");  
 }
 
 void anchor::init(bool located) {
@@ -262,6 +340,18 @@ std::string anchor::link(string text) const {
   return oss.str();
 }
 
+// Returns an <a href> tag that denotes a link to this anchor, using the default link image, which is followed by the given text.
+std::string anchor::linkImg(string text) const {
+  const_cast<anchor*>(this)->update();
+  
+  ostringstream oss; 
+  oss << "<a href=\"javascript:" << getLinkJS() << "\">"<<
+         "<img src=\"img/link"<<(isLocated()?"Up":"Down")<<".gif\">"<<
+          text<<
+         "</a>";
+  return oss.str();
+}
+
 // Returns the JavaScript code that links to this anchor, which can be embedded on other javascript code.
 std::string anchor::getLinkJS() const {
   const_cast<anchor*>(this)->update();
@@ -304,8 +394,11 @@ std::string anchor::str(std::string indent) const {
  ***** block *****
  *****************/
 
+int block::blockCount=0;
+
 // Initializes this block with the given label
 block::block(string label) : label(label), startA(false, -1) /*=noAnchor, except that noAnchor may not yet bee initialized)*/ {
+  advanceBlockCount();
   if(!initializedDebug) initializeDebug("Debug Output", "dbg");
 }
 
@@ -314,6 +407,7 @@ block::block(string label) : label(label), startA(false, -1) /*=noAnchor, except
 block::block(string label, const anchor& pointsTo) : 
   label(label), startA(false, -1) /*=noAnchor, except that noAnchor may not yet bee initialized)*/
 {
+  advanceBlockCount();
   if(!initializedDebug) initializeDebug("Debug Output", "dbg");
   
   // If we're given an anchor from a forward link to this region,
@@ -332,6 +426,7 @@ block::block(string label, const anchor& pointsTo) :
 block::block(string label, const set<anchor>& pointsTo) : 
   label(label), startA(false, -1) /*=noAnchor, except that noAnchor may not yet bee initialized)*/
 {
+  advanceBlockCount();
   if(!initializedDebug) initializeDebug("Debug Output", "dbg");
   
   // If we're given an anchor from a forward link to this region,
@@ -343,6 +438,14 @@ block::block(string label, const set<anchor>& pointsTo) :
   // a fresh anchor that refers to the start of this scope
   
   //cout << "block::block() anchor="<<getAnchorRef().str()<<endl;
+}
+
+// Increments block count. This function serves as the one location that we can use to target conditional
+// breakpoints that aim to stop when the block count is a specific number
+int block::advanceBlockCount() {
+  blockCount++;
+  // THIS COMMENT MARKS THE SPOT IN THE CODE AT WHICH GDB SHOULD BREAK
+  return blockCount;
 }
 
 void block::setLocation(const location& loc) { 
@@ -619,7 +722,7 @@ int dbgBuf::blockDepth()
 
 dbgStream::dbgStream() : std::ostream(&defaultFileBuf), initialized(false)
 {
-  if(!initializedDebug) initializeDebug("Debug Output", "dbg");
+//  if(!initializedDebug) initializeDebug("Debug Output", "dbg");
 }
 
 dbgStream::dbgStream(string title, string workDir, string imgDir, std::string tmpDir)
@@ -983,7 +1086,15 @@ string dbgStream::enterFileLevel(block* b, bool topLevel)
     { cout << "dbgStream::init() ERROR opening file \""<<sumAbsFName.str()<<"\" for writing!"; exit(-1); }
     scriptFiles.push_back(scriptFile);
     
-    // The script file starts out with a command to record that the file was loaded
+/*    // The script file starts out with a command to set the name via which the host on which the application executed can be reached
+    (*scriptFiles.back()) << "findReachableHost(new Array(";
+    list<string> hostnames = getAllHostnames();
+    for(list<string>::iterator h=hostnames.begin(); h!=hostnames.end(); h++) {
+      if(h!=hostnames.begin()) (*scriptFiles.back()) << ", ";
+      (*scriptFiles.back()) << "\"" <<*h << "\"";
+    }
+    (*scriptFiles.back()) << "));\n";*/
+    // Next, record that the file was loaded
     (*scriptFiles.back()) << "\trecordFile("<<fileLevelJSIntArray(loc)<<", 'loaded', 1);\n";
   }
   
@@ -1119,11 +1230,18 @@ void dbgStream::printDetailFileContainerHTML(string absoluteFileName, string tit
   det << "\t</head>\n";
   det << "\t<body>\n";
   det << "\t<h1>"<<title<<"</h1>\n";
+
   det << "\t\t<table width=\"100%\">\n";
   det << "\t\t\t<tr width=\"100%\"><td width=50></td><td width=\"100%\">\n";
   det << "\t\t\t<div id='detailContents'></div>\n";
   det << "\t\t\t</td></tr>\n";
   det << "\t\t</table>\n";
+
+  list<string> hostnames = getAllHostnames();
+  for(list<string>::iterator h=hostnames.begin(); h!=hostnames.end(); h++) {
+    det << "<img src=\"http://"<<*h<<":"<<GDB_PORT<<"/img/divDL.gif\" onload=\"javascript:hostnameReachable('"<<*h<<"')\" width=1 height=1>\n";
+  }
+
   det << "\t</body>\n";
   det << "</html>\n\n";
   

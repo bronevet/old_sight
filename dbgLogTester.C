@@ -16,6 +16,8 @@ int fibIndent(int a, int verbosityLevel);
 
 int main(int argc, char** argv)
 {
+  initializeDebug(argc, argv);
+  
   // It is possible to write arbitrary text to the debug output
   dbg << "Welcome to the dbgLogTester" << endl;
   
@@ -147,11 +149,11 @@ int fibScopeLinks(int a, scope::scopeLevel level, int verbosityLevel, list<int>&
     dbg << "=1."<<endl;
     if(doFWLinks) {
       anchor fwLink;
-      dbg << fwLink.link("Forward link"); dbg << endl;
+      dbg << fwLink.linkImg("Forward link"); dbg << endl;
       OutFW[stack] = fwLink;
     }
     if(InBW.find(stack)!=InBW.end())
-    { dbg << InBW[stack].link("Backward link"); dbg<<endl; }
+    { dbg << InBW[stack].linkImg("Backward link"); dbg<<endl; }
     
     //cout << "link="<<dbg.linkTo(linkScopes[stack], "go")<<endl;
     stack.pop_back(); // Remove this call from stack
@@ -163,11 +165,11 @@ int fibScopeLinks(int a, scope::scopeLevel level, int verbosityLevel, list<int>&
     
     if(doFWLinks) {
       anchor fwLink;
-      dbg << fwLink.link("Forward link"); dbg << endl;
+      dbg << fwLink.linkImg("Forward link"); dbg << endl;
       OutFW[stack] = fwLink;
     }
     if(InBW.find(stack)!=InBW.end())
-    { dbg << InBW[stack].link("Backward link"); dbg<<endl; }
+    { dbg << InBW[stack].linkImg("Backward link"); dbg<<endl; }
     
     //cout << "link="<<dbg.linkTo(linkScopes[stack], "go")<<endl;
     stack.pop_back(); // Remove this call from stack

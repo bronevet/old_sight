@@ -18,7 +18,20 @@ class printable
   virtual std::string str(std::string indent="")=0;
 };
 
+// Records the information needed to call the application
+extern bool saved_appExecInfo; // Indicates whether the application execution info has been saved
+extern int saved_argc;
+extern char** saved_argv;
+extern char* saved_execFile;
+
+// The name of the host that this application is currently executing on
+extern char hostname[];
+
+// The current user's user name
+extern char username[10000];
+
 // Initializes the debug sub-system
+void initializeDebug(int argc, char** argv, std::string title="Debug Output", std::string workDir="dbg");
 void initializeDebug(std::string title, std::string workDir);
 
 // Returns a string that contains n tabs
@@ -101,8 +114,11 @@ class anchor
   // Called when the file location of this anchor has been reached
   void reachedAnchor();
   
-// Returns an <a href> tag that denotes a link to this anchor. Embeds the given text in the link.
+  // Returns an <a href> tag that denotes a link to this anchor. Embeds the given text in the link.
   std::string link(std::string text) const;
+    
+  // Returns an <a href> tag that denotes a link to this anchor, using the default link image, which is followed by the given text.
+  std::string linkImg(std::string text="") const;
   
   // Returns the JavaScript code that links to this anchor, which can be embedded on other javascript code.
   std::string getLinkJS() const;
@@ -124,6 +140,10 @@ class block
   // Set of anchors that point to this block. Once we know this block's location we
   // locate them there.
   std::set<anchor> pointsToAnchors;
+
+  protected:
+  // Counts the number of times the block constructor has been called
+  static int blockCount;
   
   public:
   // Initializes this block with the given label
@@ -133,6 +153,10 @@ class block
   // Includes one or more incoming anchors thas should now be connected to this block.
   block(std::string label, const anchor& pointsTo);
   block(std::string label, const std::set<anchor>& pointsTo);
+ 
+  // Increments block count. This function serves as the one location that we can use to target conditional
+  // breakpoints that aim to stop when the block count is a specific number
+  int advanceBlockCount();
   
   std::string getLabel() const { return label; }
   const location& getLocation() const { return loc; }

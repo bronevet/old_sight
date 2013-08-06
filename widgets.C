@@ -119,7 +119,28 @@ void scope::printEntry(string loadCmd) {
   dbg << getLabel();
   dbg.ownerAccessing();
   dbg << "</a>\n";
-  
+  if(false) { //if(saved_appExecInfo) {
+    dbg << "<script type=\"text/javascript\">\n";
+    dbg << "  document.write(\"<a href=\\\"http://\"+hostname+\""<<":"<<GDB_PORT<<"/gdbwrap.cgi?execFile="<<saved_execFile<<"&tgtCount="<<blockCount<<"&args=";
+//    dbg << "(<a href=\"http://"<<hostname<<":"<<GDB_PORT<<"/gdbwrap.cgi?execFile="<<saved_execFile<<"&tgtCount="<<blockCount<<"&args=";
+    for(int i=1; i<saved_argc; i++) {
+      if(i!=1) dbg << " ";
+      dbg << saved_argv[i];
+    }
+    dbg << "\\\"><b>GDB</b></a>\");\n";
+    dbg << "</script>\n";
+  }
+  if(saved_appExecInfo) {
+    ostringstream setGDBLink; 
+    setGDBLink << "\"javascript:setGDBLink(this, ':"<<GDB_PORT<<"/gdbwrap.cgi?execFile="<<saved_execFile<<"&tgtCount="<<blockCount<<"&args=";
+    for(int i=1; i<saved_argc; i++) {
+      if(i!=1) dbg << " ";
+      setGDBLink<< saved_argv[i];
+    }
+    setGDBLink << "')\"";
+
+    dbg << "<a href=\"#\" onclick="<<setGDBLink.str()<<" onmouseover="<<setGDBLink.str()<<"><img src=\"img/gdb.gif\" width=40 height=21 alt=\"GDB\"></a>\n";
+  }
   if(loadCmd != "") {
     dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1);
     dbg << "<a href=\"javascript:"<<loadCmd<<")\">";

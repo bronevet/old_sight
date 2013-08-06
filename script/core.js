@@ -243,7 +243,49 @@
     }
     return undefined;
   }
+
+  var hostname="";
+/*  function findReachableHost(hosts) {
+    for(var i=0; i<hosts.length; i++)
+    {
+      if(hostReachable(hosts[i])) {
+        hostname = hosts[i];
+        return;
+      }
+    }
+  }
   
+  function hostReachable(hostname) {
+    // Handle IE and more capable browsers
+    var xhr = new ( window.ActiveXObject || XMLHttpRequest )( "Microsoft.XMLHTTP" );
+    var status;
+    
+    // Open new request as a HEAD to the root hostname with a random param to bust the cache
+    xhr.open( "HEAD", hostname, false );
+    
+    // Issue request and handle response
+    try {
+      xhr.send();
+      return ( xhr.status >= 200 && xhr.status < 300 || xhr.status === 304 );
+    } catch (error) {
+      return false;
+    }
+  }*/
+
+  function hostnameReachable(name) {
+//alert("hostnameReachable("+name+")");
+    hostname = name;
+  }
+
+  function openGDB(url) {
+  }
+
+  function setGDBLink(link, url) {
+    link.href = "http://"+hostname+url;
+    //alert("Setting link to to "+link.href);
+    return true;
+  }
+ 
 /*  var next = function() { 
     var next = function() { 
       var next = undefined;
