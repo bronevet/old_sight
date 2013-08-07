@@ -15,7 +15,7 @@
 using namespace std;
 
 //#define ROOT_PATH "/cygdrive/c/work/code/dbglog"
-#define DOT_PATH ""
+//#define DOT_PATH ""
 
 namespace dbglog {
 
@@ -208,7 +208,7 @@ void graph::initEnvironment() {
   pair<string, string> paths = dbg.createWidgetDir("graph");
   outDir = paths.first;
   htmlOutDir = paths.second;
-  cout << "outDir="<<outDir<<" htmlOutDir="<<htmlOutDir<<endl;
+  //cout << "outDir="<<outDir<<" htmlOutDir="<<htmlOutDir<<endl;
   
   dbg.includeFile("canviz-0.1");
   
@@ -276,7 +276,7 @@ string graph::genDotGraph() {
 // Given a string representation of a dot graph, emits the graph's visual representation 
 // as a Canviz widget into the debug output.
 void graph::outputCanvizDotGraph(std::string dot) {
-  #ifdef DOT_PATH
+//  #ifdef DOT_PATH
   ostringstream origDotFName;   origDotFName   << outDir << "/orig."   << widgetID << ".dot";
   ostringstream placedDotFName; placedDotFName << outDir << "/placed." << widgetID << ".dot";
 
@@ -288,7 +288,8 @@ void graph::outputCanvizDotGraph(std::string dot) {
   // Create the SVG file's picture of the dot file
   //ostringstream cmd; cmd << DOT_PATH << "dot -Tsvg -o"<<imgPath<<" "<<dotFName.str() << "-Tcmapx -o"<<mapFName.str()<<"&"; 
   // Create the explicit DOT file that details the graph's layout
-  ostringstream cmd; cmd << DOT_PATH << "dot "<<origDotFName.str()<<" -Txdot -o"<<placedDotFName.str()<<"&"; 
+  //ostringstream cmd; cmd << DOT_PATH << "dot "<<origDotFName.str()<<" -Txdot -o"<<placedDotFName.str()<<"&"; 
+  ostringstream cmd; cmd << ROOT_PATH << "/widgets/graphviz/bin/dot_static "<<origDotFName.str()<<" -Txdot -o"<<placedDotFName.str()<<"&"; 
   //cout << "Command \""<<cmd.str()<<"\"\n";
   system(cmd.str().c_str());
   
@@ -299,9 +300,9 @@ void graph::outputCanvizDotGraph(std::string dot) {
      "  canviz_"<<widgetID<<".setScale(1);\n" <<
      "  canviz_"<<widgetID<<".load('"<<htmlOutDir<<"/placed." << widgetID << ".dot');\n"); 
 
-  #else
+/*  #else
   dbg << "<b>graphviz not available</b>" << endl;
-  #endif
+  #endif*/
 
   graphOutput = true;
 }
