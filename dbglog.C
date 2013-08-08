@@ -1,3 +1,4 @@
+// Licence information included in file LICENCE
 #include "dbglog.h"
 #include <fstream>
 #include <iostream>
