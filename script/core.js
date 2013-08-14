@@ -162,15 +162,15 @@
       });
   }
   
-  function loadSubFile(detailDoc, detailURL, detailDivName, sumDoc, sumURL, sumDivName, scriptURL, continuationFunc) {
-    loadURLIntoDiv(detailDoc, detailURL, detailDivName,
-                   function() { 
-                     loadURLIntoDiv(sumDoc, sumURL, sumDivName,
-                                    function() { 
-                                      loadjscssfile(scriptURL, "text/javascript", continuationFunc);
-                                    } ); } );
-    
-    
+  function loadSubFile(detailDoc, fileID, detailURL, detailDivName, sumDoc, sumURL, sumDivName, scriptURL, continuationFunc) {
+    if(!getFile(fileID, "loaded")) {
+      loadURLIntoDiv(detailDoc, detailURL, detailDivName,
+                     function() { 
+                       loadURLIntoDiv(sumDoc, sumURL, sumDivName,
+                                      function() { 
+                                        loadjscssfile(scriptURL, "text/javascript", continuationFunc);
+                                      } ); } );
+    }
   }
 
   function loadAnchorScriptsFile(anchorFileID, continuationFunc) {
@@ -233,7 +233,6 @@
     // If this fileID has not yet been loaded
     if(!getFile(prefix, "loaded")) {
       console.debug('Loading '+prefix); 
-      var nextFunc = getFile(prefix, 'loadFunc');
       getFile(prefix, 'loadFunc')(
         function() { goToAnchor(prefix, suffix, continuationFunc); }
       );

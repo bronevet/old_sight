@@ -40,6 +40,8 @@ string copyDir(string workDir, string dirName) {
   int ret = system(cmd.str().c_str());
   if(ret == -1) { cout << "ERROR copying files from directory \""<<ROOT_PATH<<"/"<<dirName<<"\" directory \""<<fullDirName.str()<<"\"!"; exit(-1); }
     
+  chmod(fullDirName.str().c_str(), S_IRWXU);
+    
   return fullDirName.str();
 }
 
@@ -73,7 +75,7 @@ void initializeDebug(int argc, char** argv, string title, string workDir) {
     saved_argv[i] = strdup(argv[i]);
 
   BrInitError error;
-  int ret = br_init_lib(&error);
+  int ret = br_init(&error);
   if(!ret){ 
     cerr << "ERROR reading application's executable name! "<<
                  (error==BR_INIT_ERROR_NOMEM? "Cannot allocate memory." :
@@ -564,16 +566,15 @@ streamsize dbgBuf::xsputn(const char * s, streamsize n)
   cout << "  blocks.size()="<<blocks.size()<<", needIndent="<<needIndent<<endl;
   cout.flush();*/
   
-  // Reset justSynched since we're now adding new characters after the last line break, meaning that no 
-  // additional indent will be needed for this line
-  //justSynched = false;
+  //cout << "xputn() ownerAccess="<<ownerAccess<<" n="<<n<<" s=\""<<string(s)<<"\" query="<<attributes.query()<<"\n";
+  
+  // Only emit text if the current query on attributes evaluates to true
+  if(!attributes.query()) return n;
   
   if(needIndent) {
     int ret = printString(getIndent()); if(ret != 0) return 0;
     needIndent = false;
   }
-  
-  //cout << "xputn() ownerAccess="<<ownerAccess<<" n="<<n<<" s=\""<<string(s)<<"\"\n";
   // If the owner is printing, output their text exactly
   if(ownerAccess) {
     return baseBuf->sputn(s, n);
@@ -662,6 +663,9 @@ streamsize dbgBuf::xsputn(const char * s, streamsize n)
 // Sync buffer.
 int dbgBuf::sync()
 {
+  // Only emit text if the current query on attributes evaluates to true
+  if(!attributes.query()) return 0;
+  
   int r = baseBuf->pubsync();
   if(r!=0) return -1;
 
@@ -1279,7 +1283,7 @@ string dbgStream::enterBlock(block* b, bool newFileEntered)
   ostringstream loadCmd; // The command to open this file in the current view
   string fileID = fileLevelStr(b->getLocation());
   if(newFileEntered)
-    loadCmd << "loadSubFile(top.detail.document, 'detail."<<fileID<<".body', 'div"<<blockID<<"', "<<
+    loadCmd << "loadSubFile(top.detail.document, "<<fileLevelJSIntArray(loc)<<", 'detail."<<fileID<<".body', 'div"<<blockID<<"', "<<
                "top.summary.document, 'summary."<<fileID<<".body', 'sumdiv"<<blockID<<"', "<<
                "'script/script."<<fileID<<"'";
   

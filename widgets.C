@@ -23,36 +23,54 @@ namespace dbglog {
 /*****************
  ***** scope *****
  *****************/
-scope::scope(std::string label, scopeLevel level, int curDebugLevel, int targetDebugLevel) : 
+scope::scope(std::string label,                                    scopeLevel level, const attrOp& onoffOp) : 
   block(label)
-{
-  init(level, curDebugLevel, targetDebugLevel);
-}
+{ init(level, &onoffOp); }
 
-scope::scope(string label, const anchor& pointsTo, scopeLevel level, int curDebugLevel, int targetDebugLevel): 
+scope::scope(string label, const anchor& pointsTo,                 scopeLevel level, const attrOp& onoffOp): 
   block(label, pointsTo)
-{
-  init(level, curDebugLevel, targetDebugLevel);
-}
+{ init(level, &onoffOp); }
 
-scope::scope(string label, const set<anchor>& pointsTo, scopeLevel level, int curDebugLevel, int targetDebugLevel) :
+scope::scope(string label, const set<anchor>& pointsTo,            scopeLevel level, const attrOp& onoffOp) :
   block(label, pointsTo)
-{
-  init(level, curDebugLevel, targetDebugLevel);
-}
+{ init(level, &onoffOp); }
+
+scope::scope(std::string label,                                                      const attrOp& onoffOp) : 
+  block(label)
+{ init(scope::medium, &onoffOp); }
+
+scope::scope(string label, const anchor& pointsTo,                                   const attrOp& onoffOp): 
+  block(label, pointsTo)
+{ init(scope::medium, &onoffOp); }
+
+scope::scope(string label, const set<anchor>& pointsTo,                             const attrOp& onoffOp) :
+  block(label, pointsTo)
+{ init(scope::medium, &onoffOp); }
+
+scope::scope(std::string label,                                   scopeLevel level) :
+  block(label)
+{ init(level, NULL); }
+
+scope::scope(std::string label, const anchor& pointsTo,           scopeLevel level) :
+  block(label, pointsTo)
+{ init(level, NULL); }
+  
+scope::scope(std::string label, const std::set<anchor>& pointsTo, scopeLevel level) :
+  block(label, pointsTo)
+{ init(level, NULL); }
 
 std::vector<std::string> scope::colors;
 int scope::colorIdx=0; // The current index into the list of colors 
 
 // Common initialization code
-void scope::init(scopeLevel level, int curDebugLevel, int targetDebugLevel)
+void scope::init(scopeLevel level, const attrOp* onoffOp)
 {
   //cout << "scope::init() anchor="<<getAnchorRef().str()<<endl;
   
   // If the colors list has not yet been initialized, do so now
   if(colors.size() == 0) {
     // Initialize colors with a list of light pastel colors 
-    colors.push_back("FF97E8");
+    /*colors.push_back("FF97E8");
     colors.push_back("75D6FF");
     colors.push_back("72FE95");
     colors.push_back("8C8CFF");
@@ -68,10 +86,24 @@ void scope::init(scopeLevel level, int curDebugLevel, int targetDebugLevel)
     colors.push_back("F9FDFF");
     colors.push_back("FFFFC8");
     colors.push_back("5757FF");
-    colors.push_back("6FFF44");
+    colors.push_back("6FFF44");*/
+    colors.push_back("8DD3C7");
+    colors.push_back("FFFFB3");
+    colors.push_back("BEBADA");
+    colors.push_back("FB8072");
+    colors.push_back("80B1D3");
+    colors.push_back("FDB462");
+    colors.push_back("B3DE69");
+    colors.push_back("FCCDE5");
+    colors.push_back("D9D9D9");
+    colors.push_back("BC80BD");
+    colors.push_back("CCEBC5");
+    colors.push_back("FFED6F");
   }
   
-  if(curDebugLevel >= targetDebugLevel) {
+  // If the current attribute query evaluates to true (we're emitting debug output) AND
+  // either onoffOp is not provided or its evaluates to true
+  if(attributes.query() && (onoffOp? onoffOp->apply(): true)) {
     active = true;
     this->level = level;
     // If this block corresponds to a new file, this string will be set to the Javascript command to 
@@ -181,6 +213,19 @@ std::string graph::htmlOutDir="";
 int graph::maxWidgetID=0;
 
 graph::graph() : block("Graph") {
+  init();
+}
+
+graph::graph(const attrOp& onoffOp) : block("Graph") {
+  // If the current attribute query evaluates to true (we're emitting debug output) AND
+  // either onoffOp is not provided or its evaluates to true
+  if(attributes.query() && onoffOp.apply())
+    init();
+}
+
+void graph::init() {
+  active = true;
+  
   dbg.enterBlock(this, false);
   //imgPath = dbg.addImage("svg");
   maxNodeID = 0;
@@ -226,6 +271,8 @@ void graph::initEnvironment() {
 }
 
 graph::~graph() {
+  if(!active) return;
+  
   if(!graphOutput) {
     outputCanvizDotGraph(genDotGraph());
   }
@@ -290,7 +337,7 @@ void graph::outputCanvizDotGraph(std::string dot) {
   //ostringstream cmd; cmd << DOT_PATH << "dot -Tsvg -o"<<imgPath<<" "<<dotFName.str() << "-Tcmapx -o"<<mapFName.str()<<"&"; 
   // Create the explicit DOT file that details the graph's layout
   //ostringstream cmd; cmd << DOT_PATH << "dot "<<origDotFName.str()<<" -Txdot -o"<<placedDotFName.str()<<"&"; 
-  ostringstream cmd; cmd << ROOT_PATH << "/widgets/graphviz/bin/dot_static "<<origDotFName.str()<<" -Txdot -o"<<placedDotFName.str()<<"&"; 
+  ostringstream cmd; cmd << ROOT_PATH << "/widgets/graphviz/bin/dot "<<origDotFName.str()<<" -Txdot -o"<<placedDotFName.str()<<"&"; 
   //cout << "Command \""<<cmd.str()<<"\"\n";
   system(cmd.str().c_str());
   

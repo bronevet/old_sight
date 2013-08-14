@@ -12,11 +12,71 @@
 #include <stdio.h>
 #include "dbglog.h"
 
+/*
+This file implements support for attributes. An attribute is a key->value mapping that is set by the application. Different mappings may 
+exist during different regions of debug output. They are used to 1. control which text is emitted by dbglog (less emitted text means 
+better performance) and 2. to tag the emitted blocks so that users can select the ones they wish to view in the browser. Attributes 
+provide a flexible mechanism to control which blocks they wish to view based on constraints on the values of keys that they declare.
+A simple use-case would be an application that has multiple debug levels. It sets the debug level at the start of the execution, recording
+it as an attribute, and then uses attribute operations to indicate the blocks that have debug levels higher than the currently selected 
+one and should thus not be emitted into the output. Alternately, all blocks may be emitted and the filtering can be done manually by the 
+user from inside the browser.
+
+Attributes are created by declaring objects of type attr:
+  attr keyvalAttribute("key", (long)value);
+The user provides the attribute's name and value. Attribute values may be one of the following types: string, void*, long or double.
+Where there is ambiguity users are expected to cast the value to the type they desire. The key->value mapping is active for as long
+as the variable is in scope. It is possible to associate multiple values with the same key.
+
+Whethe debug blocks are emitted is controlled by declaring query objects:
+  attrIf aif(attrEQ("key", (long)testValue, attrOp::any));
+This indicates that while this object is in scope debug output is only emitted if Any value mapped to the key is Equal to testValue.
+The above declaration contains several components:
+  - query type (attrIf, attrAnd, attrOr)
+  - operation (attrEQ, attrNEQ, attrLT, attrLE, attrGT, attrGE, attrRange)
+  - key name
+  - test value
+  - collection type (attrOp::any or attrOp::all)
+
+Queries are constructed as a sequence that is defined by the nesting structure of query objects. They denote
+formulas of form ((key0 RelOp val0) LogOp ((key1 RelOp val1) LogOp ((key2 RelOp val2) LogOp ... True)))
+Note that the deepest term in every formula is True, meaning that if no queries are specified debug output is emitted.
+  example:
+  {attrAnd i(attrEq("key0", (long)testValue0));
+    // debug output is emitted here only if(key0 = testValue0 AND True)
+    {attrIf i(attrEq("key1", (long)testValue1));
+      // debug output is emitted here only if(key1 = testValue1)
+      {attrAnd a(attrEq("key2", (long)testValue2));
+        // debug output is emitted here only if(key2 = testValue2 AND key1 = testValue1)
+        {attrOr o(attrEq("key3", (long)testValue3));
+           // debug output is emitted here only if(key3=testValue3 OR (key2 = testValue2 AND key1 = testValue1))
+        }
+      }
+    }
+  }
+  // debug output here is always emitted
+Query Types:
+  attrAnd/attrOr: Ands/Ors a new operation to the existing query
+  attrIf: Ignores the existing query and begins a new query with the given operation as its deepest term
+Operations: 
+  attrEQ, attrNEQ, attrLT, attrLE, attrGT, attrGE: equalities and inequalities that work on all value types
+  attrRange: takes as input two numbers lb, ub of type long or double and returns true if a given key's value is in range [lb, ub) (lb<=val<ub)
+Collection types: each key may be mapped to more than one value.
+  attrOp::any: operation returns true if it evaluates to true for ANY value associated with the key
+  attrOp::all: operation returns true if it evaluates to true for ALL values associated with the key
+*/
+
+namespace dbglog {
 class attrOp;
+
+// ****************************
+// ***** Attribute Values *****
+// ****************************
 
 // Wrapper class for strings, integers and floating point numbers that keeps track of the 
 // type of its contents and allows functors that work on only one of these types to be applied.
 class attrValue {
+  public:
   typedef enum {strT, ptrT, intT, floatT} valueType;
   
   friend class attrOp;
@@ -44,6 +104,15 @@ class attrValue {
   attrValue(const attrValue& that);
   ~attrValue();
   
+  // Returns the type of this attrValue's contents
+  valueType getType() const;
+  
+  // Return the contents of this attrValue, aborting if there is a type incompatibility
+  std::string getStr() const;
+  void*       getPtr() const;
+  long        getInt() const;
+  double      getFloat() const;
+  
   // Implementations of the relational operators
   bool operator==(const attrValue& that) const;
   bool operator<(const attrValue& that) const;
@@ -60,9 +129,16 @@ class attrValue {
   std::string str() const;
 };
 
+// ********************************
+// ***** Attribute Operations *****
+// ********************************
+
 // An operation that may be applied to an attrValue to probe its contents
 class attrOp
 {
+  // The key that is being evaluated
+  std::string key;
+  
   // All/Any mode: the result of applying the operation is true only if it is true for All/Any the values associated with some key
   // Any mode: 
   public:
@@ -71,27 +147,27 @@ class attrOp
   applyType type;
   
   public:
-  attrOp(applyType type) : type(type) {}
+  attrOp(std::string key, applyType type) : key(key), type(type) {}
   
   // For each type of value the functor must provide an implements*() method that 
   // returns whether the functor is applicable to this value type and an apply*()
   // method that can actually be applied to values of this type.
   
-  virtual bool implementsString() { return false; }
-  virtual bool applyString(std::string& val) { throw "Cannot call attrOp::applyString()!"; }
+  virtual bool implementsString() const { return false; }
+  virtual bool applyString(std::string& val) const { throw "Cannot call attrOp::applyString()!"; }
   
-  virtual bool implementsPtr() { return false; }
-  virtual bool applyPtr(void*& val) { throw "Cannot call attrOp::applyPtr()!";  }
+  virtual bool implementsPtr() const { return false; }
+  virtual bool applyPtr(void*& val) const { throw "Cannot call attrOp::applyPtr()!";  }
   
-  virtual bool implementsInt() { return false; }
-  virtual bool applyInt(long& val) { throw "Cannot call attrOp::applyInt()!";  }
+  virtual bool implementsInt() const { return false; }
+  virtual bool applyInt(long& val) const { throw "Cannot call attrOp::applyInt()!";  }
   
-  virtual bool implementsFloat() { return false; }
-  virtual bool applyFloat(double& val) { throw "Cannot call attrOp::applyFloat()!";  }
+  virtual bool implementsFloat() const { return false; }
+  virtual bool applyFloat(double& val) const { throw "Cannot call attrOp::applyFloat()!";  }
   
   // Applies the given functor to this given value. Throws an exception if the functor
   // is not applicable to this value type.
-  bool apply(const std::set<attrValue>& vals);
+  bool apply() const;
   
   // Returns a human-readable representation of this object
   virtual std::string str() const=0;
@@ -101,52 +177,180 @@ class attrOp
 class universalAttrOp : public attrOp
 {
   public:
-  universalAttrOp(applyType type) : attrOp(type) {}
+  universalAttrOp(std::string key, applyType type) : attrOp(key, type) {}
   
-  bool implementsString() { return true; }
-  bool implementsPtr()    { return true; }
-  bool implementsInt()    { return true; }
-  bool implementsFloat()  { return true; } 
+  bool implementsString() const { return true; }
+  bool implementsPtr()    const { return true; }
+  bool implementsInt()    const { return true; }
+  bool implementsFloat()  const { return true; } 
 };
 
 // Special operation that always returns true and is used in cases where we need a no-op
 class attrNullOp : public universalAttrOp
 {
   public:
-  attrNullOp() : universalAttrOp(any) {}
-  bool applyString(std::string& that) { return true; }
-  bool applyPtr(void*& that)          { return true; }
-  bool applyInt(long& that)           { return true; }
-  bool applyFloat(double& that)       { return true; }
+  attrNullOp() : universalAttrOp("", any) {}
+  bool applyString(std::string& that) const { return true; }
+  bool applyPtr(void*& that)          const { return true; }
+  bool applyInt(long& that)           const { return true; }
+  bool applyFloat(double& that)       const { return true; }
   
   // Returns a human-readable representation of this object
   std::string str() const { return "attrNullOp"; }
 };
-attrNullOp NullOp;
+extern attrNullOp NullOp;
 
-class attrEq : public universalAttrOp
+// = Equality test
+class attrEQ : public universalAttrOp
 {
   attrValue val;
   public:
-  attrEq(const attrValue&   val, applyType type) : universalAttrOp(type), val(val) {}
-  attrEq(const std::string& val, applyType type) : universalAttrOp(type), val(val) {}
-  attrEq(char*              val, applyType type) : universalAttrOp(type), val(val) {}
-  attrEq(void*              val, applyType type) : universalAttrOp(type), val(val) {}
-  attrEq(long               val, applyType type) : universalAttrOp(type), val(val) {}
-  attrEq(double             val, applyType type) : universalAttrOp(type), val(val) {}
+  attrEQ(std::string key, const attrValue&   val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
+  attrEQ(std::string key, const std::string& val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
+  attrEQ(std::string key, char*              val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
+  attrEQ(std::string key, void*              val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
+  attrEQ(std::string key, long               val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
+  attrEQ(std::string key, double             val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
   
-  bool applyString(std::string& that) { return val == attrValue(that); }
-  bool applyPtr(void*& that)          { return val == attrValue(that); }
-  bool applyInt(long& that)           { return val == attrValue(that); }
-  bool applyFloat(double& that)       { return val == attrValue(that); }
+  bool applyString(std::string& that) const { return val == attrValue(that); }
+  bool applyPtr(void*& that)          const { return val == attrValue(that); }
+  bool applyInt(long& that)           const { return val == attrValue(that); }
+  bool applyFloat(double& that)       const { return val == attrValue(that); }
   
   // Returns a human-readable representation of this object
-  std::string str() const { return "attrEq"; }
+  std::string str() const { return "attrEQ"; }
 };
 
-// ...
+// != Equality test
+class attrNEQ : public universalAttrOp
+{
+  attrValue val;
+  public:
+  attrNEQ(std::string key, const attrValue&   val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
+  attrNEQ(std::string key, const std::string& val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
+  attrNEQ(std::string key, char*              val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
+  attrNEQ(std::string key, void*              val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
+  attrNEQ(std::string key, long               val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
+  attrNEQ(std::string key, double             val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
+  
+  bool applyString(std::string& that) const { return val != attrValue(that); }
+  bool applyPtr(void*& that)          const { return val != attrValue(that); }
+  bool applyInt(long& that)           const { return val != attrValue(that); }
+  bool applyFloat(double& that)       const { return val != attrValue(that); }
+  
+  // Returns a human-readable representation of this object
+  std::string str() const { return "attrNEQ"; }
+};
+
+// < Inequality test
+class attrLT : public universalAttrOp
+{
+  attrValue val;
+  public:
+  attrLT(std::string key, const attrValue&   val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
+  attrLT(std::string key, const std::string& val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
+  attrLT(std::string key, char*              val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
+  attrLT(std::string key, void*              val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
+  attrLT(std::string key, long               val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
+  attrLT(std::string key, double             val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
+  
+  bool applyString(std::string& that) const { return val < attrValue(that); }
+  bool applyPtr(void*& that)          const { return val < attrValue(that); }
+  bool applyInt(long& that)           const { return val < attrValue(that); }
+  bool applyFloat(double& that)       const { return val < attrValue(that); }
+  
+  // Returns a human-readable representation of this object
+  std::string str() const { return "attrLT"; }
+};
+
+// <= Inequality test
+class attrLE : public universalAttrOp
+{
+  attrValue val;
+  public:
+  attrLE(std::string key, const attrValue&   val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
+  attrLE(std::string key, const std::string& val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
+  attrLE(std::string key, char*              val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
+  attrLE(std::string key, void*              val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
+  attrLE(std::string key, long               val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
+  attrLE(std::string key, double             val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
+  
+  bool applyString(std::string& that) const { return val <= attrValue(that); }
+  bool applyPtr(void*& that)          const { return val <= attrValue(that); }
+  bool applyInt(long& that)           const { return val <= attrValue(that); }
+  bool applyFloat(double& that)       const { return val <= attrValue(that); }
+  
+  // Returns a human-readable representation of this object
+  std::string str() const { return "attrLE"; }
+};
+
+// > Inequality test
+class attrGT : public universalAttrOp
+{
+  attrValue val;
+  public:
+  attrGT(std::string key, const attrValue&   val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
+  attrGT(std::string key, const std::string& val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
+  attrGT(std::string key, char*              val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
+  attrGT(std::string key, void*              val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
+  attrGT(std::string key, long               val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
+  attrGT(std::string key, double             val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
+  
+  bool applyString(std::string& that) const { return val > attrValue(that); }
+  bool applyPtr(void*& that)          const { return val > attrValue(that); }
+  bool applyInt(long& that)           const { return val > attrValue(that); }
+  bool applyFloat(double& that)       const { return val > attrValue(that); }
+  
+  // Returns a human-readable representation of this object
+  std::string str() const { return "attrGT"; }
+};
+
+// >= Inequality test
+class attrGE : public universalAttrOp
+{
+  attrValue val;
+  public:
+  attrGE(std::string key, const attrValue&   val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
+  attrGE(std::string key, const std::string& val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
+  attrGE(std::string key, char*              val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
+  attrGE(std::string key, void*              val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
+  attrGE(std::string key, long               val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
+  attrGE(std::string key, double             val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
+  
+  bool applyString(std::string& that) const { return val >= attrValue(that); }
+  bool applyPtr(void*& that)          const { return val >= attrValue(that); }
+  bool applyInt(long& that)           const { return val >= attrValue(that); }
+  bool applyFloat(double& that)       const { return val >= attrValue(that); }
+  
+  // Returns a human-readable representation of this object
+  std::string str() const { return "attrGE"; }
+};
+
+// Range test. Checks that val is in range [lb, ub)
+class attrRange : public attrOp
+{
+  attrValue lb;
+  attrValue ub;
+  
+  public:
+  attrRange(std::string key, long   lb, long   ub, applyType type) : attrOp(key, type), lb(lb), ub(ub) {}
+  attrRange(std::string key, double lb, double ub, applyType type) : attrOp(key, type), lb(lb), ub(ub) {}
+  
+  bool implementsInt()    const { return true; }
+  bool implementsFloat()  const { return true; }
+  
+  bool applyInt(long& that)     const;
+  bool applyFloat(double& that) const;
+  
+  // Returns a human-readable representation of this object
+  std::string str() const { return "attrRange"; }
+};
 
 class attributesC;
+
+// *****************************
+// ***** Attribute Queries *****
+// *****************************
 
 // An attrQuery implements queries that may be performed on attributes. A query is a list of subQuery objects,
 // each of which can evaluate to true or false and optionally propagate the query to its 
@@ -156,9 +360,6 @@ class attrQuery;
 class attrSubQuery
 {
   protected:
-  // The key that is being evaluated
-  std::string key;
-    
   // The operation that will be performed on the value associated with the key
   attrOp* op;
   
@@ -168,7 +369,7 @@ class attrSubQuery
   friend class attrQuery;
   
   public:
-  attrSubQuery(std::string key, attrOp* op) : key(key), op(op) {}
+  attrSubQuery(attrOp* op) : op(op) {}
   ~attrSubQuery() { delete op; }
   
   // Performs the query on either the given attributes object or the one defined globally
@@ -197,7 +398,7 @@ class attrQuery
 class attrSubQueryAnd : public attrSubQuery
 {
   public:
-  attrSubQueryAnd(std::string key, attrOp* op) : attrSubQuery(key, op) {}
+  attrSubQueryAnd(attrOp* op) : attrSubQuery(op) {}
     
   // Applies the operator to the values at the given key. The && ensures that if the operator returns true,
   // the query is propagated to the previous attrSubQuery object. If the previous object is NULL, returns true.
@@ -207,7 +408,7 @@ class attrSubQueryAnd : public attrSubQuery
 class attrSubQueryOr : public attrSubQuery
 {
   public:
-  attrSubQueryOr(std::string key, attrOp* op) : attrSubQuery(key, op) {}
+  attrSubQueryOr(attrOp* op) : attrSubQuery(op) {}
     
   // Applies the operator to the values at the given key. The || ensures that if the operator returns false,
   // the query is propagated to the previous attrSubQuery object. If the previous object is NULL, returns false.
@@ -217,7 +418,7 @@ class attrSubQueryOr : public attrSubQuery
 class attrSubQueryIf : public attrSubQuery
 {
   public:
-  attrSubQueryIf(std::string key, attrOp* op) : attrSubQuery(key, op) {}
+  attrSubQueryIf(attrOp* op) : attrSubQuery(op) {}
   
   // Applies the operator to the values at the given key, returning its result. This object never propagates
   // queries to its predecessors.
@@ -227,7 +428,7 @@ class attrSubQueryIf : public attrSubQuery
 class attrSubQueryTrue : public attrSubQuery
 {
   public:
-  attrSubQueryTrue() : attrSubQuery(std::string(""), &NullOp) {}
+  attrSubQueryTrue() : attrSubQuery(&NullOp) {}
   
   // Always returns true
   bool query(const attributesC& attr);
@@ -236,12 +437,17 @@ class attrSubQueryTrue : public attrSubQuery
 class attrSubQueryFalse : public attrSubQuery
 {
   public:
-  attrSubQueryFalse() : attrSubQuery(std::string(""), &NullOp) {}
+  attrSubQueryFalse() : attrSubQuery(&NullOp) {}
   
   // Always returns false
   bool query(const attributesC& attr);
 };
 
+// ******************************
+// ***** Attribute Database *****
+// ******************************
+
+// Maintains the mapping from atribute keys to values
 class attributesC
 {
   // --- STORAGE ---
@@ -321,6 +527,10 @@ class attributesC
 
 extern attributesC attributes;
 
+// *******************************
+// ***** Attribute Interface *****
+// *******************************
+
 // C++ interface for attribute creation, destruction
 class attr
 {
@@ -354,36 +564,37 @@ class attr
 
 class attrAnd: public attrSubQueryAnd { 
   public:
-  attrAnd(std::string key, attrOp* op) : attrSubQueryAnd(key, op) 
+  attrAnd(attrOp* op) : attrSubQueryAnd(op) 
   { attributes.push(this); }
   ~attrAnd() { attributes.pop(); }
 };
 
 class attrOr: public attrSubQueryOr { 
   public:
-  attrOr(std::string key, attrOp* op) : attrSubQueryOr(key, op) 
+  attrOr(attrOp* op) : attrSubQueryOr(op) 
   { attributes.push(this); }
   ~attrOr() { attributes.pop(); }
 };
 
 class attrIf: public attrSubQueryIf { 
   public:
-  attrIf(std::string key, attrOp* op) : attrSubQueryIf(key, op) 
+  attrIf(attrOp* op) : attrSubQueryIf(op) 
   { attributes.push(this); }
   ~attrIf() { attributes.pop(); }
 };
 
 class attrTrue: public attrSubQueryTrue { 
   public:
-  attrTrue(std::string key, attrOp* op) : attrSubQueryTrue() 
+  attrTrue(attrOp* op) : attrSubQueryTrue() 
   { attributes.push(this); }
   ~attrTrue() { attributes.pop(); }
 };
   
 class attrFalse: public attrSubQueryFalse { 
   public:
-  attrFalse(std::string key, attrOp* op) : attrSubQueryFalse() 
+  attrFalse(attrOp* op) : attrSubQueryFalse() 
   { attributes.push(this); }
   ~attrFalse() { attributes.pop(); }
 };
   
+}; //dbglog

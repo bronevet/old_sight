@@ -46,7 +46,11 @@ list<string> getAllHostnames()
   char path[1035];
 
   /* Open the command for reading. */
+#if defined(__CYGWIN__)
+  fp = popen("hostname", "r");
+#else
   fp = popen("hostname -A", "r");
+#endif
   if (fp == NULL) {
     printf("Failed to run command\n" );
     exit;

@@ -103,9 +103,11 @@ int main(int argc, char** argv)
 }
 
 int fibScope(int a, scope::scopeLevel level, int verbosityLevel) {
+  attr verbA(txt()<<"verbosity_"<<level, (long)verbosityLevel);
+  
   // Each recursive call to fibScope() generates a new scope at the desired level. To reduce the amount of text printed, we only 
   // generate scopes if the value of a is >= verbosityLevel
-  scope reg(txt()<<"fib("<<a<<")", level, a, verbosityLevel);
+  scope reg(txt()<<"fib("<<a<<")", level, attrGE(txt()<<"verbosity_"<<level, (long)a));
   
   if(a==0 || a==1) { 
     dbg << "=1."<<endl;
@@ -128,6 +130,8 @@ int fibScopeLinks(int a, scope::scopeLevel level, int verbosityLevel, list<int>&
                   map<list<int>, anchor>& OutFW,
                   map<list<int>, anchor>& OutBW,
                   bool doFWLinks) {
+  attr verbA(txt()<<"verbosity_"<<level, (long)verbosityLevel);
+  
   stack.push_back(a); // Add this call to stack
   
   /*dbg << "doFWLinks="<<doFWLinks<<", stack=&lt;";
@@ -141,7 +145,7 @@ int fibScopeLinks(int a, scope::scopeLevel level, int verbosityLevel, list<int>&
   // generate scopes if the value of a is >= verbosityLevel
   scope reg(txt()<<"fib("<<a<<")", 
             (InFW.find(stack)!=InFW.end()? InFW[stack]: anchor::noAnchor),
-            level, a, verbosityLevel);
+            level, attrGE(txt()<<"verbosity_"<<level, (long)a));
   
   OutBW[stack] = reg.getAnchor();
   

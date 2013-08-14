@@ -71,11 +71,18 @@ _br_find_exe (BrInitError *error)
 		return NULL;
 	}
 
+  #if defined(__CYGWIN__)
+  strncpy (path2, "/proc/self/exename", buf_size - 1);
+  #else
 	strncpy (path2, "/proc/self/exe", buf_size - 1);
+	#endif
 
 	while (1) {
 		int i;
 
+#if defined(__CYGWIN__)
+		strcpy(path, path2);
+#else
 		size = readlink (path2, path, buf_size - 1);
 		if (size == -1) {
 			/* Error. */
@@ -85,6 +92,7 @@ _br_find_exe (BrInitError *error)
 
 		/* readlink() success. */
 		path[size] = '\0';
+#endif		
 
 		/* Check whether the symlink's target is also a symlink.
 		 * We want to get the final target. */
@@ -105,7 +113,6 @@ _br_find_exe (BrInitError *error)
 		/* path is a symlink. Continue loop and resolve this. */
 		strncpy (path, path2, buf_size - 1);
 	}
-
 
 	/* readlink() or stat() failed; this can happen when the program is
 	 * running in Valgrind 2.2. Read from /proc/self/maps as fallback. */

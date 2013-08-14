@@ -18,17 +18,25 @@ class scope: public block
   static int colorIdx; // The current index into the list of colors 
   
   public:
+  // Records whether this scope is included in the emitted output (true) or not (false)
   bool active;
   typedef enum {high, medium, low} scopeLevel;
   scopeLevel level;
   
-  scope(std::string label, scopeLevel level=medium, int curDebugLevel=0, int targetDebugLevel=0);
-  scope(std::string label, const anchor& pointsTo, scopeLevel level=medium, int curDebugLevel=0, int targetDebugLevel=0);
-  scope(std::string label, const std::set<anchor>& pointsTo, scopeLevel level=medium, int curDebugLevel=0, int targetDebugLevel=0);
+  scope(std::string label,                                   scopeLevel level, const attrOp& onoffOp);
+  scope(std::string label, const anchor& pointsTo,           scopeLevel level, const attrOp& onoffOp);
+  scope(std::string label, const std::set<anchor>& pointsTo, scopeLevel level, const attrOp& onoffOp);
+  scope(std::string label,                                                     const attrOp& onoffOp);
+  scope(std::string label, const anchor& pointsTo,                             const attrOp& onoffOp);
+  scope(std::string label, const std::set<anchor>& pointsTo,                   const attrOp& onoffOp);
+  scope(std::string label,                                   scopeLevel level=medium);
+  scope(std::string label, const anchor& pointsTo,           scopeLevel level=medium);
+  scope(std::string label, const std::set<anchor>& pointsTo, scopeLevel level=medium);
+
   
   private:
   // Common initialization code
-  void init(scopeLevel level, int curDebugLevel, int targetDebugLevel);
+  void init(scopeLevel level, const attrOp* onoffOp);
   
   public:
     
@@ -113,9 +121,14 @@ class graph: public block
   // Records whether this graph has already been output by a call to outputCanvizDotGraph()
   bool graphOutput;
   
+  // Records whether this scope is included in the emitted output (true) or not (false)
+  bool active;
+  
   public:
   
   graph();
+  graph(const attrOp& onoffOp);
+  void init();
   ~graph();
 
   // Generates and returns the dot graph code for this graphgenDotGraph

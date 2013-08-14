@@ -3,7 +3,10 @@
 
 using namespace std;
 
+namespace dbglog {
+
 attributesC attributes;
+attrNullOp NullOp;
 
 /*********************
  ***** attrValue *****
@@ -56,10 +59,35 @@ attrValue::~attrValue() {
   else if(type == ptrT)   delete (void**)store;
   else if(type == intT)   delete (long*)store;
   else if(type == floatT) delete (double*)store;
-  else {
-    cerr << "attrValue::~attrValue() ERROR: invalid value type "<<type<<"!"<<endl;
-    exit(-1);
-  }
+  else { cerr << "attrValue::~attrValue() ERROR: invalid value type "<<type<<"!"<<endl; exit(-1); }
+}
+
+// Returns the type of this attrValue's contents
+attrValue::valueType attrValue::getType() const
+{ return type; }
+
+// Return the contents of this attrValue, aborting if there is a type incompatibility
+std::string attrValue::getStr() const {
+  if(type == strT) return *((string*)store);
+  cerr << "attrValue::getStr() ERROR: value type is "<<type<<"!"<<endl; exit(-1);
+}
+
+// Return the contents of this attrValue, aborting if there is a type incompatibility
+void*       attrValue::getPtr() const {
+  if(type == ptrT) return *((void**)store);
+  cerr << "attrValue::getPtr() ERROR: value type is "<<type<<"!"<<endl; exit(-1);
+}
+
+// Return the contents of this attrValue, aborting if there is a type incompatibility
+long        attrValue::getInt() const {
+  if(type == intT) return *((long*)store);
+  cerr << "attrValue::getInt() ERROR: value type is "<<type<<"!"<<endl; exit(-1);
+}
+
+// Return the contents of this attrValue, aborting if there is a type incompatibility
+double      attrValue::getFloat() const {
+  if(type == floatT) return *((double*)store);
+  cerr << "attrValue::getFloat() ERROR: value type is "<<type<<"!"<<endl; exit(-1);
 }
 
 bool attrValue::operator==(const attrValue& that) const {
@@ -69,8 +97,8 @@ bool attrValue::operator==(const attrValue& that) const {
     else if(type == intT)   return *((long*)store)   == *((long*)that.store);
     else if(type == floatT) return *((double*)store) == *((double*)that.store);
     else {
-      ostringstream oss; oss << "attrValue::operator== ERROR: invalid value type "<<type<<"!";
-      throw oss.str();
+      cerr << "attrValue::operator== ERROR: invalid value type "<<type<<"!"<<endl;
+      exit(-1);
     }
   } else
     return false;
@@ -83,10 +111,10 @@ bool attrValue::operator<(const attrValue& that) const {
     else if(type == intT)   return *((long*)store)   < *((long*)that.store);
     else if(type == floatT) return *((double*)store) < *((double*)that.store);
     else {
-      ostringstream oss; oss << "attrValue::operator< ERROR: invalid value type "<<type<<"!";
-      throw oss.str();
+      cerr << "attrValue::operator< ERROR: invalid value type "<<type<<"!"<<endl;
+      exit(-1);
     }
-  } else {
+  } else {\
     // All instances of each type are < or > all instances of other types, in some canonical order
     // (the enum values for different types are guaranteed to be different)
     return type < that.type;
@@ -98,12 +126,12 @@ std::string attrValue::str() const {
   if(type == strT) return *((string*)store);
   else {
     ostringstream oss;
-         if(type == ptrT)   *((void**)store);
-    else if(type == intT)   *((long*)store);
-    else if(type == floatT) *((double*)store);
+         if(type == ptrT)   oss << *((void**)store);
+    else if(type == intT)   oss << *((long*)store);
+    else if(type == floatT) oss << *((double*)store);
     else  {
-      oss << "attrValue::str() ERROR: unknown attribute value type: "<<type<<"!";
-      throw oss.str();
+      cerr << "attrValue::str() ERROR: unknown attribute value type: "<<type<<"!"<<endl;
+      exit(-1);
     }
     return oss.str();
   }
@@ -116,8 +144,12 @@ std::string attrValue::str() const {
 
 // Applies the given functor to this given value. Throws an exception if the functor
 // is not applicable to this value type.
-bool attrOp::apply(const set<attrValue>& vals) {
-  if(vals.size() == 0) throw "attrOp::apply() ERROR: applying operation to empty set of values!";
+bool attrOp::apply() const {
+  const set<attrValue>& vals = attributes.get(key);
+  if(vals.size() == 0) {
+    cerr << "attrOp::apply() ERROR: applying operation to empty set of values!"<<endl;
+    exit(-1);
+  }
   
   for(set<attrValue>::iterator v=vals.begin(); v!=vals.end(); v++) {
     bool ret;
@@ -125,7 +157,10 @@ bool attrOp::apply(const set<attrValue>& vals) {
     else if(v->type == attrValue::ptrT   && implementsPtr())    ret = applyPtr   (*((void**)v->store));
     else if(v->type == attrValue::intT   && implementsInt())    ret = applyInt   (*((long*)v->store));
     else if(v->type == attrValue::floatT && implementsFloat())  ret = applyFloat (*((double*)v->store));
-    else throw "attrOp::apply() ERROR: attribute operation "+str()+" not compatible with value "+v->str()+"!";
+    else {
+      cerr << "attrOp::apply() ERROR: attribute operation "<<str()<<" not compatible with value "<<v->str()<<"!"<<endl;
+      exit(-1);
+    }
     
     // If all the applications must return true but one returns false, the result is false
     if(type == all && ret==false) return false;
@@ -137,8 +172,28 @@ bool attrOp::apply(const set<attrValue>& vals) {
   if(type == all) return true;
   else if(type == any) return false;
   
-  ostringstream mesg; mesg << "attrOp::apply() ERROR: unknown type "<<type<<"!";
-  throw mesg.str();
+  cerr << "attrOp::apply() ERROR: unknown type "<<type<<"!"<<endl;
+  exit(-1);
+}
+
+bool attrRange::applyInt(long& that)     const { 
+  if(lb.getType() == attrValue::intT) {
+    //cout << "lb="<<lb.str()<<"="<<lb.getInt()<<" ub="<<ub.str()<<"="<<ub.getInt()<<" that="<<that<<endl;
+    return (lb.getInt() <= that) && (that < ub.getInt());
+  } else if(lb.getType() == attrValue::floatT) {
+    return (lb.getFloat() <= that) && (that < ub.getFloat());
+  }
+  
+  cerr << "attrRange::applyInt() ERROR: invalid type of lb"<<lb.getType()<<"!"<<endl; exit(-1);
+}
+
+bool attrRange::applyFloat(double& that) const { 
+  if(lb.getType() == attrValue::intT) 
+    return (lb.getInt() <= that) && (that < ub.getInt());
+  else if(lb.getType() == attrValue::floatT) 
+    return (lb.getFloat() <= that) && (that < ub.getFloat());
+  
+  cerr << "attrRange::applyInt() ERROR: invalid type of lb"<<lb.getType()<<"!"<<endl; exit(-1);
 }
 
 /************************
@@ -147,26 +202,26 @@ bool attrOp::apply(const set<attrValue>& vals) {
 bool attrSubQuery::query() { return query(attributes); }
 
 bool attrSubQueryAnd::query(const attributesC& attr) {
-  //cout << "attrSubQueryAnd::query() apply="<<op->apply(attributes.get(key))<<" pred="<<pred<<endl;
+  //cout << "attrSubQueryAnd::query() apply="<<op->apply()<<" pred="<<pred<<endl;
   // Applies the operator to the values at the given key. The && ensures that if the operator returns true,
   // the query is propagated to the previous attrSubQuery object. If the previous object is NULL, returns true.
-  return op->apply(attributes.get(key)) && 
+  return op->apply() && 
          (pred ? pred->query(attr) : true);
 }
 
 bool attrSubQueryOr::query(const attributesC& attr) {
-  //cout << "attrSubQueryOr::query() apply="<<op->apply(attributes.get(key))<<" pred="<<pred<<endl;
+  //cout << "attrSubQueryOr::query() apply="<<op->apply()<<" pred="<<pred<<endl;
   // Applies the operator to the values at the given key. The || ensures that if the operator returns false,
   // the query is propagated to the previous attrSubQuery object. If the previous object is NULL, returns true since by default we emit debug output.
-  return op->apply(attributes.get(key)) ||
+  return op->apply() ||
          (pred ? pred->query(attr) : true);
 }
 
 bool attrSubQueryIf::query(const attributesC& attr) {
-  //cout << "attrSubQueryIf::query() apply="<<op->apply(attributes.get(key))<<endl;
+  //cout << "attrSubQueryIf::query() apply="<<op->apply()<<endl;
   // Applies the operator to the values at the given key, returning its result. This object never propagates
   // queries to its predecessors.
-  return op->apply(attributes.get(key));
+  return op->apply();
 }
 
 bool attrSubQueryTrue::query(const attributesC& attr) {
@@ -197,8 +252,10 @@ void attrQuery::push(attrSubQuery* subQ) {
 void attrQuery::pop() {
   if(lastQ) {
     lastQ = lastQ->pred;
-  } else
-    throw "attrQuery::pop() ERROR: popping an empty list of sub-queries!";
+  } else {
+    cerr << "attrQuery::pop() ERROR: popping an empty list of sub-queries!"<<endl;
+    exit(-1);
+  }
 }
 
 // Returns the result of this query on the current state of the given attributes object
@@ -258,8 +315,8 @@ bool attributesC::replace(string key, const attrValue& val) {
     m[key].insert(val);
     qCurrent = false;
   } else if(m[key].size() == 0) {
-    ostringstream mesg; mesg << "attributesC::replace() ERROR: key "<<key<<" is mapped to an empty set of values!";
-    throw mesg.str();
+    cerr << "attributesC::replace() ERROR: key "<<key<<" is mapped to an empty set of values!"<<endl;
+    exit(-1);
   }
   
   return modified;
@@ -270,13 +327,13 @@ const set<attrValue>& attributesC::get(std::string key) const {
   map<string, set<attrValue> >::const_iterator i = m.find(key);
   if(i != m.end()) {
     if(i->second.size() == 0) {
-      ostringstream mesg; mesg << "attributesC::get() ERROR: key "<<key<<" is mapped to an empty set of values!";
-      throw mesg.str();
+      cerr << "attributesC::get() ERROR: key "<<key<<" is mapped to an empty set of values!"<<endl;
+      exit(-1);
     }
     return i->second;
   } else {
-    ostringstream mesg; mesg << "attributesC::get() ERROR: key "<<key<<" is not mapped to any value!";
-    throw mesg.str();
+    cerr << "attributesC::get() ERROR: key "<<key<<" is not mapped to any value!"<<endl;
+    exit(-1);
   }
 }
 
@@ -338,10 +395,12 @@ bool attributesC::query() {
   return lastQRet;
 }
 
+}; // namespace dbglog
 // ***********************
 // ***** SELF TESTER *****
 // ***********************
 
+#if defined(SELF_TEST)
 long testSeed;
 
 void andFunc(bool cond, int depth, string indent="");
@@ -368,7 +427,7 @@ void andFunc(bool cond, int depth, string indent) {
   ostringstream vname; vname << "var_"<<depth;
   bool nextCond = rand()%2;
   attr a(vname.str(), (long)nextCond);
-  attrAnd aAnd(vname.str(), new attrEq((long)1, attrOp::any));
+  attrAnd aAnd(vname.str(), new attrEQ((long)1, attrOp::any));
   //cout << indent << "andFunc(cond="<<cond<<"): nextCond="<<nextCond<<", depth="<<depth<<", query="<<attributes.query()<<endl;
  
   assert(verbA(attributes.query() == (cond && nextCond)));
@@ -379,7 +438,7 @@ void orFunc(bool cond, int depth, string indent) {
   ostringstream vname; vname << "var_"<<depth;
   bool nextCond = rand()%2;
   attr a(vname.str(), (long)nextCond);
-  attrOr aOr(vname.str(), new attrEq((long)1, attrOp::any));
+  attrOr aOr(vname.str(), new attrEQ((long)1, attrOp::any));
   //cout << indent << "orFunc(cond="<<cond<<"): nextCond="<<nextCond<<", depth="<<depth<<", query="<<attributes.query()<<endl;
  
   assert(verbA(attributes.query() == (cond || nextCond))); 
@@ -390,7 +449,7 @@ void ifFunc(bool cond, int depth, string indent) {
   ostringstream vname; vname << "var_"<<depth;
   bool nextCond = rand()%2;
   attr a(vname.str(), (long)nextCond);
-  attrIf aIf(vname.str(), new attrEq((long)1, attrOp::any));
+  attrIf aIf(vname.str(), new attrEQ((long)1, attrOp::any));
   //cout << indent << "ifFunc(cond="<<cond<<"): nextCond="<<nextCond<<", depth="<<depth<<", query="<<attributes.query()<<endl;
  
   assert(verbA(attributes.query() == nextCond)); 
@@ -400,7 +459,7 @@ void ifFunc(bool cond, int depth, string indent) {
 /*int fib(int x, string indent="") {
   cout << indent << "fib("<<x<<")\n";
   attr a("x", (long)x);
-  attrIf aif("x", new attrEq((long)x, attrOp::any));
+  attrIf aif("x", new attrEQ((long)x, attrOp::any));
   cout << indent << "x="<<x<<", query="<<attributes.query()<<endl;
   if(x<=1) {
     cout << indent << "return 1\n";
@@ -423,3 +482,4 @@ int main(int argc, char** argv) {
     cerr << e<< endl;
   }
 }
+#endif //defined(SELF_TEST)
