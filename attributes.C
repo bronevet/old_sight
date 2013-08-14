@@ -1,4 +1,5 @@
 #include "attributes.h"
+#include <assert.h>
 
 using namespace std;
 
@@ -28,6 +29,7 @@ attrValue::attrValue(long intV) {
   type  = intT;
   store = new long*;
   *((long*)store) = intV;
+//cout << this << ": allocated "<<((long*)store)<<"\n";
 }
 
 attrValue::attrValue(double floatV) {
@@ -36,23 +38,36 @@ attrValue::attrValue(double floatV) {
   *((double*)store) = floatV;
 }
 
-attrValue::~attrValue() {
-  if(type == strT)   delete (string*)store;
-  if(type == ptrT)   delete (void**)store;
-  if(type == intT)   delete (long*)store;
-  if(type == floatT) delete (double*)store;
+attrValue::attrValue(const attrValue& that) {
+  type = that.type;
+       if(type == strT)   { store = (void*)(new string(*((string*)that.store))); }
+  else if(type == ptrT)   { store = new void*;  *((void**)store)  = *((void**)that.store);  }
+  else if(type == intT)   { store = new long*;  *((long*)store)   = *((long*)that.store);   }
+  else if(type == floatT) { store = new double; *((double*)store) = *((double*)that.store); }
   else {
-    ostringstream oss; oss << "attrValue::~attrValue() ERROR: invalid value type "<<type<<"!";
-    throw oss.str();
+    cerr << "attrValue::attrValue() ERROR: invalid value type "<<type<<"!"<<endl;
+    exit(-1);
+  }
+}
+
+attrValue::~attrValue() {
+//cout << this << ": deleting "<<((long*)store)<<"="<<*((long*)store)<<"\n";
+       if(type == strT)   delete (string*)store;
+  else if(type == ptrT)   delete (void**)store;
+  else if(type == intT)   delete (long*)store;
+  else if(type == floatT) delete (double*)store;
+  else {
+    cerr << "attrValue::~attrValue() ERROR: invalid value type "<<type<<"!"<<endl;
+    exit(-1);
   }
 }
 
 bool attrValue::operator==(const attrValue& that) const {
   if(type == that.type) {
-    if(type == strT)   return *((string*)store) == *((string*)that.store);
-    if(type == ptrT)   return *((void**)store)  == *((void**)that.store);
-    if(type == intT)   return *((long*)store)   == *((long*)that.store);
-    if(type == floatT) return *((double*)store) == *((double*)that.store);
+         if(type == strT)   return *((string*)store) == *((string*)that.store);
+    else if(type == ptrT)   return *((void**)store)  == *((void**)that.store);
+    else if(type == intT)   return *((long*)store)   == *((long*)that.store);
+    else if(type == floatT) return *((double*)store) == *((double*)that.store);
     else {
       ostringstream oss; oss << "attrValue::operator== ERROR: invalid value type "<<type<<"!";
       throw oss.str();
@@ -63,10 +78,10 @@ bool attrValue::operator==(const attrValue& that) const {
 
 bool attrValue::operator<(const attrValue& that) const {
   if(type == that.type) {
-    if(type == strT)   return *((string*)store) < *((string*)that.store);
-    if(type == ptrT)   return *((void**)store)  < *((void**)that.store);
-    if(type == intT)   return *((long*)store)   < *((long*)that.store);
-    if(type == floatT) return *((double*)store) < *((double*)that.store);
+         if(type == strT)   return *((string*)store) < *((string*)that.store);
+    else if(type == ptrT)   return *((void**)store)  < *((void**)that.store);
+    else if(type == intT)   return *((long*)store)   < *((long*)that.store);
+    else if(type == floatT) return *((double*)store) < *((double*)that.store);
     else {
       ostringstream oss; oss << "attrValue::operator< ERROR: invalid value type "<<type<<"!";
       throw oss.str();
@@ -132,6 +147,7 @@ bool attrOp::apply(const set<attrValue>& vals) {
 bool attrSubQuery::query() { return query(attributes); }
 
 bool attrSubQueryAnd::query(const attributesC& attr) {
+  //cout << "attrSubQueryAnd::query() apply="<<op->apply(attributes.get(key))<<" pred="<<pred<<endl;
   // Applies the operator to the values at the given key. The && ensures that if the operator returns true,
   // the query is propagated to the previous attrSubQuery object. If the previous object is NULL, returns true.
   return op->apply(attributes.get(key)) && 
@@ -139,13 +155,15 @@ bool attrSubQueryAnd::query(const attributesC& attr) {
 }
 
 bool attrSubQueryOr::query(const attributesC& attr) {
+  //cout << "attrSubQueryOr::query() apply="<<op->apply(attributes.get(key))<<" pred="<<pred<<endl;
   // Applies the operator to the values at the given key. The || ensures that if the operator returns false,
-  // the query is propagated to the previous attrSubQuery object. If the previous object is NULL, returns false.
+  // the query is propagated to the previous attrSubQuery object. If the previous object is NULL, returns true since by default we emit debug output.
   return op->apply(attributes.get(key)) ||
-         (pred ? pred->query(attr) : false);
+         (pred ? pred->query(attr) : true);
 }
 
 bool attrSubQueryIf::query(const attributesC& attr) {
+  //cout << "attrSubQueryIf::query() apply="<<op->apply(attributes.get(key))<<endl;
   // Applies the operator to the values at the given key, returning its result. This object never propagates
   // queries to its predecessors.
   return op->apply(attributes.get(key));
@@ -178,9 +196,7 @@ void attrQuery::push(attrSubQuery* subQ) {
 // Removes the last sub-query from the list of queries
 void attrQuery::pop() {
   if(lastQ) {
-    //attrSubQuery* sq = lastQ;
     lastQ = lastQ->pred;
-    //delete sq;
   } else
     throw "attrQuery::pop() ERROR: popping an empty list of sub-queries!";
 }
@@ -326,14 +342,84 @@ bool attributesC::query() {
 // ***** SELF TESTER *****
 // ***********************
 
-int fib(int x, string indent="") {
+long testSeed;
+
+void andFunc(bool cond, int depth, string indent="");
+void orFunc(bool cond, int depth, string indent="");
+void ifFunc(bool cond, int depth, string indent="");
+
+void nextFunc(bool cond, int depth, string indent) {
+  if(depth==1000) return;
+  
+  switch(rand()%3) {
+    case 0: return orFunc (cond, depth, indent);
+    case 1: return andFunc(cond, depth, indent);
+    case 2: return ifFunc (cond, depth, indent);
+  }
+  assert(0);
+}
+
+bool verbA(bool cond) {
+  if(!cond) { cout << "Error seed "<<testSeed<<endl; }
+  return cond;
+}
+
+void andFunc(bool cond, int depth, string indent) {
+  ostringstream vname; vname << "var_"<<depth;
+  bool nextCond = rand()%2;
+  attr a(vname.str(), (long)nextCond);
+  attrAnd aAnd(vname.str(), new attrEq((long)1, attrOp::any));
+  //cout << indent << "andFunc(cond="<<cond<<"): nextCond="<<nextCond<<", depth="<<depth<<", query="<<attributes.query()<<endl;
+ 
+  assert(verbA(attributes.query() == (cond && nextCond)));
+  nextFunc(cond && nextCond, depth+1, indent+"    ");
+}
+
+void orFunc(bool cond, int depth, string indent) {
+  ostringstream vname; vname << "var_"<<depth;
+  bool nextCond = rand()%2;
+  attr a(vname.str(), (long)nextCond);
+  attrOr aOr(vname.str(), new attrEq((long)1, attrOp::any));
+  //cout << indent << "orFunc(cond="<<cond<<"): nextCond="<<nextCond<<", depth="<<depth<<", query="<<attributes.query()<<endl;
+ 
+  assert(verbA(attributes.query() == (cond || nextCond))); 
+  nextFunc(cond || nextCond, depth+1, indent+"    ");
+} 
+
+void ifFunc(bool cond, int depth, string indent) {
+  ostringstream vname; vname << "var_"<<depth;
+  bool nextCond = rand()%2;
+  attr a(vname.str(), (long)nextCond);
+  attrIf aIf(vname.str(), new attrEq((long)1, attrOp::any));
+  //cout << indent << "ifFunc(cond="<<cond<<"): nextCond="<<nextCond<<", depth="<<depth<<", query="<<attributes.query()<<endl;
+ 
+  assert(verbA(attributes.query() == nextCond)); 
+  nextFunc(nextCond, depth+1, indent+"    ");
+} 
+
+/*int fib(int x, string indent="") {
+  cout << indent << "fib("<<x<<")\n";
   attr a("x", (long)x);
   attrIf aif("x", new attrEq((long)x, attrOp::any));
   cout << indent << "x="<<x<<", query="<<attributes.query()<<endl;
-  if(x<=1) return 1;
-  return fib(x, ":   ") + fib(x+1, ":   ");
-}
+  if(x<=1) {
+    cout << indent << "return 1\n";
+    return 1;
+  }
+  return fib(x-1, indent+":   ");// + fib(x-2, indent+":   ");
+}*/
 
 int main(int argc, char** argv) {
-  fib(4, "");
+  if(argc==2) testSeed = atoi(argv[1]);
+  else        testSeed = time(NULL);
+  srand(testSeed);
+  try{
+    //fib(4, "");
+    while(1) {
+      nextFunc(true, 0, "");
+      cout << ".";
+    }
+  } catch (string e) {
+    cerr << e<< endl;
+  }
 }

@@ -41,6 +41,7 @@ class attrValue {
   attrValue(void* ptrV);
   attrValue(long intV);
   attrValue(double floatV);
+  attrValue(const attrValue& that);
   ~attrValue();
   
   // Implementations of the relational operators
