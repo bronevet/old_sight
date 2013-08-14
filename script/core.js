@@ -83,6 +83,57 @@
     });
     return str + "\n" + indent + "}";
   }
+  
+  /***********************************
+   ***** The Attributes Database *****
+   ***********************************/
+  var attributes = TAFFY( [] );
+  
+  // Begin public utility /getVarType/
+  // Returns 'Function', 'Object', 'Array',
+  // 'String', 'Number', 'Boolean', or 'Undefined',
+  function getVarType( data ) {
+    if (undefined === data ){ return 'Undefined'; }
+    if (data === null ){ return 'Null'; }
+    return {}.toString.call(data).slice(8, -1);
+  };  
+  // End public utility /getVarType/
+  
+  function taffy2Str(taffy_map) {
+    var msg_text = "";
+    for ( key_name in taffy_map ){
+      if ( taffy_map.hasOwnProperty( key_name ) ) {
+        data_val = taffy_map[ key_name ];
+        var_type = getVarType( data_val );
+
+        switch ( var_type ){
+          case 'Object'   :
+            if ( data_val.hasOwnProperty( 'get' ) ){
+              msg_text += JSON.stringify( data_val.get() );
+            }
+            else {
+              msg_text += JSON.stringify( data_val );
+            }
+            break;
+          case 'Number' :
+            msg_text += String( data_val );
+            break;
+
+          default :
+            msg_text += JSON.stringify( data_val );
+        }
+
+        msg_text += '\n\n';
+      }
+    }
+    return msg_text;
+  }
+  
+  function recordAttr(record, divID) {
+    record.divID = divID;
+    attributes.insert(record);
+    //console.log(taffy2Str(attributes().filter({ key_i : 3}).get()));
+  }
 
   var scriptEltID=0;
   function loadURLIntoDiv(doc, url, divName, continuationFunc) {

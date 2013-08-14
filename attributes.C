@@ -374,6 +374,30 @@ bool attributesC::remove(string key) {
   return modified;
 }
 
+// Returns a representation of the attributes database as a JavaScript map
+std::string attributesC::strJS() const {
+  ostringstream oss;
+  
+  oss << "{";
+  for(map<string, set<attrValue> >::const_iterator i=m.begin(); i!=m.end(); i++) {
+    if(i!=m.begin()) oss << ",";
+    if(i->second.size()==0) { cerr << "attributesC::strJS() ERROR: key "<<i->first<<" is mapped to 0 values!"; exit(-1); }
+    if(i->second.size()>1) { cerr << "attributesC::strJS() ERROR: currently cannot emit JavaScript for keys with multiple values! key="<<i->first; exit(-1); }
+    // Emit the name of the key, while prefixing it with "key_" to allow Javascript code to add additional
+    // fields without fear of name collisions.
+    oss << "\"key_" << i->first << "\":";
+    switch((i->second.begin())->getType()) {
+      case attrValue::strT   : oss << "\""<<(i->second.begin())->getStr()<<"\""; break;
+      case attrValue::ptrT   : oss << "\""<<(i->second.begin())->getPtr()<<"\""; break;
+      case attrValue::intT   : oss <<       (i->second.begin())->getInt();       break;
+      case attrValue::floatT : oss <<       (i->second.begin())->getFloat();     break;
+      default: cerr << "attributesC::strJS() ERROR: key "<<i->first<<" has value "<<(i->second.begin())->str()<<" with an unknown type!"; exit(-1);
+    }
+  }
+  oss << "}";
+  return oss.str();
+}
+
 // --- QUERYING ---
 
 // Adds the given sub-query to the list of queries

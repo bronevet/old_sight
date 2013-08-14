@@ -1211,6 +1211,7 @@ void dbgStream::printDetailFileContainerHTML(string absoluteFileName, string tit
   det << "\t<head>\n";
   det << "\t<title>"<<title<<"</title>\n";
   det << "\t<script src=\"script/hashtable.js\"></script>\n";
+  det << "\t<script src=\"script/taffydb/taffy.js\"></script>\n";
   det << "\t<script src=\"script/core.js\"></script>\n";
   det << "\t<STYLE TYPE=\"text/css\">\n";
   det << "\tBODY\n";
@@ -1302,6 +1303,9 @@ string dbgStream::enterBlock(block* b, bool newFileEntered)
     (*scriptFiles.back()) << "\trecordFile("<<fileLevelJSIntArray(loc)<<", 'loadFunc', function(continuationFunc) {"<<loadCmd.str()<<", continuationFunc)});\n";
     scriptFiles.back()->flush();
   }
+  
+  (*scriptFiles.back()) << "\trecordAttr("<<attributes.strJS()<<", 'div"<<blockID<<"');\n";
+  scriptFiles.back()->flush();
   
   fileBufs.back()->userAccessing();
   

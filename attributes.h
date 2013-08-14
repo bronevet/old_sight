@@ -523,6 +523,9 @@ class attributesC
     qCurrent = true;
   }
   
+  // Returns a representation of the attributes database as a JavaScript map
+  std::string strJS() const;
+  
 }; // class attributes
 
 extern attributesC attributes;

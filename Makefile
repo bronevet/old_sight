@@ -5,7 +5,7 @@ ifeq (${OS}, Cygwin)
 EXT := .exe
 endif
 
-all: dbgLogTester${EXT} dbgLogGraphTester${EXT} dbgLogAttrTester${EXT} ${DBGLOG} widgets/shellinabox/bin/shellinaboxd${EXT} widgets/mongoose/mongoose${EXT} widgets/graphviz/bin/dot${EXT}
+all: dbgLogTester${EXT} dbgLogGraphTester${EXT} dbgLogAttrTester${EXT} ${DBGLOG} widgets/shellinabox/bin/shellinaboxd${EXT} widgets/mongoose/mongoose${EXT} widgets/graphviz/bin/dot${EXT} script/taffydb
 	chmod 755 html img script
 	chmod 644 html/* img/* script/*
 	chmod 644 widgets/canviz-0.1/* widgets/canviz-0.1/*/*
@@ -91,3 +91,7 @@ else
 	rm -r widgets/graphviz-2.32.0 widgets/graphviz-2.32.0.tar.gz
 endif
 
+script/taffydb:
+	cd script; wget --no-check-certificate https://github.com/typicaljoe/taffydb/archive/master.zip
+	cd script; unzip master.zip
+	mv script/taffydb-master script/taffydb
