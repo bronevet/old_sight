@@ -213,7 +213,11 @@ std::string graph::htmlOutDir="";
 int graph::maxWidgetID=0;
 
 graph::graph() : block("Graph") {
-  init();
+  // If the current attribute query evaluates to true (we're emitting debug output)
+  if(attributes.query())
+    init();
+  else
+    active = false;
 }
 
 graph::graph(const attrOp& onoffOp) : block("Graph") {
@@ -221,6 +225,8 @@ graph::graph(const attrOp& onoffOp) : block("Graph") {
   // either onoffOp is not provided or its evaluates to true
   if(attributes.query() && onoffOp.apply())
     init();
+  else
+    active = false;
 }
 
 void graph::init() {

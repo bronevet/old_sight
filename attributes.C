@@ -387,10 +387,10 @@ std::string attributesC::strJS() const {
     // fields without fear of name collisions.
     oss << "\"key_" << i->first << "\":";
     switch((i->second.begin())->getType()) {
-      case attrValue::strT   : oss << "\""<<(i->second.begin())->getStr()<<"\""; break;
-      case attrValue::ptrT   : oss << "\""<<(i->second.begin())->getPtr()<<"\""; break;
-      case attrValue::intT   : oss <<       (i->second.begin())->getInt();       break;
-      case attrValue::floatT : oss <<       (i->second.begin())->getFloat();     break;
+      case attrValue::strT   : oss << "\""<<(i->second.begin())->getStr()<<"\"";   break;
+      case attrValue::ptrT   : oss << "\""<<(i->second.begin())->getPtr()<<"\"";   break;
+      case attrValue::intT   : oss << "\""<<(i->second.begin())->getInt()<<"\"";   break;
+      case attrValue::floatT : oss << "\""<<(i->second.begin())->getFloat()<<"\""; break;
       default: cerr << "attributesC::strJS() ERROR: key "<<i->first<<" has value "<<(i->second.begin())->str()<<" with an unknown type!"; exit(-1);
     }
   }

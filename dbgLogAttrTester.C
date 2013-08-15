@@ -58,7 +58,7 @@ int main(int argc, char** argv)
       graph g;
       
       map<int, set<anchor> > pointsTo;
-      int maxVal=4;
+      int maxVal=5;
       for(int i=2; i<maxVal; i++) {
         scope s(txt()<<"s"<<i, pointsTo[i], scope::medium);
         for(int j=i*2; j<maxVal; j+=i) {

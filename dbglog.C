@@ -889,7 +889,7 @@ string dbgStream::blockGlobalStr(const location& myLoc) {
       b++;
       if(b!=l->second.end()) blockStr << "_";
     }
-    blockStr << ">";
+    //blockStr << ">";
     l++;
     //if(l!=myLoc.end() && l->second.size()>1) blockStr << ":";
   }
@@ -1175,6 +1175,8 @@ void dbgStream::printSummaryFileContainerHTML(string absoluteFileName, string re
   sum << "\t<head>\n";
   sum << "\t<title>"<<title<<"</title>\n";
   sum << "\t<script src=\"script/hashtable.js\"></script>\n";
+  sum << "\t<script src=\"script/placement.js\"></script>\n";
+  sum << "\t<script src=\"script/attributes.js\"></script>\n";
   sum << "\t<script src=\"script/core.js\"></script>\n";
   sum << "\t<script type=\"text/javascript\">\n";
   sum << "\tfunction loadURLIntoDiv(doc, url, divName) {\n";
@@ -1212,6 +1214,8 @@ void dbgStream::printDetailFileContainerHTML(string absoluteFileName, string tit
   det << "\t<title>"<<title<<"</title>\n";
   det << "\t<script src=\"script/hashtable.js\"></script>\n";
   det << "\t<script src=\"script/taffydb/taffy.js\"></script>\n";
+  det << "\t<script src=\"script/placement.js\"></script>\n";
+  det << "\t<script src=\"script/attributes.js\"></script>\n";
   det << "\t<script src=\"script/core.js\"></script>\n";
   det << "\t<STYLE TYPE=\"text/css\">\n";
   det << "\tBODY\n";
@@ -1235,6 +1239,22 @@ void dbgStream::printDetailFileContainerHTML(string absoluteFileName, string tit
   det << "\t</script>\n";
   det << "\t</head>\n";
   det << "\t<body>\n";
+  /*det << "<div id=\"attrTable\"></div>\n";
+  det << "<a href=\"javascript:writeKeyValTable(document.getElementById('attrTable'));\">Attributes</a><br>\n";
+  det << "<div id=\"AttrControlPanel\">\n";
+  det << "<a href=\"\">Add</a><br>\n";
+  det << "<a href=\"\">Remove</a><br>\n";
+  det << "<a href=\"\">Only</a><br>\n";
+  det << "</div>\n";
+  det << "<script type=\"text/javascript\">AddDivPlacementEvents(function () { PlaceFixedDiv(\"AttrControlPanel\"); })</script>\n";*/
+  det << "<div id=\"attrTable\" style=\"background-color:#ffffff\"></div>\n";
+  det << "<div id=\"AttrControlPanel\" style=\"background-color:#ffffff;width:50\">\n";
+  det << "<a href=\"javascript:writeKeyValTable('attrTable', 'add');\"><img src=\"img/attrAdd.gif\" width=50 height=46 alt=\"Add by Attribute\"></a><br>\n";
+  det << "<a href=\"javascript:writeKeyValTable('attrTable', 'remove');\"><img src=\"img/attrRemove.gif\" width=50 height=46 alt=\"Remove by Attribute\"></a><br>\n";
+  det << "<a href=\"javascript:writeKeyValTable('attrTable', 'only');\"><img src=\"img/attrOnly.gif\" width=50 height=46 alt=\"Filter Only Attribute\"></a><br>\n";
+  det << "</div>\n";
+  det << "<script type=\"text/javascript\">AddDivPlacementEvents(function () { PlaceFixedDiv(\"AttrControlPanel\", false); });</script>\n";
+  
   det << "\t<h1>"<<title<<"</h1>\n";
 
   det << "\t\t<table width=\"100%\">\n";
@@ -1242,7 +1262,7 @@ void dbgStream::printDetailFileContainerHTML(string absoluteFileName, string tit
   det << "\t\t\t<div id='detailContents'></div>\n";
   det << "\t\t\t</td></tr>\n";
   det << "\t\t</table>\n";
-
+  
   list<string> hostnames = getAllHostnames();
   for(list<string>::iterator h=hostnames.begin(); h!=hostnames.end(); h++) {
     det << "<img src=\"http://"<<*h<<":"<<GDB_PORT<<"/img/divDL.gif\" onload=\"javascript:hostnameReachable('"<<*h<<"')\" width=1 height=1>\n";
@@ -1304,7 +1324,7 @@ string dbgStream::enterBlock(block* b, bool newFileEntered)
     scriptFiles.back()->flush();
   }
   
-  (*scriptFiles.back()) << "\trecordAttr("<<attributes.strJS()<<", 'div"<<blockID<<"');\n";
+  (*scriptFiles.back()) << "\trecordAttr("<<attributes.strJS()<<", '"<<blockID<<"');\n";
   scriptFiles.back()->flush();
   
   fileBufs.back()->userAccessing();
