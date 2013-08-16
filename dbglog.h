@@ -439,3 +439,4 @@ struct txt : std::string {
 std::string escape(std::string s);
 } // namespace dbglog
 
+#include "widgets.h"

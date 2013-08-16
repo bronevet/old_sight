@@ -1,11 +1,15 @@
-DBGLOG := dbglog.o dbglog.h widgets.o widgets.h attributes.o attributes.h binreloc.o binreloc.h getAllHostnames.C getAllHostnames.h getAllHostnames.o gdbLineNum.pl
+DBGLOG_O := dbglog.o widgets.o attributes.o binreloc.o getAllHostnames.o
+DBGLOG_H := dbglog.h widgets.h attributes.h binreloc.h getAllHostnames.h
+DBGLOG := ${DBGLOG_O} ${DBGLOG_H} gdbLineNum.pl
 
 OS := $(shell uname -o)
 ifeq (${OS}, Cygwin)
 EXT := .exe
 endif
 
-all: dbgLogTester${EXT} dbgLogGraphTester${EXT} dbgLogAttrTester${EXT} ${DBGLOG} widgets/shellinabox/bin/shellinaboxd${EXT} widgets/mongoose/mongoose${EXT} widgets/graphviz/bin/dot${EXT} script/taffydb
+all: dbgLogTester${EXT} dbgLogGraphTester${EXT} dbgLogAttrTester${EXT} dbgLogClientServerTester${EXT} \
+     ${DBGLOG} \
+     widgets/shellinabox/bin/shellinaboxd${EXT} widgets/mongoose/mongoose${EXT} widgets/graphviz/bin/dot${EXT} script/taffydb
 	chmod 755 html img script
 	chmod 644 html/* img/* script/*
 	chmod 644 widgets/canviz-0.1/* widgets/canviz-0.1/*/*
@@ -25,15 +29,21 @@ DBGLOG_PATH = `pwd`
 # in the target application's execution
 GDB_PORT := 17500
 
-dbgLogTester${EXT}: dbgLogTester.C ${DBGLOG}
-	g++ -g dbgLogTester.C dbglog.o widgets.o attributes.o binreloc.o getAllHostnames.o -o dbgLogTester${EXT}
+dbgLogTester${EXT}: dbgLogTester.C libdbglog.a ${DBGLOG_H}
+	g++ -g dbgLogTester.C -L. -ldbglog -o dbgLogTester${EXT}
 
-dbgLogGraphTester${EXT}: dbgLogGraphTester.C ${DBGLOG}
-	g++ -g dbgLogGraphTester.C dbglog.o widgets.o attributes.o binreloc.o getAllHostnames.o -o dbgLogGraphTester${EXT}
+dbgLogGraphTester${EXT}: dbgLogGraphTester.C libdbglog.a ${DBGLOG_H}
+	g++ -g dbgLogGraphTester.C -L. -ldbglog -o dbgLogGraphTester${EXT}
 
-dbgLogAttrTester${EXT}: dbgLogAttrTester.C ${DBGLOG}
-	g++ -g dbgLogAttrTester.C dbglog.o widgets.o attributes.o binreloc.o getAllHostnames.o -o dbgLogAttrTester${EXT}
+dbgLogAttrTester${EXT}: dbgLogAttrTester.C libdbglog.a ${DBGLOG_H}
+	g++ -g dbgLogAttrTester.C -L. -ldbglog  -o dbgLogAttrTester${EXT}
 
+dbgLogClientServerTester${EXT}: dbgLogClientServerTester.C libdbglog.a ${DBGLOG_H}
+	g++ -g dbgLogClientServerTester.C -L. -ldbglog  -o dbgLogClientServerTester${EXT}
+
+libdbglog.a: ${DBGLOG_O} ${DBGLOG_H}
+	ar -r libdbglog.a ${DBGLOG_O}
+	
 dbglog.o: dbglog.C dbglog.h attributes.h
 	g++ -g dbglog.C -DROOT_PATH="\"${CURDIR}\"" -DGDB_PORT=${GDB_PORT} -c -o dbglog.o
 	

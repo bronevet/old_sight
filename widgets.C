@@ -116,7 +116,7 @@ void scope::init(scopeLevel level, const attrOp* onoffOp)
       colorIdx++; // Advance to a new color for this func
       dbg.enterBlock(this, false);
     }
-    else if(level == low)
+    else if(level == low || level == min)
       dbg.enterBlock(this, false);
   }
   else
@@ -133,7 +133,7 @@ scope::~scope()
     else if(level == medium) {
       dbg.exitBlock();
       colorIdx--; // Return to the last color for this func's parent
-    } else if(level == low)
+    } else if(level == low || level == min)
       dbg.exitBlock();
     assert(colorIdx>=0);
   }
@@ -146,43 +146,50 @@ void scope::printEntry(string loadCmd) {
   if(dbg.blockIndex()==0) dbg << "\t\t\t"<<tabs(dbg.blockDepth())<<"</td></tr>\n";
   dbg << "\t\t\t"<<tabs(dbg.blockDepth())<<"<tr width=\"100%\"><td width=50></td><td width=\"100%\">\n";
   dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"<table bgcolor=\"#"<<colors[(colorIdx-1)%colors.size()]<<"\" width=\"100%\" id=\"table"<<getBlockID()<<"\" style=\"border:1px solid white\" onmouseover=\"this.style.border='1px solid black'; highlightLink('"<<getBlockID()<<"', '#F4FBAA');\" onmouseout=\"this.style.border='1px solid white'; highlightLink('"<<getBlockID()<<"', '#FFFFFF');\" onclick=\"focusLinkSummary('"<<getBlockID()<<"', event);\">\n";
-  dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"<tr width=\"100%\"><td width=50></td><td width=\"100%\"><h2>\n";
-  dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"<a name=\"anchor"<<getBlockID()<<"\" href=\"javascript:unhide('"<<getBlockID()<<"');\">";
+  dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"<tr width=\"100%\"><td width=50></td><td width=\"100%\">";
+  if(level == high || level == medium || level == low) {
+    dbg <<"<h2>\n";
+    dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"<a name=\"anchor"<<getBlockID()<<"\" href=\"javascript:unhide('"<<getBlockID()<<"');\">";
+  }
+  
   dbg.userAccessing();
   dbg << getLabel();
   dbg.ownerAccessing();
-  dbg << "</a>\n";
-  if(false) { //if(saved_appExecInfo) {
-    dbg << "<script type=\"text/javascript\">\n";
-    dbg << "  document.write(\"<a href=\\\"http://\"+hostname+\""<<":"<<GDB_PORT<<"/gdbwrap.cgi?execFile="<<saved_execFile<<"&tgtCount="<<blockCount<<"&args=";
-//    dbg << "(<a href=\"http://"<<hostname<<":"<<GDB_PORT<<"/gdbwrap.cgi?execFile="<<saved_execFile<<"&tgtCount="<<blockCount<<"&args=";
-    for(int i=1; i<saved_argc; i++) {
-      if(i!=1) dbg << " ";
-      dbg << saved_argv[i];
+  if(level == high || level == medium || level == low) {
+    dbg << "</a>\n";
+    if(false) { //if(saved_appExecInfo) {
+      dbg << "<script type=\"text/javascript\">\n";
+      dbg << "  document.write(\"<a href=\\\"http://\"+hostname+\""<<":"<<GDB_PORT<<"/gdbwrap.cgi?execFile="<<saved_execFile<<"&tgtCount="<<blockCount<<"&args=";
+  //    dbg << "(<a href=\"http://"<<hostname<<":"<<GDB_PORT<<"/gdbwrap.cgi?execFile="<<saved_execFile<<"&tgtCount="<<blockCount<<"&args=";
+      for(int i=1; i<saved_argc; i++) {
+        if(i!=1) dbg << " ";
+        dbg << saved_argv[i];
+      }
+      dbg << "\\\"><b>GDB</b></a>\");\n";
+      dbg << "</script>\n";
     }
-    dbg << "\\\"><b>GDB</b></a>\");\n";
-    dbg << "</script>\n";
-  }
-  if(saved_appExecInfo) {
-    ostringstream setGDBLink; 
-    setGDBLink << "\"javascript:setGDBLink(this, ':"<<GDB_PORT<<"/gdbwrap.cgi?execFile="<<saved_execFile<<"&tgtCount="<<blockCount<<"&args=";
-    for(int i=1; i<saved_argc; i++) {
-      if(i!=1) dbg << " ";
-      setGDBLink<< saved_argv[i];
+    if(saved_appExecInfo) {
+      ostringstream setGDBLink; 
+      setGDBLink << "\"javascript:setGDBLink(this, ':"<<GDB_PORT<<"/gdbwrap.cgi?execFile="<<saved_execFile<<"&tgtCount="<<blockCount<<"&args=";
+      for(int i=1; i<saved_argc; i++) {
+        if(i!=1) dbg << " ";
+        setGDBLink<< saved_argv[i];
+      }
+      setGDBLink << "')\"";
+  
+      dbg << "<a href=\"#\" onclick="<<setGDBLink.str()<<" onmouseover="<<setGDBLink.str()<<"><img src=\"img/gdb.gif\" width=40 height=21 alt=\"GDB\"></a>\n";
     }
-    setGDBLink << "')\"";
-
-    dbg << "<a href=\"#\" onclick="<<setGDBLink.str()<<" onmouseover="<<setGDBLink.str()<<"><img src=\"img/gdb.gif\" width=40 height=21 alt=\"GDB\"></a>\n";
+    if(loadCmd != "") {
+      dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1);
+      dbg << "<a href=\"javascript:"<<loadCmd<<")\">";
+      //dbg << "<a href=\"javascript:loadURLIntoDiv(top.detail.document, '"<<detailContentURL<<".body', 'div"<<getBlockID()<<"'); loadURLIntoDiv(top.summary.document, '"<<summaryContentURL<<".body', 'sumdiv"<<getBlockID()<<"')\">";
+      dbg << "<img src=\"img/divDL.gif\" width=25 height=35></a>\n";
+      dbg << "\t\t\t<a target=\"_top\" href=\"index."<<getFileID()<<".html\">";
+      dbg << "<img src=\"img/divGO.gif\" width=35 height=25></a>\n";
+    }
+    dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"</h2>";
   }
-  if(loadCmd != "") {
-    dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1);
-    dbg << "<a href=\"javascript:"<<loadCmd<<")\">";
-    //dbg << "<a href=\"javascript:loadURLIntoDiv(top.detail.document, '"<<detailContentURL<<".body', 'div"<<getBlockID()<<"'); loadURLIntoDiv(top.summary.document, '"<<summaryContentURL<<".body', 'sumdiv"<<getBlockID()<<"')\">";
-    dbg << "<img src=\"img/divDL.gif\" width=25 height=35></a>\n";
-    dbg << "\t\t\t<a target=\"_top\" href=\"index."<<getFileID()<<".html\">";
-    dbg << "<img src=\"img/divGO.gif\" width=35 height=25></a>\n";
-  }
-  dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"</h2></td></tr>\n";
+  dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"</td></tr>\n";
   dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"<tr width=\"100%\"><td width=50></td><td width=\"100%\">\n";
   dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"<div id=\"div"<<getBlockID()<<"\" class=\"unhidden\">\n";
   dbg.flush();

@@ -20,7 +20,7 @@ class scope: public block
   public:
   // Records whether this scope is included in the emitted output (true) or not (false)
   bool active;
-  typedef enum {high, medium, low} scopeLevel;
+  typedef enum {high, medium, low, min} scopeLevel;
   scopeLevel level;
   
   scope(std::string label,                                   scopeLevel level, const attrOp& onoffOp);
