@@ -1300,7 +1300,7 @@ string dbgStream::enterBlock(block* b, bool newFileEntered, bool addSummaryEntry
   // Initialize this block's location (must be done before the call to 
   // subBlockEnterNotify() to make sure b's containers know there it is located)
   string blockID = blockGlobalStr(loc);
-  if(!recursiveEnterBlock) b->setLocation(loc);
+  b->setLocation(loc);
   
   // Inform this block's container blocks that we have entered it
   if(!recursiveEnterBlock) subBlockEnterNotify(b);
@@ -1324,9 +1324,9 @@ string dbgStream::enterBlock(block* b, bool newFileEntered, bool addSummaryEntry
   dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"<div id=\"div"<<b->getBlockID()<<"\" class=\"unhidden\">\n"; dbg.flush();
   dbg.userAccessing();
   
-  if(!recursiveEnterBlock) 
+  if(!recursiveEnterBlock) {
     enterBlock(new block(""), false, false, true);
-  else {
+  
     if(addSummaryEntry) {
       *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->blockDepth())<<"</td></tr>\n";
       *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->blockDepth())<<"<tr width=\"100%\"><td width=50></td><td width=\"100%\">\n";
@@ -1361,7 +1361,7 @@ block* dbgStream::exitBlock(bool recursiveExitBlock)
 {
   if(!recursiveExitBlock)
     exitBlock(true);
-    
+  
   //{ cout << "exitBlock("<<b->getLabel()<<", "<<contentURL<<")"<<endl; }
   fileBufs.back()->ownerAccessing();
   block* lastB = fileBufs.back()->exitBlock();
@@ -1375,27 +1375,24 @@ block* dbgStream::exitBlock(bool recursiveExitBlock)
   assert(blocks.back().second.size()>0);
   block* topB = blocks.back().second.back();
   blocks.back().second.pop_back();
-
-  cout << "<<<exitBlock: lastB="<<lastB<<", topB="<<topB<<" recursiveExitBlock=recursiveExitBlock\n";
+  fileBufs.back()->userAccessing();
+  
+  cout << "<<<exitBlock: lastB="<<lastB<<", topB="<<topB<<" recursiveExitBlock="<<recursiveExitBlock<<"\n";
   
   // Inform this block's container blocks that we have exited it
   // (after the removal of this block from blocks to keep the block from being informed about itself)
   subBlockExitNotify(topB);
   
-  dbg.ownerAccessing();  
+  dbg.ownerAccessing();
   dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"</div>\n"; dbg.flush();
   dbg.userAccessing();
   
   lastB->printExit();
-    
-  fileBufs.back()->userAccessing();
-  
   // We enfore the invariant that the number of open and close angle brackets must be balanced
   // between the entry into and exit from a block
   while(fileBufs.back()->getNumOpenAngles() > 0)
     (*this) << ">";
-  
-  this->flush();
+  //this->flush();
   
   if(!recursiveExitBlock) {
     *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->blockDepth()+1)<<"</div></td></tr>\n";
@@ -1404,6 +1401,7 @@ block* dbgStream::exitBlock(bool recursiveExitBlock)
     *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->blockDepth())<<"<tr width=\"100%\"><td width=50></td><td width=\"100%\">\n";
     summaryFiles.back()->flush();
   }
+  
   
   if(recursiveExitBlock) {
     delete lastB;

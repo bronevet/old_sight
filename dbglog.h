@@ -8,7 +8,6 @@
 #include <iostream>
 #include <sstream>
 #include <fstream>
-#include "attributes.h"
 
 namespace dbglog {
 
@@ -448,3 +447,4 @@ std::string escape(std::string s);
 } // namespace dbglog
 
 #include "widgets.h"
+#include "attributes.h"

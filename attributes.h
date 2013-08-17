@@ -545,11 +545,11 @@ class attr
   bool attrModified;
   
   public:
-  attr(std::string key, std::string val) : key(key), val(val) { attrModified = attributes.add(key, this->val); }
-  attr(std::string key, char*       val) : key(key), val(val) { attrModified = attributes.add(key, this->val); }
-  attr(std::string key, void*       val) : key(key), val(val) { attrModified = attributes.add(key, this->val); }
-  attr(std::string key, long        val) : key(key), val(val) { attrModified = attributes.add(key, this->val); }
-  attr(std::string key, double      val) : key(key), val(val) { attrModified = attributes.add(key, this->val); }
+  attr(std::string key, std::string val) : key(key), val(val) { dbg.exitBlock(true); attrModified = attributes.add(key, this->val); dbg.enterBlock(new block(""), false, false, true); }
+  attr(std::string key, char*       val) : key(key), val(val) { dbg.exitBlock(true); attrModified = attributes.add(key, this->val); dbg.enterBlock(new block(""), false, false, true); }
+  attr(std::string key, void*       val) : key(key), val(val) { dbg.exitBlock(true); attrModified = attributes.add(key, this->val); dbg.enterBlock(new block(""), false, false, true); }
+  attr(std::string key, long        val) : key(key), val(val) { dbg.exitBlock(true); attrModified = attributes.add(key, this->val); dbg.enterBlock(new block(""), false, false, true); }
+  attr(std::string key, double      val) : key(key), val(val) { dbg.exitBlock(true); attrModified = attributes.add(key, this->val); dbg.enterBlock(new block(""), false, false, true); }
   
   ~attr() {
     // If the addition of this key/value pair changed the attributes map, remove the mapping.

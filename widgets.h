@@ -8,7 +8,7 @@
 #include <iostream>
 #include <sstream>
 #include <fstream>
-#include "dbglog.h"
+#include "attributes.h"
 
 namespace dbglog {
 
