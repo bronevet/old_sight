@@ -11,6 +11,8 @@ int main(int argc, char** argv) {
   
   srand(time(NULL));
   
+  initializeDebug(argc, argv);
+  
   for(int i=0; i<100; i++) {
     int serverID = rand()%numServers;
     int clientID = rand()%numClients;
@@ -22,7 +24,8 @@ int main(int argc, char** argv) {
     
     // Emit debug output only for write and read requests, not status requests
     attrIf aif(new attrNEQ("request", string("status")));
-
+    scope sdl("Request", scope::min);
+    
     dbg << "Client "<<clientID<<" sending "<<request<<" request to server "<<serverID<<endl;
   }
 }
