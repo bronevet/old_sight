@@ -12,8 +12,9 @@ all: dbgLogTester${EXT} dbgLogGraphTester${EXT} dbgLogAttrTester${EXT} dbgLogCli
      widgets/shellinabox/bin/shellinaboxd${EXT} widgets/mongoose/mongoose${EXT} widgets/graphviz/bin/dot${EXT} script/taffydb
 	chmod 755 html img script
 	chmod 644 html/* img/* script/*
-	chmod 644 widgets/canviz-0.1/* widgets/canviz-0.1/*/*
+	chmod 644 widgets/canviz-0.1/* 
 	chmod 755 widgets/canviz-0.1 widgets/canviz-0.1/excanvas widgets/canviz-0.1/lib widgets/canviz-0.1/path widgets/canviz-0.1/prototype
+	chmod 644 widgets/canviz-0.1/*/*
 
 # Set this to the current Operating System (needed by the Mongoose web server). 
 # Choices: linux|bsd|solaris|mac|windows|mingw|cygwin
@@ -99,6 +100,7 @@ else
 	cd widgets/graphviz-2.32.0; export CC=gcc; export CXX=g++; ./configure --prefix=${CURDIR}/widgets/graphviz --disable-swig --disable-sharp --disable-go --disable-io --disable-java --disable-lua --disable-ocaml --disable-perl --disable-php --disable-python --disable-r --disable-ruby --disable-tcl --without-pic --without-efence --without-expat --without-devil --without-webp --without-poppler --without-ghostscript --without-visio --without-pangocairo --without-lasi --without-glitz --without-freetype2 --without-fontconfig --without-gdk-pixbuf --without-gtk --without-gtkgl --without-gtkglext --without-gts --without-glade --without-ming --without-qt --without-quartz --without-gdiplus --without-libgd --without-glut --without-sfdp --without-smyrna --without-ortho --without-digcola --without-ipsepcola --enable-static --disable-shared
 	cd widgets/graphviz-2.32.0; make
 	cd widgets/graphviz-2.32.0; make install
+	mv widgets/graphviz/bin/dot_static widgets/graphviz/bin/dot
 	rm -r widgets/graphviz-2.32.0 widgets/graphviz-2.32.0.tar.gz
 endif
 
