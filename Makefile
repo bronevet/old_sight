@@ -12,9 +12,8 @@ all: dbgLogTester${EXT} dbgLogGraphTester${EXT} dbgLogAttrTester${EXT} dbgLogCli
      widgets/shellinabox/bin/shellinaboxd${EXT} widgets/mongoose/mongoose${EXT} widgets/graphviz/bin/dot${EXT} script/taffydb
 	chmod 755 html img script
 	chmod 644 html/* img/* script/*
-	chmod 644 widgets/canviz-0.1/* 
+	chmod 644 widgets/canviz-0.1/* widgets/canviz-0.1/*/*
 	chmod 755 widgets/canviz-0.1 widgets/canviz-0.1/excanvas widgets/canviz-0.1/lib widgets/canviz-0.1/path widgets/canviz-0.1/prototype
-	chmod 644 widgets/canviz-0.1/*/*
 
 # Set this to the current Operating System (needed by the Mongoose web server). 
 # Choices: linux|bsd|solaris|mac|windows|mingw|cygwin
@@ -72,7 +71,7 @@ widgets/shellinabox/bin/shellinaboxd${EXT}:
 	rm -f widgets/shellinabox-2.14.tar.gz
 	cd widgets; wget --no-check-certificate https://shellinabox.googlecode.com/files/shellinabox-2.14.tar.gz
 	cd widgets; tar -xf shellinabox-2.14.tar.gz
-	cd widgets/shellinabox-2.14; CC=gcc; ./configure --prefix=${CURDIR}/widgets/shellinabox
+	cd widgets/shellinabox-2.14; ./configure --prefix=${CURDIR}/widgets/shellinabox
 	cd widgets/shellinabox-2.14; make
 	cd widgets/shellinabox-2.14; make install
 	rm -r widgets/shellinabox-2.14 widgets/shellinabox-2.14.tar.gz
@@ -82,7 +81,7 @@ widgets/mongoose/mongoose${EXT}:
 	cd widgets; wget --no-check-certificate https://mongoose.googlecode.com/files/mongoose-3.8.tgz
 	cd widgets; tar -xf mongoose-3.8.tgz
 	cd widgets; rm mongoose-3.8.tgz
-	cd widgets/mongoose; CC=gcc; make ${OS_MONGOOSE}
+	cd widgets/mongoose; make ${OS_MONGOOSE}
 
 widgets/graphviz/bin/dot${EXT}:
 ifeq (${OS},Cygwin)
@@ -94,18 +93,17 @@ ifeq (${OS},Cygwin)
 	rm -r widgets/graphviz-2.32.zip widgets/release
 	chmod 755 widgets/graphviz/bin/*
 else
-	rm -rf widgets/graphviz-2.32.0.tar.gz
 	cd widgets; wget http://www.graphviz.org/pub/graphviz/stable/SOURCES/graphviz-2.32.0.tar.gz
 	cd widgets; tar -xf graphviz-2.32.0.tar.gz
 	cd widgets/graphviz-2.32.0; export CC=gcc; export CXX=g++; ./configure --prefix=${CURDIR}/widgets/graphviz --disable-swig --disable-sharp --disable-go --disable-io --disable-java --disable-lua --disable-ocaml --disable-perl --disable-php --disable-python --disable-r --disable-ruby --disable-tcl --without-pic --without-efence --without-expat --without-devil --without-webp --without-poppler --without-ghostscript --without-visio --without-pangocairo --without-lasi --without-glitz --without-freetype2 --without-fontconfig --without-gdk-pixbuf --without-gtk --without-gtkgl --without-gtkglext --without-gts --without-glade --without-ming --without-qt --without-quartz --without-gdiplus --without-libgd --without-glut --without-sfdp --without-smyrna --without-ortho --without-digcola --without-ipsepcola --enable-static --disable-shared
 	cd widgets/graphviz-2.32.0; make
 	cd widgets/graphviz-2.32.0; make install
-	mv widgets/graphviz/bin/dot_static widgets/graphviz/bin/dot
 	rm -r widgets/graphviz-2.32.0 widgets/graphviz-2.32.0.tar.gz
 endif
 
 script/taffydb:
-	cd script; wget --no-check-certificate https://codeload.github.com/typicaljoe/taffydb/zip/master #https://github.com/typicaljoe/taffydb/archive/master.zip
-	mv script/master script/master.zip
+	cd script; wget --no-check-certificate https://github.com/typicaljoe/taffydb/archive/master.zip
 	cd script; unzip master.zip
 	mv script/taffydb-master script/taffydb
+	chmod 755 script/taffydb
+	chmod 644 script/taffydb/*

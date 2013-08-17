@@ -1358,10 +1358,10 @@ string dbgStream::enterBlock(block* b, bool newFileEntered, bool addSummaryEntry
 // adjacent attribute definitions
 string dbgStream::enterAttrSubBlock() {
   // Only enter an attribute sub-block if we've already begun a block
-  if(fileBufs.size()>0 && blocks.size()>0)
+  //if(fileBufs.size()>0 && blocks.size()>0 && blocks.begin()->second.size()>0)
     return enterBlock(new block(""), false, false, true);
-  else
-    return "";
+  /*else
+    return "";*/
 }
 
 // Called when a block is exited. Returns the block that was exited.
@@ -1427,7 +1427,7 @@ block* dbgStream::exitBlock(bool recursiveExitBlock)
 // adjacent attribute definitions
 block* dbgStream::exitAttrSubBlock() {
   // Only exit an attribute sub-block if we've already begun a block
-  if(fileBufs.size()>0 && blocks.size()>0)
+  if(fileBufs.size()>0 && blocks.size()>0 && blocks.begin()->second.size()>0)
     return exitBlock(true);
   else
     return NULL;
