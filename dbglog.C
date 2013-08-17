@@ -1282,7 +1282,7 @@ void dbgStream::printDetailFileContainerHTML(string absoluteFileName, string tit
 //    the start of this major block and the next setting of an attribute.
 string dbgStream::enterBlock(block* b, bool newFileEntered, bool addSummaryEntry, bool recursiveEnterBlock)
 {
-  cout << "b="<<b<<", newFileEntered="<<newFileEntered<<", addSummaryEntry="<<addSummaryEntry<<", recursiveEnterBlock="<<recursiveEnterBlock<<endl;
+  cout << "<<<enterBlock: b="<<b<<", newFileEntered="<<newFileEntered<<", addSummaryEntry="<<addSummaryEntry<<", recursiveEnterBlock="<<recursiveEnterBlock<<endl;
   // if recursiveEnterBlock, newFileEntered and addSummaryEntry may not be
   assert(!addSummaryEntry || !(recursiveEnterBlock && newFileEntered));
   //(*this) << "dbgStream::enterBlock("<<(b? b->getLabel(): "NULL")<<")"<<endl;
@@ -1348,6 +1348,8 @@ string dbgStream::enterBlock(block* b, bool newFileEntered, bool addSummaryEntry
   scriptFiles.back()->flush();
   
   fileBufs.back()->userAccessing();
+
+  cout << ":enterBlock>>>\n";
   
   return loadCmd.str();
 }
@@ -1357,6 +1359,9 @@ string dbgStream::enterBlock(block* b, bool newFileEntered, bool addSummaryEntry
 //    the most recent setting of an attribute and the end of this block
 block* dbgStream::exitBlock(bool recursiveExitBlock)
 {
+  if(!recursiveExitBlock)
+    exitBlock(true);
+    
   //{ cout << "exitBlock("<<b->getLabel()<<", "<<contentURL<<")"<<endl; }
   fileBufs.back()->ownerAccessing();
   block* lastB = fileBufs.back()->exitBlock();
@@ -1370,6 +1375,8 @@ block* dbgStream::exitBlock(bool recursiveExitBlock)
   assert(blocks.back().second.size()>0);
   block* topB = blocks.back().second.back();
   blocks.back().second.pop_back();
+
+  cout << "<<<exitBlock: lastB="<<lastB<<", topB="<<topB<<" recursiveExitBlock=recursiveExitBlock\n";
   
   // Inform this block's container blocks that we have exited it
   // (after the removal of this block from blocks to keep the block from being informed about itself)
@@ -1379,8 +1386,7 @@ block* dbgStream::exitBlock(bool recursiveExitBlock)
   dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"</div>\n"; dbg.flush();
   dbg.userAccessing();
   
-  if(!recursiveExitBlock)
-    lastB->printExit();
+  lastB->printExit();
     
   fileBufs.back()->userAccessing();
   
@@ -1404,6 +1410,8 @@ block* dbgStream::exitBlock(bool recursiveExitBlock)
     lastB = NULL;
   }
   
+  cout << ":exitBlock>>>\n";
+
   return lastB;
 }
 
