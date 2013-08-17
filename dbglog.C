@@ -1023,7 +1023,7 @@ string dbgStream::enterFileLevel(block* b, bool topLevel)
   string loadCmd="";
   blocks.push_back(make_pair(b, list<block*>()));
   if(!topLevel)
-    loadCmd = enterBlock(b, true);//, fileLevelJSIntArray(location)); // detailRelFName.str(), sumRelFName.str());*/
+    loadCmd = enterBlock(b, true, true);
   fileBlocks.push_back(b);
   
   //if(!topLevel) (*this)<< "dbgStream::enterFileLevel("<<b->getLabel()<<") >>>>>\n";
@@ -1274,8 +1274,17 @@ void dbgStream::printDetailFileContainerHTML(string absoluteFileName, string tit
   det.close();
 }
 
-string dbgStream::enterBlock(block* b, bool newFileEntered)
+// Called when a block is entered.
+// b: The block that is being entered
+// newFileEntered: records whether by entering this block we're also entering a new file
+// addSummaryEntry: records whether we need to add an entry to the summary frame for this block
+// recursiveEnterBlock: records whether we're calling enterBlock() recursively to place a block between
+//    the start of this major block and the next setting of an attribute.
+string dbgStream::enterBlock(block* b, bool newFileEntered, bool addSummaryEntry, bool recursiveEnterBlock)
 {
+  cout << "b="<<b<<", newFileEntered="<<newFileEntered<<", addSummaryEntry="<<addSummaryEntry<<", recursiveEnterBlock="<<recursiveEnterBlock<<endl;
+  // if recursiveEnterBlock, newFileEntered and addSummaryEntry may not be
+  assert(!addSummaryEntry || !(recursiveEnterBlock && newFileEntered));
   //(*this) << "dbgStream::enterBlock("<<(b? b->getLabel(): "NULL")<<")"<<endl;
   
   fileBufs.back()->ownerAccessing();
@@ -1288,13 +1297,13 @@ string dbgStream::enterBlock(block* b, bool newFileEntered)
   // Add a new level to the block list, starting the index at 0
   loc.back().second.push_back(0);
   
-  // Initialize this block's location (ust be done before the call to 
+  // Initialize this block's location (must be done before the call to 
   // subBlockEnterNotify() to make sure b's containers know there it is located)
   string blockID = blockGlobalStr(loc);
-  b->setLocation(loc);
+  if(!recursiveEnterBlock) b->setLocation(loc);
   
   // Inform this block's container blocks that we have entered it
-  subBlockEnterNotify(b);
+  if(!recursiveEnterBlock) subBlockEnterNotify(b);
   
   // Add this block to the record of the block nesting structure
   // (after the call to subBlockEnterNotify to keep the block from being informed about itself)
@@ -1302,26 +1311,37 @@ string dbgStream::enterBlock(block* b, bool newFileEntered)
   blocks.back().second.push_back(b);
   
   ostringstream loadCmd; // The command to open this file in the current view
-  string fileID = fileLevelStr(b->getLocation());
-  if(newFileEntered)
+  
+  if(newFileEntered) {
+    string fileID = fileLevelStr(b->getLocation());
     loadCmd << "loadSubFile(top.detail.document, "<<fileLevelJSIntArray(loc)<<", 'detail."<<fileID<<".body', 'div"<<blockID<<"', "<<
                "top.summary.document, 'summary."<<fileID<<".body', 'sumdiv"<<blockID<<"', "<<
                "'script/script."<<fileID<<"'";
+  }
   
-  b->printEntry(loadCmd.str());  
-
-  *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->blockDepth())<<"</td></tr>\n";
-  *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->blockDepth())<<"<tr width=\"100%\"><td width=50></td><td width=\"100%\">\n";
-  *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->blockDepth()+1)<<"<table width=\"100%\" style=\"border:0px\">\n";
-  *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->blockDepth()+1)<<"<tr width=\"100%\"><td width=50></td><td id=\"link"<<blockID<<"\" width=\"100%\">";
-  *summaryFiles.back() <<     "<a name=\"anchor"<<blockID<<"\" href=\"javascript:focusLinkDetail('"<<blockID<<"')\">"<<b->getLabel()<<"</a> ("<<blockID<<")</td></tr>\n";
-  *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->blockDepth()+1)<<"<tr width=\"100%\"><td width=50></td><td width=\"100%\">\n";
-  *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->blockDepth()+1)<<"<div id=\"sumdiv"<<blockID<<"\">\n";
-  summaryFiles.back()->flush();
+  if(!recursiveEnterBlock) b->printEntry(loadCmd.str());
+  dbg.ownerAccessing();  
+  dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"<div id=\"div"<<b->getBlockID()<<"\" class=\"unhidden\">\n"; dbg.flush();
+  dbg.userAccessing();
   
-  if(newFileEntered) {
-    (*scriptFiles.back()) << "\trecordFile("<<fileLevelJSIntArray(loc)<<", 'loadFunc', function(continuationFunc) {"<<loadCmd.str()<<", continuationFunc)});\n";
-    scriptFiles.back()->flush();
+  if(!recursiveEnterBlock) 
+    enterBlock(new block(""), false, false, true);
+  else {
+    if(addSummaryEntry) {
+      *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->blockDepth())<<"</td></tr>\n";
+      *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->blockDepth())<<"<tr width=\"100%\"><td width=50></td><td width=\"100%\">\n";
+      *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->blockDepth()+1)<<"<table width=\"100%\" style=\"border:0px\">\n";
+      *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->blockDepth()+1)<<"<tr width=\"100%\"><td width=50></td><td id=\"link"<<blockID<<"\" width=\"100%\">";
+      *summaryFiles.back() <<     "<a name=\"anchor"<<blockID<<"\" href=\"javascript:focusLinkDetail('"<<blockID<<"')\">"<<b->getLabel()<<"</a></td></tr>\n";
+      *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->blockDepth()+1)<<"<tr width=\"100%\"><td width=50></td><td width=\"100%\">\n";
+      *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->blockDepth()+1)<<"<div id=\"sumdiv"<<blockID<<"\">\n";
+      summaryFiles.back()->flush();
+    }
+    
+    if(newFileEntered) {
+      (*scriptFiles.back()) << "\trecordFile("<<fileLevelJSIntArray(loc)<<", 'loadFunc', function(continuationFunc) {"<<loadCmd.str()<<", continuationFunc)});\n";
+      scriptFiles.back()->flush();
+    }
   }
   
   (*scriptFiles.back()) << "\trecordAttr("<<attributes.strJS()<<", '"<<blockID<<"');\n";
@@ -1332,7 +1352,10 @@ string dbgStream::enterBlock(block* b, bool newFileEntered)
   return loadCmd.str();
 }
 
-block* dbgStream::exitBlock()
+// Called when a block is exited. Returns the block that was exited.
+// recursiveEnterBlock: records whether we're calling exitBlock() recursively to place a block between
+//    the most recent setting of an attribute and the end of this block
+block* dbgStream::exitBlock(bool recursiveExitBlock)
 {
   //{ cout << "exitBlock("<<b->getLabel()<<", "<<contentURL<<")"<<endl; }
   fileBufs.back()->ownerAccessing();
@@ -1352,7 +1375,12 @@ block* dbgStream::exitBlock()
   // (after the removal of this block from blocks to keep the block from being informed about itself)
   subBlockExitNotify(topB);
   
-  lastB->printExit();
+  dbg.ownerAccessing();  
+  dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"</div>\n"; dbg.flush();
+  dbg.userAccessing();
+  
+  if(!recursiveExitBlock)
+    lastB->printExit();
     
   fileBufs.back()->userAccessing();
   
@@ -1362,12 +1390,19 @@ block* dbgStream::exitBlock()
     (*this) << ">";
   
   this->flush();
-
-  *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->blockDepth()+1)<<"</div></td></tr>\n";
-  *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->blockDepth()+1)<<"</table>\n";
-  *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->blockDepth())<<"</td></tr>\n";
-  *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->blockDepth())<<"<tr width=\"100%\"><td width=50></td><td width=\"100%\">\n";
-  summaryFiles.back()->flush();
+  
+  if(!recursiveExitBlock) {
+    *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->blockDepth()+1)<<"</div></td></tr>\n";
+    *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->blockDepth()+1)<<"</table>\n";
+    *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->blockDepth())<<"</td></tr>\n";
+    *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->blockDepth())<<"<tr width=\"100%\"><td width=50></td><td width=\"100%\">\n";
+    summaryFiles.back()->flush();
+  }
+  
+  if(recursiveExitBlock) {
+    delete lastB;
+    lastB = NULL;
+  }
   
   return lastB;
 }

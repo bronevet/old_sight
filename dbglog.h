@@ -387,9 +387,17 @@ public:
   void printDetailFileContainerHTML(std::string absoluteFileName, std::string title);
   
   // Called when a block is entered.
-  std::string enterBlock(block* b, bool newFileEntered);//, std::string fileIDJSArray="");//std::string detailContentURL="", std::string summaryContentURL="");
-    // Called when a block is exited. Returns the block that was exited.
-  block* exitBlock();
+  // b: The block that is being entered
+  // newFileEntered: records whether by entering this block we're also entering a new file
+  // addSummaryEntry: records whether we need to add an entry to the summary frame for this block
+  // recursiveEnterBlock: records whether we're calling enterBlock() recursively to place a block between
+  //    the start of this major block and the next setting of an attribute.
+  std::string enterBlock(block* b, bool newFileEntered, bool addSummaryEntry, bool recursiveEnterBlock=false);
+  
+  // Called when a block is exited. Returns the block that was exited.
+  // recursiveEnterBlock: records whether we're calling exitBlock() recursively to place a block between
+  //    the most recent setting of an attribute and the end of this block
+  block* exitBlock(bool recursiveExitBlock=false);
 
   // Adds an image to the output with the given extension and returns the path of this image
   // so that the caller can write to it.

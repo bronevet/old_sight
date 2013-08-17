@@ -114,10 +114,10 @@ void scope::init(scopeLevel level, const attrOp* onoffOp)
       loadCmd = dbg.enterFileLevel(this);
     } else if(level == medium) {
       colorIdx++; // Advance to a new color for this func
-      dbg.enterBlock(this, false);
+      dbg.enterBlock(this, false, true);
     }
     else if(level == low || level == min)
-      dbg.enterBlock(this, false);
+      dbg.enterBlock(this, false, true);
   }
   else
     active = false;
@@ -191,7 +191,6 @@ void scope::printEntry(string loadCmd) {
   }
   dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"</td></tr>\n";
   dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"<tr width=\"100%\"><td width=50></td><td width=\"100%\">\n";
-  dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"<div id=\"div"<<getBlockID()<<"\" class=\"unhidden\">\n";
   dbg.flush();
   dbg.userAccessing();  
 }
@@ -239,7 +238,7 @@ graph::graph(const attrOp& onoffOp) : block("Graph") {
 void graph::init() {
   active = true;
   
-  dbg.enterBlock(this, false);
+  dbg.enterBlock(this, false, true);
   //imgPath = dbg.addImage("svg");
   maxNodeID = 0;
   
