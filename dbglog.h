@@ -393,11 +393,19 @@ public:
   //    the start of this major block and the next setting of an attribute.
   std::string enterBlock(block* b, bool newFileEntered, bool addSummaryEntry, bool recursiveEnterBlock=false);
   
+  // Called to enter a mini-block between the start/end of a block and the definition of an attribute and between
+  // adjacent attribute definitions
+  std::string enterAttrSubBlock();
+  
   // Called when a block is exited. Returns the block that was exited.
   // recursiveEnterBlock: records whether we're calling exitBlock() recursively to place a block between
   //    the most recent setting of an attribute and the end of this block
   block* exitBlock(bool recursiveExitBlock=false);
 
+  // Called to exit a mini-block between the start/end of a block and the definition of an attribute and between
+  // adjacent attribute definitions
+  block* exitAttrSubBlock();
+  
   // Adds an image to the output with the given extension and returns the path of this image
   // so that the caller can write to it.
   std::string addImage(std::string ext=".gif");

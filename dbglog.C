@@ -1282,7 +1282,7 @@ void dbgStream::printDetailFileContainerHTML(string absoluteFileName, string tit
 //    the start of this major block and the next setting of an attribute.
 string dbgStream::enterBlock(block* b, bool newFileEntered, bool addSummaryEntry, bool recursiveEnterBlock)
 {
-  cout << "<<<enterBlock: b="<<b<<", newFileEntered="<<newFileEntered<<", addSummaryEntry="<<addSummaryEntry<<", recursiveEnterBlock="<<recursiveEnterBlock<<endl;
+  //cout << "<<<enterBlock: b="<<b<<", newFileEntered="<<newFileEntered<<", addSummaryEntry="<<addSummaryEntry<<", recursiveEnterBlock="<<recursiveEnterBlock<<endl;
   // if recursiveEnterBlock, newFileEntered and addSummaryEntry may not be
   assert(!addSummaryEntry || !(recursiveEnterBlock && newFileEntered));
   //(*this) << "dbgStream::enterBlock("<<(b? b->getLabel(): "NULL")<<")"<<endl;
@@ -1325,7 +1325,7 @@ string dbgStream::enterBlock(block* b, bool newFileEntered, bool addSummaryEntry
   dbg.userAccessing();
   
   if(!recursiveEnterBlock) {
-    enterBlock(new block(""), false, false, true);
+    enterAttrSubBlock();
   
     if(addSummaryEntry) {
       *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->blockDepth())<<"</td></tr>\n";
@@ -1349,9 +1349,17 @@ string dbgStream::enterBlock(block* b, bool newFileEntered, bool addSummaryEntry
   
   fileBufs.back()->userAccessing();
 
-  cout << ":enterBlock>>>\n";
+  //cout << ":enterBlock>>>\n";
   
   return loadCmd.str();
+}
+
+// Called to enter a mini-block between the start/end of a block and the definition of an attribute and between
+// adjacent attribute definitions
+string dbgStream::enterAttrSubBlock() {
+  // Only enter an attribute sub-block if we've already begun a block
+  if(fileBufs.size()>0)
+    return enterBlock(new block(""), false, false, true);
 }
 
 // Called when a block is exited. Returns the block that was exited.
@@ -1360,7 +1368,7 @@ string dbgStream::enterBlock(block* b, bool newFileEntered, bool addSummaryEntry
 block* dbgStream::exitBlock(bool recursiveExitBlock)
 {
   if(!recursiveExitBlock)
-    exitBlock(true);
+    exitAttrSubBlock();
   
   //{ cout << "exitBlock("<<b->getLabel()<<", "<<contentURL<<")"<<endl; }
   fileBufs.back()->ownerAccessing();
@@ -1377,7 +1385,7 @@ block* dbgStream::exitBlock(bool recursiveExitBlock)
   blocks.back().second.pop_back();
   fileBufs.back()->userAccessing();
   
-  cout << "<<<exitBlock: lastB="<<lastB<<", topB="<<topB<<" recursiveExitBlock="<<recursiveExitBlock<<"\n";
+  //cout << "<<<exitBlock: lastB="<<lastB<<", topB="<<topB<<" recursiveExitBlock="<<recursiveExitBlock<<"\n";
   
   // Inform this block's container blocks that we have exited it
   // (after the removal of this block from blocks to keep the block from being informed about itself)
@@ -1408,9 +1416,17 @@ block* dbgStream::exitBlock(bool recursiveExitBlock)
     lastB = NULL;
   }
   
-  cout << ":exitBlock>>>\n";
+  //cout << ":exitBlock>>>\n";
 
   return lastB;
+}
+
+// Called to exit a mini-block between the start/end of a block and the definition of an attribute and between
+// adjacent attribute definitions
+block* dbgStream::exitAttrSubBlock() {
+  // Only exit an attribute sub-block if we've already begun a block
+  if(fileBufs.size()>0)
+    return exitBlock(true);
 }
 
 // Adds an image to the output with the given extension and returns the path of this image
