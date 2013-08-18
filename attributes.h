@@ -10,7 +10,6 @@
 #include <fstream>
 #include <stdlib.h>
 #include <stdio.h>
-#include "dbglog.h"
 
 /*
 This file implements support for attributes. An attribute is a key->value mapping that is set by the application. Different mappings may 
@@ -107,11 +106,14 @@ class attrValue {
   // Returns the type of this attrValue's contents
   valueType getType() const;
   
-  // Return the contents of this attrValue, aborting if there is a type incompatibility
+  // Return the contents of this attrValue, aborting if there is a type incompatibility.
   std::string getStr() const;
   void*       getPtr() const;
   long        getInt() const;
   double      getFloat() const;
+  
+  // Encodes the contents of this attrValue into a string and returns the result.
+  std::string getAsStr() const;
   
   // Implementations of the relational operators
   bool operator==(const attrValue& that) const;
@@ -474,6 +476,9 @@ class attributesC
   bool replace(std::string key, double val);
   bool replace(std::string key, const attrValue& val);
   
+  // Returns whether this key is mapped to a value
+  bool exists(std::string key) const;
+    
   // Returns the value mapped to the given key
   const std::set<attrValue>& get(std::string key) const;
   
@@ -545,11 +550,11 @@ class attr
   bool attrModified;
   
   public:
-  attr(std::string key, std::string val) : key(key), val(val) { dbg.exitAttrSubBlock(); attrModified = attributes.add(key, this->val); dbg.enterAttrSubBlock(); }
-  attr(std::string key, char*       val) : key(key), val(val) { dbg.exitAttrSubBlock(); attrModified = attributes.add(key, this->val); dbg.enterAttrSubBlock(); }
-  attr(std::string key, void*       val) : key(key), val(val) { dbg.exitAttrSubBlock(); attrModified = attributes.add(key, this->val); dbg.enterAttrSubBlock(); }
-  attr(std::string key, long        val) : key(key), val(val) { dbg.exitAttrSubBlock(); attrModified = attributes.add(key, this->val); dbg.enterAttrSubBlock(); }
-  attr(std::string key, double      val) : key(key), val(val) { dbg.exitAttrSubBlock(); attrModified = attributes.add(key, this->val); dbg.enterAttrSubBlock(); }
+  attr(std::string key, std::string val);
+  attr(std::string key, char*       val);
+  attr(std::string key, void*       val);
+  attr(std::string key, long        val);
+  attr(std::string key, double      val);
   
   ~attr() {
     // If the addition of this key/value pair changed the attributes map, remove the mapping.
@@ -561,6 +566,33 @@ class attr
     if(attrModified)
       attributes.remove(key, val);
   }
+  
+  // Returns the key of this attribute
+  std::string getKey() const;
+  
+  // Returns the value of this attribute
+  const attrValue& getVal() const;
+  
+  // Returns the type of this attribute values's contents
+  attrValue::valueType getVType() const;
+  
+  // Return the contents of this attribute values, aborting if there is a type incompatibility
+  std::string getVStr() const;
+  void*       getVPtr() const;
+  long        getVInt() const;
+  double      getVFloat() const;
+  
+  // Implementations of the relational operators
+  bool operator==(const attr& that) const;
+  bool operator<(const attr& that) const;
+  bool operator!=(const attr& that) const
+  { return !(*this == that); }
+  bool operator<=(const attr& that) const
+  { return *this < that || *this == that; }
+  bool operator>(const attr& that) const
+  { return !(*this == that) && !(*this < that); }
+  bool operator>=(const attr& that) const
+  { return (*this == that) || !(*this < that); }
 };
 
 // C++ interface for query creation, destruction

@@ -185,19 +185,3 @@ int fibScopeLinks(int a, scope::scopeLevel level, int verbosityLevel, list<int>&
     return val;
   }
 }
-
-int fibIndent(int a, int verbosityLevel) {
-  // Each recursive call to fibScopeLinks adds an indent level, prepending ":" to text printed by deeper calls to fibIndent. 
-  // To reduce the amount of text printed, we only add indentation if the value of a is >= verbosityLevel
-  indent ind(": ", a, verbosityLevel);
-  
-  if(a==0 || a==1) { 
-    dbg << "=1"<<endl;
-    return 1;
-  } else {
-    int val = fibIndent(a-1, verbosityLevel) + fibIndent(a-2, verbosityLevel);
-    dbg << "="<<val<<endl;
-    return val;
-  }
-}
-

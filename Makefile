@@ -1,5 +1,5 @@
-DBGLOG_O := dbglog.o widgets.o attributes.o binreloc.o getAllHostnames.o
-DBGLOG_H := dbglog.h widgets.h attributes.h binreloc.h getAllHostnames.h
+DBGLOG_O := dbglog.o widgets.o attributes.o binreloc.o getAllHostnames.o widgets/valSelector.o
+DBGLOG_H := dbglog.h dbglog_internal.h widgets.h attributes.h binreloc.h getAllHostnames.h widgets/valSelector.h
 DBGLOG := ${DBGLOG_O} ${DBGLOG_H} gdbLineNum.pl
 
 OS := $(shell uname -o)
@@ -52,7 +52,10 @@ widgets.o: widgets.C widgets.h attributes.h
 	
 attributes.o: attributes.C attributes.h
 	g++ -g attributes.C -DROOT_PATH="\"${CURDIR}\"" -DGDB_PORT=${GDB_PORT} -c -o attributes.o
-	
+
+widgets/valSelector.o: widgets/valSelector.C widgets/valSelector.h
+	g++ -g widgets/valSelector.C -DROOT_PATH="\"${CURDIR}\"" -DGDB_PORT=${GDB_PORT} -c -o widgets/valSelector.o
+
 binreloc.o: binreloc.c binreloc.h
 	g++ -g binreloc.c -c -o binreloc.o
 

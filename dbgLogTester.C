@@ -103,11 +103,11 @@ int main(int argc, char** argv)
 }
 
 int fibScope(int a, scope::scopeLevel level, int verbosityLevel) {
-  attr verbA(txt()<<"verbosity_"<<level, (long)verbosityLevel);
+  attr verbA("verbosity", (long)verbosityLevel);
   
   // Each recursive call to fibScope() generates a new scope at the desired level. To reduce the amount of text printed, we only 
   // generate scopes if the value of a is >= verbosityLevel
-  scope reg(txt()<<"fib("<<a<<")", level, attrGE(txt()<<"verbosity_"<<level, (long)a));
+  scope reg(txt()<<"fib("<<a<<")", level, attrGE("verbosity", (long)a));
   
   if(a==0 || a==1) { 
     dbg << "=1."<<endl;
@@ -130,7 +130,7 @@ int fibScopeLinks(int a, scope::scopeLevel level, int verbosityLevel, list<int>&
                   map<list<int>, anchor>& OutFW,
                   map<list<int>, anchor>& OutBW,
                   bool doFWLinks) {
-  attr verbA(txt()<<"verbosity_"<<level, (long)verbosityLevel);
+  attr verbA("verbosity", (long)verbosityLevel);
   
   stack.push_back(a); // Add this call to stack
   
@@ -145,7 +145,7 @@ int fibScopeLinks(int a, scope::scopeLevel level, int verbosityLevel, list<int>&
   // generate scopes if the value of a is >= verbosityLevel
   scope reg(txt()<<"fib("<<a<<")", 
             (InFW.find(stack)!=InFW.end()? InFW[stack]: anchor::noAnchor),
-            level, attrGE(txt()<<"verbosity_"<<level, (long)a));
+            level, attrLE("verbosity", (long)a));
   
   OutBW[stack] = reg.getAnchor();
   
@@ -183,8 +183,10 @@ int fibScopeLinks(int a, scope::scopeLevel level, int verbosityLevel, list<int>&
 
 int fibIndent(int a, int verbosityLevel) {
   // Each recursive call to fibScopeLinks adds an indent level, prepending ":" to text printed by deeper calls to fibIndent. 
-  // To reduce the amount of text printed, we only add indentation if the value of a is >= verbosityLevel
-  indent ind(": ", a, verbosityLevel);
+  // To reduce the amount of textprinted, we only add indentation if the value of a is >= verbosityLevel
+  attr verbA("verbosity", (long)verbosityLevel);
+  attrIf aif(new attrLE("verbosity", (long)a));
+  indent ind(":  ");
   
   if(a==0 || a==1) { 
     dbg << "=1"<<endl;

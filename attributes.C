@@ -1,4 +1,4 @@
-#include "dbglog.h"
+#include "dbglog_internal.h"
 #include <assert.h>
 
 using namespace std;
@@ -90,6 +90,22 @@ double      attrValue::getFloat() const {
   cerr << "attrValue::getFloat() ERROR: value type is "<<type<<"!"<<endl; exit(-1);
 }
 
+// Encodes the contents of this attrValue into a string and returns the result.
+std::string attrValue::getAsStr() const {
+  if(type == strT) return *((string*)store);
+  else {
+    ostringstream oss;
+         if(type == ptrT)   oss << *((void**)store);
+    else if(type == intT)   oss << *((long*)store);
+    else if(type == floatT) oss << *((double*)store);
+    else  {
+      cerr << "attrValue::str() ERROR: unknown attribute value type: "<<type<<"!"<<endl;
+      exit(-1);
+    }
+    return oss.str();
+  }
+}
+
 bool attrValue::operator==(const attrValue& that) const {
   if(type == that.type) {
          if(type == strT)   return *((string*)store) == *((string*)that.store);
@@ -123,18 +139,7 @@ bool attrValue::operator<(const attrValue& that) const {
 
 // Returns a human-readable representation of this object
 std::string attrValue::str() const {
-  if(type == strT) return *((string*)store);
-  else {
-    ostringstream oss;
-         if(type == ptrT)   oss << *((void**)store);
-    else if(type == intT)   oss << *((long*)store);
-    else if(type == floatT) oss << *((double*)store);
-    else  {
-      cerr << "attrValue::str() ERROR: unknown attribute value type: "<<type<<"!"<<endl;
-      exit(-1);
-    }
-    return oss.str();
-  }
+  return getAsStr();
 }
 
 
@@ -322,6 +327,11 @@ bool attributesC::replace(string key, const attrValue& val) {
   return modified;
 }
 
+// Returns whether this key is mapped to a value
+bool attributesC::exists(std::string key) const {
+  return m.find(key) != m.end();
+}
+
 // Returns the value mapped to the given key
 const set<attrValue>& attributesC::get(std::string key) const {
   map<string, set<attrValue> >::const_iterator i = m.find(key);
@@ -417,6 +427,53 @@ bool attributesC::query() {
   // Perform the query directly if the value of lastQRet is not consistent with the current state of q and m
   if(!qCurrent) lastQRet = q.query(*this);
   return lastQRet;
+}
+
+// *******************************
+// ***** Attribute Interface *****
+// *******************************
+
+attr::attr(std::string key, std::string val) : key(key), val(val) { dbg.exitAttrSubBlock(); attrModified = attributes.add(key, this->val); dbg.enterAttrSubBlock(); }
+attr::attr(std::string key, char*       val) : key(key), val(val) { dbg.exitAttrSubBlock(); attrModified = attributes.add(key, this->val); dbg.enterAttrSubBlock(); }
+attr::attr(std::string key, void*       val) : key(key), val(val) { dbg.exitAttrSubBlock(); attrModified = attributes.add(key, this->val); dbg.enterAttrSubBlock(); }
+attr::attr(std::string key, long        val) : key(key), val(val) { dbg.exitAttrSubBlock(); attrModified = attributes.add(key, this->val); dbg.enterAttrSubBlock(); }
+attr::attr(std::string key, double      val) : key(key), val(val) { dbg.exitAttrSubBlock(); attrModified = attributes.add(key, this->val); dbg.enterAttrSubBlock(); }
+
+// Returns the key of this attribute
+string attr::getKey() const
+{ return key; }
+
+// Returns the value of this attribute
+const attrValue& attr::getVal() const
+{ return val; }
+
+// Returns the type of this attribute values's contents
+attrValue::valueType attr::getVType() const
+{ return val.getType(); }
+
+// Return the contents of this attribute values, aborting if there is a type incompatibility
+std::string attr::getVStr() const
+{ return val.getStr(); }
+
+void*       attr::getVPtr() const
+{ return val.getPtr(); }
+
+long        attr::getVInt() const
+{ return val.getInt(); }
+
+double      attr::getVFloat() const
+{ return val.getFloat(); }
+
+// Implementations of the relational operators
+bool attr::operator==(const attr& that) const
+{
+  return key==that.key &&
+         val==that.val;
+}
+bool attr::operator<(const attr& that) const
+{
+  return key<that.key ||
+        (key==that.key && val==that.val);
 }
 
 }; // namespace dbglog

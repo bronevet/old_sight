@@ -1,5 +1,5 @@
 // Licence information included in file LICENCE
-#include "dbglog.h"
+#include "dbglog_internal.h"
 #include "widgets.h"
 #include <fstream>
 #include <iostream>
@@ -279,7 +279,6 @@ void graph::initEnvironment() {
   dbg.includeWidgetScript("canviz-0.1/x11colors.js",         "text/javascript");
   //dbg.includeWidgetScript("canviz-0.1/graphs/graphlist.js",  "text/javascript");
   //dbg.includeWidgetScript("canviz-0.1/graphs/layoutlist.js", "text/javascript");
-
 }
 
 graph::~graph() {

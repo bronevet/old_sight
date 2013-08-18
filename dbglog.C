@@ -1,5 +1,5 @@
 // Licence information included in file LICENCE
-#include "dbglog.h"
+#include "dbglog_internal.h"
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -43,6 +43,17 @@ string copyDir(string workDir, string dirName) {
   chmod(fullDirName.str().c_str(), S_IRWXU);
     
   return fullDirName.str();
+}
+
+// Open a freshly-allocated output stream to write a file with the given name and return a pointer to the object.
+ofstream& createFile(string fName) {
+  ofstream *f = new ofstream();
+   try {
+    f->open(fName.c_str());
+  } catch (ofstream::failure e)
+  { cout << "createFile() ERROR opening file \""<<fName<<"\" for writing!"; exit(-1); }
+  
+  return *f;
 }
 
 void initializeDebug_internal(string title, string workDir);
@@ -572,7 +583,8 @@ streamsize dbgBuf::xsputn(const char * s, streamsize n)
   if(!attributes.query()) return n;
   
   if(needIndent) {
-    int ret = printString(getIndent()); if(ret != 0) return 0;
+    int ret = printString(escape(getIndent())); if(ret != 0) return 0;
+    //cout << "getIndent()=\""<<getIndent()<<"\" escaped=\""<<escape(getIndent())<<"\""<<endl;
     needIndent = false;
   }
   // If the owner is printing, output their text exactly
@@ -603,7 +615,7 @@ streamsize dbgBuf::xsputn(const char * s, streamsize n)
       // last line-break until this line-break
       if(j-i>0) {
         if(needIndent) {
-          int ret = printString(getIndent()); if(ret != 0) return 0;
+          int ret = printString(escape(getIndent())); if(ret != 0) return 0;
           needIndent = false;
         }
 
@@ -823,6 +835,16 @@ void dbgStream::widgetScriptCommand(std::string command) {
   (*scriptFiles.back()) << command << endl;
 }
 
+// Adds the given JavaScript command text to be executed before the commands added with widgetScriptCommand()
+void dbgStream::widgetScriptPrologCommand(std::string command) {
+  (*scriptPrologFiles.back()) << command << endl;
+}
+
+// Adds the given JavaScript command text to be executed after the commands added with widgetScriptCommand()
+void dbgStream::widgetScriptEpilogCommand(std::string command) {
+  (*scriptEpilogFiles.back()) << command << endl;
+}
+
 // Includes the given file or directory into the generated HTML output by copying it from its relative
 // path within the widgets code directory into the widgets subdirectory of the generated output directory
 void dbgStream::includeFile(std::string path) {
@@ -1029,11 +1051,7 @@ string dbgStream::enterFileLevel(block* b, bool topLevel)
   //if(!topLevel) (*this)<< "dbgStream::enterFileLevel("<<b->getLabel()<<") >>>>>\n";
   
   // Create the index file, which is a frameset that refers to the detail and summary files
-  ofstream indexFile;
-  try {
-    indexFile.open(indexAbsFName.str().c_str());
-  } catch (ofstream::failure e)
-  { cout << "dbgStream::init() ERROR opening file \""<<indexAbsFName.str()<<"\" for writing!"; exit(-1); }
+  ofstream &indexFile = createFile(indexAbsFName.str());
   indexFiles.push_back(&indexFile);
   
   indexFile << "<frameset cols=\"20%,80%\">\n";
@@ -1045,15 +1063,11 @@ string dbgStream::enterFileLevel(block* b, bool topLevel)
   // Create the detail file. It is empty initially and will be filled with text by the user because its dbgBuf
   // object will be set to be the primary buffer of this stream, meaning that all the text written to this
   // stream will flow into the detail file.
-  ofstream *dbgFile = new ofstream();
-  try {
-    dbgFile->open((detailAbsFName.str()+".body").c_str());
-  } catch (ofstream::failure e)
-  { cout << "dbgStream::init() ERROR opening file \""<<detailAbsFName.str()<<"\" for writing!"; exit(-1); }
-  dbgFiles.push_back(dbgFile);
+  ofstream &dbgFile = createFile(detailAbsFName.str()+".body");
+  dbgFiles.push_back(&dbgFile);
   detailFileRelFNames.push_back(detailRelFName.str()+".body");
   
-  dbgBuf *nextBuf = new dbgBuf(dbgFile->rdbuf());
+  dbgBuf *nextBuf = new dbgBuf(dbgFile.rdbuf());
   fileBufs.push_back(nextBuf);
   // Call the parent class initialization function to connect it dbgBuf of the child file
   ostream::init(nextBuf);
@@ -1064,43 +1078,31 @@ string dbgStream::enterFileLevel(block* b, bool topLevel)
   // Create the summary file. It is initially set to be an empty table and is filled with entries each time
   // a region is opened inside the detail file.
   {
-    ofstream *summaryFile = new ofstream();
-    try {
-      //cout << "    sumAbsFName="<<fullFileName.str()<<endl;
-      summaryFile->open((sumAbsFName.str()+".body").c_str());
-    } catch (ofstream::failure e)
-    { cout << "dbgStream::init() ERROR opening file \""<<sumAbsFName.str()<<"\" for writing!"; exit(-1); }
-    summaryFiles.push_back(summaryFile);
+    ofstream &summaryFile = createFile(sumAbsFName.str()+".body");
+    summaryFiles.push_back(&summaryFile);
     
     // Start the table in the current summary file
-    (*summaryFiles.back()) << "\t\t<table width=\"100%\">\n";
-    (*summaryFiles.back()) << "\t\t\t<tr width=\"100%\"><td width=50></td><td width=\"100%\">\n";
+    summaryFile << "\t\t<table width=\"100%\">\n";
+    summaryFile << "\t\t\t<tr width=\"100%\"><td width=50></td><td width=\"100%\">\n";
     
     // Create the html file container for the summary html text
     printSummaryFileContainerHTML(sumAbsFName.str(), sumRelFName.str(), b->getLabel());
   }
   
-  // Create the script file. It is initially set to be an empty <html> tag and filled with entries each time
+  // Create the main script file. It is initially set to be an empty <html> tag and filled with entries each time
   // a region is opened inside the detail file.
   {
-    ofstream *scriptFile = new ofstream();
-    try {
-      //cout << "    sumAbsFName="<<fullFileName.str()<<endl;
-      scriptFile->open((scriptAbsFName.str()).c_str());
-    } catch (ofstream::failure e)
-    { cout << "dbgStream::init() ERROR opening file \""<<sumAbsFName.str()<<"\" for writing!"; exit(-1); }
-    scriptFiles.push_back(scriptFile);
+    ofstream &scriptFile = createFile(scriptAbsFName.str());
+    scriptFiles.push_back(&scriptFile);
     
-/*    // The script file starts out with a command to set the name via which the host on which the application executed can be reached
-    (*scriptFiles.back()) << "findReachableHost(new Array(";
-    list<string> hostnames = getAllHostnames();
-    for(list<string>::iterator h=hostnames.begin(); h!=hostnames.end(); h++) {
-      if(h!=hostnames.begin()) (*scriptFiles.back()) << ", ";
-      (*scriptFiles.back()) << "\"" <<*h << "\"";
-    }
-    (*scriptFiles.back()) << "));\n";*/
+    ofstream &scriptPrologFile = createFile(scriptAbsFName.str()+".prolog");
+    scriptPrologFiles.push_back(&scriptPrologFile);
+    
+    ofstream &scriptEpilogFile = createFile(scriptAbsFName.str()+".epilog");
+    scriptEpilogFiles.push_back(&scriptEpilogFile);
+    
     // Next, record that the file was loaded
-    (*scriptFiles.back()) << "\trecordFile("<<fileLevelJSIntArray(loc)<<", 'loaded', 1);\n";
+    scriptPrologFile << "\trecordFile("<<fileLevelJSIntArray(loc)<<", 'loaded', 1);\n";
   }
   
   return loadCmd;
@@ -1121,12 +1123,16 @@ block* dbgStream::exitFileLevel(bool topLevel)
   
   // Complete the current script file
   scriptFiles.back()->close();
+  scriptPrologFiles.back()->close();
+  scriptEpilogFiles.back()->close();
 
   indexFiles.pop_back();
   dbgFiles.pop_back();
   detailFileRelFNames.pop_back();
   summaryFiles.pop_back();
   scriptFiles.pop_back();
+  scriptPrologFiles.pop_back();
+  scriptEpilogFiles.pop_back();
   fileBufs.pop_back();
   // Call the ostream class initialization function to connect it dbgBuf of the parent detail file
   ostream::init(fileBufs.back());
@@ -1230,8 +1236,12 @@ void dbgStream::printDetailFileContainerHTML(string absoluteFileName, string tit
   string fileID = fileLevelStr(loc);
   det << "\t\t\tloadScriptsInFile(document, 'script/script_includes', \n";
   det << "\t\t\t\tfunction() { loadURLIntoDiv(document, 'detail."<<fileID<<".body', 'detailContents', \n";
-  det << "\t\t\t\t\tfunction() { loadjscssfile('script/script."<<fileID<<"', 'text/javascript'\n";//, \n";
+  det << "\t\t\t\t\tfunction() { loadjscssfile('script/script."<<fileID<<".prolog', 'text/javascript',\n";
+  det << "\t\t\t\t\t\tfunction() { loadjscssfile('script/script."<<fileID<<"', 'text/javascript',\n";//, \n";
+  det << "\t\t\t\t\t\tfunction() { loadjscssfile('script/script."<<fileID<<".epilog', 'text/javascript'\n";//, \n";
   //det << "\t\t\t\t\t\tfunction() { loadjscssfile('script/anchor_script', 'text/javascript'); } \n";
+  det << "\t\t\t\t\t\t\t); }\n";
+  det << "\t\t\t\t\t\t); }\n";
   det << "\t\t\t\t\t); }\n";
   det << "\t\t\t\t); }\n";
   det << "\t\t\t);\n";
@@ -1358,10 +1368,7 @@ string dbgStream::enterBlock(block* b, bool newFileEntered, bool addSummaryEntry
 // adjacent attribute definitions
 string dbgStream::enterAttrSubBlock() {
   // Only enter an attribute sub-block if we've already begun a block
-  //if(fileBufs.size()>0 && blocks.size()>0 && blocks.begin()->second.size()>0)
-    return enterBlock(new block(""), false, false, true);
-  /*else
-    return "";*/
+  return enterBlock(new block(""), false, false, true);
 }
 
 // Called when a block is exited. Returns the block that was exited.
@@ -1465,27 +1472,33 @@ void dbgStream::remIndent()
  ***** indent *****
  ******************/
 
-indent::indent(std::string space, int curDebugLevel, int targetDebugLevel) {
-  if(!initializedDebug) initializeDebug("Debug Output", "dbg");
-  
-  if(curDebugLevel >= targetDebugLevel) {
-    active = true;
-    //cout << "Entering indent space=\""<<space<<"\""<<endl;
-    dbg.addIndent(space);
-  }
-  else
-    active = false;
-}
+indent::indent(std::string prefix)
+{ init(prefix, 1, NULL); }
+indent::indent(std::string prefix, int repeatCnt, const attrOp& onoffOp)
+{ init(prefix, repeatCnt, &onoffOp); }
+indent::indent(std::string prefix, int repeatCnt)
+{ init(prefix, repeatCnt, NULL); }
+indent::indent(                    int repeatCnt)
+{ init("    ", repeatCnt, NULL); }
+indent::indent(std::string prefix,                const attrOp& onoffOp)
+{ init(prefix, 1, &onoffOp); }
+indent::indent(                    int repeatCnt, const attrOp& onoffOp)
+{ init("    ", repeatCnt, &onoffOp); }
+indent::indent(                                   const attrOp& onoffOp)
+{ init("    ", 1, &onoffOp); }
+indent::indent()
+{ init("    ", 1, NULL); }
 
-indent::indent(int curDebugLevel, int targetDebugLevel) {
-  if(!initializedDebug) initializeDebug("Debug Output", "dbg");
-  
-  if(curDebugLevel >= targetDebugLevel) {
+void indent::init(std::string prefix, int repeatCnt, const attrOp* onoffOp) {
+  if(repeatCnt>0 && attributes.query() && (onoffOp? onoffOp->apply(): true)) {
     active = true;
-    //cout << "Entering indent space=\""<<space<<"\""<<endl;
-    dbg.addIndent("&nbsp;&nbsp;&nbsp;&nbsp;");
-  }
-  else
+    string fullPrefix=prefix;
+    // Concatenate repeatCnt-1 copies of prefix onto its end
+    for(int i=0; i<repeatCnt; i++)
+      fullPrefix += prefix;
+    //cout << "indent::init("<<prefix<<", "<<repeatCnt<<") fullPrefix=\""<<fullPrefix<<"\""<<endl;
+    dbg.addIndent(fullPrefix);
+  } else
     active = false;
 }
 
@@ -1508,6 +1521,7 @@ std::string escape(std::string s)
     else if(s[i] == '>') out += "&gt;";
     // Manage hashes, since they confuse the C PreProcessor CPP
     else if(s[i] == '#') out += "&#35;";
+    else if(s[i] == ' ') out += "&nbsp;";
     else                 out += s[i];
   }
   return out;
