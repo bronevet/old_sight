@@ -452,12 +452,27 @@ class attrSubQueryFalse : public attrSubQuery
 // ***** Attribute Database *****
 // ******************************
 
+// Interface implemented by objects that wish to listen for changes to mappings of a given key
+class attrObserver {
+  public:
+  // Called before key's mapping is changed
+  virtual void observePre(std::string key) { }
+    
+  // Called after key's mapping is changed
+  virtual void observePost(std::string key) { }
+};
+
 // Maintains the mapping from atribute keys to values
 class attributesC
 {
   // --- STORAGE ---
   private:
   std::map<std::string, std::set<attrValue> > m;
+  
+  // Maps each key to a all the attrObserver objects that observe changes in its mappings.
+  // We map each observer to the number of times it has been added to make it possible to 
+  // add an observer multiple times as long as it is removed the same number of times.
+  std::map<std::string, std::map<attrObserver*, int> > o;
    
   // Adds the given value to the mapping of the given key without removing the key's prior mapping.
   // Returns true if the attributes map changes as a result and false otherwise.
@@ -499,6 +514,23 @@ class attributesC
   // Returns true if the attributes map changes as a result and false otherwise.
   public:
   bool remove(std::string key);
+  
+  // These routines manage the mapping from keys to the objects that observe changes in them
+  
+  // Add a given observer for the given key
+  void addObs(std::string key, attrObserver* obs);
+  
+  // Remove a given observer from the given key
+  void remObs(std::string key, attrObserver* obs);
+    
+  // Remove all observers from a given key
+  void remObs(std::string key);
+  
+  private:
+  // Notify all the observers of the given key before its mapping is changed (call attrObserver::observePre())
+  void notifyObsPre(std::string key);
+  // Notify all the observers of the given key after its mapping is changed (call attrObserver::observePost())
+  void notifyObsPost(std::string key);
   
   // --- QUERYING ---
   private:

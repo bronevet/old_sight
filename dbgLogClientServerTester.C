@@ -20,7 +20,13 @@ int main(int argc, char** argv) {
   colorSelector requestColor("request", 0,.3,0,0,1,0); // Blue gradient
   colorSelector serverColor(0,0,.3,0,0,1); // Green gradient
   
-  trace t("Client IDs", "i");
+  // Create a trace. Every call to traceAttr() while this object is in scope will send data to this trace.
+  // The values of the traced items will be shown as a function of attribute "i".
+  // The visualization of the trace will be shown at the spot in the debug output where t goes out of scope.
+  list<string> contextAttrs;
+  contextAttrs.push_back("i");
+  contextAttrs.push_back("request");
+  trace t("Client and Server IDs", contextAttrs, trace::showEnd);
   
   for(int i=0; i<100; i++) {
     attr iAttr("i", (long)i);
@@ -44,5 +50,6 @@ int main(int argc, char** argv) {
     
     
     traceAttr("clientID", attrValue((long)clientID));
+    traceAttr("serverID", attrValue((long)serverID));
   }
 }

@@ -47,10 +47,11 @@ attrValue::attrValue(double floatV) {
 
 attrValue::attrValue(const attrValue& that) {
   type = that.type;
-       if(type == strT)   { store = (void*)(new string(*((string*)that.store))); }
-  else if(type == ptrT)   { store = new void*;  *((void**)store)  = *((void**)that.store);  }
-  else if(type == intT)   { store = new long*;  *((long*)store)   = *((long*)that.store);   }
-  else if(type == floatT) { store = new double; *((double*)store) = *((double*)that.store); }
+       if(type == strT)     { store = (void*)(new string(*((string*)that.store))); }
+  else if(type == ptrT)     { store = new void*;  *((void**)store)  = *((void**)that.store);  }
+  else if(type == intT)     { store = new long*;  *((long*)store)   = *((long*)that.store);   }
+  else if(type == floatT)   { store = new double; *((double*)store) = *((double*)that.store); }
+  else if(type == unknownT) { }
   else {
     cerr << "attrValue::attrValue() ERROR: invalid value type "<<type<<"!"<<endl;
     exit(-1);
@@ -73,6 +74,7 @@ attrValue& attrValue::operator=(const attrValue& that) {
   else if(type == ptrT)   { store = new void*;  *((void**)store)  = *((void**)that.store);  }
   else if(type == intT)   { store = new long*;  *((long*)store)   = *((long*)that.store);   }
   else if(type == floatT) { store = new double; *((double*)store) = *((double*)that.store); }
+  else if(type == unknownT) { }
   else {
     cerr << "attrValue::operator=() ERROR: invalid value type "<<type<<"!"<<endl;
     exit(-1);
@@ -311,7 +313,9 @@ bool attributesC::add(string key, double val)
 bool attributesC::add(string key, const attrValue& val) {
   bool modified = (m.find(key)==m.end()) || m[key].find(val)==m[key].end();
   if(modified) {
+    notifyObsPre(key);
     m[key].insert(val);
+    notifyObsPost(key);
     qCurrent = false;
   }
   return modified;
@@ -333,8 +337,10 @@ bool attributesC::replace(string key, double val)
 bool attributesC::replace(string key, const attrValue& val) {
   bool modified = (m.find(key)==m.end());
   if(modified) {
+    notifyObsPre(key);
     m[key].clear();
     m[key].insert(val);
+    notifyObsPost(key);
     qCurrent = false;
   } else if(m[key].size() == 0) {
     cerr << "attributesC::replace() ERROR: key "<<key<<" is mapped to an empty set of values!"<<endl;
@@ -380,10 +386,12 @@ bool attributesC::remove(string key, double val)
 bool attributesC::remove(string key, const attrValue& val) {
   bool modified = (m.find(key)!=m.end()) && m[key].find(val)!=m[key].end();
   if(modified) {
+    notifyObsPre(key);
     // Remove the key->val mapping and if this is the only mapping for key, remove its entry in m[] as well
     m[key].erase(val);
     if(m[key].size()==0)
       m.erase(key);
+    notifyObsPost(key);
     qCurrent = false;
   }
   return modified;
@@ -394,11 +402,67 @@ bool attributesC::remove(string key, const attrValue& val) {
 bool attributesC::remove(string key) {
   bool modified = (m.find(key)!=m.end());
   if(modified) {
+    notifyObsPre(key);
     // Remove the key and all its mappings from m[]
     m.erase(key);
+    notifyObsPost(key);
     qCurrent = false;
   }
   return modified;
+}
+
+// Add a given observer for the given key
+void attributesC::addObs(std::string key, attrObserver* obs)
+{
+  if(o.find(key) == o.end())
+    o[key] = map<attrObserver*, int>();
+  
+  if(o[key].find(obs) == o[key].end())
+    o[key][obs] = 1;
+  else
+    o[key][obs]++;
+}
+
+// Remove a given observer from the given key
+void attributesC::remObs(std::string key, attrObserver* obs)
+{
+  if(o.find(key) == o.end()) { cerr << "attributesC::remObs() ERROR: no observers for key "<<key<<"!\n"; exit(-1); }
+  assert(o[key].size() > 0);
+  if(o[key].find(obs) == o[key].end()) { cerr << "attributesC::remObs() ERROR: this observer not registered for key "<<key<<"!\n"; exit(-1); }
+  assert(o[key][obs] > 0);
+  
+  if(o[key][obs]==1) {
+    o[key].erase(obs);
+    if(o[key].size()==0)
+      o.erase(key);
+  } else 
+    o[key][obs]--;
+}
+
+// Remove all observers from a given key
+void attributesC::remObs(std::string key)
+{
+  if(o.find(key) == o.end()) { cerr << "attributesC::remObs() ERROR: no observers for key "<<key<<"!\n"; exit(-1); }  
+  assert(o[key].size() > 0);
+  
+  o[key].clear();
+  o.erase(key);
+}
+
+// Notify all the observers of the given key before its mapping is changed (call attrObserver::observePre())
+void attributesC::notifyObsPre(std::string key) {
+  for(map<attrObserver*, int>::iterator i=o[key].begin(); i!=o[key].end(); i++) {
+    assert(i->second>0);
+    i->first->observePre(key);
+  }
+}
+
+// Notify all the observers of the given key after its mapping is changed (call attrObserver::observePost())
+void attributesC::notifyObsPost(std::string key) {
+  for(map<attrObserver*, int>::iterator i=o[key].begin(); i!=o[key].end(); i++) {
+    assert(i->second>0);
+    i->first->observePost(key);
+  }
 }
 
 // Returns a representation of the attributes database as a JavaScript map
