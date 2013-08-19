@@ -17,11 +17,6 @@ int fibIndent(int a);
 int main(int argc, char** argv)
 {
   initializeDebug(argc, argv);
-  
-  indent ind;
-  attr verbA("verbosity", (long)0);
-  
-  return 0;
    
   // It is possible to write arbitrary text to the debug output
   dbg << "Welcome to the dbgLogTester" << endl;
@@ -149,7 +144,7 @@ int fibScopeLinks(int a, scope::scopeLevel level, list<int>& stack,
   // generate scopes if the value of a is >= verbosityLevel
   scope reg(txt()<<"fib("<<a<<")", 
             (InFW.find(stack)!=InFW.end()? InFW[stack]: anchor::noAnchor),
-            level, attrLE("verbosity", (long)a));
+            level, attrGE("verbosity", (long)a));
   
   OutBW[stack] = reg.getAnchor();
   
@@ -188,7 +183,7 @@ int fibScopeLinks(int a, scope::scopeLevel level, list<int>& stack,
 int fibIndent(int a) {
   // Each recursive call to fibScopeLinks adds an indent level, prepending ":" to text printed by deeper calls to fibIndent. 
   // To reduce the amount of textprinted, we only add indentation if the value of a is >= verbosityLevel
-  indent ind(":  ", attrLE("verbosity", (long)a));
+  indent ind(":  ", attrGE("verbosity", (long)a));
   
   if(a==0 || a==1) { 
     dbg << "=1"<<endl;

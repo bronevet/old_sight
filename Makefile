@@ -12,8 +12,10 @@ all: dbgLogTester${EXT} dbgLogGraphTester${EXT} dbgLogAttrTester${EXT} dbgLogCli
      widgets/shellinabox/bin/shellinaboxd${EXT} widgets/mongoose/mongoose${EXT} widgets/graphviz/bin/dot${EXT} script/taffydb
 	chmod 755 html img script
 	chmod 644 html/* img/* script/*
-	chmod 644 widgets/canviz-0.1/* widgets/canviz-0.1/*/*
-	chmod 755 widgets/canviz-0.1 widgets/canviz-0.1/excanvas widgets/canviz-0.1/lib widgets/canviz-0.1/path widgets/canviz-0.1/prototype
+	chmod 755 widgets/canviz-0.1 script/taffydb
+	chmod 644 widgets/canviz-0.1/* script/taffydb/*
+	chmod 755 widgets/canviz-0.1/excanvas widgets/canviz-0.1/lib widgets/canviz-0.1/path widgets/canviz-0.1/prototype
+	chmod 644 widgets/canviz-0.1/*/*
 
 # Set this to the current Operating System (needed by the Mongoose web server). 
 # Choices: linux|bsd|solaris|mac|windows|mingw|cygwin
