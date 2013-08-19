@@ -821,9 +821,9 @@ pair<std::string, std::string> dbgStream::createWidgetDir(std::string widgetName
   return make_pair(workDir+"/html/widgets/"+widgetName, "widgets/"+widgetName);
 }
 
-// Add an include of the given script in the generated HTML output. The path of the script must be relative
-// to the output HTML directory
-void dbgStream::includeWidgetScript(std::string scriptPath, std::string scriptType) {
+// Add an include of the given script in the generated HTML output. There are generic scripts that will be
+// included in every output document that is loaded. The path of the script must be absolute
+void dbgStream::includeScript(std::string scriptPath, std::string scriptType) {
   // If we have not yet included this script, do so now
   if(includedScripts.find(scriptPath) == includedScripts.end()) {
     includedScripts[scriptPath] = scriptType;
@@ -832,9 +832,15 @@ void dbgStream::includeWidgetScript(std::string scriptPath, std::string scriptTy
     // !!! this function will be called at the start of a block, where the inserted <script> tag will be processed normally.
     // !!! However, if we insert this text in the middle of another tag, we'll cause an error. Checking for this condition 
     // !!! part of future work.
-    scriptIncludesFile << "widgets/" << scriptPath << " " << scriptType << "\n";
+    scriptIncludesFile << scriptPath << " " << scriptType << "\n";
     scriptIncludesFile.flush();
   }
+}
+
+// Add an include of the given script in the generated HTML output. The path of the script must be relative
+// to the output HTML directory
+void dbgStream::includeWidgetScript(std::string scriptPath, std::string scriptType) {
+  includeScript(string("widgets/") + scriptPath);
 }
 
 // Adds the given JavaScript command text to the script that will be loaded with the current file.
@@ -911,7 +917,7 @@ string dbgStream::blockGlobalStr(const location& myLoc) {
   for(list<pair<int, list<int> > >::const_iterator l=myLoc.begin(); l!=myLoc.end(); ) {
     assert(l->second.size()>0);
     list<int>::const_iterator b=l->second.begin();
-    blockStr << l->first << "<";
+    blockStr << l->first << "-"; // Note: Yahoo UI widgets don't seem to work if we use non-trivial characters as separators in block names
     int lastBlock=*b;
     b++;
     while(b!=l->second.end()) {

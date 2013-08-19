@@ -148,7 +148,7 @@ class block
   
   public:
   // Initializes this block with the given label
-  block(std::string label);
+  block(std::string label="");
     
   // Initializes this block with the given label.
   // Includes one or more incoming anchors thas should now be connected to this block.
@@ -343,6 +343,10 @@ public:
   //  path relative to the output directory that can be used inside generated HTML>
   std::pair<std::string, std::string> createWidgetDir(std::string widgetName);
   
+  // Add an include of the given script in the generated HTML output. There are generic scripts that will be
+  // included in every output document that is loaded. The path of the script must be absolute
+  void includeScript(std::string scriptPath, std::string scriptType="text/javascript");
+    
   // Add an include of the given script in the generated HTML output. There are generic scripts that will be
   // included in every output document that is loaded. The path of the script must be relative
   // to the output HTML directory

@@ -1,5 +1,6 @@
 #include "dbglog.h"
 #include "widgets/valSelector.h"
+#include "widgets/trace.h"
 #include <map>
 #include <assert.h>
 using namespace std;
@@ -19,7 +20,11 @@ int main(int argc, char** argv) {
   colorSelector requestColor("request", 0,.3,0,0,1,0); // Blue gradient
   colorSelector serverColor(0,0,.3,0,0,1); // Green gradient
   
+  trace t("Client IDs", "i");
+  
   for(int i=0; i<100; i++) {
+    attr iAttr("i", (long)i);
+    
     int serverID = rand()%numServers;
     int clientID = rand()%numClients;
     string request = requests[rand()%3];
@@ -36,5 +41,8 @@ int main(int argc, char** argv) {
     dbg << textColor::start(clientColor, cid.getVal()) << "Client "<<clientID<<textColor::end()<<" "<<"sending "<<
            bgColor::start(requestColor) << request << bgColor::end()<< " request to "<<
            borderColor::start(serverColor, sid.getVal()) << "Server "<<serverID<<borderColor::end()<<endl;
+    
+    
+    traceAttr("clientID", attrValue((long)clientID));
   }
 }
