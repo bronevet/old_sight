@@ -1,5 +1,5 @@
 #include "dbglog.h"
-#include "widgets.h"
+#include "widgets/valSelector.h"
 #include <map>
 #include <assert.h>
 using namespace std;
@@ -20,6 +20,7 @@ int main(int argc, char** argv)
     // This text is emitted at debug level 0
     { 
       attrIf aif(new attrEQ("debugLevel", (long)0, attrOp::any));
+      colorSelector iterColor("i", .3,0,0,1,0,0); // Red gradient
       for(int i=0; i<6; i++) {
         attr a1("i mod 2", (long)i%2);
         attr a2("i", (long)(i));
@@ -45,7 +46,7 @@ int main(int argc, char** argv)
           // This scope will be created in odd iterations where i is in [3, 6)
           scope sDeeper(txt()<<"Deepest: Odd and [3-6): i="<<i,   scope::medium, attrRange("i", (long)3, (long)6, attrOp::any));
           
-          dbg << "Odd and any debug level: i="<<i<<endl;
+          dbg << textColor::start(iterColor) << "Odd and any debug level: i="<<i<<textColor::end()<<endl;
         }
       }
     }

@@ -57,21 +57,13 @@ void colorSelector::getSelFunction(std::string arg) {
   dbg.widgetScriptCommand(txt()<<"colorSelector("<<selID<<", \""<<values.begin()->getAsStr()<<"\", "<<arg<<");");
 }
 
-/*************************
- ***** colorSelector *****
- *************************/
+/********************
+ ***** cssColor *****
+ ********************/
 
-int textColor::colorID=0;
-
-string textColor::start(valSelector& sel, const attrValue& val) { 
-  return start_internal(sel, &val);
-}
-
-string textColor::start(valSelector& sel) { 
-  return start_internal(sel, NULL);
-}
-
-string textColor::start_internal(valSelector& sel, const attrValue* val) { 
+int cssColorID=0;
+map<string, string> emptyFieldSettings;
+string start_internal(valSelector& sel, const attrValue* val, string fieldName, const map<string, string>& fieldSettings) { 
   // Only bother if this text will be emitted
   if(!attributes.query()) return "";
   
@@ -83,20 +75,69 @@ string textColor::start_internal(valSelector& sel, const attrValue* val) {
     initialized = true;
   }
   
-  ostringstream spanID; spanID << "textColorSpan_"<<colorID;
+  ostringstream spanID; spanID << "cssColorSpan_"<<cssColorID;
   
   // Emit a command to assign whichever color to this span the selector chooses
-  if(val) sel.getSelFunction(*val, txt()<<"function(value){ document.getElementById('"<<spanID.str()<<"').style.color = value; }");
-  else    sel.getSelFunction(      txt()<<"function(value){ document.getElementById('"<<spanID.str()<<"').style.color = value; }");
+  ostringstream cmd;
+  cmd << "function(value){ ";
+  // Set all key keys of fieldSettings to their values for this span
+  for(map<string, string>::const_iterator i=fieldSettings.begin(); i!=fieldSettings.end(); i++)
+    cmd << "document.getElementById('"<<spanID.str()<<"').style."<<i->first<<" = '"<<i->second<<"'; ";
+  cmd << "document.getElementById('"<<spanID.str()<<"').style."<<fieldName<<" = value;";
+  cmd << "}";
   
-  colorID++;
+  if(val) sel.getSelFunction(*val, cmd.str());
+  else    sel.getSelFunction(      cmd.str());
+  
+  cssColorID++;
   
   // Emit the start of a span with a unique name
   ostringstream ret; ret << "<span id=\""<<spanID.str()<<"\">";
   return ret.str();
 }
 
+string textColor::start(valSelector& sel, const attrValue& val) { 
+  return start_internal(sel, &val, "color", emptyFieldSettings);
+}
+
+string textColor::start(valSelector& sel) { 
+  return start_internal(sel, NULL, "color", emptyFieldSettings);
+}
+
 string textColor::end() {
+  // Only bother if this text will be emitted
+  if(!attributes.query()) return "";
+  
+  return "</span>";
+}
+
+string bgColor::start(valSelector& sel, const attrValue& val) { 
+  return start_internal(sel, &val, "backgroundColor", emptyFieldSettings);
+}
+
+string bgColor::start(valSelector& sel) { 
+  return start_internal(sel, NULL, "backgroundColor", emptyFieldSettings);
+}
+
+string bgColor::end() {
+  // Only bother if this text will be emitted
+  if(!attributes.query()) return "";
+  
+  return "</span>";
+}
+
+map<string, string> borderFieldSettings;
+string borderColor::start(valSelector& sel, const attrValue& val) { 
+  if(borderFieldSettings.size()==0) borderFieldSettings["border"]="solid";
+  return start_internal(sel, &val, "borderColor", borderFieldSettings);
+}
+
+string borderColor::start(valSelector& sel) { 
+  if(borderFieldSettings.size()==0) borderFieldSettings["border"]="solid";
+  return start_internal(sel, NULL, "borderColor", borderFieldSettings);
+}
+
+string borderColor::end() {
   // Only bother if this text will be emitted
   if(!attributes.query()) return "";
   

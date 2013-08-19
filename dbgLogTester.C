@@ -5,14 +5,14 @@
 using namespace std;
 using namespace dbglog;
 
-int fibScope(int a, scope::scopeLevel level, int verbosityLevel);
-int fibScopeLinks(int a, scope::scopeLevel level, int verbosityLevel, list<int>& stack, 
+int fibScope(int a, scope::scopeLevel level);
+int fibScopeLinks(int a, scope::scopeLevel level, list<int>& stack, 
                   map<list<int>, anchor>& InFW, 
                   map<list<int>, anchor>& InBW, 
                   map<list<int>, anchor>& OutFW, 
                   map<list<int>, anchor>& OutBW,
                   bool doFWLinks);
-int fibIndent(int a, int verbosityLevel);
+int fibIndent(int a);
 
 int main(int argc, char** argv)
 {
@@ -42,13 +42,15 @@ int main(int argc, char** argv)
   
   // Here we see recursive function calls (recursive Fibonacci) that add more indentation at deeper levels of recursion
   {
+    attr verbA("verbosity", (long)0);
     scope regFibIndent("Indentation due to recursive calls to fib");
-    fibIndent(3, 0);
+    fibIndent(3);
   }
   
   {
+    attr verbA("verbosity", (long)3);
     scope regFibIndent("Indentation due to recursive calls to fib, 1 level of indent");
-    fibIndent(3, 3);
+    fibIndent(3);
   }
   
   // In addition to structuring output via indentation it is possible to organize it via visually distinct scopes
@@ -71,40 +73,39 @@ int main(int argc, char** argv)
   
   // Call the fibScope function, which generates a hierarchy of mid-level scopes, on
   {
+    attr verbA("verbosity", (long)0);
     scope regFibIndent("Nested scopes due to recursive calls to fib");
     dbg << "<u>Medium level scopes, colors change</u>"<<endl;
-    fibScope(4, scope::medium, 0);
+    fibScope(4, scope::medium);
   }
   
    // Call the fib function, which generates a single low-level scope for a=5 and 6
   {
+    attr verbA("verbosity", (long)5);
     scope regFibIndent("Nested scopes due to recursive calls to fib, 2 level of scope hierarchy");
     dbg << "<u>Low level scopes, colors do not change</u>"<<endl;
-    fibScope(6, scope::low, 5);
+    fibScope(6, scope::low);
   }
   
   // Call the fibScopeLinks function, which generates two hierarchies of high-level scopes with scopes
   // in each level of one hierarchy linking to the same level in the other hierarchy
   {
+    attr verbA("verbosity", (long)0);
     scope regFibIndent("Nested scopes due to recursive calls to fib");
     dbg << "<u>High level scopes, colors change and each scope in a new file</u>"<<endl;
     dbg << "There are two hierarchy nests. Sub-scopes at each level of one hierarchy link to the corresponding sub-scopes in the other. Clicking on these links will load up the corresponding scope and its parent scopes."<<endl;
     list<int> stack;
     map<list<int>, anchor> InFW, InBW, OutFW, OutBW;
-    fibScopeLinks(5, scope::high, 0, stack, InFW, InBW, OutFW, OutBW, true);
+    fibScopeLinks(5, scope::high, stack, InFW, InBW, OutFW, OutBW, true);
     assert(stack.size()==0);
     map<list<int>, anchor> OutBW2, OutFW2;
-    fibScopeLinks(5, scope::high, 0, stack, OutFW, OutBW, OutBW2, OutFW2, false);
+    fibScopeLinks(5, scope::high, stack, OutFW, OutBW, OutBW2, OutFW2, false);
   }
-  
-  dbg << "<h1>It is also possible to generate dot graphs that describe relevant aspects of the code state. Look at dbgLogGraphTester.C</h1>"<<endl;
   
   return 0;
 }
 
-int fibScope(int a, scope::scopeLevel level, int verbosityLevel) {
-  attr verbA("verbosity", (long)verbosityLevel);
-  
+int fibScope(int a, scope::scopeLevel level) {
   // Each recursive call to fibScope() generates a new scope at the desired level. To reduce the amount of text printed, we only 
   // generate scopes if the value of a is >= verbosityLevel
   scope reg(txt()<<"fib("<<a<<")", level, attrGE("verbosity", (long)a));
@@ -113,8 +114,8 @@ int fibScope(int a, scope::scopeLevel level, int verbosityLevel) {
     dbg << "=1."<<endl;
     return 1;
   } else {
-    int val = fibScope(a-1, level, verbosityLevel) + 
-              fibScope(a-2, level, verbosityLevel);
+    int val = fibScope(a-1, level) + 
+              fibScope(a-2, level);
     dbg << "="<<val<<endl;
     return val;
   }
@@ -124,14 +125,12 @@ int fibScope(int a, scope::scopeLevel level, int verbosityLevel) {
 // InBW links: links from this fib call nest to the prior one. These have already been anchored to the prior nest.
 // OutBW links: links from the next nest to this one. These are anchored to established regions.
 // OutFW links: links from this nest to the next one. These are un-anchored and will be anchored to the next nest
-int fibScopeLinks(int a, scope::scopeLevel level, int verbosityLevel, list<int>& stack, 
+int fibScopeLinks(int a, scope::scopeLevel level, list<int>& stack, 
                   map<list<int>, anchor>& InFW, 
                   map<list<int>, anchor>& InBW, 
                   map<list<int>, anchor>& OutFW,
                   map<list<int>, anchor>& OutBW,
                   bool doFWLinks) {
-  attr verbA("verbosity", (long)verbosityLevel);
-  
   stack.push_back(a); // Add this call to stack
   
   /*dbg << "doFWLinks="<<doFWLinks<<", stack=&lt;";
@@ -163,8 +162,8 @@ int fibScopeLinks(int a, scope::scopeLevel level, int verbosityLevel, list<int>&
     stack.pop_back(); // Remove this call from stack
     return 1;
   } else {
-    int val = fibScopeLinks(a-1, level, verbosityLevel, stack, InFW, InBW, OutFW, OutBW, doFWLinks) + 
-              fibScopeLinks(a-2, level, verbosityLevel, stack, InFW, InBW, OutFW, OutBW, doFWLinks);
+    int val = fibScopeLinks(a-1, level, stack, InFW, InBW, OutFW, OutBW, doFWLinks) + 
+              fibScopeLinks(a-2, level, stack, InFW, InBW, OutFW, OutBW, doFWLinks);
     dbg << "="<<val<<endl;
     
     if(doFWLinks) {
@@ -181,18 +180,16 @@ int fibScopeLinks(int a, scope::scopeLevel level, int verbosityLevel, list<int>&
   }
 }
 
-int fibIndent(int a, int verbosityLevel) {
+int fibIndent(int a) {
   // Each recursive call to fibScopeLinks adds an indent level, prepending ":" to text printed by deeper calls to fibIndent. 
   // To reduce the amount of textprinted, we only add indentation if the value of a is >= verbosityLevel
-  attr verbA("verbosity", (long)verbosityLevel);
-  attrIf aif(new attrLE("verbosity", (long)a));
-  indent ind(":  ");
+  indent ind(":  ", attrLE("verbosity", (long)a));
   
   if(a==0 || a==1) { 
     dbg << "=1"<<endl;
     return 1;
   } else {
-    int val = fibIndent(a-1, verbosityLevel) + fibIndent(a-2, verbosityLevel);
+    int val = fibIndent(a-1) + fibIndent(a-2);
     dbg << "="<<val<<endl;
     return val;
   }

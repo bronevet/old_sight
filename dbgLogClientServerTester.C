@@ -34,7 +34,7 @@ int main(int argc, char** argv) {
     
     indent ind(sid.getVInt());
     dbg << textColor::start(clientColor, cid.getVal()) << "Client "<<clientID<<textColor::end()<<" "<<"sending "<<
-           textColor::start(requestColor) << request << textColor::end()<< " request to "<<
-           textColor::start(serverColor, sid.getVal()) << "Server "<<serverID<<textColor::end()<<endl;
+           bgColor::start(requestColor) << request << bgColor::end()<< " request to "<<
+           borderColor::start(serverColor, sid.getVal()) << "Server "<<serverID<<borderColor::end()<<endl;
   }
 }

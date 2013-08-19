@@ -69,10 +69,26 @@ class colorSelector : public valSelector {
 class textColor
 {
   public:
-  static int colorID;
   static std::string start(valSelector& sel, const attrValue& val);
   static std::string start(valSelector& sel);
-  static std::string start_internal(valSelector& sel, const attrValue* val);
+  
+  static std::string end();
+};
+
+class bgColor
+{
+  public:
+  static std::string start(valSelector& sel, const attrValue& val);
+  static std::string start(valSelector& sel);
+  
+  static std::string end();
+};
+
+class borderColor
+{
+  public:
+  static std::string start(valSelector& sel, const attrValue& val);
+  static std::string start(valSelector& sel);
   
   static std::string end();
 };
