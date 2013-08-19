@@ -111,7 +111,8 @@ endif
 
 script/taffydb:
 	cd script; wget --no-check-certificate https://github.com/typicaljoe/taffydb/archive/master.zip
-	cd script; unzip master.zip
+	cd script; mv master master.zip; unzip master.zip
 	mv script/taffydb-master script/taffydb
+	rm script/master*
 	chmod 755 script/taffydb
 	chmod 644 script/taffydb/*
