@@ -1059,8 +1059,10 @@ string dbgStream::enterFileLevel(block* b, bool topLevel)
   // Add a new function level within the parent file unit that will refer to the child file unit
   string loadCmd="";
   blocks.push_back(make_pair(b, list<block*>()));
-  if(!topLevel)
+  if(!topLevel) {
+//!!!    dbg << "enterFileLevel() !topLevel, fileBufs.size()="<<fileBufs.size()<<" && blocks.size()="<<blocks.size()<<" blocks.back()->second.size()="<<blocks.back().second.size()<<endl;
     loadCmd = enterBlock(b, true, true);
+  }
   /*else
     enterAttrSubBlock();*/
   fileBlocks.push_back(b);
@@ -1310,6 +1312,11 @@ void dbgStream::printDetailFileContainerHTML(string absoluteFileName, string tit
 //    the start of this major block and the next setting of an attribute.
 string dbgStream::enterBlock(block* b, bool newFileEntered, bool addSummaryEntry, bool recursiveEnterBlock)
 {
+//!!!  dbg << "<<<enter(newFileEntered="<<newFileEntered<<", addSummaryEntry="<<addSummaryEntry<<", recursiveEnterBlock="<<recursiveEnterBlock<<") b="<<(b? b->getLabel(): "NULL")<<endl;
+//!!!  dbg << "<<<enter() fileBufs.size()="<<fileBufs.size()<<" && #blocks="<<blocks.size()<<", #blocks.back().second="<<blocks.back().second.size()<<", #fileBufs.back()->blocks="<<(fileBufs.size()==0? -1: fileBufs.back()->blocks.size())<<endl;
+  if(!recursiveEnterBlock)
+    exitAttrSubBlock();
+  
   //cout << "<<<enterBlock: b="<<b<<", newFileEntered="<<newFileEntered<<", addSummaryEntry="<<addSummaryEntry<<", recursiveEnterBlock="<<recursiveEnterBlock<<endl;
   // if recursiveEnterBlock, newFileEntered and addSummaryEntry may not be
   assert(!addSummaryEntry || !(recursiveEnterBlock && newFileEntered));
@@ -1378,6 +1385,7 @@ string dbgStream::enterBlock(block* b, bool newFileEntered, bool addSummaryEntry
   fileBufs.back()->userAccessing();
 
   //cout << ":enterBlock>>>\n";
+//!!!  dbg << ">>>enter("<<recursiveEnterBlock<<") #blocks="<<blocks.size()<<", #blocks.back().second="<<blocks.back().second.size()<<", #fileBufs.back()->blocks="<<(fileBufs.size()==0? -1: fileBufs.back()->blocks.size())<<endl;
   
   return loadCmd.str();
 }
@@ -1385,6 +1393,7 @@ string dbgStream::enterBlock(block* b, bool newFileEntered, bool addSummaryEntry
 // Called to enter a mini-block between the start/end of a block and the definition of an attribute and between
 // adjacent attribute definitions
 string dbgStream::enterAttrSubBlock() {
+//!!!  dbg << "enterAttrSubBlock()"<<endl;
   // Only enter an attribute sub-block if we've already begun a block
   return enterBlock(new block(""), false, false, true);
 }
@@ -1394,6 +1403,7 @@ string dbgStream::enterAttrSubBlock() {
 //    the most recent setting of an attribute and the end of this block
 block* dbgStream::exitBlock(bool recursiveExitBlock)
 {
+  //!!!dbg << "<<<exitBlock("<<recursiveExitBlock<<") fileBufs.size()="<<fileBufs.size()<<" && #blocks="<<blocks.size()<<", #blocks.back().second="<<blocks.back().second.size()<<", #fileBufs.back()->blocks="<<(fileBufs.size()==0? -1: fileBufs.back()->blocks.size())<<endl;
   if(!recursiveExitBlock)
     exitAttrSubBlock();
   
@@ -1442,16 +1452,21 @@ block* dbgStream::exitBlock(bool recursiveExitBlock)
     lastB = NULL;
   }
   
+  if(!recursiveExitBlock)
+    enterAttrSubBlock();
+  
   //cout << ":exitBlock>>>\n";
-
+//!!!  dbg << ">>>exitBlock("<<recursiveExitBlock<<")\n";
+  
   return lastB;
 }
 
 // Called to exit a mini-block between the start/end of a block and the definition of an attribute and between
 // adjacent attribute definitions
 block* dbgStream::exitAttrSubBlock() {
+//!!!  dbg << "exitAttrSubBlock() fileBufs.size()="<<fileBufs.size()<<" && #blocks="<<blocks.size()<<", #blocks.back().second="<<blocks.back().second.size()<<", #fileBufs.back()->blocks="<<(fileBufs.size()==0? -1: fileBufs.back()->blocks.size())<<endl;
   // Only exit an attribute sub-block if we've already begun a block
-  if(fileBufs.size()>0 && blocks.size()>0 && blocks.begin()->second.size()>0)
+  if(fileBufs.size()>0 && blocks.size()>0 && blocks.back().second.size()>0 && fileBufs.back()->blocks.size()>0)
     return exitBlock(true);
   else
     return NULL;

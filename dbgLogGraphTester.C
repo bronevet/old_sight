@@ -29,6 +29,31 @@ int main(int argc, char** argv)
 {
   initializeDebug(argc, argv);
 
+   {
+    dbg << "outside\n";
+    scope s("Graph1: link each number to its multiples", scope::high);
+    
+    dbg << "inside\n";
+    scope S2("sub-scope");
+    
+    graph g;
+    
+    map<int, set<anchor> > pointsTo;
+    int maxVal=20;
+    for(int i=2; i<maxVal; i++) {
+      scope s(txt()<<"s"<<i, pointsTo[i], scope::medium);
+      for(int j=i*2; j<maxVal; j+=i) {
+        anchor toAnchor;
+        //cout << "    toAnchor="<<toAnchor.str()<<endl;
+        pointsTo[j].insert(toAnchor);
+        g.addDirEdge(s.getAnchor(), toAnchor);
+        //cout << "    toAnchor="<<toAnchor.str()<<endl;
+      }
+    }
+  }
+  
+  return 0;
+
   // It is possible to write arbitrary text to the debug output
   dbg << "Welcome to the dbgLogLogTester" << endl;
   

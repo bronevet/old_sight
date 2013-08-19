@@ -296,9 +296,9 @@ string graph::genDotGraph() {
   ostringstream dot;
   dot << "digraph G {"<<endl;
 
-  /*cout << "nodes="<<endl;
-  for(map<location, pair<int, string> >::iterator b=nodes.begin(); b!=nodes.end(); b++)
-    cout << "    " << dbg.blockGlobalStr(b->first)<< " => [" << b->second.first << ", " << b->second.second << "]"<<endl;*/
+  cout << "nodes("<<nodes.size()<<")="<<endl;
+  for(map<location, node >::iterator b=nodes.begin(); b!=nodes.end(); b++)
+    cout << "    " << dbg.blockGlobalStr(b->first)<< " => [" << b->second.label << ", " << b->second.a.getLinkJS() << "]"<<endl;
 
   for(map<location, node>::iterator b=nodes.begin(); b!=nodes.end(); b++)
     dot << "\tnode_"<<b->second.ID<<" [shape=box, label=\""<<b->second.label<<"\", href=\"javascript:"<<b->second.a.getLinkJS()<<"\"];\n";
@@ -394,16 +394,20 @@ void graph::addUndirEdge(anchor a, anchor b) {
 // Returns true of this notification should be propagated to the blocks 
 // that contain this block and false otherwise.
 bool graph::subBlockEnterNotify(block* subBlock) {
+  //cout << "subBlockEnterNotify()\n";
   // If this block is immediately contained inside this graph
   location common = dbgStream::commonSubLocation(getLocation(), subBlock->getLocation());
   
-  // If subBlock is nested immediately inside the graph's block
+  /*cout << "subBlock->getLocation().back().second.size()="<<subBlock->getLocation().back().second.size()<<" common.back().second.size()="<<common.back().second.size()<<endl;
+  cout << "subBlock->getLocation="<<dbg.blockGlobalStr(subBlock->getLocation())<<endl;*/
+  // If subBlock is nested immediately inside the graph's block 
+//???  // (the nesting gap is 2 blocks rather than 1 since each block is chopped up into sub-blocks that
+//???  //  span the text between adjacent attribute definitions and major block terminal points)
   assert(subBlock->getLocation().size()>0);
   if(common == getLocation() &&
      subBlock->getLocation().size() == common.size() &&
      subBlock->getLocation().back().second.size()-1 == common.back().second.size())
   { 
-    //cout << "subBlock->getLocation="<<dbg.blockGlobalStr(subBlock->getLocation())<<endl;
     nodes[subBlock->getLocation()] = node(maxNodeID, subBlock->getLabel(), subBlock->getAnchor());
     maxNodeID++;
   }
