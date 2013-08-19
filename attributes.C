@@ -12,6 +12,10 @@ attrNullOp NullOp;
  ***** attrValue *****
  *********************/ 
 
+attrValue::attrValue() {
+  type = unknownT;
+}
+
 attrValue::attrValue(const string& strV) {
   type  = strT;
   store = (void*)(new string(strV));
@@ -59,7 +63,20 @@ attrValue::~attrValue() {
   else if(type == ptrT)   delete (void**)store;
   else if(type == intT)   delete (long*)store;
   else if(type == floatT) delete (double*)store;
-  else { cerr << "attrValue::~attrValue() ERROR: invalid value type "<<type<<"!"<<endl; exit(-1); }
+  else if(type != unknownT)
+  { cerr << "attrValue::~attrValue() ERROR: invalid value type "<<type<<"!"<<endl; exit(-1); }
+}
+
+attrValue& attrValue::operator=(const attrValue& that) {
+  type = that.type;
+       if(type == strT)   { store = (void*)(new string(*((string*)that.store))); }
+  else if(type == ptrT)   { store = new void*;  *((void**)store)  = *((void**)that.store);  }
+  else if(type == intT)   { store = new long*;  *((long*)store)   = *((long*)that.store);   }
+  else if(type == floatT) { store = new double; *((double*)store) = *((double*)that.store); }
+  else {
+    cerr << "attrValue::operator=() ERROR: invalid value type "<<type<<"!"<<endl;
+    exit(-1);
+  }
 }
 
 // Returns the type of this attrValue's contents
@@ -433,12 +450,38 @@ bool attributesC::query() {
 // ***** Attribute Interface *****
 // *******************************
 
-attr::attr(std::string key, std::string val) : key(key), val(val) { dbg.exitAttrSubBlock(); attrModified = attributes.add(key, this->val); dbg.enterAttrSubBlock(); }
-attr::attr(std::string key, char*       val) : key(key), val(val) { dbg.exitAttrSubBlock(); attrModified = attributes.add(key, this->val); dbg.enterAttrSubBlock(); }
-attr::attr(std::string key, void*       val) : key(key), val(val) { dbg.exitAttrSubBlock(); attrModified = attributes.add(key, this->val); dbg.enterAttrSubBlock(); }
-attr::attr(std::string key, long        val) : key(key), val(val) { dbg.exitAttrSubBlock(); attrModified = attributes.add(key, this->val); dbg.enterAttrSubBlock(); }
-attr::attr(std::string key, double      val) : key(key), val(val) { dbg.exitAttrSubBlock(); attrModified = attributes.add(key, this->val); dbg.enterAttrSubBlock(); }
+attr::attr(std::string key, std::string val) : key(key), val(val) { init<std::string>(key, val); }//{ dbg.exitAttrSubBlock(); if(attributes.exists(key) attrModified = attributes.add(key, this->val); dbg.enterAttrSubBlock(); }
+attr::attr(std::string key, char*       val) : key(key), val(val) { init<char*      >(key, val); }//{ dbg.exitAttrSubBlock(); if(attributes.exists(key) attrModified = attributes.add(key, this->val); dbg.enterAttrSubBlock(); }
+attr::attr(std::string key, void*       val) : key(key), val(val) { init<void*      >(key, val); }//{ dbg.exitAttrSubBlock(); if(attributes.exists(key) attrModified = attributes.add(key, this->val); dbg.enterAttrSubBlock(); }
+attr::attr(std::string key, long        val) : key(key), val(val) { init<long       >(key, val); }//{ dbg.exitAttrSubBlock(); if(attributes.exists(key) attrModified = attributes.add(key, this->val); dbg.enterAttrSubBlock(); }
+attr::attr(std::string key, double      val) : key(key), val(val) { init<double     >(key, val); }//{ dbg.exitAttrSubBlock(); if(attributes.exists(key) attrModified = attributes.add(key, this->val); dbg.enterAttrSubBlock(); }
 
+template<typename T>
+void attr::init(std::string key, T val) {
+  dbg.exitAttrSubBlock(); 
+  if(attributes.exists(key)) {
+    keyPreviouslySet = true;
+    const std::set<attrValue>& curValues = attributes.get(key);
+    assert(curValues.size()==1);
+    
+    oldVal = *(curValues.begin());
+    attributes.replace(key, this->val); 
+  } else {
+    keyPreviouslySet = false;
+    attributes.add(key, this->val); 
+  }
+  
+  dbg.enterAttrSubBlock();
+}
+
+attr::~attr() {
+  // If this mapping replaced some prior mapping, return key to its original state
+  if(keyPreviouslySet)
+    attributes.replace(key, oldVal);
+  // Otherwise, just remove the entire mapping
+  else
+    attributes.remove(key);
+}
 // Returns the key of this attribute
 string attr::getKey() const
 { return key; }

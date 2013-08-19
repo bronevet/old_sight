@@ -76,7 +76,7 @@ class attrOp;
 // type of its contents and allows functors that work on only one of these types to be applied.
 class attrValue {
   public:
-  typedef enum {strT, ptrT, intT, floatT} valueType;
+  typedef enum {strT, ptrT, intT, floatT, unknownT} valueType;
   
   friend class attrOp;
   
@@ -95,6 +95,7 @@ class attrValue {
   void* store;
   
   public:
+  attrValue();
   attrValue(const std::string& strV);
   attrValue(char* strV);
   attrValue(void* ptrV);
@@ -102,6 +103,8 @@ class attrValue {
   attrValue(double floatV);
   attrValue(const attrValue& that);
   ~attrValue();
+  
+  attrValue& operator=(const attrValue& that);
   
   // Returns the type of this attrValue's contents
   valueType getType() const;
@@ -546,8 +549,11 @@ class attr
   std::string key;
   attrValue val;
     
-  // Records whether the addition of this key/value mapping changed the attributes map
-  bool attrModified;
+  // Records whether the value that this attribute's key was assigned to before the attribute was set
+  bool keyPreviouslySet;
+  
+  // The value that this attribute's key was assigned to before the attribute was set, if any
+  attrValue oldVal;
   
   public:
   attr(std::string key, std::string val);
@@ -556,16 +562,10 @@ class attr
   attr(std::string key, long        val);
   attr(std::string key, double      val);
   
-  ~attr() {
-    // If the addition of this key/value pair changed the attributes map, remove the mapping.
-    // We do it this way since attr objects add/remove key/value pairs in a hierarchical fashion that
-    // directly mirrors application scopes. As such, if a given key/value pair already exists
-    // in the attributes map, it was added by an attr object that is deeper up the stack. As such,
-    // there is no need to remove it when this object is deallocated since we're sure that the 
-    // pair's original creator object deeper up the stack will do this when it is deallocated.
-    if(attrModified)
-      attributes.remove(key, val);
-  }
+  template<typename T>
+  void init(std::string key, T val);
+  
+  ~attr();
   
   // Returns the key of this attribute
   std::string getKey() const;

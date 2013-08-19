@@ -193,7 +193,11 @@ function loadSubFile(detailDoc, fileID, detailURL, detailDivName, sumDoc, sumURL
                    function() { 
                      loadURLIntoDiv(sumDoc, sumURL, sumDivName,
                                     function() { 
-                                      loadjscssfile(scriptURL, "text/javascript", continuationFunc);
+                                      loadjscssfile(scriptURL+".prolog", "text/javascript", 
+                                        function() {loadjscssfile(scriptURL, "text/javascript", 
+                                          function() { loadjscssfile(scriptURL+".epilog", "text/javascript", continuationFunc); } 
+                                        ); }
+                                      );
                                     } ); } );
   }
 }
