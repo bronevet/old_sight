@@ -554,7 +554,7 @@ void dbgBuf::addIndent(std::string indent)
 {
   assert(indents.size()>0);
   indents.rbegin()->push_back(indent);
-  //cout << "addIndent() #indents="<<indents.size()<<" = "<<getIndent()<<endl;
+  cout << "addIndent() #indents="<<indents.size()<<" = "<<getIndent()<<endl;
   
   /*if(justSynched) {
     int ret = printString(indent); if(ret != 0) return;
@@ -565,7 +565,7 @@ void dbgBuf::addIndent(std::string indent)
 // Remove the most recently added indent within the current div
 void dbgBuf::remIndent()
 {
-  //cout << "remIndent() #indents="<<indents.size()<<", indents.rbegin()->size()="<<indents.rbegin()->size()<<endl;
+  cout << "remIndent() #indents="<<indents.size()<<", indents.rbegin()->size()="<<indents.rbegin()->size()<<endl;
   assert(indents.size()>0);
   assert(indents.rbegin()->size()>0);
   indents.rbegin()->pop_back();
@@ -699,16 +699,23 @@ void dbgBuf::userAccessing() { ownerAccess = false; synched = true; }
 void dbgBuf::ownerAccessing() { ownerAccess = true; synched = true; }
 
 // Called when a block is entered.
-void dbgBuf::enterBlock(block* b)
+// b - The block that was just entered
+// isAttrSubBlock - Records whether b is a sub-block that spans between creation points of attribute values and 
+//   terminal points of blocks. For such blocks we record that they exist to make sure they get unique names but
+//   don't add any additional indentation.
+void dbgBuf::enterBlock(block* b, bool isAttrSubBlock)
 {
   //cout << "enterBlock("<<b.getLabel()<<") numOpenAngles="<<numOpenAngles<<endl;
   blocks.push_back(b);
   
-  indents.push_back(std::list<std::string>());
+  if(!isAttrSubBlock)
+    indents.push_back(std::list<std::string>());
 }
-
 // Called when a block is exited. Returns the block that was exited.
-block* dbgBuf::exitBlock()
+// isAttrSubBlock - Records whether b is a sub-block that spans between creation points of attribute values and 
+//   terminal points of blocks. For such blocks we record that they exist to make sure they get unique names but
+//   don't add any additional indentation.
+block* dbgBuf::exitBlock(bool isAttrSubBlock)
 {
   //cout << "exitBlock("<<funcName<<") numOpenAngles="<<numOpenAngles<<endl;
   /*if(funcName != blocks.back()) { 
@@ -724,8 +731,10 @@ block* dbgBuf::exitBlock()
   assert(blocks.size()>0);
   block* lastB = blocks.back();
   blocks.pop_back();
-  indents.pop_back();
-  needIndent=false;
+  if(!isAttrSubBlock) {
+     indents.pop_back();
+    needIndent=false;
+  }
   return lastB;
 }
 
@@ -1046,6 +1055,8 @@ string dbgStream::enterFileLevel(block* b, bool topLevel)
   blocks.push_back(make_pair(b, list<block*>()));
   if(!topLevel)
     loadCmd = enterBlock(b, true, true);
+  else
+    enterAttrSubBlock();
   fileBlocks.push_back(b);
   
   //if(!topLevel) (*this)<< "dbgStream::enterFileLevel("<<b->getLabel()<<") >>>>>\n";
@@ -1143,7 +1154,8 @@ block* dbgStream::exitFileLevel(bool topLevel)
     //block* topBlock = exitBlock();
     exitBlock();
     //delete topBlock;
-  }
+  } else
+    exitAttrSubBlock();
   
   loc.pop_back();
   
@@ -1292,14 +1304,14 @@ void dbgStream::printDetailFileContainerHTML(string absoluteFileName, string tit
 //    the start of this major block and the next setting of an attribute.
 string dbgStream::enterBlock(block* b, bool newFileEntered, bool addSummaryEntry, bool recursiveEnterBlock)
 {
-  //cout << "<<<enterBlock: b="<<b<<", newFileEntered="<<newFileEntered<<", addSummaryEntry="<<addSummaryEntry<<", recursiveEnterBlock="<<recursiveEnterBlock<<endl;
+  cout << "<<<enterBlock: b="<<b<<", newFileEntered="<<newFileEntered<<", addSummaryEntry="<<addSummaryEntry<<", recursiveEnterBlock="<<recursiveEnterBlock<<endl;
   // if recursiveEnterBlock, newFileEntered and addSummaryEntry may not be
   assert(!addSummaryEntry || !(recursiveEnterBlock && newFileEntered));
   //(*this) << "dbgStream::enterBlock("<<(b? b->getLabel(): "NULL")<<")"<<endl;
   
   fileBufs.back()->ownerAccessing();
   
-  fileBufs.back()->enterBlock(b);
+  fileBufs.back()->enterBlock(b, recursiveEnterBlock);
   
   assert(loc.size()>0);
   // Increment the index of this block unit within the current nesting level of this file
@@ -1359,7 +1371,7 @@ string dbgStream::enterBlock(block* b, bool newFileEntered, bool addSummaryEntry
   
   fileBufs.back()->userAccessing();
 
-  //cout << ":enterBlock>>>\n";
+  cout << ":enterBlock>>>\n";
   
   return loadCmd.str();
 }
@@ -1379,9 +1391,8 @@ block* dbgStream::exitBlock(bool recursiveExitBlock)
   if(!recursiveExitBlock)
     exitAttrSubBlock();
   
-  //{ cout << "exitBlock("<<b->getLabel()<<", "<<contentURL<<")"<<endl; }
   fileBufs.back()->ownerAccessing();
-  block* lastB = fileBufs.back()->exitBlock();
+  block* lastB = fileBufs.back()->exitBlock(recursiveExitBlock);
   
   assert(loc.size()>0);
   assert(loc.back().second.size()>0);
@@ -1394,7 +1405,7 @@ block* dbgStream::exitBlock(bool recursiveExitBlock)
   blocks.back().second.pop_back();
   fileBufs.back()->userAccessing();
   
-  //cout << "<<<exitBlock: lastB="<<lastB<<", topB="<<topB<<" recursiveExitBlock="<<recursiveExitBlock<<"\n";
+  cout << "<<<exitBlock: lastB="<<lastB<<", topB="<<topB<<" recursiveExitBlock="<<recursiveExitBlock<<"\n";
   
   // Inform this block's container blocks that we have exited it
   // (after the removal of this block from blocks to keep the block from being informed about itself)
@@ -1425,7 +1436,7 @@ block* dbgStream::exitBlock(bool recursiveExitBlock)
     lastB = NULL;
   }
   
-  //cout << ":exitBlock>>>\n";
+  cout << ":exitBlock>>>\n";
 
   return lastB;
 }

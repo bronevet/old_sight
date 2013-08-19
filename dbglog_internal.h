@@ -253,14 +253,21 @@ protected:
   void userAccessing();
   void ownerAccessing();
 
-  // Called when a block is entered.
-  void enterBlock(block* b);
+  // b - The block that was just entered
+  // isAttrSubBlock - Records whether b is a sub-block that spans between creation points of attribute values and 
+  //   terminal points of blocks. For such blocks we record that they exist to make sure they get unique names but
+  //   don't add any additional indentation.
+  void enterBlock(block* b, bool isAttrSubBlock);
+  
   // Called when a block is exited. Returns the block that was exited.
-  block* exitBlock();
+  // isAttrSubBlock - Records whether b is a sub-block that spans between creation points of attribute values and 
+  //   terminal points of blocks. For such blocks we record that they exist to make sure they get unique names but
+  //   don't add any additional indentation.
+  block* exitBlock(bool isAttrSubBlock);
   
   // Returns the depth of enterBlock calls that have not yet been matched by exitBlock calls
   int blockDepth();
-};
+}; // class dbgBuf
 
 
 // Stream that uses dbgBuf

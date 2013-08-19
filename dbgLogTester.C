@@ -18,6 +18,11 @@ int main(int argc, char** argv)
 {
   initializeDebug(argc, argv);
   
+  indent ind;
+  attr verbA("verbosity", (long)0);
+  
+  return 0;
+   
   // It is possible to write arbitrary text to the debug output
   dbg << "Welcome to the dbgLogTester" << endl;
   
