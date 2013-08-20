@@ -296,10 +296,9 @@ string graph::genDotGraph() {
   ostringstream dot;
   dot << "digraph G {"<<endl;
 
-  cout << "nodes("<<nodes.size()<<")="<<endl;
+  /*cout << "nodes("<<nodes.size()<<")="<<endl;
   for(map<location, node >::iterator b=nodes.begin(); b!=nodes.end(); b++)
-    cout << "    " << dbg.blockGlobalStr(b->first)<< " => [" << b->second.label << ", " << b->second.a.getLinkJS() << "]"<<endl;
-
+    cout << "    " << dbg.blockGlobalStr(b->first)<< " => [" << b->second.label << ", " << b->second.a.getLinkJS() << "]"<<endl;*/
   for(map<location, node>::iterator b=nodes.begin(); b!=nodes.end(); b++)
     dot << "\tnode_"<<b->second.ID<<" [shape=box, label=\""<<b->second.label<<"\", href=\"javascript:"<<b->second.a.getLinkJS()<<"\"];\n";
 

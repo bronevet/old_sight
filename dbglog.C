@@ -1238,6 +1238,7 @@ void dbgStream::printDetailFileContainerHTML(string absoluteFileName, string tit
   det << "<html>\n";
   det << "\t<head>\n";
   det << "\t<title>"<<title<<"</title>\n";
+  det << "\t<script type='text/javascript' src='https://www.google.com/jsapi?autoload={\"modules\":[{\"name\":\"visualization\",\"version\":\"1\",\"packages\":[\"orgchart\"]}]}'></script>\n";
   det << "\t<script src=\"script/hashtable.js\"></script>\n";
   det << "\t<script src=\"script/taffydb/taffy.js\"></script>\n";
   det << "\t<script src=\"script/placement.js\"></script>\n";

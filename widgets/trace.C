@@ -9,13 +9,13 @@ std::list<trace*> trace::stack;
 // Records whether the tracer infrastructure has been initialized
 bool trace::initialized=false;
 
-trace::trace(std::string label, const std::list<std::string>& contextAttrs, showLocT showLoc) : block(label), contextAttrs(contextAttrs), showLoc(showLoc) {
+trace::trace(std::string label, const std::list<std::string>& contextAttrs, showLocT showLoc, vizT viz) : block(label), contextAttrs(contextAttrs), showLoc(showLoc), viz(viz) {
   if(contextAttrs.size()==0) { cerr << "trace::trace() ERROR: contextAttrs must be non-empty!"; exit(-1); }
   
   init();
 }
 
-trace::trace(std::string label, std::string contextAttr, showLocT showLoc) : block(label), showLoc(showLoc) {
+trace::trace(std::string label, std::string contextAttr, showLocT showLoc, vizT viz) : block(label), showLoc(showLoc), viz(viz) {
   contextAttrs.push_back(contextAttr);
   
   init();
@@ -24,10 +24,21 @@ trace::trace(std::string label, std::string contextAttr, showLocT showLoc) : blo
 
 void trace::init() {
   if(!initialized) {
-    dbg.includeFile("trace.js");
+    // Table visualization
     //dbg.includeScript("https://www.google.com/jsapi", "text/javascript");
     dbg.includeScript("http://yui.yahooapis.com/3.11.0/build/yui/yui-min.js", "text/javascript");
+    
+    // Decision Tree
+    dbg.includeScript("http://code.jquery.com/jquery-1.8.1.min.js",                                  "text/javascript");
+    dbg.includeScript("http://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.3.3/underscore-min.js", "text/javascript");
+    dbg.includeScript("http://d3js.org/d3.v2.js", "text/javascript");
+    dbg.includeWidgetScript("ID3-Decision-Tree/js/id3.js", "text/javascript");
+    //dbg.includeScript("https://www.google.com/jsapi?autoload={\"modules\":[{\"name\":\"visualization\",\"version\":\"1\",\"packages\":[\"orgchart\"]}]}", "text/javascript");
+    dbg.includeFile("ID3-Decision-Tree");
+
+    dbg.includeFile("trace.js");
     dbg.includeWidgetScript("trace.js", "text/javascript");
+    
     initialized = true;
   }
   
@@ -56,16 +67,30 @@ trace::~trace() {
     attributes.remObs(*ca, this);
 }
 
+// Returns a string representation of a vizT object
+string trace::viz2Str(vizT viz) {
+       if(viz == table)   return "table";
+  else if(viz == decTree) return "decTree";
+  else                    return "???";
+}
 // Place the code to show the visualization
 void trace::showViz() {
-  dbg << "<div class=\"example yui3-skin-sam\">\n";
+  if(viz==table) dbg << "<div class=\"example yui3-skin-sam\">\n";
   dbg.enterBlock(this, false, true);
   
-  //dbg.widgetScriptPrologCommand(txt()<<"loadGoogleAPI();");
-  dbg.widgetScriptEpilogCommand(txt()<<"displayTrace('"<<getLabel()<<"', '"<<getBlockID()<<"');");
-  
+  if(viz==table) {
+    //dbg.widgetScriptPrologCommand(txt()<<"loadGoogleAPI();");
+    dbg.widgetScriptEpilogCommand(txt()<<"displayTrace('"<<getLabel()<<"', '"<<getBlockID()<<"', '', '"<<viz2Str(viz)<<"');");
+  } else if(viz==decTree) {
+    // Create a separate decision tree for each tracer attribute
+    for(set<string>::iterator t=tracerKeys.begin(); t!=tracerKeys.end(); t++) {
+      dbg << *t << endl;
+      dbg << "<div id=\"div"<<getBlockID()<<":"<<*t<<"\"></div>\n";
+      dbg.widgetScriptEpilogCommand(txt()<<"displayTrace('"<<getLabel()<<"', '"<<getBlockID()<<"', '"<<*t<<"', '"<<viz2Str(viz)<<"');");
+    }
+  }
   dbg.exitBlock();
-  dbg << "</div>\n";
+  if(viz==table) dbg << "</div>\n";
 }
 
 // Observe for changes to the values mapped to the given key
@@ -78,6 +103,7 @@ void trace::observePre(std::string key)
 // Called by traceAttr() to inform the trace that a new observation has been made
 void trace::traceAttrObserved(std::string key, const attrValue& val) {
   obs[key] = val;
+  tracerKeys.insert(key);
 }
 
 // Emits the JavaScript command that encodes the observations made since the last time a context attribute changed
@@ -108,7 +134,7 @@ void trace::emitObservations() {
     if(vals.size()>1) { cerr << "trace::traceAttr() ERROR: context attribute "<<*a<<" has multiple values!"; }
     cmd << *a << ": '" << vals.begin()->getAsStr() << "'";
   }
-  cmd << "});";
+  cmd << "}, '"<<viz2Str(viz)<<"');";
   dbg.widgetScriptCommand(cmd.str());
   
   // Reset the obs[] map since we've just emitted all these observations

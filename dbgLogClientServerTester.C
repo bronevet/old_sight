@@ -26,10 +26,10 @@ int main(int argc, char** argv) {
   list<string> contextAttrs;
   contextAttrs.push_back("i");
   contextAttrs.push_back("request");
-  //trace t("Client and Server IDs", contextAttrs, trace::showEnd);
+  trace t("Client and Server IDs", contextAttrs, trace::showEnd, trace::table);
   
   for(int i=0; i<100; i++) {
-    //attr iAttr("i", (long)i);
+    attr iAttr("i", (long)i);
     
     int serverID = rand()%numServers;
     int clientID = rand()%numClients;
@@ -48,7 +48,7 @@ int main(int argc, char** argv) {
            bgColor::start(requestColor) << request << bgColor::end()<< " request to "<<
            borderColor::start(serverColor, sid.getVal()) << "Server "<<serverID<<borderColor::end()<<endl;
     
-    //traceAttr("clientID", attrValue((long)clientID));
-    //traceAttr("serverID", attrValue((long)serverID));
+    traceAttr("clientID", attrValue((long)clientID));
+    traceAttr("serverID", attrValue((long)serverID));
   }
 }

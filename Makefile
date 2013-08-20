@@ -7,7 +7,7 @@ ifeq (${OS}, Cygwin)
 EXT := .exe
 endif
 
-all: dbgLogTester${EXT} dbgLogGraphTester${EXT} dbgLogAttrTester${EXT} dbgLogClientServerTester${EXT} \
+all: dbgLogTester${EXT} dbgLogGraphTester${EXT} dbgLogAttrTester${EXT} dbgLogClientServerTester${EXT} dbgLogTimingTester${EXT} \
      ${DBGLOG} \
      widgets/shellinabox/bin/shellinaboxd${EXT} widgets/mongoose/mongoose${EXT} widgets/graphviz/bin/dot${EXT} script/taffydb
 	chmod 755 html img script
@@ -16,6 +16,13 @@ all: dbgLogTester${EXT} dbgLogGraphTester${EXT} dbgLogAttrTester${EXT} dbgLogCli
 	chmod 644 widgets/canviz-0.1/* script/taffydb/*
 	chmod 755 widgets/canviz-0.1/excanvas widgets/canviz-0.1/lib widgets/canviz-0.1/path widgets/canviz-0.1/prototype
 	chmod 644 widgets/canviz-0.1/*/*
+
+examples:
+	rm -fr dbg; ./dbgLogTester${EXE};             mv dbg dbg.dbgLogTester${EXE}            
+	rm -fr dbg; ./dbgLogGraphTester${EXE};        mv dbg dbg.dbgLogGraphTester${EXE}       
+	rm -fr dbg; ./dbgLogAttrTester${EXE};         mv dbg dbg.dbgLogAttrTester${EXE}        
+	rm -fr dbg; ./dbgLogClientServerTester${EXE}; mv dbg dbg.dbgLogClientServerTester${EXE}
+	rm -fr dbg; ./dbgLogTimingTester${EXE};       mv dbg dbg.dbgLogTimingTester${EXE}      
 
 # Set this to the current Operating System (needed by the Mongoose web server). 
 # Choices: linux|bsd|solaris|mac|windows|mingw|cygwin
@@ -42,6 +49,9 @@ dbgLogAttrTester${EXT}: dbgLogAttrTester.C libdbglog.a ${DBGLOG_H}
 
 dbgLogClientServerTester${EXT}: dbgLogClientServerTester.C libdbglog.a ${DBGLOG_H}
 	g++ -g dbgLogClientServerTester.C -L. -ldbglog  -o dbgLogClientServerTester${EXT}
+
+dbgLogTimingTester${EXT}: dbgLogTimingTester.C libdbglog.a ${DBGLOG_H}
+	g++ -g dbgLogTimingTester.C -L. -ldbglog  -o dbgLogTimingTester${EXT}
 
 libdbglog.a: ${DBGLOG_O} ${DBGLOG_H}
 	ar -r libdbglog.a ${DBGLOG_O}
