@@ -9,7 +9,8 @@ endif
 
 all: dbgLogTester${EXT} dbgLogGraphTester${EXT} dbgLogAttrTester${EXT} dbgLogClientServerTester${EXT} dbgLogTimingTester${EXT} \
      ${DBGLOG} \
-     widgets/shellinabox/bin/shellinaboxd${EXT} widgets/mongoose/mongoose${EXT} widgets/graphviz/bin/dot${EXT} script/taffydb
+     widgets/shellinabox/bin/shellinaboxd${EXT} widgets/mongoose/mongoose${EXT} widgets/graphviz/bin/dot${EXT} script/taffydb \
+     widgets/ID3-Decision-Tree
 	chmod 755 html img script
 	chmod 644 html/* img/* script/*
 	chmod 755 widgets/canviz-0.1 script/taffydb
@@ -126,3 +127,14 @@ script/taffydb:
 	rm script/master*
 	chmod 755 script/taffydb
 	chmod 644 script/taffydb/*
+
+widgets/ID3-Decision-Tree:
+	rm -fr widgets/master*
+	cd widgets; wget --no-check-certificate https://github.com/willkurt/ID3-Decision-Tree/archive/master.zip
+	cd widgets; mv master master.zip; unzip master.zip
+	mv widgets/ID3-Decision-Tree-master widgets/ID3-Decision-Tree
+	rm -r widgets/master*
+	chmod 755 widgets/ID3-Decision-Tree
+	chmod 644 widgets/ID3-Decision-Tree/*
+	chmod 755 widgets/ID3-Decision-Tree/data widgets/ID3-Decision-Tree/js
+	chmod 644 widgets/ID3-Decision-Tree/*/*
