@@ -7,7 +7,7 @@ ifeq (${OS}, Cygwin)
 EXT := .exe
 endif
 
-all: dbgLogTester${EXT} dbgLogGraphTester${EXT} dbgLogAttrTester${EXT} dbgLogClientServerTester${EXT} dbgLogTimingTester${EXT} \
+all: dbgLogTester${EXT} dbgLogGraphTester${EXT} dbgLogAttrTester${EXT} dbgLogClientServerTester${EXT} dbgLogTimingTester${EXT} dbgLogPrintfTester${EXT} \
      ${DBGLOG} \
      widgets/shellinabox/bin/shellinaboxd${EXT} widgets/mongoose/mongoose${EXT} widgets/graphviz/bin/dot${EXT} script/taffydb \
      widgets/ID3-Decision-Tree
@@ -53,6 +53,9 @@ dbgLogClientServerTester${EXT}: dbgLogClientServerTester.C libdbglog.a ${DBGLOG_
 
 dbgLogTimingTester${EXT}: dbgLogTimingTester.C libdbglog.a ${DBGLOG_H}
 	g++ -g dbgLogTimingTester.C -L. -ldbglog  -o dbgLogTimingTester${EXT}
+
+dbgLogPrintfTester${EXT}: dbgLogPrintfTester.C libdbglog.a ${DBGLOG_H}
+	g++ -g dbgLogPrintfTester.C -L. -ldbglog  -o dbgLogPrintfTester${EXT}
 
 libdbglog.a: ${DBGLOG_O} ${DBGLOG_H}
 	ar -r libdbglog.a ${DBGLOG_O}

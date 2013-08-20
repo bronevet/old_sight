@@ -86,7 +86,7 @@ int main(int argc, char** argv) {
   contextAttrs.push_back("MtxSize");
   contextAttrs.push_back("loop");
   trace t("Loop Elapsed", contextAttrs, trace::showEnd, trace::decTree);
-  colorSelector loopColor("loop",0,0,.3,0,0,1); // Green gradient
+  colorSelector loopColor("loop",0,0,.3,0,0,1); // Blue gradient
   colorSelector elapsedColor(.3,0,0,1,0,0); // Red gradient
   
   for(int rep=0; rep<3; rep++) {

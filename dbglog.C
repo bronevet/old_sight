@@ -1560,4 +1560,17 @@ std::string escape(std::string s)
   return out;
 }
 
+char printbuf[100000];
+int dbgprintf(const char * format, ... )    
+{
+  va_list args;
+  va_start(args, format);
+  vsnprintf(printbuf, 100000, format, args);
+  va_end(args);
+  
+  dbg << printbuf;
+  
+  return 0;// Before return you can redefine it back if you want...
+}
+
 } // namespace dbglog

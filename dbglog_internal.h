@@ -8,6 +8,7 @@
 #include <iostream>
 #include <sstream>
 #include <fstream>
+#include <stdarg.h>
 #include "attributes.h"
 
 namespace dbglog {
@@ -483,4 +484,7 @@ struct txt : std::string {
 // string escaped to that the string can be written out to Dbg::dbg with no formatting issues.
 // This function can be called on text that has already been escaped with no harm.
 std::string escape(std::string s);
+  
+int dbgprintf(const char * format, ... );
+
 } // namespace dbglog
