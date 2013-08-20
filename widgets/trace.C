@@ -75,12 +75,11 @@ string trace::viz2Str(vizT viz) {
 }
 // Place the code to show the visualization
 void trace::showViz() {
-  if(viz==table) dbg << "<div class=\"example yui3-skin-sam\">\n";
   dbg.enterBlock(this, false, true);
-  
   if(viz==table) {
     //dbg.widgetScriptPrologCommand(txt()<<"loadGoogleAPI();");
-    dbg.widgetScriptEpilogCommand(txt()<<"displayTrace('"<<getLabel()<<"', '"<<getBlockID()<<"', '', '"<<viz2Str(viz)<<"');");
+    dbg.widgetScriptEpilogCommand(txt()<<"displayTrace('"<<getLabel()<<"', '"<<getBlockID()<<"-Table', '', '"<<viz2Str(viz)<<"');");
+    dbg << "<div class=\"example yui3-skin-sam\"><div id=\"div"<<getBlockID()<<"-Table\"></div></div>";
   } else if(viz==decTree) {
     // Create a separate decision tree for each tracer attribute
     for(set<string>::iterator t=tracerKeys.begin(); t!=tracerKeys.end(); t++) {
@@ -90,7 +89,6 @@ void trace::showViz() {
     }
   }
   dbg.exitBlock();
-  if(viz==table) dbg << "</div>\n";
 }
 
 // Observe for changes to the values mapped to the given key
