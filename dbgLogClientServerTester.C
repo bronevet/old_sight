@@ -48,7 +48,7 @@ int main(int argc, char** argv) {
            bgColor::start(requestColor) << request << bgColor::end()<< " request to "<<
            borderColor::start(serverColor, sid.getVal()) << "Server "<<serverID<<borderColor::end()<<endl;
     
-    traceAttr("clientID", attrValue((long)clientID));
-    traceAttr("serverID", attrValue((long)serverID));
+    traceAttr("Client and Server IDs", "clientID", attrValue((long)clientID));
+    traceAttr("Client and Server IDs", "serverID", attrValue((long)serverID));
   }
 }
