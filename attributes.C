@@ -242,7 +242,7 @@ bool attrSubQueryOr::query(const attributesC& attr) {
 }
 
 bool attrSubQueryIf::query(const attributesC& attr) {
-  cout << "attrSubQueryIf::query() op="<<op->str()<<", apply="<<op->apply()<<endl;
+  //cout << "attrSubQueryIf::query() op="<<op->str()<<", apply="<<op->apply()<<endl;
   // Applies the operator to the values at the given key, returning its result. This object never propagates
   // queries to its predecessors.
   return op->apply();
@@ -507,7 +507,7 @@ void attributesC::pop() {
 bool attributesC::query() {
   // Perform the query directly if the value of lastQRet is not consistent with the current state of q and m
   if(!qCurrent) lastQRet = q.query(*this);
-cout << "attributesC::query()="<<lastQRet<<" qCurrent="<<qCurrent<<endl;
+//cout << "attributesC::query()="<<lastQRet<<" qCurrent="<<qCurrent<<endl;
   return lastQRet;
 }
 
@@ -523,7 +523,7 @@ attr::attr(std::string key, double      val) : key(key), val(val) { init<double 
 
 template<typename T>
 void attr::init(std::string key, T val) {
-cout << "attr::init("<<key<<", "<<val<<")\n";
+//cout << "attr::init("<<key<<", "<<val<<")\n";
   dbg.exitAttrSubBlock(); 
   if(attributes.exists(key)) {
     keyPreviouslySet = true;
@@ -541,7 +541,7 @@ cout << "attr::init("<<key<<", "<<val<<")\n";
 }
 
 attr::~attr() {
-cout << "attr::~attr("<<key<<", "<<val.str()<<")\n";
+//cout << "attr::~attr("<<key<<", "<<val.str()<<")\n";
   // If this mapping replaced some prior mapping, return key to its original state
   if(keyPreviouslySet)
     attributes.replace(key, oldVal);

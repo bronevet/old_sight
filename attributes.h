@@ -217,10 +217,10 @@ class attrEQ : public universalAttrOp
   attrEQ(std::string key, long               val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
   attrEQ(std::string key, double             val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
   
-  bool applyString(std::string& that) const { return val == attrValue(that); }
-  bool applyPtr(void*& that)          const { return val == attrValue(that); }
-  bool applyInt(long& that)           const { return val == attrValue(that); }
-  bool applyFloat(double& that)       const { return val == attrValue(that); }
+  bool applyString(std::string& that) const { return attrValue(that) == val; }
+  bool applyPtr(void*& that)          const { return attrValue(that) == val; }
+  bool applyInt(long& that)           const { return attrValue(that) == val; }
+  bool applyFloat(double& that)       const { return attrValue(that) == val; }
   
   // Returns a human-readable representation of this object
   std::string str() const { return "attrEQ"; }
@@ -238,10 +238,10 @@ class attrNEQ : public universalAttrOp
   attrNEQ(std::string key, long               val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
   attrNEQ(std::string key, double             val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
   
-  bool applyString(std::string& that) const { return val != attrValue(that); }
-  bool applyPtr(void*& that)          const { return val != attrValue(that); }
-  bool applyInt(long& that)           const { return val != attrValue(that); }
-  bool applyFloat(double& that)       const { return val != attrValue(that); }
+  bool applyString(std::string& that) const { return attrValue(that) != val; }
+  bool applyPtr(void*& that)          const { return attrValue(that) != val; }
+  bool applyInt(long& that)           const { return attrValue(that) != val; }
+  bool applyFloat(double& that)       const { return attrValue(that) != val; }
   
   // Returns a human-readable representation of this object
   std::string str() const { return "attrNEQ"; }
@@ -259,10 +259,10 @@ class attrLT : public universalAttrOp
   attrLT(std::string key, long               val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
   attrLT(std::string key, double             val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
   
-  bool applyString(std::string& that) const { return val < attrValue(that); }
-  bool applyPtr(void*& that)          const { return val < attrValue(that); }
-  bool applyInt(long& that)           const { return val < attrValue(that); }
-  bool applyFloat(double& that)       const { return val < attrValue(that); }
+  bool applyString(std::string& that) const { return attrValue(that) < val; }
+  bool applyPtr(void*& that)          const { return attrValue(that) < val; }
+  bool applyInt(long& that)           const { return attrValue(that) < val; }
+  bool applyFloat(double& that)       const { return attrValue(that) < val; }
   
   // Returns a human-readable representation of this object
   std::string str() const { return "attrLT"; }
@@ -280,10 +280,10 @@ class attrLE : public universalAttrOp
   attrLE(std::string key, long               val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
   attrLE(std::string key, double             val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
   
-  bool applyString(std::string& that) const { return val <= attrValue(that); }
-  bool applyPtr(void*& that)          const { return val <= attrValue(that); }
-  bool applyInt(long& that)           const { return val <= attrValue(that); }
-  bool applyFloat(double& that)       const { return val <= attrValue(that); }
+  bool applyString(std::string& that) const { return attrValue(that) <= val; }
+  bool applyPtr(void*& that)          const { return attrValue(that) <= val; }
+  bool applyInt(long& that)           const { return attrValue(that) <= val; }
+  bool applyFloat(double& that)       const { return attrValue(that) <= val; }
   
   // Returns a human-readable representation of this object
   std::string str() const { return "attrLE"; }
@@ -301,10 +301,10 @@ class attrGT : public universalAttrOp
   attrGT(std::string key, long               val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
   attrGT(std::string key, double             val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
   
-  bool applyString(std::string& that) const { return val > attrValue(that); }
-  bool applyPtr(void*& that)          const { return val > attrValue(that); }
-  bool applyInt(long& that)           const { return val > attrValue(that); }
-  bool applyFloat(double& that)       const { return val > attrValue(that); }
+  bool applyString(std::string& that) const { return attrValue(that) > val; }
+  bool applyPtr(void*& that)          const { return attrValue(that) > val; }
+  bool applyInt(long& that)           const { return attrValue(that) > val; }
+  bool applyFloat(double& that)       const { return attrValue(that) > val; }
   
   // Returns a human-readable representation of this object
   std::string str() const { return "attrGT"; }
@@ -322,10 +322,10 @@ class attrGE : public universalAttrOp
   attrGE(std::string key, long               val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
   attrGE(std::string key, double             val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
   
-  bool applyString(std::string& that) const { std::cout << "GE: val="<<val.str()<<" >= that="<<that<<std::endl; return attrValue(that) >= val; }
-  bool applyPtr(void*& that)          const { std::cout << "GE: val="<<val.str()<<" >= that="<<that<<std::endl; return attrValue(that) >= val; }
-  bool applyInt(long& that)           const { std::cout << "GE: val="<<val.str()<<" >= that="<<that<<std::endl; return attrValue(that) >= val; }
-  bool applyFloat(double& that)       const { std::cout << "GE: val="<<val.str()<<" >= that="<<that<<std::endl; return attrValue(that) >= val; }
+  bool applyString(std::string& that) const { /*std::cout << "GE: val="<<val.str()<<" >= that="<<that<<std::endl;*/ return attrValue(that) >= val; }
+  bool applyPtr(void*& that)          const { /*std::cout << "GE: val="<<val.str()<<" >= that="<<that<<std::endl;*/ return attrValue(that) >= val; }
+  bool applyInt(long& that)           const { /*std::cout << "GE: val="<<val.str()<<" >= that="<<that<<std::endl;*/ return attrValue(that) >= val; }
+  bool applyFloat(double& that)       const { /*std::cout << "GE: val="<<val.str()<<" >= that="<<that<<std::endl;*/ return attrValue(that) >= val; }
   
   // Returns a human-readable representation of this object
   std::string str() const { return "attrGE"; }

@@ -42,13 +42,13 @@ int main(int argc, char** argv)
   
   // Here we see recursive function calls (recursive Fibonacci) that add more indentation at deeper levels of recursion
   {
-    attr verbA("verbosity", (long)0);
+    attr verbA("verbosity", (long)3);
     scope regFibIndent("Indentation due to recursive calls to fib");
     fibIndent(3);
   }
   
   {
-    attr verbA("verbosity", (long)3);
+    attr verbA("verbosity", (long)0);
     scope regFibIndent("Indentation due to recursive calls to fib, 1 level of indent");
     fibIndent(3);
   }
@@ -182,7 +182,7 @@ int fibScopeLinks(int a, scope::scopeLevel level, list<int>& stack,
 
 int fibIndent(int a) {
   // Each recursive call to fibScopeLinks adds an indent level, prepending ":" to text printed by deeper calls to fibIndent. 
-  // To reduce the amount of textprinted, we only add indentation if the value of a is >= verbosityLevel
+  // To reduce the amount of textprinted, we only add indentation if the verbosity level >= a
   indent ind(":  ", attrGE("verbosity", (long)a));
   
   if(a==0 || a==1) { 
