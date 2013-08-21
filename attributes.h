@@ -322,10 +322,10 @@ class attrGE : public universalAttrOp
   attrGE(std::string key, long               val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
   attrGE(std::string key, double             val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
   
-  bool applyString(std::string& that) const { return val >= attrValue(that); }
-  bool applyPtr(void*& that)          const { return val >= attrValue(that); }
-  bool applyInt(long& that)           const { return val >= attrValue(that); }
-  bool applyFloat(double& that)       const { return val >= attrValue(that); }
+  bool applyString(std::string& that) const { std::cout << "GE: val="<<val.str()<<" >= that="<<that<<std::endl; return attrValue(that) >= val; }
+  bool applyPtr(void*& that)          const { std::cout << "GE: val="<<val.str()<<" >= that="<<that<<std::endl; return attrValue(that) >= val; }
+  bool applyInt(long& that)           const { std::cout << "GE: val="<<val.str()<<" >= that="<<that<<std::endl; return attrValue(that) >= val; }
+  bool applyFloat(double& that)       const { std::cout << "GE: val="<<val.str()<<" >= that="<<that<<std::endl; return attrValue(that) >= val; }
   
   // Returns a human-readable representation of this object
   std::string str() const { return "attrGE"; }
