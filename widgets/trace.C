@@ -4,25 +4,26 @@ using namespace std;
 namespace dbglog {
 
 // Stack of currently active traces
-std::list<trace*> trace::stack;
-  
+//std::list<trace*> trace::stack;
+std::map<std::string, trace*> trace::active;  
+
 // Records whether the tracer infrastructure has been initialized
 bool trace::initialized=false;
 
 trace::trace(std::string label, const std::list<std::string>& contextAttrs, showLocT showLoc, vizT viz) : block(label), contextAttrs(contextAttrs), showLoc(showLoc), viz(viz) {
   if(contextAttrs.size()==0) { cerr << "trace::trace() ERROR: contextAttrs must be non-empty!"; exit(-1); }
   
-  init();
+  init(label);
 }
 
 trace::trace(std::string label, std::string contextAttr, showLocT showLoc, vizT viz) : block(label), showLoc(showLoc), viz(viz) {
   contextAttrs.push_back(contextAttr);
   
-  init();
+  init(label);
 }
 
 
-void trace::init() {
+void trace::init(std::string label) {
   if(!initialized) {
     // Table visualization
     //dbg.includeScript("https://www.google.com/jsapi", "text/javascript");
@@ -46,7 +47,8 @@ void trace::init() {
   for(list<string>::iterator ca=contextAttrs.begin(); ca!=contextAttrs.end(); ca++)
     attributes.addObs(*ca, this);
   
-  stack.push_back(this);
+  //stack.push_back(this);
+  active[label] = this;
   
   // If we should show the visualization at the beginning of the block
   if(showLoc == showBegin) showViz();
@@ -59,8 +61,36 @@ trace::~trace() {
   // If we should show the visualization at the end of the block
   if(showLoc == showEnd) showViz();
   
-  assert(stack.size()>0);
-  stack.pop_back();
+  ostringstream contextAttrsStr;
+  contextAttrsStr << "[";
+  for(std::list<std::string>::iterator a=contextAttrs.begin(); a!=contextAttrs.end(); a++) {
+    if(a!=contextAttrs.begin()) contextAttrsStr << ", ";
+    contextAttrsStr << "'"<<*a<<"'";
+  }
+  contextAttrsStr << "]";
+    
+  // Now that we know all the trace variables that are included in this trace, emit the trace
+  if(viz==table) {
+    //dbg.widgetScriptPrologCommand(txt()<<"loadGoogleAPI();");
+    ostringstream cmd; cmd<<"displayTrace('"<<getLabel()<<"', '"<<tgtBlockID<<"-Table', "<<contextAttrsStr.str()<<", [";
+    for(set<string>::iterator t=tracerKeys.begin(); t!=tracerKeys.end(); t++) {
+      if(t!=tracerKeys.begin()) cmd << ", ";
+      cmd << "'"<<*t<< "'";
+    }
+    cmd << "], '"<<viz2Str(viz)<<"');";
+    
+    dbg.widgetScriptEpilogCommand(cmd.str());
+  } else if(viz==decTree) {
+    // Create a separate decision tree for each tracer attribute
+    for(set<string>::iterator t=tracerKeys.begin(); t!=tracerKeys.end(); t++) {
+      dbg.widgetScriptEpilogCommand(txt()<<"displayTrace('"<<getLabel()<<"', '"<<tgtBlockID<<"', "<<contextAttrsStr.str()<<", ['"<<*t<<"'], '"<<viz2Str(viz)<<"');");
+    }
+  }
+  
+  /*assert(stack.size()>0);
+  stack.pop_back();*/
+  assert(active.find(getLabel()) != active.end());
+  active.erase(getLabel());
   
   // Stop this object's observations of changes in context variables
   for(list<string>::iterator ca=contextAttrs.begin(); ca!=contextAttrs.end(); ca++)
@@ -76,18 +106,18 @@ string trace::viz2Str(vizT viz) {
 // Place the code to show the visualization
 void trace::showViz() {
   dbg.enterBlock(this, false, true);
+  
+  tgtBlockID = getBlockID();
   if(viz==table) {
-    //dbg.widgetScriptPrologCommand(txt()<<"loadGoogleAPI();");
-    dbg.widgetScriptEpilogCommand(txt()<<"displayTrace('"<<getLabel()<<"', '"<<getBlockID()<<"-Table', '', '"<<viz2Str(viz)<<"');");
-    dbg << "<div class=\"example yui3-skin-sam\"><div id=\"div"<<getBlockID()<<"-Table\"></div></div>";
+    dbg << "<div class=\"example yui3-skin-sam\"><div id=\"div"<<tgtBlockID<<"-Table\"></div></div>";
   } else if(viz==decTree) {
     // Create a separate decision tree for each tracer attribute
     for(set<string>::iterator t=tracerKeys.begin(); t!=tracerKeys.end(); t++) {
       dbg << *t << endl;
-      dbg << "<div id=\"div"<<getBlockID()<<":"<<*t<<"\"></div>\n";
-      dbg.widgetScriptEpilogCommand(txt()<<"displayTrace('"<<getLabel()<<"', '"<<getBlockID()<<"', '"<<*t<<"', '"<<viz2Str(viz)<<"');");
+      dbg << "<div id=\"div"<<tgtBlockID<<":"<<*t<<"\"></div>\n";
     }
   }
+  
   dbg.exitBlock();
 }
 
@@ -109,17 +139,19 @@ void trace::emitObservations() {
   // Only emit observations of the trace variables if we have made any observations since the last change in the context variables
   if(obs.size()==0) return;
     
-  assert(trace::stack.size()>0);
-  trace* t = *(trace::stack.rbegin());
+  //assert(trace::stack.size()>0);
+  //trace* t = *(trace::stack.rbegin());
+  assert(active.find(getLabel()) != active.end());
+  trace* t = active[getLabel()];
   
   ostringstream cmd;
-  cmd << "traceRecord(";
+  cmd << "traceRecord('"<<getLabel()<<"', ";
   
   // Emit the recently observed values of tracer attributes
   cmd << "{";
   for(map<string, attrValue>::iterator i=obs.begin(); i!=obs.end(); i++) {
     if(i!=obs.begin()) cmd << ", ";
-    cmd << i->first << ": '" << i->second.getAsStr()<<"'";
+    cmd << "'"<<i->first << "': '" << i->second.getAsStr()<<"'";
   }
   
   cmd << "}, {";
@@ -130,7 +162,7 @@ void trace::emitObservations() {
     const std::set<attrValue>& vals = attributes.get(*a);
     assert(vals.size()>0);
     if(vals.size()>1) { cerr << "trace::traceAttr() ERROR: context attribute "<<*a<<" has multiple values!"; }
-    cmd << *a << ": '" << vals.begin()->getAsStr() << "'";
+    cmd << "'" << *a << "': '" << vals.begin()->getAsStr() << "'";
   }
   cmd << "}, '"<<viz2Str(viz)<<"');";
   dbg.widgetScriptCommand(cmd.str());
@@ -139,12 +171,50 @@ void trace::emitObservations() {
   obs.clear();
 }
 
-void traceAttr(std::string key, const attrValue& val) {
-  assert(trace::stack.size()>0);
-  trace* t = *(trace::stack.rbegin());
+void traceAttr(std::string label, std::string key, const attrValue& val) {
+  /*assert(trace::stack.size()>0);
+  trace* t = *(trace::stack.rbegin());*/
+  assert(trace::active.find(label) != trace::active.end());
+  trace* t = trace::active[label];
   
   // Inform the inner-most tracer of the observation
   t->traceAttrObserved(key, val);
 }
+
+/*******************
+ ***** measure *****
+ *******************/
+measure::measure(std::string traceLabel, std::string valLabel): traceLabel(traceLabel), valLabel(valLabel)
+{
+  measureDone = false;
+  gettimeofday(&start, NULL);
+}
+
+measure::~measure() {
+  if(!measureDone) doMeasure();
+}
+
+double measure::doMeasure() {
+  if(measureDone) { cerr << "measure::doMeasure() ERROR: measuring variable \""<<valLabel<<"\" in trace \""<<traceLabel<<"\" multiple times!"<<endl; exit(-1); }
+  measureDone = true;
+  
+  struct timeval end;
+  gettimeofday(&end, NULL);
+  
+  double elapsed = ((end.tv_sec*1000000 + end.tv_usec) - (start.tv_sec*1000000 + start.tv_usec)) / 1000000.0;
+  traceAttr(traceLabel, valLabel, attrValue((double)elapsed));
+  return elapsed;
+}
+
+measure* startMeasure(std::string traceLabel, std::string valLabel) {
+  return new measure(traceLabel, valLabel);
+}
+
+double endMeasure(measure* m) {
+  double result = m->doMeasure();
+  delete m;
+  return result;
+}
+
 
 }; // namespace dbglog

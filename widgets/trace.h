@@ -10,10 +10,11 @@
 #include <fstream>
 #include <assert.h>
 #include "../dbglog.h"
+#include <sys/time.h>
 
 namespace dbglog {
 
-void traceAttr(std::string key, const attrValue& val);
+void traceAttr(std::string label, std::string key, const attrValue& val);
 
 class trace: public block, public attrObserver
 {
@@ -25,13 +26,17 @@ class trace: public block, public attrObserver
   private:
   showLocT showLoc;
   
+  // The ID of the block into which the trace visualization will be written
+  std::string tgtBlockID;
+  
   public:
   // Identifies the type of visualization used to show the trace
   typedef enum {table, decTree} vizT;
   vizT viz;
   
   // Stack of currently active traces
-  static std::list<trace*> stack;
+  //static std::list<trace*> stack;
+  static std::map<std::string, trace*> active;
     
   // Records whether the tracer infrastructure has been initialized
   static bool initialized;
@@ -44,7 +49,7 @@ class trace: public block, public attrObserver
   trace(std::string label, std::string contextAttr, showLocT showLoc=showBegin, vizT viz=table);
   
   private:
-  void init();
+  void init(std::string label);
   
   public:
   ~trace();
@@ -72,6 +77,29 @@ class trace: public block, public attrObserver
   private:
   // Emits the JavaScript command that encodes the observations made since the last time a context attribute changed
   void emitObservations();
-};
+}; // class trace
+
+// Basic API for measuring the elapsed counts of events.
+// The measure class starts the measurement when instances of this class are constructed and stops when they are deconstructed.
+// When measurement is performed, an attribute named valLabel is added to a trace named traceLabel.
+// Users who wish to get the measurement value back may perform the measurement manually by calling doMeasure().
+// The startMeasure()/endMeasure() API provides this direct access to measurement.
+class measure {
+  std::string traceLabel;
+  std::string valLabel;
+  struct timeval start;
+  
+  // Records whether we've already performed the measure
+  bool measureDone;
+  
+  public:
+  measure(std::string traceLabel, std::string valLabel);
+  ~measure();
+  
+  double doMeasure();
+}; // class measure
+
+measure* startMeasure(std::string traceLabel, std::string valLabel);
+double endMeasure(measure* m);
 
 }; // namespace dbglog

@@ -1,24 +1,10 @@
-var tracerData = [];
-var tracerCols = [];
+var tracerData = {};
+var tracerCols = {};
 
-function traceRecord(traceVals, contextVals, viz) {
-  if(tracerCols.length==0) {
-    var ctxtCols = [];     
-    for(ctxtKey in contextVals) { if(contextVals.hasOwnProperty(ctxtKey)) {
-           if(viz == 'table')   ctxtCols.push({key:ctxtKey, label:ctxtKey, sortable:true});
-      else if(viz == 'decTree') tracerCols.push(ctxtKey);
-    } }
-    
-    var traceCols = [];
-    for(traceKey in traceVals) { if(traceVals.hasOwnProperty(traceKey)) {
-           if(viz == 'table')   traceCols.push({key:traceKey, label:traceKey, sortable:true});
-    } }
-    
-    if(viz == 'table') 
-      tracerCols = [ {label:"Context", children:ctxtCols},
-                     {label:"Trace",   children:traceCols} ];
-    else if(viz == 'decTree') 
-    {}
+function traceRecord(traceLabel, traceVals, contextVals, viz) {
+  // If this is the first time we've added a record to this trace
+  if(!tracerData.hasOwnProperty(traceLabel)) {
+    tracerData[traceLabel] = [];
   }
   
   var allVals = {};
@@ -30,26 +16,41 @@ function traceRecord(traceVals, contextVals, viz) {
       allVals[traceKey] = traceVals[traceKey];
     } }
   }
-  tracerData.push(allVals);
+  tracerData[traceLabel].push(allVals);
 }
 
-var displayTraceCalled = false;
-function displayTrace(title, blockID, focusAttr, viz) {
+var displayTraceCalled = {};
+function displayTrace(traceLabel, blockID, contextAttrs, traceAttrs, viz) {
   if(viz == 'table') {
+    var tracerCols = [];
+    
+    var ctxtCols = [];
+    for(i in contextAttrs)
+      ctxtCols.push({key:contextAttrs[i], label:contextAttrs[i], sortable:true});
+    
+    var traceCols = [];
+    for(i in traceAttrs)
+      traceCols.push({key:traceAttrs[i], label:traceAttrs[i], sortable:true});
+    
     YUI().use("datatable-sort", function (Y) {
         // A table from data with keys that work fine as column names
         var traceTable = new Y.DataTable({
-            columns: tracerCols,
-            data   : tracerData,
-            caption: title
+            columns: [ {label:"Context", children:ctxtCols},
+                       {label:"Trace",   children:traceCols} ],
+            data   : tracerData[traceLabel],
+            caption: traceLabel
         });
         
         traceTable.render("#div"+blockID);
       });
   } else {
-    if(!displayTraceCalled) tracerData = _(tracerData);
-    var model = id3(tracerData,focusAttr,tracerCols);
-    drawGraph(model,"div"+blockID+":"+focusAttr);
+    //if(!displayTraceCalled.hasOwnProperty(traceLabel)) {
+    tracerData[traceLabel] = _(tracerData[traceLabel]);
+    var model = id3(tracerData[traceLabel], traceAttrs[0], contextAttrs);
+    //alert(document.getElementById("div"+blockID).innerHTML)
+    // Create a div in which to place this attribute's decision tree
+    document.getElementById("div"+blockID).innerHTML += traceAttrs[0]+"<div id='div"+blockID+":"+traceAttrs[0]+"'></div>";
+    drawGraph(model,"div"+blockID+":"+traceAttrs[0]);
   }
   
   displayTraceCalled = true;
