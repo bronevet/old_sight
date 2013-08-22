@@ -10,7 +10,8 @@ endif
 all: dbgLogTester${EXT} dbgLogGraphTester${EXT} dbgLogAttrTester${EXT} dbgLogClientServerTester${EXT} dbgLogTimingTester${EXT} dbgLogPrintfTester${EXT} \
      ${DBGLOG} \
      widgets/shellinabox/bin/shellinaboxd${EXT} widgets/mongoose/mongoose${EXT} widgets/graphviz/bin/dot${EXT} script/taffydb \
-     widgets/ID3-Decision-Tree
+     widgets/ID3-Decision-Tree \
+     external_scripts
 	chmod 755 html img script
 	chmod 644 html/* img/* script/*
 	chmod 755 widgets/canviz-0.1 script/taffydb
@@ -145,3 +146,19 @@ widgets/ID3-Decision-Tree:
 	chmod 644 widgets/ID3-Decision-Tree/*
 	chmod 755 widgets/ID3-Decision-Tree/data widgets/ID3-Decision-Tree/js
 	chmod 644 widgets/ID3-Decision-Tree/*/*
+
+# JavaScript files from standard JS libraries that we wish to keep local copies of
+
+external_scripts: widgets/yui-min.js widgets/script/jquery-1.8.1.min.js widgets/underscore-min.js widgets/d3.v2.js
+
+widgets/yui-min.js:
+	cd widgets; wget http://yui.yahooapis.com/3.11.0/build/yui/yui-min.js
+
+widgets/jquery-1.8.1.min.js:
+	cd widgets; wget http://code.jquery.com/jquery-1.8.1.min.js
+	
+widgets/underscore-min.js:
+	cd widgets; wget http://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.3.3/underscore-min.js
+
+widgets/d3.v2.js:
+	cd widgets; wget http://d3js.org/d3.v2.js

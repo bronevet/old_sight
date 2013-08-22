@@ -27,12 +27,18 @@ void trace::init(std::string label) {
   if(!initialized) {
     // Table visualization
     //dbg.includeScript("https://www.google.com/jsapi", "text/javascript");
-    dbg.includeScript("http://yui.yahooapis.com/3.11.0/build/yui/yui-min.js", "text/javascript");
+    //dbg.includeScript("http://yui.yahooapis.com/3.11.0/build/yui/yui-min.js", "text/javascript");
+    dbg.includeWidgetScript("yui-min.js", "text/javascript"); dbg.includeFile("yui-min.js");
     
     // Decision Tree
-    dbg.includeScript("http://code.jquery.com/jquery-1.8.1.min.js",                                  "text/javascript");
-    dbg.includeScript("http://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.3.3/underscore-min.js", "text/javascript");
-    dbg.includeScript("http://d3js.org/d3.v2.js", "text/javascript");
+    //dbg.includeScript("http://code.jquery.com/jquery-1.8.1.min.js",                                  "text/javascript");
+    //dbg.includeScript("http://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.3.3/underscore-min.js", "text/javascript");
+    //dbg.includeScript("http://d3js.org/d3.v2.js", "text/javascript");
+    
+    dbg.includeWidgetScript("jquery-1.8.1.min.js", "text/javascript"); dbg.includeFile("jquery-1.8.1.min.js");
+    dbg.includeWidgetScript("underscore-min.js",   "text/javascript"); dbg.includeFile("underscore-min.js");
+    dbg.includeWidgetScript("d3.v2.js",            "text/javascript"); dbg.includeFile("d3.v2.js");
+    
     dbg.includeWidgetScript("ID3-Decision-Tree/js/id3.js", "text/javascript");
     //dbg.includeScript("https://www.google.com/jsapi?autoload={\"modules\":[{\"name\":\"visualization\",\"version\":\"1\",\"packages\":[\"orgchart\"]}]}", "text/javascript");
     dbg.includeFile("ID3-Decision-Tree");
