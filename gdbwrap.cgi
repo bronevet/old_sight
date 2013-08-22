@@ -5,6 +5,7 @@ use strict;
 use CGI;
 use Cwd;
 
+require "dbglogDefines.pl";
 require "gdbLineNum.pl";
 
 my $q = CGI->new;
@@ -41,7 +42,7 @@ my ($username, $pass, $uid, $gid, $quota, $comment, $gcos, $dir, $shell, $expire
 #my $cmd = "/g/g15/bronevet/code/dbglog/widgets/shellinabox-2.14/shellinaboxd --cgi -t -s \"/:$username:$gid:".getcwd.":gdb -x gdbscript\"";
 #my $cmd = "/g/g15/bronevet/code/dbglog/widgets/shellinabox-2.14/shellinaboxd --cgi -t -s \"/:SSH:bijisan.lojik.net\"";
 #my $cmd = "ssh -t -t $username\@".`hostname`." /g/g15/bronevet/code/dbglog/widgets/shellinabox-2.14/shellinaboxd --cgi -t -s \"/:SSH:bijisan.lojik.net\"";
-my $cmd = "/g/g15/bronevet/code/dbglog/widgets/shellinabox/bin/shellinaboxd --cgi -t -s \"/:$username:$gid:".getcwd.":ssh -o PreferredAuthentications=keyboard-interactive -o PubkeyAuthentication=no $username\@$hostname gdb -x ".getcwd."/gdbscript\"";
+my $cmd = "$main::dbglogPath/widgets/shellinabox/bin/shellinaboxd --cgi -t -s \"/:$username:$gid:".getcwd.":ssh -o PreferredAuthentications=keyboard-interactive -o PubkeyAuthentication=no $username\@$hostname gdb -x ".getcwd."/gdbscript\"";
 #print $q->header('text/html');
 #print "$cmd\n";
 #foreach my $key (keys %ENV) { print "$key => $ENV{$key}<br>\n"; }

@@ -1,6 +1,6 @@
 DBGLOG_O := dbglog.o widgets.o attributes.o binreloc.o getAllHostnames.o widgets/valSelector.o widgets/trace.o
 DBGLOG_H := dbglog.h dbglog_internal.h widgets.h attributes.h binreloc.h getAllHostnames.h widgets/valSelector.h widgets/trace.h
-DBGLOG := ${DBGLOG_O} ${DBGLOG_H} gdbLineNum.pl
+DBGLOG := ${DBGLOG_O} ${DBGLOG_H} gdbLineNum.pl dbglogDefines.pl
 
 OS := $(shell uname -o)
 ifeq (${OS}, Cygwin)
@@ -83,6 +83,9 @@ getAllHostnames.o: getAllHostnames.C getAllHostnames.h
 
 gdbLineNum.pl: setupGDBWrap.pl
 	./setupGDBWrap.pl
+
+dbglogDefines.pl:
+	printf "\$$main::dbglogPath = \"${DBGLOG_PATH}\";" > dbglogDefines.pl
 
 clean:
 	killP widgets/mongoose/mongoose
