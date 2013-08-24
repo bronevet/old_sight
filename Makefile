@@ -149,7 +149,7 @@ widgets/ID3-Decision-Tree:
 
 # JavaScript files from standard JS libraries that we wish to keep local copies of
 
-external_scripts: widgets/yui-min.js widgets/script/jquery-1.8.1.min.js widgets/underscore-min.js widgets/d3.v2.js
+external_scripts: widgets/yui-min.js widgets/jquery-1.8.1.min.js widgets/underscore-min.js widgets/d3.v2.js
 
 widgets/yui-min.js:
 	cd widgets; wget http://yui.yahooapis.com/3.11.0/build/yui/yui-min.js

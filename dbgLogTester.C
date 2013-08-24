@@ -73,7 +73,7 @@ int main(int argc, char** argv)
   
   // Call the fibScope function, which generates a hierarchy of mid-level scopes, on
   {
-    attr verbA("verbosity", (long)0);
+    attr verbA("verbosity", (long)4);
     scope regFibIndent("Nested scopes due to recursive calls to fib");
     dbg << "<u>Medium level scopes, colors change</u>"<<endl;
     fibScope(4, scope::medium);
@@ -81,16 +81,16 @@ int main(int argc, char** argv)
   
    // Call the fib function, which generates a single low-level scope for a=5 and 6
   {
-    attr verbA("verbosity", (long)5);
+    attr verbA("verbosity", (long)2);
     scope regFibIndent("Nested scopes due to recursive calls to fib, 2 level of scope hierarchy");
     dbg << "<u>Low level scopes, colors do not change</u>"<<endl;
-    fibScope(6, scope::low);
+    fibScope(2, scope::low);
   }
   
   // Call the fibScopeLinks function, which generates two hierarchies of high-level scopes with scopes
   // in each level of one hierarchy linking to the same level in the other hierarchy
   {
-    attr verbA("verbosity", (long)0);
+    attr verbA("verbosity", (long)5);
     scope regFibIndent("Nested scopes due to recursive calls to fib");
     dbg << "<u>High level scopes, colors change and each scope in a new file</u>"<<endl;
     dbg << "There are two hierarchy nests. Sub-scopes at each level of one hierarchy link to the corresponding sub-scopes in the other. Clicking on these links will load up the corresponding scope and its parent scopes."<<endl;
