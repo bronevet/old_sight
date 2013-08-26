@@ -25,7 +25,7 @@ trace::trace(std::string label, std::string contextAttr, showLocT showLoc, vizT 
 
 void trace::init(std::string label) {
   if(!initialized) {
-    // Table visualization
+    // Table/Lines visualization
     //dbg.includeScript("https://www.google.com/jsapi", "text/javascript");
     //dbg.includeScript("http://yui.yahooapis.com/3.11.0/build/yui/yui-min.js", "text/javascript");
     dbg.includeWidgetScript("yui-min.js", "text/javascript"); dbg.includeFile("yui-min.js");
@@ -68,24 +68,39 @@ trace::~trace() {
   if(showLoc == showEnd) showViz();
   
   ostringstream contextAttrsStr;
-  contextAttrsStr << "[";
-  for(std::list<std::string>::iterator a=contextAttrs.begin(); a!=contextAttrs.end(); a++) {
-    if(a!=contextAttrs.begin()) contextAttrsStr << ", ";
-    contextAttrsStr << "'"<<*a<<"'";
+  if(viz==table || viz == decTree) {
+    contextAttrsStr << "[";
+    for(std::list<std::string>::iterator a=contextAttrs.begin(); a!=contextAttrs.end(); a++) {
+      if(a!=contextAttrs.begin()) contextAttrsStr << ", ";
+      contextAttrsStr << "'"<<*a<<"'";
+    }
+    contextAttrsStr << "]";
   }
-  contextAttrsStr << "]";
-    
+  
+  ostringstream tracerAttrsStr;
+  if(viz==table || viz==lines) {
+    tracerAttrsStr << "[";
+    for(set<string>::iterator a=tracerKeys.begin(); a!=tracerKeys.end(); a++) {
+      if(a!=tracerKeys.begin()) tracerAttrsStr << ", ";
+      tracerAttrsStr << "'"<<*a<<"'";
+    }
+    tracerAttrsStr << "]";
+  }
+  
   // Now that we know all the trace variables that are included in this trace, emit the trace
   if(viz==table) {
     //dbg.widgetScriptPrologCommand(txt()<<"loadGoogleAPI();");
-    ostringstream cmd; cmd<<"displayTrace('"<<getLabel()<<"', '"<<tgtBlockID<<"-Table', "<<contextAttrsStr.str()<<", [";
-    for(set<string>::iterator t=tracerKeys.begin(); t!=tracerKeys.end(); t++) {
-      if(t!=tracerKeys.begin()) cmd << ", ";
-      cmd << "'"<<*t<< "'";
-    }
-    cmd << "], '"<<viz2Str(viz)<<"');";
-    
+    ostringstream cmd; 
+    cmd<<"displayTrace('"<<getLabel()<<"', '"<<tgtBlockID<<"-Table', "<<
+                       contextAttrsStr.str()<<", " << 
+                       tracerAttrsStr.str()<<", "<<  
+                       "'"<<viz2Str(viz)<<"');";
     dbg.widgetScriptEpilogCommand(cmd.str());
+  } else if(viz==lines) {
+    // Create a separate decision tree for each context attribute
+    for(std::list<std::string>::iterator c=contextAttrs.begin(); c!=contextAttrs.end(); c++) {
+      dbg.widgetScriptEpilogCommand(txt()<<"displayTrace('"<<getLabel()<<"', '"<<tgtBlockID<<"', ['"<<*c<<"'], "<<tracerAttrsStr.str()<<", '"<<viz2Str(viz)<<"');");
+    }
   } else if(viz==decTree) {
     // Create a separate decision tree for each tracer attribute
     for(set<string>::iterator t=tracerKeys.begin(); t!=tracerKeys.end(); t++) {
@@ -106,6 +121,7 @@ trace::~trace() {
 // Returns a string representation of a vizT object
 string trace::viz2Str(vizT viz) {
        if(viz == table)   return "table";
+  else if(viz == lines)   return "lines";
   else if(viz == decTree) return "decTree";
   else                    return "???";
 }
@@ -116,11 +132,17 @@ void trace::showViz() {
   tgtBlockID = getBlockID();
   if(viz==table) {
     dbg << "<div class=\"example yui3-skin-sam\"><div id=\"div"<<tgtBlockID<<"-Table\"></div></div>";
+  } else if(viz==lines) {
+    // Create a separate line graph for each context attribute
+    for(std::list<std::string>::iterator c=contextAttrs.begin(); c!=contextAttrs.end(); c++) {
+      dbg << *c << endl;
+      dbg << "<div id=\"div"<<tgtBlockID<<"_"<<*c<<"\" style=\"height:300\"></div>\n";
+    }
   } else if(viz==decTree) {
     // Create a separate decision tree for each tracer attribute
     for(set<string>::iterator t=tracerKeys.begin(); t!=tracerKeys.end(); t++) {
       dbg << *t << endl;
-      dbg << "<div id=\"div"<<tgtBlockID<<":"<<*t<<"\"></div>\n";
+      dbg << "<div id=\"div"<<tgtBlockID<<"_"<<*t<<"\"></div>\n";
     }
   }
   

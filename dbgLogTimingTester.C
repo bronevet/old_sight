@@ -115,7 +115,7 @@ int main(int argc, char** argv) {
   contextAttrs.push_back("MtxSize");
   contextAttrs.push_back("mmmLoop");
   // Trace execution times of matrix-matrix multiplication
-  trace mmmT("MMM Loop Elapsed", contextAttrs, trace::showBegin, trace::decTree);
+  trace mmmT("MMM Loop Elapsed", contextAttrs, trace::showBegin, trace::lines);
   
   // Trace execution times of matrix-vector multiplication
   contextAttrs.push_back("mvmLoop");

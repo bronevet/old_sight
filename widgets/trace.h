@@ -31,7 +31,7 @@ class trace: public block, public attrObserver
   
   public:
   // Identifies the type of visualization used to show the trace
-  typedef enum {table, decTree} vizT;
+  typedef enum {table, lines, decTree} vizT;
   vizT viz;
   
   // Stack of currently active traces
