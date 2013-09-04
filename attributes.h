@@ -652,14 +652,14 @@ class attrIf: public attrSubQueryIf {
 
 class attrTrue: public attrSubQueryTrue { 
   public:
-  attrTrue(attrOp* op) : attrSubQueryTrue() 
+  attrTrue() : attrSubQueryTrue() 
   { attributes.push(this); }
   ~attrTrue() { attributes.pop(); }
 };
   
 class attrFalse: public attrSubQueryFalse { 
   public:
-  attrFalse(attrOp* op) : attrSubQueryFalse() 
+  attrFalse() : attrSubQueryFalse() 
   { attributes.push(this); }
   ~attrFalse() { attributes.pop(); }
 };
