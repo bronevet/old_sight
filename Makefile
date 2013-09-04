@@ -58,6 +58,9 @@ dbgLogTimingTester${EXT}: dbgLogTimingTester.C libdbglog.a ${DBGLOG_H}
 dbgLogPrintfTester${EXT}: dbgLogPrintfTester.C libdbglog.a ${DBGLOG_H}
 	g++ -g dbgLogPrintfTester.C -L. -ldbglog  -o dbgLogPrintfTester${EXT}
 
+pattern${EXT}: pattern.C pattern.h libdbglog.a ${DBGLOG_H}
+	g++ -g pattern.C -L. -ldbglog  -o pattern${EXT}
+
 libdbglog.a: ${DBGLOG_O} ${DBGLOG_H}
 	ar -r libdbglog.a ${DBGLOG_O}
 	
