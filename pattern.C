@@ -32,8 +32,8 @@ std::set<aggregate*> aggregate::add(const aggregate& newAggr) {
   // If these aggregates have the same dimensionality and the same sub-type of aggregate, 
   // merge them to create a single higher-dimensional aggregate of their descriptors
   scope s("aggregate::add");
-  dbg << "this="<<str()<<endl;
-  dbg << "newAggr="<<newAggr.str()<<endl;
+  dbg << "this="<<str()<<", desc="<<col2Str(getDescriptor())<<endl;
+  dbg << "newAggr="<<newAggr.str()<<", desc="<<col2Str(newAggr.getDescriptor())<<endl;
   if(dim == newAggr.getDim() && getAggrType()==newAggr.getAggrType()) {
     // If these two aggregates can be grouped into a valid point, create it
     if(sameDescriptors(*this, newAggr))
@@ -67,14 +67,21 @@ bool aggregate::sameDescriptors(const aggregate& aggr1, const aggregate& aggr2) 
 
 // Add an edge from this aggregate to the given aggregate.
 void aggregate::addEdgeTo(aggregate* to) {
+dbg << "#next="<<next.size()<<", #to->pred="<<to->pred.size()<<endl;
   next.insert(to);
-  to->pred.insert(this);
+  //if(to!=this)
+    to->pred.insert(this);
 }
 
 // Remove an edge from this aggregate to the given aggregate, if one exists
 void aggregate::rmEdgeTo(aggregate* to) {
+dbg << "#next="<<next.size()<<", #to->pred="<<to->pred.size()<<endl;
+  assert(next.find(to) != next.end());
   next.erase(to);
-  to->pred.erase(this);
+  //if(to!=this) {
+    assert(to->pred.find(this) != to->pred.end());
+    to->pred.erase(this);
+//  }
 }
 
 /*****************
@@ -134,6 +141,8 @@ std::string point::str() const {
  ***** line *****
  ****************/
 line::line(const aggregate& newAggr1, const aggregate& newAggr2) : aggregate(newAggr1.getDim()+1, newAggr1.getNumPts() + newAggr2.getNumPts()) {
+  dbg << "newAggr1="<<newAggr1.str()<<endl;
+  dbg << "newAggr2="<<newAggr2.str()<<endl;
   assert(newAggr1.getDim() == newAggr2.getDim());
   assert(newAggr1.getDescriptor().size() == newAggr2.getDescriptor().size());
   
@@ -185,7 +194,8 @@ std::set<aggregate*> line::extend(const aggregate& newAggr) {
 // Returns a point vector that describes this aggregate
 const std::vector<int>& line::getDescriptor() const {
   // TODO: perform this calculation only when the line has changed
-  
+  ((line*)this)->descriptor.clear();
+   
   // Append the first and slope vectors to create the descriptor
   for(vector<int>::const_iterator i=first.begin(); i!=first.end(); i++)
     ((line*)this)->descriptor.push_back(*i);
@@ -208,7 +218,7 @@ aggregate* line::copy() const {
 // Returns a human-readable string representation of this aggregate
 std::string line::str() const {
   ostringstream oss;
-  oss << "[line: first=<"<<col2Str(first)<<">, slope=<"<<col2Str(slope)<<">, dim="<<getDim()<<", numPts="<<getNumPts()<<"]";
+  oss << "[line: first=<"<<col2Str(first)<<">, slope=<"<<col2Str(slope)<<">, dim="<<getDim()<<", numPts="<<getNumPts()<<", desc=<"<<col2Str(getDescriptor())<<">]";
   return oss.str();
 }
 
@@ -252,6 +262,9 @@ class mergeFunctor : public transGraph::GraphNodeFunctor
   }
   
   void operator()(aggregate* curAggr) {
+    // Don't merge mergeAggr into itself
+    if(curAggr == mergeAggr) return;
+
     //attrTrue aTrue;
     set<aggregate*> extensions = curAggr->add(*mergeAggr);
     scope sm(txt()<<"mergeFunctor: a="<<curAggr->str()<<", #extensions="<<extensions.size());
@@ -260,17 +273,30 @@ class mergeFunctor : public transGraph::GraphNodeFunctor
       dbg << "extension="<<(*e)->str()<<endl;
       // Create an alternate graph where the current extended aggregate replaces the original one
       transGraph* newG = graph->clone(curAggr, *e);
+
+      //dbg << "newG="<<newG<<endl; graph::genGraph(*newG);
       
       // Delete the node in the cloned graph that corresponds to mergeAggr (the target of the 
       // graph's current edge) and update the edges to go through this node to *e.
       aggregate* newMergeAggr = newG->curTo;
       
       // Reconnect all the edges that point to newG->curTo so that they point to *e;
+      /*{ scope s(txt()<<"Predecessors of "<<newMergeAggr->str());
       for(set<aggregate*>::const_iterator p=newMergeAggr->getPred().begin(); p!=newMergeAggr->getPred().end(); p++) {
+        scope s(txt()<<(*p)->str()<<" : "<<*p, scope::low);
+        for(set<aggregate*>::const_iterator n=(*p)->getNext().begin(); n!=(*p)->getNext().end(); n++) {
+          dbg << (*n)->str()<<endl;
+        }
+      } }*/
+      set<aggregate*> preds = newMergeAggr->getPred();
+      for(set<aggregate*>::const_iterator p=preds.begin(); p!=preds.end(); p++) {
         (*p)->rmEdgeTo(newMergeAggr);
         (*p)->addEdgeTo(*e);
       }
+      if(newG->curFrom == newG->curTo)
+        newG->curFrom = *e;
       newG->curTo = *e;
+      //dbg << "merged newG="<<newG<<endl; graph::genGraph(*newG);
       
       // Delete the now irrelevant mergeAggr variant in newG
       delete newMergeAggr;
@@ -299,11 +325,11 @@ class addFunctor : public transGraph::GraphNodeFunctor
     // Create an alternate graph for each possible extension
     for(set<aggregate*>::iterator e=extensions.begin(); e!=extensions.end(); e++) {
       dbg << "extension="<<(*e)->str()<<endl;
+      dbg << "graph="<<graph<<endl; graph::genGraph(*graph);
       // Create an alternate graph where the current extended aggregate replaces the original one
       transGraph* newG = graph->clone(a, *e);
       
-      //dbg << "newG="<<newG<<endl;
-      //graph::genGraph(*newG);
+      dbg << "newG="<<newG<<endl; graph::genGraph(*newG);
       
       // Add an edge in the new graph from the current edge's target to *e
       // and advance the graph's current edge to be this edge
@@ -312,12 +338,16 @@ class addFunctor : public transGraph::GraphNodeFunctor
       newG->curTo = *e;
       //graph::genGraph(*newG);
       
+      dbg << "newG="<<newG<<endl; graph::genGraph(*newG);
+      
       // Add this alternate graph to the set
       alternateGraphs.insert(newG);
       
       // Also create alternate graphs for merging the new extension with a prior node
       mergeFunctor mf(newG, *e, alternateGraphs);
       newG->mapNode(mf);
+      
+      dbg << "newG="<<newG<<endl; graph::genGraph(*newG);
     }
   }
   
@@ -558,6 +588,8 @@ void pattern::add(const std::vector<int>& pt) {
   
   // Add this point to all the current alternate graphs
   for(multimap<double, transGraph*>::iterator g=alt.begin(); g!=alt.end(); g++) {
+    scope s(txt() << "Adding to graph (value="<<g->second->getValue()<<"):"); graph::genGraph(*(g->second));
+    
     set<transGraph*> additions = g->second->add(pt);
     
     dbg << "Base Alternate (value="<<g->second->getValue()<<"):"; graph::genGraph(*(g->second));
@@ -574,7 +606,7 @@ void pattern::add(const std::vector<int>& pt) {
   
   // If there are too many alternate graphs, remove those with the smallest value
   while(alt.size() > maxAlts) { 
-    dbg << "Removing (value="<<alt.begin()->first<<"):"; graph::genGraph(*(alt.rbegin()->second));
+    dbg << "Removing (value="<<alt.begin()->first<<"):"; graph::genGraph(*(alt.begin()->second));
     double lowestVal = alt.begin()->first;
 
 //!    delete alt.begin()->second;
@@ -594,10 +626,11 @@ int main(int argc, char** argv) {
   initializeDebug(argc, argv);
   //attr mapVerbose("mapVerbose", (long)1);
   
-  pattern p(2);
-  for(int i=0; i<5; i++) {
+  pattern p(10);
+  for(int i=0; i<2; i++) {
+    scope s(txt()<<"Adding i="<<i, scope::medium);
     for(int j=i; j<5; j++) {
-      scope s(txt()<<"Adding i="<<i<<", j="<<j, scope::medium);
+      scope s(txt()<<"Adding i="<<i<<" j="<<j, scope::medium);
       vector<int> v; v.push_back(j);
       p.add(v);
     }
