@@ -586,6 +586,60 @@ bool attr::operator<(const attr& that) const
         (key==that.key && val==that.val);
 }
 
+// C interface
+extern "C" {
+void* attr_enter_char(char* key,       char* val)       { return new attr(std::string(key), val); }
+void* attr_enter_void(char* key,       void* val)       { return new attr(std::string(key), val); }
+void* attr_enter_long(char* key,       long val)        { return new attr(std::string(key), val); }
+void* attr_enter_double(char* key,       double val)      { return new attr(std::string(key), val); }
+}
+
+void* attr_enter(std::string key, char* val)       { return new attr(key, val); }
+void* attr_enter(std::string key, std::string val) { return new attr(key, val); }
+void* attr_enter(std::string key, void* val)       { return new attr(key, val); }
+void* attr_enter(std::string key, long val)        { return new attr(key, val); }
+void* attr_enter(std::string key, double val)      { return new attr(key, val); }
+
+extern "C" {
+void attr_exit(void* a) { delete (attr*)a; }
+}
+
+
+// *****************************
+// ***** Attribute Queries *****
+// *****************************
+
+// C interface
+extern "C" {
+void* attrAnd_enter(attrOp *op) { return new attrAnd(op); }
+void attrAnd_exit(void* subQ) { delete (attrAnd*)subQ; }
+}
+
+// C interface
+extern "C" {
+void* attrOr_enter(attrOp *op) { return new attrOr(op); }
+void attrOr_exit(void* subQ) { delete (attrOr*)subQ; }
+}
+
+// C interface
+extern "C" {
+void* attrIf_enter(attrOp *op) { return new attrIf(op); }
+void attrIf_exit(void* subQ) { delete (attrIf*)subQ; }
+}
+
+// C interface
+extern "C" {
+void* attrTrue_enter() { return new attrTrue(); }
+void attrTrue_exit(void* subQ) { delete (attrTrue*)subQ; }
+}
+
+// C interface
+extern "C" {
+void* attrFalse_enter() { return new attrFalse(); }
+void attrFalse_exit(void* subQ) { delete (attrFalse*)subQ; }
+}
+
+
 }; // namespace dbglog
 // ***********************
 // ***** SELF TESTER *****
