@@ -159,6 +159,9 @@ class block
   // Increments block count. This function serves as the one location that we can use to target conditional
   // breakpoints that aim to stop when the block count is a specific number
   int advanceBlockCount();
+
+  // Attaches a given un-located anchor at this block
+  void attachAnchor(anchor& a);
   
   std::string getLabel() const { return label; }
   const location& getLocation() const { return loc; }

@@ -135,7 +135,8 @@ class graph: public block
   
   // Records whether this graph has already been output by a call to outputCanvizDotGraph()
   bool graphOutput;
-  
+ 
+  protected: 
   // Records whether this scope is included in the emitted output (true) or not (false)
   bool active;
   
