@@ -462,6 +462,17 @@ int block::advanceBlockCount() {
   return blockCount;
 }
 
+// Attaches a given un-located anchor at this block
+void block::attachAnchor(anchor& a) {
+  // If this block has not yet been located, add the anchor to pointsToAnchors so that it can be
+  // located in the call to setLocation())
+  if(loc.size()==0)
+    pointsToAnchors.insert(a);
+  // Otherwise, set its location directly
+  else
+    a.reachedAnchor();
+}
+
 void block::setLocation(const location& loc) { 
   this->loc = loc;
   blockID = dbg.blockGlobalStr(loc);
