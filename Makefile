@@ -77,7 +77,8 @@ dbglogDefines.pl:
 clean:
 	killP widgets/mongoose/mongoose
 	killP widgets/shellinabox/bin/shellinaboxd
-	rm -rf dbg *.o dbgLogTester${EXE} dbgLogGraphTester${EXE} dbgLogAttrTester${EXE} *.exe widgets/shellinabox* widgets/mongoose* widgets/graphviz* gdbLineNum.pl
+	rm -rf dbg *.o *.exe widgets/shellinabox* widgets/mongoose* widgets/graphviz* gdbLineNum.pl
+	cd examples; make clean
 
 widgets/shellinabox/bin/shellinaboxd${EXE}:
 	rm -f widgets/shellinabox-2.14.tar.gz
