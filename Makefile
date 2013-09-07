@@ -11,7 +11,7 @@ all: libdbglog.a allExamples \
      widgets/shellinabox/bin/shellinaboxd${EXE} widgets/mongoose/mongoose${EXE} widgets/graphviz/bin/dot${EXE} script/taffydb \
      widgets/ID3-Decision-Tree \
      external_scripts
-	chmod 755 html img script
+	chmod 755 html img script killP
 	chmod 644 html/* img/* script/*
 	chmod 755 widgets/canviz-0.1 script/taffydb
 	chmod 644 widgets/canviz-0.1/* script/taffydb/*
@@ -75,8 +75,8 @@ dbglogDefines.pl:
 	printf "\$$main::dbglogPath = \"${DBGLOG_PATH}\";" > dbglogDefines.pl
 
 clean:
-	killP widgets/mongoose/mongoose
-	killP widgets/shellinabox/bin/shellinaboxd
+	./killP widgets/mongoose/mongoose
+	./killP widgets/shellinabox/bin/shellinaboxd
 	rm -rf dbg *.o *.exe widgets/shellinabox* widgets/mongoose* widgets/graphviz* gdbLineNum.pl
 	cd examples; make clean
 

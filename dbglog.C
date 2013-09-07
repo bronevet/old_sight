@@ -110,7 +110,6 @@ void initializeDebug(int argc, char** argv, string title, string workDir) {
   if(initializedDebug) return;
  
   #ifdef GDB_ENABLED 
-cout << "isPortUsed(GDB_PORT)="<<isPortUsed(GDB_PORT)<<endl;
   if(!isPortUsed(GDB_PORT)) {
     ostringstream cmd; cmd << ROOT_PATH << "/widgets/mongoose/mongoose -document_root "<<ROOT_PATH<<" -listening_ports "<<GDB_PORT<<"&";
     system(cmd.str().c_str());
