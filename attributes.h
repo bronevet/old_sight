@@ -99,7 +99,9 @@ class attrValue {
   attrValue(const std::string& strV);
   attrValue(char* strV);
   attrValue(void* ptrV);
+  attrValue(int intV);
   attrValue(long intV);
+  attrValue(float floatV);
   attrValue(double floatV);
   attrValue(const attrValue& that);
   ~attrValue();

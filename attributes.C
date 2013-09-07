@@ -32,11 +32,25 @@ attrValue::attrValue(void* ptrV) {
   *((void**)store) = ptrV;
 }
 
+attrValue::attrValue(int intV) {
+  type  = intT;
+  store = new long*;
+  *((long*)store) = intV;
+//cout << this << ": allocated "<<((long*)store)<<"\n";
+}
+
+
 attrValue::attrValue(long intV) {
   type  = intT;
   store = new long*;
   *((long*)store) = intV;
 //cout << this << ": allocated "<<((long*)store)<<"\n";
+}
+
+attrValue::attrValue(float floatV) {
+  type  = floatT;
+  store = new double;
+  *((double*)store) = floatV;
 }
 
 attrValue::attrValue(double floatV) {
