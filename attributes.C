@@ -515,12 +515,15 @@ bool attributesC::query() {
 // ***** Attribute Interface *****
 // *******************************
 
-attr::attr(std::string key, std::string val) : key(key), val(val) { init<std::string>(key, val); }//{ dbg.exitAttrSubBlock(); if(attributes.exists(key) attrModified = attributes.add(key, this->val); dbg.enterAttrSubBlock(); }
-attr::attr(std::string key, char*       val) : key(key), val(val) { init<char*      >(key, val); }//{ dbg.exitAttrSubBlock(); if(attributes.exists(key) attrModified = attributes.add(key, this->val); dbg.enterAttrSubBlock(); }
-attr::attr(std::string key, void*       val) : key(key), val(val) { init<void*      >(key, val); }//{ dbg.exitAttrSubBlock(); if(attributes.exists(key) attrModified = attributes.add(key, this->val); dbg.enterAttrSubBlock(); }
-attr::attr(std::string key, long        val) : key(key), val(val) { init<long       >(key, val); }//{ dbg.exitAttrSubBlock(); if(attributes.exists(key) attrModified = attributes.add(key, this->val); dbg.enterAttrSubBlock(); }
-attr::attr(std::string key, double      val) : key(key), val(val) { init<double     >(key, val); }//{ dbg.exitAttrSubBlock(); if(attributes.exists(key) attrModified = attributes.add(key, this->val); dbg.enterAttrSubBlock(); }
-
+attr::attr(std::string key, std::string val) : key(key), val(val)         { init<std::string>(key, val); }
+attr::attr(std::string key, char*       val) : key(key), val(val)         { init<char*      >(key, val); }
+attr::attr(std::string key, const char* val) : key(key), val((char*)val)  { init<char*      >(key, (char*)val); }
+attr::attr(std::string key, void*       val) : key(key), val(val)         { init<void*      >(key, val); }
+attr::attr(std::string key, int         val) : key(key), val((long)val)   { init<long       >(key, (long)val); }
+attr::attr(std::string key, long        val) : key(key), val(val)         { init<long       >(key, val); }
+attr::attr(std::string key, float       val) : key(key), val((double)val) { init<double     >(key, (double)val); }
+attr::attr(std::string key, double      val) : key(key), val(val)         { init<double     >(key, val); }
+  
 template<typename T>
 void attr::init(std::string key, T val) {
 //cout << "attr::init("<<key<<", "<<val<<")\n";

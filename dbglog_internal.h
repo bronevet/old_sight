@@ -33,7 +33,7 @@ extern char hostname[];
 extern char username[10000];
 
 // Initializes the debug sub-system
-void initializeDebug(int argc, char** argv, std::string title="Debug Output", std::string workDir="dbg");
+void initializeDebug(int argc, char** argv, std::string title="", std::string workDir="dbg");
 void initializeDebug(std::string title, std::string workDir);
 
 // Returns a string that contains n tabs

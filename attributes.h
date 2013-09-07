@@ -213,6 +213,7 @@ class attrEQ : public universalAttrOp
   attrEQ(std::string key, const attrValue&   val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
   attrEQ(std::string key, const std::string& val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
   attrEQ(std::string key, char*              val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
+  attrEQ(std::string key, const char*        val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
   attrEQ(std::string key, void*              val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
   attrEQ(std::string key, int                val, applyType type=attrOp::any) : universalAttrOp(key, type), val((long)val) {}
   attrEQ(std::string key, long               val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
@@ -236,6 +237,7 @@ class attrNEQ : public universalAttrOp
   attrNEQ(std::string key, const attrValue&   val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
   attrNEQ(std::string key, const std::string& val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
   attrNEQ(std::string key, char*              val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
+  attrNEQ(std::string key, const char*        val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
   attrNEQ(std::string key, void*              val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
   attrNEQ(std::string key, int                val, applyType type=attrOp::any) : universalAttrOp(key, type), val((long)val) {}
   attrNEQ(std::string key, long               val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
@@ -259,6 +261,7 @@ class attrLT : public universalAttrOp
   attrLT(std::string key, const attrValue&   val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
   attrLT(std::string key, const std::string& val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
   attrLT(std::string key, char*              val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
+  attrLT(std::string key, const char*        val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
   attrLT(std::string key, void*              val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
   attrLT(std::string key, int                val, applyType type=attrOp::any) : universalAttrOp(key, type), val((long)val) {}
   attrLT(std::string key, long               val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
@@ -282,6 +285,7 @@ class attrLE : public universalAttrOp
   attrLE(std::string key, const attrValue&   val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
   attrLE(std::string key, const std::string& val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
   attrLE(std::string key, char*              val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
+  attrLE(std::string key, const char*        val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
   attrLE(std::string key, void*              val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
   attrLE(std::string key, int                val, applyType type=attrOp::any) : universalAttrOp(key, type), val((long)val) {}
   attrLE(std::string key, long               val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
@@ -305,6 +309,7 @@ class attrGT : public universalAttrOp
   attrGT(std::string key, const attrValue&   val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
   attrGT(std::string key, const std::string& val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
   attrGT(std::string key, char*              val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
+  attrGT(std::string key, const char*        val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
   attrGT(std::string key, void*              val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
   attrGT(std::string key, int                val, applyType type=attrOp::any) : universalAttrOp(key, type), val((long)val) {}
   attrGT(std::string key, long               val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
@@ -328,6 +333,7 @@ class attrGE : public universalAttrOp
   attrGE(std::string key, const attrValue&   val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
   attrGE(std::string key, const std::string& val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
   attrGE(std::string key, char*              val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
+  attrGE(std::string key, const char*        val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
   attrGE(std::string key, void*              val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
   attrGE(std::string key, int                val, applyType type=attrOp::any) : universalAttrOp(key, type), val((long)val) {}
   attrGE(std::string key, long               val, applyType type=attrOp::any) : universalAttrOp(key, type), val(val) {}
@@ -608,9 +614,12 @@ class attr
   public:
   attr(std::string key, std::string val);
   attr(std::string key, char*       val);
+  attr(std::string key, const char* val);
   attr(std::string key, void*       val);
+  attr(std::string key, int         val);
   attr(std::string key, long        val);
   attr(std::string key, double      val);
+  attr(std::string key, float       val);
   
   template<typename T>
   void init(std::string key, T val);

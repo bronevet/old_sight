@@ -26,10 +26,21 @@ class aggregate
   
   // The number of points this aggregate represents
   int numPts;
+
+  public:  
+  // The different sub-types of aggregates
+  typedef enum {noneT, pointT, lineT} aggrType;
+  
+  protected:
+  // When multiple aggregates are merged to create higher-dimensional aggregates it is important
+  // to remember the type of the lower-dimensional aggregates they contain. We do this by maintaining
+  // inside each higher-dimension aggregate a stack of aggrTypes of the aggregates it is made from.
+  std::vector<aggrType> intStack;
   
   public:
-  aggregate(int dim, int numPts): dim(dim), numPts(numPts) {}
-  aggregate(const aggregate& aggr): dim(aggr.getDim()), numPts(aggr.getNumPts()) {}
+  aggregate(int dim, int numPts) : dim(dim), numPts(numPts) {}
+  aggregate(int dim, int numPts, const std::vector<aggrType>& intStack) : dim(dim), numPts(numPts), intStack(intStack) {}
+  aggregate(const aggregate& that) : dim(that.getDim()), numPts(that.getNumPts()), intStack(that.getIntStack()) {}
   
   // Adds newAggr to this aggregate, returning the set of all the possible extensions of this aggregate with newAggr,
   // all of which are dynamically allocated. This is a base class method that should be called and in turn calls the
@@ -61,11 +72,17 @@ class aggregate
   const std::set<aggregate*>& getNext() const { return next; }
     
   const std::set<aggregate*>& getPred() const { return pred; }
-
-  // The different sub-types of aggregates
-  typedef enum {noneT, pointT, lineT} aggrType;
+  
+  
+  static std::string aggrType2Str(aggrType t);
+  
   // Returns the type of aggregate this is
   virtual aggrType getAggrType() const=0;
+  
+  public:
+  const std::vector<aggrType>& getIntStack() const { return intStack; }
+    
+  std::string intStack2Str() const;
   
   // Returns the value of using this aggregate to summarize its points
   virtual double getValue() const=0;
@@ -81,8 +98,14 @@ class aggregate
   // Remove an edge from this aggregate to the given aggregate, if one exists
   void rmEdgeTo(aggregate* to);
   
-  // Returns a human-readable string representation of this aggregate
+  // Returns a human-readable string representation of this aggregate. Used for debugging.
   virtual std::string str() const=0;
+    
+  // Returns a human-readable string representation of this aggregate's loop structure. 
+  // Used for generating output to users.
+  // Takes as input a vector of strings that denote the variables/constants defined by higher 
+  // levels of the loop structure that will control the parameters of this aggregate.
+  virtual std::string loopStr(std::vector<std::string> ctrl) const=0;
 };
 
 // The entry node into the graph. Has no functionality other than maintaining outgoing graph edges.
@@ -111,6 +134,12 @@ class entryNode: public aggregate
   
   // Returns a human-readable string representation of this aggregate
   std::string str() const { return "entryNode"; }
+    
+  // Returns a human-readable string representation of this aggregate's loop structure. 
+  // Used for generating output to users.
+  // Takes as input a vector of strings that denote the variables/constants defined by higher 
+  // levels of the loop structure that will control the parameters of this aggregate.
+  std::string loopStr(std::vector<std::string> ctrl) const { return ""; }
 };
 
 class point: public aggregate
@@ -144,6 +173,12 @@ class point: public aggregate
   
   // Returns a human-readable string representation of this aggregate
   std::string str() const;
+    
+  // Returns a human-readable string representation of this aggregate's loop structure. 
+  // Used for generating output to users.
+  // Takes as input a vector of strings that denote the variables/constants defined by higher 
+  // levels of the loop structure that will control the parameters of this aggregate.
+  std::string loopStr(std::vector<std::string> ctrl) const;
 };
 
 class line: public aggregate
@@ -157,7 +192,8 @@ class line: public aggregate
   
   public:
   line(const aggregate& newAggr1, const aggregate& newAggr2);
-  line(const std::vector<int>& first, const std::vector<int>& slope, int dim, int numPts);
+  line(const std::vector<int>& first, const std::vector<int>& slope, int dim, int numPts, const std::vector<aggrType>& intStack);
+  line(const line& that);
   
   // Returns a set of all the possible extensions of this aggregate with the points in the given aggregate, 
   // all of which are dynamically allocated.
@@ -177,6 +213,12 @@ class line: public aggregate
   
   // Returns a human-readable string representation of this aggregate
   std::string str() const;
+    
+  // Returns a human-readable string representation of this aggregate's loop structure. 
+  // Used for generating output to users.
+  // Takes as input a vector of strings that denote the variables/constants defined by higher 
+  // levels of the loop structure that will control the parameters of this aggregate.
+  std::string loopStr(std::vector<std::string> ctrl) const;
 };
 
 class transGraph: public dbglog::dottable
