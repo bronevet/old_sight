@@ -395,7 +395,7 @@ void graph::addUndirEdge(anchor a, anchor b) {
 // Returns true of this notification should be propagated to the blocks 
 // that contain this block and false otherwise.
 bool graph::subBlockEnterNotify(block* subBlock) {
-  //cout << "subBlockEnterNotify()\n";
+  //cout << "graph::subBlockEnterNotify(subBlock="<<subBlock->getLabel()<<")\n";
   // If this block is immediately contained inside this graph
   location common = dbgStream::commonSubLocation(getLocation(), subBlock->getLocation());
   
@@ -406,8 +406,8 @@ bool graph::subBlockEnterNotify(block* subBlock) {
 //???  //  span the text between adjacent attribute definitions and major block terminal points)
   assert(subBlock->getLocation().size()>0);
   if(common == getLocation() &&
-     subBlock->getLocation().size() == common.size() &&
-     subBlock->getLocation().back().second.size()-1 == common.back().second.size())
+     subBlock->getLocation().size() == common.size()/* &&
+     subBlock->getLocation().back().second.size()-1 == common.back().second.size()*/)
   { 
     nodes[subBlock->getLocation()] = node(maxNodeID, subBlock->getLabel(), subBlock->getAnchor());
     maxNodeID++;

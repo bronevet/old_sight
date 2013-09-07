@@ -4,12 +4,11 @@ DBGLOG := ${DBGLOG_O} ${DBGLOG_H} gdbLineNum.pl dbglogDefines.pl
 
 OS := $(shell uname -o)
 ifeq (${OS}, Cygwin)
-EXT := .exe
+EXE := .exe
 endif
 
-all: dbgLogTester${EXT} dbgLogGraphTester${EXT} dbgLogAttrTester${EXT} dbgLogClientServerTester${EXT} dbgLogTimingTester${EXT} dbgLogPrintfTester${EXT} \
-     ${DBGLOG} \
-     widgets/shellinabox/bin/shellinaboxd${EXT} widgets/mongoose/mongoose${EXT} widgets/graphviz/bin/dot${EXT} script/taffydb \
+all: libdbglog.a allExamples \
+     widgets/shellinabox/bin/shellinaboxd${EXE} widgets/mongoose/mongoose${EXE} widgets/graphviz/bin/dot${EXE} script/taffydb \
      widgets/ID3-Decision-Tree \
      external_scripts
 	chmod 755 html img script
@@ -18,13 +17,6 @@ all: dbgLogTester${EXT} dbgLogGraphTester${EXT} dbgLogAttrTester${EXT} dbgLogCli
 	chmod 644 widgets/canviz-0.1/* script/taffydb/*
 	chmod 755 widgets/canviz-0.1/excanvas widgets/canviz-0.1/lib widgets/canviz-0.1/path widgets/canviz-0.1/prototype
 	chmod 644 widgets/canviz-0.1/*/*
-
-examples:
-	rm -fr dbg; ./dbgLogTester${EXE};             mv dbg dbg.dbgLogTester${EXE}            ; sleep 1
-	rm -fr dbg; ./dbgLogGraphTester${EXE};        mv dbg dbg.dbgLogGraphTester${EXE}       ; sleep 1
-	rm -fr dbg; ./dbgLogAttrTester${EXE};         mv dbg dbg.dbgLogAttrTester${EXE}        ; sleep 1
-	rm -fr dbg; ./dbgLogClientServerTester${EXE}; mv dbg dbg.dbgLogClientServerTester${EXE}; sleep 1
-	rm -fr dbg; ./dbgLogTimingTester${EXE};       mv dbg dbg.dbgLogTimingTester${EXE}      ; sleep 1
 
 # Set this to the current Operating System (needed by the Mongoose web server). 
 # Choices: linux|bsd|solaris|mac|windows|mingw|cygwin
@@ -43,23 +35,14 @@ GDB_ENABLED := -DGDB_ENABLED
 # in the target application's execution
 GDB_PORT := 17500
 
-dbgLogTester${EXT}: dbgLogTester.C libdbglog.a ${DBGLOG_H}
-	g++ -g dbgLogTester.C -L. -ldbglog -o dbgLogTester${EXT}
+allExamples:
+	cd examples; make
 
-dbgLogGraphTester${EXT}: dbgLogGraphTester.C libdbglog.a ${DBGLOG_H}
-	g++ -g dbgLogGraphTester.C -L. -ldbglog -o dbgLogGraphTester${EXT}
+runExamples:
+	cd examples; make run
 
-dbgLogAttrTester${EXT}: dbgLogAttrTester.C libdbglog.a ${DBGLOG_H}
-	g++ -g dbgLogAttrTester.C -L. -ldbglog  -o dbgLogAttrTester${EXT}
-
-dbgLogClientServerTester${EXT}: dbgLogClientServerTester.C libdbglog.a ${DBGLOG_H}
-	g++ -g dbgLogClientServerTester.C -L. -ldbglog  -o dbgLogClientServerTester${EXT}
-
-dbgLogTimingTester${EXT}: dbgLogTimingTester.C libdbglog.a ${DBGLOG_H}
-	g++ -g dbgLogTimingTester.C -L. -ldbglog  -o dbgLogTimingTester${EXT}
-
-dbgLogPrintfTester${EXT}: dbgLogPrintfTester.C libdbglog.a ${DBGLOG_H}
-	g++ -g dbgLogPrintfTester.C -L. -ldbglog  -o dbgLogPrintfTester${EXT}
+#pattern${EXE}: pattern.C pattern.h libdbglog.a ${DBGLOG_H}
+#	g++ -g pattern.C -L. -ldbglog  -o pattern${EXE}
 
 libdbglog.a: ${DBGLOG_O} ${DBGLOG_H}
 	ar -r libdbglog.a ${DBGLOG_O}
@@ -94,9 +77,9 @@ dbglogDefines.pl:
 clean:
 	killP widgets/mongoose/mongoose
 	killP widgets/shellinabox/bin/shellinaboxd
-	rm -rf dbg *.o dbgLogTester${EXT} dbgLogGraphTester${EXT} dbgLogAttrTester${EXT} *.exe widgets/shellinabox* widgets/mongoose* widgets/graphviz* gdbLineNum.pl
+	rm -rf dbg *.o dbgLogTester${EXE} dbgLogGraphTester${EXE} dbgLogAttrTester${EXE} *.exe widgets/shellinabox* widgets/mongoose* widgets/graphviz* gdbLineNum.pl
 
-widgets/shellinabox/bin/shellinaboxd${EXT}:
+widgets/shellinabox/bin/shellinaboxd${EXE}:
 	rm -f widgets/shellinabox-2.14.tar.gz
 	cd widgets; wget --no-check-certificate https://shellinabox.googlecode.com/files/shellinabox-2.14.tar.gz
 	cd widgets; tar -xf shellinabox-2.14.tar.gz
@@ -105,14 +88,14 @@ widgets/shellinabox/bin/shellinaboxd${EXT}:
 	cd widgets/shellinabox-2.14; make install
 	rm -r widgets/shellinabox-2.14 widgets/shellinabox-2.14.tar.gz
 
-widgets/mongoose/mongoose${EXT}:
+widgets/mongoose/mongoose${EXE}:
 	rm -f widgets/mongoose-3.8.tgz
 	cd widgets; wget --no-check-certificate https://mongoose.googlecode.com/files/mongoose-3.8.tgz
 	cd widgets; tar -xf mongoose-3.8.tgz
 	cd widgets; rm mongoose-3.8.tgz
 	cd widgets/mongoose; make ${OS_MONGOOSE}
 
-widgets/graphviz/bin/dot${EXT}:
+widgets/graphviz/bin/dot${EXE}:
 ifeq (${OS},Cygwin)
 	rm -rf widgets/graphviz-2.32.zip widgets/release
 	cd widgets; wget http://www.graphviz.org/pub/graphviz/stable/windows/graphviz-2.32.zip
