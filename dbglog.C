@@ -71,7 +71,11 @@ char hostname[10000];
 char username[10000];
 
 void initializeDebug(int argc, char** argv, string title, string workDir) {
-  if(initializedDebug) return;
+  // Note: we allow users to specify argc and argv multiple times to support use-cases where
+  // dbglog needs to be used and therefore initialized before main() starts and argc and argv 
+  // are not available until after the initialization was first performed.
+  // If a different title and workDir are provided in subsequent initializeDebug() calls, they
+  // are ignored.
 
   /*char fname[1000];
   sprintf(fname, 1000, "%s/.dbginit", workDir); 
@@ -102,10 +106,16 @@ void initializeDebug(int argc, char** argv, string title, string workDir) {
 
   saved_appExecInfo=true;
 
+  // Having reset argc and argv, we only perform the rest of the initialization if it has not yet been done.
+  if(initializedDebug) return;
+ 
+  #ifdef GDB_ENABLED 
+cout << "isPortUsed(GDB_PORT)="<<isPortUsed(GDB_PORT)<<endl;
   if(!isPortUsed(GDB_PORT)) {
     ostringstream cmd; cmd << ROOT_PATH << "/widgets/mongoose/mongoose -document_root "<<ROOT_PATH<<" -listening_ports "<<GDB_PORT<<"&";
     system(cmd.str().c_str());
   }
+  #endif
   
   initializeDebug_internal(title, workDir);
 }

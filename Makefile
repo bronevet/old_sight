@@ -36,6 +36,9 @@ endif
 
 DBGLOG_PATH = `pwd`
 
+# Set to "-DGDB_ENABLED" if we wish gdb support to be enabled and otherwise not set
+GDB_ENABLED := -DGDB_ENABLED
+
 # The port on which dbglog sets up a daemon that invokes gdb so that it runs upto a particular point
 # in the target application's execution
 GDB_PORT := 17500
@@ -62,19 +65,19 @@ libdbglog.a: ${DBGLOG_O} ${DBGLOG_H}
 	ar -r libdbglog.a ${DBGLOG_O}
 	
 dbglog.o: dbglog.C dbglog.h attributes.h
-	g++ -g dbglog.C -DROOT_PATH="\"${CURDIR}\"" -DGDB_PORT=${GDB_PORT} -c -o dbglog.o
+	g++ -g dbglog.C -DROOT_PATH="\"${CURDIR}\"" ${GDB_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o dbglog.o
 	
 widgets.o: widgets.C widgets.h attributes.h
-	g++ -g widgets.C -DROOT_PATH="\"${CURDIR}\"" -DGDB_PORT=${GDB_PORT} -c -o widgets.o
+	g++ -g widgets.C -DROOT_PATH="\"${CURDIR}\"" ${GDB_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o widgets.o
 	
 attributes.o: attributes.C attributes.h
-	g++ -g attributes.C -DROOT_PATH="\"${CURDIR}\"" -DGDB_PORT=${GDB_PORT} -c -o attributes.o
+	g++ -g attributes.C -DROOT_PATH="\"${CURDIR}\"" ${GDB_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o attributes.o
 
 widgets/valSelector.o: widgets/valSelector.C widgets/valSelector.h
-	g++ -g widgets/valSelector.C -DROOT_PATH="\"${CURDIR}\"" -DGDB_PORT=${GDB_PORT} -c -o widgets/valSelector.o
+	g++ -g widgets/valSelector.C -DROOT_PATH="\"${CURDIR}\"" ${GDB_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o widgets/valSelector.o
 
 widgets/trace.o: widgets/trace.C widgets/trace.h
-	g++ -g widgets/trace.C -DROOT_PATH="\"${CURDIR}\"" -DGDB_PORT=${GDB_PORT} -c -o widgets/trace.o
+	g++ -g widgets/trace.C -DROOT_PATH="\"${CURDIR}\"" ${GDB_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o widgets/trace.o
 
 binreloc.o: binreloc.c binreloc.h
 	g++ -g binreloc.c -c -o binreloc.o
@@ -82,7 +85,7 @@ binreloc.o: binreloc.c binreloc.h
 getAllHostnames.o: getAllHostnames.C getAllHostnames.h
 	g++ -g getAllHostnames.C -c -o getAllHostnames.o
 
-gdbLineNum.pl: setupGDBWrap.pl
+gdbLineNum.pl: setupGDBWrap.pl dbglog.C
 	./setupGDBWrap.pl
 
 dbglogDefines.pl:
