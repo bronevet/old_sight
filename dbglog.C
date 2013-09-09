@@ -202,7 +202,7 @@ map<int, location> anchor::anchorLocs;
 map<location, int> anchor::locAnchorIDs;
   
 anchor::anchor(/*dbgStream& myDbg, */bool located) /*: myDbg(myDbg)*/ {
-  //if(!initializedDebug) initializeDebug("Debug Output", "dbg");
+  //if(!initializedDebug) initializeDebug("", "dbg");
   
   anchorID = maxAnchorID++;
   //dbg << "anchor="<<anchorID<<endl;
@@ -212,7 +212,7 @@ anchor::anchor(/*dbgStream& myDbg, */bool located) /*: myDbg(myDbg)*/ {
 }
 
 anchor::anchor(const anchor& that) {
-  //if(!initializedDebug) initializeDebug("Debug Output", "dbg");
+  //if(!initializedDebug) initializeDebug("", "dbg");
   
   anchorID = that.anchorID;
   loc      = that.loc;
@@ -224,7 +224,7 @@ anchor::anchor(const anchor& that) {
 anchor::anchor(/*dbgStream& myDbg, */bool located, int anchorID) : 
   located(located), anchorID(anchorID)
 {
-  //if(!initializedDebug) initializeDebug("Debug Output", "dbg");  
+  //if(!initializedDebug) initializeDebug("", "dbg");  
 }
 
 void anchor::init(bool located) {
@@ -413,7 +413,7 @@ int block::blockCount=0;
 // Initializes this block with the given label
 block::block(string label) : label(label), startA(false, -1) /*=noAnchor, except that noAnchor may not yet bee initialized)*/ {
   advanceBlockCount();
-  if(!initializedDebug) initializeDebug("Debug Output", "dbg");
+  if(!initializedDebug) initializeDebug("", "dbg");
 }
 
 // Initializes this block with the given label.
@@ -422,7 +422,7 @@ block::block(string label, const anchor& pointsTo) :
   label(label), startA(false, -1) /*=noAnchor, except that noAnchor may not yet bee initialized)*/
 {
   advanceBlockCount();
-  if(!initializedDebug) initializeDebug("Debug Output", "dbg");
+  if(!initializedDebug) initializeDebug("", "dbg");
   
   // If we're given an anchor from a forward link to this region,
   // inform the anchor that it is pointing to the location of this scope's start.
@@ -441,7 +441,7 @@ block::block(string label, const set<anchor>& pointsTo) :
   label(label), startA(false, -1) /*=noAnchor, except that noAnchor may not yet bee initialized)*/
 {
   advanceBlockCount();
-  if(!initializedDebug) initializeDebug("Debug Output", "dbg");
+  if(!initializedDebug) initializeDebug("", "dbg");
   
   // If we're given an anchor from a forward link to this region,
   // inform the anchor that it is pointing to the location of this scope's start.
@@ -460,6 +460,17 @@ int block::advanceBlockCount() {
   blockCount++;
   // THIS COMMENT MARKS THE SPOT IN THE CODE AT WHICH GDB SHOULD BREAK
   return blockCount;
+}
+
+// Attaches a given un-located anchor at this block
+void block::attachAnchor(anchor& a) {
+  // If this block has not yet been located, add the anchor to pointsToAnchors so that it can be
+  // located in the call to setLocation())
+  if(loc.size()==0)
+    pointsToAnchors.insert(a);
+  // Otherwise, set its location directly
+  else
+    a.reachedAnchor();
 }
 
 void block::setLocation(const location& loc) { 
@@ -636,14 +647,14 @@ streamsize dbgBuf::xsputn(const char * s, streamsize n)
           needIndent = true;
         } else if(s[j]==' ') {
           // If we're at a space and not inside an HTML tag, replace it with an HTML space escape code
-          if(numOpenAngles==0) {
+          /*if(numOpenAngles==0) {
             ret = baseBuf->sputn(spaceHTML, sizeof(spaceHTML)-1);
             if(ret != sizeof(spaceHTML)-1) return 0;
           // If we're inside an HTML tag, emit a regular space character
-          } else {
+          } else {*/
             ret = baseBuf->sputn(space, sizeof(space)-1);
             if(ret != sizeof(space)-1) return 0;
-          }
+          //}
         } else if(s[j]=='\t') {
           // If we're at a tab and not inside an HTML tag, replace it with an HTML tab escape code
           if(numOpenAngles==0) {
@@ -748,7 +759,7 @@ int dbgBuf::blockDepth()
 
 dbgStream::dbgStream() : std::ostream(&defaultFileBuf), initialized(false)
 {
-//  if(!initializedDebug) initializeDebug("Debug Output", "dbg");
+//  if(!initializedDebug) initializeDebug("", "dbg");
 }
 
 dbgStream::dbgStream(string title, string workDir, string imgDir, std::string tmpDir)
@@ -982,12 +993,15 @@ location dbgStream::commonSubLocation(const location& a, const location& b) {
 // Called to inform the blocks that contain the given block that it has been entered
 void dbgStream::subBlockEnterNotify(block* subBlock)
 {
+  //cout << "Entering "<<subBlock->getLabel()<<endl;
   // Walk backwards through the current location stack, informing each block about the new arrival until the block's
   // subBlockEnterNotify() function returns false to indicate that the notification should not be propagated further.
   for(list<pair<block*, list<block*> > >::const_reverse_iterator fb=blocks.rbegin(); fb!=blocks.rend(); fb++) {
     // Iterate through the sub-blocks of this file
-    for(list<block*>::const_reverse_iterator sb=fb->second.rbegin(); sb!=fb->second.rend(); sb++)
+    for(list<block*>::const_reverse_iterator sb=fb->second.rbegin(); sb!=fb->second.rend(); sb++) {
+      //cout << "  Informing"<<(*sb)->getLabel()<<endl;
       if(!(*sb)->subBlockEnterNotify(subBlock)) return;
+    }
     
     // Now call subBlockEnterNotify on the block that contains the current file within its parent file
     if(!fb->first->subBlockEnterNotify(subBlock)) return;
@@ -1286,7 +1300,8 @@ void dbgStream::printDetailFileContainerHTML(string absoluteFileName, string tit
   det << "</div>\n";
   det << "<script type=\"text/javascript\">AddDivPlacementEvents(function () { PlaceFixedDiv(\"AttrControlPanel\", false); });</script>\n";
   
-  det << "\t<h1>"<<title<<"</h1>\n";
+  if(title != "")
+    det << "\t<h1>"<<title<<"</h1>\n";
 
   det << "\t\t<table width=\"100%\">\n";
   det << "\t\t\t<tr width=\"100%\"><td width=50></td><td width=\"100%\">\n";
@@ -1477,7 +1492,7 @@ block* dbgStream::exitAttrSubBlock() {
 // so that the caller can write to it.
 string dbgStream::addImage(string ext)
 {
-  if(!initializedDebug) initializeDebug("Debug Output", "dbg");
+  if(!initializedDebug) initializeDebug("", "dbg");
   
   assert(fileBufs.size()>0);
   ostringstream imgFName; imgFName << imgDir << "/image_" << numImages << "." << ext;

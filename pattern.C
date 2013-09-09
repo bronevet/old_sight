@@ -65,9 +65,26 @@ bool aggregate::sameDescriptors(const aggregate& aggr1, const aggregate& aggr2) 
   return true;
 }
 
+std::string aggregate::aggrType2Str(aggrType t) {
+       if(t==noneT)  return "noneT";
+  else if(t==pointT) return "pointT";
+  else if(t==lineT)  return "lineT";
+  assert(0);  
+}
+
+std::string aggregate::intStack2Str() const {
+  ostringstream oss;
+  for(vector<aggrType>::const_iterator i=intStack.begin(); i!=intStack.end(); i++) {
+    if(i!=intStack.begin()) oss<<", ";
+    oss << aggrType2Str(*i);
+  }
+  return oss.str();
+}
+
+
 // Add an edge from this aggregate to the given aggregate.
 void aggregate::addEdgeTo(aggregate* to) {
-dbg << "#next="<<next.size()<<", #to->pred="<<to->pred.size()<<endl;
+//dbg << "#next="<<next.size()<<", #to->pred="<<to->pred.size()<<endl;
   next.insert(to);
   //if(to!=this)
     to->pred.insert(this);
@@ -75,7 +92,7 @@ dbg << "#next="<<next.size()<<", #to->pred="<<to->pred.size()<<endl;
 
 // Remove an edge from this aggregate to the given aggregate, if one exists
 void aggregate::rmEdgeTo(aggregate* to) {
-dbg << "#next="<<next.size()<<", #to->pred="<<to->pred.size()<<endl;
+//dbg << "#next="<<next.size()<<", #to->pred="<<to->pred.size()<<endl;
   assert(next.find(to) != next.end());
   next.erase(to);
   //if(to!=this) {
@@ -137,6 +154,15 @@ std::string point::str() const {
   return oss.str();
 }
 
+// Returns a human-readable string representation of this aggregate's loop structure. 
+// Used for generating output to users.
+// Takes as input a vector of strings that denote the variables/constants defined by higher 
+// levels of the loop structure that will control the parameters of this aggregate.
+std::string point::loopStr(std::vector<std::string> ctrl) const {
+  assert(ctrl.size()==1);
+  return ctrl[0];
+}
+
 /****************
  ***** line *****
  ****************/
@@ -145,6 +171,7 @@ line::line(const aggregate& newAggr1, const aggregate& newAggr2) : aggregate(new
   dbg << "newAggr2="<<newAggr2.str()<<endl;
   assert(newAggr1.getDim() == newAggr2.getDim());
   assert(newAggr1.getDescriptor().size() == newAggr2.getDescriptor().size());
+  assert(newAggr1.getAggrType() == newAggr2.getAggrType());
   
   vector<int>::const_iterator i1=newAggr1.getDescriptor().begin();
   vector<int>::const_iterator i2=newAggr2.getDescriptor().begin();
@@ -152,17 +179,19 @@ line::line(const aggregate& newAggr1, const aggregate& newAggr2) : aggregate(new
     slope.push_back(*i2 - *i1);
     first.push_back(*i1);
   }
+  
+  // Copy the intStack from newAggr2 to this new aggregate, adding newAggr2's type
+  intStack = newAggr2.getIntStack();
+  intStack.push_back(newAggr2.getAggrType());
 }
 
-line::line(const std::vector<int>& first, const std::vector<int>& slope, int dim, int numPts) : aggregate(dim, numPts), first(first), slope(slope) {
+line::line(const line& that): aggregate(that.getDim(), that.getNumPts(), that.getIntStack()), first(that.first), slope(that.slope) {
   assert(first.size() == slope.size());
-  
-/*  vector<int>::const_iterator i1=pt1.begin();
-  vector<int>::const_iterator i2=pt2.begin();
-  for(; i1!=pt1.end(); i1++, i2++) {
-    slope.push_back(*i2 - *i1);
-    first.push_back(*i1);
-  }*/
+}
+
+line::line(const std::vector<int>& first, const std::vector<int>& slope, int dim, int numPts, const std::vector<aggrType>& intStack) : 
+  aggregate(dim, numPts, intStack), first(first), slope(slope) {
+  assert(first.size() == slope.size());
 }
 
 // Returns a set of all the possible extensions of this aggregate with the points in the given aggregate, 
@@ -185,8 +214,12 @@ std::set<aggregate*> line::extend(const aggregate& newAggr) {
   
   set<aggregate*> ext;
   // If the new point matches the pattern, return the extended line
-  if(match)
-    ext.insert(new line(first, slope, getDim(), getNumPts()+1));
+  if(match) {
+    // Copy the intStack from newAggr2 to this new aggregate, adding newAggr2's type
+    std::vector<aggrType> intStack = newAggr.getIntStack();
+    intStack.push_back(newAggr.getAggrType());
+    ext.insert(new line(first, slope, getDim(), getNumPts()+1, intStack));
+  }
   
   return ext;
 }
@@ -212,16 +245,35 @@ double line::getValue() const {
 
 // Returns a dynamically-allocated copy of this aggregate
 aggregate* line::copy() const {
-  return new line(first, slope, getDim(), getNumPts());
+  //return new line(first, slope, getDim(), getNumPts(), intStack);
+  return new line(*this);
 }
 
 // Returns a human-readable string representation of this aggregate
 std::string line::str() const {
   ostringstream oss;
-  oss << "[line: first=<"<<col2Str(first)<<">, slope=<"<<col2Str(slope)<<">, dim="<<getDim()<<", numPts="<<getNumPts()<<", desc=<"<<col2Str(getDescriptor())<<">]";
+  oss << "[line: first=<"<<col2Str(first)<<">, slope=<"<<col2Str(slope)<<">, dim="<<getDim()<<", numPts="<<getNumPts()<<", desc=<"<<col2Str(getDescriptor())<<">";
+  oss << ", intStack=<"<<intStack2Str()<<">]";
   return oss.str();
 }
 
+// Returns a human-readable string representation of this aggregate's loop structure. 
+// Used for generating output to users.
+// Takes as input a vector of strings that denote the variables/constants defined by higher 
+// levels of the loop structure that will control the parameters of this aggregate.
+std::string line::loopStr(std::vector<std::string> ctrl) const {
+  assert(ctrl.size()==2);
+  assert(first.size()>0);
+  ostringstream oss;
+  oss << "for i "<<first[0]<<
+  vector<string> subCtrl;
+  for(int j=0; j<first.size(); j++)
+    if(slope[j]==0) subCtrl.push_back(first[j]);
+    else            subCtrl.push_back(txt()<<first[j]<<"+i*"<<slope[j]);
+  }
+  switch
+  return ctrl[0];
+}
 
 /**********************
  ***** transGraph *****
@@ -307,7 +359,7 @@ class mergeFunctor : public transGraph::GraphNodeFunctor
   }
   
   // NOTE: The resulting set of alternate graphs does not include the original graph
-};
+}; // class mergeFunctor
 
 
 class addFunctor : public transGraph::GraphNodeFunctor
@@ -352,7 +404,7 @@ class addFunctor : public transGraph::GraphNodeFunctor
   }
   
   // NOTE: The resulting set of alternate graphs does not include the original graph
-};
+}; // class addFunctor
 
 // Add a new point to the graph.
 // This graph is adjusted such that the new point is a new node. Further,
@@ -533,6 +585,8 @@ class node2DOTFunctor : public transGraph::GraphNodeFunctor
   node2DOTFunctor(transGraph* graph, ostringstream& dotStream): transGraph::GraphNodeFunctor(graph), dotStream(dotStream) {}
   
   void operator()(aggregate* a) {
+    if(a->getAggrType() == aggregate::noneT) return;
+    
     dotStream << "node_"<<a<<" [label=\""<<a->str()<<"\", shape=box];"<<endl;
   }
 };
@@ -544,6 +598,9 @@ class edge2DOTFunctor : public transGraph::GraphEdgeFunctor
   edge2DOTFunctor(transGraph* graph, ostringstream& dotStream): transGraph::GraphEdgeFunctor(graph), dotStream(dotStream) {}
   
   void operator()(aggregate* from, aggregate* to) {
+    if(from->getAggrType() == aggregate::noneT) return;
+    if(to->getAggrType() == aggregate::noneT) return;
+    
     dotStream << "node_"<<from<<" -> node_"<<to;
     if(from == graph->curFrom && to == graph->curTo)
       dotStream << "[color=red]";
@@ -626,7 +683,7 @@ int main(int argc, char** argv) {
   initializeDebug(argc, argv);
   //attr mapVerbose("mapVerbose", (long)1);
   
-  pattern p(10);
+  pattern p(2);
   for(int i=0; i<2; i++) {
     scope s(txt()<<"Adding i="<<i, scope::medium);
     for(int j=i; j<5; j++) {
