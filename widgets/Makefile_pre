@@ -3,7 +3,6 @@ WIDGETS_H := scope.h graph.h valSelector.h trace.h
 WIDGETS := ${WIDGETS_O} ${WIDGETS_H}
 
 all: libwidgets.a \
-     mfem \
      shellinabox/bin/shellinaboxd${EXE} mongoose/mongoose${EXE} graphviz/bin/dot${EXE} \
      ID3-Decision-Tree \
      xdottool \
@@ -13,8 +12,8 @@ all: libwidgets.a \
 	chmod 755 canviz-0.1/excanvas canviz-0.1/lib canviz-0.1/path canviz-0.1/prototype
 	chmod 644 canviz-0.1/*/*
 
-libwidgets.a: ${WIDGETS_O} ${WIDGETS_H} mfem
-	ar -r libwidgets.a ${WIDGETS_O} mfem/mfem.o
+libwidgets.a: ${WIDGETS_O} ${WIDGETS_H}
+	ar -r libwidgets.a ${WIDGETS_O}
 	
 scope.o: scope.C scope.h ../attributes.h ../dbglog.h
 	g++ -g scope.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o scope.o
@@ -27,10 +26,6 @@ valSelector.o: valSelector.C valSelector.h ../dbglog.h
 
 trace.o: trace.C trace.h ../dbglog.h
 	g++ -g trace.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o trace.o
-
-.PHONY: mfem
-mfem:
-	cd mfem; make -f Makefile_pre ROOT_PATH=${ROOT_PATH} GDB_PORT=${GDB_PORT} OS=${OS}
 
 xdottool:
 	rm -rf xdotool-2.20110530.1.tar.gz xdottool
@@ -113,7 +108,5 @@ clean:
 	rm -fr xdotool-2.20110530.1
 	killP mongoose/mongoose
 	killP shellinabox/bin/shellinaboxd
-	cd mfem; make -f Makefile_pre clean
-	cd mfem; make -f Makefile_post clean
 	rm -rf libwidgets.a *.o shellinabox* mongoose* graphviz
 	rm -f yui-min.js jquery-1.8.1.min.js underscore-min.js d3.v2.js

@@ -28,7 +28,7 @@ foreach my $proc (@allProcs) {
   #print "proc=\"$proc\"\n";
   # If noVNC is running, reuse the same VNC session
   if($proc =~ /^.*noVNC\/utils\/launch\.sh --vnc localhost:([0-9]+)$/) {
-    system "$main::dbglogPath/widgets/mfem/meshFile2Socket $mesh $soln";
+    system "$main::dbglogPath/apps/mfem/meshFile2Socket $mesh $soln";
     print $q->redirect("http://$hostname:6080/vnc.html?host=$hostname&port=6080");
     exit(0);
   }
@@ -60,11 +60,11 @@ system "/usr/bin/whoami";
   print $xstartup "xterm -geometry 80x24+10+10 -ls -title \"\$VNCDESKTOP Desktop\" &\n";
   #print $xstartup "mwm &\n";
   print $xstartup "$execFile&\n";
-  #print $xstartup "$main::dbglogPath/widgets/mfem/glvis/glvis -m $main::dbglogPath/widgets/mfem/mfem/data/ball-nurbs.mesh&\n";
+  #print $xstartup "$main::dbglogPath/apps/mfem/glvis/glvis -m $main::dbglogPath/mfem/mfem/mfem/data/ball-nurbs.mesh&\n";
   #print $xstartup "ps -ef\n";
   #print $xstartup "echo 'before sleep'\n";
   #print $xstartup "sleep 1\n";
-  print $xstartup "$ENV{HOME}/code/dbglog/widgets/mfem/maximizeWindow.pl GLVis\n";
+  print $xstartup "$ENV{HOME}/code/dbglog/apps/mfem/maximizeWindow.pl GLVis\n";
   #print $xstartup "echo 'after sleep'\n";
   #print $xstartup "echo 'after max'\n";
 close($xstartup);
@@ -134,7 +134,7 @@ while(my $line = <$noVNCOut>) {
       # Inform the currently-running instance of GLVis that it should display the given pair of mesh and solution
       #print "Content-Type: text/plain\n\n";
       #print  "$main::dbglogPath/widget/mfem/meshFile2Socket $mesh $soln\n";
-      system "$main::dbglogPath/widgets/mfem/meshFile2Socket $mesh $soln";
+      system "$main::dbglogPath/apps/mfem/meshFile2Socket $mesh $soln";
       
       print $q->redirect($vncURL);
       exit(0);

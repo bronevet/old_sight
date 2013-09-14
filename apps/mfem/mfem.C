@@ -89,12 +89,12 @@ mfem::~mfem() {
     soln->Save(sol_ofs);
   
     dbg.ownerAccessing();
-//    dbg << "<a href=\"#\" onclick=\"javascript:setGDBLink(this, ':"<<GDB_PORT<<"/widgets/mfem/mfemwrap.cgi?HOME="<<getenv("HOME")<<"&USER="<<getenv("USER")<<"&execFile="<<ROOT_PATH<<"/widgets/mfem/glvis/glvis&mesh="<<meshPath<<"&soln="<<solnPath<<"')\"\">Mesh</a>\n";
+//    dbg << "<a href=\"#\" onclick=\"javascript:setGDBLink(this, ':"<<GDB_PORT<<"/apps/mfem/mfemwrap.cgi?HOME="<<getenv("HOME")<<"&USER="<<getenv("USER")<<"&execFile="<<ROOT_PATH<<"/apps/mfem/glvis/glvis&mesh="<<meshPath<<"&soln="<<solnPath<<"')\"\">Mesh</a>\n";
     string divName = txt()<<"mfem_mesh_container_"<<widgetID;
     dbg << "<a href=\"#\" onclick=\""<<
              "javascript:document.getElementsByTagName('iframe')['"<<divName<<"'].width=1024; "<<
                         "document.getElementsByTagName('iframe')['"<<divName<<"'].height=768; "<<
-                        "document.getElementsByTagName('iframe')['"<<divName<<"'].src=getHostLink(':"<<GDB_PORT<<"/widgets/mfem/mfemwrap.cgi?HOME="<<getenv("HOME")<<"&USER="<<getenv("USER")<<"&execFile="<<ROOT_PATH<<"/widgets/mfem/glvis/glvis&mesh="<<meshPath<<"&soln="<<solnPath<<"'); this.innerHTML=''; return false;\">Mesh</a>"<<endl;
+                        "document.getElementsByTagName('iframe')['"<<divName<<"'].src=getHostLink(':"<<GDB_PORT<<"/apps/mfem/mfemwrap.cgi?HOME="<<getenv("HOME")<<"&USER="<<getenv("USER")<<"&execFile="<<ROOT_PATH<<"/apps/mfem/glvis/glvis&mesh="<<meshPath<<"&soln="<<solnPath<<"'); this.innerHTML=''; return false;\">Mesh</a>"<<endl;
     dbg.userAccessing();
   }
   

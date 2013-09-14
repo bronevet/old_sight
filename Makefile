@@ -18,11 +18,21 @@ ROOT_PATH = ${CURDIR}
 # in the target application's execution
 GDB_PORT := 17500
 
+.PHONY: apps
+apps:
+	cd apps/mfem;  make ROOT_PATH=${ROOT_PATH} GDB_PORT=${GDB_PORT} OS=${OS}
+	cd apps/mcbench; ./build-linux-x86_64.sh ${ROOT_PATH}
+
 allExamples: libdbglog.a
 	cd examples; make ROOT_PATH=${ROOT_PATH} OS=${OS}
 
-runExamples: libdbglog.a
+runExamples: libdbglog.a apps
 	cd examples; make ROOT_PATH=${ROOT_PATH} OS=${OS} run
+	apps/mfem/mfem/examples/ex1 apps/mfem/mfem/data/beam-quad.mesh
+	apps/mfem/mfem/examples/ex2 apps/mfem/mfem/data/beam-tet.mesh 2
+	apps/mfem/mfem/examples/ex3 apps/mfem/mfem/data/ball-nurbs.mesh
+	apps/mfem/mfem/examples/ex4 apps/mfem/mfem/data/fichera-q3.mesh
+	apps/mcbench/src/MCBenchmark.exe --nCores=1 --distributedSource --numParticles=13107 --nZonesX=256 --nZonesY=256 --xDim=16 --yDim=16 --mirrorBoundary --multiSigma --nThreadCore=1
 
 #pattern${EXE}: pattern.C pattern.h libdbglog.a ${DBGLOG_H}
 #	g++ -g pattern.C -L. -ldbglog  -o pattern${EXE}
@@ -61,7 +71,9 @@ clean:
 	cd widgets; make -f Makefile_pre clean
 	cd widgets; make -f Makefile_post clean
 	cd examples; make clean
-	rm -rf dbg libdbglog.a *.o widgets/shellinabox* widgets/mongoose* widgets/graphviz* gdbLineNum.pl
+	cd apps/mcbench; ./clean-linux-x86_64.sh
+	cd apps/mfem; make clean
+	rm -rf dbg dbg.* libdbglog.a *.o widgets/shellinabox* widgets/mongoose* widgets/graphviz* gdbLineNum.pl
 
 script/taffydb:
 	cd script; wget --no-check-certificate https://github.com/typicaljoe/taffydb/archive/master.zip
