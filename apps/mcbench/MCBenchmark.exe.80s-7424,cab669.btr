@@ -1,0 +1,11 @@
+
+MCBenchmark.exe:7424 terminated with signal 6 at PC=2aaaac95d8a5 SP=7fffffffac58.  Backtrace:
+/lib64/libc.so.6(gsignal+0x35)[0x2aaaac95d8a5]
+/lib64/libc.so.6(abort+0x175)[0x2aaaac95f085]
+/lib64/libc.so.6(+0x2ba1e)[0x2aaaac956a1e]
+/lib64/libc.so.6(__assert_perror_fail+0x0)[0x2aaaac956ae0]
+src/MCBenchmark.exe[0x48713f]
+src/MCBenchmark.exe[0x417d8d]
+src/MCBenchmark.exe[0x40cd01]
+src/MCBenchmark.exe[0x449d8f]
+/usr/local/tools/icc-12.1.339/lib/libiomp5.so(__kmp_invoke_microtask+0x93)[0x2aaaabe280d3]
