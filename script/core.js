@@ -305,7 +305,8 @@ function hostnameReachable(name) {
   hostname = name;
 }
 
-function openGDB(url) {
+function getHostLink(url) {
+  return "http://"+hostname+url;
 }
 
 function setGDBLink(link, url) {

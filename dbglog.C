@@ -774,7 +774,9 @@ void dbgStream::init(string title, string workDir, string imgDir, std::string tm
   loc.push_back(make_pair(0, list<int>(1, 0)));
   
   this->title   = title;
-  this->workDir = workDir;
+  char absWorkDir[32000]; // WARNING: there is no real upper bound on the number of characters realpath might write to absWorkDir! http://insanecoding.blogspot.com/2007/11/pathmax-simply-isnt.html
+  realpath(workDir.c_str(), absWorkDir);
+  this->workDir = absWorkDir;
   this->imgDir  = imgDir;
   this->tmpDir  = tmpDir;
 

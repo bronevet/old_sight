@@ -18,7 +18,7 @@ int fibGraph(int a, graph& g, anchor* parent);
 
 int main(int argc, char** argv)
 {
-  initializeDebug(argc, argv);
+  initializeDebug(argc, argv, "3.Navigation", "dbg.3.Navigation");
 
   dbg << "<h1>Example 3: Navigation</h1>" << endl;
   

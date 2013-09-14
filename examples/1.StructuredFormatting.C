@@ -1,5 +1,4 @@
 #include "dbglog.h"
-#include "widgets.h"
 #include <map>
 #include <assert.h>
 using namespace std;
@@ -18,7 +17,7 @@ class dottableExample: public dottable
   
 int main(int argc, char** argv)
 {
-  initializeDebug(argc, argv);
+  initializeDebug(argc, argv, "1.StructuredFormatting", "dbg.1.StructuredFormatting");
    
   // It is possible to write arbitrary text to the debug output
   dbg << "<h1>Example 1: Structured Formatting</h1>" << endl;

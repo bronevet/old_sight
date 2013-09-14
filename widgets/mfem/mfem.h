@@ -9,6 +9,7 @@
 #include <sstream>
 #include <fstream>
 #include "mfem.hpp"
+#include "dbglog.h"
 
 namespace dbglog {
 
@@ -48,7 +49,7 @@ class mfem: public block
   static void initEnvironment();
   
   // Emits the given MFEM mesh and solution to the dbglog output
-  static std::string emitMesh(Mesh* mesh, GridFunction* soln);
+  static void emitMesh(Mesh* mesh, GridFunction* soln);
   
   // Called to notify this block that a sub-block was started/completed inside of it. 
   // Returns true of this notification should be propagated to the blocks 

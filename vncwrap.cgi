@@ -36,11 +36,11 @@ open(my $xstartup, ">$vncXStartup") || "ERROR opening file \"$vncXStartup\" for 
   #print $xstartup "xterm -geometry 80x24+10+10 -ls -title \"\$VNCDESKTOP Desktop\" &\n";
   #print $xstartup "mwm &\n";
   #print $xstartup "$execFile $args&\n";
-  print $xstartup "$main::dbglogPath/widgets/glvis-2.0/glvis -m $main::dbglogPath/widgets/mfem-2.0/data/ball-nurbs.mesh&\n";
+  print $xstartup "$main::dbglogPath/widgets/mfem/glvis-2.0/glvis -m $main::dbglogPath/widgets/mfem/mfem-2.0/data/ball-nurbs.mesh&\n";
   #print $xstartup "ps -ef\n";
   #print $xstartup "echo 'before sleep'\n";
   #print $xstartup "sleep 1\n";
-  print $xstartup "~/code/dbglog/maximizeWindow.pl GLVis&\n";
+  print $xstartup "~/code/dbglog/widgets/mfem/maximizeWindow.pl GLVis&\n";
   #print $xstartup "echo 'after sleep'\n";
   #print $xstartup "echo 'after max'\n";
 close($xstartup);

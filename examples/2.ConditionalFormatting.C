@@ -1,5 +1,4 @@
 #include "dbglog.h"
-#include "widgets.h"
 #include <map>
 #include <assert.h>
 using namespace std;
@@ -9,7 +8,7 @@ int fibConditionalIndent(int a);
 
 int main(int argc, char** argv)
 {
-  initializeDebug(argc, argv);
+  initializeDebug(argc, argv, "2.ConditionalFormatting", "dbg.2.ConditionalFormatting");
    
   dbg << "<h1>Example 2: Conditional Formatting</h1>" << endl;
   

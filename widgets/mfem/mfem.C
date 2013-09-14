@@ -1,6 +1,4 @@
 // Licence information included in file LICENCE
-#include "dbglog_internal.h"
-#include "mfem.h"
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -12,6 +10,8 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/time.h>
+
+#include "mfem.h"
 
 using namespace std;
 
@@ -56,7 +56,7 @@ void mfem::init() {
   mfemOutput = false;
   
   dbg.ownerAccessing();
-  dbg << "<div id=\"mfem_mesh_container_"<<widgetID<<"\"></div>\n";
+  dbg << "<iframe id=\"mfem_mesh_container_"<<widgetID<<"\" width=0 height=0></iframe>\n";
   //dbg << "<div id=\"debug_output\"></div>\n";
   dbg.userAccessing();
 }
@@ -87,15 +87,22 @@ mfem::~mfem() {
     ofstream sol_ofs(solnPath.c_str());
     sol_ofs.precision(8);
     soln->Save(sol_ofs);
-   
-    dbg << "<a href=\"http://"<<hostname<<":"<<GDB_PORT<<"/vncwrap.cgi?execFile="<<DBGLOG_PATH<<"&mesh="<<meshPath<<"&soln="<<solnPath<<"\">Mesh</a>\n";
+  
+    dbg.ownerAccessing();
+//    dbg << "<a href=\"#\" onclick=\"javascript:setGDBLink(this, ':"<<GDB_PORT<<"/widgets/mfem/mfemwrap.cgi?HOME="<<getenv("HOME")<<"&USER="<<getenv("USER")<<"&execFile="<<ROOT_PATH<<"/widgets/mfem/glvis/glvis&mesh="<<meshPath<<"&soln="<<solnPath<<"')\"\">Mesh</a>\n";
+    string divName = txt()<<"mfem_mesh_container_"<<widgetID;
+    dbg << "<a href=\"#\" onclick=\""<<
+             "javascript:document.getElementsByTagName('iframe')['"<<divName<<"'].width=1024; "<<
+                        "document.getElementsByTagName('iframe')['"<<divName<<"'].height=768; "<<
+                        "document.getElementsByTagName('iframe')['"<<divName<<"'].src=getHostLink(':"<<GDB_PORT<<"/widgets/mfem/mfemwrap.cgi?HOME="<<getenv("HOME")<<"&USER="<<getenv("USER")<<"&execFile="<<ROOT_PATH<<"/widgets/mfem/glvis/glvis&mesh="<<meshPath<<"&soln="<<solnPath<<"'); this.innerHTML=''; return false;\">Mesh</a>"<<endl;
+    dbg.userAccessing();
   }
   
   dbg.exitBlock();
 }
 
 // Emits the given MFEM mesh and solution to the dbglog output
-std::string mfem::emitMesh(Mesh* mesh, GridFunction* soln) {
+void mfem::emitMesh(Mesh* mesh, GridFunction* soln) {
   mfem m(mesh, soln);
 }
 

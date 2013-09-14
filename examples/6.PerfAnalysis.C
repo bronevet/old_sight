@@ -108,7 +108,7 @@ void matvec_ji(double *mtx, double* vecIn, double* vecOut, int n) {
 }
 
 int main(int argc, char** argv) {
-  initializeDebug(argc, argv);
+  initializeDebug(argc, argv, "6.PerfAnalysis", "dbg.6.PerfAnalysis");
   
   dbg << "<h1>Example 6: Performance Analysis</h1>" << endl;
   

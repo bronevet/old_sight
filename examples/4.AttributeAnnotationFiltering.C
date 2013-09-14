@@ -1,6 +1,4 @@
 #include "dbglog.h"
-#include "widgets/valSelector.h"
-#include "widgets/trace.h"
 #include <map>
 #include <assert.h>
 using namespace std;
@@ -13,7 +11,7 @@ int main(int argc, char** argv) {
   
   srand(time(NULL));
   
-  initializeDebug(argc, argv);
+  initializeDebug(argc, argv, "4.AttributeAnnotationFiltering", "dbg.4.AttributeAnnotationFiltering");
   
   dbg << "<h1>Example 4: Attribute-Based Filtering</h1>" << endl;
   

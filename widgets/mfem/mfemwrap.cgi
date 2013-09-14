@@ -7,11 +7,34 @@ use Cwd;
 use IPC::Open3;
 my $q = CGI->new;
 
-require "dbglogDefines.pl";
+require "../../dbglogDefines.pl";
 
-#my $hostname = `hostname`; chomp $hostname;
-my $execFile = $q->param('execFile'); if($execFile eq "") { missingParam("execFile"); die; }
-my $args     = $q->param('args');     #if($args eq "") { missingParam("args"); return; }
+my $hostname = `hostname`; chomp $hostname;
+my @params = $q->param;
+foreach my $param (@params)
+{ $ENV{$param} = $q->param($param); }
+
+my $execFile = $ENV{execFile}; if($execFile eq "") { missingParam("execFile"); die; }
+my $mesh     = $ENV{mesh};     if($mesh eq "") { missingParam("mesh"); return; }
+my $soln     = $ENV{soln};     if($soln eq "") { missingParam("soln"); return; }
+if(not defined $ENV{USER}) { missingParam("USER"); return; }
+if(not defined $ENV{HOME}) { missingParam("HOME"); return; }
+
+# Check if a noVNC session is already running
+my $allProcsStr = `ps -ef`;
+my @allProcs = split(/^/, $allProcsStr);
+#print "Content-Type: text/plain\n\n";
+foreach my $proc (@allProcs) {
+  #print "proc=\"$proc\"\n";
+  # If noVNC is running, reuse the same VNC session
+  if($proc =~ /^.*noVNC\/utils\/launch\.sh --vnc localhost:([0-9]+)$/) {
+    system "$main::dbglogPath/widgets/mfem/meshFile2Socket $mesh $soln";
+    print $q->redirect("http://$hostname:6080/vnc.html?host=$hostname&port=6080");
+    exit(0);
+  }
+}
+
+# If noVNC is not currently running
 
 # Create a new xstartup for the vnc server
 
@@ -23,6 +46,7 @@ if(-e $vncXStartup)
 # Make sure that the vnc configuration directory exists
 system "mkdir -p $ENV{HOME}/.vnc";
 open(my $xstartup, ">$vncXStartup") || "ERROR opening file \"$vncXStartup\" for writing! $!";
+system "/usr/bin/whoami";
   print $xstartup "#!/bin/sh\n";
   print $xstartup "[ -r /etc/sysconfig/i18n ] && . /etc/sysconfig/i18n\n";
   print $xstartup "export LANG\n";
@@ -31,21 +55,25 @@ open(my $xstartup, ">$vncXStartup") || "ERROR opening file \"$vncXStartup\" for 
   print $xstartup "unset SESSION_MANAGER\n";
   print $xstartup "unset DBUS_SESSION_BUS_ADDRESS\n";
   print $xstartup "OS=`uname -s`\n";
-  print $xstartup "[ -r \$HOME/.Xresources ] && xrdb \$HOME/.Xresources\n";
+  print $xstartup "[ -r $ENV{HOME}/.Xresources ] && xrdb $ENV{HOME}/.Xresources\n";
   print $xstartup "xsetroot -solid grey\n";
-  #print $xstartup "xterm -geometry 80x24+10+10 -ls -title \"\$VNCDESKTOP Desktop\" &\n";
+  print $xstartup "xterm -geometry 80x24+10+10 -ls -title \"\$VNCDESKTOP Desktop\" &\n";
   #print $xstartup "mwm &\n";
-  print $xstartup "$execFile $args&\n";
-  #print $xstartup "$main::dbglogPath/widgets/glvis-2.0/glvis -m $main::dbglogPath/widgets/mfem-2.0/data/ball-nurbs.mesh&\n";
+  print $xstartup "$execFile&\n";
+  #print $xstartup "$main::dbglogPath/widgets/mfem/glvis/glvis -m $main::dbglogPath/widgets/mfem/mfem/data/ball-nurbs.mesh&\n";
   #print $xstartup "ps -ef\n";
   #print $xstartup "echo 'before sleep'\n";
   #print $xstartup "sleep 1\n";
-  print $xstartup "~/code/dbglog/maximizeWindow.pl GLVis&\n";
+  print $xstartup "$ENV{HOME}/code/dbglog/widgets/mfem/maximizeWindow.pl GLVis\n";
   #print $xstartup "echo 'after sleep'\n";
   #print $xstartup "echo 'after max'\n";
 close($xstartup);
 
 system "chmod 700 $vncXStartup";
+#print "Content-Type: text/plain\n\n";
+#print "cat $vncXStartup\n";
+#system "cat $vncXStartup";
+#die;
 
 # Start a vnc server
 my $vncserverPID = open3(my $vncServerIn, my $vncServerOut, my $vncServerErr, "vncserver") || die "ERROR running command \"vncserver\"! $!";
@@ -84,19 +112,30 @@ my $noVNCOutput = "";
 while(my $line = <$noVNCOut>) {
   $noVNCOutput .= $line; # Record noVNC's output in case we need to emit an error message
   chomp $line;
-  print "line=\"$line\"\n";
+  #print "line=\"$line\"\n";
   if($line =~ /^\s*(http:\/\/[^\/:]+:[0-9]+\/vnc.html\?host=[^&]+&port=[0-9]+)\s*$/)
   {
     $vncURL = $1; 
-    print "vncURL=$vncURL\n";
+    #print "vncURL=$vncURL\n";
     my $pid = fork();
     # We've now learned the URL to point the browser to
     #
     # Leave a process to wait for noVNC to complete
-    if($pid == 0)
-    { waitpid($noVNCPID, 0); }
+    if($pid == 0) {
+      # Close the streams that connect the child process to the parent's console
+      close STDOUT;
+      close STDERR;
+      close STDIN;
+      waitpid($noVNCPID, 0);
     # The main process returns a redirection to the browser
-    else {
+    } else {
+      sleep(1);
+
+      # Inform the currently-running instance of GLVis that it should display the given pair of mesh and solution
+      #print "Content-Type: text/plain\n\n";
+      #print  "$main::dbglogPath/widget/mfem/meshFile2Socket $mesh $soln\n";
+      system "$main::dbglogPath/widgets/mfem/meshFile2Socket $mesh $soln";
+      
       print $q->redirect($vncURL);
       exit(0);
     }
