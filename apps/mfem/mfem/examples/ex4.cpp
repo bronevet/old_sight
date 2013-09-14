@@ -40,7 +40,7 @@ void f_exact(const Vector &, Vector &);
 
 int main (int argc, char *argv[])
 {
-   initializeDebug(argc, argv, "ex4", "dbg.ex4");
+   initializeDebug(argc, argv, "ex4", "dbg.MFEM.ex4");
    Mesh *mesh;
 
    if (argc == 1)

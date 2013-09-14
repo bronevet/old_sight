@@ -14,6 +14,9 @@ all: libdbglog.a widgets_post allExamples script/taffydb
 
 ROOT_PATH = ${CURDIR}
 
+# Set to "-DGDB_ENABLED" if we wish gdb support to be enabled and otherwise not set
+GDB_ENABLED := -DGDB_ENABLED
+
 # The port on which dbglog sets up a daemon that invokes gdb so that it runs upto a particular point
 # in the target application's execution
 GDB_PORT := 17500
@@ -61,7 +64,7 @@ binreloc.o: binreloc.c binreloc.h
 getAllHostnames.o: getAllHostnames.C getAllHostnames.h
 	g++ -g getAllHostnames.C -c -o getAllHostnames.o
 
-gdbLineNum.pl: setupGDBWrap.pl
+gdbLineNum.pl: setupGDBWrap.pl dbglog.C
 	./setupGDBWrap.pl
 
 dbglogDefines.pl:

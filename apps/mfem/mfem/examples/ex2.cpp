@@ -45,7 +45,7 @@ int main (int argc, char *argv[])
 {
    Mesh *mesh;
 
-   initializeDebug(argc, argv, "ex1", "dbg.ex2");
+   initializeDebug(argc, argv, "ex1", "dbg.MFEM.ex2");
 
    if (argc == 1)
    {

@@ -1,29 +1,29 @@
 Installation
 ------------
-This is the dbglog library. dbgLogTester.C and dbgLogGraphTester.C contain representative  
-applications that illustrates the use of the library. To compile the library and the 
-example, just type:
+run "make"
 
-make
+Example codes
+-------------
+To view the results of the example, run "make runExamples". This executes the codes in
+directory examples/, producing directories 
+  dbglog/examples/dbg.1.StructuredFormatting/
+  dbglog/examples/dbg.2.ConditionalFormatting/
+  dbglog/examples/dbg.3.Navigation/
+  dbglog/examples/dbg.4.AttributeAnnotationFiltering/
+  dbglog/examples/dbg.5.Tracing/
+  dbglog/examples/dbg.6.PerfAnalysis/
+To understand the APIs provided by dbglog please look at the source and the output of these
+codes since each one focuses on a specific portion of the API.
 
-Example code
-------------
-To view the results of the example, run the following example codes:
+"make runExamples" also executes the dbglog-enhanced applications in directory apps/, producing directories 
+  dbglog/dbg.MCBenchmark/
+  dbglog/dbg.MFEM.ex1/
+  dbglog/dbg.MFEM.ex2/
+  dbglog/dbg.MFEM.ex3/
+  dbglog/dbg.MFEM.ex4/
+These illustrate how dbglog may fit into a larger application, specifically MCBench and MFEM.
 
-./dbgLogTester
-./dbgLogGraphTester
+To view the output of a given run look at file dbg.*/index.html with Firefox (other browsers 
+are currently not supported).
 
-Each one produce directory dbg/ with the debug output. View file dbg/index.html 
-with Firefox (other browsers currently have issues with dbglog output) to read 
-the output produced by the testers. dbgLogTester focuses on visualizing debug
-output and application scopes. dbgLogGraphTester shows how to use graphs to 
-visualize program executions.
-
-Graphviz support
-----------------
-The example includes the generation of graphviz dot graphs. To identify the path 
-of the graphviz library modify line 5 of the Makefile to specify this path. The 
-default setting corresponds to the graphviz bin directory being on the PATH. If 
-graphviz is not available, comment line 5 out and dbglog will emit warnings for 
-all the dot graphs the user wishes to print.
 

@@ -37,7 +37,7 @@ void f_exact(const Vector &, Vector &);
 
 int main (int argc, char *argv[])
 {
-   initializeDebug(argc, argv, "ex3", "dbg.ex3");
+   initializeDebug(argc, argv, "ex3", "dbg.MFEM.ex3");
    Mesh *mesh;
 
    if (argc == 1)
