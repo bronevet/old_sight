@@ -64,7 +64,7 @@ system "/usr/bin/whoami";
   #print $xstartup "ps -ef\n";
   #print $xstartup "echo 'before sleep'\n";
   #print $xstartup "sleep 1\n";
-  print $xstartup "$ENV{HOME}/code/dbglog/apps/mfem/maximizeWindow.pl GLVis\n";
+  print $xstartup "$main::dbglogPath/apps/mfem/maximizeWindow.pl GLVis\n";
   #print $xstartup "echo 'after sleep'\n";
   #print $xstartup "echo 'after max'\n";
 close($xstartup);

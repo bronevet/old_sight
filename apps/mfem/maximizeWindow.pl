@@ -13,10 +13,10 @@ print "maximizeWindow: winIDString=$winIDString\n";
 my $curResolution = `xrandr -q | awk -F'current' -F',' 'NR==1 {gsub("( |current)","");print \$2}'`;
 print "curResolution=$curResolution\n";
 my ($width, $height) = split(/x/, $curResolution);
+$ENV{LD_LIBRARY_PATH} = "$main::dbglogPath/widgets/xdottool:$ENV{LD_LIBRARY_PATH}";
 
 # Keep setting the target app's window to fill the entire desktop, even if the user tries to change this
 while(1) {
-  $ENV{LD_LIBRARY_PATH} = "$main::dbglogPath/widgets/xdottool:$ENV{LD_LIBRARY_PATH}";
   print "$main::dbglogPath/widgets/xdottool/xdotool search --name $winIDString\n";
   my $winsStr = `$main::dbglogPath/widgets/xdottool/xdotool search --name $winIDString`;
   print "winsStr=$winsStr\n";
@@ -43,9 +43,9 @@ while(1) {
   #system "$main::dbglogPath/widgets/xdottool/xdotool search --name $winIDString windowfocus";
   #system "$main::dbglogPath/widgets/xdottool/xdotool search --name $winIDString windowraise";
  
-  foreach my $var (keys %ENV) {
-    print "::::$var => $ENV{$var}\n";
-  }
+  #foreach my $var (keys %ENV) {
+  #  print "::::$var => $ENV{$var}\n";
+  #}
  
   sleep(1);
 }

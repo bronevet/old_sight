@@ -7,7 +7,7 @@ ifeq (${OS}, Cygwin)
 EXE := .exe
 endif
 
-all:  dbglogDefines.pl libdbglog.a widgets_post allExamples script/taffydb
+all:  dbglogDefines.pl gdbLineNum.pl libdbglog.a widgets_post allExamples script/taffydb
 	chmod 755 html img script
 	chmod 644 html/* img/* script/*
 	chmod 755 script/taffydb
