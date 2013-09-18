@@ -46,11 +46,8 @@ list<string> getAllHostnames()
   char path[1035];
 
   /* Open the command for reading. */
-#if defined(__CYGWIN__)
-  fp = popen("hostname", "r");
-#else
-  fp = popen("hostname -A", "r");
-#endif
+  ostringstream cmd; cmd << "hostname "<<HOSTNAME_ARG;
+  fp = popen(cmd.str().c_str(), "r");
   if (fp == NULL) {
     printf("Failed to run command\n" );
     exit;

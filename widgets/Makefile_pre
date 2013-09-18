@@ -6,6 +6,7 @@ all: libwidgets.a \
      shellinabox/bin/shellinaboxd${EXE} mongoose/mongoose${EXE} graphviz/bin/dot${EXE} \
      ID3-Decision-Tree \
      xdottool \
+     noVNC \
      external_scripts
 	chmod 755 canviz-0.1 
 	chmod 644 canviz-0.1/*
@@ -16,16 +17,16 @@ libwidgets.a: ${WIDGETS_O} ${WIDGETS_H}
 	ar -r libwidgets.a ${WIDGETS_O}
 	
 scope.o: scope.C scope.h ../attributes.h ../dbglog.h
-	g++ -g scope.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o scope.o
+	g++ -g scope.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o scope.o
 	
 graph.o: graph.C graph.h ../attributes.h ../dbglog.h
-	g++ -g graph.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o graph.o
+	g++ -g graph.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o graph.o
 	
 valSelector.o: valSelector.C valSelector.h ../dbglog.h
-	g++ -g valSelector.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o valSelector.o
+	g++ -g valSelector.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o valSelector.o
 
 trace.o: trace.C trace.h ../dbglog.h
-	g++ -g trace.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o trace.o
+	g++ -g trace.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o trace.o
 
 xdottool:
 	rm -rf xdotool-2.20110530.1.tar.gz xdottool
@@ -88,6 +89,14 @@ ID3-Decision-Tree:
 	chmod 755 ID3-Decision-Tree/data ID3-Decision-Tree/js
 	chmod 644 ID3-Decision-Tree/*/*
 
+noVNC:
+	rm -rf master
+	wget --no-check-certificate http://github.com/kanaka/noVNC/tarball/master
+	mv master master.tar.gz
+	tar -xf master.tar.gz
+	mv kanaka-noVNC-* noVNC
+	rm master.tar.gz
+
 # JavaScript files from standard JS libraries that we wish to keep local copies of
 
 external_scripts: yui-min.js jquery-1.8.1.min.js underscore-min.js d3.v2.js
@@ -106,7 +115,7 @@ d3.v2.js:
 
 clean:
 	rm -fr xdotool-2.20110530.1
-	killP mongoose/mongoose
-	killP shellinabox/bin/shellinaboxd
-	rm -rf libwidgets.a *.o shellinabox* mongoose* graphviz
+	../killP mongoose/mongoose
+	../killP shellinabox/bin/shellinaboxd
+	rm -rf libwidgets.a *.o shellinabox* mongoose* graphviz noVNC
 	rm -f yui-min.js jquery-1.8.1.min.js underscore-min.js d3.v2.js

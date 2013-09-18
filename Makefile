@@ -7,24 +7,24 @@ ifeq (${OS}, Cygwin)
 EXE := .exe
 endif
 
-all: libdbglog.a widgets_post allExamples script/taffydb
+all:  dbglogDefines.pl libdbglog.a widgets_post allExamples script/taffydb
 	chmod 755 html img script
 	chmod 644 html/* img/* script/*
 	chmod 755 script/taffydb
 
 ROOT_PATH = ${CURDIR}
 
-# Set to "-DGDB_ENABLED" if we wish gdb support to be enabled and otherwise not set
-GDB_ENABLED := -DGDB_ENABLED
+# Set to "1" if we wish gdb support to be enabled and otherwise not set
+REMOTE_ENABLED := 1
 
 # The port on which dbglog sets up a daemon that invokes gdb so that it runs upto a particular point
 # in the target application's execution
-GDB_PORT := 17500
+GDB_PORT := 17501
 
 .PHONY: apps
 apps:
-	cd apps/mfem;  make ROOT_PATH=${ROOT_PATH} GDB_PORT=${GDB_PORT} OS=${OS}
-	cd apps/mcbench; ./build-linux-x86_64.sh ${ROOT_PATH}
+	cd apps/mfem;  make ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS}
+#	cd apps/mcbench; ./build-linux-x86_64.sh ${ROOT_PATH}
 
 allExamples: libdbglog.a
 	cd examples; make ROOT_PATH=${ROOT_PATH} OS=${OS}
@@ -42,33 +42,34 @@ runExamples: libdbglog.a apps
 
 libdbglog.a: ${DBGLOG_O} ${DBGLOG_H} widgets_pre
 	ar -r libdbglog.a ${DBGLOG_O} widgets/*.o
-	
+
 dbglog.o: dbglog.C dbglog.h attributes.h
-	g++ -g dbglog.C -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o dbglog.o
+	g++ -g dbglog.C -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o dbglog.o
 
 attributes.o: attributes.C attributes.h
-	g++ -g attributes.C -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o attributes.o
+	g++ -g attributes.C -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o attributes.o
 
 # Rule for compiling the aspects of widgets that libdbglog.a requires
 .PHONY: widgets_pre
 widgets_pre:
-	cd widgets; make -f Makefile_pre ROOT_PATH=${ROOT_PATH} GDB_PORT=${GDB_PORT} OS=${OS}
+	cd widgets; make -f Makefile_pre ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS}
 
 # Rule for compiling the aspects of widgets that require libdbglog.a
 widgets_post: libdbglog.a
-	cd widgets; make -f Makefile_post ROOT_PATH=${ROOT_PATH} GDB_PORT=${GDB_PORT} OS=${OS}
+	cd widgets; make -f Makefile_post ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS}
 
 binreloc.o: binreloc.c binreloc.h
 	g++ -g binreloc.c -c -o binreloc.o
 
+HOSTNAME_ARG=$(shell getHostnameArg.pl)
 getAllHostnames.o: getAllHostnames.C getAllHostnames.h
-	g++ -g getAllHostnames.C -c -o getAllHostnames.o
+	g++ -g getAllHostnames.C -DHOSTNAME_ARG="\"${HOSTNAME_ARG}\"" -c -o getAllHostnames.o
 
 gdbLineNum.pl: setupGDBWrap.pl dbglog.C
 	./setupGDBWrap.pl
 
 dbglogDefines.pl:
-	printf "\$$main::dbglogPath = \"${DBGLOG_PATH}\";" > dbglogDefines.pl
+	printf "\$$main::dbglogPath = \"${ROOT_PATH}\"; return 1;" > dbglogDefines.pl
 
 clean:
 	cd widgets; make -f Makefile_pre clean
