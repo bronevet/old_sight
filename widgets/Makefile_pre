@@ -1,8 +1,10 @@
 WIDGETS_O := scope.o graph.o valSelector.o trace.o
 WIDGETS_H := scope.h graph.h valSelector.h trace.h
+WIDGETS_STRUCTURE_O := scope_structure.o graph_structure.o valSelector_structure.o trace_structure.o
+WIDGETS_STRUCTURE_H := scope_structure.h graph_structure.h valSelector_structure.h trace_structure.h
 WIDGETS := ${WIDGETS_O} ${WIDGETS_H}
 
-all: libwidgets.a \
+all: ${WIDGETS_STRUCTURE_O} ${WIDGETS_STRUCTURE_H} \
      shellinabox/bin/shellinaboxd${EXE} mongoose/mongoose${EXE} graphviz/bin/dot${EXE} \
      ID3-Decision-Tree \
      xdottool \
@@ -12,20 +14,31 @@ all: libwidgets.a \
 	chmod 755 canviz-0.1/excanvas canviz-0.1/lib canviz-0.1/path canviz-0.1/prototype
 	chmod 644 canviz-0.1/*/*
 
-libwidgets.a: ${WIDGETS_O} ${WIDGETS_H}
-	ar -r libwidgets.a ${WIDGETS_O}
-	
+#${WIDGETS_O} ${WIDGETS_H}
+
 scope.o: scope.C scope.h ../attributes.h ../dbglog.h
 	g++ -g scope.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o scope.o
+	
+scope_structure.o: scope_structure.C scope_structure.h ../attributes_structure.h ../dbglog_structure.h
+	g++ -g scope_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o scope_structure.o
 	
 graph.o: graph.C graph.h ../attributes.h ../dbglog.h
 	g++ -g graph.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o graph.o
 	
+graph_structure.o: graph_structure.C graph_structure.h ../attributes_structure.h ../dbglog_structure.h
+	g++ -g graph_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o graph_structure.o
+	
 valSelector.o: valSelector.C valSelector.h ../dbglog.h
 	g++ -g valSelector.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o valSelector.o
 
+valSelector_structure.o: valSelector_structure.C valSelector_structure.h ../dbglog_structure.h
+	g++ -g valSelector_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o valSelector_structure.o
+
 trace.o: trace.C trace.h ../dbglog.h
 	g++ -g trace.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o trace.o
+
+trace_structure.o: trace_structure.C trace_structure.h ../dbglog_structure.h
+	g++ -g trace_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o trace_structure.o
 
 xdottool:
 	rm -rf xdotool-2.20110530.1.tar.gz xdottool

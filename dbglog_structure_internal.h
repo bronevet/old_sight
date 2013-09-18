@@ -7,6 +7,7 @@
 #include <string>
 #include <iostream>
 #include <sstream>
+#include <ostream>
 #include <fstream>
 #include <stdarg.h>
 #include "attributes_structure.h"
@@ -18,8 +19,10 @@ class printable
 {
   public:
   virtual ~printable() {}
-  virtual std::string str(std::string indent="")=0;
+  virtual void print(std::ofstream& ofs) const=0;
 };
+// Call the print method of the given printable object
+std::ofstream& operator<<(std::ofstream& ofs, const printable& p);
 
 // Records the information needed to call the application
 extern bool saved_appExecInfo; // Indicates whether the application execution info has been saved
@@ -41,7 +44,27 @@ void initializeDebug(std::string title, std::string workDir);
 std::string tabs(int n);
 
 class dbgStream;
-typedef std::list<std::pair<int, std::list<int> > > location;
+
+// Represents a unique location in the dbglog output
+class location : printable{
+  std::list<std::pair<int, std::list<int> > > l;
+  
+  public:
+  location();
+  ~location();
+  
+  void enterFileBlock();
+  void exitFileBlock();
+
+  void enterBlock();
+  void exitBlock();
+
+  void operator=(const location& that);
+  bool operator==(const location& that);
+  bool operator<(const location& that);
+
+  void print(std::ofstream& ofs) const;
+};
 
 // Uniquely identifies a location with the debug information, including the file and region hierarchy
 // Anchors can be created in two ways:
@@ -63,6 +86,12 @@ class anchor
   protected:
   static int maxAnchorID;
   int anchorID;
+
+  // Itentifies this anchor's location in the file and region hierarchies
+//  location loc;
+
+  // Flag that indicates whether we've already reached this anchor's location in the output
+  //bool located;
   
   public:
   anchor();
@@ -70,6 +99,8 @@ class anchor
   anchor(int anchorID);
   
   int getID() const { return anchorID; }
+
+ // bool isLocated() const { return located; }
   
   public:
   static anchor noAnchor;
@@ -219,7 +250,10 @@ class dbgStream : public std::ostream
   std::string tmpDir;
   // The total number of images in the output file
   int numImages;
-  
+ 
+  // The current location within the debug output
+  location loc;
+ 
   // Stack of blocks currently in scope
   std::list<block*> blocks;
   

@@ -20,6 +20,13 @@ using namespace dbglog;
 namespace dbglog {
 namespace structure{
 
+// Call the print method of the given printable object
+std::ofstream& operator<<(std::ofstream& ofs, const printable& p) {
+  p.print(ofs);
+  return ofs;
+}
+    
+
 /***************
  ***** dbg *****
  ***************/
@@ -126,6 +133,73 @@ string tabs(int n)
   for(int i=0; i<n; i++)
     s+="\t";
   return s;
+}
+
+/********************
+ ***** location *****
+ ********************/
+
+location::location()
+{
+  // Initialize fileLevel with a 0 to make it possible to count top-level files
+  l.push_back(make_pair(0, list<int>(1, 0)));
+}
+
+location::~location()
+{
+  assert(l.size()==1);
+  l.pop_back();
+}
+
+void location::enterFileBlock() {
+  assert(l.size()>0);
+  
+  // Increment the index of this file unit within the current nesting level
+  (l.back().first)++;
+  // Add a fresh file level to the location
+  l.push_back(make_pair(0, list<int>(1, 0)));
+  l.push_back(make_pair(0, list<int>()));
+}
+
+void location::exitFileBlock() {
+  assert(l.size()>0);
+  l.pop_back();
+}
+
+void location::enterBlock() {
+  assert(l.size()>0);
+  assert(l.back().second.size()>0);
+
+  // Increment the index of this block unit within the current nesting level of this file
+  l.back().second.back()++;
+  // Add a new level to the block list, starting the index at 0
+  l.back().second.push_back(0);
+}
+void location::exitBlock() {
+  assert(l.size()>0);
+  assert(l.back().second.size()>0);
+  l.back().second.pop_back();
+}
+
+void location::operator=(const location& that)
+{ l = that.l; }
+
+bool location::operator==(const location& that)
+{ return l==that.l; }
+
+bool location::operator<(const location& that)
+{ return l<that.l; }
+
+void location::print(std::ofstream& ofs) const {
+  ofs << "[location: "<<endl;
+  for(std::list<std::pair<int, std::list<int> > >::const_iterator i=l.begin(); i!=l.end(); i++) {
+    ofs << "    "<<i->first<<" :";
+    for(std::list<int>::const_iterator j=i->second.begin(); j!=i->second.end(); j++) {
+      ofs << " "<<*j;
+    }
+    ofs << endl;
+  }
+  ofs << "]";
 }
 
 /******************
@@ -309,7 +383,7 @@ int dbgBuf::printString(string s)
 
 streamsize dbgBuf::xsputn(const char * s, streamsize n)
 {
-  cerr << "xputn() << ownerAccess="<<ownerAccess<<" n="<<n<<" s=\""<<string(s)<<"\" query="<<attributes.query()<<"\n";
+//  cerr << "xputn() << ownerAccess="<<ownerAccess<<" n="<<n<<" s=\""<<string(s)<<"\" query="<<attributes.query()<<"\n";
   
   // Only emit text if the current query on attributes evaluates to true
   if(!attributes.query()) return n;
@@ -339,7 +413,7 @@ streamsize dbgBuf::xsputn(const char * s, streamsize n)
       i++;
     }
 
-    cerr << "xputn() >>>\n";
+//    cerr << "xputn() >>>\n";
     return n;
   }
 }
@@ -422,12 +496,15 @@ dbgStream::~dbgStream()
 // b: The block that is being entered
 void dbgStream::enterBlock(block* b) {
   blocks.push_back(b);
+  loc.enterBlock();
 }
 
 // Called when a block is exited. Returns the block that was exited.
 block* dbgStream::exitBlock() {
   assert(blocks.size()>0);
-  
+ 
+  loc.exitBlock();
+ 
   block* lastB = blocks.back();
   blocks.pop_back();
   return lastB;

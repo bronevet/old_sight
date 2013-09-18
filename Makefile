@@ -1,5 +1,7 @@
 DBGLOG_O := dbglog.o attributes.o binreloc.o getAllHostnames.o
-DBGLOG_H := dbglog.h dbglog_internal.h attributes.h binreloc.h getAllHostnames.h
+DBGLOG_H := dbglog_layout.h dbglog_internal.h attributes.h binreloc.h getAllHostnames.h
+DBGLOG_STRUCTURE_O := dbglog_structure.o attributes_structure.o binreloc.o getAllHostnames.o utils.o
+DBGLOG_STRUCTURE_H := dbglog.h dbglog_structure_internal.h attributes_structure.h binreloc.h getAllHostnames.h utils.h
 DBGLOG := ${DBGLOG_O} ${DBGLOG_H} gdbLineNum.pl dbglogDefines.pl
 
 OS := $(shell uname -o)
@@ -7,7 +9,7 @@ ifeq (${OS}, Cygwin)
 EXE := .exe
 endif
 
-all: libdbglog.a widgets_post allExamples script/taffydb
+all: libdbglog_structure.a widgets_post allExamples script/taffydb
 	chmod 755 html img script
 	chmod 644 html/* img/* script/*
 	chmod 755 script/taffydb
@@ -26,7 +28,7 @@ apps:
 	cd apps/mfem;  make ROOT_PATH=${ROOT_PATH} GDB_PORT=${GDB_PORT} OS=${OS}
 	cd apps/mcbench; ./build-linux-x86_64.sh ${ROOT_PATH}
 
-allExamples: libdbglog.a
+allExamples: libdbglog_structure.a
 	cd examples; make ROOT_PATH=${ROOT_PATH} OS=${OS}
 
 runExamples: libdbglog.a apps
@@ -43,11 +45,20 @@ runExamples: libdbglog.a apps
 libdbglog.a: ${DBGLOG_O} ${DBGLOG_H} widgets_pre
 	ar -r libdbglog.a ${DBGLOG_O} widgets/*.o
 	
-dbglog.o: dbglog.C dbglog.h attributes.h
+libdbglog_structure.a: ${DBGLOG_STRUCTURE_O} ${DBGLOG_STRUCTURE_H} widgets_pre
+	ar -r libdbglog_structure.a ${DBGLOG_STRUCTURE_O} widgets/*_structure.o
+	
+dbglog.o: dbglog.C dbglog_internal.h attributes.h
 	g++ -g dbglog.C -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o dbglog.o
+
+dbglog_structure.o: dbglog_structure.C dbglog_structure_internal.h attributes_structure.h
+	g++ -g dbglog_structure.C -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o dbglog_structure.o
 
 attributes.o: attributes.C attributes.h
 	g++ -g attributes.C -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o attributes.o
+
+attributes_structure.o: attributes_structure.C attributes_structure.h
+	g++ -g attributes_structure.C -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o attributes_structure.o
 
 # Rule for compiling the aspects of widgets that libdbglog.a requires
 .PHONY: widgets_pre
@@ -60,6 +71,9 @@ widgets_post: libdbglog.a
 
 binreloc.o: binreloc.c binreloc.h
 	g++ -g binreloc.c -c -o binreloc.o
+
+utils.o: utils.C utils.h
+	g++ -g utils.C -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o utils.o
 
 getAllHostnames.o: getAllHostnames.C getAllHostnames.h
 	g++ -g getAllHostnames.C -c -o getAllHostnames.o

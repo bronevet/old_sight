@@ -1,6 +1,8 @@
-#include "dbglog_internal.h"
-#include "widgets/scope.h"
-#include "widgets/graph.h"
-#include "widgets/valSelector.h"
-#include "widgets/trace.h"
-//#include "widgets/mfem/mfem.h"
+#include "utils.h"
+#include "dbglog_structure_internal.h"
+#include "widgets/graph_structure.h"
+#include "widgets/scope_structure.h"
+#include "widgets/valSelector_structure.h"
+#include "widgets/trace_structure.h"
+
+using namespace dbglog::structure;

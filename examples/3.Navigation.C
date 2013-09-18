@@ -66,8 +66,9 @@ int main(int argc, char** argv)
       // Link backwards to all the factors of i
       {
         scope sFac(txt()<<"Factors of "<<i, scope::low);
-        for(set<pair<int, anchor> >::iterator a=factorAnchors[i].begin(); a!=factorAnchors[i].end(); a++)
-          dbg << a->first<<" "<<a->second.linkImg();
+        for(set<pair<int, anchor> >::iterator a=factorAnchors[i].begin(); a!=factorAnchors[i].end(); a++) {
+          dbg << a->first<<" "; a->second.linkImg();
+	}
       }
       
       // We can now erase all the anchors that refer to this scope from pointsTo[] since we've successfully terminated them.
@@ -85,7 +86,7 @@ int main(int argc, char** argv)
         notPrime[j] = true;
         
         // Add a forward link to iteration that considers the number we've just shown is not a prime
-        dbg << toAnchor.linkImg("Iteration of invalidated prime"); dbg << endl;
+        toAnchor.linkImg("Iteration of invalidated prime"); dbg << endl;
       }
     }
   }
@@ -181,11 +182,11 @@ int fibScopeLinks(int a, scope::scopeLevel level, list<int>& stack,
     dbg << "=1."<<endl;
     if(doFWLinks) {
       anchor fwLink;
-      dbg << fwLink.linkImg("Forward link"); dbg << endl;
+      fwLink.linkImg("Forward link"); dbg << endl;
       OutFW[stack] = fwLink;
     }
     if(InBW.find(stack)!=InBW.end())
-    { dbg << InBW[stack].linkImg("Backward link"); dbg<<endl; }
+    { InBW[stack].linkImg("Backward link"); dbg<<endl; }
     
     //cout << "link="<<dbg.linkTo(linkScopes[stack], "go")<<endl;
     stack.pop_back(); // Remove this call from stack
@@ -197,11 +198,11 @@ int fibScopeLinks(int a, scope::scopeLevel level, list<int>& stack,
     
     if(doFWLinks) {
       anchor fwLink;
-      dbg << fwLink.linkImg("Forward link"); dbg << endl;
+      fwLink.linkImg("Forward link"); dbg << endl;
       OutFW[stack] = fwLink;
     }
     if(InBW.find(stack)!=InBW.end())
-    { dbg << InBW[stack].linkImg("Backward link"); dbg<<endl; }
+    { InBW[stack].linkImg("Backward link"); dbg<<endl; }
     
     //cout << "link="<<dbg.linkTo(linkScopes[stack], "go")<<endl;
     stack.pop_back(); // Remove this call from stack
