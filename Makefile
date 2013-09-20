@@ -78,6 +78,7 @@ clean:
 	cd apps/mcbench; ./clean-linux-x86_64.sh
 	cd apps/mfem; make clean
 	rm -rf dbg dbg.* libdbglog.a *.o widgets/shellinabox* widgets/mongoose* widgets/graphviz* gdbLineNum.pl
+	rm -rf script/taffydb dbglogDefines.pl gdbscript
 
 script/taffydb:
 	cd script; wget --no-check-certificate https://github.com/typicaljoe/taffydb/archive/master.zip

@@ -5,7 +5,7 @@ WIDGETS := ${WIDGETS_O} ${WIDGETS_H}
 all: libwidgets.a \
      shellinabox/bin/shellinaboxd${EXE} mongoose/mongoose${EXE} graphviz/bin/dot${EXE} \
      ID3-Decision-Tree \
-     xdottool \
+     xdotool \
      noVNC \
      external_scripts
 	chmod 755 canviz-0.1 
@@ -28,12 +28,13 @@ valSelector.o: valSelector.C valSelector.h ../dbglog.h
 trace.o: trace.C trace.h ../dbglog.h
 	g++ -g trace.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o trace.o
 
-xdottool:
-	rm -rf xdotool-2.20110530.1.tar.gz xdottool
+xdotool:
+	rm -rf xdotool-2.20110530.1.tar.gz xdotool
 	wget http://semicomplete.googlecode.com/files/xdotool-2.20110530.1.tar.gz
 	tar -xf xdotool-2.20110530.1.tar.gz
+	rm -f xdotool-2.20110530.1.tar.gz
 	cd xdotool-2.20110530.1; CC=gcc; make
-	mv xdotool-2.20110530.1 xdottool
+	mv xdotool-2.20110530.1 xdotool
 
 shellinabox/bin/shellinaboxd${EXE}:
 	rm -f shellinabox-2.14.tar.gz
@@ -114,7 +115,8 @@ d3.v2.js:
 	cd widgets; wget http://d3js.org/d3.v2.js
 
 clean:
-	rm -fr xdotool-2.20110530.1
+	rm -fr xdotool
+	rm -rf ID3-Decision-Tree
 	../killP mongoose/mongoose
 	../killP shellinabox/bin/shellinaboxd
 	rm -rf libwidgets.a *.o shellinabox* mongoose* graphviz noVNC

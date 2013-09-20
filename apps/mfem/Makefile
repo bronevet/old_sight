@@ -31,6 +31,7 @@ clean:
 	rm -fr meshFile2Socket
 	cd mfem; make clean
 	rm -f mfem.o
+	../../killP glvis
 	rm -rf glvis
 #	cd glvis; make clean
 
