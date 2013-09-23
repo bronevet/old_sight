@@ -24,10 +24,11 @@ int main(int argc, char** argv) {
   list<string> contextAttrs;
   contextAttrs.push_back("i");
   contextAttrs.push_back("j");
-  trace tableTrace("Table Trace", contextAttrs, trace::showBegin, trace::table);
+//  trace tableTrace("Table Trace", contextAttrs, trace::showBegin, trace::table);
+  trace tableTrace("Heatmap", contextAttrs, trace::showBegin, trace::heatmap);
   
   // For the last trace we'll use k as the context variable
-  trace linesTrace("Lines Trace", "k", trace::showEnd, trace::lines);
+//  trace linesTrace("Lines Trace", "k", trace::showEnd, trace::lines);
     
   for(int i=0; i<5; i++) {
     attr iAttr("i", i);
@@ -36,8 +37,10 @@ int main(int argc, char** argv) {
     for(int j=i; j<5; j++) {
       attr jAttr("j", j);
       scope s(txt()<<"j="<<j);
+
+      traceAttr("Heatmap", "ij", attrValue(i*j));
       
-      for(int k=0; k<=j; k++) {
+/*      for(int k=0; k<=j; k++) {
         attr kAttr("k", k);
         scope s(txt()<<"k="<<k);
         
@@ -45,7 +48,7 @@ int main(int argc, char** argv) {
         
         traceAttr("Lines Trace", "i", attrValue(i));
         traceAttr("Lines Trace", "j", attrValue(j));
-      }
+      }*/
     }
   }
   

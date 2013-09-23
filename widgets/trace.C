@@ -24,6 +24,8 @@ trace::trace(std::string label, std::string contextAttr, showLocT showLoc, vizT 
 
 
 void trace::init(std::string label) {
+  if(viz==heatmap && contextAttrs.size()!=2) { cerr << "ERROR heatmap tables require 2 context attributes!"; exit(-1); }
+  
   if(!initialized) {
     // Table/Lines visualization
     //dbg.includeScript("https://www.google.com/jsapi", "text/javascript");
@@ -68,7 +70,7 @@ trace::~trace() {
   if(showLoc == showEnd) showViz();
   
   ostringstream contextAttrsStr;
-  if(viz==table || viz == decTree) {
+  if(viz==table || viz==decTree || viz==heatmap) {
     contextAttrsStr << "[";
     for(std::list<std::string>::iterator a=contextAttrs.begin(); a!=contextAttrs.end(); a++) {
       if(a!=contextAttrs.begin()) contextAttrsStr << ", ";
@@ -78,7 +80,7 @@ trace::~trace() {
   }
   
   ostringstream tracerAttrsStr;
-  if(viz==table || viz==lines) {
+  if(viz==table || viz==lines || viz==heatmap) {
     tracerAttrsStr << "[";
     for(set<string>::iterator a=tracerKeys.begin(); a!=tracerKeys.end(); a++) {
       if(a!=tracerKeys.begin()) tracerAttrsStr << ", ";
@@ -88,7 +90,7 @@ trace::~trace() {
   }
   
   // Now that we know all the trace variables that are included in this trace, emit the trace
-  if(viz==table) {
+  if(viz==table || viz==heatmap) {
     //dbg.widgetScriptPrologCommand(txt()<<"loadGoogleAPI();");
     ostringstream cmd; 
     cmd<<"displayTrace('"<<getLabel()<<"', '"<<tgtBlockID<<"-Table', "<<
@@ -123,6 +125,7 @@ string trace::viz2Str(vizT viz) {
        if(viz == table)   return "table";
   else if(viz == lines)   return "lines";
   else if(viz == decTree) return "decTree";
+  else if(viz == heatmap) return "heatmap";
   else                    return "???";
 }
 // Place the code to show the visualization

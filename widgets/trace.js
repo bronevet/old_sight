@@ -23,7 +23,7 @@ function traceRecord(traceLabel, traceVals, contextVals, viz) {
   
   // Create an object that contains the data of the current observation
   var allVals = {};
-  if(viz == 'table' || viz == 'lines' || viz == 'decTree') {
+  if(viz == 'table' || viz == 'lines' || viz == 'decTree' || viz == 'heatmap') {
     
     // Add the data
     for(ctxtKey in contextVals) { if(contextVals.hasOwnProperty(ctxtKey)) {
@@ -102,6 +102,8 @@ function displayTrace(traceLabel, blockID, contextAttrs, traceAttrs, viz) {
     // Create a div in which to place this attribute's decision tree
     //document.getElementById("div"+blockID).innerHTML += traceAttrs[0]+"<div id='div"+blockID+":"+traceAttrs[0]+"'></div>";
     drawGraph(model,"div"+blockID+"_"+traceAttrs[0]);
+  } else if(viz == 'heatmap') {
+    document.getElementById("div"+blockID).innerHTML = "<table><tr><td>HI</td></tr></table>";
   }
   
   displayTraceCalled = true;
