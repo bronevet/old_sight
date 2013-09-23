@@ -41,12 +41,13 @@ void trace::init(std::string label) {
     dbg.includeWidgetScript("underscore-min.js",   "text/javascript"); dbg.includeFile("underscore-min.js");
     dbg.includeWidgetScript("d3.v2.js",            "text/javascript"); dbg.includeFile("d3.v2.js");
     
+    dbg.includeWidgetScript("gradient.js",         "text/javascript"); dbg.includeFile("gradient.js");
+    
     dbg.includeWidgetScript("ID3-Decision-Tree/js/id3.js", "text/javascript");
     //dbg.includeScript("https://www.google.com/jsapi?autoload={\"modules\":[{\"name\":\"visualization\",\"version\":\"1\",\"packages\":[\"orgchart\"]}]}", "text/javascript");
     dbg.includeFile("ID3-Decision-Tree");
 
-    dbg.includeFile("trace.js");
-    dbg.includeWidgetScript("trace.js", "text/javascript");
+    dbg.includeFile("trace.js"); dbg.includeWidgetScript("trace.js", "text/javascript");
     
     initialized = true;
   }
@@ -93,7 +94,7 @@ trace::~trace() {
   if(viz==table || viz==heatmap) {
     //dbg.widgetScriptPrologCommand(txt()<<"loadGoogleAPI();");
     ostringstream cmd; 
-    cmd<<"displayTrace('"<<getLabel()<<"', '"<<tgtBlockID<<"-Table', "<<
+    cmd<<"displayTrace('"<<getLabel()<<"', '"<<tgtBlockID<<"-"<<(viz==table?"Table": (viz==heatmap?"Heatmap": "???"))<<"', "<<
                        contextAttrsStr.str()<<", " << 
                        tracerAttrsStr.str()<<", "<<  
                        "'"<<viz2Str(viz)<<"');";
@@ -147,6 +148,8 @@ void trace::showViz() {
       dbg << *t << endl;
       dbg << "<div id=\"div"<<tgtBlockID<<"_"<<*t<<"\"></div>\n";
     }
+  } else if(viz==heatmap) {
+    dbg << "<div id=\"div"<<tgtBlockID<<"-Heatmap\"></div>";
   }
   
   dbg.exitBlock();
@@ -160,8 +163,8 @@ void trace::observePre(std::string key)
 }
 
 // Called by traceAttr() to inform the trace that a new observation has been made
-void trace::traceAttrObserved(std::string key, const attrValue& val) {
-  obs[key] = val;
+void trace::traceAttrObserved(std::string key, const attrValue& val, anchor target) {
+  obs[key] = make_pair(val, target);
   tracerKeys.insert(key);
 }
 
@@ -180,9 +183,17 @@ void trace::emitObservations() {
   
   // Emit the recently observed values of tracer attributes
   cmd << "{";
-  for(map<string, attrValue>::iterator i=obs.begin(); i!=obs.end(); i++) {
+  for(map<string, pair<attrValue, anchor> >::iterator i=obs.begin(); i!=obs.end(); i++) {
     if(i!=obs.begin()) cmd << ", ";
-    cmd << "'"<<i->first << "': '" << i->second.getAsStr()<<"'";
+    cmd << "'"<<i->first << "': '" << i->second.first.getAsStr()<<"'";
+  }
+  
+  cmd << "}, {";
+  
+  // Emit the anchors observed tracer values
+  for(map<string, pair<attrValue, anchor> >::iterator i=obs.begin(); i!=obs.end(); i++) {
+    if(i!=obs.begin()) cmd << ", ";
+    cmd << "'"<<i->first << "': \"javascript:" << (i->second.second==anchor::noAnchor? "": i->second.second.getLinkJS())<<"\"";
   }
   
   cmd << "}, {";
@@ -205,11 +216,21 @@ void trace::emitObservations() {
 void traceAttr(std::string label, std::string key, const attrValue& val) {
   /*assert(trace::stack.size()>0);
   trace* t = *(trace::stack.rbegin());*/
+  // Find the tracer with the name label
   assert(trace::active.find(label) != trace::active.end());
   trace* t = trace::active[label];
   
-  // Inform the inner-most tracer of the observation
-  t->traceAttrObserved(key, val);
+  // Inform the chosen tracer of the observation
+  t->traceAttrObserved(key, val, anchor::noAnchor);
+}
+
+void traceAttr(std::string label, std::string key, const attrValue& val, anchor target) {
+  // Find the tracer with the name label
+  assert(trace::active.find(label) != trace::active.end());
+  trace* t = trace::active[label];
+  
+  // Inform the chosen tracer of the observation
+  t->traceAttrObserved(key, val, target);
 }
 
 /*******************

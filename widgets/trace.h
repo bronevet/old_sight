@@ -15,10 +15,12 @@
 namespace dbglog {
 
 void traceAttr(std::string label, std::string key, const attrValue& val);
+void traceAttr(std::string label, std::string key, const attrValue& val, anchor target);
 
 class trace: public block, public attrObserver
 {
-  friend void traceAttr(std::string key, const attrValue& val);
+  friend void traceAttr(std::string label, std::string key, const attrValue& val);
+  friend void traceAttr(std::string label, std::string key, const attrValue& val, anchor target);
     
   public:
   // Indicates whether the trace visualization should be shown at the beginning or the end of its visual block
@@ -62,7 +64,7 @@ class trace: public block, public attrObserver
   void showViz();
   
   // Records all the observations of trace variables since the last time variables in contextAttrs changed values
-  std::map<std::string, attrValue> obs;
+  std::map<std::string, std::pair<attrValue, anchor> > obs;
     
   // The keys of all the tracer attributes ever observed
   std::set<std::string> tracerKeys;
@@ -72,7 +74,7 @@ class trace: public block, public attrObserver
   void observePre(std::string key);
   
   // Called by traceAttr() to inform the trace that a new observation has been made
-  void traceAttrObserved(std::string key, const attrValue& val);
+  void traceAttrObserved(std::string key, const attrValue& val, anchor target);
   
   private:
   // Emits the JavaScript command that encodes the observations made since the last time a context attribute changed
