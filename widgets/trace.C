@@ -207,7 +207,7 @@ void trace::emitObservations() {
     cmd << "'" << *a << "': '" << vals.begin()->getAsStr() << "'";
   }
   cmd << "}, '"<<viz2Str(viz)<<"');";
-  dbg.widgetScriptCommand(cmd.str());
+  widgetScriptCommand(cmd.str());
   
   // Reset the obs[] map since we've just emitted all these observations
   obs.clear();

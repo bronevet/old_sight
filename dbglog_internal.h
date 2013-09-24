@@ -142,6 +142,12 @@ class block
   // Set of anchors that point to this block. Once we know this block's location we
   // locate them there.
   std::set<anchor> pointsToAnchors;
+    
+  // File that contains commands to be executed when the sub-file this block is in is loaded
+  std::ofstream* scriptFile;
+  // Files that contain the commands to be executed before/after all the commands in the script file are executed
+  std::ofstream* scriptPrologFile;
+  std::ofstream* scriptEpilogFile;
 
   protected:
   // Counts the number of times the block constructor has been called
@@ -184,6 +190,15 @@ class block
   // Called to enable the block to print its entry and exit text
   virtual void printEntry(std::string loadCmd) {}
   virtual void printExit() {}
+  
+  // Adds the given JavaScript command text to the script that will be loaded with the current block.
+  // This command is guaranteed to run after the body of the file is loaded but before the anchors
+  // referentsare loaded.
+  void widgetScriptCommand(std::string command);
+    
+  // Adds the given JavaScript command text to be executed before/after the commands added with widgetScriptCommand()
+  void widgetScriptPrologCommand(std::string command);
+  void widgetScriptEpilogCommand(std::string command);
 };
 
 // Adopted from http://wordaligned.org/articles/cpp-streambufs
@@ -334,6 +349,14 @@ public:
   // Switch between the owner class and user code writing text into this stream
   void userAccessing();
   void ownerAccessing();
+  
+  // Returns the file stream to the file that contains the commands to be executed when the current sub-file is loaded
+  std::ofstream* getCurScriptFile() const;
+    
+  // Returns the file stream to the file that contains the commands to be executed before/after all the 
+  // commands in the script file are executed
+  std::ofstream* getCurScriptPrologFile() const;
+  std::ofstream* getCurScriptEpilogFile() const;
   
   // Return the root working directory
   const std::string& getWorkDir() const { return workDir; }

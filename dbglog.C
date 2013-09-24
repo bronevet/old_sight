@@ -423,6 +423,9 @@ int block::blockCount=0;
 block::block(string label) : label(label), startA(false, -1) /*=noAnchor, except that noAnchor may not yet bee initialized)*/ {
   advanceBlockCount();
   if(!initializedDebug) initializeDebug("", "dbg");
+  scriptFile = dbg.getCurScriptFile();            // assert(scriptFile);
+  scriptPrologFile = dbg.getCurScriptPrologFile();// assert(scriptPrologFile);
+  scriptEpilogFile = dbg.getCurScriptEpilogFile();// assert(scriptEpilogFile);
 }
 
 // Initializes this block with the given label.
@@ -442,6 +445,10 @@ block::block(string label, const anchor& pointsTo) :
     pointsToAnchors.insert(pointsTo);
   // Else, if there are no forward links to this node, initialize startA to be
   // a fresh anchor that refers to the start of this scope
+  
+  scriptFile = dbg.getCurScriptFile();            // assert(scriptFile);
+  scriptPrologFile = dbg.getCurScriptPrologFile();// assert(scriptPrologFile);
+  scriptEpilogFile = dbg.getCurScriptEpilogFile();// assert(scriptEpilogFile);
 }
 
 // Initializes this block with the given label.
@@ -461,6 +468,10 @@ block::block(string label, const set<anchor>& pointsTo) :
   // a fresh anchor that refers to the start of this scope
   
   //cout << "block::block() anchor="<<getAnchorRef().str()<<endl;
+  
+  scriptFile = dbg.getCurScriptFile();            // assert(scriptFile);
+  scriptPrologFile = dbg.getCurScriptPrologFile();// assert(scriptPrologFile);
+  scriptEpilogFile = dbg.getCurScriptEpilogFile();// assert(scriptEpilogFile);
 }
 
 // Increments block count. This function serves as the one location that we can use to target conditional
@@ -501,6 +512,23 @@ anchor& block::getAnchorRef()
 
 anchor block::getAnchor() const
 { return startA; }
+
+// Adds the given JavaScript command text to the script that will be loaded with the current file.
+// This command is guaranteed to run after the body of the file is loaded but before the anchors
+// referents are loaded.
+void block::widgetScriptCommand(std::string command) {
+  *scriptFile << command << endl;
+}
+
+// Adds the given JavaScript command text to be executed before the commands added with widgetScriptCommand()
+void block::widgetScriptPrologCommand(std::string command) {
+  *scriptPrologFile << command << endl;
+}
+
+// Adds the given JavaScript command text to be executed after the commands added with widgetScriptCommand()
+void block::widgetScriptEpilogCommand(std::string command) {
+  *scriptEpilogFile << command << endl;
+}
 
 /******************
  ***** dbgBuf *****
@@ -831,6 +859,26 @@ void dbgStream::ownerAccessing()  {
   fileBufs.back()->ownerAccessing();
 }
 
+
+// Returns the file stream to the file that contains the commands to be executed when the current sub-file is loaded
+std::ofstream* dbgStream::getCurScriptFile() const {
+  if(scriptFiles.size()==0) return NULL;
+  else                      return scriptFiles.back();
+}
+
+// Returns the file stream to the file that contains the commands to be executed before/after all the 
+// commands in the script file are executed
+std::ofstream* dbgStream::getCurScriptPrologFile() const {
+  if(scriptPrologFiles.size()==0) return NULL;
+  else                      return scriptPrologFiles.back();
+}
+
+std::ofstream* dbgStream::getCurScriptEpilogFile() const {
+  if(scriptEpilogFiles.size()==0) return NULL;
+  else                      return scriptEpilogFiles.back();
+}
+
+
 // Creates an output directory for the given widget and returns its path as a pair:
 // <path relative to the current working directory that can be used to create paths for writing files,
 //  path relative to the output directory that can be used inside generated HTML>
@@ -1053,7 +1101,7 @@ int dbgStream::blockIndex() const {
 string dbgStream::enterFileLevel(block* b, bool topLevel)
 {
   assert(loc.size()>0);
-  // Increment the index of this file unit within the current nesting level
+  // Increment the index of thi  s file unit within the current nesting level
   (loc.back().first)++;
   // Add a fresh file level to the location
   loc.push_back(make_pair(0, list<int>(1, 0)));
