@@ -1,12 +1,23 @@
 var traceDataList = {};
+
 var traceDataHash = {};
 var traceLinkHash = {};
 
 var minData = {};
 var maxData = {};
 
-// Records all the values ever observed for each context dimension
+// Records for each context key all the values ever observed for it
 var allCtxtVals = {};
+
+// Maps each trace/context key and value to its type:
+// string - generic type elements of which are ordered lexically
+// number
+var traceValType = {};
+var ctxtValType = {};
+
+function isNumber(n) {
+  return !isNaN(parseFloat(n)) && isFinite(n);
+}
 
 function traceRecord(traceLabel, traceVals, traceValLinks, contextVals, viz) {
   // If this is the first time we've added a record to this trace
@@ -25,6 +36,14 @@ function traceRecord(traceLabel, traceVals, traceValLinks, contextVals, viz) {
   for(traceKey in traceVals) { if(traceVals.hasOwnProperty(traceKey)) {
     if(!minData.hasOwnProperty(traceKey)) minData[traceKey] = 1e100;
     if(!maxData.hasOwnProperty(traceKey)) maxData[traceKey] = -1e100;
+  } }
+
+  // Update the info on the type of trace and context keys
+  for(ctxtKey in contextVals) { if(contextVals.hasOwnProperty(ctxtKey)) {
+    updateKeyValType(ctxtValType, ctxtKey, contextVals[ctxtKey]);
+  } }
+  for(traceKey in traceVals) { if(traceVals.hasOwnProperty(traceKey)) {
+    updateKeyValType(traceValType, traceKey, traceVals[traceKey]);
   } }
   
   // Create an object that contains the data of the current observation
@@ -55,6 +74,28 @@ function traceRecord(traceLabel, traceVals, traceValLinks, contextVals, viz) {
   
   addDataHash(traceDataHash[traceLabel], traceVals, contextVals);
   addDataHash(traceLinkHash[traceLabel], traceValLinks, contextVals);
+}
+
+// Given a mapping of trace/context keys to the types of their values,
+// updates the mapping that, taking the next observation of the value into account 
+function updateKeyValType(typemap, key, val) {
+  if(isNumber(val)) {
+    // If we don't yet know this key's type, initialize it to "number"
+    if(!(key in typemap)) typemap[key]="number";
+    // If we currently believe the key's type is something other than "number", set it to "string" since it includes all possibilities
+    else if(typemap[key]!="number") typemap[key]="string";
+  }
+  // Since we don't know the type of this key, set it to "string" (overwrites any prior setting)
+  typemap[val]="string";
+}
+
+// Given the type of a given key, returns an appropriate comparison function to use when sorting
+// instances of the key
+function getCompareFunc(keyType) {
+  if(keyType == "number")
+    return function(a, b) { return a-b; }
+  else
+    return function(a, b) { return a<b; }
 }
 
 function addDataHash(dataHash, traceVals, contextVals) {
@@ -162,27 +203,36 @@ function displayTrace(traceLabel, blockID, contextAttrs, traceAttrs, viz) {
       //out += "valBucketSize="+valBucketSize+", minData[traceAttrs[i]]="+minData[traceAttrs[i]]+", maxData[traceAttrs[i]="+maxData[traceAttrs[i]]+"<br>\n";
       out += "<table width=100%>";
       
-      var traceKeys = [];
-      for(traceKey in allCtxtVals) { if(allCtxtVals.hasOwnProperty(traceKey)) {
-        traceKeys.push(traceKey);
+      var ctxtKeys = [];
+      for(ctxtKey in allCtxtVals) { if(allCtxtVals.hasOwnProperty(ctxtKey)) {
+        ctxtKeys.push(ctxtKey);
       } }
       
       var numCols = 0;
-      for(trace0K in allCtxtVals[traceKeys[0]]) { if(allCtxtVals[traceKeys[0]].hasOwnProperty(trace0K)) { numCols++; }}
+      for(ctxt0Key in allCtxtVals[ctxtKeys[0]]) { if(allCtxtVals[ctxtKeys[0]].hasOwnProperty(ctxt0Key)) { numCols++; }}
+
+      // Array of all the values of the first context key, in sorted order
+      var ctxt0Keys = [];
+      for(ctxt0Key in allCtxtVals[ctxtKeys[0]]) { if(allCtxtVals[ctxtKeys[0]].hasOwnProperty(ctxt0Key)) { ctxt0Keys.push(ctxt0Key); } }
+      ctxt0Keys.sort(getCompareFunc(ctxtValType[ctxtKeys[0]]));
+
+      // Array of all the values of the second context key, in sorted order
+      var ctxt1Keys = [];
+      for(ctxt1Key in allCtxtVals[ctxtKeys[1]]) { if(allCtxtVals[ctxtKeys[1]].hasOwnProperty(ctxt1Key)) { ctxt1Keys.push(ctxt1Key); } }
+      ctxt1Keys.sort(getCompareFunc(ctxtValType[ctxtKeys[1]]));
       
       out += "<tr><td width="+(100/(numCols+1))+"%></td>\n";
-      for(trace0K in allCtxtVals[traceKeys[0]]) { if(allCtxtVals[traceKeys[0]].hasOwnProperty(trace0K)) {
-        out += "<td width="+(100/(numCols+1))+"%>"+trace0K+"</td>\n";
-      } }
+      for(k0 in ctxt0Keys)
+      { out += "<td width="+(100/(numCols+1))+"%>"+ctxt0Keys[k0]+"</td>\n"; }
       out += "</tr>";
       //alert(out);
       
-      for(trace1K in allCtxtVals[traceKeys[1]]) { if(allCtxtVals[traceKeys[1]].hasOwnProperty(trace1K)) {
-        out += "<tr><td>"+trace1K+"</td>\n";
-        for(trace0K in allCtxtVals[traceKeys[0]]) { if(allCtxtVals[traceKeys[0]].hasOwnProperty(trace0K)) {
+      for(k1 in ctxt1Keys) {
+        out += "<tr><td>"+ctxt1Keys[k1]+"</td>\n";
+        for(k0 in ctxt0Keys) {
           var contextVals = {};
-          contextVals[traceKeys[0]] = trace0K;
-          contextVals[traceKeys[1]] = trace1K;
+          contextVals[ctxtKeys[0]] = ctxt0Keys[k0];
+          contextVals[ctxtKeys[1]] = ctxt1Keys[k1];
           var traceVals = getDataHash(traceDataHash[traceLabel], contextVals);
           var traceLinks = getDataHash(traceLinkHash[traceLabel], contextVals);
           if(traceVals) { 
@@ -190,19 +240,20 @@ function displayTrace(traceLabel, blockID, contextAttrs, traceAttrs, viz) {
             out += "<td bgcolor=\""+colors[Math.min(valBucket, colors.length-1)]+"\" ";
             if(traceLinks[traceAttrs[i]] != undefined && traceLinks[traceAttrs[i]] != "")
               out += "onclick=\""+traceLinks[traceAttrs[i]]+"\"";
-            out += "\">";
+            out += ">";
             //out += traceVals[traceAttrs[i]];
             out += "</td>\n";
           }
-        } }
+        }
         out += "</tr>\n";
-      } }
+      }
       
       out += "</table>";
     }
-    //alert(out);
+    alert(out);
     document.getElementById("div"+blockID).innerHTML=out;
   }
   
   displayTraceCalled = true;
 }
+

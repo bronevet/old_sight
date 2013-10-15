@@ -247,7 +247,7 @@ function anchor(fileID, blockID) {
 // The function modifies the arguments, so they cannot be used again after this call.
 // When the anchor opens all the required files, it called continuationFunc, if it is provided
 function goToAnchor(prefix, suffix, continuationFunc) {
-  console.debug("goToAnchor("+prefix+", "+suffix+")");
+  console.debug("goToAnchor(["+prefix+"], ["+suffix+"])");
   // If the suffix is empty, we're done
   if(suffix.length == 0) {
     if(typeof continuationFunc !== 'undefined')

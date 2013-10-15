@@ -106,16 +106,16 @@ void initializeDebug(int argc, char** argv, string title, string workDir) {
 
   saved_appExecInfo=true;
 
-  // Having reset argc and argv, we only perform the rest of the initialization if it has not yet been done.
-  if(initializedDebug) return;
- 
   #ifdef REMOTE_ENABLED 
   if(!isPortUsed(GDB_PORT)) {
     ostringstream cmd; cmd << ROOT_PATH << "/widgets/mongoose/mongoose -document_root "<<ROOT_PATH<<" -listening_ports "<<GDB_PORT<<"&";
     system(cmd.str().c_str());
   }
   #endif
-  
+
+   // Having reset argc and argv, we only perform the rest of the initialization if it has not yet been done.
+  if(initializedDebug) return;
+ 
   initializeDebug_internal(title, workDir);
 }
 
