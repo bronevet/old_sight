@@ -15,6 +15,13 @@ var allCtxtVals = {};
 var traceValType = {};
 var ctxtValType = {};
 
+// Maps each context/trace key to a unique numeric ID suitable for indexing into a dense array
+var ctxtKey2ID = {};
+var traceKey2ID = {};
+// Array of all context/trace keys, at the indexes specified in the above hashes
+var ctxtKeys = [];
+var traceKeys = [];
+
 function isNumber(n) {
   return !isNaN(parseFloat(n)) && isFinite(n);
 }
@@ -46,10 +53,21 @@ function traceRecord(traceLabel, traceVals, traceValLinks, contextVals, viz) {
     updateKeyValType(traceValType, traceKey, traceVals[traceKey]);
   } }
   
+  // Update the mapping from trace and context key names to their unique IDs
+  for(ctxtKey in contextVals) { if(contextVals.hasOwnProperty(ctxtKey)) {
+    if(ctxtKey2ID[ctxtKey] == undefined) {
+      ctxtKey2ID[ctxtKey] = Object.keys(ctxtKey2ID).length;
+      ctxtKeys.push(ctxtKey);
+  } } }
+  for(traceKey in traceVals) { if(traceVals.hasOwnProperty(traceKey)) {
+    if(traceKey2ID[traceKey] == undefined) {
+      traceKey2ID[traceKey] = Object.keys(traceKey2ID).length;
+      traceKeys.push(traceKey);
+  } } }
+  
   // Create an object that contains the data of the current observation
   var allVals = {};
-  if(viz == 'table' || viz == 'lines' || viz == 'decTree' || viz == 'heatmap') {
-    
+  if(viz == 'table' || viz == 'lines' || viz == 'decTree' || viz == 'heatmap' || viz == 'boxplot') {
     // Add the data
     for(ctxtKey in contextVals) { if(contextVals.hasOwnProperty(ctxtKey)) {
       allVals[ctxtKey] = contextVals[ctxtKey];
@@ -187,12 +205,21 @@ function displayTrace(traceLabel, blockID, contextAttrs, traceAttrs, viz) {
     // Create a div in which to place this attribute's decision tree
     //document.getElementById("div"+blockID).innerHTML += traceAttrs[0]+"<div id='div"+blockID+":"+traceAttrs[0]+"'></div>";
     drawGraph(model,"div"+blockID+"_"+traceAttrs[0]);
+  } else if(viz == 'boxplot') {
+    var margin = {top: 10, right: 50, bottom: 20, left: 50},
+        width = 120 - margin.left - margin.right,
+        height = 500 - margin.top - margin.bottom;
+
+    //for(c in ctxtKeys) {
+//    for(t in traceKeys) {
+      showBoxPlot(traceDataList[traceID], "div"+blockID+"_"+contextAttrs[0]+"_"+traceAttrs[0], contextAttrs[0], traceAttrs[0], width, height, margin);
+//    } }
   } else if(viz == 'heatmap') {
-    // Array of keys of the context variables. Only the first two are used.
+    /* // Array of keys of the context variables. Only the first two are used.
     var ctxtKeys = [];
     for(ctxtKey in allCtxtVals) { if(allCtxtVals.hasOwnProperty(ctxtKey)) {
       ctxtKeys.push(ctxtKey);
-    } }
+    } }*/
     
     // Array of all the values of the first context key, in sorted order
     var ctxt0KeyVals = [];

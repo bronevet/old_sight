@@ -38,6 +38,10 @@ foreach my $proc (@allProcs) {
 
 # Create a new xstartup for the vnc server
 
+# The size of the vnc session window
+my $vncWidth = 1024;
+my $vncHeight = 768;
+
 # First, back up the original one
 my $vncXStartup = "$ENV{HOME}/.vnc/xstartup";
 if(-e $vncXStartup)
@@ -64,7 +68,7 @@ system "/usr/bin/whoami";
   #print $xstartup "ps -ef\n";
   #print $xstartup "echo 'before sleep'\n";
   #print $xstartup "sleep 1\n";
-  print $xstartup "$main::dbglogPath/apps/mfem/maximizeWindow.pl GLVis\n";
+  print $xstartup "$main::dbglogPath/apps/mfem/maximizeWindow.pl $main::dbglogPath $vncWidth $vncHeight GLVis\n";
   #print $xstartup "echo 'after sleep'\n";
   #print $xstartup "echo 'after max'\n";
 close($xstartup);
@@ -76,7 +80,7 @@ system "chmod 700 $vncXStartup";
 #die;
 
 # Start a vnc server
-my $vncserverPID = open3(my $vncServerIn, my $vncServerOut, my $vncServerErr, "vncserver") || die "ERROR running command \"vncserver\"! $!";
+my $vncserverPID = open3(my $vncServerIn, my $vncServerOut, my $vncServerErr, "vncserver -geometry ${vncWidth}x${vncHeight}") || die "ERROR running command \"vncserver\"! $!";
 # Read the output of vnc until we get the ID of the created desktop
 my $desktopID;
 while(my $line=<$vncServerOut>) {

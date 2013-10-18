@@ -33,7 +33,7 @@ class trace: public block, public attrObserver
   
   public:
   // Identifies the type of visualization used to show the trace
-  typedef enum {table, lines, decTree, heatmap} vizT;
+  typedef enum {table, lines, decTree, heatmap, boxplot} vizT;
   vizT viz;
   
   // Stack of currently active traces
@@ -89,7 +89,13 @@ class trace: public block, public attrObserver
 class measure {
   std::string traceLabel;
   std::string valLabel;
-  struct timeval start;
+  // Counts the total time elapsed so far, accounting for any pauses and resumes
+  double elapsed;
+  // The time when we started or resumed this measure, whichever is most recent
+  struct timeval lastStart;
+
+  // Records whether time collection is currently paused
+  bool paused;
   
   // Records whether we've already performed the measure
   bool measureDone;
@@ -97,11 +103,20 @@ class measure {
   public:
   measure(std::string traceLabel, std::string valLabel);
   ~measure();
-  
+ 
+  // Pauses the measurement so that time elapsed between this call and resume() is not counted.
+  // Returns true if the measure is not currently paused and false if it is (i.e. the pause command has no effect)
+  bool pause();
+
+  // Restarts counting time. Time collection is restarted regardless of how many times pause() was called
+  // before the call to resume().
+  bool resume();
+ 
   double doMeasure();
 }; // class measure
 
 measure* startMeasure(std::string traceLabel, std::string valLabel);
 double endMeasure(measure* m);
+
 
 }; // namespace dbglog

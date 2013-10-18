@@ -82,7 +82,7 @@ void graph::initEnvironment() {
   //dbg.includeWidgetScript("canviz-0.1/prototype/excanvas/excanvas.js", "text/javascript");
   dbg.includeWidgetScript("canviz-0.1/prototype/prototype.js", "text/javascript");
   dbg.includeWidgetScript("canviz-0.1/path/path.js",         "text/javascript");
-  dbg.includeWidgetScript("canviz-0.1/canviz.css",           "css");
+  dbg.includeWidgetScript("canviz-0.1/canviz.css",           "text/css");
   dbg.includeWidgetScript("canviz-0.1/canviz.js",            "text/javascript");
   dbg.includeWidgetScript("canviz-0.1/x11colors.js",         "text/javascript");
   //dbg.includeWidgetScript("canviz-0.1/graphs/graphlist.js",  "text/javascript");

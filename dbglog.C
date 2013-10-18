@@ -20,6 +20,16 @@ using namespace std;
 namespace dbglog {
 
 bool initializedDebug=false;
+// Returns whether log generation has been enabled or explicitly disabled
+bool isEnabled() {
+  static bool checked=false;
+  static bool enabledDebug; // Records whether log generation has been enabled or explicitly disabled
+  if(!checked) {
+    checked = true;
+    enabledDebug = (getenv("DISABLE_DBGLOG") == NULL);
+  }
+  return enabledDebug;
+}
 
 // Create the directory workDir/dirName and return the string that contains the absolute
 // path of the created directory
@@ -71,6 +81,7 @@ char hostname[10000];
 char username[10000];
 
 void initializeDebug(int argc, char** argv, string title, string workDir) {
+  if(!isEnabled()) return;
   // Note: we allow users to specify argc and argv multiple times to support use-cases where
   // dbglog needs to be used and therefore initialized before main() starts and argc and argv 
   // are not available until after the initialization was first performed.
@@ -122,6 +133,7 @@ void initializeDebug(int argc, char** argv, string title, string workDir) {
 // Initializes the debug sub-system
 void initializeDebug(string title, string workDir)
 {
+  if(!isEnabled()) return;
   if(initializedDebug) return;
  
   initializeDebug_internal(title, workDir);
@@ -1485,6 +1497,7 @@ block* dbgStream::exitBlock(bool recursiveExitBlock)
     exitAttrSubBlock();
   
   fileBufs.back()->ownerAccessing();
+  assert(fileBufs.size()>0);
   block* lastB = fileBufs.back()->exitBlock(recursiveExitBlock);
   
   assert(loc.size()>0);

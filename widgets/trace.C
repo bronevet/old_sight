@@ -39,13 +39,17 @@ void trace::init(std::string label) {
     
     dbg.includeWidgetScript("jquery-1.8.1.min.js", "text/javascript"); dbg.includeFile("jquery-1.8.1.min.js");
     dbg.includeWidgetScript("underscore-min.js",   "text/javascript"); dbg.includeFile("underscore-min.js");
-    dbg.includeWidgetScript("d3.v2.js",            "text/javascript"); dbg.includeFile("d3.v2.js");
     
     dbg.includeWidgetScript("gradient.js",         "text/javascript"); dbg.includeFile("gradient.js");
     
     dbg.includeWidgetScript("ID3-Decision-Tree/js/id3.js", "text/javascript");
     //dbg.includeScript("https://www.google.com/jsapi?autoload={\"modules\":[{\"name\":\"visualization\",\"version\":\"1\",\"packages\":[\"orgchart\"]}]}", "text/javascript");
     dbg.includeFile("ID3-Decision-Tree");
+
+    // D3 Widgets
+    dbg.includeScript("http://d3js.org/d3.v3.min.js", "text/javascript");
+    dbg.includeWidgetScript("boxplot.js", "text/javascript"); dbg.includeFile("boxplot.js");
+
 
     dbg.includeFile("trace.js"); dbg.includeWidgetScript("trace.js", "text/javascript");
     
@@ -59,6 +63,10 @@ void trace::init(std::string label) {
   //stack.push_back(this);
   active[label] = this;
   
+  dbg.enterBlock(this, false, true);
+  
+  tgtBlockID = getBlockID();
+  
   // If we should show the visualization at the beginning of the block
   if(showLoc == showBegin) showViz();
 }
@@ -70,6 +78,7 @@ trace::~trace() {
   // If we should show the visualization at the end of the block
   if(showLoc == showEnd) showViz();
   
+  // String that contains the names of all the context attributes 
   ostringstream contextAttrsStr;
   if(viz==table || viz==decTree || viz==heatmap) {
     contextAttrsStr << "[";
@@ -80,6 +89,7 @@ trace::~trace() {
     contextAttrsStr << "]";
   }
   
+  // String that contains the names of all the trace attributes
   ostringstream tracerAttrsStr;
   if(viz==table || viz==lines || viz==heatmap) {
     tracerAttrsStr << "[";
@@ -109,6 +119,12 @@ trace::~trace() {
     for(set<string>::iterator t=tracerKeys.begin(); t!=tracerKeys.end(); t++) {
       dbg.widgetScriptEpilogCommand(txt()<<"displayTrace('"<<getLabel()<<"', '"<<tgtBlockID<<"', "<<contextAttrsStr.str()<<", ['"<<*t<<"'], '"<<viz2Str(viz)<<"');");
     }
+  } else if(viz==boxplot) {
+    // Create a separate set of box plots for each combination of context and tracer attributes
+    for(std::list<std::string>::iterator c=contextAttrs.begin(); c!=contextAttrs.end(); c++) {
+    for(set<string>::iterator t=tracerKeys.begin(); t!=tracerKeys.end(); t++) {
+      dbg.widgetScriptEpilogCommand(txt()<<"displayTrace('"<<getLabel()<<"', '"<<tgtBlockID<<"', '"<<tgtBlockID<<"', ['"<<*c<<"'], ['"<<*t<<"'], '"<<viz2Str(viz)<<"');");
+    } }
   }
   
   /*assert(stack.size()>0);
@@ -119,6 +135,8 @@ trace::~trace() {
   // Stop this object's observations of changes in context variables
   for(list<string>::iterator ca=contextAttrs.begin(); ca!=contextAttrs.end(); ca++)
     attributes.remObs(*ca, this);
+
+  dbg.exitBlock();
 }
 
 // Returns a string representation of a vizT object
@@ -127,13 +145,13 @@ string trace::viz2Str(vizT viz) {
   else if(viz == lines)   return "lines";
   else if(viz == decTree) return "decTree";
   else if(viz == heatmap) return "heatmap";
+  else if(viz == boxplot) return "boxplot"
   else                    return "???";
 }
 // Place the code to show the visualization
 void trace::showViz() {
   dbg.enterBlock(this, false, true);
   
-  tgtBlockID = getBlockID();
   if(viz==table) {
     dbg << "<div class=\"example yui3-skin-sam\"><div id=\"div"<<tgtBlockID<<"-Table\"></div></div>";
   } else if(viz==lines) {
@@ -150,6 +168,14 @@ void trace::showViz() {
     }
   } else if(viz==heatmap) {
     dbg << "<div id=\"div"<<tgtBlockID<<"-Heatmap\"></div>";
+  } else if(viz==boxplot) {
+//cout << "#contextAttrs="<<contextAttrs.size()<<", #tracerKeys="<<tracerKeys.size()<<endl;
+    // Create a separate set of box plots for each combination of context and tracer attributes
+    for(std::list<std::string>::iterator c=contextAttrs.begin(); c!=contextAttrs.end(); c++) {
+    for(set<string>::iterator t=tracerKeys.begin(); t!=tracerKeys.end(); t++) {
+      dbg << "Context="<<*c<<", Trace="<<*t<<endl;
+      dbg << "<div id=\"div"<<tgtBlockID<<"_"<<*c<<"_"<<*t<<"\"></div>\n";
+    } }
   }
   
   dbg.exitBlock();
@@ -238,8 +264,10 @@ void traceAttr(std::string label, std::string key, const attrValue& val, anchor 
  *******************/
 measure::measure(std::string traceLabel, std::string valLabel): traceLabel(traceLabel), valLabel(valLabel)
 {
+  elapsed = 0.0;
   measureDone = false;
-  gettimeofday(&start, NULL);
+  paused = false;
+  gettimeofday(&lastStart, NULL);
 }
 
 measure::~measure() {
@@ -249,13 +277,33 @@ measure::~measure() {
 double measure::doMeasure() {
   if(measureDone) { cerr << "measure::doMeasure() ERROR: measuring variable \""<<valLabel<<"\" in trace \""<<traceLabel<<"\" multiple times!"<<endl; exit(-1); }
   measureDone = true;
+ 
+  // Call pause() to update elapsed with the time since the start of the measure or the last call to resume() 
+  pause(); 
   
-  struct timeval end;
-  gettimeofday(&end, NULL);
-  
-  double elapsed = ((end.tv_sec*1000000 + end.tv_usec) - (start.tv_sec*1000000 + start.tv_usec)) / 1000000.0;
   traceAttr(traceLabel, valLabel, attrValue((double)elapsed));
   return elapsed;
+}
+
+// Pauses the measurement so that time elapsed between this call and resume() is not counted.
+// Returns true if the measure is not currently paused and false if it is (i.e. the pause command has no effect)
+bool measure::pause() {
+  bool modified = paused==false;
+  paused = true;
+
+  struct timeval end;
+  gettimeofday(&end, NULL);
+
+  elapsed += ((end.tv_sec*1000000 + end.tv_usec) - (lastStart.tv_sec*1000000 + lastStart.tv_usec)) / 1000000.0;
+
+  return modified;  
+}
+
+// Restarts counting time. Time collection is restarted regardless of how many times pause() was called
+// before the call to resume().
+bool measure::resume() {
+  gettimeofday(&lastStart, NULL);
+  paused = false;
 }
 
 measure* startMeasure(std::string traceLabel, std::string valLabel) {

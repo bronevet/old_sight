@@ -463,6 +463,9 @@ public:
 }; // dbgStream
 
 extern bool initializedDebug;
+// Returns whether log generation has been enabled or explicitly disabled
+bool isEnabled();
+
 extern dbgStream dbg;
 
 class indent {
@@ -491,8 +494,10 @@ public:
 struct txt : std::string {
   txt() {}
   txt(const std::string& initTxt) {
-  	 _stream << initTxt;
-  	 assign(_stream.str());
+    if(isEnabled()) {
+  	  _stream << initTxt;
+  	  assign(_stream.str());
+  	}
   }
   
   template <typename T>
@@ -502,7 +507,12 @@ struct txt : std::string {
     return *this;
   }
 
-  std::string str() const { return _stream.str(); }
+  std::string str() const { 
+    if(isEnabled())
+      return _stream.str();
+    else
+      return "";
+  }
   std::ostringstream _stream;
 };
 
