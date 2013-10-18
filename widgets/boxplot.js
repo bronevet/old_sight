@@ -36,10 +36,10 @@ function showBoxPlot(vizData, targetDiv, keyName, valName, width, height, margin
       min = Math.min(s, min);
     });
 
-    console.log(keyName+" - "+valName);
+    /*console.log(keyName+" - "+valName);
     for(var name in key2Idx) {
       console.log("    "+name+": "+data[key2Idx[name]].length+" ["+key2Min[name].toExponential()+", "+key2Max[name].toExponential()+"] \in ["+min.toExponential()+", "+max.toExponential()+"]");
-    }
+    }*/
 
     var boxData = [];
     var loc=0;

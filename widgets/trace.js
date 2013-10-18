@@ -14,13 +14,12 @@ var allCtxtVals = {};
 // number
 var traceValType = {};
 var ctxtValType = {};
-
 // Maps each context/trace key to a unique numeric ID suitable for indexing into a dense array
 var ctxtKey2ID = {};
 var traceKey2ID = {};
 // Array of all context/trace keys, at the indexes specified in the above hashes
-var ctxtKeys = [];
-var traceKeys = [];
+var ctxtKeys = {};
+var traceKeys = {};
 
 function isNumber(n) {
   return !isNaN(parseFloat(n)) && isFinite(n);
@@ -55,14 +54,22 @@ function traceRecord(traceLabel, traceVals, traceValLinks, contextVals, viz) {
   
   // Update the mapping from trace and context key names to their unique IDs
   for(ctxtKey in contextVals) { if(contextVals.hasOwnProperty(ctxtKey)) {
-    if(ctxtKey2ID[ctxtKey] == undefined) {
-      ctxtKey2ID[ctxtKey] = Object.keys(ctxtKey2ID).length;
-      ctxtKeys.push(ctxtKey);
+    if(ctxtKey2ID[traceLabel] == undefined) {
+      ctxtKey2ID[traceLabel] = {};
+      ctxtKeys[traceLabel] = [];
+    }
+    if(ctxtKey2ID[traceLabel][ctxtKey] == undefined) {
+      ctxtKey2ID[traceLabel][ctxtKey] = Object.keys(ctxtKey2ID[traceLabel]).length;
+      ctxtKeys[traceLabel].push(ctxtKey);
   } } }
   for(traceKey in traceVals) { if(traceVals.hasOwnProperty(traceKey)) {
-    if(traceKey2ID[traceKey] == undefined) {
-      traceKey2ID[traceKey] = Object.keys(traceKey2ID).length;
-      traceKeys.push(traceKey);
+    if(traceKey2ID[traceLabel] == undefined) {
+      traceKey2ID[traceLabel] = {};
+      traceKeys[traceLabel] = [];
+    }
+    if(traceKey2ID[traceLabel][traceKey] == undefined) {
+      traceKey2ID[traceLabel][traceKey] = Object.keys(traceKey2ID[traceLabel]).length;
+      traceKeys[traceLabel].push(traceKey);
   } } }
   
   // Create an object that contains the data of the current observation
@@ -146,7 +153,8 @@ function getDataHash(dataHash, contextVals) {
 }
 
 var displayTraceCalled = {};
-function displayTrace(traceLabel, blockID, contextAttrs, traceAttrs, viz) {
+// loc = "showBegin" or "showEnd"
+function displayTrace(traceLabel, blockID, contextAttrs, traceAttrs, viz, loc) {
   if(viz == 'table') {
     var ctxtCols = [];
     for(i in contextAttrs)
@@ -210,10 +218,20 @@ function displayTrace(traceLabel, blockID, contextAttrs, traceAttrs, viz) {
         width = 120 - margin.left - margin.right,
         height = 500 - margin.top - margin.bottom;
 
-    //for(c in ctxtKeys) {
-//    for(t in traceKeys) {
-      showBoxPlot(traceDataList[traceID], "div"+blockID+"_"+contextAttrs[0]+"_"+traceAttrs[0], contextAttrs[0], traceAttrs[0], width, height, margin);
-//    } }
+    var divsForBoxplot = "";
+    for(c in contextAttrs) {
+    for(t in traceAttrs) {
+      divsForBoxplot += "Context=" + contextAttrs[c] + ", Trace=" + traceAttrs[t] + "\n";
+      divsForBoxplot += "<div id=\"div" + blockID + "_" + contextAttrs[c] + "_" + traceAttrs[t] + "\"></div>\n";
+    }}
+    if(loc == "showBegin")    document.getElementById("div"+blockID).innerHTML = divsForBoxplot + document.getElementById("div"+blockID).innerHTML;
+    else if(loc == "showEnd") document.getElementById("div"+blockID).innerHTML += divsForBoxplot;
+
+    for(c in contextAttrs) {
+    for(t in traceAttrs) {
+      //showBoxPlot(traceDataList[traceID], "div"+blockID+"_"+contextAttrs[0]+"_"+traceAttrs[0], contextAttrs[0], traceAttrs[0], width, height, margin);
+      showBoxPlot(traceDataList[traceLabel], "div"+blockID+"_"+contextAttrs[c]+"_"+traceAttrs[t], contextAttrs[c], traceAttrs[t], width, height, margin);
+    } }
   } else if(viz == 'heatmap') {
     /* // Array of keys of the context variables. Only the first two are used.
     var ctxtKeys = [];
@@ -223,13 +241,13 @@ function displayTrace(traceLabel, blockID, contextAttrs, traceAttrs, viz) {
     
     // Array of all the values of the first context key, in sorted order
     var ctxt0KeyVals = [];
-    for(ctxt0Key in allCtxtVals[ctxtKeys[0]]) { if(allCtxtVals[ctxtKeys[0]].hasOwnProperty(ctxt0Key)) { ctxt0KeyVals.push(ctxt0Key); } }
-    ctxt0KeyVals.sort(getCompareFunc(ctxtValType[ctxtKeys[0]]));
+    for(ctxt0Key in allCtxtVals[ctxtKeys[traceLabel][0]]) { if(allCtxtVals[ctxtKeys[traceLabel][0]].hasOwnProperty(ctxt0Key)) { ctxt0KeyVals.push(ctxt0Key); } }
+    ctxt0KeyVals.sort(getCompareFunc(ctxtValType[ctxtKeys[traceLabel][0]]));
 
     // Array of all the values of the second context key, in sorted order
     var ctxt1KeyVals = [];
-    for(ctxt1Key in allCtxtVals[ctxtKeys[1]]) { if(allCtxtVals[ctxtKeys[1]].hasOwnProperty(ctxt1Key)) { ctxt1KeyVals.push(ctxt1Key); } }
-    ctxt1KeyVals.sort(getCompareFunc(ctxtValType[ctxtKeys[1]]));
+    for(ctxt1Key in allCtxtVals[ctxtKeys[traceLabel][1]]) { if(allCtxtVals[ctxtKeys[traceLabel][1]].hasOwnProperty(ctxt1Key)) { ctxt1KeyVals.push(ctxt1Key); } }
+    ctxt1KeyVals.sort(getCompareFunc(ctxtValType[ctxtKeys[traceLabel][1]]));
     
     // Create the gradient to be used to color the tiles
     var numColors = 1000;
@@ -255,8 +273,8 @@ function displayTrace(traceLabel, blockID, contextAttrs, traceAttrs, viz) {
       for(k1 in ctxt1KeyVals) {
       for(k0 in ctxt0KeyVals) {
         var contextVals = {};
-        contextVals[ctxtKeys[0]] = ctxt0KeyVals[k0];
-        contextVals[ctxtKeys[1]] = ctxt1KeyVals[k1];
+        contextVals[ctxtKeys[traceLabel][0]] = ctxt0KeyVals[k0];
+        contextVals[ctxtKeys[traceLabel][1]] = ctxt1KeyVals[k1];
         
         var traceVals = getDataHash(traceDataHash[traceLabel], contextVals);
         var traceLinks = getDataHash(traceLinkHash[traceLabel], contextVals);

@@ -80,7 +80,7 @@ trace::~trace() {
   
   // String that contains the names of all the context attributes 
   ostringstream contextAttrsStr;
-  if(viz==table || viz==decTree || viz==heatmap) {
+  if(viz==table || viz==decTree || viz==heatmap || viz==boxplot) {
     contextAttrsStr << "[";
     for(std::list<std::string>::iterator a=contextAttrs.begin(); a!=contextAttrs.end(); a++) {
       if(a!=contextAttrs.begin()) contextAttrsStr << ", ";
@@ -91,7 +91,7 @@ trace::~trace() {
   
   // String that contains the names of all the trace attributes
   ostringstream tracerAttrsStr;
-  if(viz==table || viz==lines || viz==heatmap) {
+  if(viz==table || viz==lines || viz==heatmap || viz==boxplot) {
     tracerAttrsStr << "[";
     for(set<string>::iterator a=tracerKeys.begin(); a!=tracerKeys.end(); a++) {
       if(a!=tracerKeys.begin()) tracerAttrsStr << ", ";
@@ -107,24 +107,34 @@ trace::~trace() {
     cmd<<"displayTrace('"<<getLabel()<<"', '"<<tgtBlockID<<"-"<<(viz==table?"Table": (viz==heatmap?"Heatmap": "???"))<<"', "<<
                        contextAttrsStr.str()<<", " << 
                        tracerAttrsStr.str()<<", "<<  
-                       "'"<<viz2Str(viz)<<"');";
+                       "'"<<viz2Str(viz)<<"', "<<
+                       "'"<<showLoc2Str(showLoc)<<"');";
     dbg.widgetScriptEpilogCommand(cmd.str());
   } else if(viz==lines) {
     // Create a separate decision tree for each context attribute
     for(std::list<std::string>::iterator c=contextAttrs.begin(); c!=contextAttrs.end(); c++) {
-      dbg.widgetScriptEpilogCommand(txt()<<"displayTrace('"<<getLabel()<<"', '"<<tgtBlockID<<"', ['"<<*c<<"'], "<<tracerAttrsStr.str()<<", '"<<viz2Str(viz)<<"');");
+      dbg.widgetScriptEpilogCommand(txt()<<"displayTrace('"<<getLabel()<<"', '"<<tgtBlockID<<"', ['"<<*c<<"'], "<<tracerAttrsStr.str()<<", "<<
+                                    "'"<<viz2Str(viz)<<"', "<<
+                                    "'"<<showLoc2Str(showLoc)<<"');");
     }
   } else if(viz==decTree) {
     // Create a separate decision tree for each tracer attribute
     for(set<string>::iterator t=tracerKeys.begin(); t!=tracerKeys.end(); t++) {
-      dbg.widgetScriptEpilogCommand(txt()<<"displayTrace('"<<getLabel()<<"', '"<<tgtBlockID<<"', "<<contextAttrsStr.str()<<", ['"<<*t<<"'], '"<<viz2Str(viz)<<"');");
+      dbg.widgetScriptEpilogCommand(txt()<<"displayTrace('"<<getLabel()<<"', '"<<tgtBlockID<<"', "<<contextAttrsStr.str()<<", ['"<<*t<<"'], "<<
+                                    "'"<<viz2Str(viz)<<"', "<<
+                                    "'"<<showLoc2Str(showLoc)<<"');");
     }
   } else if(viz==boxplot) {
     // Create a separate set of box plots for each combination of context and tracer attributes
-    for(std::list<std::string>::iterator c=contextAttrs.begin(); c!=contextAttrs.end(); c++) {
+    /*for(std::list<std::string>::iterator c=contextAttrs.begin(); c!=contextAttrs.end(); c++) {
     for(set<string>::iterator t=tracerKeys.begin(); t!=tracerKeys.end(); t++) {
-      dbg.widgetScriptEpilogCommand(txt()<<"displayTrace('"<<getLabel()<<"', '"<<tgtBlockID<<"', '"<<tgtBlockID<<"', ['"<<*c<<"'], ['"<<*t<<"'], '"<<viz2Str(viz)<<"');");
-    } }
+      dbg.widgetScriptEpilogCommand(txt()<<"displayTrace('"<<getLabel()<<"', '"<<tgtBlockID<<"', ['"<<*c<<"'], ['"<<*t<<"'], '"<<viz2Str(viz)<<"');");
+    } }*/
+    dbg.widgetScriptEpilogCommand(txt()<<"displayTrace('"<<getLabel()<<"', '"<<tgtBlockID<<"', "<<
+                                  contextAttrsStr.str()<<", "<<
+                                  tracerAttrsStr.str()<<", "<<
+                                  "'"<<viz2Str(viz)<<"', "<<
+                                  "'"<<showLoc2Str(showLoc)<<"');");
   }
   
   /*assert(stack.size()>0);
@@ -145,9 +155,17 @@ string trace::viz2Str(vizT viz) {
   else if(viz == lines)   return "lines";
   else if(viz == decTree) return "decTree";
   else if(viz == heatmap) return "heatmap";
-  else if(viz == boxplot) return "boxplot"
+  else if(viz == boxplot) return "boxplot";
   else                    return "???";
 }
+
+// Returns a string representation of a showLocT object
+std::string trace::showLoc2Str(showLocT showLoc) {
+       if(showLoc == showBegin) return "showBegin";
+  else if(showLoc == showEnd)   return "showEnd";
+  else                          return "???";  
+}
+
 // Place the code to show the visualization
 void trace::showViz() {
   dbg.enterBlock(this, false, true);
@@ -168,15 +186,15 @@ void trace::showViz() {
     }
   } else if(viz==heatmap) {
     dbg << "<div id=\"div"<<tgtBlockID<<"-Heatmap\"></div>";
-  } else if(viz==boxplot) {
-//cout << "#contextAttrs="<<contextAttrs.size()<<", #tracerKeys="<<tracerKeys.size()<<endl;
+  } /*else if(viz==boxplot) {
+cout << "#contextAttrs="<<contextAttrs.size()<<", #tracerKeys="<<tracerKeys.size()<<endl;
     // Create a separate set of box plots for each combination of context and tracer attributes
     for(std::list<std::string>::iterator c=contextAttrs.begin(); c!=contextAttrs.end(); c++) {
     for(set<string>::iterator t=tracerKeys.begin(); t!=tracerKeys.end(); t++) {
       dbg << "Context="<<*c<<", Trace="<<*t<<endl;
       dbg << "<div id=\"div"<<tgtBlockID<<"_"<<*c<<"_"<<*t<<"\"></div>\n";
     } }
-  }
+  }*/
   
   dbg.exitBlock();
 }

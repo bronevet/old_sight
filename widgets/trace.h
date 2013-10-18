@@ -58,6 +58,9 @@ class trace: public block, public attrObserver
   
   // Returns a string representation of a vizT object
   static std::string viz2Str(vizT viz);
+    
+  // Returns a string representation of a showLocT object
+  static std::string showLoc2Str(showLocT showLoc);
   
   private:
   // Place the code to show the visualization
