@@ -188,70 +188,109 @@ function displayTrace(traceLabel, blockID, contextAttrs, traceAttrs, viz) {
     //document.getElementById("div"+blockID).innerHTML += traceAttrs[0]+"<div id='div"+blockID+":"+traceAttrs[0]+"'></div>";
     drawGraph(model,"div"+blockID+"_"+traceAttrs[0]);
   } else if(viz == 'heatmap') {
-    var out = "";
-    for(i in traceAttrs) { 
-      out += traceAttrs[i]+"\n";
+    // Array of keys of the context variables. Only the first two are used.
+    var ctxtKeys = [];
+    for(ctxtKey in allCtxtVals) { if(allCtxtVals.hasOwnProperty(ctxtKey)) {
+      ctxtKeys.push(ctxtKey);
+    } }
     
-      var numColors = 100;
-      var colors = gradientFactory.generate({
-          from: "#0000FF",
-          to: "#FF0000",
-          stops: numColors
-      })
+    // Array of all the values of the first context key, in sorted order
+    var ctxt0KeyVals = [];
+    for(ctxt0Key in allCtxtVals[ctxtKeys[0]]) { if(allCtxtVals[ctxtKeys[0]].hasOwnProperty(ctxt0Key)) { ctxt0KeyVals.push(ctxt0Key); } }
+    ctxt0KeyVals.sort(getCompareFunc(ctxtValType[ctxtKeys[0]]));
+
+    // Array of all the values of the second context key, in sorted order
+    var ctxt1KeyVals = [];
+    for(ctxt1Key in allCtxtVals[ctxtKeys[1]]) { if(allCtxtVals[ctxtKeys[1]].hasOwnProperty(ctxt1Key)) { ctxt1KeyVals.push(ctxt1Key); } }
+    ctxt1KeyVals.sort(getCompareFunc(ctxtValType[ctxtKeys[1]]));
     
-      var valBucketSize = (maxData[traceAttrs[i]] - minData[traceAttrs[i]])/numColors;
-      //out += "valBucketSize="+valBucketSize+", minData[traceAttrs[i]]="+minData[traceAttrs[i]]+", maxData[traceAttrs[i]="+maxData[traceAttrs[i]]+"<br>\n";
-      out += "<table width=100%>";
-      
-      var ctxtKeys = [];
-      for(ctxtKey in allCtxtVals) { if(allCtxtVals.hasOwnProperty(ctxtKey)) {
-        ctxtKeys.push(ctxtKey);
+    // Create the gradient to be used to color the tiles
+    var numColors = 1000;
+    var colors = gradientFactory.generate({
+        from: "#0000FF",
+        to: "#FF0000",
+        stops: numColors
+    });
+    // The values of attributes will be placed into numColors buckets, each marked with a different color.
+    // This is the size of each bucket for each trace attribute
+    var valBucketSize = [];
+    
+    // Prepare the data array that holds the info on the heatmaps to be shown (top-level of array, one 
+    // sub-array per entry in traceAttrs) and the individual tiles in each heatmap (second-level array,
+    // one entry for each pair of items in ctxt0KeyVals and ctxt1KeyVals)
+    var data = [];
+    for(traceAttrIdx in traceAttrs) { 
+      valBucketSize[traceAttrIdx] = (maxData[traceAttrs[traceAttrIdx]] - minData[traceAttrs[traceAttrIdx]])/numColors;
+
+      // attrData records the row and column of each tile in its heatmap (separate heatmap for each trace attribute), 
+      // along with the index of the trace attribute in traceAttrs.
+      var attrData = [];
+      for(k1 in ctxt1KeyVals) {
+      for(k0 in ctxt0KeyVals) {
+        var contextVals = {};
+        contextVals[ctxtKeys[0]] = ctxt0KeyVals[k0];
+        contextVals[ctxtKeys[1]] = ctxt1KeyVals[k1];
+        
+        var traceVals = getDataHash(traceDataHash[traceLabel], contextVals);
+        var traceLinks = getDataHash(traceLinkHash[traceLabel], contextVals);
+        // If there is a record for this combination of context key values, add it to the dataset
+        if(traceVals && traceLinks)
+          attrData.push({row: k1, 
+                         col:k0, 
+                         traceAttrIdx:traceAttrIdx,
+                         traceVals:traceVals, 
+                         traceLinks:traceLinks});
       } }
       
-      var numCols = 0;
-      for(ctxt0Key in allCtxtVals[ctxtKeys[0]]) { if(allCtxtVals[ctxtKeys[0]].hasOwnProperty(ctxt0Key)) { numCols++; }}
-
-      // Array of all the values of the first context key, in sorted order
-      var ctxt0Keys = [];
-      for(ctxt0Key in allCtxtVals[ctxtKeys[0]]) { if(allCtxtVals[ctxtKeys[0]].hasOwnProperty(ctxt0Key)) { ctxt0Keys.push(ctxt0Key); } }
-      ctxt0Keys.sort(getCompareFunc(ctxtValType[ctxtKeys[0]]));
-
-      // Array of all the values of the second context key, in sorted order
-      var ctxt1Keys = [];
-      for(ctxt1Key in allCtxtVals[ctxtKeys[1]]) { if(allCtxtVals[ctxtKeys[1]].hasOwnProperty(ctxt1Key)) { ctxt1Keys.push(ctxt1Key); } }
-      ctxt1Keys.sort(getCompareFunc(ctxtValType[ctxtKeys[1]]));
-      
-      out += "<tr><td width="+(100/(numCols+1))+"%></td>\n";
-      for(k0 in ctxt0Keys)
-      { out += "<td width="+(100/(numCols+1))+"%>"+ctxt0Keys[k0]+"</td>\n"; }
-      out += "</tr>";
-      //alert(out);
-      
-      for(k1 in ctxt1Keys) {
-        out += "<tr><td>"+ctxt1Keys[k1]+"</td>\n";
-        for(k0 in ctxt0Keys) {
-          var contextVals = {};
-          contextVals[ctxtKeys[0]] = ctxt0Keys[k0];
-          contextVals[ctxtKeys[1]] = ctxt1Keys[k1];
-          var traceVals = getDataHash(traceDataHash[traceLabel], contextVals);
-          var traceLinks = getDataHash(traceLinkHash[traceLabel], contextVals);
-          if(traceVals) { 
-            var valBucket = Math.floor((traceVals[traceAttrs[i]] - minData[traceAttrs[i]]) / valBucketSize);
-            out += "<td bgcolor=\""+colors[Math.min(valBucket, colors.length-1)]+"\" ";
-            if(traceLinks[traceAttrs[i]] != undefined && traceLinks[traceAttrs[i]] != "")
-              out += "onclick=\""+traceLinks[traceAttrs[i]]+"\"";
-            out += ">";
-            //out += traceVals[traceAttrs[i]];
-            out += "</td>\n";
-          }
-        }
-        out += "</tr>\n";
-      }
-      
-      out += "</table>";
+      // Add the data for the current trace attribute to the dataset
+      data.push(attrData);
     }
-    alert(out);
-    document.getElementById("div"+blockID).innerHTML=out;
+    var tileWidth=20;
+    var tileHeight=20;
+    var titleHeight=20;
+    var titleGap=5;
+    
+    var container = 
+           d3.select("#div"+blockID).selectAll("svg")
+                  .data(data)
+                .enter()
+                .append("svg")
+                  .attr("width",  tileWidth*ctxt0KeyVals.length)
+                  .attr("height", titleHeight + titleGap + tileHeight*ctxt0KeyVals.length)
+                  .attr("x", 0)
+                  .attr("y", 1000);
+    
+    var title = container.append("text")
+               .text(function(d, i) { /*alert(traceAttrs[i]);*/return traceAttrs[i]; })
+               .attr("text-anchor", "middle")
+               .attr("x", (tileWidth*ctxt0KeyVals.length)/2)
+               .attr("y", titleHeight)
+               .attr("fill", "#000000")
+               .attr("font-family", "sans-serif")
+               .attr("font-size", titleHeight+"px");
+    //titleHeight = title.node().getBBox()["height"];
+    
+    container.selectAll("g")
+                 .data(function(d, i) { return data[i]; })
+      .enter()
+      .append("g")
+        .attr("width",  tileWidth)
+        .attr("height", tileHeight)
+        .attr("transform", function(d) { return "translate("+(d["col"]*tileWidth)+","+(d["row"]*tileHeight+titleHeight+titleGap)+")"; })
+      .append("rect")
+        .attr("width",  tileWidth)
+        .attr("height", tileHeight)
+        .attr("x", 0)
+        .attr("y", 0)
+        .attr("fill", function(d, i) {
+          var valBucket = Math.floor((d["traceVals"][traceAttrs[d["traceAttrIdx"]]] - minData[traceAttrs[d["traceAttrIdx"]]]) / valBucketSize[d["traceAttrIdx"]]);
+          return colors[Math.min(valBucket, colors.length-1)];
+          })
+        .on("click", function(d) {
+          eval(d["traceLinks"][traceAttrs[d["traceAttrIdx"]]]);
+          return true;
+          });
+         
   }
   
   displayTraceCalled = true;

@@ -106,7 +106,7 @@ void initializeDebug(int argc, char** argv, string title, string workDir) {
 
   saved_appExecInfo=true;
 
-  #ifdef REMOTE_ENABLED 
+  #if REMOTE_ENABLED
   if(!isPortUsed(GDB_PORT)) {
     ostringstream cmd; cmd << ROOT_PATH << "/widgets/mongoose/mongoose -document_root "<<ROOT_PATH<<" -listening_ports "<<GDB_PORT<<"&";
     system(cmd.str().c_str());
@@ -1367,11 +1367,13 @@ void dbgStream::printDetailFileContainerHTML(string absoluteFileName, string tit
   det << "\t\t\t<div id='detailContents'></div>\n";
   det << "\t\t\t</td></tr>\n";
   det << "\t\t</table>\n";
-  
+
+  #if REMOTE_ENABLED
   list<string> hostnames = getAllHostnames();
   for(list<string>::iterator h=hostnames.begin(); h!=hostnames.end(); h++) {
     det << "<img src=\"http://"<<*h<<":"<<GDB_PORT<<"/img/divDL.gif\" onload=\"javascript:hostnameReachable('"<<*h<<"')\" width=1 height=1>\n";
   }
+  #endif
 
   det << "\t</body>\n";
   det << "</html>\n\n";

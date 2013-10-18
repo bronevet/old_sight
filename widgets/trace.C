@@ -217,7 +217,7 @@ void traceAttr(std::string label, std::string key, const attrValue& val) {
   /*assert(trace::stack.size()>0);
   trace* t = *(trace::stack.rbegin());*/
   // Find the tracer with the name label
-  assert(trace::active.find(label) != trace::active.end());
+  if(trace::active.find(label) == trace::active.end()) { cerr << "traceAttr() ERROR: trace \""<<label<<"\" not active when observation \""<<key<<"\"=>\""<<val.str()<<"\" was observed!"; assert(0); }
   trace* t = trace::active[label];
   
   // Inform the chosen tracer of the observation
@@ -226,7 +226,7 @@ void traceAttr(std::string label, std::string key, const attrValue& val) {
 
 void traceAttr(std::string label, std::string key, const attrValue& val, anchor target) {
   // Find the tracer with the name label
-  assert(trace::active.find(label) != trace::active.end());
+  if(trace::active.find(label) == trace::active.end()) { cerr << "traceAttr() ERROR: trace \""<<label<<"\" not active when observation \""<<key<<"\"=>\""<<val.str()<<"\" was observed!"; assert(0); }
   trace* t = trace::active[label];
   
   // Inform the chosen tracer of the observation

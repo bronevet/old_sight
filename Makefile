@@ -14,12 +14,18 @@ all:  dbglogDefines.pl gdbLineNum.pl libdbglog.a widgets_post allExamples script
 
 ROOT_PATH = ${CURDIR}
 
-# Set to "1" if we wish gdb support to be enabled and otherwise not set
+# Set to "1" if we wish gdb support to be enabled and otherwise set to 0
+ifeq (${OS}, Cygwin)
+REMOTE_ENABLED := 0
+else
 REMOTE_ENABLED := 1
+endif
 
+ifneq (${OS}, Cygwin)
 # The port on which dbglog sets up a daemon that invokes gdb so that it runs upto a particular point
 # in the target application's execution
 GDB_PORT := 17501
+endif
 
 .PHONY: apps
 apps:
