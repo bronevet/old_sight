@@ -9,7 +9,7 @@ TESTERS = 1.StructuredFormatting${EXE} 2.ConditionalFormatting${EXE} 3.Navigatio
 
 all: ${TESTERS}
 
-run:
+run: ${TESTERS}
 	./1.StructuredFormatting${EXE};         
 	./2.ConditionalFormatting${EXE};        
 	./3.Navigation${EXE};                   
