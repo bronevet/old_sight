@@ -161,7 +161,7 @@ void scope::printEntry(string loadCmd) {
       }
       dbg << "\\\"><b>GDB</b></a>\");\n";
       dbg << "</script>\n";
-    }
+    }*/
     if(saved_appExecInfo) {
       ostringstream setGDBLink; 
       setGDBLink << "\"javascript:setGDBLink(this, ':"<<GDB_PORT<<"/gdbwrap.cgi?execFile="<<saved_execFile<<"&tgtCount="<<blockCount<<"&args=";
@@ -172,7 +172,7 @@ void scope::printEntry(string loadCmd) {
       setGDBLink << "')\"";
   
       dbg << "<a href=\"#\" onclick="<<setGDBLink.str()<<" onmouseover="<<setGDBLink.str()<<"><img src=\"img/gdb.gif\" width=40 height=21 alt=\"GDB\"></a>\n";
-    }*/
+    }
     if(loadCmd != "") {
       dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1);
       dbg << "<a href=\"javascript:"<<loadCmd<<")\">";

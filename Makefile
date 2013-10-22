@@ -32,10 +32,10 @@ apps:
 	cd apps/mfem;  make ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS}
 #	cd apps/mcbench; ./build-linux-x86_64.sh ${ROOT_PATH}
 
-allExamples: libdbglog.a
+allExamples: all
 	cd examples; make ROOT_PATH=${ROOT_PATH} OS=${OS}
 
-runExamples: libdbglog.a apps
+runExamples: all apps
 	cd examples; make ROOT_PATH=${ROOT_PATH} OS=${OS} run
 	apps/mfem/mfem/examples/ex1 apps/mfem/mfem/data/beam-quad.mesh
 	apps/mfem/mfem/examples/ex2 apps/mfem/mfem/data/beam-tet.mesh 2
