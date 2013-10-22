@@ -20,36 +20,36 @@ my $winIDString = $ARGV[3];
 #print "curResolution=$curResolution\n";
 #my ($width, $height) = split(/x/, $curResolution);
 
-# Add the xdottool directory to the library path to enable xdottool to be called to manipulate window properties
-$ENV{LD_LIBRARY_PATH} = "$dbglogPath/widgets/xdottool:$ENV{LD_LIBRARY_PATH}";
+# Add the xdotool directory to the library path to enable xdotool to be called to manipulate window properties
+$ENV{LD_LIBRARY_PATH} = "$dbglogPath/widgets/xdotool:$ENV{LD_LIBRARY_PATH}";
 
 # Keep setting the target app's window to fill the entire desktop, even if the user tries to change this
 while(1) {
-  print "$dbglogPath/widgets/xdottool/xdotool search --name $winIDString\n";
-  my $winsStr = `$dbglogPath/widgets/xdottool/xdotool search --name $winIDString`;
+  print "$dbglogPath/widgets/xdotool/xdotool search --name $winIDString\n";
+  my $winsStr = `$dbglogPath/widgets/xdotool/xdotool search --name $winIDString`;
   print "winsStr=$winsStr\n";
   my @wins = split(/\s+/, $winsStr);
 
   if(scalar(@wins) > 0) {
     # Kill all windows but the first one
     for(my $i=0; $i<scalar(@wins)-1; $i++) {
-      #print  "$dbglogPath/widgets/xdottool/xdotool windowkill $wins[$i]\n";
-      `$dbglogPath/widgets/xdottool/xdotool windowkill $wins[$i]`;
+      #print  "$dbglogPath/widgets/xdotool/xdotool windowkill $wins[$i]\n";
+      `$dbglogPath/widgets/xdotool/xdotool windowkill $wins[$i]`;
     }
 
     # Maximize the most recently opened window
     splice(@wins, 0, scalar(@wins)-1);
-    #print  "$dbglogPath/widgets/xdottool/xdotool windowmove $wins[0] 0 0\n";
-    `$dbglogPath/widgets/xdottool/xdotool windowmove $wins[0] 0 0`;
-    #print  "$dbglogPath/widgets/xdottool/xdotool windowsize $wins[0] $width $height\n";
-    `$dbglogPath/widgets/xdottool/xdotool windowsize $wins[0] $vncWidth $vncHeight`;
+    #print  "$dbglogPath/widgets/xdotool/xdotool windowmove $wins[0] 0 0\n";
+    `$dbglogPath/widgets/xdotool/xdotool windowmove $wins[0] 0 0`;
+    #print  "$dbglogPath/widgets/xdotool/xdotool windowsize $wins[0] $width $height\n";
+    `$dbglogPath/widgets/xdotool/xdotool windowsize $wins[0] $vncWidth $vncHeight`;
   }
 
-#  system "$dbglogPath/widgets/xdottool/xdotool search --name $winIDString windowmove 0 0";
-  #print "$dbglogPath/widgets/xdottool/xdotool search --name $winIDString windowsize $vncWidth $vncHeight\n";
-#  system "$dbglogPath/widgets/xdottool/xdotool search --name $winIDString windowsize $vncWidth $vncHeight";
-  #system "$dbglogPath/widgets/xdottool/xdotool search --name $winIDString windowfocus";
-  #system "$dbglogPath/widgets/xdottool/xdotool search --name $winIDString windowraise";
+#  system "$dbglogPath/widgets/xdotool/xdotool search --name $winIDString windowmove 0 0";
+  #print "$dbglogPath/widgets/xdotool/xdotool search --name $winIDString windowsize $vncWidth $vncHeight\n";
+#  system "$dbglogPath/widgets/xdotool/xdotool search --name $winIDString windowsize $vncWidth $vncHeight";
+  #system "$dbglogPath/widgets/xdotool/xdotool search --name $winIDString windowfocus";
+  #system "$dbglogPath/widgets/xdotool/xdotool search --name $winIDString windowraise";
  
   #foreach my $var (keys %ENV) {
   #  print "::::$var => $ENV{$var}\n";
