@@ -66,6 +66,8 @@ Collection types: each key may be mapped to more than one value.
 */
 
 namespace dbglog {
+namespace layout {
+
 class attrOp;
 
 // ****************************
@@ -741,4 +743,5 @@ void* attrFalse_enter();
 void attrFalse_exit(void* subQ);
 }
 
+}; // namespace layout
 }; //dbglog

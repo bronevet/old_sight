@@ -1,11 +1,13 @@
-WIDGETS_O := scope.o graph.o valSelector.o trace.o
-WIDGETS_H := scope.h graph.h valSelector.h trace.h
+WIDGETS_COMMON_O := scope_common.o graph_common.o valSelector_common.o trace_common.o
+WIDGETS_COMMON_H := scope_common.h graph_common.h valSelector_common.h trace_common.h
 WIDGETS_STRUCTURE_O := scope_structure.o graph_structure.o valSelector_structure.o trace_structure.o
 WIDGETS_STRUCTURE_H := scope_structure.h graph_structure.h valSelector_structure.h trace_structure.h
+WIDGETS_LAYOUT_O := scope_layout.o graph_layout.o valSelector_layout.o trace_layout.o
+WIDGETS_LAYOUT_H := scope_layout.h graph_layout.h valSelector_layout.h trace_layout.h
 WIDGETS := ${WIDGETS_O} ${WIDGETS_H}
 
-all: ${WIDGETS_STRUCTURE_O} ${WIDGETS_STRUCTURE_H} \
-     shellinabox/bin/shellinaboxd${EXE} mongoose/mongoose${EXE} graphviz/bin/dot${EXE} \
+all: ${WIDGETS_COMMON_O} ${WIDGETS_COMMON_H} ${WIDGETS_STRUCTURE_O} ${WIDGETS_STRUCTURE_H} ${WIDGETS_LAYOUT_O} ${WIDGETS_LAYOUT_H}  \
+     shellinabox/bin/shellinaboxd${EXE} mongoose/mongoose${EXE} \
      ID3-Decision-Tree \
      xdottool \
      external_scripts
@@ -13,40 +15,61 @@ all: ${WIDGETS_STRUCTURE_O} ${WIDGETS_STRUCTURE_H} \
 	chmod 644 canviz-0.1/*
 	chmod 755 canviz-0.1/excanvas canviz-0.1/lib canviz-0.1/path canviz-0.1/prototype
 	chmod 644 canviz-0.1/*/*
+# graphviz/bin/dot${EXE} 
+#${WIDGETS_LAYOUT_O} ${WIDGETS_LAYOUT_H}
 
-#${WIDGETS_O} ${WIDGETS_H}
+scope_common.o: scope_common.C scope_common.h ../attributes_common.h ../dbglog_common.h
+	g++ -g scope_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o scope_common.o
 
-scope.o: scope.C scope.h ../attributes.h ../dbglog.h
-	g++ -g scope.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o scope.o
-	
 scope_structure.o: scope_structure.C scope_structure.h ../attributes_structure.h ../dbglog_structure.h
 	g++ -g scope_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o scope_structure.o
-	
-graph.o: graph.C graph.h ../attributes.h ../dbglog.h
-	g++ -g graph.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o graph.o
-	
+
+scope_layout.o: scope_layout.C scope_layout.h ../attributes_layout.h ../dbglog_layout.h
+	g++ -g scope_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o scope_layout.o
+
+
+graph_common.o: graph_common.C graph_common.h ../attributes_common.h ../dbglog_common.h
+	g++ -g graph_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o graph_common.o
+
 graph_structure.o: graph_structure.C graph_structure.h ../attributes_structure.h ../dbglog_structure.h
 	g++ -g graph_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o graph_structure.o
-	
-valSelector.o: valSelector.C valSelector.h ../dbglog.h
-	g++ -g valSelector.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o valSelector.o
+
+graph_layout.o: graph_layout.C graph_layout.h ../attributes_layout.h ../dbglog_layout.h
+	g++ -g graph_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o graph_layout.o
+
+
+valSelector_common.o: valSelector_common.C valSelector_common.h ../dbglog_common.h
+	g++ -g valSelector_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o valSelector_common.o
 
 valSelector_structure.o: valSelector_structure.C valSelector_structure.h ../dbglog_structure.h
 	g++ -g valSelector_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o valSelector_structure.o
 
-trace.o: trace.C trace.h ../dbglog.h
-	g++ -g trace.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o trace.o
+valSelector_layout.o: valSelector_layout.C valSelector_layout.h ../dbglog_layout.h
+	g++ -g valSelector_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o valSelector_layout.o
+
+
+trace_common.o: trace_common.C trace_common.h ../dbglog_common.h
+	g++ -g trace_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o trace_common.o
 
 trace_structure.o: trace_structure.C trace_structure.h ../dbglog_structure.h
 	g++ -g trace_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o trace_structure.o
 
+trace_layout.o: trace_layout.C trace_layout.h ../dbglog_layout.h
+	g++ -g trace_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o trace_layout.o
+
+
+ifneq (${OS}, Cygwin)
 xdottool:
 	rm -rf xdotool-2.20110530.1.tar.gz xdottool
 	wget http://semicomplete.googlecode.com/files/xdotool-2.20110530.1.tar.gz
 	tar -xf xdotool-2.20110530.1.tar.gz
 	cd xdotool-2.20110530.1; CC=gcc; make
 	mv xdotool-2.20110530.1 xdottool
+else
+xdottool:
+endif
 
+ifneq (${OS}, Cygwin)
 shellinabox/bin/shellinaboxd${EXE}:
 	rm -f shellinabox-2.14.tar.gz
 	cd widgets; wget --no-check-certificate https://shellinabox.googlecode.com/files/shellinabox-2.14.tar.gz
@@ -55,6 +78,9 @@ shellinabox/bin/shellinaboxd${EXE}:
 	cd shellinabox-2.14; make
 	cd shellinabox-2.14; make install
 	rm -r shellinabox-2.14 shellinabox-2.14.tar.gz
+else
+shellinabox/bin/shellinaboxd${EXE}:
+endif
 
 # Set this to the current Operating System (needed by the Mongoose web server). 
 # Choices: linux|bsd|solaris|mac|windows|mingw|cygwin

@@ -24,10 +24,10 @@ int main(int argc, char** argv) {
   list<string> contextAttrs;
   contextAttrs.push_back("i");
   contextAttrs.push_back("j");
-  trace tableTrace("Table Trace", contextAttrs, trace::showBegin, trace::table);
+  trace tableTrace("Table Trace", contextAttrs, showBegin, table);
   
   // For the last trace we'll use k as the context variable
-  trace linesTrace("Lines Trace", "k", trace::showEnd, trace::lines);
+  trace linesTrace("Lines Trace", "k", showEnd, lines);
     
   for(int i=0; i<5; i++) {
     attr iAttr("i", i);

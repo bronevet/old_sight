@@ -9,35 +9,45 @@
 #include <sstream>
 #include <fstream>
 #include <stdarg.h>
-#include "attributes.h"
+#include "dbglog_common.h"
+#include "attributes_layout.h"
 
 namespace dbglog {
+namespace layout {
 
-class printable
-{
-  public:
-  virtual ~printable() {}
-  virtual std::string str(std::string indent="")=0;
-};
+// Maps the names of various tags that may be read by the layout reader to the functions
+// that instantiate the objects they encode.
+// An entry handler is called when the object's entry tag is encountered in the debug log. It 
+//   takes as input the properties of the object to be laid out and returns a pointer to the 
+//   created object. NULL is a valid return value.
+// An exit handler is called when the object's exit tag is encountered and takes as input a pointer
+//   to the object.
+// It is assumed that all objects are hierarchically scoped, in that objects are exted in the 
+//   reverse order of their entry. The layout engine keeps track of the entry/exit stacks and 
+//   ensures that the appropriate object pointers are passed to exit handlers.
+typedef void* (*layoutEnterHandler)(properties::iterator props);
+extern std::map<std::string, layoutEnterHandler> layoutEnterHandlers;
+typedef void (*layoutExitHandler)(void*);
+extern std::map<std::string, layoutExitHandler> layoutExitHandlers;
 
+// Default entry/exit handlers to use when no special handling is needed
+void* defaultEntryHandler(properties::iterator props);
+void  defaultExitHandler(void* obj);
+  
 // Records the information needed to call the application
 extern bool saved_appExecInfo; // Indicates whether the application execution info has been saved
-extern int saved_argc;
-extern char** saved_argv;
-extern char* saved_execFile;
+extern int argc;
+extern std::string* argv;
+extern std::string execFile;
 
-// The name of the host that this application is currently executing on
-extern char hostname[];
+// All the aliases of the name of the host that this application is currently executing on
+extern std::list<std::string> hostnames;
 
 // The current user's user name
-extern char username[10000];
+extern std::string username;
 
 // Initializes the debug sub-system
-void initializeDebug(int argc, char** argv, std::string title="", std::string workDir="dbg");
-void initializeDebug(std::string title, std::string workDir);
-
-// Returns a string that contains n tabs
-std::string tabs(int n);
+void* initializeDebug(common::properties::iterator props);
 
 class dbgStream;
 typedef std::list<std::pair<int, std::list<int> > > location;
@@ -60,7 +70,8 @@ typedef std::list<std::pair<int, std::list<int> > > location;
 class anchor
 {
   protected:
-  static int maxAnchorID;
+  // The smallest anchorID assigned to any anchor. 
+  static int minAnchorID;
   int anchorID;
   
   // Associates each anchor with its location (if known). Useful for connecting anchor objects with started out
@@ -86,15 +97,20 @@ class anchor
   bool located;
   
   public:
-  anchor(/*dbgStream& myDbg, */bool located=false);
+  //anchor(/*dbgStream& myDbg, */bool located=false);
   anchor(const anchor& that);
-  anchor(/*dbgStream& myDbg, */bool located, int anchorID);
+  anchor(/*dbgStream& myDbg, */bool located=false, int anchorID=-1);
   
-  void init(bool located);
+  //void init(bool located);
   
   int getID() const { return anchorID; }
+  void setID(int ID) { 
+    anchorID = ID;
+    //maxAnchorID = (ID>maxAnchorID? ID: maxAnchorID);
+  }
   
   bool isLocated() const { return located; }
+  void setLocated(bool located) { this->located = located; }
   
   protected:
   // If this anchor is unlocated, checks anchorLocs to see if a location has been found and updates this
@@ -116,11 +132,14 @@ class anchor
   // Called when the file location of this anchor has been reached
   void reachedAnchor();
   
+  // Emits an <a href> tag that denotes a link to an anchor.
+  static void* link(common::properties::iterator props);
+  
   // Returns an <a href> tag that denotes a link to this anchor. Embeds the given text in the link.
-  std::string link(std::string text) const;
+  void link(std::string text) const;
     
   // Returns an <a href> tag that denotes a link to this anchor, using the default link image, which is followed by the given text.
-  std::string linkImg(std::string text="") const;
+  void linkImg(std::string text="") const;
   
   // Returns the JavaScript code that links to this anchor, which can be embedded on other javascript code.
   std::string getLinkJS() const;
@@ -148,18 +167,12 @@ class block
   static int blockCount;
   
   public:
-  // Initializes this block with the given label
-  block(std::string label="");
+  // Initializes this block with the given properties
+  block(common::properties::iterator props);
+  
+  // Initializes this block with the given label, used for creating additional blocks that were not listed in the structure file
+  block(std::string label);
     
-  // Initializes this block with the given label.
-  // Includes one or more incoming anchors thas should now be connected to this block.
-  block(std::string label, const anchor& pointsTo);
-  block(std::string label, const std::set<anchor>& pointsTo);
- 
-  // Increments block count. This function serves as the one location that we can use to target conditional
-  // breakpoints that aim to stop when the block count is a specific number
-  int advanceBlockCount();
-
   // Attaches a given un-located anchor at this block
   void attachAnchor(anchor& a);
   
@@ -444,20 +457,7 @@ extern dbgStream dbg;
 
 class indent {
 public:
-  bool active;
-  // prefix - the string that will be prepended to all subsequent lines. (default is "    ")
-  // repeatCnt - the number of repetitions of this string. If repeatCnt=0 we will not do any indentation. (default is 1).
-  // onoffOp - We emit this scope if the current attribute query evaluates to true (i.e. we're emitting debug output) AND
-  //           either onoffOp is not provided or its evaluates to true.
-  indent(std::string prefix);
-  indent(std::string prefix, int repeatCnt, const attrOp& onoffOp);
-  indent(std::string prefix, int repeatCnt);
-  indent(                    int repeatCnt);
-  indent(std::string prefix,                const attrOp& onoffOp);
-  indent(                    int repeatCnt, const attrOp& onoffOp);
-  indent(                                   const attrOp& onoffOp);
-  indent();
-  void init(std::string prefix, int repeatCnt, const attrOp* onoffOp);
+  indent(properties::iterator props);
     
   ~indent();
 };
@@ -490,4 +490,5 @@ std::string escape(std::string s);
   
 int dbgprintf(const char * format, ... );
 
-} // namespace dbglog
+}; // namespace layout
+}; // namespace dbglog

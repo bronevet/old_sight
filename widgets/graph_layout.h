@@ -8,9 +8,16 @@
 #include <iostream>
 #include <sstream>
 #include <fstream>
-//#include "attributes.h"
+#include "../dbglog_common.h"
+#include "../dbglog_layout.h"
 
 namespace dbglog {
+namespace layout {
+
+class graphLayoutHandlerInstantiator {
+  public:
+  graphLayoutHandlerInstantiator();
+};
 
 class graph;
 
@@ -36,14 +43,6 @@ class graphEdge {
   }
 };
 
-class dottable
-{
-  public:
-  virtual ~dottable() {}
-  // Returns a string that containts the representation of the object as a graph in the DOT language
-  // that has the given name
-  virtual std::string toDOT(std::string graphName)=0;
-};
 
 class graph: public block
 {
@@ -72,23 +71,20 @@ class graph: public block
   static std::string htmlOutDir;
     
   // Unique ID of this graph object
-  int widgetID;
+  int graphID;
   
   // Maximum ID assigned to any graph object
-  static int maxWidgetID;
+  //static int maxWidgetID;
+  
+  // Stack of the graphs that are currently in scope
+  static std::list<graph*> gStack;
   
   // Records whether this graph has already been output by a call to outputCanvizDotGraph()
   bool graphOutput;
- 
-  protected: 
-  // Records whether this scope is included in the emitted output (true) or not (false)
-  bool active;
   
   public:
   
-  graph();
-  graph(const attrOp& onoffOp);
-  void init();
+  graph(properties::iterator props);
   ~graph();
 
   // Generates and returns the dot graph code for this graphgenDotGraph
@@ -98,23 +94,17 @@ class graph: public block
   // as a Canviz widget into the debug output.
   void outputCanvizDotGraph(std::string dot);
   
-  // Given a reference to an object that can be represented as a dot graph,  create an image from it and add it to the output.
-  // Return the path of the image.
-  static void genGraph(dottable& obj);
-
-  // Given a representation of a graph in dot format, create an image from it and add it to the output.
-  // Return the path of the image.
-  static void genGraph(std::string dot);
-  
   // Initialize the environment within which generated graphs will operate, including
   // the JavaScript files that are included as well as the directories that are available.
   static void initEnvironment();
   
   // Add a directed edge from the location of the from anchor to the location of the to anchor
   void addDirEdge(anchor from, anchor to);
+  static void* addDirEdge(properties::iterator props);
   
   // Add an undirected edge between the location of the a anchor and the location of the b anchor
   void addUndirEdge(anchor a, anchor b);
+  static void* addUndirEdge(properties::iterator props);
   
   // Called to notify this block that a sub-block was started/completed inside of it. 
   // Returns true of this notification should be propagated to the blocks 
@@ -123,4 +113,5 @@ class graph: public block
   bool subBlockExitNotify (block* subBlock);
 };
 
-} // namespace dbglog
+}; // namespace layout
+}; // namespace dbglog

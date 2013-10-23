@@ -8,9 +8,17 @@
 #include <iostream>
 #include <sstream>
 #include <fstream>
-//#include "attributes.h"
+#include "../dbglog_common.h"
+#include "../dbglog_layout.h"
 
 namespace dbglog {
+namespace layout {
+
+class scopeLayoutHandlerInstantiator {
+  public:
+  scopeLayoutHandlerInstantiator();
+};
+extern scopeLayoutHandlerInstantiator scopeLayoutHandlerInstance;
 
 class scope: public block
 {
@@ -18,13 +26,9 @@ class scope: public block
   static int colorIdx; // The current index into the list of colors 
   
   public:
-  // Records whether this scope is included in the emitted output (true) or not (false)
-  bool active;
-  typedef enum {high, medium, low, min} scopeLevel;
-  scopeLevel level;
+  common::scopeLevel level;
 
-  // label - the label associated with this scope.
-  // pointsTo - the anchor(s) that terminate at this scope. Used to target links to scopes.
+  // properties: maps property names to their values
   // level - the type of visualization used, with higher levels associated with more amounts of debug output
   //    There are several features that are enabled by the levels:
   //       own_file: Text inside the scope is written to a separate file. Users must manually click a button to see it.
@@ -36,22 +40,11 @@ class scope: public block
   //    medium: own_color, label_shown
   //    low: label_shown
   //    min: none of the above
-  // onoffOp - We emit this scope if the current attribute query evaluates to true (i.e. we're emitting debug output) AND
-  //           either onoffOp is not provided or its evaluates to true.
-  scope(std::string label,                                   scopeLevel level, const attrOp& onoffOp);
-  scope(std::string label, const anchor& pointsTo,           scopeLevel level, const attrOp& onoffOp);
-  scope(std::string label, const std::set<anchor>& pointsTo, scopeLevel level, const attrOp& onoffOp);
-  scope(std::string label,                                                     const attrOp& onoffOp);
-  scope(std::string label, const anchor& pointsTo,                             const attrOp& onoffOp);
-  scope(std::string label, const std::set<anchor>& pointsTo,                   const attrOp& onoffOp);
-  scope(std::string label,                                   scopeLevel level=medium);
-  scope(std::string label, const anchor& pointsTo,           scopeLevel level=medium);
-  scope(std::string label, const std::set<anchor>& pointsTo, scopeLevel level=medium);
-
+  scope(properties::iterator props);
   
   private:
   // Common initialization code
-  void init(scopeLevel level, const attrOp* onoffOp);
+  void init(common::scopeLevel level);
   
   public:
     
@@ -98,4 +91,5 @@ class scope: public block
   void data(std::string name, void* data, DiffFunctor* diff);
 };*/
 
-} // namespace dbglog
+}; // namespace layout
+}; // namespace dbglog

@@ -24,18 +24,31 @@ class dottable
 
 class graph: public block
 {
+  // Unique ID of this graph object
+  int graphID;
+  
+  // Maximum ID assigned to any graph object
+  static int maxGraphID;
+  
   // Records whether this scope is included in the emitted output (true) or not (false)
   bool active;
   
   public:
   
-  graph();
-  graph(                                  const attrOp& onoffOp);
-  graph(const anchor& pointsTo);
-  graph(const std::set<anchor>& pointsTo, const attrOp& onoffOp);
-  
+  graph(                                                                              properties* props=NULL);
+  graph(                                                       const attrOp& onoffOp, properties* props=NULL);
+  graph(                     const anchor& pointsTo,                                  properties* props=NULL);
+  graph(                     const std::set<anchor>& pointsTo, const attrOp& onoffOp, properties* props=NULL);
+  graph(std::string dotText,                                                          properties* props=NULL);
+  graph(std::string dotText,                                   const attrOp& onoffOp, properties* props=NULL);
+  graph(std::string dotText, const anchor& pointsTo,                                  properties* props=NULL);
+  graph(std::string dotText, const std::set<anchor>& pointsTo, const attrOp& onoffOp, properties* props=NULL);
+    
   private:
-  void init(const attrOp* onoffOp);
+  // Sets the properties of this object
+  static properties* setProperties(int graphID, std::string dotText, const attrOp* onoffOp, properties* props);
+  
+  //void init(const attrOp* onoffOp, properties* props);
   
   public:
   ~graph();

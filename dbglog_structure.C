@@ -15,17 +15,10 @@
 #include "getAllHostnames.h" 
 #include "utils.h"
 using namespace std;
-using namespace dbglog;
+using namespace dbglog::common;
 
 namespace dbglog {
 namespace structure{
-
-// Call the print method of the given printable object
-std::ofstream& operator<<(std::ofstream& ofs, const printable& p) {
-  p.print(ofs);
-  return ofs;
-}
-    
 
 /***************
  ***** dbg *****
@@ -58,17 +51,17 @@ void initializeDebug(string title, string workDir)
 
 void initializeDebug_internal(int argc, char** argv, string title, string workDir)
 {
-  map<string, string> properties;
+  map<string, string> newProps;
 
-  properties["title"] = title;
-  properties["workDir"] = workDir;
+  newProps["title"] = title;
+  newProps["workDir"] = workDir;
   // Records whether we know the application's command line, which would enable us to call it
-  properties["commandLineKnown"] = (argv!=NULL);
-  // If the command line is known, record it in properties
+  newProps["commandLineKnown"] = (argv!=NULL? "1": "0");
+  // If the command line is known, record it in newProps
   if(argv!=NULL) {
-    properties["argc"] = txt()<<argc;
+    newProps["argc"] = txt()<<argc;
     for(int i=0; i<argc; i++)
-      properties[txt()<<"argv["<<i<<"]"] = string(argv[i]);
+      newProps[txt()<<"argv_"<<i] = string(argv[i]);
 
     BrInitError error;
     int ret = br_init(&error);
@@ -84,15 +77,20 @@ void initializeDebug_internal(int argc, char** argv, string title, string workDi
     }
     char* execFile = br_find_exe(NULL);
     if(execFile==NULL) { cerr << "ERROR reading application's executable name after successful initialization!"<<endl; exit(-1); }
-    properties["execFile"] = execFile;
+    newProps["execFile"] = execFile;
     
-//!!!    properties["appPWD"] = `pwd`;
+//!!!    newProps["appPWD"] = `pwd`;
   }
   
-  // Get the name of the current host
-  char hostname[10000]; // The name of the host that this application is currently executing on
-  int ret = gethostname(hostname, 10000);
-  properties["hostname"] = string(hostname);
+  // Get all the aliases of the current host's name
+  //char hostname[10000]; // The name of the host that this application is currently executing on
+  //int ret = gethostname(hostname, 10000);
+  list<string> hostnames = getAllHostnames();
+  newProps["numHostnames"] = txt()<<hostnames.size();
+  { int i=0;
+    for(list<string>::iterator h=hostnames.begin(); h!=hostnames.end(); h++, i++)
+    newProps[txt()<<"hostname_"<<i] = *h;
+  }
 
   // Get the current user's username, using the environment if possible
   char username[10000]; // The current user's user name 
@@ -109,7 +107,10 @@ void initializeDebug_internal(int argc, char** argv, string title, string workDi
     
     if(fgets(username, sizeof(username), fp) == NULL) { cerr << "Failed to read output of \""<<cmd.str()<<"\"!"<<endl; exit(-1); }
   }
-  properties["username"] = string(username);
+  newProps["username"] = string(username);
+  
+  properties* props = new properties();
+  props->add("dbglog", newProps);
   
   // Create the directory structure for the structural information
   // Main output directory
@@ -123,16 +124,7 @@ void initializeDebug_internal(int argc, char** argv, string title, string workDi
   
   initializedDebug = true;
   
-  dbg.init(properties, workDir, imgDir, tmpDir);
-}
-
-// Returns a string that contains n tabs
-string tabs(int n)
-{
-  string s;
-  for(int i=0; i<n; i++)
-    s+="\t";
-  return s;
+  dbg.init(props, workDir, imgDir, tmpDir);
 }
 
 /********************
@@ -240,20 +232,32 @@ bool anchor::operator<(const anchor& that) const
 
 // Emits to the output an html tag that denotes a link to this anchor. Embeds the given text in the link.
 void anchor::link(string text) const {
-  map<string, string> properties;
-  properties["anchorID"] = txt()<<anchorID;
-  properties["text"] = text;
-  properties["img"] = "false";
-  dbg.tag("link", properties);
+  dbglogObj *obj = new dbglogObj(new properties());
+  
+  map<string, string> newProps;
+  newProps["anchorID"] = txt()<<anchorID;
+  newProps["text"] = text;
+  newProps["img"] = "0";
+  obj->props->add("link", newProps);
+  
+  dbg.tag(obj);
+  
+  delete(obj);
 }
 
 // Emits to the output an html tag that denotes a link to this anchor, using the default link image, which is followed by the given text.
 void anchor::linkImg(string text) const {
-  map<string, string> properties;
-  properties["anchorID"] = txt()<<anchorID;
-  properties["text"] = text;
-  properties["img"] = "true";
-  dbg.tag("link", properties);
+  dbglogObj *obj = new dbglogObj(new properties());
+  
+  map<string, string> newProps;
+  newProps["anchorID"] = txt()<<anchorID;
+  newProps["text"] = text;
+  newProps["img"] = "1";
+  obj->props->add("link", newProps);
+  
+  dbg.tag(obj);
+  
+  delete(obj);
 }
 
 std::string anchor::str(std::string indent) const {
@@ -271,59 +275,85 @@ std::string anchor::str(std::string indent) const {
 int block::maxBlockID;
 
 // Initializes this block with the given label
-block::block(string label) : label(label) {
+block::block(string label, properties* props) : label(label) {
   advanceBlockID();
   if(!initializedDebug) initializeDebug("Debug Output", "dbg");
     
-  map<string, string> properties;
-  properties["label"] = label;
-  properties["ID"] = txt()<<blockID;
+  if(props==NULL) this->props = new properties();
+  else            this->props = props;
   
-  dbg.enter("block", properties);
+  if(this->props->active) {
+    map<string, string> newProps;
+    newProps["label"] = label;
+    newProps["ID"] = txt()<<blockID;
+    newProps["anchorID"] = txt()<<startA.getID();
+    newProps["numAnchors"] = "0";
+    this->props->add("block", newProps);
+    
+    dbg.enter(this);
+  }
 }
 
 // Initializes this block with the given label.
 // Includes one or more incoming anchors thas should now be connected to this block.
-block::block(string label, const anchor& pointsTo) : label(label) {
+block::block(string label, const anchor& pointsTo, properties* props) : label(label) {
   advanceBlockID();
   if(!initializedDebug) initializeDebug("Debug Output", "dbg");
   
-  map<string, string> properties;
-  properties["label"] = label;
-  properties["ID"] = txt()<<blockID;
-  properties["numAnchors"] = txt()<<1;
-  properties["anchor_0"] = txt()<<pointsTo.getID();
+  if(props==NULL) this->props = new properties();
+  else            this->props = props;
   
-  dbg.enter("block", properties);
+  if(this->props->active) {
+    map<string, string> newProps;
+    newProps["label"] = label;
+    newProps["ID"] = txt()<<blockID;
+    newProps["anchorID"] = txt()<<startA.getID();
+    newProps["numAnchors"] = "1";
+    newProps["anchor_0"] = txt()<<pointsTo.getID();
+    this->props->add("block", newProps);
+    
+    dbg.enter(this);
+  }
 }
 
 // Initializes this block with the given label.
 // Includes one or more incoming anchors thas should now be connected to this block.
-block::block(string label, const set<anchor>& pointsTo) : label(label)
+block::block(string label, const set<anchor>& pointsTo, properties* props) : label(label)
 {
   advanceBlockID();
   if(!initializedDebug) initializeDebug("Debug Output", "dbg");
 
-  map<string, string> properties;
-  properties["label"] = label;
-  properties["ID"] = txt()<<blockID;
-  properties["numAnchors"] = txt()<<pointsTo.size();
+  if(props==NULL) this->props = new properties();
+  else            this->props = props;
   
-  int i=0;
-  for(set<anchor>::const_iterator a=pointsTo.begin(); a!=pointsTo.end(); a++, i++)
-    properties[txt()<<"anchor_"<<i] = txt()<<a->getID();
-  
-  dbg.enter("block", properties);
+  if(this->props->active) {
+    map<string, string> newProps;
+    newProps["label"] = label;
+    newProps["ID"] = txt()<<blockID;
+    newProps["anchorID"] = txt()<<startA.getID();
+    newProps["numAnchors"] = txt()<<pointsTo.size();
+    
+    int i=0;
+    for(set<anchor>::const_iterator a=pointsTo.begin(); a!=pointsTo.end(); a++, i++)
+      newProps[txt()<<"anchor_"<<i] = txt()<<a->getID();
+    
+    this->props->add("block", newProps);
+    
+    dbg.enter(this);
+  }
 }
 
 block::~block() {
-  dbg.exit("block");
+  assert(props);
+  if(props->active)
+    dbg.exit(this);
 }
 
 // Increments blockD. This function serves as the one location that we can use to target conditional
 // breakpoints that aim to stop when the block count is a specific number
 int block::advanceBlockID() {
   maxBlockID++;
+  blockID = maxBlockID;
   // THIS COMMENT MARKS THE SPOT IN THE CODE AT WHICH GDB SHOULD BREAK
   return maxBlockID;
 }
@@ -361,7 +391,7 @@ void dbgBuf::init(std::streambuf* baseBuf)
 // and can be put directly into the teed buffers.
 int dbgBuf::overflow(int c)
 {
-  cerr << "overflow\n";
+  //cerr << "overflow\n";
   if (c == EOF)
   {
      return !EOF;
@@ -391,7 +421,7 @@ streamsize dbgBuf::xsputn(const char * s, streamsize n)
   // If the owner is printing, output their text exactly
   if(ownerAccess) {
     int ret = baseBuf->sputn(s, n);
-    cerr << "xputn() >>>\n";
+    //cerr << "xputn() >>>\n";
     return ret;
   } else {
     // Otherwise, replace all special characters with their HTML encodings
@@ -423,7 +453,7 @@ int dbgBuf::sync()
 {
   // Only emit text if the current query on attributes evaluates to true
   //  if(!attributes.query()) return 0;
-  cerr << "dbgBuf::sync()\n";
+  //cerr << "dbgBuf::sync()\n";
   
   int r = baseBuf->pubsync();
   if(r!=0) return -1;
@@ -451,13 +481,13 @@ dbgStream::dbgStream() : std::ostream(&defaultFileBuf), initialized(false)
   dbgFile = NULL;
 }
 
-dbgStream::dbgStream(std::map<std::string, std::string>& properties, string workDir, string imgDir, std::string tmpDir)
+dbgStream::dbgStream(properties* props, string workDir, string imgDir, std::string tmpDir)
   : std::ostream(&defaultFileBuf)
 {
-  init(properties, workDir, imgDir, tmpDir);
+  init(props, workDir, imgDir, tmpDir);
 }
 
-void dbgStream::init(std::map<std::string, std::string>& properties, string workDir, string imgDir, std::string tmpDir)
+void dbgStream::init(properties* props, string workDir, string imgDir, std::string tmpDir)
 {
   this->workDir = workDir;
   this->imgDir  = imgDir;
@@ -470,8 +500,9 @@ void dbgStream::init(std::map<std::string, std::string>& properties, string work
   // Call the parent class initialization function to connect it dbgBuf of the output file
   buf=new dbgBuf(dbgFile->rdbuf());
   ostream::init(buf);
-  
-  enter("dbglog", properties);
+
+  this->props = props; 
+  enter(this);
   
   initialized = true;
 }
@@ -489,7 +520,7 @@ dbgStream::~dbgStream()
     system(cmd.str().c_str());
   }
   
-  exit("dbglog");
+  exit(this);
 }
 
 // Called when a block is entered.
@@ -544,96 +575,120 @@ string dbgStream::addImage(string ext)
   if(!initializedDebug) initializeDebug("Debug Output", "dbg");
   
   ostringstream imgFName; imgFName << imgDir << "/image_" << numImages << "." << ext;
-  map<string, string> properties;
-  properties["path"] = imgFName.str();
-  tag("image", properties);
+  
+  dbglogObj *obj = new dbglogObj(new properties());
+  
+  map<string, string> newProps;
+  newProps["path"] = imgFName.str();
+  obj->props->add("image", newProps);
+  
+  tag(obj);
+  
+  delete(obj);
+  
   return imgFName.str();
 }
 
 // Emit the entry into a tag to the structured output file. The tag is set to the given property key/value pairs
-void dbgStream::enter(std::string name, const std::map<std::string, std::string>& properties) {
+//void dbgStream::enter(std::string name, const std::map<std::string, std::string>& properties, bool inheritedFrom) {
+void dbgStream::enter(dbglogObj* obj) {
   ownerAccessing();
-  *this << enterStr(name, properties);
+  *this << enterStr(obj);
   userAccessing();
 }
 
 // Returns the text that should be emitted to the structured output file that denotes the the entry into a tag. 
 // The tag is set to the given property key/value pairs
-string dbgStream::enterStr(std::string name, const std::map<std::string, std::string>& properties) {
+//string dbgStream::enterStr(std::string name, const std::map<std::string, std::string>& properties, bool inheritedFrom) {
+string dbgStream::enterStr(dbglogObj* obj) {
   ostringstream oss;
-  oss << "["<<name<<" ";
-  oss << "numProperties=\""<<properties.size()<<"\"";
   
-  int i=0;
-  for(std::map<std::string, std::string>::const_iterator p=properties.begin(); p!=properties.end(); p++, i++)
-    oss << " name"<<i<<"=\""<<p->first<<"\" val"<<i<<"=\""<<p->second<<"\"";
-  
-  oss << "]\n";
+  for(list<pair<string, map<string, string> > >::const_iterator i=obj->props->begin(); i!=obj->props->end(); i++) {
+    list<pair<string, map<string, string> > >::const_iterator iNext=i; iNext++;
+    oss << "["<<(iNext!=obj->props->end()? "|": "")<<i->first<<" ";
+    oss << "numProperties=\""<<i->second.size()<<"\"";
+    
+    int j=0;
+    for(std::map<std::string, std::string>::const_iterator p=i->second.begin(); p!=i->second.end(); p++, j++)
+      oss << " name"<<j<<"=\""<<p->first<<"\" val"<<j<<"=\""<<p->second<<"\"";
+    
+    oss << "]\n";
+  }
   
   return oss.str();
 }
 
 // Emit the exit from a given tag to the structured output file
-void dbgStream::exit(std::string name) {
+//void dbgStream::exit(std::string name) {
+void dbgStream::exit(dbglogObj* obj) {
   ownerAccessing();
-  *this << exitStr(name);
+  *this << exitStr(obj);
   userAccessing();
 }
 
 // Returns the text that should be emitted to the the structured output file to that denotes exit from a given tag
-std::string dbgStream::exitStr(std::string name) {
+//std::string dbgStream::exitStr(std::string name) {
+std::string dbgStream::exitStr(dbglogObj* obj) {
   ostringstream oss;
-  oss <<"[/"<<name<<"]\n";
+  oss <<"[/"<<obj->props->name()<<"]\n";
   return oss.str();
 }
 
 // Emit an entry an an immediate exit  
-void dbgStream::tag(std::string name, const std::map<std::string, std::string>& properties)
+//void dbgStream::tag(std::string name, const std::map<std::string, std::string>& properties, bool inheritedFrom)
+void dbgStream::tag(dbglogObj* obj)
 {
-  enter(name, properties);
-  exit(name);
+  enter(obj);
+  exit(obj);
 }
 
 // Returns the text that should be emitted to the the structured output file to that denotes a full tag an an the structured output file
-std::string dbgStream::tagStr(std::string name, const std::map<std::string, std::string>& properties) {
-  return enterStr(name, properties) + exitStr(name);
+//std::string dbgStream::tagStr(std::string name, const std::map<std::string, std::string>& properties, bool inheritedFrom) {
+std::string dbgStream::tagStr(dbglogObj* obj) {
+  return enterStr(obj) + exitStr(obj);
 }
 
 /******************
  ***** indent *****
  ******************/
 
-indent::indent(std::string prefix)
-{ init(prefix, 1, NULL); }
-indent::indent(std::string prefix, int repeatCnt, const attrOp& onoffOp)
-{ init(prefix, repeatCnt, &onoffOp); }
-indent::indent(std::string prefix, int repeatCnt)
-{ init(prefix, repeatCnt, NULL); }
-indent::indent(                    int repeatCnt)
-{ init("    ", repeatCnt, NULL); }
-indent::indent(std::string prefix,                const attrOp& onoffOp)
-{ init(prefix, 1, &onoffOp); }
-indent::indent(                    int repeatCnt, const attrOp& onoffOp)
-{ init("    ", repeatCnt, &onoffOp); }
-indent::indent(                                   const attrOp& onoffOp)
-{ init("    ", 1, &onoffOp); }
-indent::indent()
-{ init("    ", 1, NULL); }
+indent::indent(std::string prefix,                                       properties* props)
+{ init(prefix, 1, NULL, props); }
+indent::indent(std::string prefix, int repeatCnt, const attrOp& onoffOp, properties* props)
+{ init(prefix, repeatCnt, &onoffOp, props); }
+indent::indent(std::string prefix, int repeatCnt,                        properties* props)
+{ init(prefix, repeatCnt, NULL, props); }
+indent::indent(                    int repeatCnt,                        properties* props)
+{ init("    ", repeatCnt, NULL, props); }
+indent::indent(std::string prefix,                const attrOp& onoffOp, properties* props)
+{ init(prefix, 1, &onoffOp, props); }
+indent::indent(                    int repeatCnt, const attrOp& onoffOp, properties* props)
+{ init("    ", repeatCnt, &onoffOp, props); }
+indent::indent(                                   const attrOp& onoffOp, properties* props)
+{ init("    ", 1, &onoffOp, props); }
+indent::indent(                                                          properties* props)
+{ init("    ", 1, NULL, props); }
 
-void indent::init(std::string prefix, int repeatCnt, const attrOp* onoffOp) {
-///  if(repeatCnt>0 && attributes.query() && (onoffOp? onoffOp->apply(): true)) {
-    active = true;
-    map<string, string> properties;
-    properties["prefix"] = prefix;
-    properties["repeatCnt"] = txt()<<repeatCnt;
-    dbg.enter("indent", properties);
-/*  } else
-    active = false;*/
+void indent::init(std::string prefix, int repeatCnt, const attrOp* onoffOp, properties* props) {
+  if(props==NULL) this->props = new properties();
+  else            this->props = props;
+  
+  if(repeatCnt>0 && attributes.query() && (onoffOp? onoffOp->apply(): true)) {
+    this->props->active = true;
+    map<string, string> newProps;
+    newProps["prefix"] = prefix;
+    newProps["repeatCnt"] = txt()<<repeatCnt;
+    this->props->add("indent", newProps);
+    
+    dbg.enter(this);
+  } else
+    this->props->active = false;
 }
 
 indent::~indent() {
-  if(active) {
-    dbg.exit("indent");
+  assert(props);
+  if(props->active) {
+    dbg.exit(this);
   }
 }
 

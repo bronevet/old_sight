@@ -1,6 +1,6 @@
 // Licence information included in file LICENCE
-#include "../dbglog.h"
-#include "scope.h"
+#include "../dbglog_layout.h"
+#include "../dbglog_common.h"
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -14,50 +14,24 @@
 #include <sys/time.h>
 
 using namespace std;
+using namespace dbglog::common;
 
 namespace dbglog {
+namespace layout {
 
-scope::scope(std::string label,                                    scopeLevel level, const attrOp& onoffOp) : 
-  block(label)
-{ init(level, &onoffOp); }
-
-scope::scope(string label, const anchor& pointsTo,                 scopeLevel level, const attrOp& onoffOp): 
-  block(label, pointsTo)
-{ init(level, &onoffOp); }
-
-scope::scope(string label, const set<anchor>& pointsTo,            scopeLevel level, const attrOp& onoffOp) :
-  block(label, pointsTo)
-{ init(level, &onoffOp); }
-
-scope::scope(std::string label,                                                      const attrOp& onoffOp) : 
-  block(label)
-{ init(scope::medium, &onoffOp); }
-
-scope::scope(string label, const anchor& pointsTo,                                   const attrOp& onoffOp): 
-  block(label, pointsTo)
-{ init(scope::medium, &onoffOp); }
-
-scope::scope(string label, const set<anchor>& pointsTo,                             const attrOp& onoffOp) :
-  block(label, pointsTo)
-{ init(scope::medium, &onoffOp); }
-
-scope::scope(std::string label,                                   scopeLevel level) :
-  block(label)
-{ init(level, NULL); }
-
-scope::scope(std::string label, const anchor& pointsTo,           scopeLevel level) :
-  block(label, pointsTo)
-{ init(level, NULL); }
+// Record the layout handlers in this file
+void* scopeEnterHandler(properties::iterator props) { return new scope(props); }
+void  scopeExitHandler(void* obj) { scope* s = static_cast<scope*>(obj); delete s; }
   
-scope::scope(std::string label, const std::set<anchor>& pointsTo, scopeLevel level) :
-  block(label, pointsTo)
-{ init(level, NULL); }
+scopeLayoutHandlerInstantiator::scopeLayoutHandlerInstantiator() { 
+  layoutEnterHandlers["scope"] = &scopeEnterHandler;
+  layoutExitHandlers ["scope"] = &scopeExitHandler;
+}
 
 std::vector<std::string> scope::colors;
 int scope::colorIdx=0; // The current index into the list of colors 
 
-// Common initialization code
-void scope::init(scopeLevel level, const attrOp* onoffOp)
+scope::scope(properties::iterator props) : block(properties::next(props))
 {
   //cout << "scope::init() anchor="<<getAnchorRef().str()<<endl;
   
@@ -95,42 +69,33 @@ void scope::init(scopeLevel level, const attrOp* onoffOp)
     colors.push_back("FFED6F");
   }
   
-  // If the current attribute query evaluates to true (we're emitting debug output) AND
-  // either onoffOp is not provided or its evaluates to true
-  if(attributes.query() && (onoffOp? onoffOp->apply(): true)) {
-    active = true;
-    this->level = level;
-    // If this block corresponds to a new file, this string will be set to the Javascript command to 
-    // load this file into the current view
-    string loadCmd="";
-    if(level == high) {
-      colorIdx++; // Advance to a new color for this func
-      loadCmd = dbg.enterFileLevel(this);
-    } else if(level == medium) {
-      colorIdx++; // Advance to a new color for this func
-      dbg.enterBlock(this, false, true);
-    }
-    else if(level == low || level == min)
-      dbg.enterBlock(this, false, true);
+  this->level = (scopeLevel)properties::getInt(props, "level");
+  // If this block corresponds to a new file, this string will be set to the Javascript command to 
+  // load this file into the current view
+  string loadCmd="";
+  if(level == high) {
+    colorIdx++; // Advance to a new color for this func
+    loadCmd = dbg.enterFileLevel(this);
+  } else if(level == medium) {
+    colorIdx++; // Advance to a new color for this func
+    dbg.enterBlock(this, false, true);
   }
-  else
-    active = false;
+  else if(level == low || level == minimum)
+    dbg.enterBlock(this, false, true);
 }
 
 scope::~scope()
 { 
-  if(active) {
-    if(level == high) {
-      dbg.exitFileLevel();
-      colorIdx--; // Return to the last color for this func's parent
-    }
-    else if(level == medium) {
-      dbg.exitBlock();
-      colorIdx--; // Return to the last color for this func's parent
-    } else if(level == low || level == min)
-      dbg.exitBlock();
-    assert(colorIdx>=0);
+  if(level == high) {
+    dbg.exitFileLevel();
+    colorIdx--; // Return to the last color for this func's parent
   }
+  else if(level == medium) {
+    dbg.exitBlock();
+    colorIdx--; // Return to the last color for this func's parent
+  } else if(level == low || level == minimum)
+    dbg.exitBlock();
+  assert(colorIdx>=0);
 }
 
 // Called to enable the block to print its entry and exit text
@@ -151,23 +116,23 @@ void scope::printEntry(string loadCmd) {
   dbg.ownerAccessing();
   if(level == high || level == medium || level == low) {
     dbg << "</a>\n";
-    if(false) { //if(saved_appExecInfo) {
+    if(false) { //if(appExecInfo) {
       dbg << "<script type=\"text/javascript\">\n";
-      dbg << "  document.write(\"<a href=\\\"http://\"+hostname+\""<<":"<<GDB_PORT<<"/gdbwrap.cgi?execFile="<<saved_execFile<<"&tgtCount="<<blockCount<<"&args=";
-  //    dbg << "(<a href=\"http://"<<hostname<<":"<<GDB_PORT<<"/gdbwrap.cgi?execFile="<<saved_execFile<<"&tgtCount="<<blockCount<<"&args=";
-      for(int i=1; i<saved_argc; i++) {
+      dbg << "  document.write(\"<a href=\\\"http://\"+hostname+\""<<":"<<GDB_PORT<<"/gdbwrap.cgi?execFile="<<execFile<<"&tgtCount="<<blockCount<<"&args=";
+  //    dbg << "(<a href=\"http://"<<hostname<<":"<<GDB_PORT<<"/gdbwrap.cgi?execFile="<<execFile<<"&tgtCount="<<blockCount<<"&args=";
+      for(int i=1; i<argc; i++) {
         if(i!=1) dbg << " ";
-        dbg << saved_argv[i];
+        dbg << argv[i];
       }
       dbg << "\\\"><b>GDB</b></a>\");\n";
       dbg << "</script>\n";
     }
     if(saved_appExecInfo) {
       ostringstream setGDBLink; 
-      setGDBLink << "\"javascript:setGDBLink(this, ':"<<GDB_PORT<<"/gdbwrap.cgi?execFile="<<saved_execFile<<"&tgtCount="<<blockCount<<"&args=";
-      for(int i=1; i<saved_argc; i++) {
+      setGDBLink << "\"javascript:setGDBLink(this, ':"<<GDB_PORT<<"/gdbwrap.cgi?execFile="<<execFile<<"&tgtCount="<<blockCount<<"&args=";
+      for(int i=1; i<argc; i++) {
         if(i!=1) dbg << " ";
-        setGDBLink<< saved_argv[i];
+        setGDBLink<< argv[i];
       }
       setGDBLink << "')\"";
   
@@ -233,4 +198,5 @@ void workscope::data(std::string name, void* data, DiffFunctor* diff) {
 }
 */
 
-} // namespace dbglog
+}; // namespace layout
+}; // namespace dbglog

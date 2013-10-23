@@ -1,29 +1,27 @@
-#include "trace.h"
+#include "../dbglog_layout.h"
 using namespace std;
 
 namespace dbglog {
+namespace layout {
 
-// Stack of currently active traces
-//std::list<trace*> trace::stack;
-std::map<std::string, trace*> trace::active;  
+// Record the layout handlers in this file
+void* traceEnterHandler(properties::iterator props) { return new trace(props); }
+void  traceExitHandler(void* obj) { trace* t = static_cast<trace*>(obj); delete t; }
+  
+traceLayoutHandlerInstantiator::traceLayoutHandlerInstantiator() { 
+  layoutEnterHandlers["trace"] = &traceEnterHandler;
+  layoutExitHandlers ["trace"] = &traceExitHandler;
+  layoutEnterHandlers["traceObs"] = &trace::observe;
+  layoutExitHandlers ["traceObs"] = &defaultExitHandler;
+}
+
+// Maps the traceIDs of all the currently active traces to their trace objects
+std::map<int, trace*> trace::active;
 
 // Records whether the tracer infrastructure has been initialized
 bool trace::initialized=false;
 
-trace::trace(std::string label, const std::list<std::string>& contextAttrs, showLocT showLoc, vizT viz) : block(label), contextAttrs(contextAttrs), showLoc(showLoc), viz(viz) {
-  if(contextAttrs.size()==0) { cerr << "trace::trace() ERROR: contextAttrs must be non-empty!"; exit(-1); }
-  
-  init(label);
-}
-
-trace::trace(std::string label, std::string contextAttr, showLocT showLoc, vizT viz) : block(label), showLoc(showLoc), viz(viz) {
-  contextAttrs.push_back(contextAttr);
-  
-  init(label);
-}
-
-
-void trace::init(std::string label) {
+trace::trace(properties::iterator props) : block(properties::next(props)) {
   if(!initialized) {
     // Table/Lines visualization
     //dbg.includeScript("https://www.google.com/jsapi", "text/javascript");
@@ -49,21 +47,22 @@ void trace::init(std::string label) {
     initialized = true;
   }
   
-  // Add this trace object as a change listener to all the context variables
-  for(list<string>::iterator ca=contextAttrs.begin(); ca!=contextAttrs.end(); ca++)
-    attributes.addObs(*ca, this);
+  traceID = properties::getInt(props, "traceID");
+  showLoc = (showLocT)properties::getInt(props, "showLoc");
+  viz     = (vizT)    properties::getInt(props, "viz");
   
-  //stack.push_back(this);
-  active[label] = this;
+  // Add this trace object as a change listener to all the context variables
+  long numCtxtAttrs = properties::getInt(props, "numCtxtAttrs");
+  for(long i=0; i<numCtxtAttrs; i++)
+    attributes.addObs(properties::get(props, txt()<<"ctxtAttr_"<<i), this);
+  
+  active[traceID] = this;
   
   // If we should show the visualization at the beginning of the block
   if(showLoc == showBegin) showViz();
 }
 
 trace::~trace() {
-  // Emit any observations performed since the last change of any of the context variables
-  emitObservations();
-  
   // If we should show the visualization at the end of the block
   if(showLoc == showEnd) showViz();
   
@@ -94,37 +93,30 @@ trace::~trace() {
     cmd<<"displayTrace('"<<getLabel()<<"', '"<<tgtBlockID<<"-Table', "<<
                        contextAttrsStr.str()<<", " << 
                        tracerAttrsStr.str()<<", "<<  
-                       "'"<<viz2Str(viz)<<"');";
+                       "'"<<common::viz2Str(viz)<<"');";
     dbg.widgetScriptEpilogCommand(cmd.str());
   } else if(viz==lines) {
     // Create a separate decision tree for each context attribute
     for(std::list<std::string>::iterator c=contextAttrs.begin(); c!=contextAttrs.end(); c++) {
-      dbg.widgetScriptEpilogCommand(txt()<<"displayTrace('"<<getLabel()<<"', '"<<tgtBlockID<<"', ['"<<*c<<"'], "<<tracerAttrsStr.str()<<", '"<<viz2Str(viz)<<"');");
+      dbg.widgetScriptEpilogCommand(txt()<<"displayTrace('"<<getLabel()<<"', '"<<tgtBlockID<<"', ['"<<*c<<"'], "<<tracerAttrsStr.str()<<", '"<<common::viz2Str(viz)<<"');");
     }
   } else if(viz==decTree) {
     // Create a separate decision tree for each tracer attribute
     for(set<string>::iterator t=tracerKeys.begin(); t!=tracerKeys.end(); t++) {
-      dbg.widgetScriptEpilogCommand(txt()<<"displayTrace('"<<getLabel()<<"', '"<<tgtBlockID<<"', "<<contextAttrsStr.str()<<", ['"<<*t<<"'], '"<<viz2Str(viz)<<"');");
+      dbg.widgetScriptEpilogCommand(txt()<<"displayTrace('"<<getLabel()<<"', '"<<tgtBlockID<<"', "<<contextAttrsStr.str()<<", ['"<<*t<<"'], '"<<common::viz2Str(viz)<<"');");
     }
   }
   
   /*assert(stack.size()>0);
   stack.pop_back();*/
-  assert(active.find(getLabel()) != active.end());
-  active.erase(getLabel());
+  assert(active.find(traceID) != active.end());
+  active.erase(traceID);
   
   // Stop this object's observations of changes in context variables
   for(list<string>::iterator ca=contextAttrs.begin(); ca!=contextAttrs.end(); ca++)
     attributes.remObs(*ca, this);
 }
 
-// Returns a string representation of a vizT object
-string trace::viz2Str(vizT viz) {
-       if(viz == table)   return "table";
-  else if(viz == lines)   return "lines";
-  else if(viz == decTree) return "decTree";
-  else                    return "???";
-}
 // Place the code to show the visualization
 void trace::showViz() {
   dbg.enterBlock(this, false, true);
@@ -149,100 +141,40 @@ void trace::showViz() {
   dbg.exitBlock();
 }
 
-// Observe for changes to the values mapped to the given key
-void trace::observePre(std::string key)
+// Record an observation
+void* trace::observe(properties::iterator props)
 {
-  // Emit any observations performed since the last change of any of the context variables
-  emitObservations();
-}
-
-// Called by traceAttr() to inform the trace that a new observation has been made
-void trace::traceAttrObserved(std::string key, const attrValue& val) {
-  obs[key] = val;
-  tracerKeys.insert(key);
-}
-
-// Emits the JavaScript command that encodes the observations made since the last time a context attribute changed
-void trace::emitObservations() {
-  // Only emit observations of the trace variables if we have made any observations since the last change in the context variables
-  if(obs.size()==0) return;
-    
-  //assert(trace::stack.size()>0);
-  //trace* t = *(trace::stack.rbegin());
-  assert(active.find(getLabel()) != active.end());
-  trace* t = active[getLabel()];
+  long traceID = properties::getInt(props, "traceID");
+  assert(active.find(traceID) != active.end());
+  trace* t = active[traceID];
   
   ostringstream cmd;
-  cmd << "traceRecord('"<<getLabel()<<"', ";
+  cmd << "traceRecord('"<<t->getLabel()<<"', ";
   
-  // Emit the recently observed values of tracer attributes
+  // Emit the observed values of tracer attributes
   cmd << "{";
-  for(map<string, attrValue>::iterator i=obs.begin(); i!=obs.end(); i++) {
-    if(i!=obs.begin()) cmd << ", ";
-    cmd << "'"<<i->first << "': '" << i->second.getAsStr()<<"'";
+  long numTraceAttrs = properties::getInt(props, "numTraceAttrs");
+  for(long i=0; i<numTraceAttrs; i++) {
+    if(i!=0) cmd << ", ";
+    string tKey = properties::get(props, txt()<<"tKey_"<<i);
+    string tVal = properties::get(props, txt()<<"tVal_"<<i);
+    cmd << "'"<< tKey << "': '" << tVal <<"'";
   }
-  
   cmd << "}, {";
   
   // Emit the current values of the context attributes
-  for(std::list<std::string>::iterator a=t->contextAttrs.begin(); a!=t->contextAttrs.end(); a++) {
-    if(a!=t->contextAttrs.begin()) cmd << ", ";
-    const std::set<attrValue>& vals = attributes.get(*a);
-    assert(vals.size()>0);
-    if(vals.size()>1) { cerr << "trace::traceAttr() ERROR: context attribute "<<*a<<" has multiple values!"; }
-    cmd << "'" << *a << "': '" << vals.begin()->getAsStr() << "'";
+  long numCtxtAttrs = properties::getInt(props, "numCtxtAttrs");
+  for(long i=0; i<numCtxtAttrs; i++) {
+    if(i!=0) cmd << ", ";
+    string cKey = properties::get(props, txt()<<"cKey_"<<i);
+    string cVal = properties::get(props, txt()<<"cVal_"<<i);
+    cmd << "'" << cKey << "': '" << cVal << "'";
   }
-  cmd << "}, '"<<viz2Str(viz)<<"');";
+  cmd << "}, '"<<common::viz2Str(t->viz)<<"');";
   dbg.widgetScriptCommand(cmd.str());
   
-  // Reset the obs[] map since we've just emitted all these observations
-  obs.clear();
+  return NULL;
 }
 
-void traceAttr(std::string label, std::string key, const attrValue& val) {
-  /*assert(trace::stack.size()>0);
-  trace* t = *(trace::stack.rbegin());*/
-  assert(trace::active.find(label) != trace::active.end());
-  trace* t = trace::active[label];
-  
-  // Inform the inner-most tracer of the observation
-  t->traceAttrObserved(key, val);
-}
-
-/*******************
- ***** measure *****
- *******************/
-measure::measure(std::string traceLabel, std::string valLabel): traceLabel(traceLabel), valLabel(valLabel)
-{
-  measureDone = false;
-  gettimeofday(&start, NULL);
-}
-
-measure::~measure() {
-  if(!measureDone) doMeasure();
-}
-
-double measure::doMeasure() {
-  if(measureDone) { cerr << "measure::doMeasure() ERROR: measuring variable \""<<valLabel<<"\" in trace \""<<traceLabel<<"\" multiple times!"<<endl; exit(-1); }
-  measureDone = true;
-  
-  struct timeval end;
-  gettimeofday(&end, NULL);
-  
-  double elapsed = ((end.tv_sec*1000000 + end.tv_usec) - (start.tv_sec*1000000 + start.tv_usec)) / 1000000.0;
-  traceAttr(traceLabel, valLabel, attrValue((double)elapsed));
-  return elapsed;
-}
-
-measure* startMeasure(std::string traceLabel, std::string valLabel) {
-  return new measure(traceLabel, valLabel);
-}
-
-double endMeasure(measure* m) {
-  double result = m->doMeasure();
-  delete m;
-  return result;
-}
-
-
+}; // namespace layout
 }; // namespace dbglog

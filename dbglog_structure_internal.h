@@ -10,19 +10,13 @@
 #include <ostream>
 #include <fstream>
 #include <stdarg.h>
+#include <assert.h>
+#include "dbglog_common.h"
 #include "attributes_structure.h"
 #include "utils.h"
 
 namespace dbglog {
 namespace structure{
-class printable
-{
-  public:
-  virtual ~printable() {}
-  virtual void print(std::ofstream& ofs) const=0;
-};
-// Call the print method of the given printable object
-std::ofstream& operator<<(std::ofstream& ofs, const printable& p);
 
 // Records the information needed to call the application
 extern bool saved_appExecInfo; // Indicates whether the application execution info has been saved
@@ -40,13 +34,10 @@ extern char username[10000];
 void initializeDebug(int argc, char** argv, std::string title="Debug Output", std::string workDir="dbg");
 void initializeDebug(std::string title, std::string workDir);
 
-// Returns a string that contains n tabs
-std::string tabs(int n);
-
 class dbgStream;
 
 // Represents a unique location in the dbglog output
-class location : printable{
+class location : printable {
   std::list<std::pair<int, std::list<int> > > l;
   
   public:
@@ -64,6 +55,19 @@ class location : printable{
   bool operator<(const location& that);
 
   void print(std::ofstream& ofs) const;
+};
+
+// Base class of all dbglog objects that provides some common functionality
+class dbglogObj {
+  public:
+  properties* props;
+  dbglogObj() : props(NULL) {}
+  dbglogObj(properties* props) : props(props) {}
+    
+  ~dbglogObj() {
+    assert(props);
+    delete(props);
+  }
 };
 
 // Uniquely identifies a location with the debug information, including the file and region hierarchy
@@ -122,7 +126,7 @@ class anchor
 };
 
 // A block out debug output, which may be filled by various visual elements
-class block
+class block : public dbglogObj
 {
   std::string label;
   // The unique ID of this block as well as the static global counter of the maximum ID assigned to any block.
@@ -140,12 +144,12 @@ class block
   
   public:
   // Initializes this block with the given label
-  block(std::string label="");
+  block(std::string label="", properties* props=NULL);
     
   // Initializes this block with the given label.
   // Includes one or more incoming anchors thas should now be connected to this block.
-  block(std::string label, const anchor& pointsTo);
-  block(std::string label, const std::set<anchor>& pointsTo);
+  block(std::string label, const anchor& pointsTo, properties* props=NULL);
+  block(std::string label, const std::set<anchor>& pointsTo, properties* props=NULL);
  
   ~block();
   
@@ -234,7 +238,7 @@ protected:
 
 
 // Stream that uses dbgBuf
-class dbgStream : public std::ostream
+class dbgStream : public std::ostream, public dbglogObj
 {
   dbgBuf defaultFileBuf;
   // Stream to the file where the structure will be written
@@ -263,8 +267,8 @@ public:
   // Construct an ostream which tees output to the supplied
   // ostreams.
   dbgStream();
-  dbgStream(std::map<std::string, std::string>& properties, std::string workDir, std::string imgDir, std::string tmpDir);
-  void init(std::map<std::string, std::string>& properties, std::string workDir, std::string imgDir, std::string tmpDir);
+  dbgStream(properties* props, std::string workDir, std::string imgDir, std::string tmpDir);
+  void init(properties* props, std::string workDir, std::string imgDir, std::string tmpDir);
   ~dbgStream();
   
   // Switch between the owner class and user code writing text into this stream
@@ -297,44 +301,51 @@ public:
     
   // ----- Output of tags ----
   // Emit the entry into a tag to the structured output file. The tag is set to the given property key/value pairs
-  void enter(std::string name, const std::map<std::string, std::string>& properties);
+  //void enter(std::string name, const std::map<std::string, std::string>& properties, bool inheritedFrom);
+  void enter(dbglogObj* obj);
     
   // Returns the text that should be emitted to the structured output file that denotes the the entry into a tag. 
   // The tag is set to the given property key/value pairs
-  std::string enterStr(std::string name, const std::map<std::string, std::string>& properties);
+  //std::string enterStr(std::string name, const std::map<std::string, std::string>& properties, bool inheritedFrom);
+  std::string enterStr(dbglogObj* obj);
     
   // Emit the exit from a given tag to the structured output file
-  void exit(std::string name);
+  //void exit(std::string name);
+  void exit(dbglogObj* obj);
     
   // Returns the text that should be emitted to the the structured output file to that denotes exit from a given tag
-  std::string exitStr(std::string name);
+  //std::string exitStr(std::string name);
+  std::string exitStr(dbglogObj* obj);
   
   // Emit a full tag an an the structured output file
-  void tag(std::string name, const std::map<std::string, std::string>& properties);
-    
+  //void tag(std::string name, const std::map<std::string, std::string>& properties, bool inheritedFrom);
+  void tag(dbglogObj* obj);
+  
   // Returns the text that should be emitted to the the structured output file to that denotes a full tag an an the structured output file
-  std::string tagStr(std::string name, const std::map<std::string, std::string>& properties);
+  //std::string tagStr(std::string name, const std::map<std::string, std::string>& properties, bool inheritedFrom);
+  std::string tagStr(dbglogObj* obj);
 }; // dbgStream
 
 extern bool initializedDebug;
 extern dbgStream dbg;
 
-class indent {
-public:
-  bool active;
+class indent : public dbglogObj
+{
+  public:
+  //bool active;
   // prefix - the string that will be prepended to all subsequent lines. (default is "    ")
   // repeatCnt - the number of repetitions of this string. If repeatCnt=0 we will not do any indentation. (default is 1).
   // onoffOp - We emit this scope if the current attribute query evaluates to true (i.e. we're emitting debug output) AND
   //           either onoffOp is not provided or its evaluates to true.
-  indent(std::string prefix);
-  indent(std::string prefix, int repeatCnt, const attrOp& onoffOp);
-  indent(std::string prefix, int repeatCnt);
-  indent(                    int repeatCnt);
-  indent(std::string prefix,                const attrOp& onoffOp);
-  indent(                    int repeatCnt, const attrOp& onoffOp);
-  indent(                                   const attrOp& onoffOp);
-  indent();
-  void init(std::string prefix, int repeatCnt, const attrOp* onoffOp);
+  indent(std::string prefix,                                       properties* props=NULL);
+  indent(std::string prefix, int repeatCnt, const attrOp& onoffOp, properties* props=NULL);
+  indent(std::string prefix, int repeatCnt,                        properties* props=NULL);
+  indent(                    int repeatCnt,                        properties* props=NULL);
+  indent(std::string prefix,                const attrOp& onoffOp, properties* props=NULL);
+  indent(                    int repeatCnt, const attrOp& onoffOp, properties* props=NULL);
+  indent(                                   const attrOp& onoffOp, properties* props=NULL);
+  indent(                                                          properties* props=NULL);
+  void init(std::string prefix, int repeatCnt, const attrOp* onoffOp, properties* props);
     
   ~indent();
 };

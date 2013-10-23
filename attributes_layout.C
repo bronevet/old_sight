@@ -1,10 +1,11 @@
-#include "dbglog_internal.h"
+#include "dbglog_layout_internal.h"
 #include <assert.h>
 
 using namespace std;
 
 namespace dbglog {
-
+namespace layout {
+    
 attributesC attributes;
 attrNullOp NullOp;
 
@@ -656,7 +657,7 @@ void* attrFalse_enter() { return new attrFalse(); }
 void attrFalse_exit(void* subQ) { delete (attrFalse*)subQ; }
 }
 
-
+}; // namespace layout
 }; // namespace dbglog
 // ***********************
 // ***** SELF TESTER *****

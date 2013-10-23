@@ -5,7 +5,7 @@ using namespace std;
 using namespace dbglog;
 
 int fibIndent(int a);
-int fibScope(int a, scope::scopeLevel level);
+int fibScope(int a, scopeLevel level);
   
 class dottableExample: public dottable
 {
@@ -55,7 +55,7 @@ int main(int argc, char** argv)
   // A high-level scope creates a separate file and links that make it possible to load the file's
   // context into the parent HTML file or to open the file in a new tab or window.
   {
-    scope regHigh("This is a high-level scope, the contents of which are loaded by clicking the down arrow", scope::high);
+    scope regHigh("This is a high-level scope, the contents of which are loaded by clicking the down arrow", high);
     
     // This is a medium-level scope (default) that occurs inside the high-level scope. It also lasts until
     // the end of the scope of object regMed. This object's label is generated using the << syntax, which
@@ -71,7 +71,7 @@ int main(int argc, char** argv)
   {
     scope regFibIndent("Nested medium-level scopes due to recursive calls to fib");
     dbg << "<u>In medium-level scopes, colors change</u>"<<endl;
-    fibScope(3, scope::medium);
+    fibScope(3, medium);
   }
   
   dbg << "The left frame summarizes the structure of the main debug output. "<<
@@ -87,14 +87,14 @@ int main(int argc, char** argv)
   {
     scope regFibIndent("Nested low-level scopes");
     dbg << "<u>In low-level scopes, colors change</u>"<<endl;
-    fibScope(2, scope::low);
+    fibScope(2, low);
   }
   
   // Call the fib function, with min-level scopes
   {
     scope regFibIndent("Nested min-level scopes");
     dbg << "<u>Min-level scopes don't have formatted titles and do not change colors</u>"<<endl;
-    fibScope(2, scope::min);
+    fibScope(2, minimum);
   }
   
   {
@@ -164,7 +164,7 @@ int fibIndent(int a) {
 
 // Each recursive call to fibScope() generates a new scope at the desired level. 
 // The scope level that is passed in controls the types of scopes that are recursively created
-int fibScope(int a, scope::scopeLevel level) {
+int fibScope(int a, scopeLevel level) {
   scope reg(txt()<<"fib("<<a<<")", level);
   
   if(a==0 || a==1) { 

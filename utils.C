@@ -50,4 +50,13 @@ ofstream& createFile(string fName) {
   return *f;
 }
 
+// Returns a string that contains n tabs
+string tabs(int n)
+{
+  string s;
+  for(int i=0; i<n; i++)
+    s+="\t";
+  return s;
+}
+
 } // namespace dbglog

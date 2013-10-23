@@ -15,6 +15,9 @@ std::string copyDir(std::string workDir, std::string dirName);
 // Open a freshly-allocated output stream to write a file with the given name and return a pointer to the object.
 std::ofstream& createFile(std::string fName);
 
+// Returns a string that contains n tabs
+std::string tabs(int n);
+  
 // Class that makes it possible to generate string labels by using the << syntax.
 // Examples: Label() << "a=" << (5+2) << "!"
 //           Label("a=") << (5+2) << "!"

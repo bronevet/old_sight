@@ -6,6 +6,7 @@
 #include <string>
 #include <string.h>
 #include <errno.h>
+#include "dbglog_layout.h"
 using namespace std;
 
 bool readProperty(FILE* f, char buf[], int& bufIdx, int& bufSize, std::string& name, std::string& val, char& termChar);
@@ -13,9 +14,21 @@ bool readUntil(bool inTerm, const char* termChars, int numTermChars, char& termH
 bool nextChar(FILE* f, char buf[], int& bufIdx, int& bufSize);
 bool isMember(char c, const char* termChars, int numTermChars);
 
+// The stack of all the objects of each type that have been entered but not yet exited
+map<string, list<void*> > stack;
+
+scopeLayoutHandlerInstantiator scopeLayoutHandlerInstance;
+graphLayoutHandlerInstantiator graphLayoutHandlerInstance;
+traceLayoutHandlerInstantiator traceLayoutHandlerInstance;
+valSelectorLayoutHandlerInstantiator valSelectorLayoutHandlerInstance;
+
 int main(int argc, char** argv) {
   if(argc!=2) { cerr<<"Usage: slayout fName"<<endl; exit(-1); }
   char* fName = argv[1];
+
+  cout << "layoutHandlers:\n";
+  for(map<std::string, layoutEnterHandler>::iterator i=layoutEnterHandlers.begin(); i!=layoutEnterHandlers.end(); i++)
+    cout << i->first << endl;
   
   FILE* f = fopen(fName, "r");
   if(f==NULL) { cerr << "ERROR opening file \""<<fName<<"\" for reading! "<<strerror(errno)<<endl; exit(-1); }
@@ -43,6 +56,7 @@ int main(int argc, char** argv) {
     success = readUntil(true, "[", 1, termChar, f, buf, bufIdx, bufSize, readTxt);
     // Emit the text before the start of the tag
     cout << "text=\""<<readTxt<<"\""<<endl;
+    dbg << readTxt;
       
     if(!success) goto PARSE_END;
 
@@ -51,19 +65,27 @@ int main(int argc, char** argv) {
     // Now look for the end of name of the tag (a whitespace char) or the / char 
     // that indicates that this is the end rather than beginning of a tag
     if(!(success = readUntil(true, " \t\r\n/|", 6, termChar, f, buf, bufIdx, bufSize, tagName))) goto PARSE_END;
-//cout << "tagName=\""<<tagName<<"\" termChar=\""<<termChar<<"\""<<" buf[bufIdx]=\""<<buf[bufIdx]<<"\""<<endl;
 
     // If this is the end of a tag, read until its end to determine its name
     if(termChar == '/') {
       if(!nextChar(f, buf, bufIdx, bufSize)) goto PARSE_END;
 
-      if(!(success = readUntil(true, " \t\r\n", 4, termChar, f, buf, bufIdx, bufSize, tagName))) goto PARSE_END;
+      if(!(success = readUntil(true, "]", 1, termChar, f, buf, bufIdx, bufSize, tagName))) goto PARSE_END;
+      //if(!(success = readUntil(true, " \t\r\n", 4, termChar, f, buf, bufIdx, bufSize, tagName))) goto PARSE_END;
       if(!nextChar(f, buf, bufIdx, bufSize)) goto PARSE_END;
       
-      string ID;
-      if(!(success = readUntil(true, "]", 1, termChar, f, buf, bufIdx, bufSize, ID))) goto PARSE_END;
-      if(!nextChar(f, buf, bufIdx, bufSize)) goto PARSE_END;
-      cout << "END \""<<tagName<<"\" ID="<<ID<<endl;
+/*      string ID;
+      //if(!(success = readUntil(true, "]", 1, termChar, f, buf, bufIdx, bufSize, ID))) goto PARSE_END;
+//cout << "tagName=\""<<tagName<<"\" termChar=\""<<termChar<<"\""<<" buf[bufIdx]=\""<<buf[bufIdx]<<"\""<<endl;
+      if(!nextChar(f, buf, bufIdx, bufSize)) goto PARSE_END;*/
+      cout << "END \""<<tagName<<"\", #stack["<<tagName<<"]="<<stack[tagName].size()<<endl;
+      
+      // Call the exit handler of the most recently-entered object with this tag name
+      // and pop the object off its stack
+      assert(stack[tagName].size()>0);
+      assert(layoutExitHandlers.find(tagName) != layoutExitHandlers.end());
+      layoutExitHandlers[tagName](stack[tagName].back());
+      stack[tagName].pop_back();
     } else {
       // Records whether this entry tag corresponds to a base class that has been derived by another
       bool derived=false;
@@ -142,7 +164,15 @@ int main(int argc, char** argv) {
           for(map<string, string>::iterator p=s->second.begin(); p!=s->second.end(); p++)
             cout << "        \""<<p->first<<"\" : \""<<p->second<<"\""<<endl;
         }
+                
+        // Call the entry handler of the most recently-entered object with this tag name
+        // and push the object it returns onto the stack dedicated to objects of this type.
+        string derivedClassTagName = pStack.front().first;
+        assert(layoutEnterHandlers.find(derivedClassTagName) != layoutEnterHandlers.end());
+        stack[derivedClassTagName].push_back(layoutEnterHandlers[derivedClassTagName](pStack.begin()));
+
         pStack.clear();
+
       // If this tag's class was derived by another, add its properties to pStack so that it can be
       // picked up when we reach the derived class' tag
       } else

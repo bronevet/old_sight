@@ -1,5 +1,5 @@
 // Licence information included in file LICENCE
-#include "dbglog_internal.h"
+#include "dbglog_layout_internal.h"
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -7,17 +7,52 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <iostream>
-#include <string.h>
+#include <string>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include "binreloc.h"
 #include <errno.h>
-#include "getAllHostnames.h" 
-using namespace std;
+#include "dbglog_common.h"
 
-//#define ROOT_PATH "/cygdrive/c/work/code/dbglog"
+using namespace std;
+using namespace dbglog::common;
 
 namespace dbglog {
+namespace layout {
+
+// Maps the names of various tags that may be read by the layout reader to the functions
+// that instantiate the objects they encode.
+// An entry handler is called when the object's entry tag is encountered in the debug log. It 
+//   takes as input the properties of the object to be laid out and returns a pointer to the 
+//   created object. NULL is a valid return value.
+// An exit handler is called when the object's exit tag is encountered and takes as input a pointer
+//   to the object.
+// It is assumed that all objects are hierarchically scoped, in that objects are exted in the 
+//   reverse order of their entry. The layout engine keeps track of the entry/exit stacks and 
+//   ensures that the appropriate object pointers are passed to exit handlers.
+std::map<std::string, layoutEnterHandler> layoutEnterHandlers;
+std::map<std::string, layoutExitHandler> layoutExitHandlers;
+  
+// Default entry/exit handlers to use when no special handling is needed
+void* defaultEntryHandler(properties::iterator props) { return NULL; }
+void  defaultExitHandler(void* obj) { }
+
+void* indentEnterHandler(properties::iterator props) { return new indent(props); }
+void  indentExitHandler(void* obj) { indent* i = static_cast<indent*>(obj); delete i; }
+
+// Record the layout handlers in this file
+class dbglogLayoutHandlerInstantiator {
+  public:
+  dbglogLayoutHandlerInstantiator() { 
+    layoutEnterHandlers["dbglog"] = &initializeDebug;
+    layoutExitHandlers ["dbglog"] = &defaultExitHandler;
+    layoutEnterHandlers["indent"] = &indentEnterHandler;
+    layoutExitHandlers ["indent"] = &indentExitHandler;
+    layoutEnterHandlers["link"]   = &anchor::link;
+    layoutExitHandlers ["link"]   = &defaultExitHandler;
+  }
+};
+static dbglogLayoutHandlerInstantiator dbglogLayoutHandlerInstantance;
 
 bool initializedDebug=false;
 
@@ -56,21 +91,19 @@ ofstream& createFile(string fName) {
   return *f;
 }
 
-void initializeDebug_internal(string title, string workDir);
-
 // Records the information needed to call the application
 bool saved_appExecInfo=false; // Indicates whether the application execution info has been saved
-int saved_argc = 0;
-char** saved_argv = NULL;
-char* saved_execFile = NULL;
+int argc = 0;
+string* argv = NULL;
+string execFile;
 
-// The name of the host that this application is currently executing on
-char hostname[10000];
+// All the aliases of the name of the host that this application is currently executing on
+list<string> hostnames;
 
 // The current user's user name 
-char username[10000];
+string username;
 
-void initializeDebug(int argc, char** argv, string title, string workDir) {
+void* initializeDebug(properties::iterator props) {
   // Note: we allow users to specify argc and argv multiple times to support use-cases where
   // dbglog needs to be used and therefore initialized before main() starts and argc and argv 
   // are not available until after the initialization was first performed.
@@ -83,32 +116,18 @@ void initializeDebug(int argc, char** argv, string title, string workDir) {
   if(dbginit == NULL) { fprintf(stderr, "ERROR opening file \"%s\" for writing! %s\n", fname, strerror(errno)); exit(-1); }
   
   fclose(dbginit);*/
-  saved_argc = argc;
-  if(argc>0)
-    saved_argv = (char**)malloc(sizeof(char*) * argc);  
-  for(int i=0; i<argc; i++)
-    saved_argv[i] = strdup(argv[i]);
+  if(properties::getInt(props, "commandLineKnown")) {
+    saved_appExecInfo = true;
+    
+    argc = properties::getInt(props, "argc");
+    argv = new string[argc];
+    for(int i=0; i<argc; i++)
+      argv[i] = properties::get(props, txt()<<"argv_"<<i);
 
-  BrInitError error;
-  int ret = br_init(&error);
-  if(!ret){ 
-    cerr << "ERROR reading application's executable name! "<<
-                 (error==BR_INIT_ERROR_NOMEM? "Cannot allocate memory." :
-                 (error==BR_INIT_ERROR_OPEN_MAPS? "Cannot open /proc/self/maps "+string(strerror(errno)) :
-                 (error==BR_INIT_ERROR_READ_MAPS? "The file format of /proc/self/maps is invalid; kernel bug?" :
-                 (error==BR_INIT_ERROR_DISABLED? "BinReloc is disabled (the ENABLE_BINRELOC macro is not defined)" :
-                  "???"
-            ))))<<endl;
-    exit(-1);
-  }
-  saved_execFile = br_find_exe(NULL);
-  if(saved_execFile==NULL) { cerr << "ERROR reading application's executable name after successful initialization!"<<endl; exit(-1); }
+    execFile = properties::get(props, "execFile");
+  } else
+    saved_appExecInfo = false;
 
-  saved_appExecInfo=true;
-
-  // Having reset argc and argv, we only perform the rest of the initialization if it has not yet been done.
-  if(initializedDebug) return;
- 
   #ifdef GDB_ENABLED 
   if(!isPortUsed(GDB_PORT)) {
     ostringstream cmd; cmd << ROOT_PATH << "/widgets/mongoose/mongoose -document_root "<<ROOT_PATH<<" -listening_ports "<<GDB_PORT<<"&";
@@ -116,36 +135,15 @@ void initializeDebug(int argc, char** argv, string title, string workDir) {
   }
   #endif
   
-  initializeDebug_internal(title, workDir);
-}
-
-// Initializes the debug sub-system
-void initializeDebug(string title, string workDir)
-{
-  if(initializedDebug) return;
- 
-  initializeDebug_internal(title, workDir);
-}
-
-void initializeDebug_internal(string title, string workDir)
-{
-  // Get the name of the current host
-  int ret = gethostname(hostname, 10000);
-
-  // Get the current user's username
-  if(getenv("USER")) 
-    strncpy(username, getenv("USER"), sizeof(username));
-  else if(getenv("USERNAME"))
-    strncpy(username, getenv("USERNAME"), sizeof(username));
-  else {
-    ostringstream cmd;
-    cmd << "id --user --name";
-    FILE* fp = popen(cmd.str().c_str(), "r");
-    if(fp == NULL) { cerr << "Failed to run command \""<<cmd.str()<<"\"!"<<endl; exit(-1); }
+  // Get all the aliases of the current host's name
+  long numHostnames = properties::getInt(props, "numHostnames");
+  for(long i=0; i<numHostnames; i++)
+    hostnames.push_back(properties::get(props, txt()<<"hostname_"<<i));
+  
+  username = properties::get(props, "username");
     
-    if(fgets(username, sizeof(username), fp) == NULL) { cerr << "Failed to read output of \""<<cmd.str()<<"\"!"<<endl; exit(-1); }
-  }
- 
+  string workDir = properties::get(props, "workDir");
+  
   // Main output directory
   createDir(workDir, "");
 
@@ -171,16 +169,10 @@ void initializeDebug_internal(string title, string workDir)
   string tmpDir = createDir(workDir, "html/tmp");
   
   initializedDebug = true;
-  dbg.init(title, workDir, imgDir, tmpDir);
-}
-
-// Returns a string that contains n tabs
-string tabs(int n)
-{
-  string s;
-  for(int i=0; i<n; i++)
-    s+="\t";
-  return s;
+  
+  dbg.init(properties::get(props, "title"), workDir, imgDir, tmpDir);
+    
+  return NULL;
 }
 
 
@@ -194,7 +186,7 @@ dbgStream dbg;
 /******************
  ***** anchor *****
  ******************/
-int anchor::maxAnchorID=0;
+int anchor::minAnchorID=0;
 anchor anchor::noAnchor(false, -1);
 
 // Associates each anchor with its location (if known). Useful for connecting anchor objects with started out
@@ -210,18 +202,18 @@ map<int, location> anchor::anchorLocs;
 // this location on locAnchorIDs and the others will be able to adjust themselves by adopting this ID.
 map<location, int> anchor::locAnchorIDs;
   
-anchor::anchor(/*dbgStream& myDbg, */bool located) /*: myDbg(myDbg)*/ {
-  //if(!initializedDebug) initializeDebug("", "dbg");
+/*anchor::anchor(bool located) {
+  assert(initializedDebug);
   
-  anchorID = maxAnchorID++;
+  anchorID = --minAnchorID;
   //dbg << "anchor="<<anchorID<<endl;
   // Initialize this->located to false so that reachedAnchor() doesn't think we're calling it for multiple locations
   this->located = false;
   if(located) reachedAnchor();
-}
+}*/
 
 anchor::anchor(const anchor& that) {
-  //if(!initializedDebug) initializeDebug("", "dbg");
+  assert(initializedDebug);
   
   anchorID = that.anchorID;
   loc      = that.loc;
@@ -233,20 +225,20 @@ anchor::anchor(const anchor& that) {
 anchor::anchor(/*dbgStream& myDbg, */bool located, int anchorID) : 
   located(located), anchorID(anchorID)
 {
-  //if(!initializedDebug) initializeDebug("", "dbg");  
+//  assert(initializedDebug);
 }
 
-void anchor::init(bool located) {
-  anchorID = maxAnchorID++;
+/*void anchor::init(bool located) {
+  anchorID = --minAnchorID;
   // Initialize this->located to false so that reachedAnchor() doesn't think we're calling it for multiple locations
   this->located = false;
   if(located) reachedAnchor();
-}
+}*/
 
 // If this anchor is unlocated, checks anchorLocs to see if a location has been found and updates this
 // object accordingly;
 void anchor::update() {
-  /*cout << "anchor::update() located="<<located<<" anchorID="<<anchorID<<endl;
+  /*cout << "  anchor::update() located="<<located<<" anchorID="<<anchorID<<endl;
   cout << "        anchorLocs="<<endl;
   for(map<int, location>::iterator i=anchorLocs.begin(); i!=anchorLocs.end(); i++)
     cout << "            "<<i->first<<" => "<<dbg.blockGlobalStr(i->second)<<endl;*/
@@ -258,6 +250,8 @@ void anchor::update() {
     loc = anchorLocs[anchorID];
   }
   
+  //cout << "  anchor::update() mid located="<<located<<endl;
+  
   // If this is the first anchor at this location, associate this location with this anchor ID 
   if(located) {
     if(locAnchorIDs.find(loc) == locAnchorIDs.end())
@@ -267,6 +261,7 @@ void anchor::update() {
     else
       anchorID = locAnchorIDs[loc];
   }
+  //cout << "  anchor::update() final located="<<located<<", anchorID="<<anchorID<<endl;
 }
 
 void anchor::operator=(const anchor& that) {
@@ -355,24 +350,32 @@ void anchor::reachedAnchor() {
   //cout << "        this="<<str()<<endl;
 }
 
-// Returns an <a href> tag that denotes a link to this anchor. Embeds the given text in the link.
-std::string anchor::link(string text) const {
+// Emits an <a href> tag that denotes a link to an anchor.
+void* anchor::link(common::properties::iterator props) {
+  anchor a(false, properties::getInt(props, "anchorID"));
+  
+  if(properties::getInt(props, "img"))
+    a.linkImg(properties::get(props, "text"));
+  else
+    a.link(properties::get(props, "text"));
+  
+  return NULL;
+}
+
+void anchor::link(string text) const {
   const_cast<anchor*>(this)->update();
   
-  ostringstream oss; oss << "<a href=\"javascript:" << getLinkJS() << "\">"<<text<<"</a>";
-  return oss.str();
+  dbg << "<a href=\"javascript:" << getLinkJS() << "\">"<<text<<"</a>";
 }
 
 // Returns an <a href> tag that denotes a link to this anchor, using the default link image, which is followed by the given text.
-std::string anchor::linkImg(string text) const {
+void anchor::linkImg(string text) const {
   const_cast<anchor*>(this)->update();
   
-  ostringstream oss; 
-  oss << "<a href=\"javascript:" << getLinkJS() << "\">"<<
+  dbg << "<a href=\"javascript:" << getLinkJS() << "\">"<<
          "<img src=\"img/link"<<(isLocated()?"Up":"Down")<<".gif\">"<<
           text<<
          "</a>";
-  return oss.str();
 }
 
 // Returns the JavaScript code that links to this anchor, which can be embedded on other javascript code.
@@ -419,56 +422,22 @@ std::string anchor::str(std::string indent) const {
 
 int block::blockCount=0;
 
-// Initializes this block with the given label
-block::block(string label) : label(label), startA(false, -1) /*=noAnchor, except that noAnchor may not yet bee initialized)*/ {
-  advanceBlockCount();
-  if(!initializedDebug) initializeDebug("", "dbg");
+// Initializes this block with the given properties
+block::block(properties::iterator props) : startA(false, -1) /*=noAnchor, except that noAnchor may not yet be initialized)*/ {
+  assert(initializedDebug);
+  label = properties::get(props, "label");
+  //blockID = properties::getInt(props, "blockID");
+  long numAnchors = properties::getInt(props, "numAnchors");
+  for(long i=0; i<numAnchors; i++) {
+    pointsToAnchors.insert(anchor(false, properties::getInt(props, txt()<<"anchor_"<<i)));
+  }
+  
+  startA.setID(properties::getInt(props, "anchorID"));
 }
 
-// Initializes this block with the given label.
-// Includes one or more incoming anchors thas should now be connected to this block.
-block::block(string label, const anchor& pointsTo) : 
-  label(label), startA(false, -1) /*=noAnchor, except that noAnchor may not yet bee initialized)*/
-{
-  advanceBlockCount();
-  if(!initializedDebug) initializeDebug("", "dbg");
+// Initializes this block with the given label, used for creating additional blocks that were not listed in the structure file
+block::block(string label) : label(label), startA(false, -1) /*=noAnchor, except that noAnchor may not yet be initialized)*/ {
   
-  // If we're given an anchor from a forward link to this region,
-  // inform the anchor that it is pointing to the location of this scope's start.
-  // This is done before the initialization to ensure that the anchor's blockID is 
-  // the same as the scope's blockID, rather than a blockID inside the scope.
-  //dbg << "block::block() pointsTo != anchor::noAnchor="<<(pointsTo != anchor::noAnchor)<<", pointsTo="<<pointsTo.str()<<", anchor::noAnchor="<<anchor::noAnchor.str()<<endl;
-  if(pointsTo != anchor::noAnchor)
-    pointsToAnchors.insert(pointsTo);
-  // Else, if there are no forward links to this node, initialize startA to be
-  // a fresh anchor that refers to the start of this scope
-}
-
-// Initializes this block with the given label.
-// Includes one or more incoming anchors thas should now be connected to this block.
-block::block(string label, const set<anchor>& pointsTo) : 
-  label(label), startA(false, -1) /*=noAnchor, except that noAnchor may not yet bee initialized)*/
-{
-  advanceBlockCount();
-  if(!initializedDebug) initializeDebug("", "dbg");
-  
-  // If we're given an anchor from a forward link to this region,
-  // inform the anchor that it is pointing to the location of this scope's start.
-  // This is done before the initialization to ensure that the anchor's blockID is 
-  // the same as the scope's blockID, rather than a blockID inside the scope.
-  pointsToAnchors = pointsTo;
-  // Else, if there are no forward links to this node, initialize startA to be
-  // a fresh anchor that refers to the start of this scope
-  
-  //cout << "block::block() anchor="<<getAnchorRef().str()<<endl;
-}
-
-// Increments block count. This function serves as the one location that we can use to target conditional
-// breakpoints that aim to stop when the block count is a specific number
-int block::advanceBlockCount() {
-  blockCount++;
-  // THIS COMMENT MARKS THE SPOT IN THE CODE AT WHICH GDB SHOULD BREAK
-  return blockCount;
 }
 
 // Attaches a given un-located anchor at this block
@@ -487,7 +456,15 @@ void block::setLocation(const location& loc) {
   blockID = dbg.blockGlobalStr(loc);
   fileID = dbg.fileLevelStr(loc);
   
-  startA.init(true);
+  //cout << "block::setLocation() blockID="<<blockID<<", anchorID="<<startA.getID()<<endl;
+  
+  // We don't need to initialize startA since it as either initialized in the constructor based
+  // on the properties from the structure file or should remain equal to noAnchor.
+  //startA.init(true);
+  // If this block's anchor was specified in the structure file, update it's location. 
+  // Otherwise, ignore it since this anchor will not be used.
+  if(startA.getID()!=-1) startA.reachedAnchor();
+  
   //cout << "block("<<getLabel()<<")::setLocation() <<< #pointsToAnchors="<<pointsToAnchors.size()<<"\n";
   for(set<anchor>::iterator a=pointsToAnchors.begin(); a!=pointsToAnchors.end(); a++) {
     anchor a2 = *a;
@@ -768,7 +745,6 @@ int dbgBuf::blockDepth()
 
 dbgStream::dbgStream() : std::ostream(&defaultFileBuf), initialized(false)
 {
-//  if(!initializedDebug) initializeDebug("", "dbg");
 }
 
 dbgStream::dbgStream(string title, string workDir, string imgDir, std::string tmpDir)
@@ -799,6 +775,7 @@ void dbgStream::init(string title, string workDir, string imgDir, std::string tm
   } catch (ofstream::failure e)
   { cout << "dbgStream::init() ERROR opening file \""<<scriptIncludesFName.str()<<"\" for writing!"; exit(-1); }
   
+  // This should be recorded in the structure log
   enterFileLevel(new block(title), true);
   
   initialized = true;
@@ -809,6 +786,7 @@ dbgStream::~dbgStream()
   if (!initialized)
     return;
 
+  // This should be recorded in the structure log
   block* topB = exitFileLevel(true);
   delete topB;
   
@@ -1320,7 +1298,6 @@ void dbgStream::printDetailFileContainerHTML(string absoluteFileName, string tit
   det << "\t\t\t</td></tr>\n";
   det << "\t\t</table>\n";
   
-  list<string> hostnames = getAllHostnames();
   for(list<string>::iterator h=hostnames.begin(); h!=hostnames.end(); h++) {
     det << "<img src=\"http://"<<*h<<":"<<GDB_PORT<<"/img/divDL.gif\" onload=\"javascript:hostnameReachable('"<<*h<<"')\" width=1 height=1>\n";
   }
@@ -1503,7 +1480,7 @@ block* dbgStream::exitAttrSubBlock() {
 // so that the caller can write to it.
 string dbgStream::addImage(string ext)
 {
-  if(!initializedDebug) initializeDebug("", "dbg");
+  assert(initializedDebug);
   
   assert(fileBufs.size()>0);
   ostringstream imgFName; imgFName << imgDir << "/image_" << numImages << "." << ext;
@@ -1531,41 +1508,22 @@ void dbgStream::remIndent()
  ***** indent *****
  ******************/
 
-indent::indent(std::string prefix)
-{ init(prefix, 1, NULL); }
-indent::indent(std::string prefix, int repeatCnt, const attrOp& onoffOp)
-{ init(prefix, repeatCnt, &onoffOp); }
-indent::indent(std::string prefix, int repeatCnt)
-{ init(prefix, repeatCnt, NULL); }
-indent::indent(                    int repeatCnt)
-{ init("    ", repeatCnt, NULL); }
-indent::indent(std::string prefix,                const attrOp& onoffOp)
-{ init(prefix, 1, &onoffOp); }
-indent::indent(                    int repeatCnt, const attrOp& onoffOp)
-{ init("    ", repeatCnt, &onoffOp); }
-indent::indent(                                   const attrOp& onoffOp)
-{ init("    ", 1, &onoffOp); }
-indent::indent()
-{ init("    ", 1, NULL); }
-
-void indent::init(std::string prefix, int repeatCnt, const attrOp* onoffOp) {
-  if(repeatCnt>0 && attributes.query() && (onoffOp? onoffOp->apply(): true)) {
-    active = true;
-    string fullPrefix=prefix;
-    // Concatenate repeatCnt-1 copies of prefix onto its end
-    for(int i=1; i<repeatCnt; i++)
-      fullPrefix += prefix;
-    //cout << "indent::init("<<prefix<<", "<<repeatCnt<<") fullPrefix=\""<<fullPrefix<<"\""<<endl;
-    dbg.addIndent(fullPrefix);
-  } else
-    active = false;
+indent::indent(properties::iterator props)
+{
+  int repeatCnt = properties::getInt(props, "repeatCnt");
+  string prefix = properties::get(props, "prefix");
+  
+  string fullPrefix=prefix;
+  // Concatenate repeatCnt-1 copies of prefix onto its end
+  for(int i=1; i<repeatCnt; i++)
+    fullPrefix += prefix;
+  //cout << "indent::init("<<prefix<<", "<<repeatCnt<<") fullPrefix=\""<<fullPrefix<<"\""<<endl;
+  dbg.addIndent(fullPrefix);
 }
 
 indent::~indent() {
-  if(active) {
-    //cout << "Exiting indent"<<std::endl;
-    dbg.remIndent();
-  }
+  //cout << "Exiting indent"<<std::endl;
+  dbg.remIndent();
 }
 
 // Given a string, returns a version of the string with all the control characters that may appear in the 
@@ -1599,4 +1557,5 @@ int dbgprintf(const char * format, ... )
   return 0;// Before return you can redefine it back if you want...
 }
 
-} // namespace dbglog
+}; // namespace layout
+}; // namespace dbglog

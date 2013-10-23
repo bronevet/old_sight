@@ -7,9 +7,9 @@ namespace dbglog {
   
 namespace structure {
 
-/*************************
+/***********************
  ***** valSelector *****
- *************************/
+ ***********************/
 
 int valSelector::maxSelID=0;
 
@@ -32,60 +32,64 @@ int valSelector::getID() const
  ***** colorSelector *****
  *************************/
 
-colorSelector::colorSelector() : valSelector()
+colorSelector::colorSelector(properties* props) : valSelector()
 { init(0, 1, 1, .3, 0, .3); }
 
-colorSelector::colorSelector(std::string attrKey) : valSelector(attrKey)
+colorSelector::colorSelector(std::string attrKey, properties* props) : valSelector(attrKey)
 { init(0, 1, 1, .3, 0, .3); }
 
 // Color selector with an explicit color gradient
 colorSelector::colorSelector(float startR, float startG, float startB,
-                             float endR,   float endG,   float endB) : valSelector()
+                             float endR,   float endG,   float endB, properties* props) : valSelector()
 { init(startR, startG, startB, endR, endG, endB); }
 
 colorSelector::colorSelector(std::string attrKey,
                              float startR, float startG, float startB,
-                             float endR,   float endG,   float endB) : valSelector(attrKey)
+                             float endR,   float endG,   float endB, properties* props) : valSelector(attrKey)
 { init(startR, startG, startB, endR, endG, endB); }
 
 void colorSelector::init(float startR, float startG, float startB,
-                         float endR,   float endG,   float endB) {
-  map<string, string> properties;
-  properties["ID"] = txt()<<selID;
-  properties["startR"] = txt()<<startR;
-  properties["endR"]   = txt()<<endR;
-  properties["startG"] = txt()<<startG;
-  properties["endG"]   = txt()<<endG;
-  properties["startB"] = txt()<<startB;
-  properties["endB"]   = txt()<<endB;
-  dbg.enter("colorSelector", properties);
+                         float endR,   float endG,   float endB,
+                         properties* props) {
+  if(props==NULL) this->props = new properties();
+  else            this->props = props;
+  
+  map<string, string> newProps;
+  newProps["selID"]  = txt()<<selID;
+  newProps["startR"] = txt()<<startR;
+  newProps["endR"]   = txt()<<endR;
+  newProps["startG"] = txt()<<startG;
+  newProps["endG"]   = txt()<<endG;
+  newProps["startB"] = txt()<<startB;
+  newProps["endB"]   = txt()<<endB;
+  
+  this->props->add("colorSelector", newProps);
+  
+  //dbg.enter("colorSelector", properties, false);
+  dbg.enter(this);
 }
 
 colorSelector::~colorSelector() {
-  dbg.exit("colorSelector");
+  //dbg.exit("colorSelector");
+  dbg.exit(this);
 }
 
 // Informs the value selector that we have observed a new value that the selector needs to account for
-void colorSelector::observeSelection(const attrValue& val) {
-  map<string, string> properties;
-  properties["ID"] = txt()<<selID;
-  properties["value"] = val.getAsStr();
-  dbg.tag("colSelObs", properties);
+// Returns the string reprentation of the current value.
+string colorSelector::observeSelection(const attrValue& val) {
+  return val.getAsStr();
 }
 
 // Informs the value selector that we have observed a new value that the selector needs to account for
 // It is assumed that the selector is already associated with some attribute and can get the attrValue on its own
-void colorSelector::observeSelection() {
+// Returns the string reprentation of the current value.
+string colorSelector::observeSelection() {
   if(!attrKeyKnown) { cerr << "colorSelector::observeSelection() ERROR: calling version of function that expects that the colorSelector knows the attribute to look up to choose the color but no attribute name was provided!"<<endl; exit(-1); }
   if(!attributes.exists(attrKey)) { cerr << "colorSelector::observeSelection() ERROR: attribute "<<attrKey<<" is not currently mapped to any values!!"<<endl; exit(-1); }
   
   const std::set<attrValue>& values = attributes.get(attrKey);
   assert(values.size()>0);
-  
-  map<string, string> properties;
-  properties["ID"] = txt()<<selID;
-  properties["value"] = values.begin()->getAsStr();
-  dbg.tag("colSelObs", properties);
+  return values.begin()->getAsStr();
 }
 
 /********************
@@ -96,12 +100,20 @@ string start_internal(valSelector& sel, const attrValue* val, string name) {
   // Only bother if this text will be emitted
   if(!attributes.query()) return "";
   
-  if(val) sel.observeSelection(*val);
-  else    sel.observeSelection();
-    
-  map<string, string> properties;
-  properties["selID"] = txt()<<sel.getID();
-  dbg.enter(name, properties);
+  string valueStr;
+  if(val) valueStr = sel.observeSelection(*val);
+  else    valueStr = sel.observeSelection();
+  
+  dbglogObj *obj = new dbglogObj(new properties());
+  map<string, string> newProps;
+  newProps["selID"] = txt()<<sel.getID();
+  newProps["value"] = valueStr;
+  obj->props->add(name, newProps);
+  
+  //dbg.enter(name, properties, false);
+  dbg.enter(obj);
+  
+  delete obj;
   return "";
 }
 
@@ -109,7 +121,14 @@ string end_internal(string name) {
   // Only bother if this text will be emitted
   if(!attributes.query()) return "";
   
-  dbg.exit(name);
+  dbglogObj *obj = new dbglogObj(new properties());
+  map<string, string> newProps;
+  obj->props->add(name, newProps);
+  
+  //dbg.exit(name);
+  dbg.exit(obj);
+  
+  delete obj;
   return "";
 }
 

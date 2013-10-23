@@ -9,6 +9,7 @@
 #include <sstream>
 #include <fstream>
 #include <assert.h>
+#include "../dbglog_common.h"
 #include "../dbglog_structure.h"
 #include <sys/time.h>
 
@@ -20,16 +21,14 @@ void traceAttr(std::string label, std::string key, const attrValue& val);
 class trace: public block, public attrObserver
 {
   friend void traceAttr(std::string label, std::string key, const attrValue& val);
-    
-  public:
-  // Indicates whether the trace visualization should be shown at the beginning or the end of its visual block
-  typedef enum {showBegin, showEnd} showLocT;
-  
-  public:
-  // Identifies the type of visualization used to show the trace
-  typedef enum {table, lines, decTree} vizT;
   
   private:
+  // Unique ID of this trace
+  int traceID;
+  
+  // Maximum ID assigned to any trace object
+  static int maxTraceID;
+    
   // Maps the names of all the currently active traces to their trace objects
   static std::map<std::string, trace*> active;
   
@@ -37,20 +36,18 @@ class trace: public block, public attrObserver
   std::list<std::string> contextAttrs;
   
   public:
-  trace(std::string label, const std::list<std::string>& contextAttrs, showLocT showLoc=showBegin, vizT viz=table);
-  trace(std::string label, std::string contextAttr, showLocT showLoc=showBegin, vizT viz=table);
+  trace(std::string label, const std::list<std::string>& contextAttrs, common::showLocT showLoc=common::showBegin, common::vizT viz=common::table, properties* props=NULL);
+  trace(std::string label, std::string contextAttr,                    common::showLocT showLoc=common::showBegin, common::vizT viz=common::table, properties* props=NULL);
   
   private:
-  void init(std::string label, showLocT showLoc, vizT viz);
+  // Sets the properties of this object
+  static properties* setProperties(int traceID, common::showLocT showLoc, common::vizT viz, const std::list<std::string>& contextAttrs, properties* props);
+  static properties* setProperties(int traceID, common::showLocT showLoc, common::vizT viz, std::string contextAttr,                    properties* props);
+  
+  void init(std::string label, common::showLocT showLoc, common::vizT viz);
   
   public:
   ~trace();
-  
-  // Returns a string representation of a showLocT object
-  static std::string showLoc2Str(showLocT showLoc);
-  
-  // Returns a string representation of a vizT object
-  static std::string viz2Str(vizT viz);
   
   private:
   

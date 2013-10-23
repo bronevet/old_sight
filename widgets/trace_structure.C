@@ -1,28 +1,65 @@
-#include "trace_structure.h"
+#include "../dbglog_common.h"
+#include "../dbglog_structure.h"
 using namespace std;
-
+using namespace dbglog::common;
+  
 namespace dbglog {
 namespace structure {
+
+// Maximum ID assigned to any trace object
+int trace::maxTraceID=0;
 
 // Maps the names of all the currently active traces to their trace objects
 std::map<std::string, trace*> trace::active;  
 
-trace::trace(std::string label, const std::list<std::string>& contextAttrs, showLocT showLoc, vizT viz) : block(label), contextAttrs(contextAttrs) {
+trace::trace(std::string label, const std::list<std::string>& contextAttrs, common::showLocT showLoc, common::vizT viz, properties* props) : 
+  block(label, setProperties(maxTraceID, showLoc, viz, contextAttrs, props)), contextAttrs(contextAttrs)
+{
   if(contextAttrs.size()==0) { cerr << "trace::trace() ERROR: contextAttrs must be non-empty!"; exit(-1); }
   
   init(label, showLoc, viz);
 }
 
-trace::trace(std::string label, std::string contextAttr, showLocT showLoc, vizT viz) : block(label) {
+trace::trace(std::string label, std::string contextAttr, common::showLocT showLoc, common::vizT viz, properties* props) : 
+  block(label, setProperties(maxTraceID, showLoc, viz, contextAttr, props))
+{
   contextAttrs.push_back(contextAttr);
   
   init(label, showLoc, viz);
 }
 
-void trace::init(std::string label, showLocT showLoc, vizT viz) {
-  map<string, string> properties;
-  properties["showLoc"] = showLoc2Str(showLoc);
-  properties["viz"] = viz2Str(viz);
+// Sets the properties of this object
+properties* trace::setProperties(int traceID, common::showLocT showLoc, common::vizT viz, const std::list<std::string>& contextAttrs, properties* props) {
+  if(props==NULL) props = new properties();
+  
+  map<string, string> newProps;
+  newProps["traceID"] = txt()<<traceID;
+  newProps["showLoc"] = showLoc2Str(showLoc);
+  newProps["viz"]     = viz2Str(viz);
+  
+  newProps["numCtxtAttrs"] = txt()<<contextAttrs.size();
+  
+  // Record the attributes this traces uses as context
+  int i=0;
+  for(list<string>::const_iterator ca=contextAttrs.begin(); ca!=contextAttrs.end(); ca++, i++)
+    newProps[txt()<<"ctxtAttr_"<<i] = *ca;
+  
+  props->add("trace", newProps);
+  
+  //dbg.enter("trace", properties, inheritedFrom);
+  return props;
+}
+
+properties* trace::setProperties(int traceID, common::showLocT showLoc, common::vizT viz, std::string contextAttr, properties* props) {
+  std::list<std::string> contextAttrs;
+  contextAttrs.push_back(contextAttr);
+  return setProperties(traceID, showLoc, viz, contextAttrs, props);
+}
+
+void trace::init(std::string label, common::showLocT showLoc, common::vizT viz) {
+/*  map<string, string> properties;
+  properties["showLoc"] = common::showLoc2Str(showLoc);
+  properties["viz"] = common::viz2Str(viz);
   
   properties["numCtxtAttrs"] = txt()<<contextAttrs.size();
   
@@ -31,7 +68,10 @@ void trace::init(std::string label, showLocT showLoc, vizT viz) {
   for(list<string>::iterator ca=contextAttrs.begin(); ca!=contextAttrs.end(); ca++, i++)
     properties[txt()<<"ctxtAttr_"<<i] = *ca;
   
-  dbg.enter("trace", properties);
+  dbg.enter("trace", properties, inheritedFrom);*/
+  
+  traceID = maxTraceID;
+  maxTraceID++;
   
   // Add this trace object as a change listener to all the context variables
   for(list<string>::iterator ca=contextAttrs.begin(); ca!=contextAttrs.end(); ca++)
@@ -41,7 +81,8 @@ void trace::init(std::string label, showLocT showLoc, vizT viz) {
 }
 
 trace::~trace() {
-  dbg.exit("trace");
+  //dbg.exit("trace");
+  dbg.exit(this);
   
   assert(active.find(getLabel()) != active.end());
   active.erase(getLabel());
@@ -49,18 +90,6 @@ trace::~trace() {
   // Stop this object's observations of changes in context variables
   for(list<string>::iterator ca=contextAttrs.begin(); ca!=contextAttrs.end(); ca++)
     attributes.remObs(*ca, this);
-}
-
-// Returns a string representation of a showLocT object
-std::string trace::showLoc2Str(showLocT showLoc) 
-{ return (showLoc==showBegin? "showBegin": (showLoc==showEnd? "showEnd": "???")); }
-
-// Returns a string representation of a vizT object
-string trace::viz2Str(vizT viz) {
-       if(viz == table)   return "table";
-  else if(viz == lines)   return "lines";
-  else if(viz == decTree) return "decTree";
-  else                    return "???";
 }
 
 // Observe for changes to the values mapped to the given key
@@ -78,39 +107,45 @@ void trace::traceAttrObserved(std::string key, const attrValue& val) {
 
 // Emits the JavaScript command that encodes the observations made since the last time a context attribute changed
 void trace::emitObservations() {
-  
   // Only emit observations of the trace variables if we have made any observations since the last change in the context variables
   if(obs.size()==0) return;
+    
+  dbglogObj *obj = new dbglogObj(new properties());
   
-  map<string, string> properties;
+  map<string, string> newProps;
   
   //assert(trace::stack.size()>0);
   //trace* t = *(trace::stack.rbegin());
   assert(active.find(getLabel()) != active.end());
   trace* t = active[getLabel()];
   
-  properties["traceID"] = t->getBlockID();
+  newProps["traceID"] = t->traceID;
   
-  properties["numTraceAttrs"] = txt()<<obs.size();
+  newProps["numTraceAttrs"] = txt()<<obs.size();
   // Emit the recently observed values of tracer attributes
   int i=0;
   for(map<string, attrValue>::iterator o=obs.begin(); o!=obs.end(); o++, i++) {
-    properties[txt()<<"tKey_"<<i] = o->first;
-    properties[txt()<<"tVal_"<<i] = o->second.getAsStr();
+    newProps[txt()<<"tKey_"<<i] = o->first;
+    newProps[txt()<<"tVal_"<<i] = o->second.getAsStr();
   }
   
   // Emit the current values of the context attributes
-  properties["numCtxtAttrs"] = txt()<<obs.size();
+  newProps["numCtxtAttrs"] = txt()<<obs.size();
   for(std::list<std::string>::iterator a=t->contextAttrs.begin(); a!=t->contextAttrs.end(); a++) {
     const std::set<attrValue>& vals = attributes.get(*a);
     assert(vals.size()>0);
     if(vals.size()>1) { cerr << "trace::traceAttr() ERROR: context attribute "<<*a<<" has multiple values!"; }
     
-    properties[txt()<<"tKey_"<<i] = *a;
-    properties[txt()<<"tVal_"<<i] = vals.begin()->getAsStr();
+    newProps[txt()<<"cKey_"<<i] = *a;
+    newProps[txt()<<"cVal_"<<i] = vals.begin()->getAsStr();
   }
   
-  dbg.tag("traceObs", properties);
+  obj->props->add("traceObs", newProps);
+  
+  //dbg.tag("traceObs", properties, false);
+  dbg.tag(obj);
+  
+  delete obj;
   
   // Reset the obs[] map since we've just emitted all these observations
   obs.clear();

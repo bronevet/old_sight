@@ -9,10 +9,17 @@
 #include <sstream>
 #include <fstream>
 #include <assert.h>
-#include "../dbglog.h"
+#include "../dbglog_common.h"
+#include "../dbglog_layout.h"
 #include <sys/time.h>
 
 namespace dbglog {
+namespace layout {
+
+class traceLayoutHandlerInstantiator {
+  public:
+  traceLayoutHandlerInstantiator();
+};
 
 void traceAttr(std::string label, std::string key, const attrValue& val);
 
@@ -20,23 +27,20 @@ class trace: public block, public attrObserver
 {
   friend void traceAttr(std::string key, const attrValue& val);
     
-  public:
-  // Indicates whether the trace visualization should be shown at the beginning or the end of its visual block
-  typedef enum {showBegin, showEnd} showLocT;
   private:
-  showLocT showLoc;
+  // Unique ID of this trace
+  int traceID;
+  
+  common::showLocT showLoc;
   
   // The ID of the block into which the trace visualization will be written
   std::string tgtBlockID;
   
   public:
-  // Identifies the type of visualization used to show the trace
-  typedef enum {table, lines, decTree} vizT;
-  vizT viz;
+  common::vizT viz;
   
-  // Stack of currently active traces
-  //static std::list<trace*> stack;
-  static std::map<std::string, trace*> active;
+  // Maps the traceIDs of all the currently active traces to their trace objects
+  static std::map<int, trace*> active;
     
   // Records whether the tracer infrastructure has been initialized
   static bool initialized;
@@ -45,17 +49,13 @@ class trace: public block, public attrObserver
   std::list<std::string> contextAttrs;
   
   public:
-  trace(std::string label, const std::list<std::string>& contextAttrs, showLocT showLoc=showBegin, vizT viz=table);
-  trace(std::string label, std::string contextAttr, showLocT showLoc=showBegin, vizT viz=table);
+  trace(properties::iterator props);
   
   private:
   void init(std::string label);
   
   public:
   ~trace();
-  
-  // Returns a string representation of a vizT object
-  static std::string viz2Str(vizT viz);
   
   private:
   // Place the code to show the visualization
@@ -68,38 +68,9 @@ class trace: public block, public attrObserver
   std::set<std::string> tracerKeys;
   
   public:
-  // Observe for changes to the values mapped to the given key
-  void observePre(std::string key);
-  
-  // Called by traceAttr() to inform the trace that a new observation has been made
-  void traceAttrObserved(std::string key, const attrValue& val);
-  
-  private:
-  // Emits the JavaScript command that encodes the observations made since the last time a context attribute changed
-  void emitObservations();
+  // Record an observation
+  static void* observe(properties::iterator props);
 }; // class trace
 
-// Basic API for measuring the elapsed counts of events.
-// The measure class starts the measurement when instances of this class are constructed and stops when they are deconstructed.
-// When measurement is performed, an attribute named valLabel is added to a trace named traceLabel.
-// Users who wish to get the measurement value back may perform the measurement manually by calling doMeasure().
-// The startMeasure()/endMeasure() API provides this direct access to measurement.
-class measure {
-  std::string traceLabel;
-  std::string valLabel;
-  struct timeval start;
-  
-  // Records whether we've already performed the measure
-  bool measureDone;
-  
-  public:
-  measure(std::string traceLabel, std::string valLabel);
-  ~measure();
-  
-  double doMeasure();
-}; // class measure
-
-measure* startMeasure(std::string traceLabel, std::string valLabel);
-double endMeasure(measure* m);
-
+}; // namespace layout
 }; // namespace dbglog

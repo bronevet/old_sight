@@ -15,7 +15,7 @@
 namespace dbglog {
 namespace structure {
 
-class valSelector
+class valSelector: public dbglogObj
 {
   protected:
   
@@ -35,37 +35,45 @@ class valSelector
   int getID() const;
   
   // Informs the value selector that we have observed a new value that the selector needs to account for
-  virtual void observeSelection(const attrValue& val)=0;
+  // Returns the string reprentation of the current value.
+  virtual std::string observeSelection(const attrValue& val)=0;
     
   // Informs the value selector that we have observed a new value that the selector needs to account for
   // It is assumed that the selector is already associated with some attribute and can get the attrValue on its own
-  virtual void observeSelection()=0;
+  // Returns the string reprentation of the current value.
+  virtual std::string observeSelection()=0;
 };
 
 class colorSelector : public valSelector {
   
   public:
-  colorSelector();
-  colorSelector(std::string attrKey);
-  ~colorSelector();
+  colorSelector(properties* props=NULL);
+  colorSelector(std::string attrKey, properties* props=NULL);
   
   // Color selector with an explicit color gradient
   colorSelector(float startR, float startG, float startB,
-                float endR,   float endG,   float endB);
+                float endR,   float endG,   float endB, 
+                properties* props=NULL);
 
   colorSelector(std::string attrKey,
                 float startR, float startG, float startB,
-                float endR,   float endG,   float endB);
-
+                float endR,   float endG,   float endB, 
+                properties* props=NULL);
+  
   void init(float startR, float startG, float startB,
-            float endR,   float endG,   float endB);
+            float endR,   float endG,   float endB, 
+            properties* props=NULL);
 
+  ~colorSelector();
+  
   // Returns a string that contains a call to a JavaScipt function that at log view time will return a value
-  void observeSelection(const attrValue& val);
+  // Returns the string reprentation of the current value.
+  std::string observeSelection(const attrValue& val);
     
   // Returns a string that contains a call to a JavaScipt function that at log view time will return a value
   // It is assumed that the selector is already associated with some attribute and can get the attrValue on its own
-  void observeSelection();
+  // Returns the string reprentation of the current value.
+  std::string observeSelection();
 };
 
 // Classes that modify the appearance of text and more generally, modifiers used as dbg<<modified::start()<<"some text"<<modifier::end()<<...;
