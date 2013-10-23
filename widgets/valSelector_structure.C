@@ -96,7 +96,13 @@ string colorSelector::observeSelection() {
  ***** cssColor *****
  ********************/
 
+// instanceID: uniquely identifies the particular formatted region of output that is controlled 
+// by the given value selector
 string start_internal(valSelector& sel, const attrValue* val, string name) { 
+  // Each text-colored region is given a different uniqueID to make it possible to apply formatting to each one 
+  // independently. Region identities are assigned using the instanceID counter, which is continually incremented
+  static int instanceID=0;
+  
   // Only bother if this text will be emitted
   if(!attributes.query()) return "";
   
@@ -104,60 +110,100 @@ string start_internal(valSelector& sel, const attrValue* val, string name) {
   if(val) valueStr = sel.observeSelection(*val);
   else    valueStr = sel.observeSelection();
   
-  dbglogObj *obj = new dbglogObj(new properties());
+  dbglogObj obj(new properties());
   map<string, string> newProps;
   newProps["selID"] = txt()<<sel.getID();
+  newProps["instanceID"] = txt()<<instanceID++;
   newProps["value"] = valueStr;
-  obj->props->add(name, newProps);
+  obj.props->add(name, newProps);
   
   //dbg.enter(name, properties, false);
-  dbg.enter(obj);
-  
-  delete obj;
-  return "";
+  return dbg.enterStr(&obj);
 }
 
 string end_internal(string name) {
   // Only bother if this text will be emitted
   if(!attributes.query()) return "";
   
-  dbglogObj *obj = new dbglogObj(new properties());
+  dbglogObj obj(new properties());
   map<string, string> newProps;
-  obj->props->add(name, newProps);
+  obj.props->add(name, newProps);
   
   //dbg.exit(name);
-  dbg.exit(obj);
-  
-  delete obj;
-  return "";
+  return dbg.exitStr(&obj);
 }
 
-string textColor::start(valSelector& sel, const attrValue& val)
+/*string textColor::start(valSelector& sel, const attrValue& val)
 { return start_internal(sel, &val, "textColor"); }
 
 string textColor::start(valSelector& sel) 
 { return start_internal(sel, NULL, "textColor"); }
+*/
+std::ostream& textColor::operator<<(std::ostream& stream, const textColor::start& s) {
+  dbgStream& ds = dynamic_cast<dbgStream&>(stream);
+  ds.ownerAccessing();
+  ds << start_internal(s.sel, s.val, "textColor");
+  ds.userAccessing();  
+  return ds;
+}
 
-string textColor::end()
-{ return end_internal("textColor"); }
+/*string textColor::end()
+{ return end_internal("textColor"); }*/
+std::ostream& textColor::operator<<(std::ostream& stream, const textColor::end& e) {
+  dbgStream& ds = dynamic_cast<dbgStream&>(stream);
+  ds.ownerAccessing();
+  ds << end_internal("textColor");
+  ds.userAccessing();  
+  return ds;
+}
 
-string bgColor::start(valSelector& sel, const attrValue& val)
+/*string bgColor::start(valSelector& sel, const attrValue& val)
 { return start_internal(sel, &val, "bgColor"); }
 
 string bgColor::start(valSelector& sel) 
-{ return start_internal(sel, NULL, "bgColor"); }
+{ return start_internal(sel, NULL, "bgColor"); }*/
 
-string bgColor::end()
-{ return end_internal("bgColor"); }
+std::ostream& bgColor::operator<<(std::ostream& stream, const bgColor::start& s) {
+  dbgStream& ds = dynamic_cast<dbgStream&>(stream);
+  ds.ownerAccessing();
+  ds << start_internal(s.sel, s.val, "bgColor");
+  ds.userAccessing();  
+  return ds;
+}
 
-string borderColor::start(valSelector& sel, const attrValue& val)
+/*string bgColor::end()
+{ return end_internal("bgColor"); }*/
+std::ostream& bgColor::operator<<(std::ostream& stream, const bgColor::end& e) {
+  dbgStream& ds = dynamic_cast<dbgStream&>(stream);
+  ds.ownerAccessing();
+  ds << end_internal("bgColor");
+  ds.userAccessing();  
+  return ds;
+}
+
+/*string borderColor::start(valSelector& sel, const attrValue& val)
 { return start_internal(sel, &val, "borderColor"); }
 
 string borderColor::start(valSelector& sel) 
-{ return start_internal(sel, NULL, "borderColor"); }
+{ return start_internal(sel, NULL, "borderColor"); }*/
 
-string borderColor::end()
-{ return end_internal("borderColor"); }
+std::ostream& borderColor::operator<<(std::ostream& stream, const borderColor::start& s) {
+  dbgStream& ds = dynamic_cast<dbgStream&>(stream);
+  ds.ownerAccessing();
+  ds << start_internal(s.sel, s.val, "borderColor");
+  ds.userAccessing();  
+  return ds;
+}
+
+/*string borderColor::end()
+{ return end_internal("borderColor"); }*/
+std::ostream& borderColor::operator<<(std::ostream& stream, const borderColor::end& e) {
+  dbgStream& ds = dynamic_cast<dbgStream&>(stream);
+  ds.ownerAccessing();
+  ds << end_internal("borderColor");
+  ds.userAccessing();  
+  return ds;
+}
 
 }; // namespace structure
 }; // namespace dbglog

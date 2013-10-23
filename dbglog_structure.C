@@ -413,7 +413,7 @@ int dbgBuf::printString(string s)
 
 streamsize dbgBuf::xsputn(const char * s, streamsize n)
 {
-//  cerr << "xputn() << ownerAccess="<<ownerAccess<<" n="<<n<<" s=\""<<string(s)<<"\" query="<<attributes.query()<<"\n";
+  //cerr << "xputn() << ownerAccess="<<ownerAccess<<" n="<<n<<" s=\""<<string(s)<<"\" query="<<attributes.query()<<"\n";
   
   // Only emit text if the current query on attributes evaluates to true
   if(!attributes.query()) return n;
@@ -454,6 +454,9 @@ int dbgBuf::sync()
   // Only emit text if the current query on attributes evaluates to true
   //  if(!attributes.query()) return 0;
   //cerr << "dbgBuf::sync()\n";
+  
+  // Only emit text if the current query on attributes evaluates to true
+  if(!attributes.query()) return 0;
   
   int r = baseBuf->pubsync();
   if(r!=0) return -1;
@@ -612,7 +615,7 @@ string dbgStream::enterStr(dbglogObj* obj) {
     for(std::map<std::string, std::string>::const_iterator p=i->second.begin(); p!=i->second.end(); p++, j++)
       oss << " name"<<j<<"=\""<<p->first<<"\" val"<<j<<"=\""<<p->second<<"\"";
     
-    oss << "]\n";
+    oss << "]";
   }
   
   return oss.str();
@@ -630,7 +633,7 @@ void dbgStream::exit(dbglogObj* obj) {
 //std::string dbgStream::exitStr(std::string name) {
 std::string dbgStream::exitStr(dbglogObj* obj) {
   ostringstream oss;
-  oss <<"[/"<<obj->props->name()<<"]\n";
+  oss <<"[/"<<obj->props->name()<<"]";
   return oss.str();
 }
 

@@ -42,7 +42,7 @@ void valSelector::observeSelection(properties::iterator props, string fieldName,
   assert(active.find(selID) != active.end());
   valSelector* sel = active[selID];
   
-  ostringstream spanID; spanID << "valueSelectSpan_"<<selID;
+  ostringstream spanID; spanID << "valueSelectSpan_"<<properties::getInt(props, "instanceID");
   
   // Emit a command to assign whichever color to this span the selector chooses
   ostringstream cmd;

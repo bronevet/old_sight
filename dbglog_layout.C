@@ -679,7 +679,8 @@ int dbgBuf::sync()
   if(r!=0) return -1;
 
   if(synched && !ownerAccess) {
-    int ret;
+    int ret=0;
+// ??? Do we ever need this line break?
     ret = printString("<br>\n");    if(ret != 0) return 0;
     /*ret = printString(getIndent()); if(ret != 0) return 0;
     justSynched=true;*/

@@ -77,31 +77,65 @@ class colorSelector : public valSelector {
 };
 
 // Classes that modify the appearance of text and more generally, modifiers used as dbg<<modified::start()<<"some text"<<modifier::end()<<...;
-class textColor
+namespace textColor
 {
-  public:
-  static std::string start(valSelector& sel, const attrValue& val);
-  static std::string start(valSelector& sel);
+  //public:
+  //static std::string start(valSelector& sel, const attrValue& val);
+  //static std::string start(valSelector& sel);
+  //static std::string end();
   
-  static std::string end();
+  class start {
+    public:
+    valSelector& sel;
+    attrValue* val;
+    start(valSelector& sel, const attrValue& val) : sel(sel), val(const_cast<attrValue*>(&val)) {}
+    start(valSelector& sel)                       : sel(sel), val(NULL) {}
+  };
+  std::ostream& operator<< (std::ostream& stream, const start& s);
+    
+  class end { };
+  std::ostream& operator<< (std::ostream& stream, const end& e);
 };
 
-class bgColor
+
+namespace bgColor
 {
-  public:
+  /*public:
   static std::string start(valSelector& sel, const attrValue& val);
   static std::string start(valSelector& sel);
   
-  static std::string end();
+  static std::string end();*/
+  class start {
+    public:
+    valSelector& sel;
+    attrValue* val;
+    start(valSelector& sel, const attrValue& val) : sel(sel), val(const_cast<attrValue*>(&val)) {}
+    start(valSelector& sel)                       : sel(sel), val(NULL) {}
+  };
+  std::ostream& operator<< (std::ostream& stream, const start& s);
+    
+  class end { };
+  std::ostream& operator<< (std::ostream& stream, const end& e);
 };
 
-class borderColor
+namespace borderColor
 {
-  public:
+  /*public:
   static std::string start(valSelector& sel, const attrValue& val);
   static std::string start(valSelector& sel);
   
-  static std::string end();
+  static std::string end();*/
+  class start {
+    public:
+    valSelector& sel;
+    attrValue* val;
+    start(valSelector& sel, const attrValue& val) : sel(sel), val(const_cast<attrValue*>(&val)) {}
+    start(valSelector& sel)                       : sel(sel), val(NULL) {}
+  };
+  std::ostream& operator<< (std::ostream& stream, const start& s);
+    
+  class end { };
+  std::ostream& operator<< (std::ostream& stream, const end& e);
 };
 
 }; // namespace structure
