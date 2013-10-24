@@ -155,5 +155,7 @@ clean:
 	rm -rf ID3-Decision-Tree
 	../killP mongoose/mongoose
 	../killP shellinabox/bin/shellinaboxd
-	rm -rf *.o shellinabox* mongoose* graphviz noVNC
+	rm -rf *.o shellinabox* mongoose* noVNC
 	rm -f yui-min.js jquery-1.8.1.min.js underscore-min.js d3.v3.min.js
+
+#rm -r graphviz 

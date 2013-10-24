@@ -46,7 +46,7 @@ mfem::mfem(Mesh* mesh, GridFunction* soln, const attrOp& onoffOp) : block("MFEM 
 void mfem::init() {
   active = true;
   
-  dbg.enterBlock(this, false, true);
+  dbg.enterBlock(this);
   
   initEnvironment();  
     

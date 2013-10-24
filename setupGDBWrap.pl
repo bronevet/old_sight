@@ -7,7 +7,7 @@ use strict;
 # This is done by scanning dbglog.C for the line that contains a special comment and then
 # writing this line number into gdbLineNum.pl, which is required by gdbwrap.cgi
 
-open(my $fin, "<dbglog.C") || die "ERROR opening file dbglog.C for reading $!";
+open(my $fin, "<dbglog_structure.C") || die "ERROR opening file dbglog.C for reading $!";
 my $lnum=1;
 my $found=0;
 while(my $line = <$fin>) {
