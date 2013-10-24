@@ -85,6 +85,47 @@ attrValue::~attrValue() {
   { cerr << "attrValue::~attrValue() ERROR: invalid value type "<<type<<"!"<<endl; exit(-1); }
 }
 
+
+attrValue& attrValue::operator=(const std::string& strV) {
+  type  = strT;
+  store = (void*)(new string(strV));  
+}
+
+attrValue& attrValue::operator=(char* strV) {
+  type  = strT;
+  store = (void*)(new string(strV));  
+}
+
+attrValue& attrValue::operator=(void* ptrV) {
+  type  = ptrT;
+  store = new void*;
+  *((void**)store) = ptrV;
+}
+
+attrValue& attrValue::operator=(long intV) {
+  type  = intT;
+  store = new long*;
+  *((long*)store) = intV;
+}
+
+attrValue& attrValue::operator=(int intV) {
+  type  = intT;
+  store = new long*;
+  *((long*)store) = intV;
+}
+
+attrValue& attrValue::operator=(double floatV) {
+  type  = floatT;
+  store = new double;
+  *((double*)store) = floatV;
+}
+
+attrValue& attrValue::operator=(float floatV) {
+  type  = floatT;
+  store = new double;
+  *((double*)store) = floatV;
+}
+
 attrValue& attrValue::operator=(const attrValue& that) {
   type = that.type;
        if(type == strT)   { store = (void*)(new string(*((string*)that.store))); }

@@ -10,12 +10,12 @@ TESTERS = 1.StructuredFormatting${EXE} 2.ConditionalFormatting${EXE} 3.Navigatio
 all: ${TESTERS}
 
 run:
-	./1.StructuredFormatting${EXE};         
-	./2.ConditionalFormatting${EXE};        
-	./3.Navigation${EXE};                   
-	./4.AttributeAnnotationFiltering${EXE};
-	./5.Tracing${EXE};                    
-	./6.PerfAnalysis${EXE};               
+	./1.StructuredFormatting${EXE};         ../slayout${EXE} dbg.1.StructuredFormatting/structure
+	./2.ConditionalFormatting${EXE};        ../slayout${EXE} dbg.2.ConditionalFormatting/structure
+	./3.Navigation${EXE};                   ../slayout${EXE} dbg.3.Navigation/structure
+	./4.AttributeAnnotationFiltering${EXE}; ../slayout${EXE} dbg.4.AttributeAnnotationFiltering/structure
+	./5.Tracing${EXE};                      ../slayout${EXE} dbg.5.Tracing/structure
+	./6.PerfAnalysis${EXE};                 ../slayout${EXE} dbg.6.PerfAnalysis/structure
 
 1.StructuredFormatting${EXE}: 1.StructuredFormatting.C ../libdbglog_structure.a ${DBGLOG_H}
 	g++ -g 1.StructuredFormatting.C -I.. -I../widgets -L.. -ldbglog_structure -o 1.StructuredFormatting${EXE}

@@ -56,6 +56,13 @@ class attrValue {
   ~attrValue();
   
   attrValue& operator=(const attrValue& that);
+  attrValue& operator=(const std::string& strV);
+  attrValue& operator=(char* strV);
+  attrValue& operator=(void* ptrV);
+  attrValue& operator=(long intV);
+  attrValue& operator=(int intV);
+  attrValue& operator=(double floatV);
+  attrValue& operator=(float floatV);
   
   // Returns the type of this attrValue's contents
   attrValue::valueType getType() const;

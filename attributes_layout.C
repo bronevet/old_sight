@@ -12,7 +12,7 @@ namespace layout{
 layout::attributesC attributes;
 
 // Record the layout handlers in this file
-void* attrEnterHandler(properties::iterator props) { return new attr(props); }
+void* attrEnterHandler(properties::iterator props) { cout << "attrEnterHandler\n"; return new attr(props); }
 void  attrExitHandler(void* obj) { attr* a = static_cast<attr*>(obj); delete a; }
   
 attributesLayoutHandlerInstantiator::attributesLayoutHandlerInstantiator() { 
@@ -41,7 +41,7 @@ std::string attributesC::strJS() const {
       case common::attrValue::ptrT   : oss << "\""<<(i->second.begin())->getPtr()<<"\"";   break;
       case common::attrValue::intT   : oss << "\""<<(i->second.begin())->getInt()<<"\"";   break;
       case common::attrValue::floatT : oss << "\""<<(i->second.begin())->getFloat()<<"\""; break;
-      default: cerr << "attributesC::strJS() ERROR: key "<<i->first<<" has value "<<(i->second.begin())->str()<<" with an unknown type!"; exit(-1);
+      default: cerr << "attributesC::strJS() ERROR: key "<<i->first<<" has value with an unknown type!"; exit(-1);
     }
   }
   oss << "}";
@@ -56,17 +56,20 @@ attr::attr(properties::iterator props) {
   key = properties::get(props, "key");
   // Assign the value to the key using the appropriate type of this value
   switch((common::attrValue::valueType)properties::getInt(props, "type")) {
-    case common::attrValue::strT:   init<string>(key, properties::get(props, "val"));           return;
-    case common::attrValue::ptrT:   init<void*> (key, (void*)properties::getInt(props, "val")); return;
-    case common::attrValue::intT:   init<long>  (key, properties::getInt(props, "val"));        return;
-    case common::attrValue::floatT: init<double>(key, properties::getFloat(props, "val"));      return;
+    case common::attrValue::strT:   init<string>(key, properties::get(props, "val"));           break;
+    case common::attrValue::ptrT:   init<void*> (key, (void*)properties::getInt(props, "val")); break;
+    case common::attrValue::intT:   init<long>  (key, properties::getInt(props, "val"));        break;
+    case common::attrValue::floatT: init<double>(key, properties::getFloat(props, "val"));      break;
     default: cerr << "layout::attr::attr() ERROR: unknown value type!"; exit(-1);
   }
+  
+  dbg.enterAttrSubBlock();
 }
 
 template<typename T>
 void attr::init(std::string key, T val) {
 //cout << "attr::init("<<key<<", "<<val<<")\n";
+  this->val = val;
   if(attributes.exists(key)) {
     keyPreviouslySet = true;
     const std::set<common::attrValue>& curValues = attributes.get(key);
@@ -88,7 +91,10 @@ attr::~attr() {
   // Otherwise, just remove the entire mapping
   else
     attributes.remove(key);
+  
+  dbg.exitAttrSubBlock();  
 }
+
 // Returns the key of this attribute
 string attr::getKey() const
 { return key; }

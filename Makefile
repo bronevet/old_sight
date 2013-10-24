@@ -27,19 +27,19 @@ GDB_PORT := 17500
 
 .PHONY: apps
 apps:
-	cd apps/mfem;  make ROOT_PATH=${ROOT_PATH} GDB_PORT=${GDB_PORT} OS=${OS}
-	cd apps/mcbench; ./build-linux-x86_64.sh ${ROOT_PATH}
+#	cd apps/mfem;  make ROOT_PATH=${ROOT_PATH} GDB_PORT=${GDB_PORT} OS=${OS}
+#	cd apps/mcbench; ./build-linux-x86_64.sh ${ROOT_PATH}
 
 allExamples: libdbglog_structure.a
 	cd examples; make ROOT_PATH=${ROOT_PATH} OS=${OS}
 
-runExamples: libdbglog.a apps
+runExamples: libdbglog_structure.a slayout${EXE} apps
 	cd examples; make ROOT_PATH=${ROOT_PATH} OS=${OS} run
-	apps/mfem/mfem/examples/ex1 apps/mfem/mfem/data/beam-quad.mesh
-	apps/mfem/mfem/examples/ex2 apps/mfem/mfem/data/beam-tet.mesh 2
-	apps/mfem/mfem/examples/ex3 apps/mfem/mfem/data/ball-nurbs.mesh
-	apps/mfem/mfem/examples/ex4 apps/mfem/mfem/data/fichera-q3.mesh
-	apps/mcbench/src/MCBenchmark.exe --nCores=1 --distributedSource --numParticles=13107 --nZonesX=256 --nZonesY=256 --xDim=16 --yDim=16 --mirrorBoundary --multiSigma --nThreadCore=1
+#	apps/mfem/mfem/examples/ex1 apps/mfem/mfem/data/beam-quad.mesh
+#	apps/mfem/mfem/examples/ex2 apps/mfem/mfem/data/beam-tet.mesh 2
+#	apps/mfem/mfem/examples/ex3 apps/mfem/mfem/data/ball-nurbs.mesh
+#	apps/mfem/mfem/examples/ex4 apps/mfem/mfem/data/fichera-q3.mesh
+#	apps/mcbench/src/MCBenchmark.exe --nCores=1 --distributedSource --numParticles=13107 --nZonesX=256 --nZonesY=256 --xDim=16 --yDim=16 --mirrorBoundary --multiSigma --nThreadCore=1
 
 #pattern${EXE}: pattern.C pattern.h libdbglog.a ${DBGLOG_H}
 #	g++ -g pattern.C -L. -ldbglog  -o pattern${EXE}

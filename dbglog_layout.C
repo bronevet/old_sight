@@ -1319,8 +1319,8 @@ string dbgStream::enterBlock(block* b, bool newFileEntered, bool addSummaryEntry
 {
 //!!!  dbg << "<<<enter(newFileEntered="<<newFileEntered<<", addSummaryEntry="<<addSummaryEntry<<", recursiveEnterBlock="<<recursiveEnterBlock<<") b="<<(b? b->getLabel(): "NULL")<<endl;
 //!!!  dbg << "<<<enter() fileBufs.size()="<<fileBufs.size()<<" && #blocks="<<blocks.size()<<", #blocks.back().second="<<blocks.back().second.size()<<", #fileBufs.back()->blocks="<<(fileBufs.size()==0? -1: fileBufs.back()->blocks.size())<<endl;
-  if(!recursiveEnterBlock)
-    exitAttrSubBlock();
+/*  if(!recursiveEnterBlock)
+    exitAttrSubBlock();*/
   
   //cout << "<<<enterBlock: b="<<b<<", newFileEntered="<<newFileEntered<<", addSummaryEntry="<<addSummaryEntry<<", recursiveEnterBlock="<<recursiveEnterBlock<<endl;
   // if recursiveEnterBlock, newFileEntered and addSummaryEntry may not be
@@ -1365,7 +1365,7 @@ string dbgStream::enterBlock(block* b, bool newFileEntered, bool addSummaryEntry
   dbg.userAccessing();
   
   if(!recursiveEnterBlock) {
-    enterAttrSubBlock();
+//    enterAttrSubBlock();
   
     if(addSummaryEntry) {
       *summaryFiles.back() << "\t\t\t"<<tabs(fileBufs.back()->blockDepth())<<"</td></tr>\n";
@@ -1409,8 +1409,8 @@ string dbgStream::enterAttrSubBlock() {
 block* dbgStream::exitBlock(bool recursiveExitBlock)
 {
   //!!!dbg << "<<<exitBlock("<<recursiveExitBlock<<") fileBufs.size()="<<fileBufs.size()<<" && #blocks="<<blocks.size()<<", #blocks.back().second="<<blocks.back().second.size()<<", #fileBufs.back()->blocks="<<(fileBufs.size()==0? -1: fileBufs.back()->blocks.size())<<endl;
-  if(!recursiveExitBlock)
-    exitAttrSubBlock();
+/*  if(!recursiveExitBlock)
+    exitAttrSubBlock();*/
   
   fileBufs.back()->ownerAccessing();
   block* lastB = fileBufs.back()->exitBlock(recursiveExitBlock);
@@ -1457,8 +1457,8 @@ block* dbgStream::exitBlock(bool recursiveExitBlock)
     lastB = NULL;
   }
   
-  if(!recursiveExitBlock)
-    enterAttrSubBlock();
+/*  if(!recursiveExitBlock)
+    enterAttrSubBlock();*/
   
   //cout << ":exitBlock>>>\n";
 //!!!  dbg << ">>>exitBlock("<<recursiveExitBlock<<")\n";
