@@ -34,8 +34,8 @@ properties* trace::setProperties(int traceID, common::showLocT showLoc, common::
   
   map<string, string> newProps;
   newProps["traceID"] = txt()<<traceID;
-  newProps["showLoc"] = showLoc2Str(showLoc);
-  newProps["viz"]     = viz2Str(viz);
+  newProps["showLoc"] = txt()<<showLoc;
+  newProps["viz"]     = txt()<<viz;
   
   newProps["numCtxtAttrs"] = txt()<<contextAttrs.size();
   
@@ -82,7 +82,7 @@ void trace::init(std::string label, common::showLocT showLoc, common::vizT viz) 
 
 trace::~trace() {
   //dbg.exit("trace");
-  dbg.exit(this);
+  //dbg.exit(this);
   
   assert(active.find(getLabel()) != active.end());
   active.erase(getLabel());
@@ -119,7 +119,7 @@ void trace::emitObservations() {
   assert(active.find(getLabel()) != active.end());
   trace* t = active[getLabel()];
   
-  newProps["traceID"] = t->traceID;
+  newProps["traceID"] = txt()<<t->traceID;
   
   newProps["numTraceAttrs"] = txt()<<obs.size();
   // Emit the recently observed values of tracer attributes
@@ -130,8 +130,9 @@ void trace::emitObservations() {
   }
   
   // Emit the current values of the context attributes
-  newProps["numCtxtAttrs"] = txt()<<obs.size();
-  for(std::list<std::string>::iterator a=t->contextAttrs.begin(); a!=t->contextAttrs.end(); a++) {
+  newProps["numCtxtAttrs"] = txt()<<contextAttrs.size();
+  i=0;
+  for(std::list<std::string>::iterator a=t->contextAttrs.begin(); a!=t->contextAttrs.end(); a++, i++) {
     const std::set<attrValue>& vals = attributes.get(*a);
     assert(vals.size()>0);
     if(vals.size()>1) { cerr << "trace::traceAttr() ERROR: context attribute "<<*a<<" has multiple values!"; }

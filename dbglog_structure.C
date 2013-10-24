@@ -391,6 +391,9 @@ void dbgBuf::init(std::streambuf* baseBuf)
 // and can be put directly into the teed buffers.
 int dbgBuf::overflow(int c)
 {
+  // Only emit text if the current query on attributes evaluates to true
+  if(!attributes.query()) return c;
+  
   //cerr << "overflow\n";
   if (c == EOF)
   {

@@ -53,9 +53,10 @@ trace::trace(properties::iterator props) : block(properties::next(props)) {
   
   // Add this trace object as a change listener to all the context variables
   long numCtxtAttrs = properties::getInt(props, "numCtxtAttrs");
-  for(long i=0; i<numCtxtAttrs; i++)
+  for(long i=0; i<numCtxtAttrs; i++) {
+    contextAttrs.push_back(properties::get(props, txt()<<"ctxtAttr_"<<i));
     attributes.addObs(properties::get(props, txt()<<"ctxtAttr_"<<i), this);
-  
+  }
   active[traceID] = this;
   
   // If we should show the visualization at the beginning of the block
@@ -148,12 +149,18 @@ void* trace::observe(properties::iterator props)
   assert(active.find(traceID) != active.end());
   trace* t = active[traceID];
   
+  long numTraceAttrs = properties::getInt(props, "numTraceAttrs");
+  long numCtxtAttrs = properties::getInt(props, "numCtxtAttrs");
+  
+  // Update the tracer with the keys of this observation's traced values
+  for(long i=0; i<numTraceAttrs; i++)
+    t->tracerKeys.insert(properties::get(props, txt()<<"tKey_"<<i));
+    
   ostringstream cmd;
   cmd << "traceRecord('"<<t->getLabel()<<"', ";
   
   // Emit the observed values of tracer attributes
   cmd << "{";
-  long numTraceAttrs = properties::getInt(props, "numTraceAttrs");
   for(long i=0; i<numTraceAttrs; i++) {
     if(i!=0) cmd << ", ";
     string tKey = properties::get(props, txt()<<"tKey_"<<i);
@@ -163,7 +170,6 @@ void* trace::observe(properties::iterator props)
   cmd << "}, {";
   
   // Emit the current values of the context attributes
-  long numCtxtAttrs = properties::getInt(props, "numCtxtAttrs");
   for(long i=0; i<numCtxtAttrs; i++) {
     if(i!=0) cmd << ", ";
     string cKey = properties::get(props, txt()<<"cKey_"<<i);
@@ -171,6 +177,7 @@ void* trace::observe(properties::iterator props)
     cmd << "'" << cKey << "': '" << cVal << "'";
   }
   cmd << "}, '"<<common::viz2Str(t->viz)<<"');";
+  
   dbg.widgetScriptCommand(cmd.str());
   
   return NULL;

@@ -21,6 +21,7 @@ scopeLayoutHandlerInstantiator scopeLayoutHandlerInstance;
 graphLayoutHandlerInstantiator graphLayoutHandlerInstance;
 traceLayoutHandlerInstantiator traceLayoutHandlerInstance;
 valSelectorLayoutHandlerInstantiator valSelectorLayoutHandlerInstance;
+attributesLayoutHandlerInstantiator attributesLayoutHandlerInstance;
 
 int main(int argc, char** argv) {
   if(argc!=2) { cerr<<"Usage: slayout fName"<<endl; exit(-1); }
@@ -72,7 +73,6 @@ int main(int argc, char** argv) {
 
       if(!(success = readUntil(true, "]", 1, termChar, f, buf, bufIdx, bufSize, tagName))) goto PARSE_END;
       //if(!(success = readUntil(true, " \t\r\n", 4, termChar, f, buf, bufIdx, bufSize, tagName))) goto PARSE_END;
-      if(!nextChar(f, buf, bufIdx, bufSize)) goto PARSE_END;
       
 /*      string ID;
       //if(!(success = readUntil(true, "]", 1, termChar, f, buf, bufIdx, bufSize, ID))) goto PARSE_END;
@@ -86,6 +86,8 @@ int main(int argc, char** argv) {
       assert(layoutExitHandlers.find(tagName) != layoutExitHandlers.end());
       layoutExitHandlers[tagName](stack[tagName].back());
       stack[tagName].pop_back();
+      
+      if(!nextChar(f, buf, bufIdx, bufSize)) goto PARSE_END;
     } else {
       // Records whether this entry tag corresponds to a base class that has been derived by another
       bool derived=false;

@@ -140,7 +140,7 @@ int main(int argc, char** argv) {
   
   int iter=0;
   for(int MtxSize=1; MtxSize<=100; MtxSize*=10) {
-    attr sizeAttr("MtxSize", (long)MtxSize);
+    attr sizeAttr("MtxSize", MtxSize);
     
     // Allocate the matrixes and vectors we'll be operating on
     double* A = (double*)malloc(sizeof(double) * MtxSize * MtxSize);

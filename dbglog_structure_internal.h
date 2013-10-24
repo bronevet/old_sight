@@ -12,7 +12,6 @@
 #include <stdarg.h>
 #include <assert.h>
 #include "dbglog_common.h"
-#include "attributes_structure.h"
 #include "utils.h"
 
 namespace dbglog {
@@ -69,6 +68,14 @@ class dbglogObj {
     delete(props);
   }
 };
+
+}; // namespace structure
+}; // namespace dbglog
+
+#include "attributes_structure.h"
+
+namespace dbglog {
+namespace structure{
 
 // Uniquely identifies a location with the debug information, including the file and region hierarchy
 // Anchors can be created in two ways:

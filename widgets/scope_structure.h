@@ -38,9 +38,9 @@ class scope: public block
   scope(std::string label,                                                             const attrOp& onoffOp, properties* props=NULL);
   scope(std::string label, const anchor& pointsTo,                                     const attrOp& onoffOp, properties* props=NULL);
   scope(std::string label, const std::set<anchor>& pointsTo,                           const attrOp& onoffOp, properties* props=NULL);
-  scope(std::string label,                                   common::scopeLevel level=common::medium,                 properties* props=NULL);
-  scope(std::string label, const anchor& pointsTo,           common::scopeLevel level=common::medium,                 properties* props=NULL);
-  scope(std::string label, const std::set<anchor>& pointsTo, common::scopeLevel level=common::medium,                 properties* props=NULL);
+  scope(std::string label,                                   common::scopeLevel level=common::medium,         properties* props=NULL);
+  scope(std::string label, const anchor& pointsTo,           common::scopeLevel level=common::medium,         properties* props=NULL);
+  scope(std::string label, const std::set<anchor>& pointsTo, common::scopeLevel level=common::medium,         properties* props=NULL);
   
   private:
   // Sets the properties of this object

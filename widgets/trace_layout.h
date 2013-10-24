@@ -63,7 +63,7 @@ class trace: public block, public attrObserver
   
   // Records all the observations of trace variables since the last time variables in contextAttrs changed values
   std::map<std::string, attrValue> obs;
-    
+  
   // The keys of all the tracer attributes ever observed
   std::set<std::string> tracerKeys;
   

@@ -7,7 +7,7 @@ DBGLOG_H := ../*.h ../widgets/*.h
 TESTERS = 1.StructuredFormatting${EXE} 2.ConditionalFormatting${EXE} 3.Navigation${EXE} \
           4.AttributeAnnotationFiltering${EXE} 5.Tracing${EXE} 6.PerfAnalysis${EXE} 
 
-all: 4.AttributeAnnotationFiltering${EXE} #${TESTERS}
+all: ${TESTERS}
 
 run:
 	./1.StructuredFormatting${EXE};         

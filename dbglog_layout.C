@@ -577,7 +577,7 @@ streamsize dbgBuf::xsputn(const char * s, streamsize n)
   //cout << "xputn() ownerAccess="<<ownerAccess<<" n="<<n<<" s=\""<<string(s)<<"\" query="<<attributes.query()<<"\n";
   
   // Only emit text if the current query on attributes evaluates to true
-  if(!attributes.query()) return n;
+  //if(!attributes.query()) return n;
   
   if(needIndent) {
     int ret = printString(escape(getIndent())); if(ret != 0) return 0;
@@ -673,7 +673,7 @@ streamsize dbgBuf::xsputn(const char * s, streamsize n)
 int dbgBuf::sync()
 {
   // Only emit text if the current query on attributes evaluates to true
-  if(!attributes.query()) return 0;
+  //if(!attributes.query()) return 0;
   
   int r = baseBuf->pubsync();
   if(r!=0) return -1;

@@ -9,9 +9,7 @@ int main(int argc, char** argv) {
   int numClients=10;
   string requests[] = {"read", "write", "status"};
   
-  time_t t=1382560261;//time(NULL);
-  cout << "t="<<t<<endl;
-  srand(t);
+  srand(time(NULL));
   
   initializeDebug(argc, argv, "4.AttributeAnnotationFiltering", "dbg.4.AttributeAnnotationFiltering");
   
@@ -38,26 +36,17 @@ int main(int argc, char** argv) {
   colorSelector serverColor(0,0,.3,0,0,1); // Green gradient
     
   for(int i=0; i<100; i++) {
-    dbg.flush();
     int serverID = rand()%numServers;
-    dbg.flush();
     int clientID = rand()%numClients;
-    dbg.flush();
     string request = requests[rand()%3];
-    dbg.flush();
-    cout << i << ": "<<request<<endl;
-    dbg.flush();
+    
     // Create attributes that identify the server, client and request type for dbglog
     attr sid("serverID", serverID);
-    dbg.flush();
     attr cid("clientID", clientID);
-    dbg.flush();
     attr r("request", request);
-    dbg.flush();
+    
     if(i==0) dbg << "We use attrIf to emit debug output only for write and read requests, but not status requests."<<endl;
-    dbg.flush();
     attrIf aif(new attrNEQ("request", string("status")));
-    dbg.flush();
     
     if(i==0) 
       dbg << "Each line uses conditional formatting that depends on current application state. The indentation is controlled "<<
@@ -70,15 +59,10 @@ int main(int argc, char** argv) {
              "that controls the color choice and the selector that will record all the values that will form the given color "<<
              "gradient. Once the application is done executing the colorSelector will consider all the values it ever observed "<<
              "and only then choose the actual color along the gradient that will be assigned to each value."<<endl;
-    dbg.flush();
+    
     indent ind(sid.getVInt());
-    dbg << textColor::start(clientColor, cid.getVal())<<"Client "<<clientID<<textColor::end()<<" "<<"sending ";
-    dbg.flush();
-    dbg << bgColor::start(requestColor) << request << bgColor::end()<< " request to ";
-    dbg.flush();
-    dbg << borderColor::start(serverColor, sid.getVal()) << "Server "<<serverID<<borderColor::end();
-    dbg.flush();
-    dbg << endl;
-    dbg.flush();
+    dbg << textColor::start(clientColor, cid.getVal())<<"Client "<<clientID<<textColor::end()<<" sending "<<
+           bgColor::start(requestColor) << request << bgColor::end()<< " request to "<<
+           borderColor::start(serverColor, sid.getVal()) << "Server "<<serverID<<borderColor::end()<<endl;
   }
 }
