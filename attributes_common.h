@@ -110,11 +110,11 @@ class attrObserver {
 // Maintains the mapping from atribute keys to values
 class attributesC
 {
-  friend class structure::attributesC;
-  friend class layout::attributesC;
+  //friend class structure::attributesC;
+  //friend class layout::attributesC;
   
   // --- STORAGE ---
-  private:
+  protected:
   std::map<std::string, std::set<attrValue> > m;
   
   // Maps each key to a all the attrObserver objects that observe changes in its mappings.
@@ -174,7 +174,7 @@ class attributesC
   // Remove all observers from a given key
   void remObs(std::string key);
   
-  private:
+  protected:
   // Notify all the observers of the given key before its mapping is changed (call attrObserver::observePre())
   void notifyObsPre(std::string key);
   // Notify all the observers of the given key after its mapping is changed (call attrObserver::observePost())

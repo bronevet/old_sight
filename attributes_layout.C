@@ -70,6 +70,7 @@ template<typename T>
 void attr::init(std::string key, T val) {
 //cout << "attr::init("<<key<<", "<<val<<")\n";
   this->val = val;
+  if(!isEnabled()) return;
   if(attributes.exists(key)) {
     keyPreviouslySet = true;
     const std::set<common::attrValue>& curValues = attributes.get(key);
@@ -84,6 +85,7 @@ void attr::init(std::string key, T val) {
 }
 
 attr::~attr() {
+  if(!isEnabled()) return;
 //cout << "attr::~attr("<<key<<", "<<val.str()<<")\n";
   // If this mapping replaced some prior mapping, return key to its original state
   if(keyPreviouslySet)
