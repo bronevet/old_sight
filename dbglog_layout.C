@@ -56,41 +56,6 @@ static dbglogLayoutHandlerInstantiator dbglogLayoutHandlerInstantance;
 
 bool initializedDebug=false;
 
-// Create the directory workDir/dirName and return the string that contains the absolute
-// path of the created directory
-string createDir(string workDir, string dirName) {
-  ostringstream fullDirName; fullDirName<<workDir<<"/"<<dirName;
-  ostringstream cmd; cmd << "mkdir -p "<<fullDirName.str();
-  int ret = system(cmd.str().c_str());
-  if(ret == -1) { cout << "ERROR creating directory \""<<workDir<<"/"<<dirName<<"\"!"; exit(-1); }
-  return fullDirName.str();
-}
-
-// Copy dirName from the source code path to the workDir
-string copyDir(string workDir, string dirName) {
-  ostringstream fullDirName; fullDirName << workDir << "/" << dirName;
-  
-  ostringstream cmd; cmd << "cp -fr "<<ROOT_PATH<<"/"<<dirName<<" "<<workDir;
-  //cout << "Command \""<<cmd.str()<<"\"\n";
-  int ret = system(cmd.str().c_str());
-  if(ret == -1) { cout << "ERROR copying files from directory \""<<ROOT_PATH<<"/"<<dirName<<"\" directory \""<<fullDirName.str()<<"\"!"; exit(-1); }
-    
-  chmod(fullDirName.str().c_str(), S_IRWXU);
-    
-  return fullDirName.str();
-}
-
-// Open a freshly-allocated output stream to write a file with the given name and return a pointer to the object.
-ofstream& createFile(string fName) {
-  ofstream *f = new ofstream();
-   try {
-    f->open(fName.c_str());
-  } catch (ofstream::failure e)
-  { cout << "createFile() ERROR opening file \""<<fName<<"\" for writing!"; exit(-1); }
-  
-  return *f;
-}
-
 // Records the information needed to call the application
 bool saved_appExecInfo=false; // Indicates whether the application execution info has been saved
 int argc = 0;
@@ -433,11 +398,17 @@ block::block(properties::iterator props) : startA(false, -1) /*=noAnchor, except
   }
   
   startA.setID(properties::getInt(props, "anchorID"));
+    
+  scriptFile       = dbg.getCurScriptFile();      // assert(scriptFile);
+  scriptPrologFile = dbg.getCurScriptPrologFile();// assert(scriptPrologFile);
+  scriptEpilogFile = dbg.getCurScriptEpilogFile();// assert(scriptEpilogFile);
 }
 
 // Initializes this block with the given label, used for creating additional blocks that were not listed in the structure file
 block::block(string label) : label(label), startA(false, -1) /*=noAnchor, except that noAnchor may not yet be initialized)*/ {
-  
+  scriptFile       = dbg.getCurScriptFile();      // assert(scriptFile);
+  scriptPrologFile = dbg.getCurScriptPrologFile();// assert(scriptPrologFile);
+  scriptEpilogFile = dbg.getCurScriptEpilogFile();// assert(scriptEpilogFile);  
 }
 
 // Attaches a given un-located anchor at this block
@@ -478,6 +449,23 @@ anchor& block::getAnchorRef()
 
 anchor block::getAnchor() const
 { return startA; }
+
+// Adds the given JavaScript command text to the script that will be loaded with the current file.
+// This command is guaranteed to run after the body of the file is loaded but before the anchors
+// referents are loaded.
+void block::widgetScriptCommand(std::string command) {
+  *scriptFile << command << endl;
+}
+
+// Adds the given JavaScript command text to be executed before the commands added with widgetScriptCommand()
+void block::widgetScriptPrologCommand(std::string command) {
+  *scriptPrologFile << command << endl;
+}
+
+// Adds the given JavaScript command text to be executed after the commands added with widgetScriptCommand()
+void block::widgetScriptEpilogCommand(std::string command) {
+  *scriptEpilogFile << command << endl;
+}
 
 /******************
  ***** dbgBuf *****
@@ -574,10 +562,7 @@ streamsize dbgBuf::xsputn(const char * s, streamsize n)
   cout << "  blocks.size()="<<blocks.size()<<", needIndent="<<needIndent<<endl;
   cout.flush();*/
   
-  //cout << "xputn() ownerAccess="<<ownerAccess<<" n="<<n<<" s=\""<<string(s)<<"\" query="<<attributes.query()<<"\n";
-  
-  // Only emit text if the current query on attributes evaluates to true
-  //if(!attributes.query()) return n;
+  //cout << "xputn() ownerAccess="<<ownerAccess<<" n="<<n<<" s=\""<<string(s)<<"\"\n";
   
   if(needIndent) {
     int ret = printString(escape(getIndent())); if(ret != 0) return 0;
@@ -672,9 +657,6 @@ streamsize dbgBuf::xsputn(const char * s, streamsize n)
 // Sync buffer.
 int dbgBuf::sync()
 {
-  // Only emit text if the current query on attributes evaluates to true
-  //if(!attributes.query()) return 0;
-  
   int r = baseBuf->pubsync();
   if(r!=0) return -1;
 
@@ -808,6 +790,24 @@ void dbgStream::userAccessing() {
 void dbgStream::ownerAccessing()  { 
   assert(fileBufs.size()>0);
   fileBufs.back()->ownerAccessing();
+}
+
+// Returns the file stream to the file that contains the commands to be executed when the current sub-file is loaded
+std::ofstream* dbgStream::getCurScriptFile() const {
+  if(scriptFiles.size()==0) return NULL;
+  else                      return scriptFiles.back();
+}
+
+// Returns the file stream to the file that contains the commands to be executed before/after all the 
+// commands in the script file are executed
+std::ofstream* dbgStream::getCurScriptPrologFile() const {
+  if(scriptPrologFiles.size()==0) return NULL;
+  else                      return scriptPrologFiles.back();
+}
+
+std::ofstream* dbgStream::getCurScriptEpilogFile() const {
+  if(scriptEpilogFiles.size()==0) return NULL;
+  else                      return scriptEpilogFiles.back();
 }
 
 // Creates an output directory for the given widget and returns its path as a pair:
@@ -1299,10 +1299,12 @@ void dbgStream::printDetailFileContainerHTML(string absoluteFileName, string tit
   det << "\t\t\t</td></tr>\n";
   det << "\t\t</table>\n";
   
+  #if REMOTE_ENABLED
   for(list<string>::iterator h=hostnames.begin(); h!=hostnames.end(); h++) {
     det << "<img src=\"http://"<<*h<<":"<<GDB_PORT<<"/img/divDL.gif\" onload=\"javascript:hostnameReachable('"<<*h<<"')\" width=1 height=1>\n";
   }
-
+  #endif
+  
   det << "\t</body>\n";
   det << "</html>\n\n";
   
@@ -1413,6 +1415,7 @@ block* dbgStream::exitBlock(bool recursiveExitBlock)
     exitAttrSubBlock();*/
   
   fileBufs.back()->ownerAccessing();
+  assert(fileBufs.size()>0);
   block* lastB = fileBufs.back()->exitBlock(recursiveExitBlock);
   
   assert(loc.size()>0);

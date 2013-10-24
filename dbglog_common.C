@@ -11,6 +11,21 @@ using namespace std;
 namespace dbglog {
 namespace common {
 
+// Returns whether log generation has been enabled or explicitly disabled
+bool isEnabled() {
+  static bool checked=false;
+  static bool enabledDebug; // Records whether log generation has been enabled or explicitly disabled
+  if(!checked) {
+    checked = true;
+    enabledDebug = (getenv("DISABLE_DBGLOG") == NULL);
+  }
+  return enabledDebug;
+}
+
+/*********************
+ ***** printable *****
+ *********************/
+  
 // Call the print method of the given printable object
 std::ofstream& operator<<(std::ofstream& ofs, const printable& p) {
   p.print(ofs);

@@ -8,6 +8,38 @@
 namespace dbglog {
 namespace common {
 
+// Returns whether log generation has been enabled or explicitly disabled
+bool isEnabled();
+
+// Class that makes it possible to generate string labels by using the << syntax.
+// Examples: Label() << "a=" << (5+2) << "!"
+//           Label("a=") << (5+2) << "!"
+struct txt : std::string {
+  txt() {}
+  txt(const std::string& initTxt) {
+    if(isEnabled()) {
+    	 _stream << initTxt;
+    	 assign(_stream.str());
+    }
+  }
+  
+  template <typename T>
+  txt& operator<<(T const& t) {
+    if(isEnabled()) {
+      _stream << t;
+      assign(_stream.str());
+    }
+    return *this;
+  }
+
+  std::string str() const { 
+    if(isEnabled()) return _stream.str();
+    else            return "";
+  }
+ 
+  std::ostringstream _stream;
+};
+
 class printable
 {
   public:

@@ -16,7 +16,8 @@
 using namespace std;
 
 namespace dbglog {
-// Create directory workDir/dirName. The path of the created directory is returned.
+// Create the directory workDir/dirName and return the string that contains the absolute
+// path of the created directory
 string createDir(string workDir, string dirName) {
   ostringstream fullDirName; fullDirName<<workDir<<"/"<<dirName;
   ostringstream cmd; cmd << "mkdir -p "<<fullDirName.str();

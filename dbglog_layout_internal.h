@@ -97,16 +97,16 @@ class anchor
   bool located;
   
   public:
-  //anchor(/*dbgStream& myDbg, */bool located=false);
+  //anchor(bool located=false);
   anchor(const anchor& that);
-  anchor(/*dbgStream& myDbg, */bool located=false, int anchorID=-1);
+  anchor(bool located=false, int anchorID=-1);
   
   //void init(bool located);
   
   int getID() const { return anchorID; }
   void setID(int ID) { 
     anchorID = ID;
-    //maxAnchorID = (ID>maxAnchorID? ID: maxAnchorID);
+    //minAnchorID = (ID<minAnchorID? ID: minAnchorID);
   }
   
   bool isLocated() const { return located; }
@@ -162,6 +162,12 @@ class block
   // locate them there.
   std::set<anchor> pointsToAnchors;
 
+  // File that contains commands to be executed when the sub-file this block is in is loaded
+  std::ofstream* scriptFile;
+  // Files that contain the commands to be executed before/after all the commands in the script file are executed
+  std::ofstream* scriptPrologFile;
+  std::ofstream* scriptEpilogFile;
+
   protected:
   // Counts the number of times the block constructor has been called
   static int blockCount;
@@ -197,6 +203,15 @@ class block
   // Called to enable the block to print its entry and exit text
   virtual void printEntry(std::string loadCmd) {}
   virtual void printExit() {}
+  
+  // Adds the given JavaScript command text to the script that will be loaded with the current block.
+  // This command is guaranteed to run after the body of the file is loaded but before the anchors
+  // referentsare loaded.
+  void widgetScriptCommand(std::string command);
+    
+  // Adds the given JavaScript command text to be executed before/after the commands added with widgetScriptCommand()
+  void widgetScriptPrologCommand(std::string command);
+  void widgetScriptEpilogCommand(std::string command);
 };
 
 // Adopted from http://wordaligned.org/articles/cpp-streambufs
@@ -347,7 +362,15 @@ public:
   // Switch between the owner class and user code writing text into this stream
   void userAccessing();
   void ownerAccessing();
-  
+
+  // Returns the file stream to the file that contains the commands to be executed when the current sub-file is loaded
+  std::ofstream* getCurScriptFile() const;
+    
+  // Returns the file stream to the file that contains the commands to be executed before/after all the 
+  // commands in the script file are executed
+  std::ofstream* getCurScriptPrologFile() const;
+  std::ofstream* getCurScriptEpilogFile() const;
+   
   // Return the root working directory
   const std::string& getWorkDir() const { return workDir; }
   // Return the directory where all images will be stored
@@ -460,27 +483,6 @@ public:
   indent(properties::iterator props);
     
   ~indent();
-};
-
-// Class that makes it possible to generate string labels by using the << syntax.
-// Examples: Label() << "a=" << (5+2) << "!"
-//           Label("a=") << (5+2) << "!"
-struct txt : std::string {
-  txt() {}
-  txt(const std::string& initTxt) {
-  	 _stream << initTxt;
-  	 assign(_stream.str());
-  }
-  
-  template <typename T>
-  txt& operator<<(T const& t) {
-    _stream << t;
-    assign(_stream.str());
-    return *this;
-  }
-
-  std::string str() const { return _stream.str(); }
-  std::ostringstream _stream;
 };
 
 // Given a string, returns a version of the string with all the control characters that may appear in the 

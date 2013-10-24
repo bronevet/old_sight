@@ -17,26 +17,5 @@ std::ofstream& createFile(std::string fName);
 
 // Returns a string that contains n tabs
 std::string tabs(int n);
-  
-// Class that makes it possible to generate string labels by using the << syntax.
-// Examples: Label() << "a=" << (5+2) << "!"
-//           Label("a=") << (5+2) << "!"
-struct txt : std::string {
-  txt() {}
-  txt(const std::string& initTxt) {
-  	 _stream << initTxt;
-  	 assign(_stream.str());
-  }
-  
-  template <typename T>
-  txt& operator<<(T const& t) {
-    _stream << t;
-    assign(_stream.str());
-    return *this;
-  }
-
-  std::string str() const { return _stream.str(); }
-  std::ostringstream _stream;
-};
 
 }; // namespace dbglog

@@ -66,20 +66,20 @@ libdbglog_layout.a: ${DBGLOG_LAYOUT_O} ${DBGLOG_LAYOUT_H} ${DBGLOG_COMMON_O} ${D
 dbglog_common.o: dbglog_common.C dbglog_common_internal.h attributes_common.h
 	g++ -g dbglog_common.C -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o dbglog_common.o
 
-dbglog_structure.o: dbglog_structure.C dbglog_structure_internal.h attributes_structure.h
+dbglog_structure.o: dbglog_structure.C dbglog_structure_internal.h attributes_structure.h dbglog_common_internal.h attributes_common.h
 	g++ -g dbglog_structure.C -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o dbglog_structure.o
 
-dbglog_layout.o: dbglog_layout.C dbglog_layout_internal.h attributes_layout.h
+dbglog_layout.o: dbglog_layout.C dbglog_layout_internal.h attributes_layout.h dbglog_common_internal.h attributes_common.h
 	g++ -g dbglog_layout.C -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o dbglog_layout.o
 
 
-attributes_common.o: attributes_common.C attributes_common.h
+attributes_common.o: attributes_common.C  dbglog_common_internal.h attributes_common.h
 	g++ -g attributes_common.C -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o attributes_common.o
 
-attributes_structure.o: attributes_structure.C attributes_structure.h
+attributes_structure.o: attributes_structure.C attributes_structure.h dbglog_common_internal.h attributes_common.h
 	g++ -g attributes_structure.C -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o attributes_structure.o
 
-attributes_layout.o: attributes_layout.C attributes_layout.h
+attributes_layout.o: attributes_layout.C attributes_layout.h dbglog_common_internal.h attributes_common.h
 	g++ -g attributes_layout.C -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o attributes_layout.o
 
 

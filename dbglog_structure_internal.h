@@ -137,7 +137,7 @@ class block : public dbglogObj
 {
   std::string label;
   // The unique ID of this block as well as the static global counter of the maximum ID assigned to any block.
-  // Unlike the rendering module, these blockIDs are integers since all we need from them is uniqueness and not
+  // Unlike the layout layer, these blockIDs are integers since all we need from them is uniqueness and not
   // any structural information.
   int blockID;
   // maxBlockID also counts the number of times that the block constructor was called, which makes it possible
@@ -334,6 +334,7 @@ public:
 }; // dbgStream
 
 extern bool initializedDebug;
+
 extern dbgStream dbg;
 
 class indent : public dbglogObj
