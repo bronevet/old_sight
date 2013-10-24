@@ -142,5 +142,31 @@ void graph::addUndirEdge(anchor a, anchor b) {
   delete(obj);
 }
 
+/* ADD THIS IF WE WISH TO HAVE NODES THAT EXISTED INSIDE THE GRAPH BUT WERE NOT CONNECTED VIA EDGES
+// Called to notify this block that a sub-block was started/completed inside of it. 
+// Returns true of this notification should be propagated to the blocks 
+// that contain this block and false otherwise.
+bool graph::subBlockEnterNotify(block* subBlock) {
+  //cout << "graph::subBlockEnterNotify(subBlock="<<subBlock->getLabel()<<")\n";
+  // If this block is immediately contained inside this graph
+  location common = dbgStream::commonSubLocation(getLocation(), subBlock->getLocation());
+  
+  / *cout << "subBlock->getLocation().back().second.size()="<<subBlock->getLocation().back().second.size()<<" common.back().second.size()="<<common.back().second.size()<<endl;
+  cout << "subBlock->getLocation="<<dbg.blockGlobalStr(subBlock->getLocation())<<endl;* /
+  // If subBlock is nested immediately inside the graph's block 
+//???  // (the nesting gap is 2 blocks rather than 1 since each block is chopped up into sub-blocks that
+//???  //  span the text between adjacent attribute definitions and major block terminal points)
+  assert(subBlock->getLocation().size()>0);
+  if(common == getLocation() &&
+     subBlock->getLocation().size() == common.size()/ * &&
+     subBlock->getLocation().back().second.size()-1 == common.back().second.size()* /)
+  { 
+    nodes[subBlock->getLocation()] = node(maxNodeID, subBlock->getLabel(), subBlock->getAnchor());
+    maxNodeID++;
+  }
+  
+  return false;
+}*/
+
 }; // namespace structure
 }; // namespace dbglog

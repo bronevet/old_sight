@@ -100,8 +100,8 @@ void trace::observePre(std::string key)
 }
 
 // Called by traceAttr() to inform the trace that a new observation has been made
-void trace::traceAttrObserved(std::string key, const attrValue& val) {
-  obs[key] = val;
+void trace::traceAttrObserved(std::string key, const attrValue& val, anchor target) {
+  obs[key] = make_pair(val, target);
   tracerKeys.insert(key);
 }
 
@@ -122,11 +122,12 @@ void trace::emitObservations() {
   newProps["traceID"] = txt()<<t->traceID;
   
   newProps["numTraceAttrs"] = txt()<<obs.size();
-  // Emit the recently observed values of tracer attributes
+  // Emit the recently observed values and anchors of tracer attributes
   int i=0;
-  for(map<string, attrValue>::iterator o=obs.begin(); o!=obs.end(); o++, i++) {
+  for(map<string, pair<attrValue, anchor> >::iterator o=obs.begin(); o!=obs.end(); o++, i++) {
     newProps[txt()<<"tKey_"<<i] = o->first;
-    newProps[txt()<<"tVal_"<<i] = o->second.getAsStr();
+    newProps[txt()<<"tVal_"<<i] = o->second.first.getAsStr();
+    newProps[txt()<<"tAnchorID_"<<i] = txt()<<o->second.second.getID();
   }
   
   // Emit the current values of the context attributes
@@ -153,13 +154,23 @@ void trace::emitObservations() {
 }
 
 void traceAttr(std::string label, std::string key, const attrValue& val) {
-  /*assert(trace::stack.size()>0);
-  trace* t = *(trace::stack.rbegin());*/
+  // Find the tracer with the name label
+  if(trace::active.find(label) == trace::active.end()) cerr << "traceAttr() ERROR: trace \""<<label<<"\" not active when observation \""<<key<<"\"=>\""<<val.str()<<"\" was observed!"; 
   assert(trace::active.find(label) != trace::active.end());
   trace* t = trace::active[label];
   
-  // Inform the inner-most tracer of the observation
-  t->traceAttrObserved(key, val);
+  // Inform the chosen tracer of the observation
+  t->traceAttrObserved(key, val, anchor::noAnchor);
+}
+
+void traceAttr(std::string label, std::string key, const attrValue& val, anchor target) {
+  // Find the tracer with the name label
+  if(trace::active.find(label) == trace::active.end()) cerr << "traceAttr() ERROR: trace \""<<label<<"\" not active when observation \""<<key<<"\"=>\""<<val.str()<<"\" was observed!"; 
+  assert(trace::active.find(label) != trace::active.end());
+  trace* t = trace::active[label];
+  
+  // Inform the chosen tracer of the observation
+  t->traceAttrObserved(key, val, target);
 }
 
 /*******************
@@ -167,8 +178,10 @@ void traceAttr(std::string label, std::string key, const attrValue& val) {
  *******************/
 measure::measure(std::string traceLabel, std::string valLabel): traceLabel(traceLabel), valLabel(valLabel)
 {
+  elapsed = 0.0;
   measureDone = false;
-  gettimeofday(&start, NULL);
+  paused = false;
+  gettimeofday(&lastStart, NULL);
 }
 
 measure::~measure() {
@@ -178,13 +191,33 @@ measure::~measure() {
 double measure::doMeasure() {
   if(measureDone) { cerr << "measure::doMeasure() ERROR: measuring variable \""<<valLabel<<"\" in trace \""<<traceLabel<<"\" multiple times!"<<endl; exit(-1); }
   measureDone = true;
+ 
+  // Call pause() to update elapsed with the time since the start of the measure or the last call to resume() 
+  pause(); 
   
-  struct timeval end;
-  gettimeofday(&end, NULL);
-  
-  double elapsed = ((end.tv_sec*1000000 + end.tv_usec) - (start.tv_sec*1000000 + start.tv_usec)) / 1000000.0;
   traceAttr(traceLabel, valLabel, attrValue((double)elapsed));
   return elapsed;
+}
+
+// Pauses the measurement so that time elapsed between this call and resume() is not counted.
+// Returns true if the measure is not currently paused and false if it is (i.e. the pause command has no effect)
+bool measure::pause() {
+  bool modified = paused==false;
+  paused = true;
+
+  struct timeval end;
+  gettimeofday(&end, NULL);
+
+  elapsed += ((end.tv_sec*1000000 + end.tv_usec) - (lastStart.tv_sec*1000000 + lastStart.tv_usec)) / 1000000.0;
+
+  return modified;  
+}
+
+// Restarts counting time. Time collection is restarted regardless of how many times pause() was called
+// before the call to resume().
+bool measure::resume() {
+  gettimeofday(&lastStart, NULL);
+  paused = false;
 }
 
 measure* startMeasure(std::string traceLabel, std::string valLabel) {

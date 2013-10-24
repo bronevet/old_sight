@@ -61,7 +61,7 @@ int main(int argc, char** argv) {
              "and only then choose the actual color along the gradient that will be assigned to each value."<<endl;
     
     indent ind(sid.getVInt());
-    dbg << textColor::start(clientColor, cid.getVal())<<"Client "<<clientID<<textColor::end()<<" sending "<<
+    dbg << textColor::start(clientColor, cid.getVal()) << "Client "<<clientID<<textColor::end()<<" "<<"sending "<<
            bgColor::start(requestColor) << request << bgColor::end()<< " request to "<<
            borderColor::start(serverColor, sid.getVal()) << "Server "<<serverID<<borderColor::end()<<endl;
   }

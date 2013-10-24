@@ -35,14 +35,17 @@ trace::trace(properties::iterator props) : block(properties::next(props)) {
     
     dbg.includeWidgetScript("jquery-1.8.1.min.js", "text/javascript"); dbg.includeFile("jquery-1.8.1.min.js");
     dbg.includeWidgetScript("underscore-min.js",   "text/javascript"); dbg.includeFile("underscore-min.js");
-    dbg.includeWidgetScript("d3.v2.js",            "text/javascript"); dbg.includeFile("d3.v2.js");
     
     dbg.includeWidgetScript("ID3-Decision-Tree/js/id3.js", "text/javascript");
     //dbg.includeScript("https://www.google.com/jsapi?autoload={\"modules\":[{\"name\":\"visualization\",\"version\":\"1\",\"packages\":[\"orgchart\"]}]}", "text/javascript");
     dbg.includeFile("ID3-Decision-Tree");
+    
+    // D3 Widgets
+    dbg.includeWidgetScript("d3.v3.min.js", "text/javascript"); dbg.includeFile("d3.v3.min.js");
+    dbg.includeWidgetScript("boxplot.js",   "text/javascript"); dbg.includeFile("boxplot.js");
+    dbg.includeWidgetScript("gradient.js",  "text/javascript"); dbg.includeFile("gradient.js");
 
-    dbg.includeFile("trace.js");
-    dbg.includeWidgetScript("trace.js", "text/javascript");
+    dbg.includeFile("trace.js"); dbg.includeWidgetScript("trace.js", "text/javascript");
     
     initialized = true;
   }
@@ -55,9 +58,11 @@ trace::trace(properties::iterator props) : block(properties::next(props)) {
   long numCtxtAttrs = properties::getInt(props, "numCtxtAttrs");
   for(long i=0; i<numCtxtAttrs; i++) {
     contextAttrs.push_back(properties::get(props, txt()<<"ctxtAttr_"<<i));
-    attributes.addObs(properties::get(props, txt()<<"ctxtAttr_"<<i), this);
+    //attributes.addObs(properties::get(props, txt()<<"ctxtAttr_"<<i), this);
   }
   active[traceID] = this;
+  
+  dbg.enterBlock(this, false, true);
   
   // If we should show the visualization at the beginning of the block
   if(showLoc == showBegin) showViz();
@@ -67,8 +72,9 @@ trace::~trace() {
   // If we should show the visualization at the end of the block
   if(showLoc == showEnd) showViz();
   
+  // String that contains the names of all the context attributes 
   ostringstream contextAttrsStr;
-  if(viz==table || viz == decTree) {
+  if(viz==table || viz==decTree || viz==heatmap || viz==boxplot) {
     contextAttrsStr << "[";
     for(std::list<std::string>::iterator a=contextAttrs.begin(); a!=contextAttrs.end(); a++) {
       if(a!=contextAttrs.begin()) contextAttrsStr << ", ";
@@ -77,8 +83,9 @@ trace::~trace() {
     contextAttrsStr << "]";
   }
   
+  // String that contains the names of all the trace attributes
   ostringstream tracerAttrsStr;
-  if(viz==table || viz==lines) {
+  if(viz==table || viz==lines || viz==heatmap || viz==boxplot) {
     tracerAttrsStr << "[";
     for(set<string>::iterator a=tracerKeys.begin(); a!=tracerKeys.end(); a++) {
       if(a!=tracerKeys.begin()) tracerAttrsStr << ", ";
@@ -88,24 +95,40 @@ trace::~trace() {
   }
   
   // Now that we know all the trace variables that are included in this trace, emit the trace
-  if(viz==table) {
+  if(viz==table || viz==heatmap) {
     //dbg.widgetScriptPrologCommand(txt()<<"loadGoogleAPI();");
     ostringstream cmd; 
-    cmd<<"displayTrace('"<<getLabel()<<"', '"<<tgtBlockID<<"-Table', "<<
+    cmd<<"displayTrace('"<<getLabel()<<"', '"<<tgtBlockID<<"-"<<(viz==table?"Table": (viz==heatmap?"Heatmap": "???"))<<"', "<<
                        contextAttrsStr.str()<<", " << 
                        tracerAttrsStr.str()<<", "<<  
-                       "'"<<common::viz2Str(viz)<<"');";
+                       "'"<<common::viz2Str(viz)<<"', "<<
+                       "'"<<common::showLoc2Str(showLoc)<<"');";
     dbg.widgetScriptEpilogCommand(cmd.str());
   } else if(viz==lines) {
     // Create a separate decision tree for each context attribute
     for(std::list<std::string>::iterator c=contextAttrs.begin(); c!=contextAttrs.end(); c++) {
-      dbg.widgetScriptEpilogCommand(txt()<<"displayTrace('"<<getLabel()<<"', '"<<tgtBlockID<<"', ['"<<*c<<"'], "<<tracerAttrsStr.str()<<", '"<<common::viz2Str(viz)<<"');");
+      dbg.widgetScriptEpilogCommand(txt()<<"displayTrace('"<<getLabel()<<"', '"<<tgtBlockID<<"', ['"<<*c<<"'], "<<tracerAttrsStr.str()<<", "<<
+                                    "'"<<common::viz2Str(viz)<<"', "<<
+                                    "'"<<common::showLoc2Str(showLoc)<<"');");
     }
   } else if(viz==decTree) {
     // Create a separate decision tree for each tracer attribute
     for(set<string>::iterator t=tracerKeys.begin(); t!=tracerKeys.end(); t++) {
-      dbg.widgetScriptEpilogCommand(txt()<<"displayTrace('"<<getLabel()<<"', '"<<tgtBlockID<<"', "<<contextAttrsStr.str()<<", ['"<<*t<<"'], '"<<common::viz2Str(viz)<<"');");
+      dbg.widgetScriptEpilogCommand(txt()<<"displayTrace('"<<getLabel()<<"', '"<<tgtBlockID<<"', "<<contextAttrsStr.str()<<", ['"<<*t<<"'], "<<
+                                    "'"<<common::viz2Str(viz)<<"', "<<
+                                    "'"<<common::showLoc2Str(showLoc)<<"');");
     }
+  } else if(viz==boxplot) {
+    // Create a separate set of box plots for each combination of context and tracer attributes
+    /*for(std::list<std::string>::iterator c=contextAttrs.begin(); c!=contextAttrs.end(); c++) {
+    for(set<string>::iterator t=tracerKeys.begin(); t!=tracerKeys.end(); t++) {
+      dbg.widgetScriptEpilogCommand(txt()<<"displayTrace('"<<getLabel()<<"', '"<<tgtBlockID<<"', ['"<<*c<<"'], ['"<<*t<<"'], '"<<viz2Str(viz)<<"');");
+    } }*/
+    dbg.widgetScriptEpilogCommand(txt()<<"displayTrace('"<<getLabel()<<"', '"<<tgtBlockID<<"', "<<
+                                  contextAttrsStr.str()<<", "<<
+                                  tracerAttrsStr.str()<<", "<<
+                                  "'"<<viz2Str(viz)<<"', "<<
+                                  "'"<<showLoc2Str(showLoc)<<"');");
   }
   
   /*assert(stack.size()>0);
@@ -113,15 +136,15 @@ trace::~trace() {
   assert(active.find(traceID) != active.end());
   active.erase(traceID);
   
-  // Stop this object's observations of changes in context variables
+  /* // Stop this object's observations of changes in context variables
   for(list<string>::iterator ca=contextAttrs.begin(); ca!=contextAttrs.end(); ca++)
-    attributes.remObs(*ca, this);
+    attributes.remObs(*ca, this);*/
+  
+  dbg.exitBlock();
 }
 
 // Place the code to show the visualization
 void trace::showViz() {
-  dbg.enterBlock(this, false, true);
-  
   tgtBlockID = getBlockID();
   if(viz==table) {
     dbg << "<div class=\"example yui3-skin-sam\"><div id=\"div"<<tgtBlockID<<"-Table\"></div></div>";
@@ -137,9 +160,9 @@ void trace::showViz() {
       dbg << *t << endl;
       dbg << "<div id=\"div"<<tgtBlockID<<"_"<<*t<<"\"></div>\n";
     }
+  } else if(viz==heatmap) {
+    dbg << "<div id=\"div"<<tgtBlockID<<"-Heatmap\"></div>";
   }
-  
-  dbg.exitBlock();
 }
 
 // Record an observation
@@ -166,6 +189,15 @@ void* trace::observe(properties::iterator props)
     string tKey = properties::get(props, txt()<<"tKey_"<<i);
     string tVal = properties::get(props, txt()<<"tVal_"<<i);
     cmd << "'"<< tKey << "': '" << tVal <<"'";
+  }
+  cmd << "}, {";
+  
+  // Emit the observed anchors of tracer attributes
+  for(long i=0; i<numTraceAttrs; i++) {
+    if(i!=0) cmd << ", ";
+    string tKey = properties::get(props, txt()<<"tKey_"<<i);
+    anchor tAnchor(false, properties::getInt(props, txt()<<"tAnchorID_"<<i));
+    cmd << "'"<< tKey << "': '" << (tAnchor==anchor::noAnchor? "": tAnchor.getLinkJS()) <<"'";
   }
   cmd << "}, {";
   

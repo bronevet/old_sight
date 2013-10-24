@@ -17,10 +17,12 @@ namespace dbglog {
 namespace structure {
 
 void traceAttr(std::string label, std::string key, const attrValue& val);
+void traceAttr(std::string label, std::string key, const attrValue& val, anchor target);
 
 class trace: public block, public attrObserver
 {
   friend void traceAttr(std::string label, std::string key, const attrValue& val);
+  friend void traceAttr(std::string label, std::string key, const attrValue& val, anchor target);
   
   private:
   // Unique ID of this trace
@@ -52,7 +54,7 @@ class trace: public block, public attrObserver
   private:
   
   // Records all the observations of trace variables since the last time variables in contextAttrs changed values
-  std::map<std::string, attrValue> obs;
+  std::map<std::string, std::pair<attrValue, anchor> > obs;
     
   // The keys of all the tracer attributes ever observed
   std::set<std::string> tracerKeys;
@@ -62,7 +64,7 @@ class trace: public block, public attrObserver
   void observePre(std::string key);
   
   // Called by traceAttr() to inform the trace that a new observation has been made
-  void traceAttrObserved(std::string key, const attrValue& val);
+  void traceAttrObserved(std::string key, const attrValue& val, anchor target);
   
   private:
   // Emits the JavaScript command that encodes the observations made since the last time a context attribute changed
@@ -77,7 +79,13 @@ class trace: public block, public attrObserver
 class measure {
   std::string traceLabel;
   std::string valLabel;
-  struct timeval start;
+  // Counts the total time elapsed so far, accounting for any pauses and resumes
+  double elapsed;
+  // The time when we started or resumed this measure, whichever is most recent
+  struct timeval lastStart;
+
+  // Records whether time collection is currently paused
+  bool paused;
   
   // Records whether we've already performed the measure
   bool measureDone;
@@ -85,7 +93,15 @@ class measure {
   public:
   measure(std::string traceLabel, std::string valLabel);
   ~measure();
-  
+ 
+  // Pauses the measurement so that time elapsed between this call and resume() is not counted.
+  // Returns true if the measure is not currently paused and false if it is (i.e. the pause command has no effect)
+  bool pause();
+
+  // Restarts counting time. Time collection is restarted regardless of how many times pause() was called
+  // before the call to resume().
+  bool resume();
+ 
   double doMeasure();
 }; // class measure
 

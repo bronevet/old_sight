@@ -93,7 +93,7 @@ void* initializeDebug(properties::iterator props) {
   } else
     saved_appExecInfo = false;
 
-  #ifdef GDB_ENABLED 
+  #ifdef REMOTE_ENABLED
   if(!isPortUsed(GDB_PORT)) {
     ostringstream cmd; cmd << ROOT_PATH << "/widgets/mongoose/mongoose -document_root "<<ROOT_PATH<<" -listening_ports "<<GDB_PORT<<"&";
     system(cmd.str().c_str());

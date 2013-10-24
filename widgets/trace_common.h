@@ -5,7 +5,7 @@ namespace common {
 
 //namespace trace {
   // Identifies the type of visualization used to show the trace
-  typedef enum {table, lines, decTree} vizT;
+  typedef enum {table, lines, decTree, heatmap, boxplot} vizT;
 
   // Indicates whether the trace visualization should be shown at the beginning or the end of its visual block
   typedef enum {showBegin, showEnd} showLocT;

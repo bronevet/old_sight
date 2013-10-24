@@ -1,13 +1,36 @@
-var tracerData = {};
-var tracerCols = {};
+var traceDataList = {};
+
+var traceDataHash = {};
+var traceLinkHash = {};
 
 var minData = {};
 var maxData = {};
 
-function traceRecord(traceLabel, traceVals, contextVals, viz) {
+// Records for each context key all the values ever observed for it
+var allCtxtVals = {};
+
+// Maps each trace/context key and value to its type:
+// string - generic type elements of which are ordered lexically
+// number
+var traceValType = {};
+var ctxtValType = {};
+// Maps each context/trace key to a unique numeric ID suitable for indexing into a dense array
+var ctxtKey2ID = {};
+var traceKey2ID = {};
+// Array of all context/trace keys, at the indexes specified in the above hashes
+var ctxtKeys = {};
+var traceKeys = {};
+
+function isNumber(n) {
+  return !isNaN(parseFloat(n)) && isFinite(n);
+}
+
+function traceRecord(traceLabel, traceVals, traceValLinks, contextVals, viz) {
   // If this is the first time we've added a record to this trace
-  if(!tracerData.hasOwnProperty(traceLabel)) {
-    tracerData[traceLabel] = [];
+  if(!traceDataList.hasOwnProperty(traceLabel)) {
+    traceDataList[traceLabel] = [];
+    traceDataHash[traceLabel] = {};
+    traceLinkHash[traceLabel] = {};
   }
   
   // Initialize the minimum and maximum for each key
@@ -20,31 +43,119 @@ function traceRecord(traceLabel, traceVals, contextVals, viz) {
     if(!minData.hasOwnProperty(traceKey)) minData[traceKey] = 1e100;
     if(!maxData.hasOwnProperty(traceKey)) maxData[traceKey] = -1e100;
   } }
+
+  // Update the info on the type of trace and context keys
+  for(ctxtKey in contextVals) { if(contextVals.hasOwnProperty(ctxtKey)) {
+    updateKeyValType(ctxtValType, ctxtKey, contextVals[ctxtKey]);
+  } }
+  for(traceKey in traceVals) { if(traceVals.hasOwnProperty(traceKey)) {
+    updateKeyValType(traceValType, traceKey, traceVals[traceKey]);
+  } }
+  
+  // Update the mapping from trace and context key names to their unique IDs
+  for(ctxtKey in contextVals) { if(contextVals.hasOwnProperty(ctxtKey)) {
+    if(ctxtKey2ID[traceLabel] == undefined) {
+      ctxtKey2ID[traceLabel] = {};
+      ctxtKeys[traceLabel] = [];
+    }
+    if(ctxtKey2ID[traceLabel][ctxtKey] == undefined) {
+      ctxtKey2ID[traceLabel][ctxtKey] = Object.keys(ctxtKey2ID[traceLabel]).length;
+      ctxtKeys[traceLabel].push(ctxtKey);
+  } } }
+  for(traceKey in traceVals) { if(traceVals.hasOwnProperty(traceKey)) {
+    if(traceKey2ID[traceLabel] == undefined) {
+      traceKey2ID[traceLabel] = {};
+      traceKeys[traceLabel] = [];
+    }
+    if(traceKey2ID[traceLabel][traceKey] == undefined) {
+      traceKey2ID[traceLabel][traceKey] = Object.keys(traceKey2ID[traceLabel]).length;
+      traceKeys[traceLabel].push(traceKey);
+  } } }
   
   // Create an object that contains the data of the current observation
   var allVals = {};
-  if(viz == 'table' || viz == 'lines' || viz == 'decTree') {
-    
+  if(viz == 'table' || viz == 'lines' || viz == 'decTree' || viz == 'heatmap' || viz == 'boxplot') {
     // Add the data
     for(ctxtKey in contextVals) { if(contextVals.hasOwnProperty(ctxtKey)) {
       allVals[ctxtKey] = contextVals[ctxtKey];
-      if(minData[ctxtKey] > contextVals[ctxtKey]) minData[ctxtKey] = contextVals[ctxtKey];
-      if(maxData[ctxtKey] < contextVals[ctxtKey]) maxData[ctxtKey] = contextVals[ctxtKey];
+      if(parseInt(minData[ctxtKey]) > parseInt(contextVals[ctxtKey])) minData[ctxtKey] = contextVals[ctxtKey];
+      if(parseInt(maxData[ctxtKey]) < parseInt(contextVals[ctxtKey])) maxData[ctxtKey] = contextVals[ctxtKey];
     } }
     for(traceKey in traceVals) { if(traceVals.hasOwnProperty(traceKey)) {
       allVals[traceKey] = traceVals[traceKey];
-      if(minData[traceKey] > traceVals[traceKey]) minData[traceKey] = traceVals[traceKey];
-      if(maxData[traceKey] < traceVals[traceKey]) maxData[traceKey] = traceVals[traceKey];
+      if(parseInt(minData[traceKey]) > parseInt(traceVals[traceKey])) minData[traceKey] = traceVals[traceKey];
+      if(parseInt(maxData[traceKey]) < parseInt(traceVals[traceKey])) maxData[traceKey] = traceVals[traceKey];
     } }
   }
-  tracerData[traceLabel].push(allVals);
+  
+  if(viz == 'heatmap') {
+    for(ctxtKey in contextVals) { if(contextVals.hasOwnProperty(ctxtKey)) {
+      if(allCtxtVals[ctxtKey] == undefined) { allCtxtVals[ctxtKey] = {}; }
+      allCtxtVals[ctxtKey][contextVals[ctxtKey]] = 1;
+    } }
+  }
+  
+  traceDataList[traceLabel].push(allVals);
+  
+  addDataHash(traceDataHash[traceLabel], traceVals, contextVals);
+  addDataHash(traceLinkHash[traceLabel], traceValLinks, contextVals);
+}
+
+// Given a mapping of trace/context keys to the types of their values,
+// updates the mapping that, taking the next observation of the value into account 
+function updateKeyValType(typemap, key, val) {
+  if(isNumber(val)) {
+    // If we don't yet know this key's type, initialize it to "number"
+    if(!(key in typemap)) typemap[key]="number";
+    // If we currently believe the key's type is something other than "number", set it to "string" since it includes all possibilities
+    else if(typemap[key]!="number") typemap[key]="string";
+  }
+  // Since we don't know the type of this key, set it to "string" (overwrites any prior setting)
+  typemap[val]="string";
+}
+
+// Given the type of a given key, returns an appropriate comparison function to use when sorting
+// instances of the key
+function getCompareFunc(keyType) {
+  if(keyType == "number")
+    return function(a, b) { return a-b; }
+  else
+    return function(a, b) { return a<b; }
+}
+
+function addDataHash(dataHash, traceVals, contextVals) {
+  // Set ctxt to be a sorted array of the contextVals keys
+  var ctxt = [];
+  for(ctxtKey in contextVals) { if(contextVals.hasOwnProperty(ctxtKey)) { ctxt.push(ctxtKey); } }
+  ctxt.sort();
+  
+  var subTDH = dataHash;
+  for(var i=0; i<ctxt.length; i++) {
+    if(subTDH[contextVals[ctxt[i]]] == undefined) { subTDH[contextVals[ctxt[i]]]={}; }
+    subTDH = subTDH[contextVals[ctxt[i]]];
+  }
+  subTDH["data"] = traceVals;
+}
+
+function getDataHash(dataHash, contextVals) {
+  // Set ctxt to be a sorted array of the contextVals keys
+  var ctxt = [];
+  for(ctxtKey in contextVals) { if(contextVals.hasOwnProperty(ctxtKey)) { ctxt.push(ctxtKey); } }
+  ctxt.sort();
+
+  var subTDH = dataHash;  
+  for(var i=0; i<ctxt.length; i++) {
+    if(subTDH[contextVals[ctxt[i]]] == undefined) { return undefined; }
+    subTDH = subTDH[contextVals[ctxt[i]]];
+  }
+  if(subTDH["data"] == undefined) { return undefined; }
+  return subTDH["data"];
 }
 
 var displayTraceCalled = {};
-function displayTrace(traceLabel, blockID, contextAttrs, traceAttrs, viz) {
+// loc = "showBegin" or "showEnd"
+function displayTrace(traceLabel, blockID, contextAttrs, traceAttrs, viz, loc) {
   if(viz == 'table') {
-    var tracerCols = [];
-    
     var ctxtCols = [];
     for(i in contextAttrs)
       ctxtCols.push({key:contextAttrs[i], label:contextAttrs[i], sortable:true});
@@ -58,7 +169,7 @@ function displayTrace(traceLabel, blockID, contextAttrs, traceAttrs, viz) {
         var traceTable = new Y.DataTable({
             columns: [ {label:"Context", children:ctxtCols},
                        {label:"Trace",   children:traceCols} ],
-            data   : tracerData[traceLabel],
+            data   : traceDataList[traceLabel],
             caption: traceLabel
         });
         
@@ -87,7 +198,7 @@ function displayTrace(traceLabel, blockID, contextAttrs, traceAttrs, viz) {
         // A table from data with keys that work fine as column names
         var traceChart = new Y.Chart({
             type: "line",
-            dataProvider: tracerData[traceLabel],
+            dataProvider: traceDataList[traceLabel],
             categoryKey: contextAttrs[0],
             seriesKeys: traceAttrs,
             axes:myAxes,
@@ -96,13 +207,137 @@ function displayTrace(traceLabel, blockID, contextAttrs, traceAttrs, viz) {
       });
   } else if(viz == 'decTree') {
     //if(!displayTraceCalled.hasOwnProperty(traceLabel)) {
-    tracerData[traceLabel] = _(tracerData[traceLabel]);
-    var model = id3(tracerData[traceLabel], traceAttrs[0], contextAttrs);
+    traceDataList[traceLabel] = _(traceDataList[traceLabel]);
+    var model = id3(traceDataList[traceLabel], traceAttrs[0], contextAttrs);
     //alert(document.getElementById("div"+blockID).innerHTML)
     // Create a div in which to place this attribute's decision tree
     //document.getElementById("div"+blockID).innerHTML += traceAttrs[0]+"<div id='div"+blockID+":"+traceAttrs[0]+"'></div>";
     drawGraph(model,"div"+blockID+"_"+traceAttrs[0]);
+  } else if(viz == 'boxplot') {
+    var margin = {top: 10, right: 50, bottom: 20, left: 50},
+        width = 120 - margin.left - margin.right,
+        height = 500 - margin.top - margin.bottom;
+
+    var divsForBoxplot = "";
+    for(c in contextAttrs) {
+    for(t in traceAttrs) {
+      divsForBoxplot += "Context=" + contextAttrs[c] + ", Trace=" + traceAttrs[t] + "\n";
+      divsForBoxplot += "<div id=\"div" + blockID + "_" + contextAttrs[c] + "_" + traceAttrs[t] + "\"></div>\n";
+    }}
+    if(loc == "showBegin")    document.getElementById("div"+blockID).innerHTML = divsForBoxplot + document.getElementById("div"+blockID).innerHTML;
+    else if(loc == "showEnd") document.getElementById("div"+blockID).innerHTML += divsForBoxplot;
+
+    for(c in contextAttrs) {
+    for(t in traceAttrs) {
+      //showBoxPlot(traceDataList[traceID], "div"+blockID+"_"+contextAttrs[0]+"_"+traceAttrs[0], contextAttrs[0], traceAttrs[0], width, height, margin);
+      showBoxPlot(traceDataList[traceLabel], "div"+blockID+"_"+contextAttrs[c]+"_"+traceAttrs[t], contextAttrs[c], traceAttrs[t], width, height, margin);
+    } }
+  } else if(viz == 'heatmap') {
+    /* // Array of keys of the context variables. Only the first two are used.
+    var ctxtKeys = [];
+    for(ctxtKey in allCtxtVals) { if(allCtxtVals.hasOwnProperty(ctxtKey)) {
+      ctxtKeys.push(ctxtKey);
+    } }*/
+    
+    // Array of all the values of the first context key, in sorted order
+    var ctxt0KeyVals = [];
+    for(ctxt0Key in allCtxtVals[ctxtKeys[traceLabel][0]]) { if(allCtxtVals[ctxtKeys[traceLabel][0]].hasOwnProperty(ctxt0Key)) { ctxt0KeyVals.push(ctxt0Key); } }
+    ctxt0KeyVals.sort(getCompareFunc(ctxtValType[ctxtKeys[traceLabel][0]]));
+
+    // Array of all the values of the second context key, in sorted order
+    var ctxt1KeyVals = [];
+    for(ctxt1Key in allCtxtVals[ctxtKeys[traceLabel][1]]) { if(allCtxtVals[ctxtKeys[traceLabel][1]].hasOwnProperty(ctxt1Key)) { ctxt1KeyVals.push(ctxt1Key); } }
+    ctxt1KeyVals.sort(getCompareFunc(ctxtValType[ctxtKeys[traceLabel][1]]));
+    
+    // Create the gradient to be used to color the tiles
+    var numColors = 1000;
+    var colors = gradientFactory.generate({
+        from: "#0000FF",
+        to: "#FF0000",
+        stops: numColors
+    });
+    // The values of attributes will be placed into numColors buckets, each marked with a different color.
+    // This is the size of each bucket for each trace attribute
+    var valBucketSize = [];
+    
+    // Prepare the data array that holds the info on the heatmaps to be shown (top-level of array, one 
+    // sub-array per entry in traceAttrs) and the individual tiles in each heatmap (second-level array,
+    // one entry for each pair of items in ctxt0KeyVals and ctxt1KeyVals)
+    var data = [];
+    for(traceAttrIdx in traceAttrs) { 
+      valBucketSize[traceAttrIdx] = (maxData[traceAttrs[traceAttrIdx]] - minData[traceAttrs[traceAttrIdx]])/numColors;
+
+      // attrData records the row and column of each tile in its heatmap (separate heatmap for each trace attribute), 
+      // along with the index of the trace attribute in traceAttrs.
+      var attrData = [];
+      for(k1 in ctxt1KeyVals) {
+      for(k0 in ctxt0KeyVals) {
+        var contextVals = {};
+        contextVals[ctxtKeys[traceLabel][0]] = ctxt0KeyVals[k0];
+        contextVals[ctxtKeys[traceLabel][1]] = ctxt1KeyVals[k1];
+        
+        var traceVals = getDataHash(traceDataHash[traceLabel], contextVals);
+        var traceLinks = getDataHash(traceLinkHash[traceLabel], contextVals);
+        // If there is a record for this combination of context key values, add it to the dataset
+        if(traceVals && traceLinks)
+          attrData.push({row: k1, 
+                         col:k0, 
+                         traceAttrIdx:traceAttrIdx,
+                         traceVals:traceVals, 
+                         traceLinks:traceLinks});
+      } }
+      
+      // Add the data for the current trace attribute to the dataset
+      data.push(attrData);
+    }
+    var tileWidth=20;
+    var tileHeight=20;
+    var titleHeight=20;
+    var titleGap=5;
+    
+    var container = 
+           d3.select("#div"+blockID).selectAll("svg")
+                  .data(data)
+                .enter()
+                .append("svg")
+                  .attr("width",  tileWidth*ctxt0KeyVals.length)
+                  .attr("height", titleHeight + titleGap + tileHeight*ctxt0KeyVals.length)
+                  .attr("x", 0)
+                  .attr("y", 1000);
+    
+    var title = container.append("text")
+               .text(function(d, i) { /*alert(traceAttrs[i]);*/return traceAttrs[i]; })
+               .attr("text-anchor", "middle")
+               .attr("x", (tileWidth*ctxt0KeyVals.length)/2)
+               .attr("y", titleHeight)
+               .attr("fill", "#000000")
+               .attr("font-family", "sans-serif")
+               .attr("font-size", titleHeight+"px");
+    //titleHeight = title.node().getBBox()["height"];
+    
+    container.selectAll("g")
+                 .data(function(d, i) { return data[i]; })
+      .enter()
+      .append("g")
+        .attr("width",  tileWidth)
+        .attr("height", tileHeight)
+        .attr("transform", function(d) { return "translate("+(d["col"]*tileWidth)+","+(d["row"]*tileHeight+titleHeight+titleGap)+")"; })
+      .append("rect")
+        .attr("width",  tileWidth)
+        .attr("height", tileHeight)
+        .attr("x", 0)
+        .attr("y", 0)
+        .attr("fill", function(d, i) {
+          var valBucket = Math.floor((d["traceVals"][traceAttrs[d["traceAttrIdx"]]] - minData[traceAttrs[d["traceAttrIdx"]]]) / valBucketSize[d["traceAttrIdx"]]);
+          return colors[Math.min(valBucket, colors.length-1)];
+          })
+        .on("click", function(d) {
+          eval(d["traceLinks"][traceAttrs[d["traceAttrIdx"]]]);
+          return true;
+          });
+         
   }
   
   displayTraceCalled = true;
 }
+

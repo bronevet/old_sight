@@ -116,7 +116,7 @@ void scope::printEntry(string loadCmd) {
   dbg.ownerAccessing();
   if(level == high || level == medium || level == low) {
     dbg << "</a>\n";
-    if(false) { //if(appExecInfo) {
+    /*if(false) { //if(appExecInfo) {
       dbg << "<script type=\"text/javascript\">\n";
       dbg << "  document.write(\"<a href=\\\"http://\"+hostname+\""<<":"<<GDB_PORT<<"/gdbwrap.cgi?execFile="<<execFile<<"&tgtCount="<<blockCount<<"&args=";
   //    dbg << "(<a href=\"http://"<<hostname<<":"<<GDB_PORT<<"/gdbwrap.cgi?execFile="<<execFile<<"&tgtCount="<<blockCount<<"&args=";
@@ -126,7 +126,7 @@ void scope::printEntry(string loadCmd) {
       }
       dbg << "\\\"><b>GDB</b></a>\");\n";
       dbg << "</script>\n";
-    }
+    }*/
     if(saved_appExecInfo) {
       ostringstream setGDBLink; 
       setGDBLink << "\"javascript:setGDBLink(this, ':"<<GDB_PORT<<"/gdbwrap.cgi?execFile="<<execFile<<"&tgtCount="<<blockCount<<"&args=";

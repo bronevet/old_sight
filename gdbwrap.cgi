@@ -34,6 +34,12 @@ print $f "file $execFile\n";
 print $f "break dbglog.C:$main::gdbLineNum\n";
 print $f "cond 1 blockCount==$tgtCount\n";
 print $f "r $args\n";
+print $f "finish\n";
+print $f "finish\n";
+print $f "finish\n";
+print $f "echo \\n\n";
+print $f "echo \\n\n";
+print $f "echo \\n\n";
 print $f "bt\n";
 close($f);
 

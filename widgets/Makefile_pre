@@ -7,16 +7,15 @@ WIDGETS_LAYOUT_H := scope_layout.h graph_layout.h valSelector_layout.h trace_lay
 WIDGETS := ${WIDGETS_O} ${WIDGETS_H}
 
 all: ${WIDGETS_COMMON_O} ${WIDGETS_COMMON_H} ${WIDGETS_STRUCTURE_O} ${WIDGETS_STRUCTURE_H} ${WIDGETS_LAYOUT_O} ${WIDGETS_LAYOUT_H}  \
-     shellinabox/bin/shellinaboxd${EXE} mongoose/mongoose${EXE} \
+     shellinabox/bin/shellinaboxd${EXE} mongoose/mongoose${EXE} graphviz/bin/dot${EXE} \
      ID3-Decision-Tree \
      xdottool \
+     noVNC \
      external_scripts
 	chmod 755 canviz-0.1 
 	chmod 644 canviz-0.1/*
 	chmod 755 canviz-0.1/excanvas canviz-0.1/lib canviz-0.1/path canviz-0.1/prototype
 	chmod 644 canviz-0.1/*/*
-# graphviz/bin/dot${EXE} 
-#${WIDGETS_LAYOUT_O} ${WIDGETS_LAYOUT_H}
 
 scope_common.o: scope_common.C scope_common.h ../attributes_common.h ../dbglog_common.h
 	g++ -g scope_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o scope_common.o
@@ -127,9 +126,17 @@ ID3-Decision-Tree:
 	chmod 755 ID3-Decision-Tree/data ID3-Decision-Tree/js
 	chmod 644 ID3-Decision-Tree/*/*
 
+noVNC:
+	rm -rf master
+	wget --no-check-certificate http://github.com/kanaka/noVNC/tarball/master
+	mv master master.tar.gz
+	tar -xf master.tar.gz
+	mv kanaka-noVNC-* noVNC
+	rm master.tar.gz
+
 # JavaScript files from standard JS libraries that we wish to keep local copies of
 
-external_scripts: yui-min.js jquery-1.8.1.min.js underscore-min.js d3.v2.js
+external_scripts: yui-min.js jquery-1.8.1.min.js underscore-min.js d3.v3.min.js
 
 yui-min.js:
 	cd widgets; wget http://yui.yahooapis.com/3.11.0/build/yui/yui-min.js
@@ -140,12 +147,13 @@ jquery-1.8.1.min.js:
 underscore-min.js:
 	cd widgets; wget http://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.3.3/underscore-min.js
 
-d3.v2.js:
-	cd widgets; wget http://d3js.org/d3.v2.js
+d3.v3.min.js:
+	cd widgets; wget http://d3js.org/d3.v3.min.js
 
 clean:
-	rm -fr xdotool-2.20110530.1
-	killP mongoose/mongoose
-	killP shellinabox/bin/shellinaboxd
-	rm -rf libwidgets.a *.o shellinabox* mongoose* graphviz
-	rm -f yui-min.js jquery-1.8.1.min.js underscore-min.js d3.v2.js
+	rm -fr xdotool
+	rm -rf ID3-Decision-Tree
+	../killP mongoose/mongoose
+	../killP shellinabox/bin/shellinaboxd
+	rm -rf *.o shellinabox* mongoose* graphviz noVNC
+	rm -f yui-min.js jquery-1.8.1.min.js underscore-min.js d3.v3.min.js

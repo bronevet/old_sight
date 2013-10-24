@@ -133,16 +133,19 @@ function loadURLIntoDiv(doc, url, divName, continuationFunc) {
 // From http://www.javascriptkit.com/javatutors/loadjavascriptcss.shtml
 //  and http://stackoverflow.com/questions/950087/how-to-include-a-javascript-file-in-another-javascript-file
 function loadjscssfile(filename, filetype, continuationFunc){
-  if (filetype=="css"){ //if filename is an external CSS file
+  if (filetype=="text/css"){ //if filename is an external CSS file
     var fileref=document.createElement("link")
     fileref.setAttribute("rel", "stylesheet")
     fileref.setAttribute("type", "text/css")
     fileref.setAttribute("href", filename)
   //if filename is a external script file
-  } else { 
+  } else if(filetype=="text/javascript") { 
     var fileref=document.createElement('script')
     fileref.setAttribute("type", filetype)
     fileref.setAttribute("src", filename)
+  } else {
+    alert("ERROR: unknown file type \""+filetype+"\" for file name \""+filename+"\"!");
+    return;
   }
   
   if(typeof continuationFunc !== 'undefined') {
@@ -247,7 +250,7 @@ function anchor(fileID, blockID) {
 // The function modifies the arguments, so they cannot be used again after this call.
 // When the anchor opens all the required files, it called continuationFunc, if it is provided
 function goToAnchor(prefix, suffix, continuationFunc) {
-  console.debug("goToAnchor("+prefix+", "+suffix+")");
+  //console.debug("goToAnchor(["+prefix+"], ["+suffix+"])");
   // If the suffix is empty, we're done
   if(suffix.length == 0) {
     if(typeof continuationFunc !== 'undefined')

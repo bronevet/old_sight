@@ -49,7 +49,7 @@ int main(int argc, char** argv)
     scope s("We make output more navigable by linking related outer iterations", high);
     dbg << "Note: click on the title link of this scope to minimize it when done viewing."<<endl;
     
-    int totalNums=20;
+    int totalNums=30;
     // Holds the prime status of each number. Initially all numbers are considered to be prime.
     bool* notPrime = (bool*)calloc(sizeof(bool), totalNums);
     
@@ -66,9 +66,8 @@ int main(int argc, char** argv)
       // Link backwards to all the factors of i
       {
         scope sFac(txt()<<"Factors of "<<i, low);
-        for(set<pair<int, anchor> >::iterator a=factorAnchors[i].begin(); a!=factorAnchors[i].end(); a++) {
-          dbg << a->first<<" "; a->second.linkImg();
-	      }
+        for(set<pair<int, anchor> >::iterator a=factorAnchors[i].begin(); a!=factorAnchors[i].end(); a++)
+        { dbg << a->first<<" "; a->second.linkImg(); }
       }
       
       // We can now erase all the anchors that refer to this scope from pointsTo[] since we've successfully terminated them.
@@ -86,7 +85,7 @@ int main(int argc, char** argv)
         notPrime[j] = true;
         
         // Add a forward link to iteration that considers the number we've just shown is not a prime
-        toAnchor.linkImg(txt()<<"Non-prime "<<j); dbg << endl;
+        toAnchor.linkImg("Iteration of invalidated prime"); dbg << endl;
       }
     }
   }

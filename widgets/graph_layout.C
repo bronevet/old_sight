@@ -84,10 +84,10 @@ void graph::initEnvironment() {
   //<!--[if IE]><script type="text/javascript" src="excanvas/excanvas.js"></script><![endif]-->
   //dbg.includeWidgetScript("canviz-0.1/prototype/excanvas/excanvas.js", "text/javascript");
   dbg.includeWidgetScript("canviz-0.1/prototype/prototype.js", "text/javascript");
-  dbg.includeWidgetScript("canviz-0.1/path/path.js",         "text/javascript");
-  dbg.includeWidgetScript("canviz-0.1/canviz.css",           "css");
-  dbg.includeWidgetScript("canviz-0.1/canviz.js",            "text/javascript");
-  dbg.includeWidgetScript("canviz-0.1/x11colors.js",         "text/javascript");
+  dbg.includeWidgetScript("canviz-0.1/path/path.js",           "text/javascript");
+  dbg.includeWidgetScript("canviz-0.1/canviz.css",             "text/css");
+  dbg.includeWidgetScript("canviz-0.1/canviz.js",              "text/javascript");
+  dbg.includeWidgetScript("canviz-0.1/x11colors.js",           "text/javascript");
   //dbg.includeWidgetScript("canviz-0.1/graphs/graphlist.js",  "text/javascript");
   //dbg.includeWidgetScript("canviz-0.1/graphs/layoutlist.js", "text/javascript");
 }
@@ -162,7 +162,7 @@ void graph::outputCanvizDotGraph(std::string dot) {
   // Create the explicit DOT file that details the graph's layout
   //ostringstream cmd; cmd << DOT_PATH << "dot "<<origDotFName.str()<<" -Txdot -o"<<placedDotFName.str()<<"&"; 
   ostringstream cmd; cmd << ROOT_PATH << "/widgets/graphviz/bin/dot "<<origDotFName.str()<<" -Txdot -o"<<placedDotFName.str()<<"&"; 
-  cout << "Command \""<<cmd.str()<<"\"\n";
+  //cout << "Command \""<<cmd.str()<<"\"\n";
   system(cmd.str().c_str());
   
   dbg.widgetScriptCommand(txt() << 
@@ -206,35 +206,6 @@ void* graph::addUndirEdge(properties::iterator props) {
   assert(gStack.size()>0);
   gStack.back()->addUndirEdge(a, b); 
   return NULL;
-}
-
-// Called to notify this block that a sub-block was started/completed inside of it. 
-// Returns true of this notification should be propagated to the blocks 
-// that contain this block and false otherwise.
-bool graph::subBlockEnterNotify(block* subBlock) {
-  //cout << "graph::subBlockEnterNotify(subBlock="<<subBlock->getLabel()<<")\n";
-  // If this block is immediately contained inside this graph
-  location common = dbgStream::commonSubLocation(getLocation(), subBlock->getLocation());
-  
-  /*cout << "subBlock->getLocation().back().second.size()="<<subBlock->getLocation().back().second.size()<<" common.back().second.size()="<<common.back().second.size()<<endl;
-  cout << "subBlock->getLocation="<<dbg.blockGlobalStr(subBlock->getLocation())<<endl;*/
-  // If subBlock is nested immediately inside the graph's block 
-//???  // (the nesting gap is 2 blocks rather than 1 since each block is chopped up into sub-blocks that
-//???  //  span the text between adjacent attribute definitions and major block terminal points)
-  assert(subBlock->getLocation().size()>0);
-  if(common == getLocation() &&
-     subBlock->getLocation().size() == common.size()/* &&
-     subBlock->getLocation().back().second.size()-1 == common.back().second.size()*/)
-  { 
-    nodes[subBlock->getLocation()] = node(maxNodeID, subBlock->getLabel(), subBlock->getAnchor());
-    maxNodeID++;
-  }
-  
-  return false;
-}
-bool graph::subBlockExitNotify(block* subBlock)
-{
-  return false;  
 }
 
 }; // namespace layout

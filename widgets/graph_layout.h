@@ -109,8 +109,8 @@ class graph: public block
   // Called to notify this block that a sub-block was started/completed inside of it. 
   // Returns true of this notification should be propagated to the blocks 
   // that contain this block and false otherwise.
-  bool subBlockEnterNotify(block* subBlock);
-  bool subBlockExitNotify (block* subBlock);
+  bool subBlockEnterNotify(block* subBlock) { return false; }
+  bool subBlockExitNotify (block* subBlock) { return false; }
 };
 
 }; // namespace layout
