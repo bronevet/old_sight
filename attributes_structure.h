@@ -11,7 +11,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "dbglog_common_internal.h"
-#include "dbglog_structure_internal.h"
+//#include "dbglog_structure_internal.h"
 #include "attributes_common.h"
 
 /*
@@ -87,7 +87,7 @@ class attrOp
   // Any mode: 
   public:
   typedef enum {any, all} applyType;
-  private:
+  protected:
   applyType type;
   
   public:
@@ -468,7 +468,7 @@ extern structure::attributesC attributes;
 // *******************************
 
 // C++ interface for attribute creation, destruction
-class attr : public dbglogObj
+class attr : public common::dbglogObj
 {
   // The key/value of this attribute
   std::string key;

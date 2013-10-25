@@ -23,7 +23,7 @@ class traceLayoutHandlerInstantiator {
 
 void traceAttr(std::string label, std::string key, const attrValue& val);
 
-class trace: public block, public attrObserver
+class trace: public block, public attrObserver, public common::trace
 {
   friend void traceAttr(std::string key, const attrValue& val);
     
@@ -31,13 +31,13 @@ class trace: public block, public attrObserver
   // Unique ID of this trace
   int traceID;
   
-  common::showLocT showLoc;
+  showLocT showLoc;
   
   // The ID of the block into which the trace visualization will be written
   std::string tgtBlockID;
   
   public:
-  common::vizT viz;
+  vizT viz;
   
   // Maps the traceIDs of all the currently active traces to their trace objects
   static std::map<int, trace*> active;

@@ -11,7 +11,7 @@ ifeq (${OS}, Cygwin)
 EXE := .exe
 endif
 
-all: dbglogDefines.pl gdbLineNum.pl libdbglog_structure.a slayout${EXE} widgets_post allExamples script/taffydb
+all: dbglogDefines.pl gdbLineNum.pl libdbglog_structure.a slayout${EXE} widgets_post examples script/taffydb
 	chmod 755 html img script
 	chmod 644 html/* img/* script/*
 	chmod 755 script/taffydb
@@ -34,24 +34,27 @@ endif
 .PHONY: apps
 apps:
 	cd apps/mfem;  make ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS}
-	cd apps/mcbench; ./build-linux-x86_64.sh ${ROOT_PATH}
+#	cd apps/mcbench; ./build-linux-x86_64.sh ${ROOT_PATH}
 
-allExamples: libdbglog_structure.a
+examples: libdbglog_structure.a
 	cd examples; make ROOT_PATH=${ROOT_PATH} OS=${OS}
 
-runExamples: libdbglog_structure.a slayout${EXE} apps
+runExamples: libdbglog_structure.a examples apps slayout${EXE} slayout_mfem${EXE}
 	cd examples; make ROOT_PATH=${ROOT_PATH} OS=${OS} run
-	apps/mfem/mfem/examples/ex1 apps/mfem/mfem/data/beam-quad.mesh
-	apps/mfem/mfem/examples/ex2 apps/mfem/mfem/data/beam-tet.mesh 2
-	apps/mfem/mfem/examples/ex3 apps/mfem/mfem/data/ball-nurbs.mesh
-	apps/mfem/mfem/examples/ex4 apps/mfem/mfem/data/fichera-q3.mesh
-	apps/mcbench/src/MCBenchmark.exe --nCores=1 --distributedSource --numParticles=13107 --nZonesX=256 --nZonesY=256 --xDim=16 --yDim=16 --mirrorBoundary --multiSigma --nThreadCore=1
+	apps/mfem/mfem/examples/ex1 apps/mfem/mfem/data/beam-quad.mesh;  ./slayout_mfem${EXE} dbg.MFEM.ex1/structure
+	apps/mfem/mfem/examples/ex2 apps/mfem/mfem/data/beam-tet.mesh 2; ./slayout_mfem${EXE} dbg.MFEM.ex2/structure
+	apps/mfem/mfem/examples/ex3 apps/mfem/mfem/data/ball-nurbs.mesh; ./slayout_mfem${EXE} dbg.MFEM.ex3/structure
+	apps/mfem/mfem/examples/ex4 apps/mfem/mfem/data/fichera-q3.mesh; ./slayout_mfem${EXE} dbg.MFEM.ex4/structure
+	apps/mcbench/src/MCBenchmark.exe --nCores=1 --distributedSource --numParticles=13107 --nZonesX=256 --nZonesY=256 --xDim=16 --yDim=16 --mirrorBoundary --multiSigma --nThreadCore=1; ./slayout${EXE} dbg.MCBenchmark/structure
 
 #pattern${EXE}: pattern.C pattern.h libdbglog.a ${DBGLOG_H}
 #	g++ -g pattern.C -L. -ldbglog  -o pattern${EXE}
 
+slayout_mfem${EXE}: slayout.C  libdbglog_layout.a apps
+	g++ slayout.C libdbglog_layout.a -DMFEM -I. apps/mfem/mfem_layout.o -o slayout_mfem${EXE}
+
 slayout${EXE}: slayout.C  libdbglog_layout.a
-	g++ slayout.C libdbglog_layout.a -I. apps/mfem/mfem_layout.o -o slayout${EXE}
+	g++ slayout.C libdbglog_layout.a -I. -o slayout${EXE}
 #	g++ -c slayout.C -o slayout.o
 #	g++ slayout.o libdbglog_layout.a --relocateable -Ur --whole-archive -o slayout${EXE}
 #	g++ slayout.C libdbglog_layout.a -o slayout${EXE}
@@ -71,23 +74,23 @@ libdbglog_layout.a: ${DBGLOG_LAYOUT_O} ${DBGLOG_LAYOUT_H} ${DBGLOG_COMMON_O} ${D
 
 
 dbglog_common.o: dbglog_common.C dbglog_common_internal.h attributes_common.h
-	g++ -g dbglog_common.C -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o dbglog_common.o
+	g++ -g dbglog_common.C -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o dbglog_common.o
 
 dbglog_structure.o: dbglog_structure.C dbglog_structure_internal.h attributes_structure.h dbglog_common_internal.h attributes_common.h
-	g++ -g dbglog_structure.C -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o dbglog_structure.o
+	g++ -g dbglog_structure.C -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o dbglog_structure.o
 
 dbglog_layout.o: dbglog_layout.C dbglog_layout_internal.h attributes_layout.h dbglog_common_internal.h attributes_common.h
-	g++ -g dbglog_layout.C -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o dbglog_layout.o
+	g++ -g dbglog_layout.C -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o dbglog_layout.o
 
 
 attributes_common.o: attributes_common.C  dbglog_common_internal.h attributes_common.h
-	g++ -g attributes_common.C -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o attributes_common.o
+	g++ -g attributes_common.C -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o attributes_common.o
 
 attributes_structure.o: attributes_structure.C attributes_structure.h dbglog_common_internal.h attributes_common.h
-	g++ -g attributes_structure.C -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o attributes_structure.o
+	g++ -g attributes_structure.C -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o attributes_structure.o
 
 attributes_layout.o: attributes_layout.C attributes_layout.h dbglog_common_internal.h attributes_common.h
-	g++ -g attributes_layout.C -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o attributes_layout.o
+	g++ -g attributes_layout.C -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o attributes_layout.o
 
 
 # Rule for compiling the aspects of widgets that libdbglog.a requires
@@ -103,7 +106,7 @@ binreloc.o: binreloc.c binreloc.h
 	g++ -g binreloc.c -c -o binreloc.o
 
 utils.o: utils.C utils.h
-	g++ -g utils.C -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o utils.o
+	g++ -g utils.C -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o utils.o
 
 HOSTNAME_ARG=$(shell getHostnameArg.pl)
 getAllHostnames.o: getAllHostnames.C getAllHostnames.h

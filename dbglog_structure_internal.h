@@ -56,7 +56,7 @@ class location : printable {
   void print(std::ofstream& ofs) const;
 };
 
-// Base class of all dbglog objects that provides some common functionality
+/* // Base class of all dbglog objects that provides some common functionality
 class dbglogObj {
   public:
   properties* props;
@@ -67,7 +67,7 @@ class dbglogObj {
     assert(props);
     delete(props);
   }
-};
+};*/
 
 }; // namespace structure
 }; // namespace dbglog
@@ -133,7 +133,7 @@ class anchor
 };
 
 // A block out debug output, which may be filled by various visual elements
-class block : public dbglogObj
+class block : public common::dbglogObj
 {
   std::string label;
   // The unique ID of this block as well as the static global counter of the maximum ID assigned to any block.
@@ -245,7 +245,7 @@ protected:
 
 
 // Stream that uses dbgBuf
-class dbgStream : public common::dbgStream, public dbglogObj
+class dbgStream : public common::dbgStream, public common::dbglogObj
 {
   dbgBuf defaultFileBuf;
   // Stream to the file where the structure will be written
@@ -303,35 +303,35 @@ public:
   // ----- Output of tags ----
   // Emit the entry into a tag to the structured output file. The tag is set to the given property key/value pairs
   //void enter(std::string name, const std::map<std::string, std::string>& properties, bool inheritedFrom);
-  void enter(dbglogObj* obj);
+  void enter(common::dbglogObj* obj);
     
   // Returns the text that should be emitted to the structured output file that denotes the the entry into a tag. 
   // The tag is set to the given property key/value pairs
   //std::string enterStr(std::string name, const std::map<std::string, std::string>& properties, bool inheritedFrom);
-  std::string enterStr(dbglogObj* obj);
+  std::string enterStr(common::dbglogObj* obj);
     
   // Emit the exit from a given tag to the structured output file
   //void exit(std::string name);
-  void exit(dbglogObj* obj);
+  void exit(common::dbglogObj* obj);
     
   // Returns the text that should be emitted to the the structured output file to that denotes exit from a given tag
   //std::string exitStr(std::string name);
-  std::string exitStr(dbglogObj* obj);
+  std::string exitStr(common::dbglogObj* obj);
   
   // Emit a full tag an an the structured output file
   //void tag(std::string name, const std::map<std::string, std::string>& properties, bool inheritedFrom);
-  void tag(dbglogObj* obj);
+  void tag(common::dbglogObj* obj);
   
   // Returns the text that should be emitted to the the structured output file to that denotes a full tag an an the structured output file
   //std::string tagStr(std::string name, const std::map<std::string, std::string>& properties, bool inheritedFrom);
-  std::string tagStr(dbglogObj* obj);
+  std::string tagStr(common::dbglogObj* obj);
 }; // dbgStream
 
 extern bool initializedDebug;
 
 extern dbgStream dbg;
 
-class indent : public dbglogObj
+class indent : public common::dbglogObj
 {
   public:
   //bool active;
@@ -340,14 +340,14 @@ class indent : public dbglogObj
   // onoffOp - We emit this scope if the current attribute query evaluates to true (i.e. we're emitting debug output) AND
   //           either onoffOp is not provided or its evaluates to true.
   indent(std::string prefix,                                       properties* props=NULL);
-  indent(std::string prefix, int repeatCnt, const attrOp& onoffOp, properties* props=NULL);
+  indent(std::string prefix, int repeatCnt, const structure::attrOp& onoffOp, properties* props=NULL);
   indent(std::string prefix, int repeatCnt,                        properties* props=NULL);
   indent(                    int repeatCnt,                        properties* props=NULL);
-  indent(std::string prefix,                const attrOp& onoffOp, properties* props=NULL);
-  indent(                    int repeatCnt, const attrOp& onoffOp, properties* props=NULL);
-  indent(                                   const attrOp& onoffOp, properties* props=NULL);
+  indent(std::string prefix,                const structure::attrOp& onoffOp, properties* props=NULL);
+  indent(                    int repeatCnt, const structure::attrOp& onoffOp, properties* props=NULL);
+  indent(                                   const structure::attrOp& onoffOp, properties* props=NULL);
   indent(                                                          properties* props=NULL);
-  void init(std::string prefix, int repeatCnt, const attrOp* onoffOp, properties* props);
+  void init(std::string prefix, int repeatCnt, const structure::attrOp* onoffOp, properties* props);
     
   ~indent();
 };

@@ -15,7 +15,8 @@ class attributesC;
 }}
 
 namespace dbglog {
-namespace common {
+// Definitions below are placed in the generic dbglog namespace because there is no chance of name conflicts
+//namespace common {
 
 // ****************************
 // ***** Attribute Values *****
@@ -106,6 +107,7 @@ class attrObserver {
   virtual void observePost(std::string key) { }
 };
 
+namespace common {
 
 // Maintains the mapping from atribute keys to values
 class attributesC

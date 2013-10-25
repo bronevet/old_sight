@@ -1,9 +1,10 @@
 #pragma once
 
 namespace dbglog {
-namespace common {
 
-//namespace trace {
+namespace common {
+class trace {
+  public:
   // Identifies the type of visualization used to show the trace
   typedef enum {table, lines, decTree, heatmap, boxplot} vizT;
 
@@ -11,11 +12,11 @@ namespace common {
   typedef enum {showBegin, showEnd} showLocT;
   
   // Returns a string representation of a showLocT object
-  /*static */std::string showLoc2Str(showLocT showLoc);
+  static std::string showLoc2Str(showLocT showLoc);
   
   // Returns a string representation of a vizT object
-  /*static */std::string viz2Str(vizT viz);
-//};
+  static std::string viz2Str(vizT viz);
+};
 
 }; // namespace common
 }; // namespace dbglog

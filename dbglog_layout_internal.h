@@ -47,7 +47,7 @@ extern std::list<std::string> hostnames;
 extern std::string username;
 
 // Initializes the debug sub-system
-void* initializeDebug(common::properties::iterator props);
+void* initializeDebug(properties::iterator props);
 
 class dbgStream;
 typedef std::list<std::pair<int, std::list<int> > > location;
@@ -133,7 +133,7 @@ class anchor
   void reachedAnchor();
   
   // Emits an <a href> tag that denotes a link to an anchor.
-  static void* link(common::properties::iterator props);
+  static void* link(properties::iterator props);
   
   // Returns an <a href> tag that denotes a link to this anchor. Embeds the given text in the link.
   void link(std::string text) const;
@@ -174,7 +174,7 @@ class block
   
   public:
   // Initializes this block with the given properties
-  block(common::properties::iterator props);
+  block(properties::iterator props);
   
   // Initializes this block with the given label, used for creating additional blocks that were not listed in the structure file
   block(std::string label);

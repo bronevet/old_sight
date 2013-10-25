@@ -10,7 +10,7 @@
 #include <fstream>
 #include <assert.h>
 #include "../dbglog_common.h"
-#include "../dbglog_structure.h"
+#include "../dbglog_structure_internal.h"
 #include <sys/time.h>
 
 namespace dbglog {
@@ -19,7 +19,7 @@ namespace structure {
 void traceAttr(std::string label, std::string key, const attrValue& val);
 void traceAttr(std::string label, std::string key, const attrValue& val, anchor target);
 
-class trace: public block, public attrObserver
+class trace: public block, public attrObserver, public common::trace
 {
   friend void traceAttr(std::string label, std::string key, const attrValue& val);
   friend void traceAttr(std::string label, std::string key, const attrValue& val, anchor target);
@@ -38,15 +38,15 @@ class trace: public block, public attrObserver
   std::list<std::string> contextAttrs;
   
   public:
-  trace(std::string label, const std::list<std::string>& contextAttrs, common::showLocT showLoc=common::showBegin, common::vizT viz=common::table, properties* props=NULL);
-  trace(std::string label, std::string contextAttr,                    common::showLocT showLoc=common::showBegin, common::vizT viz=common::table, properties* props=NULL);
+  trace(std::string label, const std::list<std::string>& contextAttrs, showLocT showLoc=showBegin, vizT viz=table, properties* props=NULL);
+  trace(std::string label, std::string contextAttr,                    showLocT showLoc=showBegin, vizT viz=table, properties* props=NULL);
   
   private:
   // Sets the properties of this object
-  static properties* setProperties(int traceID, common::showLocT showLoc, common::vizT viz, const std::list<std::string>& contextAttrs, properties* props);
-  static properties* setProperties(int traceID, common::showLocT showLoc, common::vizT viz, std::string contextAttr,                    properties* props);
+  static properties* setProperties(int traceID, showLocT showLoc, vizT viz, const std::list<std::string>& contextAttrs, properties* props);
+  static properties* setProperties(int traceID, showLocT showLoc, vizT viz, std::string contextAttr,                    properties* props);
   
-  void init(std::string label, common::showLocT showLoc, common::vizT viz);
+  void init(std::string label, showLocT showLoc, vizT viz);
   
   public:
   ~trace();

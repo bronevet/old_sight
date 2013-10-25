@@ -12,7 +12,7 @@ int trace::maxTraceID=0;
 // Maps the names of all the currently active traces to their trace objects
 std::map<std::string, trace*> trace::active;  
 
-trace::trace(std::string label, const std::list<std::string>& contextAttrs, common::showLocT showLoc, common::vizT viz, properties* props) : 
+trace::trace(std::string label, const std::list<std::string>& contextAttrs, showLocT showLoc, vizT viz, properties* props) : 
   block(label, setProperties(maxTraceID, showLoc, viz, contextAttrs, props)), contextAttrs(contextAttrs)
 {
   if(contextAttrs.size()==0) { cerr << "trace::trace() ERROR: contextAttrs must be non-empty!"; exit(-1); }
@@ -20,7 +20,7 @@ trace::trace(std::string label, const std::list<std::string>& contextAttrs, comm
   init(label, showLoc, viz);
 }
 
-trace::trace(std::string label, std::string contextAttr, common::showLocT showLoc, common::vizT viz, properties* props) : 
+trace::trace(std::string label, std::string contextAttr, showLocT showLoc, vizT viz, properties* props) : 
   block(label, setProperties(maxTraceID, showLoc, viz, contextAttr, props))
 {
   contextAttrs.push_back(contextAttr);
@@ -29,7 +29,7 @@ trace::trace(std::string label, std::string contextAttr, common::showLocT showLo
 }
 
 // Sets the properties of this object
-properties* trace::setProperties(int traceID, common::showLocT showLoc, common::vizT viz, const std::list<std::string>& contextAttrs, properties* props) {
+properties* trace::setProperties(int traceID, showLocT showLoc, vizT viz, const std::list<std::string>& contextAttrs, properties* props) {
   if(props==NULL) props = new properties();
   
   map<string, string> newProps;
@@ -50,13 +50,13 @@ properties* trace::setProperties(int traceID, common::showLocT showLoc, common::
   return props;
 }
 
-properties* trace::setProperties(int traceID, common::showLocT showLoc, common::vizT viz, std::string contextAttr, properties* props) {
+properties* trace::setProperties(int traceID, showLocT showLoc, vizT viz, std::string contextAttr, properties* props) {
   std::list<std::string> contextAttrs;
   contextAttrs.push_back(contextAttr);
   return setProperties(traceID, showLoc, viz, contextAttrs, props);
 }
 
-void trace::init(std::string label, common::showLocT showLoc, common::vizT viz) {
+void trace::init(std::string label, showLocT showLoc, vizT viz) {
 /*  map<string, string> properties;
   properties["showLoc"] = common::showLoc2Str(showLoc);
   properties["viz"] = common::viz2Str(viz);

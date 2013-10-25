@@ -25,9 +25,9 @@ $ENV{LD_LIBRARY_PATH} = "$dbglogPath/widgets/xdotool:$ENV{LD_LIBRARY_PATH}";
 
 # Keep setting the target app's window to fill the entire desktop, even if the user tries to change this
 while(1) {
-  print "$dbglogPath/widgets/xdotool/xdotool search --name $winIDString\n";
+  #print "$dbglogPath/widgets/xdotool/xdotool search --name $winIDString\n";
   my $winsStr = `$dbglogPath/widgets/xdotool/xdotool search --name $winIDString`;
-  print "winsStr=$winsStr\n";
+  #print "winsStr=$winsStr\n";
   my @wins = split(/\s+/, $winsStr);
 
   if(scalar(@wins) > 0) {

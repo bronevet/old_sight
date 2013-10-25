@@ -9,7 +9,7 @@ WIDGETS := ${WIDGETS_O} ${WIDGETS_H}
 all: ${WIDGETS_COMMON_O} ${WIDGETS_COMMON_H} ${WIDGETS_STRUCTURE_O} ${WIDGETS_STRUCTURE_H} ${WIDGETS_LAYOUT_O} ${WIDGETS_LAYOUT_H}  \
      shellinabox/bin/shellinaboxd${EXE} mongoose/mongoose${EXE} graphviz/bin/dot${EXE} \
      ID3-Decision-Tree \
-     xdottool \
+     xdotool \
      noVNC \
      external_scripts
 	chmod 755 canviz-0.1 
@@ -58,14 +58,14 @@ trace_layout.o: trace_layout.C trace_layout.h ../dbglog_layout.h
 
 
 ifneq (${OS}, Cygwin)
-xdottool:
-	rm -rf xdotool-2.20110530.1.tar.gz xdottool
+xdotool:
+	rm -rf xdotool-2.20110530.1.tar.gz xdotool
 	wget http://semicomplete.googlecode.com/files/xdotool-2.20110530.1.tar.gz
 	tar -xf xdotool-2.20110530.1.tar.gz
 	cd xdotool-2.20110530.1; CC=gcc; make
-	mv xdotool-2.20110530.1 xdottool
+	mv xdotool-2.20110530.1 xdotool
 else
-xdottool:
+xdotool:
 endif
 
 ifneq (${OS}, Cygwin)

@@ -45,13 +45,13 @@ class attr
 {
   // The key/value of this attribute
   std::string key;
-  common::attrValue val;
+  attrValue val;
     
   // Records whether the value that this attribute's key was assigned to before the attribute was set
   bool keyPreviouslySet;
   
   // The value that this attribute's key was assigned to before the attribute was set, if any
-  common::attrValue oldVal;
+  attrValue oldVal;
   
   public:
   attr(properties::iterator props);
@@ -65,10 +65,10 @@ class attr
   std::string getKey() const;
   
   // Returns the value of this attribute
-  const common::attrValue& getVal() const;
+  const attrValue& getVal() const;
   
   // Returns the type of this attribute values's contents
-  common::attrValue::valueType getVType() const;
+  attrValue::valueType getVType() const;
   
   // Return the contents of this attribute values, aborting if there is a type incompatibility
   std::string getVStr() const;

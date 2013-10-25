@@ -1,4 +1,6 @@
-#include "../dbglog_layout.h"
+#include "../dbglog_layout_internal.h"
+#include "trace_layout.h"
+
 using namespace std;
 
 namespace dbglog {
@@ -101,22 +103,22 @@ trace::~trace() {
     cmd<<"displayTrace('"<<getLabel()<<"', '"<<tgtBlockID<<"-"<<(viz==table?"Table": (viz==heatmap?"Heatmap": "???"))<<"', "<<
                        contextAttrsStr.str()<<", " << 
                        tracerAttrsStr.str()<<", "<<  
-                       "'"<<common::viz2Str(viz)<<"', "<<
-                       "'"<<common::showLoc2Str(showLoc)<<"');";
+                       "'"<<viz2Str(viz)<<"', "<<
+                       "'"<<showLoc2Str(showLoc)<<"');";
     dbg.widgetScriptEpilogCommand(cmd.str());
   } else if(viz==lines) {
     // Create a separate decision tree for each context attribute
     for(std::list<std::string>::iterator c=contextAttrs.begin(); c!=contextAttrs.end(); c++) {
       dbg.widgetScriptEpilogCommand(txt()<<"displayTrace('"<<getLabel()<<"', '"<<tgtBlockID<<"', ['"<<*c<<"'], "<<tracerAttrsStr.str()<<", "<<
-                                    "'"<<common::viz2Str(viz)<<"', "<<
-                                    "'"<<common::showLoc2Str(showLoc)<<"');");
+                                    "'"<<viz2Str(viz)<<"', "<<
+                                    "'"<<showLoc2Str(showLoc)<<"');");
     }
   } else if(viz==decTree) {
     // Create a separate decision tree for each tracer attribute
     for(set<string>::iterator t=tracerKeys.begin(); t!=tracerKeys.end(); t++) {
       dbg.widgetScriptEpilogCommand(txt()<<"displayTrace('"<<getLabel()<<"', '"<<tgtBlockID<<"', "<<contextAttrsStr.str()<<", ['"<<*t<<"'], "<<
-                                    "'"<<common::viz2Str(viz)<<"', "<<
-                                    "'"<<common::showLoc2Str(showLoc)<<"');");
+                                    "'"<<viz2Str(viz)<<"', "<<
+                                    "'"<<showLoc2Str(showLoc)<<"');");
     }
   } else if(viz==boxplot) {
     // Create a separate set of box plots for each combination of context and tracer attributes
@@ -208,7 +210,7 @@ void* trace::observe(properties::iterator props)
     string cVal = properties::get(props, txt()<<"cVal_"<<i);
     cmd << "'" << cKey << "': '" << cVal << "'";
   }
-  cmd << "}, '"<<common::viz2Str(t->viz)<<"');";
+  cmd << "}, '"<<viz2Str(t->viz)<<"');";
   
   dbg.widgetScriptCommand(cmd.str());
   

@@ -28,13 +28,13 @@ int main(int argc, char** argv) {
   list<string> contextAttrs;
   contextAttrs.push_back("i");
   contextAttrs.push_back("j");
-  trace tableTrace("Table", contextAttrs, showBegin, table);
-  trace heatmapTrace("Heatmap", contextAttrs, showBegin, heatmap);
+  trace tableTrace("Table", contextAttrs, trace::showBegin, trace::table);
+  trace heatmapTrace("Heatmap", contextAttrs, trace::showBegin, trace::heatmap);
   
-  trace boxplotTrace("Boxplot", "k", showBegin, boxplot);
+  trace boxplotTrace("Boxplot", "k", trace::showBegin, trace::boxplot);
   
   // For the last trace we'll use k as the context variable
-  trace linesTrace("Lines", "k", showEnd, lines);
+  trace linesTrace("Lines", "k", trace::showEnd, trace::lines);
   
   for(int i=0; i<5; i++) {
     attr iAttr("i", i);

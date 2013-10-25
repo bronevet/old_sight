@@ -74,12 +74,12 @@ bool attrRange::applyFloat(double& that) const {
  ***** attrSubQuery *****
  ************************/ 
 bool attrSubQuery::query() { 
-  if(!isEnabled()) return false;
+  if(!common::isEnabled()) return false;
   return query(attributes);
 }
 
 bool attrSubQueryAnd::query(const attributesC& attr) {
-  if(!isEnabled()) return false;
+  if(!common::isEnabled()) return false;
   //cout << "attrSubQueryAnd::query() apply="<<op->apply()<<" pred="<<pred<<endl;
   // Applies the operator to the values at the given key. The && ensures that if the operator returns true,
   // the query is propagated to the previous attrSubQuery object. If the previous object is NULL, returns true.
@@ -88,7 +88,7 @@ bool attrSubQueryAnd::query(const attributesC& attr) {
 }
 
 bool attrSubQueryOr::query(const attributesC& attr) {
-  if(!isEnabled()) return false;
+  if(!common::isEnabled()) return false;
   //cout << "attrSubQueryOr::query() apply="<<op->apply()<<" pred="<<pred<<endl;
   // Applies the operator to the values at the given key. The || ensures that if the operator returns false,
   // the query is propagated to the previous attrSubQuery object. If the previous object is NULL, returns true since by default we emit debug output.
@@ -97,7 +97,7 @@ bool attrSubQueryOr::query(const attributesC& attr) {
 }
 
 bool attrSubQueryIf::query(const attributesC& attr) {
-  if(!isEnabled()) return false;
+  if(!common::isEnabled()) return false;
   //cout << "attrSubQueryIf::query() op="<<op->str()<<", apply="<<op->apply()<<endl;
   // Applies the operator to the values at the given key, returning its result. This object never propagates
   // queries to its predecessors.
@@ -105,13 +105,13 @@ bool attrSubQueryIf::query(const attributesC& attr) {
 }
 
 bool attrSubQueryTrue::query(const attributesC& attr) {
-  if(!isEnabled()) return false;
+  if(!common::isEnabled()) return false;
   // Always returns true
   return true;
 }
 
 bool attrSubQueryFalse::query(const attributesC& attr) {
-  if(!isEnabled()) return false;
+  if(!common::isEnabled()) return false;
   // Always returns false
   return true;
 }
@@ -142,7 +142,7 @@ void attrQuery::pop() {
 
 // Returns the result of this query on the current state of the given attributes object
 bool attrQuery::query(const attributesC& attr) {
-  if(!isEnabled()) return false;
+  if(!common::isEnabled()) return false;
   // If the list of sub-queries is non-empty, ask the last one in the list. It will propagate the query
   // backwards through the list as needed
   if(lastQ) return lastQ->query(attr);

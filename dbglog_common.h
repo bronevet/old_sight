@@ -5,4 +5,4 @@
 #include "widgets/valSelector_common.h"
 #include "widgets/trace_common.h"
 
-using namespace dbglog::common;
+//using namespace dbglog::common;

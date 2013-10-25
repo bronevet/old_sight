@@ -126,13 +126,13 @@ int main(int argc, char** argv) {
   list<string> contextAttrs;
   contextAttrs.push_back("MtxSize");
   contextAttrs.push_back("mmmLoop");
-  trace mmmT("MMM Loop Elapsed", contextAttrs, showBegin, lines);
+  trace mmmT("MMM Loop Elapsed", contextAttrs, trace::showBegin, trace::lines);
   
   dbg << "The MVM performance trace will use the size of the matrix and the MMM and MVM loop ordering as context variables."<<
          "It will be placed at the spot int the output where the trace variable exited scope and will use a Decision "<<
          "Tree visualization."<<endl;
   contextAttrs.push_back("mvmLoop");
-  trace mvmT("MVM Loop Elapsed", contextAttrs, showEnd, decTree);
+  trace mvmT("MVM Loop Elapsed", contextAttrs, trace::showEnd, trace::decTree);
     
   // Color selectors to assign different colors to lines associated with different MMMs and that have different elapsed times
   colorSelector loopColor("mmmLoop",0,0,.3,0,0,1); // Blue gradient

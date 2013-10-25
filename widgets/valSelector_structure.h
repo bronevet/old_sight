@@ -10,12 +10,12 @@
 #include <fstream>
 #include <stdlib.h>
 #include <stdio.h>
-#include "../dbglog_structure.h"
+#include "../dbglog_structure_internal.h"
 
 namespace dbglog {
 namespace structure {
 
-class valSelector: public dbglogObj
+class valSelector: public common::dbglogObj
 {
   protected:
   

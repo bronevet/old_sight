@@ -49,7 +49,7 @@ properties* mfem::setProperties(Mesh* mesh, GridFunction* soln, int widgetID, co
     initEnvironment();
     
     map<string, string> newProps;
-    newProps["widgetID"] = widgetID;
+    newProps["widgetID"]  = txt()<<widgetID;
     newProps["meshFName"] = txt()<<htmlOutDir<<"/mfem_"<<widgetID<<".mesh";
     newProps["solnFName"] = txt()<<htmlOutDir<<"/mfem_"<<widgetID<<".soln";
 

@@ -29,7 +29,7 @@ std::string attributesC::strJS() const {
   ostringstream oss;
   
   oss << "{";
-  for(map<string, set<common::attrValue> >::const_iterator i=m.begin(); i!=m.end(); i++) {
+  for(map<string, set<attrValue> >::const_iterator i=m.begin(); i!=m.end(); i++) {
     if(i!=m.begin()) oss << ",";
     if(i->second.size()==0) { cerr << "attributesC::strJS() ERROR: key "<<i->first<<" is mapped to 0 values!"; exit(-1); }
     if(i->second.size()>1) { cerr << "attributesC::strJS() ERROR: currently cannot emit JavaScript for keys with multiple values! key="<<i->first; exit(-1); }
@@ -37,10 +37,10 @@ std::string attributesC::strJS() const {
     // fields without fear of name collisions.
     oss << "\"key_" << i->first << "\":";
     switch((i->second.begin())->getType()) {
-      case common::attrValue::strT   : oss << "\""<<(i->second.begin())->getStr()<<"\"";   break;
-      case common::attrValue::ptrT   : oss << "\""<<(i->second.begin())->getPtr()<<"\"";   break;
-      case common::attrValue::intT   : oss << "\""<<(i->second.begin())->getInt()<<"\"";   break;
-      case common::attrValue::floatT : oss << "\""<<(i->second.begin())->getFloat()<<"\""; break;
+      case attrValue::strT   : oss << "\""<<(i->second.begin())->getStr()<<"\"";   break;
+      case attrValue::ptrT   : oss << "\""<<(i->second.begin())->getPtr()<<"\"";   break;
+      case attrValue::intT   : oss << "\""<<(i->second.begin())->getInt()<<"\"";   break;
+      case attrValue::floatT : oss << "\""<<(i->second.begin())->getFloat()<<"\""; break;
       default: cerr << "attributesC::strJS() ERROR: key "<<i->first<<" has value with an unknown type!"; exit(-1);
     }
   }
@@ -55,11 +55,11 @@ std::string attributesC::strJS() const {
 attr::attr(properties::iterator props) { 
   key = properties::get(props, "key");
   // Assign the value to the key using the appropriate type of this value
-  switch((common::attrValue::valueType)properties::getInt(props, "type")) {
-    case common::attrValue::strT:   init<string>(key, properties::get(props, "val"));           break;
-    case common::attrValue::ptrT:   init<void*> (key, (void*)properties::getInt(props, "val")); break;
-    case common::attrValue::intT:   init<long>  (key, properties::getInt(props, "val"));        break;
-    case common::attrValue::floatT: init<double>(key, properties::getFloat(props, "val"));      break;
+  switch((attrValue::valueType)properties::getInt(props, "type")) {
+    case attrValue::strT:   init<string>(key, properties::get(props, "val"));           break;
+    case attrValue::ptrT:   init<void*> (key, (void*)properties::getInt(props, "val")); break;
+    case attrValue::intT:   init<long>  (key, properties::getInt(props, "val"));        break;
+    case attrValue::floatT: init<double>(key, properties::getFloat(props, "val"));      break;
     default: cerr << "layout::attr::attr() ERROR: unknown value type!"; exit(-1);
   }
   
@@ -70,10 +70,10 @@ template<typename T>
 void attr::init(std::string key, T val) {
 //cout << "attr::init("<<key<<", "<<val<<")\n";
   this->val = val;
-  if(!isEnabled()) return;
+  if(!common::isEnabled()) return;
   if(attributes.exists(key)) {
     keyPreviouslySet = true;
-    const std::set<common::attrValue>& curValues = attributes.get(key);
+    const std::set<attrValue>& curValues = attributes.get(key);
     assert(curValues.size()==1);
     
     oldVal = *(curValues.begin());
@@ -85,7 +85,7 @@ void attr::init(std::string key, T val) {
 }
 
 attr::~attr() {
-  if(!isEnabled()) return;
+  if(!common::isEnabled()) return;
 //cout << "attr::~attr("<<key<<", "<<val.str()<<")\n";
   // If this mapping replaced some prior mapping, return key to its original state
   if(keyPreviouslySet)
@@ -102,11 +102,11 @@ string attr::getKey() const
 { return key; }
 
 // Returns the value of this attribute
-const common::attrValue& attr::getVal() const
+const attrValue& attr::getVal() const
 { return val; }
 
 // Returns the type of this attribute values's contents
-common::attrValue::valueType attr::getVType() const
+attrValue::valueType attr::getVType() const
 { return val.getType(); }
 
 // Return the contents of this attribute values, aborting if there is a type incompatibility

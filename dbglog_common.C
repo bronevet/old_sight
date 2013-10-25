@@ -22,6 +22,8 @@ bool isEnabled() {
   return enabledDebug;
 }
 
+} // namespace common
+
 /*********************
  ***** printable *****
  *********************/
@@ -100,6 +102,8 @@ std::string properties::str(iterator props) {
   oss << "]";
   return oss.str();
 }
+
+namespace common {
 
 /*********************
  ***** dbgStream *****

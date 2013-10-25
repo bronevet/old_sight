@@ -32,7 +32,7 @@ void PCG ( const Operator &A, const Operator &B,
    double r0, den, nom, nom0, betanom, alpha, beta;
    Vector r(dim), d(dim), z(dim);
 
-   trace linesTrace("PCG Trace", "iter", showEnd, lines);
+   trace linesTrace("PCG Trace", "iter", trace::showEnd, trace::lines);
 
    A.Mult(x, r);                               //    r = A x
    subtract(b, r, r);                          //    r = b  - r

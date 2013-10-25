@@ -10,7 +10,6 @@
 using namespace std;
 
 namespace dbglog {
-namespace common {
 
 /*********************
  ***** attrValue *****
@@ -224,6 +223,7 @@ std::string attrValue::str() const {
 // ***** Attribute Database *****
 // ******************************
 
+namespace common {
 // --- STORAGE ---
 
 // Adds the given value to the mapping of the given key without removing the key's prior mapping.

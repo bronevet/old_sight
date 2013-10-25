@@ -13,6 +13,7 @@
 #include "binreloc.h"
 #include <errno.h>
 #include "dbglog_common.h"
+#include "getAllHostnames.h"
 
 using namespace std;
 using namespace dbglog::common;
@@ -316,7 +317,7 @@ void anchor::reachedAnchor() {
 }
 
 // Emits an <a href> tag that denotes a link to an anchor.
-void* anchor::link(common::properties::iterator props) {
+void* anchor::link(properties::iterator props) {
   anchor a(false, properties::getInt(props, "anchorID"));
   
   if(properties::getInt(props, "img"))

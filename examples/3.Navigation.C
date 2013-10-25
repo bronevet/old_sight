@@ -6,7 +6,7 @@ using namespace std;
 using namespace dbglog;
 
 
-int fibScopeLinks(int a, scopeLevel level, list<int>& stack, 
+int fibScopeLinks(int a, scope::scopeLevel level, list<int>& stack, 
                   map<list<int>, anchor>& InFW, 
                   map<list<int>, anchor>& InBW, 
                   map<list<int>, anchor>& OutFW, 
@@ -28,7 +28,7 @@ int main(int argc, char** argv)
          "one to another."<<endl;
   
   {
-    scope s("Computing primes with no support for navigation", high);
+    scope s("Computing primes with no support for navigation", scope::high);
     dbg << "Note: click on the title link of this scope to minimize it when done viewing."<<endl;
     
     int totalNums=30;
@@ -46,7 +46,7 @@ int main(int argc, char** argv)
   }
   
   {
-    scope s("We make output more navigable by linking related outer iterations", high);
+    scope s("We make output more navigable by linking related outer iterations", scope::high);
     dbg << "Note: click on the title link of this scope to minimize it when done viewing."<<endl;
     
     int totalNums=30;
@@ -65,7 +65,7 @@ int main(int argc, char** argv)
       
       // Link backwards to all the factors of i
       {
-        scope sFac(txt()<<"Factors of "<<i, low);
+        scope sFac(txt()<<"Factors of "<<i, scope::low);
         for(set<pair<int, anchor> >::iterator a=factorAnchors[i].begin(); a!=factorAnchors[i].end(); a++)
         { dbg << a->first<<" "; a->second.linkImg(); }
       }
@@ -91,7 +91,7 @@ int main(int argc, char** argv)
   }
   
   {
-    scope s("A graph can summarize structure at a high level", high);
+    scope s("A graph can summarize structure at a high level", scope::high);
     dbg << "Note: click on the title link of this scope to minimize it when done viewing."<<endl;
     
     // The graph that will summarize structure and will be shown at this point in the log output
@@ -129,7 +129,7 @@ int main(int argc, char** argv)
   // Call the fibScopeLinks function, which generates two hierarchies of high-level scopes with scopes
   // in each level of one hierarchy linking to the same level in the other hierarchy
   {
-    scope s("Multiple connected fibonacci recursion trees", high);
+    scope s("Multiple connected fibonacci recursion trees", scope::high);
     
     dbg << "Links work both within a file and across them. In this example we call Fibonacci(5) twice, with each "<<
            "recursive call in a different high-level scope (and thus file). Further, we create a link from each "<<
@@ -139,15 +139,15 @@ int main(int argc, char** argv)
     
     list<int> stack;
     map<list<int>, anchor> InFW, InBW, OutFW, OutBW;
-    fibScopeLinks(5, high, stack, InFW, InBW, OutFW, OutBW, true);
+    fibScopeLinks(5, scope::high, stack, InFW, InBW, OutFW, OutBW, true);
     assert(stack.size()==0);
     map<list<int>, anchor> OutBW2, OutFW2;
-    fibScopeLinks(5, high, stack, OutFW, OutBW, OutBW2, OutFW2, false);
+    fibScopeLinks(5, scope::high, stack, OutFW, OutBW, OutBW2, OutFW2, false);
   }
   
   // Call a recursive Fibonacci, where we create a graph of the recursion hierarchy
   {
-    scope s("Recursive Fibonacci", high);
+    scope s("Recursive Fibonacci", scope::high);
     graph g;
     
     fibGraph(5, g, NULL);
@@ -161,7 +161,7 @@ int main(int argc, char** argv)
 // InBW links: links from this fib call nest to the prior one. These have already been anchored to the prior nest.
 // OutBW links: links from the next nest to this one. These are anchored to established regions.
 // OutFW links: links from this nest to the next one. These are un-anchored and will be anchored to the next nest
-int fibScopeLinks(int a, scopeLevel level, list<int>& stack, 
+int fibScopeLinks(int a, scope::scopeLevel level, list<int>& stack, 
                   map<list<int>, anchor>& InFW, 
                   map<list<int>, anchor>& InBW, 
                   map<list<int>, anchor>& OutFW,

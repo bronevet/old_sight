@@ -8,20 +8,25 @@
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <assert.h>
 
 namespace dbglog {
+
 namespace common {
 
 // Returns whether log generation has been enabled or explicitly disabled
 bool isEnabled();
 
+} // namespace common
+
 // Class that makes it possible to generate string labels by using the << syntax.
 // Examples: Label() << "a=" << (5+2) << "!"
 //           Label("a=") << (5+2) << "!"
+// Since this class is meant to be used by client code, it is placed inside the easier-to-use dbglog namespace
 struct txt : std::string {
   txt() {}
   txt(const std::string& initTxt) {
-    if(isEnabled()) {
+    if(common::isEnabled()) {
     	 _stream << initTxt;
     	 assign(_stream.str());
     }
@@ -29,7 +34,7 @@ struct txt : std::string {
   
   template <typename T>
   txt& operator<<(T const& t) {
-    if(isEnabled()) {
+    if(common::isEnabled()) {
       _stream << t;
       assign(_stream.str());
     }
@@ -37,12 +42,15 @@ struct txt : std::string {
   }
 
   std::string str() const { 
-    if(isEnabled()) return _stream.str();
+    if(common::isEnabled()) return _stream.str();
     else            return "";
   }
  
   std::ostringstream _stream;
 };
+
+// Definitions for printable and properties below are placed in the generic dbglog namespace 
+// because there is no chance of name conflicts
 
 class printable
 {
@@ -98,6 +106,21 @@ class properties
   
   // Returns the string representation of the given properties iterator  
   static std::string str(iterator props);
+};
+
+namespace common {
+
+// Base class of all dbglog objects that provides some common functionality
+class dbglogObj {
+  public:
+  properties* props;
+  dbglogObj() : props(NULL) {}
+  dbglogObj(properties* props) : props(props) {}
+
+  ~dbglogObj() {
+    assert(props);
+    delete(props);
+  }
 };
 
 // Stream that uses dbgBuf

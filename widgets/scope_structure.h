@@ -10,11 +10,12 @@
 #include <fstream>
 #include "../attributes_structure.h"
 #include "scope_common.h"
+#include "../dbglog_structure_internal.h"
 
 namespace dbglog {
 namespace structure {
 
-class scope: public block
+class scope: public block, public common::scope
 {
   public:
   // label - the label associated with this scope.
@@ -32,22 +33,22 @@ class scope: public block
   //    min: none of the above
   // onoffOp - We emit this scope if the current attribute query evaluates to true (i.e. we're emitting debug output) AND
   //           either onoffOp is not provided or its evaluates to true.
-  scope(std::string label,                                   common::scopeLevel level, const attrOp& onoffOp, properties* props=NULL);
-  scope(std::string label, const anchor& pointsTo,           common::scopeLevel level, const attrOp& onoffOp, properties* props=NULL);
-  scope(std::string label, const std::set<anchor>& pointsTo, common::scopeLevel level, const attrOp& onoffOp, properties* props=NULL);
+  scope(std::string label,                                   scopeLevel level, const attrOp& onoffOp, properties* props=NULL);
+  scope(std::string label, const anchor& pointsTo,           scopeLevel level, const attrOp& onoffOp, properties* props=NULL);
+  scope(std::string label, const std::set<anchor>& pointsTo, scopeLevel level, const attrOp& onoffOp, properties* props=NULL);
   scope(std::string label,                                                             const attrOp& onoffOp, properties* props=NULL);
   scope(std::string label, const anchor& pointsTo,                                     const attrOp& onoffOp, properties* props=NULL);
   scope(std::string label, const std::set<anchor>& pointsTo,                           const attrOp& onoffOp, properties* props=NULL);
-  scope(std::string label,                                   common::scopeLevel level=common::medium,         properties* props=NULL);
-  scope(std::string label, const anchor& pointsTo,           common::scopeLevel level=common::medium,         properties* props=NULL);
-  scope(std::string label, const std::set<anchor>& pointsTo, common::scopeLevel level=common::medium,         properties* props=NULL);
+  scope(std::string label,                                   scopeLevel level=medium,         properties* props=NULL);
+  scope(std::string label, const anchor& pointsTo,           scopeLevel level=medium,         properties* props=NULL);
+  scope(std::string label, const std::set<anchor>& pointsTo, scopeLevel level=medium,         properties* props=NULL);
   
   private:
   // Sets the properties of this object
-  static properties* setProperties(common::scopeLevel level, const attrOp* onoffOp, properties* props);
+  static properties* setProperties(scopeLevel level, const attrOp* onoffOp, properties* props);
     
   // Common initialization code
-  //void init(common::scopeLevel level, const attrOp* onoffOp);
+  //void init(scopeLevel level, const attrOp* onoffOp);
   
   public:
   ~scope();

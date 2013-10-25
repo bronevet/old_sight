@@ -9,6 +9,7 @@
 #include <sstream>
 #include <fstream>
 #include "../attributes_structure.h"
+#include "../dbglog_structure_internal.h"
 
 namespace dbglog {
 namespace structure {
@@ -22,7 +23,7 @@ class dottable
   virtual std::string toDOT(std::string graphName)=0;
 };
 
-class graph: public block
+class graph: public structure::block
 {
   // Unique ID of this graph object
   int graphID;

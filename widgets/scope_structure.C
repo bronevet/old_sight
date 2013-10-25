@@ -19,53 +19,53 @@ using namespace dbglog::common;
 namespace dbglog {
 namespace structure {
 
-scope::scope(std::string label,                                    common::scopeLevel level, const attrOp& onoffOp, properties* props) : 
+scope::scope(std::string label,                                    scopeLevel level, const attrOp& onoffOp, properties* props) : 
   block(label, setProperties(level, &onoffOp, props))
 //{ init(level, &onoffOp); }
 {}
 
-scope::scope(string label, const anchor& pointsTo,                 common::scopeLevel level, const attrOp& onoffOp, properties* props): 
+scope::scope(string label, const anchor& pointsTo,                 scopeLevel level, const attrOp& onoffOp, properties* props): 
   block(label, pointsTo, setProperties(level, &onoffOp, props))
 //{ init(level, &onoffOp); }
 {}
 
-scope::scope(string label, const set<anchor>& pointsTo,            common::scopeLevel level, const attrOp& onoffOp, properties* props) :
+scope::scope(string label, const set<anchor>& pointsTo,            scopeLevel level, const attrOp& onoffOp, properties* props) :
   block(label, pointsTo, setProperties(level, &onoffOp, props))
 //{ init(level, &onoffOp); }
 {}
 
 scope::scope(std::string label,                                                                     const attrOp& onoffOp, properties* props) : 
-  block(label, setProperties(common::medium, &onoffOp, props))
-//{ init(common::medium, &onoffOp); }
+  block(label, setProperties(medium, &onoffOp, props))
+//{ init(medium, &onoffOp); }
 {}
 
 scope::scope(string label, const anchor& pointsTo,                                                  const attrOp& onoffOp, properties* props): 
-  block(label, pointsTo, setProperties(common::medium, &onoffOp, props))
-//{ init(common::medium, &onoffOp); }
+  block(label, pointsTo, setProperties(medium, &onoffOp, props))
+//{ init(medium, &onoffOp); }
 {}
 
 scope::scope(string label, const set<anchor>& pointsTo,                                             const attrOp& onoffOp, properties* props) :
-  block(label, pointsTo, setProperties(common::medium, &onoffOp, props))
-//{ init(common::medium, &onoffOp); }
+  block(label, pointsTo, setProperties(medium, &onoffOp, props))
+//{ init(medium, &onoffOp); }
 {}
 
-scope::scope(std::string label,                                   common::scopeLevel level,                         properties* props) :
+scope::scope(std::string label,                                   scopeLevel level,                         properties* props) :
   block(label, setProperties(level, NULL, props))
 //{ init(level, NULL); }
 {}
 
-scope::scope(std::string label, const anchor& pointsTo,           common::scopeLevel level,                         properties* props) :
+scope::scope(std::string label, const anchor& pointsTo,           scopeLevel level,                         properties* props) :
   block(label, pointsTo, setProperties(level, NULL, props))
 //{ init(level, NULL); }
 {}
 
-scope::scope(std::string label, const std::set<anchor>& pointsTo, common::scopeLevel level,                         properties* props) :
+scope::scope(std::string label, const std::set<anchor>& pointsTo, scopeLevel level,                         properties* props) :
   block(label, pointsTo, setProperties(level, NULL, props))
 //{ init(level, NULL); }
 {}
 
 // Sets the properties of this object
-properties* scope::setProperties(common::scopeLevel level, const attrOp* onoffOp, properties* props)
+properties* scope::setProperties(scopeLevel level, const attrOp* onoffOp, properties* props)
 {
   if(props==NULL) props = new properties();
     
@@ -84,7 +84,7 @@ properties* scope::setProperties(common::scopeLevel level, const attrOp* onoffOp
 }
 
 // Common initialization code
-/*void scope::init(common::scopeLevel level, const attrOp* onoffOp)
+/*void scope::init(scopeLevel level, const attrOp* onoffOp)
 {
   // If the current attribute query evaluates to true (we're emitting debug output) AND
   // either onoffOp is not provided or its evaluates to true

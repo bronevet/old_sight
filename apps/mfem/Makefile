@@ -13,10 +13,10 @@ mfem_examples:
 #	mv mfem-2.0 mfem
 
 mfem_layout.o: mfem_layout.C mfem_layout.h ../../dbglog_layout_internal.h mfem/mfem.hpp
-	g++ mfem_layout.C -c -I${ROOT_PATH} -Imfem -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -o mfem_layout.o
+	g++ mfem_layout.C -c -I${ROOT_PATH} -Imfem -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -o mfem_layout.o
 
 mfem_structure.o: mfem_structure.C mfem_structure.h ../../dbglog_structure_internal.h mfem/mfem.hpp
-	g++ mfem_structure.C -c -I${ROOT_PATH} -Imfem -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -o mfem_structure.o
+	g++ mfem_structure.C -c -I${ROOT_PATH} -Imfem -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -o mfem_structure.o
 
 meshFile2Socket: meshFile2Socket.cpp mfem/mfem.hpp 
 	g++ meshFile2Socket.cpp -Imfem -Lmfem -lmfem -I${ROOT_PATH} -L${ROOT_PATH} -ldbglog_structure -DROOT_PATH=${ROOT_PATH} -o meshFile2Socket

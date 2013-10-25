@@ -110,7 +110,7 @@ string start_internal(valSelector& sel, const attrValue* val, string name) {
   if(val) valueStr = sel.observeSelection(*val);
   else    valueStr = sel.observeSelection();
   
-  dbglogObj obj(new properties());
+  common::dbglogObj obj(new properties());
   map<string, string> newProps;
   newProps["selID"] = txt()<<sel.getID();
   newProps["instanceID"] = txt()<<instanceID++;
@@ -125,7 +125,7 @@ string end_internal(string name) {
   // Only bother if this text will be emitted
   if(!attributes.query()) return "";
   
-  dbglogObj obj(new properties());
+  common::dbglogObj obj(new properties());
   map<string, string> newProps;
   obj.props->add(name, newProps);
   

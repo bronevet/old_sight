@@ -20,13 +20,13 @@ class scopeLayoutHandlerInstantiator {
 };
 extern scopeLayoutHandlerInstantiator scopeLayoutHandlerInstance;
 
-class scope: public block
+class scope: public block, public common::scope
 {
   static std::vector<std::string> colors;
   static int colorIdx; // The current index into the list of colors 
   
   public:
-  common::scopeLevel level;
+  scopeLevel level;
 
   // properties: maps property names to their values
   // level - the type of visualization used, with higher levels associated with more amounts of debug output
@@ -44,7 +44,7 @@ class scope: public block
   
   private:
   // Common initialization code
-  void init(common::scopeLevel level);
+  void init(scopeLevel level);
   
   public:
     

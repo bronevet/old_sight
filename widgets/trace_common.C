@@ -12,14 +12,16 @@ namespace common {
 
 
 // Returns a string representation of a common::trace::showLocT object
-string showLoc2Str(common::showLocT showLoc) 
-{ return (showLoc==showBegin? "showBegin": (showLoc==showEnd? "showEnd": "???")); }
+string trace::showLoc2Str(trace::showLocT showLoc) 
+{ return (showLoc==trace::showBegin? "showBegin": (showLoc==trace::showEnd? "showEnd": "???")); }
 
 // Returns a string representation of a vizT object
-string viz2Str(common::vizT viz) {
-       if(viz == table)   return "table";
-  else if(viz == lines)   return "lines";
-  else if(viz == decTree) return "decTree";
+string trace::viz2Str(trace::vizT viz) {
+       if(viz == trace::table)   return "table";
+  else if(viz == trace::lines)   return "lines";
+  else if(viz == trace::decTree) return "decTree";
+  else if(viz == trace::heatmap) return "heatmap";
+  else if(viz == trace::boxplot) return "boxplot";
   else                    return "???";
 }
 
