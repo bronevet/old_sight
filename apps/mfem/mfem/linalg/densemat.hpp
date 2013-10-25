@@ -12,8 +12,8 @@
 #ifndef MFEM_DENSEMAT
 #define MFEM_DENSEMAT
 
-#include "dbglog.h"
-using namespace dbglog;
+#include "sight.h"
+using namespace sight;
 
 
 /// Data type dense matrix

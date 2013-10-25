@@ -10,13 +10,13 @@
 #include <fstream>
 #include <stdlib.h>
 #include <stdio.h>
-#include "dbglog_common_internal.h"
-//#include "dbglog_structure_internal.h"
+#include "sight_common_internal.h"
+//#include "sight_structure_internal.h"
 #include "attributes_common.h"
 
 /*
 This file implements support for attributes. An attribute is a key->value mapping that is set by the application. Different mappings may 
-exist during different regions of debug output. They are used to 1. control which text is emitted by dbglog (less emitted text means 
+exist during different regions of debug output. They are used to 1. control which text is emitted by sight (less emitted text means 
 better performance) and 2. to tag the emitted blocks so that users can select the ones they wish to view in the browser. Attributes 
 provide a flexible mechanism to control which blocks they wish to view based on constraints on the values of keys that they declare.
 A simple use-case would be an application that has multiple debug levels. It sets the debug level at the start of the execution, recording
@@ -68,7 +68,7 @@ Collection types: each key may be mapped to more than one value.
   attrOp::all: operation returns true if it evaluates to true for ALL values associated with the key
 */
 
-namespace dbglog {
+namespace sight {
 namespace structure{
 
 class attributesC;
@@ -452,7 +452,7 @@ class attributesC : public common::attributesC
   
   public:
   // Adds the given sub-query to the list of queries
-  void push(dbglog::structure::attrSubQuery* subQ);
+  void push(sight::structure::attrSubQuery* subQ);
   
   // Removes the last sub-query from the list of queries
   void pop();
@@ -468,7 +468,7 @@ extern structure::attributesC attributes;
 // *******************************
 
 // C++ interface for attribute creation, destruction
-class attr : public common::dbglogObj
+class attr : public common::sightObj
 {
   // The key/value of this attribute
   std::string key;
@@ -619,4 +619,4 @@ void attrFalse_exit(void* subQ);
 }
   
 }; // namespace structure
-}; // namespace dbglog
+}; // namespace sight

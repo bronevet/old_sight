@@ -52,8 +52,8 @@
 #include <omp.h>
 #endif
 
-#include "dbglog.h"
-using namespace dbglog;
+#include "sight.h"
+using namespace sight;
 
 using namespace std;
 using namespace IMC_namespace;

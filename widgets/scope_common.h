@@ -9,7 +9,7 @@
 #include <sstream>
 #include <fstream>
 
-namespace dbglog {
+namespace sight {
 namespace common {
 
 class scope {
@@ -23,4 +23,4 @@ class scope {
 };
 
 }; // namespace common
-}; // namespace dbglog
+}; // namespace sight

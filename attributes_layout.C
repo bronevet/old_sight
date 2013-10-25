@@ -1,12 +1,12 @@
 #include "attributes_common.h"
-#include "dbglog_layout_internal.h"
+#include "sight_layout_internal.h"
 #include <assert.h>
 #include "utils.h"
 
 using namespace std;
-using namespace dbglog;
+using namespace sight;
 
-namespace dbglog {
+namespace sight {
 namespace layout{
 
 layout::attributesC attributes;
@@ -135,4 +135,4 @@ bool attr::operator<(const attr& that) const
 }
 
 }; // namespace layout
-}; // namespace dbglog
+}; // namespace sight

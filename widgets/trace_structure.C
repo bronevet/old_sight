@@ -1,9 +1,9 @@
-#include "../dbglog_common.h"
-#include "../dbglog_structure.h"
+#include "../sight_common.h"
+#include "../sight_structure.h"
 using namespace std;
-using namespace dbglog::common;
+using namespace sight::common;
   
-namespace dbglog {
+namespace sight {
 namespace structure {
 
 // Maximum ID assigned to any trace object
@@ -110,7 +110,7 @@ void trace::emitObservations() {
   // Only emit observations of the trace variables if we have made any observations since the last change in the context variables
   if(obs.size()==0) return;
     
-  dbglogObj *obj = new dbglogObj(new properties());
+  sightObj *obj = new sightObj(new properties());
   
   map<string, string> newProps;
   
@@ -231,4 +231,4 @@ double endMeasure(measure* m) {
 }
 
 }; // namespace structure 
-}; // namespace dbglog
+}; // namespace sight

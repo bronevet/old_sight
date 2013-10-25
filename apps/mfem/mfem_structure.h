@@ -9,9 +9,9 @@
 #include <sstream>
 #include <fstream>
 #include "mfem.hpp"
-#include "dbglog_structure.h"
+#include "sight_structure.h"
 
-namespace dbglog {
+namespace sight {
 namespace structure {
 class mfem: public block
 {
@@ -46,7 +46,7 @@ class mfem: public block
   ~mfem();
   
   
-  // Emits the given MFEM mesh and solution to the dbglog output
+  // Emits the given MFEM mesh and solution to the sight output
   static void emitMesh(Mesh* mesh, GridFunction* soln);
   
   // Called to notify this block that a sub-block was started/completed inside of it. 
@@ -56,4 +56,4 @@ class mfem: public block
   bool subBlockExitNotify (block* subBlock);
 };
 } // namespace structure
-} // namespace dbglog
+} // namespace sight

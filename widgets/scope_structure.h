@@ -10,9 +10,9 @@
 #include <fstream>
 #include "../attributes_structure.h"
 #include "scope_common.h"
-#include "../dbglog_structure_internal.h"
+#include "../sight_structure_internal.h"
 
-namespace dbglog {
+namespace sight {
 namespace structure {
 
 class scope: public block, public common::scope
@@ -61,4 +61,4 @@ class scope: public block, public common::scope
 }; // scope
 
 }; // namespace structure
-}; // namespace dbglog
+}; // namespace sight

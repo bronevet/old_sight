@@ -9,11 +9,11 @@
 #include <sstream>
 #include <fstream>
 #include <assert.h>
-#include "../dbglog_common.h"
-#include "../dbglog_structure_internal.h"
+#include "../sight_common.h"
+#include "../sight_structure_internal.h"
 #include <sys/time.h>
 
-namespace dbglog {
+namespace sight {
 namespace structure {
 
 void traceAttr(std::string label, std::string key, const attrValue& val);
@@ -109,4 +109,4 @@ measure* startMeasure(std::string traceLabel, std::string valLabel);
 double endMeasure(measure* m);
 
 }; // namespace structure 
-}; // namespace dbglog
+}; // namespace sight

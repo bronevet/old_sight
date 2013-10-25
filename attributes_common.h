@@ -3,7 +3,7 @@
 #include <map>
 #include <set>
 
-namespace dbglog {
+namespace sight {
 namespace layout {
 class attributesC;
 };
@@ -14,8 +14,8 @@ class attrSubQuery;
 class attributesC;
 }}
 
-namespace dbglog {
-// Definitions below are placed in the generic dbglog namespace because there is no chance of name conflicts
+namespace sight {
+// Definitions below are placed in the generic sight namespace because there is no chance of name conflicts
 //namespace common {
 
 // ****************************
@@ -28,7 +28,7 @@ class attrValue {
   public:
   typedef enum {strT, ptrT, intT, floatT, unknownT} valueType;
   
-  friend class dbglog::structure::attrOp;
+  friend class sight::structure::attrOp;
   
   // Storage for any one of the different types of values that attrValue may wrap
   /*typedef union {
@@ -184,4 +184,4 @@ class attributesC
 }; // class attributes
 
 }; // namespace common
-}; // namespace dbglog
+}; // namespace sight

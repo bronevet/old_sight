@@ -8,10 +8,10 @@
 #include <iostream>
 #include <sstream>
 #include <fstream>
-#include "../dbglog_common.h"
-#include "../dbglog_layout.h"
+#include "../sight_common.h"
+#include "../sight_layout.h"
 
-namespace dbglog {
+namespace sight {
 namespace layout {
 
 class scopeLayoutHandlerInstantiator {
@@ -92,4 +92,4 @@ class scope: public block, public common::scope
 };*/
 
 }; // namespace layout
-}; // namespace dbglog
+}; // namespace sight

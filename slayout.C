@@ -6,7 +6,7 @@
 #include <string>
 #include <string.h>
 #include <errno.h>
-#include "dbglog_layout.h"
+#include "sight_layout.h"
 using namespace std;
 
 bool readProperty(FILE* f, char buf[], int& bufIdx, int& bufSize, std::string& name, std::string& val, char& termChar);

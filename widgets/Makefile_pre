@@ -9,7 +9,7 @@ WIDGETS := ${WIDGETS_O} ${WIDGETS_H}
 all: ${WIDGETS_COMMON_O} ${WIDGETS_COMMON_H} ${WIDGETS_STRUCTURE_O} ${WIDGETS_STRUCTURE_H} ${WIDGETS_LAYOUT_O} ${WIDGETS_LAYOUT_H}  \
      shellinabox/bin/shellinaboxd${EXE} mongoose/mongoose${EXE} graphviz/bin/dot${EXE} \
      ID3-Decision-Tree \
-     xdotool \
+     xdottool \
      noVNC \
      external_scripts
 	chmod 755 canviz-0.1 
@@ -17,55 +17,55 @@ all: ${WIDGETS_COMMON_O} ${WIDGETS_COMMON_H} ${WIDGETS_STRUCTURE_O} ${WIDGETS_ST
 	chmod 755 canviz-0.1/excanvas canviz-0.1/lib canviz-0.1/path canviz-0.1/prototype
 	chmod 644 canviz-0.1/*/*
 
-scope_common.o: scope_common.C scope_common.h ../attributes_common.h ../dbglog_common.h
+scope_common.o: scope_common.C scope_common.h ../attributes_common.h ../sight_common.h
 	g++ -g scope_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o scope_common.o
 
-scope_structure.o: scope_structure.C scope_structure.h ../attributes_structure.h ../dbglog_structure.h
+scope_structure.o: scope_structure.C scope_structure.h ../attributes_structure.h ../sight_structure.h
 	g++ -g scope_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o scope_structure.o
 
-scope_layout.o: scope_layout.C scope_layout.h ../attributes_layout.h ../dbglog_layout.h
+scope_layout.o: scope_layout.C scope_layout.h ../attributes_layout.h ../sight_layout.h
 	g++ -g scope_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o scope_layout.o
 
 
-graph_common.o: graph_common.C graph_common.h ../attributes_common.h ../dbglog_common.h
+graph_common.o: graph_common.C graph_common.h ../attributes_common.h ../sight_common.h
 	g++ -g graph_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o graph_common.o
 
-graph_structure.o: graph_structure.C graph_structure.h ../attributes_structure.h ../dbglog_structure.h
+graph_structure.o: graph_structure.C graph_structure.h ../attributes_structure.h ../sight_structure.h
 	g++ -g graph_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o graph_structure.o
 
-graph_layout.o: graph_layout.C graph_layout.h ../attributes_layout.h ../dbglog_layout.h
+graph_layout.o: graph_layout.C graph_layout.h ../attributes_layout.h ../sight_layout.h
 	g++ -g graph_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o graph_layout.o
 
 
-valSelector_common.o: valSelector_common.C valSelector_common.h ../dbglog_common.h
+valSelector_common.o: valSelector_common.C valSelector_common.h ../sight_common.h
 	g++ -g valSelector_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o valSelector_common.o
 
-valSelector_structure.o: valSelector_structure.C valSelector_structure.h ../dbglog_structure.h
+valSelector_structure.o: valSelector_structure.C valSelector_structure.h ../sight_structure.h
 	g++ -g valSelector_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o valSelector_structure.o
 
-valSelector_layout.o: valSelector_layout.C valSelector_layout.h ../dbglog_layout.h
+valSelector_layout.o: valSelector_layout.C valSelector_layout.h ../sight_layout.h
 	g++ -g valSelector_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o valSelector_layout.o
 
 
-trace_common.o: trace_common.C trace_common.h ../dbglog_common.h
+trace_common.o: trace_common.C trace_common.h ../sight_common.h
 	g++ -g trace_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o trace_common.o
 
-trace_structure.o: trace_structure.C trace_structure.h ../dbglog_structure.h
+trace_structure.o: trace_structure.C trace_structure.h ../sight_structure.h
 	g++ -g trace_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o trace_structure.o
 
-trace_layout.o: trace_layout.C trace_layout.h ../dbglog_layout.h
+trace_layout.o: trace_layout.C trace_layout.h ../sight_layout.h
 	g++ -g trace_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o trace_layout.o
 
 
 ifneq (${OS}, Cygwin)
-xdotool:
-	rm -rf xdotool-2.20110530.1.tar.gz xdotool
+xdottool:
+	rm -rf xdotool-2.20110530.1.tar.gz xdottool
 	wget http://semicomplete.googlecode.com/files/xdotool-2.20110530.1.tar.gz
 	tar -xf xdotool-2.20110530.1.tar.gz
 	cd xdotool-2.20110530.1; CC=gcc; make
-	mv xdotool-2.20110530.1 xdotool
+	mv xdotool-2.20110530.1 xdottool
 else
-xdotool:
+xdottool:
 endif
 
 ifneq (${OS}, Cygwin)

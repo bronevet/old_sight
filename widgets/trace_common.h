@@ -1,6 +1,6 @@
 #pragma once
 
-namespace dbglog {
+namespace sight {
 
 namespace common {
 class trace {
@@ -19,4 +19,4 @@ class trace {
 };
 
 }; // namespace common
-}; // namespace dbglog
+}; // namespace sight

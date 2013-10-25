@@ -1,6 +1,6 @@
 // Licence information included in file LICENCE
-#include "../dbglog_structure.h"
-#include "../dbglog_common.h"
+#include "../sight_structure.h"
+#include "../sight_common.h"
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -14,9 +14,9 @@
 #include <sys/time.h>
 
 using namespace std;
-using namespace dbglog::common;
+using namespace sight::common;
   
-namespace dbglog {
+namespace sight {
 namespace structure {
 
 scope::scope(std::string label,                                    scopeLevel level, const attrOp& onoffOp, properties* props) : 
@@ -106,4 +106,4 @@ scope::~scope()
 }
 
 }; // namespace structure
-}; // namespace dbglog
+}; // namespace sight

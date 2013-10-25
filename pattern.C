@@ -6,8 +6,8 @@
 #include <map>
 using namespace std;
 
-#include "dbglog.h"
-using namespace dbglog;
+#include "sight.h"
+using namespace sight;
 
 // Returns a string representation of the given collection
 template<class T>

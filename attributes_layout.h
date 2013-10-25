@@ -12,7 +12,7 @@
 #include <stdio.h>
 #include "attributes_common.h"
 
-namespace dbglog {
+namespace sight {
 namespace layout{
 
 class attributesLayoutHandlerInstantiator {
@@ -90,4 +90,4 @@ class attr
 };
 
 }; // namespace layout
-}; // namespace dbglog
+}; // namespace sight

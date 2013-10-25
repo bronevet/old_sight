@@ -1,9 +1,9 @@
-#include "dbglog.h"
+#include "sight.h"
 #include <map>
 #include <assert.h>
 
 using namespace std;
-using namespace dbglog;
+using namespace sight;
 
 #define idx(i, j, dim) (i*dim + j)
 
@@ -115,7 +115,7 @@ int main(int argc, char** argv) {
   dbg << "This example shows how to do basic performance profiling and analysis. It looks at 6 different loop "<<
          "iteration orders for the Matrix-Matrix Multiplication (MMM) algorithm and 2 loop orders for the "<<
          "Matrix-Vector Multiplication (MVM) algorithm, considering the impact of following each MMM loop ordering "<<
-         "by each MVM loop ordering. The key dbglog mechanisms for performance analysis are traces and metrics. A "<<
+         "by each MVM loop ordering. The key sight mechanisms for performance analysis are traces and metrics. A "<<
          "trace makes it possible to collect many observations of some quantity (e.g. function execution time) and "<<
          "choose a useful way to visualize them. Metrics measure performance properties and automatically add them "<<
          "to the trace of the user's choice."<<endl;

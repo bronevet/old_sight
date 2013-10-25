@@ -9,9 +9,9 @@
 #include <sstream>
 #include <fstream>
 #include "../attributes_structure.h"
-#include "../dbglog_structure_internal.h"
+#include "../sight_structure_internal.h"
 
-namespace dbglog {
+namespace sight {
 namespace structure {
 
 class dottable
@@ -83,4 +83,4 @@ class graph: public structure::block
 };
 
 }; // namespace structure
-}; // namespace dbglog
+}; // namespace sight

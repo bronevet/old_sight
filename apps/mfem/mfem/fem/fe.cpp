@@ -14,8 +14,8 @@
 #include <math.h>
 #include "fem.hpp"
 
-#include "dbglog.h"
-using namespace dbglog;
+#include "sight.h"
+using namespace sight;
 
 
 FiniteElement::FiniteElement(int D, int G, int Do, int O, int F)

@@ -8,9 +8,9 @@
 #include <iostream>
 #include <sstream>
 #include <fstream>
-#include "dbglog_layout.h"
+#include "sight_layout.h"
 
-namespace dbglog {
+namespace sight {
 namespace layout {
 
 class mfemLayoutHandlerInstantiator {
@@ -33,4 +33,4 @@ class mfem: public block
   bool subBlockExitNotify (block* subBlock);
 };
 } // namespace layout
-} // namespace dbglog
+} // namespace sight

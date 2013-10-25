@@ -40,8 +40,8 @@
 #include "OpenMP_ReductionFunctors.hh"
 #endif
 
-#include "dbglog.h"
-using namespace dbglog;
+#include "sight.h"
+using namespace sight;
 
 
 using namespace std;

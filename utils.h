@@ -5,7 +5,7 @@
 #include <iostream>
 #include <sstream>
 
-namespace dbglog {
+namespace sight {
 // Create directory workDir/dirName. The path of the created directory is returned.
 std::string createDir(std::string workDir, std::string dirName);
 
@@ -18,4 +18,4 @@ std::ofstream& createFile(std::string fName);
 // Returns a string that contains n tabs
 std::string tabs(int n);
 
-}; // namespace dbglog
+}; // namespace sight

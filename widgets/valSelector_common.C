@@ -9,8 +9,8 @@
 
 using namespace std;
 
-namespace dbglog {
+namespace sight {
 namespace common {
 
 }; // namespace common
-}; // namespace dbglog
+}; // namespace sight

@@ -1,9 +1,9 @@
-#include "../dbglog_layout.h"
+#include "../sight_layout.h"
 #include <assert.h>
 
 using namespace std;
 
-namespace dbglog {
+namespace sight {
 namespace layout {
 
 // Record the layout handlers in this file
@@ -141,4 +141,4 @@ void borderColor::end(void* obj) {
 }
 
 }; // namespace layout
-}; // namespace dbglog
+}; // namespace sight

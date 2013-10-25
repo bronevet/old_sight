@@ -11,8 +11,8 @@
 
 #include "../fem/fem.hpp"
 
-#include "dbglog.h"
-using namespace dbglog;
+#include "sight.h"
+using namespace sight;
 
 const int KnotVector::MaxOrder = 10;
 

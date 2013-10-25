@@ -8,10 +8,10 @@
 #include <iostream>
 #include <sstream>
 #include <fstream>
-#include "../dbglog_common.h"
-#include "../dbglog_layout.h"
+#include "../sight_common.h"
+#include "../sight_layout.h"
 
-namespace dbglog {
+namespace sight {
 namespace layout {
 
 class graphLayoutHandlerInstantiator {
@@ -121,4 +121,4 @@ class graph: public block
 };
 
 }; // namespace layout
-}; // namespace dbglog
+}; // namespace sight

@@ -1,17 +1,17 @@
-#include "dbglog.h"
+#include "sight.h"
 #include <map>
 #include <assert.h>
 using namespace std;
-using namespace dbglog;
+using namespace sight;
 
 /*#include "../utils.h"
-//#include "../dbglog_structure_internal.h"
+//#include "../sight_structure_internal.h"
 #include "../widgets/graph_structure.h"
 #include "../widgets/scope_structure.h"
 //#include "../widgets/valSelector_structure.h"
 //#include "../widgets/trace_structure.h"
 
-using namespace dbglog::structure;
+using namespace sight::structure;
 */
 
 int fibIndent(int a);
@@ -111,7 +111,7 @@ int main(int argc, char** argv)
     scope txtExplanation("String Creation");
     dbg << "One difficulty of scopes and indents is that they only accept strings as arguments. "<<
            "The string + operator and sprintf() are a little more cumbersome for creating complex "<<
-           "formatted text as compared to the C++ &lt;&lt; operator. As such dbglog provides the txt() "<<
+           "formatted text as compared to the C++ &lt;&lt; operator. As such sight provides the txt() "<<
            "object, which allows users to use &lt;&lt; formatting in places where strings are required."<<endl;
     for(int i=0; i<3; i++) {
       scope s(txt()<<"Scope "<<i);
@@ -122,7 +122,7 @@ int main(int argc, char** argv)
   {
     scope scopeGraphs("Graph Viewing");
     
-    dbg << "dbglog allows applications to visualize information in terms of dot graphs. "<<
+    dbg << "sight allows applications to visualize information in terms of dot graphs. "<<
            "These graphs are laid out using the graphviz dot renderer and presented in line "<<
            "with the rest of the debug text."<<endl;
     

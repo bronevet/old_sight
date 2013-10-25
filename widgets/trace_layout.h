@@ -9,11 +9,11 @@
 #include <sstream>
 #include <fstream>
 #include <assert.h>
-#include "../dbglog_common.h"
-#include "../dbglog_layout.h"
+#include "../sight_common.h"
+#include "../sight_layout.h"
 #include <sys/time.h>
 
-namespace dbglog {
+namespace sight {
 namespace layout {
 
 class traceLayoutHandlerInstantiator {
@@ -73,4 +73,4 @@ class trace: public block, public attrObserver, public common::trace
 }; // class trace
 
 }; // namespace layout
-}; // namespace dbglog
+}; // namespace sight

@@ -10,9 +10,9 @@
 #include <fstream>
 #include <stdlib.h>
 #include <stdio.h>
-#include "../dbglog_layout.h"
+#include "../sight_layout.h"
 
-namespace dbglog {
+namespace sight {
 namespace layout {
 
 class valSelectorLayoutHandlerInstantiator {
@@ -72,4 +72,4 @@ class borderColor
 };
 
 }; // namespace layout
-}; // namespace dbglog
+}; // namespace sight

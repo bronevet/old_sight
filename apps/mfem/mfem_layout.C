@@ -15,7 +15,7 @@
 
 using namespace std;
 
-namespace dbglog {
+namespace sight {
 namespace layout {
 
 // Record the layout handlers in this file
@@ -33,11 +33,10 @@ mfem::mfem(properties::iterator props) : block(properties::next(props)) {
   dbg.ownerAccessing();
 //    dbg << "<a href=\"#\" onclick=\"javascript:setGDBLink(this, ':"<<GDB_PORT<<"/apps/mfem/mfemwrap.cgi?HOME="<<getenv("HOME")<<"&USER="<<getenv("USER")<<"&execFile="<<ROOT_PATH<<"/apps/mfem/glvis/glvis&mesh="<<meshPath<<"&soln="<<solnPath<<"')\"\">Mesh</a>\n";
   string divName = txt()<<"mfem_mesh_container_"<<properties::getInt(props, "widgetID");
-  dbg << "<iframe id=\""<<divName<<"\" width=0 height=0></iframe>\n";
   dbg << "<a href=\"#\" onclick=\""<<
            "javascript:document.getElementsByTagName('iframe')['"<<divName<<"'].width=1024; "<<
                       "document.getElementsByTagName('iframe')['"<<divName<<"'].height=768; "<<
-                      "document.getElementsByTagName('iframe')['"<<divName<<"'].src=getHostLink(':"<<GDB_PORT<<"/apps/mfem/mfemwrap.cgi?HOME="<<getenv("HOME")<<"&USER="<<getenv("USER")<<"&execFile="<<ROOT_PATH<<"/apps/mfem/glvis/glvis&mesh="<<dbg.workDir<<"/html/"<<properties::get(props, "meshFName")<<"&soln="<<dbg.workDir<<"/html/"<<properties::get(props, "solnFName")<<"'); this.innerHTML=''; return false;\">Mesh</a>"<<endl;
+                      "document.getElementsByTagName('iframe')['"<<divName<<"'].src=getHostLink(':"<<GDB_PORT<<"/apps/mfem/mfemwrap.cgi?HOME="<<getenv("HOME")<<"&USER="<<getenv("USER")<<"&execFile="<<ROOT_PATH<<"/apps/mfem/glvis/glvis&mesh="<<properties::get(props, "meshFName")<<"&soln="<<properties::get(props, "solnFName")<<"'); this.innerHTML=''; return false;\">Mesh</a>"<<endl;
   dbg.userAccessing();
   #endif
 }
@@ -52,4 +51,4 @@ bool mfem::subBlockEnterNotify(block* subBlock) { return true; }
 
 bool mfem::subBlockExitNotify(block* subBlock) { return true; }
 } // namespace layout
-} // namespace dbglog
+} // namespace sight

@@ -1,12 +1,12 @@
 #include "attributes_common.h"
-#include "dbglog_structure_internal.h"
+#include "sight_structure_internal.h"
 #include <assert.h>
 #include "utils.h"
 
 using namespace std;
-using namespace dbglog;
+using namespace sight;
 
-namespace dbglog {
+namespace sight {
 namespace structure{
   
 structure::attributesC attributes;
@@ -146,7 +146,7 @@ bool attrQuery::query(const attributesC& attr) {
   // If the list of sub-queries is non-empty, ask the last one in the list. It will propagate the query
   // backwards through the list as needed
   if(lastQ) return lastQ->query(attr);
-  // If the list of sub-queries is empty, return true since by default dbglog emits debug output
+  // If the list of sub-queries is empty, return true since by default sight emits debug output
   else      return true;
 }
 
@@ -198,7 +198,7 @@ bool attributesC::remove(string key) {
 // --- QUERYING ---
 
 // Adds the given sub-query to the list of queries
-void attributesC::push(dbglog::structure::attrSubQuery* subQ) {
+void attributesC::push(sight::structure::attrSubQuery* subQ) {
   q.push(subQ);
   qCurrent = false;
 }
@@ -365,7 +365,7 @@ void attrFalse_exit(void* subQ) { delete (attrFalse*)subQ; }
 }
 
 }; // namespace structure
-}; // namespace dbglog
+}; // namespace sight
 
 // ***********************
 // ***** SELF TESTER *****

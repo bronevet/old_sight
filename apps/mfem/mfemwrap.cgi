@@ -7,7 +7,7 @@ use Cwd;
 use IPC::Open3;
 my $q = CGI->new;
 
-require "../../dbglogDefines.pl";
+require "../../sightDefines.pl";
 
 my $hostname = `hostname`; chomp $hostname;
 my @params = $q->param;
@@ -28,7 +28,7 @@ foreach my $proc (@allProcs) {
   #print "proc=\"$proc\"\n";
   # If noVNC is running, reuse the same VNC session
   if($proc =~ /^.*noVNC\/utils\/launch\.sh --vnc localhost:([0-9]+)$/) {
-    system "$main::dbglogPath/apps/mfem/meshFile2Socket $mesh $soln";
+    system "$main::sightPath/apps/mfem/meshFile2Socket $mesh $soln";
     print $q->redirect("http://$hostname:6080/vnc.html?host=$hostname&port=6080");
     exit(0);
   }
@@ -45,7 +45,7 @@ my $vncHeight = 768;
 # First, back up the original one
 my $vncXStartup = "$ENV{HOME}/.vnc/xstartup";
 if(-e $vncXStartup)
-{ system "cp $vncXStartup ${vncXStartup}.dbglog_backup"; }
+{ system "cp $vncXStartup ${vncXStartup}.sight_backup"; }
 
 # Make sure that the vnc configuration directory exists
 system "mkdir -p $ENV{HOME}/.vnc";
@@ -64,11 +64,11 @@ system "/usr/bin/whoami";
   print $xstartup "xterm -geometry 80x24+10+10 -ls -title \"\$VNCDESKTOP Desktop\" &\n";
   #print $xstartup "mwm &\n";
   print $xstartup "$execFile&\n";
-  #print $xstartup "$main::dbglogPath/apps/mfem/glvis/glvis -m $main::dbglogPath/mfem/mfem/mfem/data/ball-nurbs.mesh&\n";
+  #print $xstartup "$main::sightPath/apps/mfem/glvis/glvis -m $main::sightPath/mfem/mfem/mfem/data/ball-nurbs.mesh&\n";
   #print $xstartup "ps -ef\n";
   #print $xstartup "echo 'before sleep'\n";
   #print $xstartup "sleep 1\n";
-  print $xstartup "$main::dbglogPath/apps/mfem/maximizeWindow.pl $main::dbglogPath $vncWidth $vncHeight GLVis\n";
+  print $xstartup "$main::sightPath/apps/mfem/maximizeWindow.pl $main::sightPath $vncWidth $vncHeight GLVis\n";
   #print $xstartup "echo 'after sleep'\n";
   #print $xstartup "echo 'after max'\n";
 close($xstartup);
@@ -101,14 +101,14 @@ if(fork()==0) {
   sleep(5);
 
   # If there was an xstartup script before we started, replace it
-  if(-e "${vncXStartup}.dbglog_backup")
-  { system "mv ${vncXStartup}.dbglog_backup $vncXStartup"; }
+  if(-e "${vncXStartup}.sight_backup")
+  { system "mv ${vncXStartup}.sight_backup $vncXStartup"; }
 	
   exit(0);
 }
 
 # Run noVNC and connect it to the just-started vncserver
-my $noVNCPID = open3(my $noVNCIn, my $noVNCOut, my $noVNCErr, "$main::dbglogPath/widgets/noVNC/utils/launch.sh --vnc localhost:590$desktopID") || die "ERROR running command \"$main::dbglogPath/widgets/noVNC/utils/launch.sh --vnc localhost:590$desktopID\"! $!";
+my $noVNCPID = open3(my $noVNCIn, my $noVNCOut, my $noVNCErr, "$main::sightPath/widgets/noVNC/utils/launch.sh --vnc localhost:590$desktopID") || die "ERROR running command \"$main::sightPath/widgets/noVNC/utils/launch.sh --vnc localhost:590$desktopID\"! $!";
 
 # The URL at which noVNC will host the VNC session
 my $vncURL="";
@@ -137,15 +137,15 @@ while(my $line = <$noVNCOut>) {
 
       # Inform the currently-running instance of GLVis that it should display the given pair of mesh and solution
       #print "Content-Type: text/plain\n\n";
-      #print  "$main::dbglogPath/widget/mfem/meshFile2Socket $mesh $soln\n";
-      system "$main::dbglogPath/apps/mfem/meshFile2Socket $mesh $soln";
+      #print  "$main::sightPath/widget/mfem/meshFile2Socket $mesh $soln\n";
+      system "$main::sightPath/apps/mfem/meshFile2Socket $mesh $soln";
       
       print $q->redirect($vncURL);
       exit(0);
     }
   }
 }
-#close($noVNCOut) ||  die "ERROR closing pipe to command \"$main::dbglogPath/widgets/noVNC/utils/launch.sh --vnc localhost:590$desktopID\"! $!";
+#close($noVNCOut) ||  die "ERROR closing pipe to command \"$main::sightPath/widgets/noVNC/utils/launch.sh --vnc localhost:590$desktopID\"! $!";
 
 print $q->header;
 print "Finished reading output of noVNC but did not find url to point browser to!<br>\n";

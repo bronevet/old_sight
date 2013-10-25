@@ -12,7 +12,7 @@
 #ifndef MFEM_PMESH
 #define MFEM_PMESH
 
-#include "dbglog.hpp"
+#include "sight.hpp"
 
 /// Class for parallel meshes
 class ParMesh : public Mesh

@@ -23,7 +23,7 @@ MPILIBS = $(LIBS) -L$(METIS_DIR) -lmetis -L$(HYPRE_DIR)/lib -lHYPRE
 
 # The MFEM library
 MFEM_DIR = ..
-MFEM_LIB = -L$(MFEM_DIR) -lmfem -L${ROOT_PATH} -ldbglog_structure ../../mfem_structure.o
+MFEM_LIB = -L$(MFEM_DIR) -lmfem -L${ROOT_PATH} -lsight_structure ../../mfem_structure.o
 
 # The METIS and HYPRE libraries (needed for the parallel examples)
 METIS_DIR = ../../metis-4.0

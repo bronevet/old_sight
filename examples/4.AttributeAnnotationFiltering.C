@@ -1,8 +1,8 @@
-#include "dbglog.h"
+#include "sight.h"
 #include <map>
 #include <assert.h>
 using namespace std;
-using namespace dbglog;
+using namespace sight;
 
 int main(int argc, char** argv) {
   int numServers=3;
@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
     int clientID = rand()%numClients;
     string request = requests[rand()%3];
     
-    // Create attributes that identify the server, client and request type for dbglog
+    // Create attributes that identify the server, client and request type for sight
     attr sid("serverID", serverID);
     attr cid("clientID", clientID);
     attr r("request", request);
@@ -54,7 +54,7 @@ int main(int argc, char** argv) {
              "color of the Server ID depend on the values of these variables. Color selection is done in two steps. First, "<<
              "the user must declare a common repository for all values that will fall within the same gradient. This repository "<<
              "is called a valueSelector and this example uses colorSelectors. When the user wishes to colorize a given piece of "<<
-             "text based on a dynamic value, they write \"dbglog &lt;&lt; textColor::start(curSelector, curAttribute.getVal()) "<<
+             "text based on a dynamic value, they write \"sight &lt;&lt; textColor::start(curSelector, curAttribute.getVal()) "<<
              "&lt;&lt \"some text\" &lt;&lt; textClor::end()\". This identifies the text to be colored and specifies the value "<<
              "that controls the color choice and the selector that will record all the values that will form the given color "<<
              "gradient. Once the application is done executing the colorSelector will consider all the values it ever observed "<<

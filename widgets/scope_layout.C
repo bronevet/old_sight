@@ -1,6 +1,6 @@
 // Licence information included in file LICENCE
-#include "../dbglog_layout.h"
-#include "../dbglog_common.h"
+#include "../sight_layout.h"
+#include "../sight_common.h"
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -14,9 +14,9 @@
 #include <sys/time.h>
 
 using namespace std;
-using namespace dbglog::common;
+using namespace sight::common;
 
-namespace dbglog {
+namespace sight {
 namespace layout {
 
 // Record the layout handlers in this file
@@ -201,4 +201,4 @@ void workscope::data(std::string name, void* data, DiffFunctor* diff) {
 */
 
 }; // namespace layout
-}; // namespace dbglog
+}; // namespace sight

@@ -1,5 +1,5 @@
 // Licence information included in file LICENCE
-#include "../dbglog_structure_internal.h"
+#include "../sight_structure_internal.h"
 #include "graph_structure.h"
 #include <fstream>
 #include <iostream>
@@ -15,7 +15,7 @@
 
 using namespace std;
 
-namespace dbglog {
+namespace sight {
 namespace structure {
 
 // Maximum ID assigned to any graph object
@@ -94,11 +94,11 @@ graph::~graph() {
 // Given a reference to an object that can be represented as a dot graph,  create an image from it and add it to the output.
 // Return the path of the image.
 void graph::genGraph(dottable& obj) {
-  graph g(obj.toDOT("graphDbgLog"));
+  graph g(obj.toDOT("graphsight"));
   dbg.tag(&g);
   /*map<string, string> properties;
   // !!! SHOULD CREATE A graph OBJECT !!!
-  properties["dot"] = obj.toDOT("graphDbgLog");
+  properties["dot"] = obj.toDOT("graphsight");
   dbg.tag("graph", properties, false);*/
   //assert(0);
 }
@@ -117,7 +117,7 @@ void graph::genGraph(std::string dotText) {
 
 // Add a directed edge from the location of the from anchor to the location of the to anchor
 void graph::addDirEdge(anchor from, anchor to) {
-  dbglogObj obj(new properties());
+  sightObj obj(new properties());
   
   map<string, string> newProps;
   newProps["from"] = txt()<<from.getID();
@@ -130,7 +130,7 @@ void graph::addDirEdge(anchor from, anchor to) {
 
 // Add an undirected edge between the location of the a anchor and the location of the b anchor
 void graph::addUndirEdge(anchor a, anchor b) {
-  dbglogObj obj(new properties());
+  sightObj obj(new properties());
   
   map<string, string> newProps;
   newProps["a"] = txt()<<a.getID();
@@ -160,7 +160,7 @@ bool graph::subBlockEnterNotify(block* subBlock) {
      subBlock->getLocation().size() == common.size()/ * &&
      subBlock->getLocation().back().second.size()-1 == common.back().second.size() * /)*/
   { 
-    dbglogObj obj(new properties());
+    sightObj obj(new properties());
   
     map<string, string> newProps;
     newProps["nodeID"]   = txt()<<maxNodeID;
@@ -178,4 +178,4 @@ bool graph::subBlockEnterNotify(block* subBlock) {
 }
 
 }; // namespace structure
-}; // namespace dbglog
+}; // namespace sight

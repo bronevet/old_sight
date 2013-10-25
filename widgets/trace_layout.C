@@ -1,9 +1,9 @@
-#include "../dbglog_layout_internal.h"
+#include "../sight_layout_internal.h"
 #include "trace_layout.h"
 
 using namespace std;
 
-namespace dbglog {
+namespace sight {
 namespace layout {
 
 // Record the layout handlers in this file
@@ -218,4 +218,4 @@ void* trace::observe(properties::iterator props)
 }
 
 }; // namespace layout
-}; // namespace dbglog
+}; // namespace sight

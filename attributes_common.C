@@ -9,7 +9,7 @@
 
 using namespace std;
 
-namespace dbglog {
+namespace sight {
 
 /*********************
  ***** attrValue *****
@@ -391,4 +391,4 @@ void attributesC::notifyObsPost(std::string key) {
 }
 
 }; // namespace common
-}; // namespace dbglog
+}; // namespace sight

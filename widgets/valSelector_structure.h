@@ -10,12 +10,12 @@
 #include <fstream>
 #include <stdlib.h>
 #include <stdio.h>
-#include "../dbglog_structure_internal.h"
+#include "../sight_structure_internal.h"
 
-namespace dbglog {
+namespace sight {
 namespace structure {
 
-class valSelector: public common::dbglogObj
+class valSelector: public common::sightObj
 {
   protected:
   
@@ -139,4 +139,4 @@ namespace borderColor
 };
 
 }; // namespace structure
-}; // namespace dbglog
+}; // namespace sight

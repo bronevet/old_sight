@@ -14,8 +14,8 @@
 #include "vector.hpp"
 #include "matrix.hpp"
 
-#include "dbglog.h"
-using namespace dbglog;
+#include "sight.h"
+using namespace sight;
 
 
 //*****************************************************************

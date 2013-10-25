@@ -15,7 +15,7 @@
 
 using namespace std;
 
-namespace dbglog {
+namespace sight {
 // Create the directory workDir/dirName and return the string that contains the absolute
 // path of the created directory
 string createDir(string workDir, string dirName) {
@@ -60,4 +60,4 @@ string tabs(int n)
   return s;
 }
 
-} // namespace dbglog
+} // namespace sight

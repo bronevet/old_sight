@@ -15,7 +15,7 @@
 
 using namespace std;
 
-namespace dbglog {
+namespace sight {
 namespace structure {
 // The path the directory where output files of the mfem widget are stored
 // Relative to current path
@@ -49,7 +49,7 @@ properties* mfem::setProperties(Mesh* mesh, GridFunction* soln, int widgetID, co
     initEnvironment();
     
     map<string, string> newProps;
-    newProps["widgetID"]  = txt()<<widgetID;
+    newProps["widgetID"] = widgetID;
     newProps["meshFName"] = txt()<<htmlOutDir<<"/mfem_"<<widgetID<<".mesh";
     newProps["solnFName"] = txt()<<htmlOutDir<<"/mfem_"<<widgetID<<".soln";
 
@@ -86,7 +86,7 @@ mfem::~mfem() {
   soln->Save(sol_ofs);
 }
 
-// Emits the given MFEM mesh and solution to the dbglog output
+// Emits the given MFEM mesh and solution to the sight output
 void mfem::emitMesh(Mesh* mesh, GridFunction* soln) {
   mfem m(mesh, soln);
 }
@@ -98,4 +98,4 @@ bool mfem::subBlockEnterNotify(block* subBlock) { return true; }
 
 bool mfem::subBlockExitNotify(block* subBlock) { return true; }
 } // namespace structure
-} // namespace dbglog
+} // namespace sight

@@ -20,8 +20,8 @@
 #include "linalg.hpp"
 #include "../fem/fem.hpp"
 
-#include "dbglog.h"
-using namespace dbglog;
+#include "sight.h"
+using namespace sight;
 
 
 HypreParVector::HypreParVector(int glob_size, int *col) : Vector()

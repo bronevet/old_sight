@@ -1,5 +1,5 @@
 // Licence information included in file LICENCE
-#include "../dbglog_layout.h"
+#include "../sight_layout.h"
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -14,7 +14,7 @@
 
 using namespace std;
 
-namespace dbglog {
+namespace sight {
 namespace layout {
 
 // Record the layout handlers in this file
@@ -229,4 +229,4 @@ void* graph::addNode(properties::iterator props) {
 }
 
 }; // namespace layout
-}; // namespace dbglog
+}; // namespace sight

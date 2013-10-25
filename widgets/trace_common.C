@@ -7,7 +7,7 @@
 
 using namespace std;
 
-namespace dbglog {
+namespace sight {
 namespace common {
 
 
@@ -26,4 +26,4 @@ string trace::viz2Str(trace::vizT viz) {
 }
 
 }; // namespace common
-}; // namespace dbglog
+}; // namespace sight
