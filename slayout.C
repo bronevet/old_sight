@@ -30,8 +30,9 @@ mfemLayoutHandlerInstantiator mfemLayoutHandlerInstance;
 //#define VERBOSE
 
 int main(int argc, char** argv) {
-  if(argc!=2) { cerr<<"Usage: slayout fName"<<endl; exit(-1); }
-  char* fName = argv[1];
+  if(argc!=1 && argc!=2) { cerr<<"Usage: slayout fName"<<endl; exit(-1); }
+  char* fName=NULL;
+  if(argc==2) fName = argv[1];
 
   #ifdef VERBOSE
   cout << "layoutHandlers:\n";
@@ -39,8 +40,13 @@ int main(int argc, char** argv) {
     cout << i->first << endl;*/
   #endif
  
-  FILE* f = fopen(fName, "r");
-  if(f==NULL) { cerr << "ERROR opening file \""<<fName<<"\" for reading! "<<strerror(errno)<<endl; exit(-1); }
+  FILE* f;
+  if(argc==1)
+    f = stdin;
+  else {
+    f = fopen(fName, "r");
+    if(f==NULL) { cerr << "ERROR opening file \""<<fName<<"\" for reading! "<<strerror(errno)<<endl; exit(-1); }
+  }
   char buf[10000];
   // Start reading the file, filling as much of buf as possible. Store the number of
   // bytes read in bufSize and initialize bufIdx to refer to the start of buf.
@@ -200,7 +206,8 @@ int main(int argc, char** argv) {
 
   PARSE_END:
 
-  fclose(f);
+  if(argc==2)
+    fclose(f);
 }
 
 // Read a property name/value pair from the given file, setting name and val to them.

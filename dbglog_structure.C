@@ -15,6 +15,7 @@
 #include <errno.h>
 #include "getAllHostnames.h" 
 #include "utils.h"
+#include "fdstream.h"
 using namespace std;
 using namespace dbglog::common;
 
@@ -517,11 +518,19 @@ void dbgStream::init(properties* props, string title, string workDir, string img
   this->tmpDir  = tmpDir;
 
   numImages++;
-  
+ 
+  // Version 1: write output to a file 
   // Create the output file to which the debug log's structure will be written
-  dbgFile = &(createFile(txt()<<workDir<<"/structure"));
+  //dbgFile = &(createFile(txt()<<workDir<<"/structure"));
+  dbgFile = NULL;
   // Call the parent class initialization function to connect it dbgBuf of the output file
-  buf=new dbgBuf(dbgFile->rdbuf());
+  //buf=new dbgBuf(dbgFile->rdbuf());
+
+  // Version 2: write output to a pipe for slayout to use immediately
+  FILE *out = popen((txt()<<ROOT_PATH<<"/slayout").c_str(), "w");
+  int outFD = fileno(out);
+  buf = new dbgBuf(new fdoutbuf(outFD));
+
   ostream::init(buf);
 
   this->props = props; 
@@ -535,8 +544,8 @@ dbgStream::~dbgStream()
   if (!initialized)
     return;
   
-  assert(dbgFile);
-  dbgFile->close();
+//  assert(dbgFile);
+  if(dbgFile) dbgFile->close();
   
   { ostringstream cmd;
     cmd << "rm -rf " << tmpDir;
