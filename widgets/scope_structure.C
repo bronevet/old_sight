@@ -20,32 +20,32 @@ namespace dbglog {
 namespace structure {
 
 scope::scope(std::string label,                                    common::scopeLevel level, const attrOp& onoffOp, properties* props) : 
-  block(label, setProperties(level, NULL, props))
+  block(label, setProperties(level, &onoffOp, props))
 //{ init(level, &onoffOp); }
 {}
 
 scope::scope(string label, const anchor& pointsTo,                 common::scopeLevel level, const attrOp& onoffOp, properties* props): 
-  block(label, pointsTo, setProperties(level, NULL, props))
+  block(label, pointsTo, setProperties(level, &onoffOp, props))
 //{ init(level, &onoffOp); }
 {}
 
 scope::scope(string label, const set<anchor>& pointsTo,            common::scopeLevel level, const attrOp& onoffOp, properties* props) :
-  block(label, pointsTo, setProperties(level, NULL, props))
+  block(label, pointsTo, setProperties(level, &onoffOp, props))
 //{ init(level, &onoffOp); }
 {}
 
 scope::scope(std::string label,                                                                     const attrOp& onoffOp, properties* props) : 
-  block(label, setProperties(common::medium, NULL, props))
+  block(label, setProperties(common::medium, &onoffOp, props))
 //{ init(common::medium, &onoffOp); }
 {}
 
 scope::scope(string label, const anchor& pointsTo,                                                  const attrOp& onoffOp, properties* props): 
-  block(label, pointsTo, setProperties(common::medium, NULL, props))
+  block(label, pointsTo, setProperties(common::medium, &onoffOp, props))
 //{ init(common::medium, &onoffOp); }
 {}
 
 scope::scope(string label, const set<anchor>& pointsTo,                                             const attrOp& onoffOp, properties* props) :
-  block(label, pointsTo, setProperties(common::medium, NULL, props))
+  block(label, pointsTo, setProperties(common::medium, &onoffOp, props))
 //{ init(common::medium, &onoffOp); }
 {}
 

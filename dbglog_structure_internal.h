@@ -245,7 +245,7 @@ protected:
 
 
 // Stream that uses dbgBuf
-class dbgStream : public std::ostream, public dbglogObj
+class dbgStream : public common::dbgStream, public dbglogObj
 {
   dbgBuf defaultFileBuf;
   // Stream to the file where the structure will be written
@@ -253,12 +253,6 @@ class dbgStream : public std::ostream, public dbglogObj
   // Buffer for the above stream
   dbgBuf* buf;
   
-  // The root working directory
-  std::string workDir;
-  // The directory where all images will be stored
-  std::string imgDir;
-  // The directory that widgets can use as temporary scratch space
-  std::string tmpDir;
   // The total number of images in the output file
   int numImages;
  
@@ -274,8 +268,8 @@ public:
   // Construct an ostream which tees output to the supplied
   // ostreams.
   dbgStream();
-  dbgStream(properties* props, std::string workDir, std::string imgDir, std::string tmpDir);
-  void init(properties* props, std::string workDir, std::string imgDir, std::string tmpDir);
+  dbgStream(properties* props, std::string title, std::string workDir, std::string imgDir, std::string tmpDir);
+  void init(properties* props, std::string title, std::string workDir, std::string imgDir, std::string tmpDir);
   ~dbgStream();
   
   // Switch between the owner class and user code writing text into this stream

@@ -101,5 +101,21 @@ std::string properties::str(iterator props) {
   return oss.str();
 }
 
+/*********************
+ ***** dbgStream *****
+ *********************/
+
+// Creates an output directory for the given widget and returns its path as a pair:
+// <path relative to the current working directory that can be used to create paths for writing files,
+//  path relative to the output directory that can be used inside generated HTML>
+pair<std::string, std::string> dbgStream::createWidgetDir(std::string widgetName) {
+  if(widgetDirs.find(widgetName) == widgetDirs.end()) {
+    createDir(workDir, "html/widgets/"+widgetName);
+    widgetDirs.insert(widgetName);
+  }
+  
+  return make_pair(workDir+"/html/widgets/"+widgetName, "widgets/"+widgetName);
+}
+
 }; // namespace common
 }; // namespace dbglog

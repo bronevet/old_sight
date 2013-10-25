@@ -4,6 +4,10 @@
 #include <list>
 #include <string>
 #include <map>
+#include <set>
+#include <fstream>
+#include <iostream>
+#include <sstream>
 
 namespace dbglog {
 namespace common {
@@ -95,6 +99,30 @@ class properties
   // Returns the string representation of the given properties iterator  
   static std::string str(iterator props);
 };
+
+// Stream that uses dbgBuf
+class dbgStream : public std::ostream
+{
+  public:
+  // The title of the file
+  std::string title;
+  // The root working directory
+  std::string workDir;
+  // The directory where all images will be stored
+  std::string imgDir;
+  // The directory that widgets can use as temporary scratch space
+  std::string tmpDir;
+    
+  // The directories in which different widgets store their output. Created upon request by different widgets.
+  std::set<std::string>     widgetDirs;
+    
+  // Creates an output directory for the given widget and returns its path as a pair:
+  // <path relative to the current working directory that can be used to create paths for writing files,
+  //  path relative to the output directory that can be used inside generated HTML>
+  std::pair<std::string, std::string> createWidgetDir(std::string widgetName);
+    
+  dbgStream(std::streambuf* buf): std::ostream(buf) {}
+}; // dbgStream
 
 }; // namespace common
 }; // namespace dbglog

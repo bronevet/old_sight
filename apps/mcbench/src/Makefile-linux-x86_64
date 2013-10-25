@@ -8,7 +8,7 @@ MPI_INCLUDE     = -I/usr/local/tools/mvapich-intel/include
 CXXDEFINES      = -DORTHOXY -DUSE_OPENMP -DUSE_MPI -DNOASSERT # -DUSE_TAU_EVENT_COUNTERS
 CXXFLAGS        = -O2 -xHost $(CXXDEFINES) $(OPENMPFLAG) -I${ROOT_PATH} -g
 LDFLAGS         = 
-LIBPATH         = ${ROOT_PATH}/libdbglog.a
+LIBPATH         = ${ROOT_PATH}/libdbglog_structure.a
 LIBS            =
 #--------------------------------------------------------------#
 

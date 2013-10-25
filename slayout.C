@@ -22,6 +22,8 @@ graphLayoutHandlerInstantiator graphLayoutHandlerInstance;
 traceLayoutHandlerInstantiator traceLayoutHandlerInstance;
 valSelectorLayoutHandlerInstantiator valSelectorLayoutHandlerInstance;
 attributesLayoutHandlerInstantiator attributesLayoutHandlerInstance;
+#include "apps/mfem/mfem_layout.h"
+mfemLayoutHandlerInstantiator mfemLayoutHandlerInstance;
 
 int main(int argc, char** argv) {
   if(argc!=2) { cerr<<"Usage: slayout fName"<<endl; exit(-1); }

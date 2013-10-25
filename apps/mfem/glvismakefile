@@ -22,7 +22,7 @@ USE_LAPACK  = NO
 
 # GLVis requires the MFEM library
 MFEM_DIR   = ../mfem
-MFEM_LIB   = -L$(MFEM_DIR) -lmfem -L${ROOT_PATH} -ldbglog
+MFEM_LIB   = -L$(MFEM_DIR) -lmfem -L${ROOT_PATH} -ldbglog_structure
 
 # LAPACK and BLAS
 LAPACK_DIR = $(HOME)/lapack

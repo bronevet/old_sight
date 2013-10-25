@@ -1,4 +1,5 @@
 // Licence information included in file LICENCE
+#include "dbglog_common_internal.h"
 #include "dbglog_structure_internal.h"
 #include <fstream>
 #include <iostream>
@@ -124,7 +125,7 @@ void initializeDebug_internal(int argc, char** argv, string title, string workDi
   
   initializedDebug = true;
   
-  dbg.init(props, workDir, imgDir, tmpDir);
+  dbg.init(props, title, workDir, imgDir, tmpDir);
 }
 
 /********************
@@ -482,19 +483,20 @@ void dbgBuf::ownerAccessing() { ownerAccess = true; synched = true; }
  ***** dbgStream *****
  *********************/
 
-dbgStream::dbgStream() : std::ostream(&defaultFileBuf), initialized(false)
+dbgStream::dbgStream() : common::dbgStream(&defaultFileBuf), initialized(false)
 {
   dbgFile = NULL;
 }
 
-dbgStream::dbgStream(properties* props, string workDir, string imgDir, std::string tmpDir)
-  : std::ostream(&defaultFileBuf)
+dbgStream::dbgStream(properties* props, string title, string workDir, string imgDir, std::string tmpDir)
+  : common::dbgStream(&defaultFileBuf)
 {
-  init(props, workDir, imgDir, tmpDir);
+  init(props, title, workDir, imgDir, tmpDir);
 }
 
-void dbgStream::init(properties* props, string workDir, string imgDir, std::string tmpDir)
+void dbgStream::init(properties* props, string title, string workDir, string imgDir, std::string tmpDir)
 {
+  this->title   = title;
   this->workDir = workDir;
   this->imgDir  = imgDir;
   this->tmpDir  = tmpDir;

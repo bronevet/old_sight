@@ -726,12 +726,12 @@ int dbgBuf::blockDepth()
  ***** dbgStream *****
  *********************/
 
-dbgStream::dbgStream() : std::ostream(&defaultFileBuf), initialized(false)
+dbgStream::dbgStream() : common::dbgStream(&defaultFileBuf), initialized(false)
 {
 }
 
 dbgStream::dbgStream(string title, string workDir, string imgDir, std::string tmpDir)
-  : std::ostream(&defaultFileBuf)
+  : common::dbgStream(&defaultFileBuf)
 {
   init(title, workDir, imgDir, tmpDir);
 }
@@ -808,18 +808,6 @@ std::ofstream* dbgStream::getCurScriptPrologFile() const {
 std::ofstream* dbgStream::getCurScriptEpilogFile() const {
   if(scriptEpilogFiles.size()==0) return NULL;
   else                      return scriptEpilogFiles.back();
-}
-
-// Creates an output directory for the given widget and returns its path as a pair:
-// <path relative to the current working directory that can be used to create paths for writing files,
-//  path relative to the output directory that can be used inside generated HTML>
-pair<std::string, std::string> dbgStream::createWidgetDir(std::string widgetName) {
-  if(widgetDirs.find(widgetName) == widgetDirs.end()) {
-    createDir(workDir, "html/widgets/"+widgetName);
-    widgetDirs.insert(widgetName);
-  }
-  
-  return make_pair(workDir+"/html/widgets/"+widgetName, "widgets/"+widgetName);
 }
 
 // Add an include of the given script in the generated HTML output. There are generic scripts that will be

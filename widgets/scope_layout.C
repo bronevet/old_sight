@@ -127,6 +127,7 @@ void scope::printEntry(string loadCmd) {
       dbg << "\\\"><b>GDB</b></a>\");\n";
       dbg << "</script>\n";
     }*/
+    #if REMOTE_ENABLED
     if(saved_appExecInfo) {
       ostringstream setGDBLink; 
       setGDBLink << "\"javascript:setGDBLink(this, ':"<<GDB_PORT<<"/gdbwrap.cgi?execFile="<<execFile<<"&tgtCount="<<blockCount<<"&args=";
@@ -138,6 +139,7 @@ void scope::printEntry(string loadCmd) {
   
       dbg << "<a href=\"#\" onclick="<<setGDBLink.str()<<" onmouseover="<<setGDBLink.str()<<"><img src=\"img/gdb.gif\" width=40 height=21 alt=\"GDB\"></a>\n";
     }
+    #endif
     if(loadCmd != "") {
       dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1);
       dbg << "<a href=\"javascript:"<<loadCmd<<")\">";

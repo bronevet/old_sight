@@ -51,7 +51,7 @@ runExamples: libdbglog_structure.a slayout${EXE} apps
 #	g++ -g pattern.C -L. -ldbglog  -o pattern${EXE}
 
 slayout${EXE}: slayout.C  libdbglog_layout.a
-	g++ slayout.C libdbglog_layout.a -o slayout${EXE}
+	g++ slayout.C libdbglog_layout.a -I. apps/mfem/mfem_layout.o -o slayout${EXE}
 #	g++ -c slayout.C -o slayout.o
 #	g++ slayout.o libdbglog_layout.a --relocateable -Ur --whole-archive -o slayout${EXE}
 #	g++ slayout.C libdbglog_layout.a -o slayout${EXE}

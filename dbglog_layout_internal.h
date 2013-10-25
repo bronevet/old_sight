@@ -303,7 +303,7 @@ protected:
 
 
 // Stream that uses dbgBuf
-class dbgStream : public std::ostream
+class dbgStream : public common::dbgStream
 {
   std::list<std::ofstream*> indexFiles;
   std::list<std::ofstream*> dbgFiles;
@@ -313,14 +313,12 @@ class dbgStream : public std::ostream
   // Files that contain the commands to be executed before/after all the commands in the script file are executed
   std::list<std::ofstream*> scriptPrologFiles; 
   std::list<std::ofstream*> scriptEpilogFiles; 
-  // The directories in which different widgets store their output. Created upon request by different widgets.
-  std::set<std::string>     widgetDirs;
   // Global script file that includes any additional scripts required by widgets 
   std::ofstream             scriptIncludesFile;
   // Records the paths of the scripts that have already been included. Maps script paths to their types.
   std::map<std::string, std::string> includedScripts;
   // Records the paths of the files/directories that have been included/copied into the generated output
-  std::set<std::string>     includedFiles;
+  std::set<std::string>     includedFiles;  
   // Number of anchor IDs to store in a single anchor script file
   int                       anchorsPerScriptFile;
   public:
@@ -338,14 +336,6 @@ class dbgStream : public std::ostream
   
   dbgBuf defaultFileBuf;
   
-  // The title of the file
-  std::string title;
-  // The root working directory
-  std::string workDir;
-  // The directory where all images will be stored
-  std::string imgDir;
-  // The directory that widgets can use as temporary scratch space
-  std::string tmpDir;
   // The total number of images in the output file
   int numImages;
   
@@ -377,11 +367,6 @@ public:
   const std::string& getImgDir() const { return imgDir; }
   // Return the directory that widgets can use as temporary scratch space
   const std::string& getTmpDir() const { return tmpDir; }
-    
-  // Creates an output directory for the given widget and returns its path as a pair:
-  // <path relative to the current working directory that can be used to create paths for writing files,
-  //  path relative to the output directory that can be used inside generated HTML>
-  std::pair<std::string, std::string> createWidgetDir(std::string widgetName);
   
   // Add an include of the given script in the generated HTML output. There are generic scripts that will be
   // included in every output document that is loaded. The path of the script must be absolute
