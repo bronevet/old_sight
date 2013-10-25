@@ -30,6 +30,9 @@ class graph: public structure::block
   
   // Maximum ID assigned to any graph object
   static int maxGraphID;
+
+  // Maximum ID assigned to any graph node
+  static int maxNodeID;
   
   // Records whether this scope is included in the emitted output (true) or not (false)
   bool active;
@@ -75,7 +78,7 @@ class graph: public structure::block
   // Called to notify this block that a sub-block was started/completed inside of it. 
   // Returns true of this notification should be propagated to the blocks 
   // that contain this block and false otherwise.
-  bool subBlockEnterNotify(block* subBlock) { return false; }
+  bool subBlockEnterNotify(block* subBlock);// { return false; }
   bool subBlockExitNotify (block* subBlock) { return false; }
 };
 

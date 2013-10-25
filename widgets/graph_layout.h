@@ -36,6 +36,9 @@ class graphEdge {
   const anchor& getFrom() { return from; }
   const anchor& getTo()   { return to; }
   
+  bool operator==(const graphEdge& that) const {
+    return (from == that.from);
+  }
   bool operator<(const graphEdge& that) const {
     return (from < that.from) ||
            (from == that.from && to < that.to) ||
@@ -47,7 +50,7 @@ class graphEdge {
 class graph: public block
 {
   protected:
-  class node {
+  /*class node {
     public:
     int ID;
     std::string label;
@@ -55,10 +58,10 @@ class graph: public block
       
     node() : ID(-1), label("") {}
     node(int ID, std::string label, const anchor& a) : ID(ID), label(label), a(a) {}
-  };
+  };*/
   
   // Maps a block's location to its ID and label
-  std::map<location, node> nodes;
+  std::map<anchor, std::string> nodes;
   // The maximum ID associated with any node in this graph
   int maxNodeID;
   
@@ -105,6 +108,10 @@ class graph: public block
   // Add an undirected edge between the location of the a anchor and the location of the b anchor
   void addUndirEdge(anchor a, anchor b);
   static void* addUndirEdge(properties::iterator props);
+
+  // Add a node to the graph
+  void addNode(anchor a, std::string label);
+  static void* addNode(properties::iterator props);
   
   // Called to notify this block that a sub-block was started/completed inside of it. 
   // Returns true of this notification should be propagated to the blocks 

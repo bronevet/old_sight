@@ -12,7 +12,7 @@ namespace layout{
 layout::attributesC attributes;
 
 // Record the layout handlers in this file
-void* attrEnterHandler(properties::iterator props) { cout << "attrEnterHandler\n"; return new attr(props); }
+void* attrEnterHandler(properties::iterator props) { return new attr(props); }
 void  attrExitHandler(void* obj) { attr* a = static_cast<attr*>(obj); delete a; }
   
 attributesLayoutHandlerInstantiator::attributesLayoutHandlerInstantiator() { 

@@ -21,6 +21,9 @@ namespace structure {
 // Maximum ID assigned to any graph object
 int graph::maxGraphID=0;
 
+// Maximum ID assigned to any graph node
+int graph::maxNodeID=0;
+
 graph::graph(properties* props) : 
   block("Graph", setProperties(maxGraphID, "", NULL, props)) { graphID=++maxGraphID; }
 /*  init(NULL, inheritedFrom);
@@ -114,59 +117,65 @@ void graph::genGraph(std::string dotText) {
 
 // Add a directed edge from the location of the from anchor to the location of the to anchor
 void graph::addDirEdge(anchor from, anchor to) {
-  dbglogObj *obj = new dbglogObj(new properties());
+  dbglogObj obj(new properties());
   
   map<string, string> newProps;
   newProps["from"] = txt()<<from.getID();
   newProps["to"]   = txt()<<to.getID();
-  obj->props->add("dirEdge", newProps);
+  obj.props->add("dirEdge", newProps);
   
   //dbg.tag("dirEdge", properties, false);
-  dbg.tag(obj);
-  
-  delete(obj);
+  dbg.tag(&obj);
 }
 
 // Add an undirected edge between the location of the a anchor and the location of the b anchor
 void graph::addUndirEdge(anchor a, anchor b) {
-  dbglogObj *obj = new dbglogObj(new properties());
+  dbglogObj obj(new properties());
   
   map<string, string> newProps;
   newProps["a"] = txt()<<a.getID();
   newProps["b"] = txt()<<b.getID();
-  obj->props->add("undirEdge", newProps);
+  obj.props->add("undirEdge", newProps);
   //dbg.tag("undEdge", properties, false);
   
-  dbg.tag(obj);
-  
-  delete(obj);
+  dbg.tag(&obj);
 }
 
-/* ADD THIS IF WE WISH TO HAVE NODES THAT EXISTED INSIDE THE GRAPH BUT WERE NOT CONNECTED VIA EDGES
+/* ADD THIS IF WE WISH TO HAVE NODES THAT EXISTED INSIDE THE GRAPH BUT WERE NOT CONNECTED VIA EDGES*/
 // Called to notify this block that a sub-block was started/completed inside of it. 
 // Returns true of this notification should be propagated to the blocks 
 // that contain this block and false otherwise.
 bool graph::subBlockEnterNotify(block* subBlock) {
   //cout << "graph::subBlockEnterNotify(subBlock="<<subBlock->getLabel()<<")\n";
   // If this block is immediately contained inside this graph
-  location common = dbgStream::commonSubLocation(getLocation(), subBlock->getLocation());
+//  location common = dbgStream::commonSubLocation(getLocation(), subBlock->getLocation());
   
-  / *cout << "subBlock->getLocation().back().second.size()="<<subBlock->getLocation().back().second.size()<<" common.back().second.size()="<<common.back().second.size()<<endl;
-  cout << "subBlock->getLocation="<<dbg.blockGlobalStr(subBlock->getLocation())<<endl;* /
+  /*cout << "subBlock->getLocation().back().second.size()="<<subBlock->getLocation().back().second.size()<<" common.back().second.size()="<<common.back().second.size()<<endl;
+  cout << "subBlock->getLocation="<<dbg.blockGlobalStr(subBlock->getLocation())<<endl;*/
   // If subBlock is nested immediately inside the graph's block 
 //???  // (the nesting gap is 2 blocks rather than 1 since each block is chopped up into sub-blocks that
 //???  //  span the text between adjacent attribute definitions and major block terminal points)
-  assert(subBlock->getLocation().size()>0);
-  if(common == getLocation() &&
+//  assert(subBlock->getLocation().size()>0);
+/*  if(common == getLocation() &&
      subBlock->getLocation().size() == common.size()/ * &&
-     subBlock->getLocation().back().second.size()-1 == common.back().second.size()* /)
+     subBlock->getLocation().back().second.size()-1 == common.back().second.size() * /)*/
   { 
-    nodes[subBlock->getLocation()] = node(maxNodeID, subBlock->getLabel(), subBlock->getAnchor());
+    dbglogObj obj(new properties());
+  
+    map<string, string> newProps;
+    newProps["nodeID"]   = txt()<<maxNodeID;
+    newProps["anchorID"] = txt()<<subBlock->getAnchor().getID();
+    newProps["label"]    = txt()<<subBlock->getLabel();
+    obj.props->add("node", newProps);
+  //dbg.tag("undEdge", properties, false);
+  
+    dbg.tag(&obj);
+   //nodes[subBlock->getLocation()] = node(maxNodeID, subBlock->getLabel(), subBlock->getAnchor());
     maxNodeID++;
   }
   
   return false;
-}*/
+}
 
 }; // namespace structure
 }; // namespace dbglog

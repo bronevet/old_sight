@@ -27,14 +27,18 @@ attributesLayoutHandlerInstantiator attributesLayoutHandlerInstance;
 mfemLayoutHandlerInstantiator mfemLayoutHandlerInstance;
 #endif
 
+//#define VERBOSE
+
 int main(int argc, char** argv) {
   if(argc!=2) { cerr<<"Usage: slayout fName"<<endl; exit(-1); }
   char* fName = argv[1];
 
+  #ifdef VERBOSE
   cout << "layoutHandlers:\n";
   for(map<std::string, layoutEnterHandler>::iterator i=layoutEnterHandlers.begin(); i!=layoutEnterHandlers.end(); i++)
-    cout << i->first << endl;
-  
+    cout << i->first << endl;*/
+  #endif
+ 
   FILE* f = fopen(fName, "r");
   if(f==NULL) { cerr << "ERROR opening file \""<<fName<<"\" for reading! "<<strerror(errno)<<endl; exit(-1); }
   char buf[10000];
@@ -60,7 +64,9 @@ int main(int argc, char** argv) {
     // Look for the start of the next tag
     success = readUntil(true, "[", 1, termChar, f, buf, bufIdx, bufSize, readTxt);
     // Emit the text before the start of the tag
+    #ifdef VERBOSE
     cout << "text=\""<<readTxt<<"\""<<endl;
+    #endif
     dbg << readTxt;
       
     if(!success) goto PARSE_END;
@@ -82,7 +88,9 @@ int main(int argc, char** argv) {
       //if(!(success = readUntil(true, "]", 1, termChar, f, buf, bufIdx, bufSize, ID))) goto PARSE_END;
 //cout << "tagName=\""<<tagName<<"\" termChar=\""<<termChar<<"\""<<" buf[bufIdx]=\""<<buf[bufIdx]<<"\""<<endl;
       if(!nextChar(f, buf, bufIdx, bufSize)) goto PARSE_END;*/
+      #ifdef VERBOSE
       cout << "END \""<<tagName<<"\", #stack["<<tagName<<"]="<<stack[tagName].size()<<endl;
+      #endif
       
       // Call the exit handler of the most recently-entered object with this tag name
       // and pop the object off its stack
@@ -163,13 +171,17 @@ int main(int argc, char** argv) {
       // (it was not derived by another)
       if(!derived) {
         // Print out the properties
+        #ifdef VERBOSE
         cout << "START "<<tagName<<endl;
+        #endif
         pStack.push_back(make_pair(tagName, properties));
+        #ifdef VERBOSE
         for(list<pair<string, map<string, string> > >::iterator s=pStack.begin(); s!=pStack.end(); s++) {
           cout << "    "<<s->first<<":"<<endl;
           for(map<string, string>::iterator p=s->second.begin(); p!=s->second.end(); p++)
             cout << "        \""<<p->first<<"\" : \""<<p->second<<"\""<<endl;
         }
+        #endif
                 
         // Call the entry handler of the most recently-entered object with this tag name
         // and push the object it returns onto the stack dedicated to objects of this type.

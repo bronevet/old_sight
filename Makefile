@@ -34,7 +34,7 @@ endif
 .PHONY: apps
 apps:
 	cd apps/mfem;  make ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS}
-#	cd apps/mcbench; ./build-linux-x86_64.sh ${ROOT_PATH}
+	cd apps/mcbench; ./build-linux-x86_64.sh ${ROOT_PATH}
 
 examples: libdbglog_structure.a
 	cd examples; make ROOT_PATH=${ROOT_PATH} OS=${OS}

@@ -28,6 +28,8 @@ graphLayoutHandlerInstantiator::graphLayoutHandlerInstantiator() {
   layoutExitHandlers ["dirEdge"]   = &defaultExitHandler;
   layoutEnterHandlers["undirEdge"] = &graph::addUndirEdge;
   layoutExitHandlers ["undirEdge"] = &defaultExitHandler;
+  layoutEnterHandlers["node"]      = &graph::addNode;
+  layoutExitHandlers ["node"]      = &defaultExitHandler;
 }
 
 // The path the directory where output files of the graph widget are stored
@@ -110,11 +112,18 @@ string graph::genDotGraph() {
   ostringstream dot;
   dot << "digraph G {"<<endl;
 
-  /*cout << "nodes("<<nodes.size()<<")="<<endl;
-  for(map<location, node >::iterator b=nodes.begin(); b!=nodes.end(); b++)
-    cout << "    " << dbg.blockGlobalStr(b->first)<< " => [" << b->second.label << ", " << b->second.a.getLinkJS() << "]"<<endl;*/
-  for(map<location, node>::iterator b=nodes.begin(); b!=nodes.end(); b++)
-    dot << "\tnode_"<<b->second.ID<<" [shape=box, label=\""<<b->second.label<<"\", href=\"javascript:"<<b->second.a.getLinkJS()<<"\"];\n";
+  /*cout << "graph::genDotGraph() #nodes="<<nodes.size()<<", #edges="<<edges.size()<<endl;
+
+  cout << "nodes("<<nodes.size()<<")="<<endl;
+  for(map<anchor, string>::iterator b=nodes.begin(); b!=nodes.end(); b++)
+    cout << "    " << b->first.getID()<< " => [" << b->second << ", " << b->first.getLinkJS() << "]"<<endl;
+
+  cout << "edges("<<edges.size()<<")="<<endl;
+  for(list<graphEdge>::iterator e=edges.begin(); e!=edges.end(); e++)
+    cout << "    "<<e->getFrom().str()<<" => "<<e->getTo().str()<<endl;
+*/
+  for(map<anchor, string>::iterator b=nodes.begin(); b!=nodes.end(); b++)
+    dot << "\tnode_"<<b->first.getID()<<" [shape=box, label=\""<<b->second<<"\", href=\"javascript:"<<b->first.getLinkJS()<<"\"];\n";
 
   // Between the time when an edge was inserted into edges and now, the anchors on both sides of each
   // edge should have been located (attached to a concrete location in the output). This means that
@@ -134,9 +143,9 @@ string graph::genDotGraph() {
     cout << "    to="<<e->to.str("    ")    <<" : "<<nodes[e->to.getLocation()].first<<endl;
   }*/
   for(set<graphEdge>::iterator e=uniqueEdges.begin(); e!=uniqueEdges.end(); e++) {
-    dot << "\tnode_" << nodes[e->from.getLocation()].ID << 
+    dot << "\tnode_" << e->from.getID() << 
            " -> "<<
-           "node_" << nodes[e->to.getLocation()].ID << 
+           "node_" << e->to.getID() << 
            (e->directed? "": "[dir=none]") << ";\n";
   }
 
@@ -181,13 +190,14 @@ void graph::outputCanvizDotGraph(std::string dot) {
 
 // Add a directed edge from the location of the from anchor to the location of the to anchor
 void graph::addDirEdge(anchor from, anchor to) {
+  //cout << "graph::addDirEdge("<<from.getID()<<" => "<<to.getID()<<")"<<endl;
   edges.push_back(graphEdge(from, to, true)); 
 }
 
 // Static version of the call that pulls the from/to anchor IDs from the properties iterator and calls addDirEdge() in the currently active graph
 void* graph::addDirEdge(properties::iterator props) {
-  anchor from(properties::getInt(props, "from"));
-  anchor to(properties::getInt(props, "to"));
+  anchor from(false, properties::getInt(props, "from"));
+  anchor to(false, properties::getInt(props, "to"));
   assert(gStack.size()>0);
   gStack.back()->addDirEdge(from, to);
   return NULL;
@@ -201,11 +211,21 @@ void graph::addUndirEdge(anchor a, anchor b) {
 
 // Static version of the call that pulls the from/to anchor IDs from the properties iterator and calls addUndirEdge() in the currently active graph
 void* graph::addUndirEdge(properties::iterator props) {
-  anchor a(properties::getInt(props, "a"));
-  anchor b(properties::getInt(props, "b"));
+  anchor a(false, properties::getInt(props, "a"));
+  anchor b(false, properties::getInt(props, "b"));
   assert(gStack.size()>0);
   gStack.back()->addUndirEdge(a, b); 
   return NULL;
+}
+
+// Add a node to the graph
+void graph::addNode(anchor a, string label) {
+  nodes[a] = label;
+}
+
+void* graph::addNode(properties::iterator props) {
+  gStack.back()->addNode(anchor(false, properties::getInt(props, "anchorID")), 
+                         properties::get(props, "label"));
 }
 
 }; // namespace layout

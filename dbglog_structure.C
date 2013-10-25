@@ -292,6 +292,8 @@ block::block(string label, properties* props) : label(label) {
     this->props->add("block", newProps);
     
     dbg.enter(this);
+
+    dbg.enterBlock(this);
   }
 }
 
@@ -309,11 +311,16 @@ block::block(string label, const anchor& pointsTo, properties* props) : label(la
     newProps["label"] = label;
     newProps["ID"] = txt()<<blockID;
     newProps["anchorID"] = txt()<<startA.getID();
-    newProps["numAnchors"] = "1";
-    newProps["anchor_0"] = txt()<<pointsTo.getID();
+    if(pointsTo != anchor::noAnchor) {
+      newProps["numAnchors"] = "1";
+      newProps["anchor_0"] = txt()<<pointsTo.getID();
+    } else
+      newProps["numAnchors"] = "0";
     this->props->add("block", newProps);
     
     dbg.enter(this);
+
+    dbg.enterBlock(this);
   }
 }
 
@@ -332,22 +339,30 @@ block::block(string label, const set<anchor>& pointsTo, properties* props) : lab
     newProps["label"] = label;
     newProps["ID"] = txt()<<blockID;
     newProps["anchorID"] = txt()<<startA.getID();
-    newProps["numAnchors"] = txt()<<pointsTo.size();
     
     int i=0;
-    for(set<anchor>::const_iterator a=pointsTo.begin(); a!=pointsTo.end(); a++, i++)
-      newProps[txt()<<"anchor_"<<i] = txt()<<a->getID();
-    
+    for(set<anchor>::const_iterator a=pointsTo.begin(); a!=pointsTo.end(); a++) {
+      if(*a != anchor::noAnchor) {
+        newProps[txt()<<"anchor_"<<i] = txt()<<a->getID();
+        i++;
+      }
+    }
+    newProps["numAnchors"] = txt()<<i;
+
     this->props->add("block", newProps);
     
     dbg.enter(this);
+
+    dbg.enterBlock(this);
   }
 }
 
 block::~block() {
   assert(props);
-  if(props->active)
+  if(props->active) {
+    dbg.exitBlock();
     dbg.exit(this);
+  }
 }
 
 // Increments blockD. This function serves as the one location that we can use to target conditional
@@ -534,6 +549,8 @@ dbgStream::~dbgStream()
 // Called when a block is entered.
 // b: The block that is being entered
 void dbgStream::enterBlock(block* b) {
+  subBlockEnterNotify(b);
+
   blocks.push_back(b);
   loc.enterBlock();
 }
@@ -546,16 +563,23 @@ block* dbgStream::exitBlock() {
  
   block* lastB = blocks.back();
   blocks.pop_back();
+
+  subBlockExitNotify(lastB);
+
   return lastB;
 }
 
 // Called to inform the blocks that contain the given block that it has been entered
 void dbgStream::subBlockEnterNotify(block* subBlock)
 {
+  //cout << "subBlockEnterNotify("<<subBlock->getLabel()<<")"<<endl;
   // Walk up the block stack, informing each block about the new arrival until the block's
   // subBlockEnterNotify() function returns false to indicate that the notification should not be propagated further.
   for(list<block*>::const_reverse_iterator b=blocks.rbegin(); b!=blocks.rend(); b++)
+  {
+    //cout << "    "<<(*b)->getLabel()<<endl;
     if(!(*b)->subBlockEnterNotify(subBlock)) return;
+  }
 }
 
 // Called to inform the blocks that contain the given block that it has been exited
