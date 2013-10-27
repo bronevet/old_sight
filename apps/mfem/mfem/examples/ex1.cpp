@@ -29,9 +29,9 @@
 #include <fstream>
 #include "mfem.hpp"
 
-#include "dbglog.h"
+#include "sight.h"
 #include "mfem.h"
-using namespace dbglog;
+using namespace sight;
 
 int main (int argc, char *argv[])
 {

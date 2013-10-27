@@ -12,8 +12,8 @@
 #ifndef MFEM_TABLE
 #define MFEM_TABLE
 
-#include "dbglog.h"
-using namespace dbglog;
+#include "sight.h"
+using namespace sight;
 
 
 // Data types for Table.

@@ -22,8 +22,8 @@
 #include "../fem/fem.hpp"
 #include "../general/sort_pairs.hpp"
 
-#include "dbglog.h"
-using namespace dbglog;
+#include "sight.h"
+using namespace sight;
 
 void Mesh::GetElementJacobian(int i, DenseMatrix &J)
 {

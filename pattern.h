@@ -5,7 +5,7 @@
 #include <map>
 #include <typeinfo>
 #include <string>
-#include "dbglog.h"
+#include "sight.h"
 
 const int low=1;
 const int high=10;
@@ -221,7 +221,7 @@ class line: public aggregate
   std::string loopStr(std::vector<std::string> ctrl) const;
 };
 
-class transGraph: public dbglog::dottable
+class transGraph: public sight::dottable
 {
   double value;
   

@@ -1,8 +1,8 @@
-#include "dbglog.h"
+#include "sight.h"
 #include <map>
 #include <assert.h>
 using namespace std;
-using namespace dbglog;
+using namespace sight;
 
 int fibConditionalIndent(int a);
 

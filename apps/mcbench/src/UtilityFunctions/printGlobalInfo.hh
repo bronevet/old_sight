@@ -27,8 +27,8 @@
 #include <vector>
 #include <string>
 
-#include "dbglog.h"
-using namespace dbglog;
+#include "sight.h"
+using namespace sight;
 
 
 namespace IMC_namespace

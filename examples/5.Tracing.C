@@ -1,9 +1,9 @@
-#include "dbglog.h"
+#include "sight.h"
 #include <map>
 #include <assert.h>
 
 using namespace std;
-using namespace dbglog;
+using namespace sight;
 
 int main(int argc, char** argv) {
   initializeDebug(argc, argv, "5.Tracing", "dbg.5.Tracing");

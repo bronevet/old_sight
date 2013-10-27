@@ -35,11 +35,11 @@
 //               We recommend viewing example 1 before viewing this example.
 
 #include <fstream>
-#include "dbglog.h"
+#include "sight.h"
 #include "mfem.h"
 #include "mfem.hpp"
 
-using namespace dbglog;
+using namespace sight;
 
 int main (int argc, char *argv[])
 {

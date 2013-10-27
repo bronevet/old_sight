@@ -18,8 +18,8 @@
 #include "../general/table.hpp"
 #include "densemat.hpp"
 
-#include "dbglog.h"
-using namespace dbglog;
+#include "sight.h"
+using namespace sight;
 
 
 class RowNode

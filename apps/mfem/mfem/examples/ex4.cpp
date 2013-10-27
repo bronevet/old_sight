@@ -28,11 +28,11 @@
 //               We recommend viewing examples 1-3 before viewing this example.
 
 #include <fstream>
-#include "dbglog.h"
+#include "sight.h"
 #include "mfem.h"
 #include "mfem.hpp"
 
-using namespace dbglog;
+using namespace sight;
 
 // Exact solution, F, and r.h.s., f. See below for implementation.
 void F_exact(const Vector &, Vector &);

@@ -5,7 +5,7 @@ use strict;
 use CGI;
 use Cwd;
 
-require "dbglogDefines.pl";
+require "sightDefines.pl";
 require "gdbLineNum.pl";
 
 my $q = CGI->new;
@@ -29,9 +29,9 @@ print $f "set pagination off\n";
 print $f "set logging on\n";
 print $f "set breakpoint pending on\n";
 print $f "file $execFile\n";
-#print $f "sharedlibrary dbglog.o\n";
+#print $f "sharedlibrary sight.o\n";
 #print $f "break advanceBlockCount\n";
-print $f "break dbglog.C:$main::gdbLineNum\n";
+print $f "break sight.C:$main::gdbLineNum\n";
 print $f "cond 1 blockCount==$tgtCount\n";
 print $f "r $args\n";
 print $f "finish\n";
@@ -45,10 +45,10 @@ close($f);
 
 my ($username, $pass, $uid, $gid, $quota, $comment, $gcos, $dir, $shell, $expire) = getpwuid( $< );
 #my ($groupname, $grouppasswd, $gid2, $groupmembers) = getgrgid($gid);
-#my $cmd = "/g/g15/bronevet/code/dbglog/widgets/shellinabox-2.14/shellinaboxd --cgi -t -s \"/:$username:$gid:".getcwd.":gdb -x gdbscript\"";
-#my $cmd = "/g/g15/bronevet/code/dbglog/widgets/shellinabox-2.14/shellinaboxd --cgi -t -s \"/:SSH:bijisan.lojik.net\"";
-#my $cmd = "ssh -t -t $username\@".`hostname`." /g/g15/bronevet/code/dbglog/widgets/shellinabox-2.14/shellinaboxd --cgi -t -s \"/:SSH:bijisan.lojik.net\"";
-my $cmd = "$main::dbglogPath/widgets/shellinabox/bin/shellinaboxd --cgi -t -s \"/:$username:$gid:".getcwd.":ssh -o PreferredAuthentications=keyboard-interactive -o PubkeyAuthentication=no $username\@$hostname gdb -x ".getcwd."/gdbscript\"";
+#my $cmd = "/g/g15/bronevet/code/sight/widgets/shellinabox-2.14/shellinaboxd --cgi -t -s \"/:$username:$gid:".getcwd.":gdb -x gdbscript\"";
+#my $cmd = "/g/g15/bronevet/code/sight/widgets/shellinabox-2.14/shellinaboxd --cgi -t -s \"/:SSH:bijisan.lojik.net\"";
+#my $cmd = "ssh -t -t $username\@".`hostname`." /g/g15/bronevet/code/sight/widgets/shellinabox-2.14/shellinaboxd --cgi -t -s \"/:SSH:bijisan.lojik.net\"";
+my $cmd = "$main::sightPath/widgets/shellinabox/bin/shellinaboxd --cgi -t -s \"/:$username:$gid:".getcwd.":ssh -o PreferredAuthentications=keyboard-interactive -o PubkeyAuthentication=no $username\@$hostname gdb -x ".getcwd."/gdbscript\"";
 #print $q->header('text/html');
 #print "$cmd\n";
 #foreach my $key (keys %ENV) { print "$key => $ENV{$key}<br>\n"; }

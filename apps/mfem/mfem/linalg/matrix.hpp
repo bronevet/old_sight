@@ -17,8 +17,8 @@
 #include "../general/array.hpp"
 #include "operator.hpp"
 
-#include "dbglog.h"
-using namespace dbglog;
+#include "sight.h"
+using namespace sight;
 
 
 class  MatrixInverse;

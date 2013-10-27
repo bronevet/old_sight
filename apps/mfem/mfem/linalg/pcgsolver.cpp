@@ -16,9 +16,9 @@
 #include "vector.hpp"
 #include "matrix.hpp"
 #include "sparsemat.hpp"
-#include "dbglog.h"
+#include "sight.h"
 
-using namespace dbglog;
+using namespace sight;
 
 // Preconditined conjugate gradient
 

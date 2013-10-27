@@ -17,8 +17,8 @@
 #include <math.h>
 #include "../general/array.hpp"
 
-#include "dbglog.h"
-using namespace dbglog;
+#include "sight.h"
+using namespace sight;
 
 
 /// Vector data type.

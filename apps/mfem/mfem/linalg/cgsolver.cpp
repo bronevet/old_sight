@@ -15,8 +15,8 @@
 #include "matrix.hpp"
 #include "sparsemat.hpp"
 
-#include "dbglog.h"
-using namespace dbglog;
+#include "sight.h"
+using namespace sight;
 
 
 // Conjugate Gradient solver
