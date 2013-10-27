@@ -11,6 +11,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <unistd.h>
 #include "binreloc.h"
 #include <errno.h>
 #include "getAllHostnames.h" 
@@ -81,7 +82,20 @@ void initializeDebug_internal(int argc, char** argv, string title, string workDi
     if(execFile==NULL) { cerr << "ERROR reading application's executable name after successful initialization!"<<endl; exit(-1); }
     newProps["execFile"] = execFile;
     
-//!!!    newProps["appPWD"] = `pwd`;
+    char cwd[FILENAME_MAX];
+    getcwd(cwd, FILENAME_MAX);
+    newProps["workingDir"] = cwd;
+    
+    // Record the names and values of all the environment variables
+    char** e = environ;
+    int numEnvVars=0;
+    while(e) {
+      newProps[txt()<<"envName_"+numEnvVars] = *e;
+      newProps[txt()<<"envVal_"+numEnvVars] = getenv(*e);
+      e++;
+      numEnvVars++;
+    }
+    newProps["numEnvVars"] = txt()<<numEnvVars;
   }
   
   // Get all the aliases of the current host's name
@@ -521,16 +535,17 @@ void dbgStream::init(properties* props, string title, string workDir, string img
  
   // Version 1: write output to a file 
   // Create the output file to which the debug log's structure will be written
-  //dbgFile = &(createFile(txt()<<workDir<<"/structure"));
-  dbgFile = NULL;
-  // Call the parent class initialization function to connect it dbgBuf of the output file
-  //buf=new dbgBuf(dbgFile->rdbuf());
-
-  // Version 2: write output to a pipe for slayout to use immediately
-  FILE *out = popen((txt()<<ROOT_PATH<<"/slayout").c_str(), "w");
-  int outFD = fileno(out);
-  buf = new dbgBuf(new fdoutbuf(outFD));
-
+  if(getenv("SIGHT_FILE_OUT")) {
+    dbgFile = &(createFile(txt()<<workDir<<"/structure"));
+    // Call the parent class initialization function to connect it dbgBuf of the output file
+    buf=new dbgBuf(dbgFile->rdbuf());
+  // Version 2 (default): write output to a pipe for slayout to use immediately
+  } else {
+    dbgFile = NULL;
+    FILE *out = popen((txt()<<ROOT_PATH<<"/slayout").c_str(), "w");
+    int outFD = fileno(out);
+    buf = new dbgBuf(new fdoutbuf(outFD));
+  }
   ostream::init(buf);
 
   this->props = props; 
