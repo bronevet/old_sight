@@ -84,16 +84,19 @@ void initializeDebug_internal(int argc, char** argv, string title, string workDi
     
     char cwd[FILENAME_MAX];
     getcwd(cwd, FILENAME_MAX);
-    newProps["workingDir"] = cwd;
-    
+    newProps["cwd"] = cwd;
+   
     // Record the names and values of all the environment variables
     char** e = environ;
     int numEnvVars=0;
-    while(e) {
-      newProps[txt()<<"envName_"+numEnvVars] = *e;
-      newProps[txt()<<"envVal_"+numEnvVars] = getenv(*e);
+    while(*e) {
+      string var = *e;
+      int splitPoint = var.find("=");
+      //cout << *e << ": " << var.substr(0, splitPoint) << " => "<<var.substr(splitPoint+1)<<endl;
+      newProps[txt()<<"envName_"<<numEnvVars] = var.substr(0, splitPoint);
+      newProps[txt()<<"envVal_"<<numEnvVars] = var.substr(splitPoint+1);
+      numEnvVars++; 
       e++;
-      numEnvVars++;
     }
     newProps["numEnvVars"] = txt()<<numEnvVars;
   }
@@ -666,7 +669,7 @@ string dbgStream::enterStr(sightObj* obj) {
     
     int j=0;
     for(std::map<std::string, std::string>::const_iterator p=i->second.begin(); p!=i->second.end(); p++, j++)
-      oss << " name"<<j<<"=\""<<p->first<<"\" val"<<j<<"=\""<<p->second<<"\"";
+      oss << " name"<<j<<"=\""<<escape(p->first)<<"\" val"<<j<<"=\""<<escape(p->second)<<"\"";
     
     oss << "]";
   }
@@ -746,24 +749,6 @@ indent::~indent() {
   if(props->active) {
     dbg.exit(this);
   }
-}
-
-// Given a string, returns a version of the string with all the control characters that may appear in the 
-// string escaped to that the string can be written out to Dbg::dbg with no formatting issues.
-// This function can be called on text that has already been escaped with no harm.
-std::string escape(std::string s)
-{
-  string out;
-  for(unsigned int i=0; i<s.length(); i++) {
-    // Manage HTML tags
-         if(s[i] == '<') out += "&lt;";
-    else if(s[i] == '>') out += "&gt;";
-    // Manage hashes, since they confuse the C PreProcessor CPP
-    else if(s[i] == '#') out += "&#35;";
-    else if(s[i] == ' ') out += "&nbsp;";
-    else                 out += s[i];
-  }
-  return out;
 }
 
 char printbuf[100000];

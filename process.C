@@ -7,7 +7,9 @@
 #include <string.h>
 #include <errno.h>
 #include "process.h"
+#include "sight_common_internal.h"
 using namespace std;
+using namespace sight::common;
 
 //#define VERBOSE
 namespace sight {
@@ -30,17 +32,11 @@ void structureParser<streamT>::init(streamT* stream) {
   buf = new char[bufSize];
   assert(buf);
   
-  // Start reading the file, filling as much of buf as possible. Store the number of
-  // bytes read in dataInBuf and initialize bufIdx to refer to the start of buf.
-  //cout << "f="<<f<<", feof(f)="<<feof(f)<<", ferror(f)="<<ferror(f)<<", sizeof(buf)="<<sizeof(buf)<<endl;
-  dataInBuf = readData();
-  bufIdx=0;
-  
-  loc = start;
+ loc = start;
 }
 
 template<typename streamT>
-pair<typename structureParser<streamT>::tagType, const properties&> structureParser<streamT>::next() {
+pair<typename structureParser<streamT>::tagType, const properties*> structureParser<streamT>::next() {
   bool success = true;
   string readTxt; // String where text read by readUntil() will be placed
   char termChar;  // Character where readUntil() places the character that caused parsing to terminate
@@ -53,15 +49,28 @@ pair<typename structureParser<streamT>::tagType, const properties&> structurePar
   
   // Reset tagProperties in preparation of a new tag being read
   tagProperties.clear();
-  
+
+  #ifdef VERBOSE 
+  cout << "============"<<(loc==start?"start":(loc==textRead?"textRead":(loc==enterTagRead?"enterTagRead":(loc==exitTagRead?"exitTagRead":(loc==done?"done":"???")))))<<"============"<<endl;
+  if(loc!=start) cout << "buf["<<bufIdx<<"]="<<buf[bufIdx]<<endl;
+  #endif
+ 
   // When we enter this function we resume text processing from where we left off
   // in the last call to getNext(). loc records this location and we now jump to it.
   switch(loc) {
-    textRead:     goto TEXT_READ_LOC;
-    enterTagRead: goto ENTER_TAG_READ_LOC;
-    exitTagRead:  goto EXIT_TAG_READ_LOC;
-    done:         goto DONE_LOC;
+    case start:        goto START_LOC;
+    case textRead:     goto TEXT_READ_LOC;
+    case enterTagRead: goto ENTER_TAG_READ_LOC;
+    case exitTagRead:  goto EXIT_TAG_READ_LOC;
+    case done:         goto DONE_LOC;
   }
+
+  START_LOC:
+  // Start reading the file, filling as much of buf as possible. Store the number of
+  // bytes read in dataInBuf and initialize bufIdx to refer to the start of buf.
+  //cout << "f="<<f<<", feof(f)="<<feof(f)<<", ferror(f)="<<ferror(f)<<", sizeof(buf)="<<sizeof(buf)<<endl;
+  dataInBuf = readData();
+  bufIdx=0;
   
   while(success) {
 //cout << "main loop, bufIdx="<<bufIdx<<", bufSize="<<bufSize<<endl;
@@ -81,7 +90,7 @@ pair<typename structureParser<streamT>::tagType, const properties&> structurePar
       pMap["text"] = readTxt;
       tagProperties.add("text", pMap);
       loc = textRead;
-      return make_pair(enterTag, tagProperties);
+      return make_pair(enterTag, &tagProperties);
     }
     
     if(!success) goto DONE_LOC;
@@ -107,7 +116,7 @@ pair<typename structureParser<streamT>::tagType, const properties&> structurePar
       
       tagProperties.add(tagName, pMap);
       loc = exitTagRead;
-      return make_pair(exitTag, tagProperties);
+      return make_pair(exitTag, &tagProperties);
       
       EXIT_TAG_READ_LOC:
       
@@ -143,7 +152,7 @@ pair<typename structureParser<streamT>::tagType, const properties&> structurePar
         string propNameName, propNameVal;
         if(!(success = readProperty(propNameName, propNameVal, termChar))) { goto DONE_LOC; }
 
-//cout << "  prop "<<p<<": "<<propNameName<<" = "<<propNameVal<<endl;
+        //cout << "  prop "<<p<<": "<<propNameName<<" = "<<propNameVal<<endl;
 
         // Skip until the start of the next name/val pair
         if(!(success = readUntil(true, " \t\r\n]", 5, termChar, readTxt))) goto DONE_LOC;
@@ -153,9 +162,9 @@ pair<typename structureParser<streamT>::tagType, const properties&> structurePar
         string propValName, propValVal;
         if(!(success = readProperty(propValName, propValVal, termChar))) { goto DONE_LOC; }
 
-//        cout << "  prop "<<p<<": "<<propValName<<" = "<<propValVal<<endl;
+        //cout << "  prop "<<p<<": "<<propValName<<" = "<<propValVal<<endl;
 
-        pMap[propNameVal] = propValVal;
+        pMap[unescape(propNameVal)] = unescape(propValVal);
 
 //        cout << "  prop "<<p<<": termChar=\""<<termChar<<"\""<<" buf["<<bufIdx<<"]=\""<<buf[bufIdx]<<"\""<<endl;
 
@@ -189,7 +198,7 @@ pair<typename structureParser<streamT>::tagType, const properties&> structurePar
         #endif
         
         loc = enterTagRead;
-        return make_pair(enterTag, tagProperties);
+        return make_pair(enterTag, &tagProperties);
         
         ENTER_TAG_READ_LOC:
         ;
@@ -202,7 +211,7 @@ pair<typename structureParser<streamT>::tagType, const properties&> structurePar
 
   DONE_LOC:
   loc = done;
-  return make_pair(exitTag, tagProperties);
+  return make_pair(exitTag, &tagProperties);
 }
 
 // Read a property name/value pair from the given file, setting name and val to them.
@@ -296,7 +305,7 @@ bool structureParser<streamT>::readUntil(bool inTerm, const char* termChars, int
     // If we've encountered an error, yell
     if(streamError()) {
       fprintf(stderr, "ERROR reading file!");
-      exit(-1);
+//      exit(-1);
     }
     
     nextChar();

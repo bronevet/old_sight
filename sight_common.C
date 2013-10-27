@@ -17,7 +17,7 @@ bool isEnabled() {
   static bool enabledDebug; // Records whether log generation has been enabled or explicitly disabled
   if(!checked) {
     checked = true;
-    enabledDebug = (getenv("DISABLE_sight") == NULL);
+    enabledDebug = (getenv("DISABLE_SIGHT") == NULL);
   }
   return enabledDebug;
 }
@@ -111,6 +111,15 @@ std::string properties::str(iterator props) {
   return oss.str();
 }
 
+std::string properties::str() {
+  ostringstream oss;
+  oss << "[properties:"<<endl;
+  for(iterator i=begin(); i!=end(); i++)
+    oss << "    "<<properties::str(i)<<endl;
+  oss << "]";
+  return oss.str();
+}
+
 namespace common {
 
 /*********************
@@ -128,6 +137,77 @@ pair<std::string, std::string> dbgStream::createWidgetDir(std::string widgetName
   
   return make_pair(workDir+"/html/widgets/"+widgetName, "widgets/"+widgetName);
 }
+
+// Given a string, returns a version of the string with all the control characters that may appear in the
+// string escaped to that the string can be written out to Dbg::dbg with no formatting issues.
+// This function can be called on text that has already been escaped with no harm.
+std::string escape(std::string s)
+{
+  string out;
+  for(unsigned int i=0; i<s.length(); i++) {
+    switch(s[i]) {
+      // Manage HTML tags
+      case '<': out += "&#60;"; break;
+      case '>': out += "&#62;"; break;
+      case '/': out += "&#47;"; break;
+      case '[': out += "&#91;"; break;
+      case '\\': out += "&#92;"; break;
+      case ']': out += "&#93;"; break;
+      case '"': out += "&#34;"; break;
+      case '&': out += "&#38;"; break;
+      // Manage hashes, since they confuse the C PreProcessor CPP
+      case '#': out += "&#35;"; break;
+      case ' ': out += "&#160;"; break;
+      case '\n': out += "&#0;"; break;
+      case '\r': out += "&#1;"; break;
+      default:  out += s[i]; break;
+    }
+  }
+  return out;
+}
+
+std::string unescape(std::string s) {
+  string out;
+  unsigned int i=0;
+  while(i<s.length()) {
+    // If this is the start of a character's encoding
+    if(s[i]=='&') {
+      assert(i+1 < s.length());
+      assert(s[i+1]=='#');
+      i+=2;
+      string encoding;
+      while(s[i]!=';' && i<s.length()) {
+        encoding += s[i];
+        i++;
+      }
+      assert(encoding.length()>0);
+      long code = strtol(encoding.c_str(),  NULL, 10);
+      switch(code) {
+        case 60: out+='<'; break;
+        case 62: out+='>'; break;
+        case 47: out+='/'; break;
+        case 91: out+='['; break;
+        case 92: out+='\\'; break;
+        case 93: out+=']'; break;
+        case 34: out+='"'; break;
+        case 38: out+='&'; break;
+        case 35: out+='#'; break;
+        case 160: out+=' '; break;
+        case 0:  out+='\n'; break;
+        case 1:  out+='\r'; break;
+        default: assert(0);
+      }
+      assert(s[i]==';');
+      i++;
+    // If this is not an encoded character, add it directly to tou
+    } else {
+      out += s[i];
+      i++;
+    }
+  }
+  return out;
+}
+
 
 }; // namespace common
 }; // namespace sight

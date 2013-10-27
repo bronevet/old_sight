@@ -69,7 +69,7 @@ class structureParser {
   public:
   // Reads more data from the data source, returning the type of the next tag read and the properties of 
   // the object it denotes.
-  std::pair<tagType, const properties&> next();
+  std::pair<tagType, const properties*> next();
   
   protected:
   // Read a property name/value pair from the given file, setting name and val to them.

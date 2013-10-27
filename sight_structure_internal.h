@@ -352,11 +352,6 @@ class indent : public common::sightObj
   ~indent();
 };
 
-// Given a string, returns a version of the string with all the control characters that may appear in the 
-// string escaped to that the string can be written out to Dbg::dbg with no formatting issues.
-// This function can be called on text that has already been escaped with no harm.
-std::string escape(std::string s);
-  
 int dbgprintf(const char * format, ... );
 
 }; // namespace structure

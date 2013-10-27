@@ -112,6 +112,8 @@ class properties
   
   // Returns the string representation of the given properties iterator  
   static std::string str(iterator props);
+  
+  std::string str();
 };
 
 namespace common {
@@ -152,6 +154,12 @@ class dbgStream : public std::ostream
     
   dbgStream(std::streambuf* buf): std::ostream(buf) {}
 }; // dbgStream
+
+// Given a string, returns a version of the string with all the control characters that may appear in the
+// string escaped to that the string can be written out to Dbg::dbg with no formatting issues.
+// This function can be called on text that has already been escaped with no harm.
+std::string escape(std::string s);
+std::string unescape(std::string s);
 
 }; // namespace common
 }; // namespace sight
