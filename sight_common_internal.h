@@ -104,6 +104,12 @@ class properties
   // Returns the name of the most-derived class 
   std::string name() const;
   
+  // Returns the number of tags recorded in this object
+  int size() const;
+  
+  // Erases the contents of this object
+  void clear();
+  
   // Returns the string representation of the given properties iterator  
   static std::string str(iterator props);
 };

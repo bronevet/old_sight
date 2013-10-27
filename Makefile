@@ -54,7 +54,7 @@ endif
 #pattern${EXE}: pattern.C pattern.h libsight.a ${sight_H}
 #	g++ -g pattern.C -L. -lsight  -o pattern${EXE}
 
-slayout${EXE}: slayout.C  libsight_layout.a apps
+slayout${EXE}: slayout.C process.o process.h libsight_layout.a apps
 	g++ slayout.C libsight_layout.a -DMFEM -I. -Iapps/mfem apps/mfem/mfem_layout.o -o slayout${EXE}
 
 #	g++ -c slayout.C -o slayout.o
@@ -63,6 +63,8 @@ slayout${EXE}: slayout.C  libsight_layout.a apps
 #	g++ -c slayout.C -o slayout.o
 #	ld slayout.o libsight_layout.a --relocateable -Ur --whole-archive -o slayout${EXE}
 
+process.o: process.C process.h sight_common_internal.h
+	g++ process.C -c -o process.o
 
 #libsight_common.a: ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre
 #	ar -r libsight_common.a ${SIGHT_COMMON_O} widgets/*_common.o

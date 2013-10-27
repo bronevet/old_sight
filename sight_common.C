@@ -93,6 +93,14 @@ std::string properties::name() const {
   return p.front().first;
 }
 
+// Returns the number of tags recorded in this object
+int properties::size() const
+{ return p.size(); }
+
+// Erases the contents of this object
+void properties::clear()
+{ p.clear(); }
+
 // Returns the string representation of the given properties iterator  
 std::string properties::str(iterator props) {
   ostringstream oss;
