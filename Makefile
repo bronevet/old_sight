@@ -11,7 +11,7 @@ ifeq (${OS}, Cygwin)
 EXE := .exe
 endif
 
-all: sightDefines.pl gdbLineNum.pl libsight_structure.a slayout${EXE} widgets_post allExamples script/taffydb
+all: sightDefines.pl gdbLineNum.pl libsight_structure.a hier_merge${EXE} slayout${EXE} widgets_post allExamples script/taffydb
 	chmod 755 html img script
 	chmod 644 html/* img/* script/*
 	chmod 755 script/taffydb
@@ -60,6 +60,10 @@ endif
 
 slayout${EXE}: slayout.C process.o process.h mfem libsight_layout.a 
 	g++ -g slayout.C libsight_layout.a -DMFEM -I. -Iapps/mfem apps/mfem/mfem_layout.o -o slayout${EXE}
+
+hier_merge${EXE}: hier_merge.C process.o process.h libsight_structure.a 
+	g++ -g hier_merge.C libsight_structure.a -DMFEM -I. -o hier_merge${EXE}
+
 
 #	g++ -c slayout.C -o slayout.o
 #	g++ slayout.o libsight_layout.a --relocateable -Ur --whole-archive -o slayout${EXE}

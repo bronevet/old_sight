@@ -75,6 +75,7 @@ class properties
 
   properties(): active(true) {}
   properties(const std::list<std::pair<std::string, std::map<std::string, std::string> > >& p, const bool& active): p(p), active(active) {}
+  properties(const properties& that) : p(that.p), active(that.active) {}
     
   void add(std::string className, const std::map<std::string, std::string>& props);
   
@@ -85,6 +86,9 @@ class properties
   
   // The corresponding end iterator
   iterator end() const;
+  
+  // Returns the iterator to the given objectName
+  iterator find(std::string name) const;
   
   // Given a properties iterator returns an iterator that refers to the next position in the list
   static iterator next(iterator i);

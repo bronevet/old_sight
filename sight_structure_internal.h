@@ -32,6 +32,7 @@ extern char username[10000];
 // Initializes the debug sub-system
 void initializeDebug(int argc, char** argv, std::string title="Debug Output", std::string workDir="dbg");
 void initializeDebug(std::string title, std::string workDir);
+void initializeDebug_internal(properties* props);
 
 class dbgStream;
 
@@ -305,18 +306,21 @@ public:
   //void enter(std::string name, const std::map<std::string, std::string>& properties, bool inheritedFrom);
   void enter(common::sightObj* obj);
     
+  void enter(const properties& props);
+    
   // Returns the text that should be emitted to the structured output file that denotes the the entry into a tag. 
   // The tag is set to the given property key/value pairs
   //std::string enterStr(std::string name, const std::map<std::string, std::string>& properties, bool inheritedFrom);
-  std::string enterStr(common::sightObj* obj);
+  std::string enterStr(const properties& props);
     
   // Emit the exit from a given tag to the structured output file
   //void exit(std::string name);
   void exit(common::sightObj* obj);
+  void exit(const properties& props);
     
   // Returns the text that should be emitted to the the structured output file to that denotes exit from a given tag
   //std::string exitStr(std::string name);
-  std::string exitStr(common::sightObj* obj);
+  std::string exitStr(const properties& props);
   
   // Emit a full tag an an the structured output file
   //void tag(std::string name, const std::map<std::string, std::string>& properties, bool inheritedFrom);

@@ -48,6 +48,13 @@ properties::iterator properties::begin() const
 properties::iterator properties::end() const
 { return p.end(); }
 
+// Returns the iterator to the given objectName
+properties::iterator properties::find(string name) const { 
+  for(list<pair<string, map<string, string> > >::const_iterator i=p.begin(); i!=p.end(); i++)
+    if(i->first == name) return i;
+  return end();
+}
+
 // Given a properties iterator returns an iterator that refers to the next position in the list.
 properties::iterator properties::next(iterator i) {
   i++;
