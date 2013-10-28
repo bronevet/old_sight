@@ -36,7 +36,7 @@ void initializeDebug(std::string title, std::string workDir);
 class dbgStream;
 
 // Represents a unique location in the sight output
-class location : printable {
+class location/* : printable*/ {
   std::list<std::pair<int, std::list<int> > > l;
   
   public:
@@ -163,7 +163,7 @@ class block : public common::sightObj
   // Increments blockID. This function serves as the one location that we can use to target conditional
   // breakpoints that aim to stop when the block count is a specific number
   int advanceBlockID();
-  
+ 
   std::string getLabel() const { return label; }
   int getBlockID() const { return blockID; }
   
