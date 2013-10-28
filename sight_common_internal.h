@@ -131,8 +131,8 @@ class sightObj {
   sightObj(properties* props) : props(props) {}
 
   ~sightObj() {
-    assert(props);
-    delete(props);
+    if(props);
+      delete(props);
   }
 };
 

@@ -366,8 +366,10 @@ vector<bool> merge(vector<FILEStructureParser*>& parsers,
               // Directory that widgets can use as temporary scratch space
               string tmpDir = createDir(subDir, "html/tmp");
               
-              properties props;
-              structure::dbgStream groupStream(&props, txt()<<"Variant "<<subDirCount, subDir, imgDir, tmpDir);
+              properties* props = new properties();
+              map<string, string> pMap;
+              props->add("dummy", pMap);
+              structure::dbgStream groupStream(NULL, txt()<<"Variant "<<subDirCount, subDir, imgDir, tmpDir);
               #ifdef VERBOSE
               cout << indent << "<<<<<<<<<<<<<<<<<<<<<<"<<endl;
               #endif

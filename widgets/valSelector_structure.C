@@ -118,7 +118,7 @@ string start_internal(valSelector& sel, const attrValue* val, string name) {
   obj.props->add(name, newProps);
   
   //dbg.enter(name, properties, false);
-  return dbg.enterStr(&obj);
+  return dbg.enterStr(*obj.props);
 }
 
 string end_internal(string name) {
@@ -130,7 +130,7 @@ string end_internal(string name) {
   obj.props->add(name, newProps);
   
   //dbg.exit(name);
-  return dbg.exitStr(&obj);
+  return dbg.exitStr(*obj.props);
 }
 
 /*string textColor::start(valSelector& sel, const attrValue& val)

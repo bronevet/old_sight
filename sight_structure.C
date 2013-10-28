@@ -671,9 +671,11 @@ string dbgStream::addImage(string ext)
 // Emit the entry into a tag to the structured output file. The tag is set to the given property key/value pairs
 //void dbgStream::enter(std::string name, const std::map<std::string, std::string>& properties, bool inheritedFrom) {
 void dbgStream::enter(sightObj* obj) {
-  ownerAccessing();
-  *this << enterStr(*(obj->props));
-  userAccessing();
+  if(obj->props) {
+    ownerAccessing();
+    *this << enterStr(*(obj->props));
+    userAccessing();
+  }
 }
 
 void dbgStream::enter(const properties& props) {
@@ -706,9 +708,11 @@ string dbgStream::enterStr(const properties& props) {
 // Emit the exit from a given tag to the structured output file
 //void dbgStream::exit(std::string name) {
 void dbgStream::exit(sightObj* obj) {
-  ownerAccessing();
-  *this << exitStr(*(obj->props));
-  userAccessing();
+  if(obj->props) {
+    ownerAccessing();
+    *this << exitStr(*(obj->props));
+    userAccessing();
+  }
 }
 
 void dbgStream::exit(const properties& props) {
