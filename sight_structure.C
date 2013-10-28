@@ -146,6 +146,26 @@ void initializeDebug_internal(int argc, char** argv, string title, string workDi
   dbg.init(props, title, workDir, imgDir, tmpDir);
 }
 
+void initializeDebug_internal(properties* props)
+{
+  properties::iterator sightIt = props->find("sight");
+  assert(sightIt != props->end());
+  
+  // Create the directory structure for the structural information
+  // Main output directory
+  createDir(properties::get(sightIt, "workDir"), "");
+
+  // Directory where client-generated images will go
+  string imgDir = createDir(properties::get(sightIt, "workDir"), "html/dbg_imgs");
+  
+  // Directory that widgets can use as temporary scratch space
+  string tmpDir = createDir(properties::get(sightIt, "workDir"), "html/tmp");
+  
+  initializedDebug = true;
+  
+  dbg.init(props, properties::get(sightIt, "title"), properties::get(sightIt, "workDir"), imgDir, tmpDir);
+}
+
 /********************
  ***** location *****
  ********************/
@@ -652,19 +672,25 @@ string dbgStream::addImage(string ext)
 //void dbgStream::enter(std::string name, const std::map<std::string, std::string>& properties, bool inheritedFrom) {
 void dbgStream::enter(sightObj* obj) {
   ownerAccessing();
-  *this << enterStr(obj);
+  *this << enterStr(*(obj->props));
+  userAccessing();
+}
+
+void dbgStream::enter(const properties& props) {
+  ownerAccessing();
+  *this << enterStr(props);
   userAccessing();
 }
 
 // Returns the text that should be emitted to the structured output file that denotes the the entry into a tag. 
 // The tag is set to the given property key/value pairs
 //string dbgStream::enterStr(std::string name, const std::map<std::string, std::string>& properties, bool inheritedFrom) {
-string dbgStream::enterStr(sightObj* obj) {
+string dbgStream::enterStr(const properties& props) {
   ostringstream oss;
   
-  for(list<pair<string, map<string, string> > >::const_iterator i=obj->props->begin(); i!=obj->props->end(); i++) {
+  for(list<pair<string, map<string, string> > >::const_iterator i=props.begin(); i!=props.end(); i++) {
     list<pair<string, map<string, string> > >::const_iterator iNext=i; iNext++;
-    oss << "["<<(iNext!=obj->props->end()? "|": "")<<i->first<<" ";
+    oss << "["<<(iNext!=props.end()? "|": "")<<i->first<<" ";
     oss << "numProperties=\""<<i->second.size()<<"\"";
     
     int j=0;
@@ -681,15 +707,21 @@ string dbgStream::enterStr(sightObj* obj) {
 //void dbgStream::exit(std::string name) {
 void dbgStream::exit(sightObj* obj) {
   ownerAccessing();
-  *this << exitStr(obj);
+  *this << exitStr(*(obj->props));
+  userAccessing();
+}
+
+void dbgStream::exit(const properties& props) {
+  ownerAccessing();
+  *this << exitStr(props);
   userAccessing();
 }
 
 // Returns the text that should be emitted to the the structured output file to that denotes exit from a given tag
 //std::string dbgStream::exitStr(std::string name) {
-std::string dbgStream::exitStr(sightObj* obj) {
+std::string dbgStream::exitStr(const properties& props) {
   ostringstream oss;
-  oss <<"[/"<<obj->props->name()<<"]";
+  oss <<"[/"<<props.name()<<"]";
   return oss.str();
 }
 
@@ -704,7 +736,7 @@ void dbgStream::tag(sightObj* obj)
 // Returns the text that should be emitted to the the structured output file to that denotes a full tag an an the structured output file
 //std::string dbgStream::tagStr(std::string name, const std::map<std::string, std::string>& properties, bool inheritedFrom) {
 std::string dbgStream::tagStr(sightObj* obj) {
-  return enterStr(obj) + exitStr(obj);
+  return enterStr(*(obj->props)) + exitStr(*(obj->props));
 }
 
 /******************

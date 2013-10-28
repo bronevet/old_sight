@@ -12,11 +12,6 @@
 using namespace std;
 using namespace sight;
 
-bool readProperty(FILE* f, char buf[], int& bufIdx, int& bufSize, std::string& name, std::string& val, char& termChar);
-bool readUntil(bool inTerm, const char* termChars, int numTermChars, char& termHit, FILE* f, char buf[], int& bufIdx, int& bufSize, string& result);
-bool nextChar(FILE* f, char buf[], int& bufIdx, int& bufSize);
-bool isMember(char c, const char* termChars, int numTermChars);
-
 // The stack of all the objects of each type that have been entered but not yet exited
 map<string, list<void*> > stack;
 

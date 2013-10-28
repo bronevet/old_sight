@@ -32,7 +32,9 @@ void structureParser<streamT>::init(streamT* stream) {
   buf = new char[bufSize];
   assert(buf);
   
- loc = start;
+  loc = start;
+  
+  tagProperties.clear();
 }
 
 template<typename streamT>
