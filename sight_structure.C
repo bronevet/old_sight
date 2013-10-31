@@ -12,6 +12,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <limits.h>
 #include "binreloc.h"
 #include <errno.h>
 #include "getAllHostnames.h" 
@@ -234,6 +235,100 @@ void location::print(std::ofstream& ofs) const {
 }
 
 /******************
+ ***** Merger *****
+ ******************/
+
+// Given a vector of tag properties, returns the set of values assigned to the given key within the given tag
+std::set<std::string> Merger::getValueSet(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags, 
+                                          std::string key) {
+  set<string> vals;
+  for(vector<pair<properties::tagType, properties::iterator> >::const_iterator t=tags.begin(); t!=tags.end(); t++) {
+    vals.insert(properties::get(t->second, key));
+  }
+  return vals;
+}
+
+// Given a vector of tag property iterators, returns the set of names of all the object types they refer to
+std::set<std::string> Merger::getNameSet(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags) {
+  set<string> names;
+  for(vector<pair<properties::tagType, properties::iterator> >::const_iterator t=tags.begin(); t!=tags.end(); t++) {
+    names.insert(properties::name(t->second));
+  }
+  return names;
+}
+
+// Converts the given set of strings to the corresponding set of integral numbers
+std::set<long> Merger::str2intSet(const std::set<std::string>& strSet) {
+  set<long> intSet;
+  for(set<string>::const_iterator s=strSet.begin(); s!=strSet.end(); s++)
+    intSet.insert(strtol(s->c_str(), NULL, 10));
+  return intSet;
+}
+  
+long Merger::setMax(const std::set<long>& intSet) {
+  long m=LONG_MIN;
+  for(set<long>::const_iterator i=intSet.begin(); i!=intSet.end(); i++)
+    m = (*i>m? *i: m);
+  return m;
+}
+
+long Merger::setMin(const std::set<long>& intSet)  {
+  long m=LONG_MAX;
+  for(set<long>::const_iterator i=intSet.begin(); i!=intSet.end(); i++)
+    m = (*i<m? *i: m);
+  return m;
+}
+
+long Merger::setAvg(const std::set<long>& intSet)  {
+  long sum=0;
+  for(set<long>::const_iterator i=intSet.begin(); i!=intSet.end(); i++)
+    sum += *i;
+  return sum/intSet.size();
+}
+ 
+// Converts the given set of strings to the corresponding set of floating point numbers
+std::set<double> Merger::str2floatSet(const std::set<std::string>& strSet) {
+  set<double> floatSet;
+  for(set<string>::const_iterator s=strSet.begin(); s!=strSet.end(); s++)
+    floatSet.insert(strtod(s->c_str(), NULL));
+  return floatSet;
+}
+
+double Merger::setMax(const std::set<double>& floatSet) {
+  double m=-1e100;//DBL_MIN;
+  for(set<double>::const_iterator i=floatSet.begin(); i!=floatSet.end(); i++)
+    m = (*i>m? *i: m);
+  return m;
+}
+
+double Merger::setMin(const std::set<double>& floatSet)  {
+  double m=1e100;//DBL_MAX;
+  for(set<double>::const_iterator i=floatSet.begin(); i!=floatSet.end(); i++)
+    m = (*i<m? *i: m);
+  return m;
+}
+
+double Merger::setAvg(const std::set<double>& floatSet)  {
+  double sum=0;
+  for(set<double>::const_iterator i=floatSet.begin(); i!=floatSet.end(); i++)
+    sum += *i;
+  return sum/floatSet.size();
+}
+
+// Advance the iterators in the given tags vector, returning the resulting vector
+std::vector<std::pair<properties::tagType, properties::iterator> >
+              Merger::advance(std::vector<std::pair<properties::tagType, properties::iterator> > tags) {
+  std::vector<std::pair<properties::tagType, properties::iterator> > advancedTags;
+  for(std::vector<std::pair<properties::tagType, properties::iterator> >::iterator t=tags.begin();
+      t!=tags.end(); t++) {
+    std::vector<std::pair<properties::tagType, properties::iterator> >::iterator newT = t;
+    newT++;
+    advancedTags.push_back(*newT);
+  }
+  return advancedTags;
+}
+
+/******************
  ***** anchor *****
  ******************/
 int anchor::maxAnchorID=0;
@@ -418,6 +513,25 @@ anchor& block::getAnchorRef()
 anchor block::getAnchor() const
 { return startA; }
 
+int BlockMerger::maxBlockID=0;
+
+BlockMerger::BlockMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags) : Merger(advance(tags)) {
+  assert(tags.size()>0);
+  set<string> names = getNameSet(tags);
+  assert(names.size()==1);
+  assert(*names.begin() == "block");
+  map<string, string> pMap;
+  
+  set<string> labelValues = getValueSet(tags, "label");
+  pMap["label"] = *labelValues.begin();
+  
+  pMap["ID"] = txt()<<maxBlockID++;
+  
+  //newProps["anchorID"] = txt()<<startA.getID();
+  // No support for anchors right now
+  pMap["numAnchors"] = "0";
+  props->add("block", pMap);
+}
 
 /******************
  ***** dbgBuf *****
@@ -671,11 +785,9 @@ string dbgStream::addImage(string ext)
 // Emit the entry into a tag to the structured output file. The tag is set to the given property key/value pairs
 //void dbgStream::enter(std::string name, const std::map<std::string, std::string>& properties, bool inheritedFrom) {
 void dbgStream::enter(sightObj* obj) {
-  if(obj->props) {
-    ownerAccessing();
-    *this << enterStr(*(obj->props));
-    userAccessing();
-  }
+  ownerAccessing();
+  *this << enterStr(*(obj->props));
+  userAccessing();
 }
 
 void dbgStream::enter(const properties& props) {
@@ -708,11 +820,9 @@ string dbgStream::enterStr(const properties& props) {
 // Emit the exit from a given tag to the structured output file
 //void dbgStream::exit(std::string name) {
 void dbgStream::exit(sightObj* obj) {
-  if(obj->props) {
-    ownerAccessing();
-    *this << exitStr(*(obj->props));
-    userAccessing();
-  }
+  ownerAccessing();
+  *this << exitStr(*(obj->props));
+  userAccessing();
 }
 
 void dbgStream::exit(const properties& props) {
@@ -741,6 +851,79 @@ void dbgStream::tag(sightObj* obj)
 //std::string dbgStream::tagStr(std::string name, const std::map<std::string, std::string>& properties, bool inheritedFrom) {
 std::string dbgStream::tagStr(sightObj* obj) {
   return enterStr(*(obj->props)) + exitStr(*(obj->props));
+}
+
+dbgStreamMerger::dbgStreamMerger(vector<pair<properties::tagType, properties::iterator> > tags) : 
+    Merger(advance(tags)) {
+  assert(tags.size()>0);
+  set<string> names = getNameSet(tags);
+  assert(names.size()==1);
+  assert(*names.begin() == "sight");
+  map<string, string> pMap;
+  
+  pMap["workDir"] = "merged";
+  
+  set<string> titleValues = getValueSet(tags, "title");
+  pMap["title"] = *titleValues.begin();
+  
+  set<string> commandLineKnownValues = getValueSet(tags, "commandLineKnown");
+  pMap["commandLineKnown"] = "0";
+  for(set<string>::iterator i=commandLineKnownValues.begin(); i!=commandLineKnownValues.end(); i++)
+    if(*i=="1") {
+      pMap["commandLineKnown"] = "1";
+      break;
+    }
+  
+  if(pMap["commandLineKnown"] == "1") {
+    set<string> argcValues = getValueSet(tags, "argc");
+    assert(argcValues.size()==1);
+    pMap["argc"] = *argcValues.begin();
+    
+    long argc = strtol((*argcValues.begin()).c_str(), NULL, 10);
+    for(long i=0; i<argc; i++) {
+      set<string> argvValues = getValueSet(tags, txt()<<"argv_"<<i);
+      assert(argvValues.size()==1);
+      pMap[txt()<<"argv_"<<i] = *argvValues.begin();
+    }
+    
+    set<string> execFileValues = getValueSet(tags, "execFile");
+    assert(execFileValues.size()==1);
+    pMap["execFile"] = *execFileValues.begin();
+    
+    set<string> numEnvVarsValues = getValueSet(tags, "numEnvVars");
+    assert(numEnvVarsValues.size()==1);
+    pMap["numEnvVars"] = *numEnvVarsValues.begin();
+    
+    long numEnvVars = strtol((*numEnvVarsValues.begin()).c_str(), NULL, 10);
+    for(long i=0; i<numEnvVars; i++) {
+      set<string> envNameValues = getValueSet(tags, txt()<<"envName_"<<i);
+      assert(envNameValues.size()==1);
+      pMap[txt()<<"envName_"<<i] = *envNameValues.begin();
+      
+      set<string> envValValues = getValueSet(tags, txt()<<"envVal_"<<i);
+      assert(envValValues.size()==1);
+      pMap[txt()<<"envVal_"<<i] = *envValValues.begin();
+    }
+    
+    set<string> numHostnamesValues = getValueSet(tags, "numHostnames");
+    assert(numHostnamesValues.size()==1);
+    pMap["numHostnames"] = *numHostnamesValues.begin();
+    
+    long numHostnames = strtol((*numHostnamesValues.begin()).c_str(), NULL, 10);
+    for(long i=0; i<numHostnames; i++) {
+      set<string> hostnameValues = getValueSet(tags, txt()<<"hostname_"<<i);
+      assert(hostnameValues.size()==1);
+      pMap[txt()<<"hostname_"<<i] = *hostnameValues.begin();
+    }
+    
+    set<string> usernameValues = getValueSet(tags, "username");
+    assert(usernameValues.size()==1);
+    pMap["username"] = *usernameValues.begin();
+  }
+  
+  props->add("sight", pMap);
+  
+  initializeDebug_internal(props);
 }
 
 /******************
@@ -786,6 +969,20 @@ indent::~indent() {
     dbg.exit(this);
   }
 }
+
+IndentMerger::IndentMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags) : Merger(advance(tags)) {
+  assert(tags.size()>0);
+  set<string> names = getNameSet(tags);
+  assert(names.size()==1);
+  assert(*names.begin() == "indent");
+  map<string, string> pMap;
+  
+  set<string> prefixValues = getValueSet(tags, "prefix");
+  pMap["prefix"] = *prefixValues.begin();
+  pMap["repeatCnt"] = txt()<<setAvg(str2intSet(getValueSet(tags, "repeatCnt")));
+  props->add("indent", pMap);
+}
+
 
 char printbuf[100000];
 int dbgprintf(const char * format, ... )    

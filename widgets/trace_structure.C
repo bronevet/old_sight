@@ -173,6 +173,89 @@ void traceAttr(std::string label, std::string key, const attrValue& val, anchor 
   t->traceAttrObserved(key, val, target);
 }
 
+int TraceMerger::maxTraceID=0;
+
+TraceMerger::TraceMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags) : BlockMerger(advance(tags)) {
+  assert(tags.size()>0);
+  set<string> names = getNameSet(tags);
+  assert(names.size()==1);
+  assert(*names.begin() == "trace");
+  map<string, string> pMap;
+
+  map<string, string> newProps;
+  newProps["traceID"] = txt()<<maxTraceID++;
+  newProps["showLoc"] = txt()<<setAvg(str2intSet(getValueSet(tags, "showLoc")));
+  newProps["viz"]     = txt()<<setAvg(str2intSet(getValueSet(tags, "viz")));
+  
+  // Make the context attributes of the merged trace the union of the sets of the individual traces
+  set<string> ctxtAttrsSet;
+  for(vector<pair<properties::tagType, properties::iterator> >::iterator t=tags.begin(); t!=tags.end(); t++) {
+    int numCtxtAttrs = properties::getInt(t->second, "numCtxtAttrs");
+    for(int i=0; i<numCtxtAttrs; i++)
+      ctxtAttrsSet.insert(properties::get(t->second, txt()<<"ctxtAttr_"<<i));
+  }
+  newProps["numCtxtAttrs"] = txt()<<ctxtAttrsSet.size();
+  
+  // Record the attributes this traces uses as context
+  int i=0;
+  for(set<string>::const_iterator ca=ctxtAttrsSet.begin(); ca!=ctxtAttrsSet.end(); ca++, i++)
+    newProps[txt()<<"ctxtAttr_"<<i] = *ca;
+  
+  props->add("trace", pMap);
+}
+
+/*TraceObsMerger::TraceObsMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags) : BlockMerger(advance(tags)) {
+  assert(tags.size()>0);
+  set<string> names = getNameSet(tags);
+  assert(names.size()==1);
+  assert(*names.begin() == "trace");
+  map<string, string> pMap;
+
+  map<string, string> newProps; 
+  // !!! Need to properly connect observations to trace IDs!!!
+  //newProps["traceID"] = txt()<<maxTraceID++;
+
+  // Make the context attributes of the merged trace the union of the sets of the individual traces
+  set<string> ctxtAttrsSet;
+  for(vector<pair<properties::tagType, properties::iterator> >::iterator t=tags.begin(); t!=tags.end(); t++) {
+    int numCtxtAttrs = properties::get(t->second, "numCtxtAttrs");
+    for(int i=0; i<numCtxtAttrs; i++)
+      ctxtAttrsSet.insert(properties::get(t->second, txt()<<"ctxtAttr_"<<i));
+  }
+  newProps["numCtxtAttrs"] = txt()<<ctxtAttrsSet.size();
+  
+  // Record the attributes this traces uses as context
+  int i=0;
+  for(list<string>::const_iterator ca=ctxtAttrsSet.begin(); ca!=ctxtAttrsSet.end(); ca++, i++)
+    newProps[txt()<<"ctxtAttr_"<<i] = *ca;
+  
+  props->add("trace", pMap);
+}
+
+
+  // Make the trace attributes of the merged trace the union of the sets of the individual traces
+  set<string> traceAttrsSet;
+  for(vector<pair<properties::tagType, properties::iterator> >::iterator t=tags.begin(); t!=tags.end(); t++) {
+    int numTraceAttrs = properties::get(t->second, "numTraceAttrs");
+    for(int i=0; i<numTraceAttrs; i++)
+      traceAttrsSet.insert(properties::get(t->second, txt()<<"traceAttr_"<<i));
+  }
+  newProps["numTraceAttrs"] = txt()<<traceAttrsSet.size();
+  
+  // Record the attributes this traces uses as context
+  int i=0;
+  for(list<string>::const_iterator ca=ctxtAttrsSet.begin(); ca!=ctxtAttrsSet.end(); ca++, i++)
+    newProps[txt()<<"ctxtAttr_"<<i] = *ca;
+  
+  newProps["numTraceAttrs"] = txt()<<obs.size();
+  // Emit the recently observed values and anchors of tracer attributes
+  int i=0;
+  for(map<string, pair<attrValue, anchor> >::iterator o=obs.begin(); o!=obs.end(); o++, i++) {
+    newProps[txt()<<"tKey_"<<i] = o->first;
+    newProps[txt()<<"tVal_"<<i] = o->second.first.getAsStr();
+    newProps[txt()<<"tAnchorID_"<<i] = txt()<<o->second.second.getID();
+  }*/
+
 /*******************
  ***** measure *****
  *******************/

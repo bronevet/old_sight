@@ -71,6 +71,19 @@ class trace: public block, public attrObserver, public common::trace
   void emitObservations();
 }; // class trace
 
+class TraceMerger : public BlockMerger {
+  static int maxTraceID;
+  public:
+  TraceMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags);
+}; // class TraceMerger
+
+/*class TraceObsMerger : public BlockMerger {
+  public:
+  TraceObsMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags);
+}; // class TraceObsMerger
+*/
+
+
 // Basic API for measuring the elapsed counts of events.
 // The measure class starts the measurement when instances of this class are constructed and stops when they are deconstructed.
 // When measurement is performed, an attribute named valLabel is added to a trace named traceLabel.

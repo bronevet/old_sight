@@ -60,5 +60,10 @@ class scope: public block, public common::scope
   bool subBlockExitNotify (block* subBlock) { return true; }
 }; // scope
 
+class ScopeMerger : public BlockMerger {
+  public:
+  ScopeMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags);
+}; // class ScopeMerger
+
 }; // namespace structure
 }; // namespace sight

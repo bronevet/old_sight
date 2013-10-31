@@ -29,10 +29,10 @@ bool isEnabled() {
  *********************/
   
 // Call the print method of the given printable object
-/*std::ofstream& operator<<(std::ofstream& ofs, const printable& p) {
+std::ofstream& operator<<(std::ofstream& ofs, const printable& p) {
   p.print(ofs);
   return ofs;
-}*/
+}
 
 /**********************
  ***** properties *****
@@ -94,8 +94,12 @@ bool properties::exists(properties::iterator cur, std::string key) {
   return cur->second.find(key) != cur->second.end();
 }
 
+// Returns the name of the object type referred to by the given iterator
+string properties::name(iterator cur)
+{ return cur->first; }
+
 // Returns the name of the most-derived class 
-std::string properties::name() const {
+string properties::name() const {
   assert(p.size()>0);
   return p.front().first;
 }
@@ -109,7 +113,7 @@ void properties::clear()
 { p.clear(); }
 
 // Returns the string representation of the given properties iterator  
-std::string properties::str(iterator props) {
+std::string properties::str(iterator props){
   ostringstream oss;
   oss << "["<<props->first<<":"<<endl;
   for(std::map<std::string, std::string>::const_iterator i=props->second.begin(); i!=props->second.end(); i++)
@@ -118,7 +122,7 @@ std::string properties::str(iterator props) {
   return oss.str();
 }
 
-std::string properties::str() {
+std::string properties::str() const {
   ostringstream oss;
   oss << "[properties:"<<endl;
   for(iterator i=begin(); i!=end(); i++)

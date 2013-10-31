@@ -44,10 +44,7 @@ class structureParser {
   virtual bool streamError()=0;
 
   public:
-  
-  // Differentiates between the entry tag of an object and its exit tag
-  typedef enum {enterTag, exitTag} tagType;
-  
+    
   structureParser(int bufSize=10000);
   structureParser(streamT* stream, int bufSize=10000);
   void init(streamT* stream);
@@ -69,7 +66,7 @@ class structureParser {
   public:
   // Reads more data from the data source, returning the type of the next tag read and the properties of 
   // the object it denotes.
-  std::pair<tagType, const properties*> next();
+  std::pair<properties::tagType, const properties*> next();
   
   protected:
   // Read a property name/value pair from the given file, setting name and val to them.

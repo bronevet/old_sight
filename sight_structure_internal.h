@@ -37,7 +37,7 @@ void initializeDebug_internal(properties* props);
 class dbgStream;
 
 // Represents a unique location in the sight output
-class location/* : printable*/ {
+class location : printable {
   std::list<std::pair<int, std::list<int> > > l;
   
   public:
@@ -76,7 +76,55 @@ class sightObj {
 #include "attributes_structure.h"
 
 namespace sight {
-namespace structure{
+namespace structure {
+
+// Base class for objects used to merge multiple tags into one
+class Merger {
+  protected:
+  properties* props;
+  
+  public:
+  Merger(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags) {
+    props = new properties;
+  }
+  
+  const properties& getProps() { return *props; }
+  
+  ~Merger() {
+    delete props;
+  }
+    
+  // Given a list of tag property objects and their associated types (entry/exit), return
+  // the properties of the merged object
+  //virtual properties operator()(const vector<pair<properties::tagType, const properties*> >& tags)=0;
+    
+  // Given a vector of tag properties, returns the set of values assigned to the given key within the given tag
+  static std::set<std::string> getValueSet(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags, 
+                                           std::string key);
+  
+  
+  
+  // Converts the given set of strings to the corresponding set of integral numbers
+  static std::set<long> str2intSet(const std::set<std::string>& strSet);
+  
+  static long setMax(const std::set<long>& intSet);
+  static long setMin(const std::set<long>& intSet);
+  static long setAvg(const std::set<long>& intSet);
+    
+  // Converts the given set of strings to the corresponding set of floating point numbers
+  static std::set<double> str2floatSet(const std::set<std::string>& strSet);
+  
+  static double setMax(const std::set<double>& intSet);
+  static double setMin(const std::set<double>& intSet);
+  static double setAvg(const std::set<double>& intSet);
+    
+  // Given a vector of tag property iterators, returns the set of names of all the object types they refer to
+  static std::set<std::string> getNameSet(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags);
+    
+  // Advance the iterators in the given tags vector, returning a reference to the vector
+  static std::vector<std::pair<properties::tagType, properties::iterator> >
+              advance(std::vector<std::pair<properties::tagType, properties::iterator> > tags);
+}; // class MergeFunctor
 
 // Uniquely identifies a location with the debug information, including the file and region hierarchy
 // Anchors can be created in two ways:
@@ -164,7 +212,7 @@ class block : public common::sightObj
   // Increments blockID. This function serves as the one location that we can use to target conditional
   // breakpoints that aim to stop when the block count is a specific number
   int advanceBlockID();
- 
+  
   std::string getLabel() const { return label; }
   int getBlockID() const { return blockID; }
   
@@ -179,8 +227,13 @@ class block : public common::sightObj
   // that contain this block and false otherwise.
   virtual bool subBlockEnterNotify(block* subBlock) { return true; }
   virtual bool subBlockExitNotify (block* subBlock) { return true; }
+}; // class block
 
-};
+class BlockMerger : public Merger {
+  static int maxBlockID;
+  public:
+  BlockMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags);
+}; // class BlockMerger
 
 // Adapted from http://wordaligned.org/articles/cpp-streambufs
 // A extension of stream that corresponds to a single file produced by sight
@@ -331,6 +384,11 @@ public:
   std::string tagStr(common::sightObj* obj);
 }; // dbgStream
 
+class dbgStreamMerger : public Merger {
+  public:
+  dbgStreamMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags);
+};
+
 extern bool initializedDebug;
 
 extern dbgStream dbg;
@@ -354,7 +412,13 @@ class indent : public common::sightObj
   void init(std::string prefix, int repeatCnt, const structure::attrOp* onoffOp, properties* props);
     
   ~indent();
-};
+}; // indent
+
+class IndentMerger : public Merger {
+  public:
+  IndentMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags);
+}; // class IndentMerger
+
 
 int dbgprintf(const char * format, ... );
 

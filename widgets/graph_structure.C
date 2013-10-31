@@ -177,5 +177,72 @@ bool graph::subBlockEnterNotify(block* subBlock) {
   return false;
 }
 
+int GraphMerger::maxGraphID=0;
+
+GraphMerger::GraphMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags) : BlockMerger(advance(tags)) {
+  assert(tags.size()>0);
+  set<string> names = getNameSet(tags);
+  assert(names.size()==1);
+  assert(*names.begin() == "graph");
+  map<string, string> pMap;
+  
+  pMap["graphID"] = txt()<<maxGraphID++;
+  
+  set<string> dotTextSet;
+  for(std::vector<std::pair<properties::tagType, properties::iterator> >::iterator t=tags.begin(); t!=tags.end(); t++) {
+    if(properties::exists(t->second, "dotText"))
+      dotTextSet.insert(properties::get(t->second, "dotText"));
+  }
+  if(dotTextSet.size()>0)
+  pMap["dotText"] = *dotTextSet.begin();
+  
+  props->add("graph", pMap);
+}
+
+DirEdgeMerger::DirEdgeMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags) : Merger(advance(tags)) {
+  assert(tags.size()>0);
+  set<string> names = getNameSet(tags);
+  assert(names.size()==1);
+  assert(*names.begin() == "dirEdge");
+  map<string, string> pMap;
+  
+  pMap["from"] = txt()<<0; // setAvg(str2intSet(getValueSet(tags, "from")));
+  pMap["to"] = txt()<<0; // setAvg(str2intSet(getValueSet(tags, "from")));
+  
+  props->add("dirEdge", pMap);
+}
+
+UndirEdgeMerger::UndirEdgeMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags) : Merger(advance(tags)) {
+  assert(tags.size()>0);
+  set<string> names = getNameSet(tags);
+  assert(names.size()==1);
+  assert(*names.begin() == "undirEdge");
+  map<string, string> pMap;
+  
+  pMap["a"] = txt()<<0; // setAvg(str2intSet(getValueSet(tags, "a")));
+  pMap["b"] = txt()<<0; // setAvg(str2intSet(getValueSet(tags, "b")));
+  
+  props->add("undirEdge", pMap);
+}
+
+NodeMerger::NodeMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags) : Merger(advance(tags)) {
+  assert(tags.size()>0);
+  set<string> names = getNameSet(tags);
+  assert(names.size()==1);
+  assert(*names.begin() == "node");
+  map<string, string> pMap;
+
+  set<long> nodeIDSet = str2intSet(getValueSet(tags, "nodeID"));
+  assert(nodeIDSet.size()==1);
+  pMap["nodeID"] = txt()<<(*nodeIDSet.begin());
+  
+  pMap["anchorID"] = txt()<<0; // setAvg(str2intSet(getValueSet(tags, "anchorID")));
+  
+  set<string> labelSet = getValueSet(tags, "label");
+  pMap["label"] = *labelSet.begin();
+  
+  props->add("node", pMap);
+}
+
 }; // namespace structure
 }; // namespace sight

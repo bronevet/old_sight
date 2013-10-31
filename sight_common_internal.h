@@ -56,16 +56,18 @@ class printable
 {
   public:
   virtual ~printable() {}
-  //virtual void print(std::ofstream& ofs) const=0;
-  virtual std::string str(std::string indent="")=0;
+  virtual void print(std::ofstream& ofs) const=0;
 };
 // Call the print method of the given printable object
-//std::ofstream& operator<<(std::ofstream& ofs, const printable& p);
+std::ofstream& operator<<(std::ofstream& ofs, const printable& p);
 
 // Records the properties of a given object
 class properties
 {
   public:
+  // Differentiates between the entry tag of an object and its exit tag
+  typedef enum {enterTag, exitTag} tagType;
+  
   // Lists the mapping the name of a class in an inheritance hierarchy to its map of key-value pairs.
   // Objects are ordered according to inheritance depth with the base class at the end of the 
   // list and most derived class at the start.
@@ -105,6 +107,9 @@ class properties
   
   // Given an iterator to a particular key->value mapping, returns whether the given key is mapped to some value
   static bool exists(iterator cur, std::string key);
+    
+  // Returns the name of the object type referred to by the given iterator
+  static std::string name(iterator cur);
   
   // Returns the name of the most-derived class 
   std::string name() const;
@@ -118,8 +123,8 @@ class properties
   // Returns the string representation of the given properties iterator  
   static std::string str(iterator props);
   
-  std::string str();
-};
+  std::string str() const;
+}; // class properties
 
 namespace common {
 
@@ -131,8 +136,8 @@ class sightObj {
   sightObj(properties* props) : props(props) {}
 
   ~sightObj() {
-    if(props);
-      delete(props);
+    assert(props);
+    delete(props);
   }
 };
 

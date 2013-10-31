@@ -38,7 +38,7 @@ void structureParser<streamT>::init(streamT* stream) {
 }
 
 template<typename streamT>
-pair<typename structureParser<streamT>::tagType, const properties*> structureParser<streamT>::next() {
+pair<typename properties::tagType, const properties*> structureParser<streamT>::next() {
   bool success = true;
   string readTxt; // String where text read by readUntil() will be placed
   char termChar;  // Character where readUntil() places the character that caused parsing to terminate
@@ -92,7 +92,7 @@ pair<typename structureParser<streamT>::tagType, const properties*> structurePar
       pMap["text"] = readTxt;
       tagProperties.add("text", pMap);
       loc = textRead;
-      return make_pair(enterTag, &tagProperties);
+      return make_pair(properties::enterTag, &tagProperties);
     }
     
     if(!success) goto DONE_LOC;
@@ -118,7 +118,7 @@ pair<typename structureParser<streamT>::tagType, const properties*> structurePar
       
       tagProperties.add(tagName, pMap);
       loc = exitTagRead;
-      return make_pair(exitTag, &tagProperties);
+      return make_pair(properties::exitTag, &tagProperties);
       
       EXIT_TAG_READ_LOC:
       
@@ -200,7 +200,7 @@ pair<typename structureParser<streamT>::tagType, const properties*> structurePar
         #endif
         
         loc = enterTagRead;
-        return make_pair(enterTag, &tagProperties);
+        return make_pair(properties::enterTag, &tagProperties);
         
         ENTER_TAG_READ_LOC:
         ;
@@ -213,7 +213,7 @@ pair<typename structureParser<streamT>::tagType, const properties*> structurePar
 
   DONE_LOC:
   loc = done;
-  return make_pair(exitTag, &tagProperties);
+  return make_pair(properties::exitTag, &tagProperties);
 }
 
 // Read a property name/value pair from the given file, setting name and val to them.

@@ -105,5 +105,16 @@ scope::~scope()
   }*/
 }
 
+ScopeMerger::ScopeMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags) : BlockMerger(advance(tags)) {
+  assert(tags.size()>0);
+  set<string> names = getNameSet(tags);
+  assert(names.size()==1);
+  assert(*names.begin() == "scope");
+  map<string, string> pMap;
+  
+  pMap["level"] = txt()<<setAvg(str2intSet(getValueSet(tags, "level")));
+  props->add("scope", pMap);
+}
+
 }; // namespace structure
 }; // namespace sight

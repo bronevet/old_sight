@@ -80,7 +80,29 @@ class graph: public structure::block
   // that contain this block and false otherwise.
   bool subBlockEnterNotify(block* subBlock);// { return false; }
   bool subBlockExitNotify (block* subBlock) { return false; }
-};
+}; // graph
+
+class GraphMerger : public BlockMerger {
+  static int maxGraphID;
+  public:
+  GraphMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags);
+}; // class GraphMerger
+
+class DirEdgeMerger : public Merger {
+  public:
+  DirEdgeMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags);
+}; // class DirEdgeMerger
+
+class UndirEdgeMerger : public Merger {
+  public:
+  UndirEdgeMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags);
+}; // class UndirEdgeMerger
+
+class NodeMerger : public Merger {
+  public:
+  NodeMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags);
+}; // class NodeMerger
+
 
 }; // namespace structure
 }; // namespace sight

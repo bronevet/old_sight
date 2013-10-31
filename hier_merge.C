@@ -6,7 +6,7 @@
 #include <string>
 #include <string.h>
 #include <errno.h>
-#include "sight_structure_internal.h"
+#include "sight_structure.h"
 #include "utils.h"
 #include "process.h"
 #include "process.C"
@@ -26,115 +26,13 @@ using namespace sight::structure;
 // out - stream to which data will be written
 // Returns a bool vector that records whether each parser that was passed in is still active.
 vector<bool> merge(vector<FILEStructureParser*>& parsers, 
-                   vector<pair<FILEStructureParser::tagType, const properties*> >& nextTag, 
+                   vector<pair<properties::tagType, properties::iterator> >& nextTag, 
                    int variantStackDepth,
                    structure::dbgStream& out
                    #ifdef VERBOSE
                    , string indent
                    #endif
                    );
-
-class MergeFunctor {
-  public:
-  virtual properties operator()(const vector<pair<FILEStructureParser::tagType, const properties*> >& tags)=0;
-    
-  // Given a vector of tag properties, returns the set of values assigned to the given key within the given tag
-  set<string> getValueSet(const vector<pair<FILEStructureParser::tagType, const properties*> >& tags, 
-                          string tagName, string key) {
-    set<string> vals;
-    for(vector<pair<FILEStructureParser::tagType, const properties*> >::const_iterator t=tags.begin(); t!=tags.end(); t++) {
-      properties::iterator i = t->second->find(tagName);
-      assert(i != t->second->end());
-      vals.insert(properties::get(i, key));
-    }
-    return vals;
-  }
-};
-
-class dbgStreamMF : public MergeFunctor {
-  properties operator()(const vector<pair<FILEStructureParser::tagType, const properties*> >& tags) {
-    assert(tags.size()>0);
-    
-    map<string, string> pMap;
-    
-    pMap["workDir"] = "merged";
-    
-    set<string> titleValues = getValueSet(tags, "sight", "title");
-    pMap["title"] = *titleValues.begin();
-    
-    set<string> commandLineKnownValues = getValueSet(tags, "sight", "commandLineKnown");
-    pMap["commandLineKnown"] = "0";
-    for(set<string>::iterator i=commandLineKnownValues.begin(); i!=commandLineKnownValues.end(); i++)
-      if(*i=="1") {
-        pMap["commandLineKnown"] = "1";
-        break;
-      }
-    
-    if(pMap["commandLineKnown"] == "1") {
-      set<string> argcValues = getValueSet(tags, "sight", "argc");
-      assert(argcValues.size()==1);
-      pMap["argc"] = *argcValues.begin();
-      
-      long argc = strtol((*argcValues.begin()).c_str(), NULL, 10);
-      for(long i=0; i<argc; i++) {
-        set<string> argvValues = getValueSet(tags, "sight", txt()<<"argv_"<<i);
-        assert(argvValues.size()==1);
-        pMap[txt()<<"argv_"<<i] = *argvValues.begin();
-      }
-      
-      set<string> execFileValues = getValueSet(tags, "sight", "execFile");
-      assert(execFileValues.size()==1);
-      pMap["execFile"] = *execFileValues.begin();
-      
-      set<string> numEnvVarsValues = getValueSet(tags, "sight", "numEnvVars");
-      assert(numEnvVarsValues.size()==1);
-      pMap["numEnvVars"] = *numEnvVarsValues.begin();
-      
-      long numEnvVars = strtol((*numEnvVarsValues.begin()).c_str(), NULL, 10);
-      for(long i=0; i<numEnvVars; i++) {
-        set<string> envNameValues = getValueSet(tags, "sight", txt()<<"envName_"<<i);
-        assert(envNameValues.size()==1);
-        pMap[txt()<<"envName_"<<i] = *envNameValues.begin();
-        
-        set<string> envValValues = getValueSet(tags, "sight", txt()<<"envVal_"<<i);
-        assert(envValValues.size()==1);
-        pMap[txt()<<"envVal_"<<i] = *envValValues.begin();
-      }
-      
-      set<string> numHostnamesValues = getValueSet(tags, "sight", "numHostnames");
-      assert(numHostnamesValues.size()==1);
-      pMap["numHostnames"] = *numHostnamesValues.begin();
-      
-      long numHostnames = strtol((*numHostnamesValues.begin()).c_str(), NULL, 10);
-      for(long i=0; i<numHostnames; i++) {
-        set<string> hostnameValues = getValueSet(tags, "sight", txt()<<"hostname_"<<i);
-        assert(hostnameValues.size()==1);
-        pMap[txt()<<"hostname_"<<i] = *hostnameValues.begin();
-      }
-      
-      set<string> usernameValues = getValueSet(tags, "sight", "username");
-      assert(usernameValues.size()==1);
-      pMap["username"] = *usernameValues.begin();
-    }
-    
-    properties* props = new properties();
-    props->add("sight", pMap);
-    
-    initializeDebug_internal(props);
-    
-    return *props;
-  }
-};
-
-class PickFirstMF : public MergeFunctor {
-  public:
-  properties operator()(const vector<pair<FILEStructureParser::tagType, const properties*> >& tags) {
-    assert(tags.size()>0);
-    return properties(*tags[0].second);
-  }
-};
-
-map<string, MergeFunctor*> mergers;
 
 /*scopeLayoutHandlerInstantiator scopeLayoutHandlerInstance;
 graphLayoutHandlerInstantiator graphLayoutHandlerInstance;
@@ -148,6 +46,23 @@ mfemLayoutHandlerInstantiator mfemLayoutHandlerInstance;
 
 //#define VERBOSE
 
+class MergeFunctorBase {
+  public:
+  virtual sight::structure::Merger* merge(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags)=0;
+};
+
+template<class M>
+class MergeFunctor : public MergeFunctorBase {
+  public:
+  sight::structure::Merger* merge(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags) {
+    return new M(tags);
+  }
+};
+
+map<string, MergeFunctorBase*> mergers;
+
+
+
 int main(int argc, char** argv) {
   if(argc<3) { cerr<<"Usage: slayout [fNames]"<<endl; exit(-1); }
   vector<FILEStructureParser*> fileParsers;
@@ -158,11 +73,14 @@ int main(int argc, char** argv) {
   cout << "#fileParserRefs="<<fileParsers.size()<<endl;
   #endif
   
-  mergers["sight"] = new dbgStreamMF();
-  mergers["scope"] = new PickFirstMF();
-  mergers["indent"] = new PickFirstMF();
+  mergers["sight"]    = new MergeFunctor<dbgStreamMerger>();
+  mergers["indent"]   = new MergeFunctor<IndentMerger>();
+  mergers["scope"]    = new MergeFunctor<ScopeMerger>();
+  mergers["graph"]    = new MergeFunctor<GraphMerger>();
+  mergers["trace"]    = new MergeFunctor<TraceMerger>();
+  //mergers["traceObs"] = new MergeFunctor<TraceObsMerger>();
   
-  vector<pair<FILEStructureParser::tagType, const properties*> > emptyNextTag;
+  vector<pair<properties::tagType, properties::iterator> > emptyNextTag;
   merge(fileParsers, emptyNextTag, 0, dbg
         #ifdef VERBOSE
         , "    "
@@ -186,7 +104,7 @@ int main(int argc, char** argv) {
 // out - stream to which data will be written
 // Returns a bool vector that records whether each parser that was passed in is still active.
 vector<bool> merge(vector<FILEStructureParser*>& parsers, 
-                   vector<pair<FILEStructureParser::tagType, const properties*> >& nextTag, 
+                   vector<pair<properties::tagType, properties::iterator> >& nextTag, 
                    int variantStackDepth,
                    structure::dbgStream& out
                    #ifdef VERBOSE
@@ -220,7 +138,7 @@ vector<bool> merge(vector<FILEStructureParser*>& parsers,
   int subDirCount=0;
   
   // Maps the next observed tag name/type to the input streams on which tags that match this signature were read
-  map<pair<FILEStructureParser::tagType, string>, list<int> > tag2stream;
+  map<pair<properties::tagType, string>, list<int> > tag2stream;
   
   while(numActive>0) {
     #ifdef VERBOSE
@@ -240,7 +158,7 @@ vector<bool> merge(vector<FILEStructureParser*>& parsers,
       
       // If we're ready to read a tag on this parser
       if(readyForTag[parserIdx] && activeParser[parserIdx]) {
-        pair<FILEStructureParser::tagType, const properties*> props = (*p)->next();
+        pair<properties::tagType, const properties*> props = (*p)->next();
         #ifdef VERBOSE
         cout << indent << parserIdx << ": "<<const_cast<properties*>(props.second)->str()<<endl;
         #endif
@@ -251,7 +169,7 @@ vector<bool> merge(vector<FILEStructureParser*>& parsers,
           numActive--;
         } else {
           // Record the properties of the newly-read tag
-          nextTag.push_back(props);
+          nextTag.push_back(make_pair(props.first, props.second->begin()));
           // Group this parser with all the other parsers that just read a tag with the same name and type (enter/exit)
           tag2stream[make_pair(props.first, props.second->name())].push_back(parserIdx);
                     
@@ -263,23 +181,23 @@ vector<bool> merge(vector<FILEStructureParser*>& parsers,
     
     // If we read text on any parser, emit the text immediately
     if(anyText) {
-      assert(tag2stream.find(make_pair(FILEStructureParser::enterTag, "text")) != tag2stream.end());
+      assert(tag2stream.find(make_pair(properties::enterTag, "text")) != tag2stream.end());
       
       // Parsers on which we read text
-      const list<int>& textParsers = tag2stream[make_pair(FILEStructureParser::enterTag, "text")]; 
+      const list<int>& textParsers = tag2stream[make_pair(properties::enterTag, "text")]; 
       assert(textParsers.size()>0);
       for(list<int>::const_iterator i=textParsers.begin(); i!=textParsers.end(); i++) {
         assert(activeParser[*i]);
         
         // !!! Need to do proper merge
-        out << "{"<<properties::get(nextTag[*i].second->begin(), "text")<<"}"<<endl;
+        out << "{"<<properties::get(nextTag[*i].second, "text")<<"}"<<endl;
         
         // We're ready to read a new tag on this parser
         readyForTag[*i] = true;
       }
       
       // Reset the tag2stream key associated with text reading
-      tag2stream.erase(make_pair(FILEStructureParser::enterTag, "text"));
+      tag2stream.erase(make_pair(properties::enterTag, "text"));
         
       // We'll now repeat the loop and read more tags on all the parsers from which we just read text
       
@@ -293,28 +211,30 @@ vector<bool> merge(vector<FILEStructureParser*>& parsers,
       // read from all the parsers, and perform the enter/exit action of this group
       if(tag2stream.size()==1) {
         assert(mergers.find(tag2stream.begin()->first.second) != mergers.end());
-        
+    
         // Merge the properties of all tags
-        properties merged = (*mergers[tag2stream.begin()->first.second])(nextTag);
+        Merger* m = mergers[tag2stream.begin()->first.second]->merge(nextTag);
         #ifdef VERBOSE
-        cout << indent << "merged="<<merged.str()<<endl;
+        cout << indent << "merged="<<m->getProps().str()<<endl;
         if(tag2stream.begin()->first.second == "sight")
           cout << indent << "dir="<<dbg.workDir<<endl;
         #endif
         
         // Perform the common action
-        if(tag2stream.begin()->first.first == FILEStructureParser::enterTag) {
+        if(tag2stream.begin()->first.first == properties::enterTag) {
           stackDepth++;
-          out.enter(merged);
+          out.enter(m->getProps());
         } else {
           stackDepth--;
-          out.exit(merged);
+          out.exit(m->getProps());
           
           // If we've exited out of the highest-level tag at this variant level, exit out to the parent
           // call to merge() unless this is the root call to merge()
           if(stackDepth==0 && variantStackDepth>0)
             return activeParser;
         }
+        
+        delete(m);
 
         // Record that we're ready for more tags on all the parsers
         for(vector<bool>::iterator i=readyForTag.begin(); i!=readyForTag.end(); i++)
@@ -333,13 +253,10 @@ vector<bool> merge(vector<FILEStructureParser*>& parsers,
       // merge() call. At this point we'll read the next tag from them and see if they can be merged.
       else {
         // Iterate over all the groups that entered a tag
-        cout << "#tag2stream="<<tag2stream.size()<<endl;
-        for(map<pair<FILEStructureParser::tagType, string>, list<int> >::iterator ts=tag2stream.begin();
+        for(map<pair<properties::tagType, string>, list<int> >::iterator ts=tag2stream.begin();
             ts!=tag2stream.end(); ) {
-          cout << "group: "<<ts->first.second<<endl;
-          if(ts->first.first == FILEStructureParser::enterTag) {
+          if(ts->first.first == properties::enterTag) {
             assert(ts->second.size()>0);
-            cout << "    enter"<<endl;
             
             // Contains the parsers of just this group
             vector<FILEStructureParser*> groupParsers;
@@ -349,7 +266,7 @@ vector<bool> merge(vector<FILEStructureParser*>& parsers,
             }
             
             // Contains the next read tag of just this group
-            vector<pair<FILEStructureParser::tagType, const properties*> > groupNextTag;
+            vector<pair<properties::tagType, properties::iterator> > groupNextTag;
             for(list<int>::const_iterator i=ts->second.begin(); i!=ts->second.end(); i++)
               groupNextTag.push_back(nextTag[*i]);
               
@@ -382,12 +299,10 @@ vector<bool> merge(vector<FILEStructureParser*>& parsers,
               cout << indent << ">>>>>>>>>>>>>>>>>>>>>>"<<endl;
               #endif
               out << "[Variant subDir=\""<<subDir<<"\"]\n";
-              cout << "[Variant subDir=\""<<subDir<<"\"]\n";
               
               subDirCount++;
             // >>>
             
-            cout << "1"<<endl;
             // We're done with processing the tag that was just entered
             
             // Update activeParsers[] based on the reading activity that occured inside the merge() call.
@@ -413,19 +328,14 @@ vector<bool> merge(vector<FILEStructureParser*>& parsers,
               readyForTag[*i] = true;
             tag2stream.erase(ts++);
           
-            cout << "2  "<<endl;
           // Do nothing for exit tags since these parsers wait for the ones that entered tags to complete their
           // processing of these tags
-          } else if(ts->first.first == FILEStructureParser::exitTag) {
-            cout << "    exit"<<endl;
+          } else if(ts->first.first == properties::exitTag) {
             ts++;
           }
-          cout << "2.5"<<endl;
         } // Iterate over all the groups that entered a tag
-        cout << "3"<<endl;
       }
     } // If we only entered or exited tags
-    cout << "4"<<endl;
   } // while(numActive>0)
   
   // We reach this point if all parsers have terminated
