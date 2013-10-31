@@ -644,7 +644,13 @@ void dbgStream::init(properties* props, string title, string workDir, string img
     dbgFile = &(createFile(txt()<<workDir<<"/structure"));
     // Call the parent class initialization function to connect it dbgBuf of the output file
     buf=new dbgBuf(dbgFile->rdbuf());
-  // Version 2 (default): write output to a pipe for slayout to use immediately
+  // Version 2 (default): write output to a pipe for a caller-specified layout executable to use immediately
+  } else if(getenv("SIGHT_LAYOUT")) {
+    dbgFile = NULL;
+    FILE *out = popen((txt()<<ROOT_PATH<<"/"<<getenv("SIGHT_LAYOUT")).c_str(), "w");
+    int outFD = fileno(out);
+    buf = new dbgBuf(new fdoutbuf(outFD));
+  // Version 3 (default): write output to a pipe for the default slayout to use immediately
   } else {
     dbgFile = NULL;
     FILE *out = popen((txt()<<ROOT_PATH<<"/slayout").c_str(), "w");

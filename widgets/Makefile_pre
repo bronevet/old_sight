@@ -18,43 +18,43 @@ all: ${WIDGETS_COMMON_O} ${WIDGETS_COMMON_H} ${WIDGETS_STRUCTURE_O} ${WIDGETS_ST
 	chmod 644 canviz-0.1/*/*
 
 scope_common.o: scope_common.C scope_common.h ../attributes_common.h ../sight_common.h
-	g++ ${CFLAGS} scope_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o scope_common.o
+	g++ ${SIGHT_CFLAGS} scope_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o scope_common.o
 
 scope_structure.o: scope_structure.C scope_structure.h ../attributes_structure.h ../sight_structure.h
-	g++ ${CFLAGS} scope_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o scope_structure.o
+	g++ ${SIGHT_CFLAGS} scope_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o scope_structure.o
 
 scope_layout.o: scope_layout.C scope_layout.h ../attributes_layout.h ../sight_layout.h
-	g++ ${CFLAGS} scope_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o scope_layout.o
+	g++ ${SIGHT_CFLAGS} scope_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o scope_layout.o
 
 
 graph_common.o: graph_common.C graph_common.h ../attributes_common.h ../sight_common.h
-	g++ ${CFLAGS} graph_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o graph_common.o
+	g++ ${SIGHT_CFLAGS} graph_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o graph_common.o
 
 graph_structure.o: graph_structure.C graph_structure.h ../attributes_structure.h ../sight_structure.h
-	g++ ${CFLAGS} graph_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o graph_structure.o
+	g++ ${SIGHT_CFLAGS} graph_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o graph_structure.o
 
 graph_layout.o: graph_layout.C graph_layout.h ../attributes_layout.h ../sight_layout.h
-	g++ ${CFLAGS} graph_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o graph_layout.o
+	g++ ${SIGHT_CFLAGS} graph_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o graph_layout.o
 
 
 valSelector_common.o: valSelector_common.C valSelector_common.h ../sight_common.h
-	g++ ${CFLAGS} valSelector_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o valSelector_common.o
+	g++ ${SIGHT_CFLAGS} valSelector_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o valSelector_common.o
 
 valSelector_structure.o: valSelector_structure.C valSelector_structure.h ../sight_structure.h
-	g++ ${CFLAGS} valSelector_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o valSelector_structure.o
+	g++ ${SIGHT_CFLAGS} valSelector_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o valSelector_structure.o
 
 valSelector_layout.o: valSelector_layout.C valSelector_layout.h ../sight_layout.h
-	g++ ${CFLAGS} valSelector_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o valSelector_layout.o
+	g++ ${SIGHT_CFLAGS} valSelector_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o valSelector_layout.o
 
 
 trace_common.o: trace_common.C trace_common.h ../sight_common.h
-	g++ ${CFLAGS} trace_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o trace_common.o
+	g++ ${SIGHT_CFLAGS} trace_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o trace_common.o
 
 trace_structure.o: trace_structure.C trace_structure.h ../sight_structure.h
-	g++ ${CFLAGS} trace_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o trace_structure.o
+	g++ ${SIGHT_CFLAGS} trace_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o trace_structure.o
 
 trace_layout.o: trace_layout.C trace_layout.h ../sight_layout.h
-	g++ ${CFLAGS} trace_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -c -o trace_layout.o
+	g++ ${SIGHT_CFLAGS} trace_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o trace_layout.o
 
 
 ifneq (${OS}, Cygwin)
@@ -63,7 +63,7 @@ xdotool:
 	wget http://semicomplete.googlecode.com/files/xdotool-2.20110530.1.tar.gz
 	tar -xf xdotool-2.20110530.1.tar.gz
 	rm -f xdotool-2.20110530.1.tar.gz
-	cd xdotool-2.20110530.1; CC=gcc; make
+	cd xdotool-2.20110530.1; CC=gcc; ${MAKE}
 	mv xdotool-2.20110530.1 xdotool
 else
 xdotool:
@@ -75,8 +75,8 @@ shellinabox/bin/shellinaboxd${EXE}:
 	cd widgets; wget --no-check-certificate https://shellinabox.googlecode.com/files/shellinabox-2.14.tar.gz
 	cd widgets; tar -xf shellinabox-2.14.tar.gz
 	cd shellinabox-2.14; ./configure --prefix=${ROOT_PATH}/widgets/shellinabox
-	cd shellinabox-2.14; make
-	cd shellinabox-2.14; make install
+	cd shellinabox-2.14; ${MAKE}
+	cd shellinabox-2.14; ${MAKE} install
 	rm -r shellinabox-2.14 shellinabox-2.14.tar.gz
 else
 shellinabox/bin/shellinaboxd${EXE}:
@@ -95,7 +95,7 @@ mongoose/mongoose${EXE}:
 	cd widgets; wget --no-check-certificate https://mongoose.googlecode.com/files/mongoose-3.8.tgz
 	cd widgets; tar -xf mongoose-3.8.tgz
 	cd widgets; rm mongoose-3.8.tgz
-	cd mongoose; make ${OS_MONGOOSE}
+	cd mongoose; ${MAKE} ${OS_MONGOOSE}
 
 graphviz/bin/dot${EXE}:
 ifeq (${OS},Cygwin)
@@ -110,8 +110,8 @@ else
 	cd widgets; wget http://www.graphviz.org/pub/graphviz/stable/SOURCES/graphviz-2.32.0.tar.gz
 	cd widgets; tar -xf graphviz-2.32.0.tar.gz
 	cd graphviz-2.32.0; export CC=gcc; export CXX=g++; ./configure --prefix=${ROOT_PATH}/widgets/graphviz --disable-swig --disable-sharp --disable-go --disable-io --disable-java --disable-lua --disable-ocaml --disable-perl --disable-php --disable-python --disable-r --disable-ruby --disable-tcl --without-pic --without-efence --without-expat --without-devil --without-webp --without-poppler --without-ghostscript --without-visio --without-pangocairo --without-lasi --without-glitz --without-freetype2 --without-fontconfig --without-gdk-pixbuf --without-gtk --without-gtkgl --without-gtkglext --without-gts --without-glade --without-ming --without-qt --without-quartz --without-gdiplus --without-libgd --without-glut --without-sfdp --without-smyrna --without-ortho --without-digcola --without-ipsepcola --enable-static --disable-shared
-	cd graphviz-2.32.0; make
-	cd graphviz-2.32.0; make install
+	cd graphviz-2.32.0; ${MAKE}
+	cd graphviz-2.32.0; ${MAKE} install
 	mv graphviz/bin/dot_static graphviz/bin/dot
 	rm -r graphviz-2.32.0 graphviz-2.32.0.tar.gz
 endif
