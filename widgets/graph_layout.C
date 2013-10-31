@@ -22,15 +22,18 @@ void* graphEnterHandler(properties::iterator props) { return new graph(props); }
 void  graphExitHandler(void* obj) { graph* g = static_cast<graph*>(obj); delete g; }
   
 graphLayoutHandlerInstantiator::graphLayoutHandlerInstantiator() { 
-  layoutEnterHandlers["graph"]     = &graphEnterHandler;
-  layoutExitHandlers ["graph"]     = &graphExitHandler;
-  layoutEnterHandlers["dirEdge"]   = &graph::addDirEdge;
-  layoutExitHandlers ["dirEdge"]   = &defaultExitHandler;
-  layoutEnterHandlers["undirEdge"] = &graph::addUndirEdge;
-  layoutExitHandlers ["undirEdge"] = &defaultExitHandler;
-  layoutEnterHandlers["node"]      = &graph::addNode;
-  layoutExitHandlers ["node"]      = &defaultExitHandler;
+  (*layoutEnterHandlers)["graph"]       = &graphEnterHandler;
+  (*layoutExitHandlers )["graph"]       = &graphExitHandler;
+  (*layoutEnterHandlers)["dotEncoding"] = &graph::setGraphEncoding;
+  (*layoutExitHandlers )["dotEncoding"] = &defaultExitHandler;
+  (*layoutEnterHandlers)["dirEdge"]     = &graph::addDirEdge;
+  (*layoutExitHandlers )["dirEdge"]     = &defaultExitHandler;
+  (*layoutEnterHandlers)["undirEdge"]   = &graph::addUndirEdge;
+  (*layoutExitHandlers )["undirEdge"]   = &defaultExitHandler;
+  (*layoutEnterHandlers)["node"]        = &graph::addNode;
+  (*layoutExitHandlers )["node"]        = &defaultExitHandler;
 }
+graphLayoutHandlerInstantiator graphLayoutHandlerInstance;
 
 // The path the directory where output files of the graph widget are stored
 // Relative to current path
@@ -186,6 +189,17 @@ void graph::outputCanvizDotGraph(std::string dot) {
   #endif*/
 
   graphOutput = true;
+}
+
+// Sets the structure of the current graph by specifying its dot encoding
+void graph::setGraphEncoding(string dotText) {
+  outputCanvizDotGraph(dotText);
+}
+
+void* graph::setGraphEncoding(properties::iterator props) {
+  assert(gStack.size()>0);
+  gStack.back()->setGraphEncoding(properties::get(props, "dot"));
+  return NULL;
 }
 
 // Add a directed edge from the location of the from anchor to the location of the to anchor

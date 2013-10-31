@@ -14,7 +14,7 @@
 namespace sight {
 namespace layout {
 
-class scopeLayoutHandlerInstantiator {
+class scopeLayoutHandlerInstantiator  : layoutHandlerInstantiator{
   public:
   scopeLayoutHandlerInstantiator();
 };

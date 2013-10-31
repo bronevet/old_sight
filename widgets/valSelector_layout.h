@@ -15,10 +15,11 @@
 namespace sight {
 namespace layout {
 
-class valSelectorLayoutHandlerInstantiator {
+class valSelectorLayoutHandlerInstantiator : layoutHandlerInstantiator {
   public:
   valSelectorLayoutHandlerInstantiator();
 };
+extern valSelectorLayoutHandlerInstantiator valSelectorLayoutHandlerInstance;
 
 class valSelector
 {

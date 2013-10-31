@@ -24,9 +24,10 @@ void* scopeEnterHandler(properties::iterator props) { return new scope(props); }
 void  scopeExitHandler(void* obj) { scope* s = static_cast<scope*>(obj); delete s; }
   
 scopeLayoutHandlerInstantiator::scopeLayoutHandlerInstantiator() { 
-  layoutEnterHandlers["scope"] = &scopeEnterHandler;
-  layoutExitHandlers ["scope"] = &scopeExitHandler;
+  (*layoutEnterHandlers)["scope"] = &scopeEnterHandler;
+  (*layoutExitHandlers) ["scope"] = &scopeExitHandler;
 }
+scopeLayoutHandlerInstantiator scopeLayoutHandlerInstance;
 
 std::vector<std::string> scope::colors;
 int scope::colorIdx=0; // The current index into the list of colors 

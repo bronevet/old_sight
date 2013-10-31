@@ -23,10 +23,10 @@ void* mfemEnterHandler(properties::iterator props) { return new mfem(props); }
 void  mfemExitHandler(void* obj) { mfem* m = static_cast<mfem*>(obj); delete m; }
   
 mfemLayoutHandlerInstantiator::mfemLayoutHandlerInstantiator() { 
-  layoutEnterHandlers["mfem"] = &mfemEnterHandler;
-  layoutExitHandlers ["mfem"] = &mfemExitHandler;
+  (*layoutEnterHandlers)["mfem"] = &mfemEnterHandler;
+  (*layoutExitHandlers) ["mfem"] = &mfemExitHandler;
 }
-
+mfemLayoutHandlerInstantiator mfemLayoutHandlerInstance;
 
 mfem::mfem(properties::iterator props) : block(properties::next(props)) {
   #if REMOTE_ENABLED
