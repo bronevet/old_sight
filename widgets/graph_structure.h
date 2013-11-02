@@ -23,6 +23,8 @@ class dottable
   virtual std::string toDOT(std::string graphName)=0;
 };
 
+typedef common::graphEdge<anchor> graphEdge;
+
 class graph: public structure::block
 {
   // Unique ID of this graph object
@@ -39,14 +41,14 @@ class graph: public structure::block
   
   public:
   
-  graph(                                                                              properties* props=NULL);
-  graph(                                                       const attrOp& onoffOp, properties* props=NULL);
-  graph(                     const anchor& pointsTo,                                  properties* props=NULL);
-  graph(                     const std::set<anchor>& pointsTo, const attrOp& onoffOp, properties* props=NULL);
-  graph(std::string dotText,                                                          properties* props=NULL);
-  graph(std::string dotText,                                   const attrOp& onoffOp, properties* props=NULL);
-  graph(std::string dotText, const anchor& pointsTo,                                  properties* props=NULL);
-  graph(std::string dotText, const std::set<anchor>& pointsTo, const attrOp& onoffOp, properties* props=NULL);
+  graph(                                                                        properties* props=NULL);
+  graph(                                                 const attrOp& onoffOp, properties* props=NULL);
+  graph(                     anchor& pointsTo,                                  properties* props=NULL);
+  graph(                     std::set<anchor>& pointsTo, const attrOp& onoffOp, properties* props=NULL);
+  graph(std::string dotText,                                                    properties* props=NULL);
+  graph(std::string dotText,                             const attrOp& onoffOp, properties* props=NULL);
+  graph(std::string dotText, anchor& pointsTo,                                  properties* props=NULL);
+  graph(std::string dotText, std::set<anchor>& pointsTo, const attrOp& onoffOp, properties* props=NULL);
     
   private:
   // Sets the properties of this object
@@ -68,12 +70,15 @@ class graph: public structure::block
   // Initialize the environment within which generated graphs will operate, including
   // the JavaScript files that are included as well as the directories that are available.
   static void initEnvironment();
+ 
+  // Sets the structure of the current graph by specifying its dot encoding
+  void setGraphEncoding(std::string dotText);
   
   // Add a directed edge from the location of the from anchor to the location of the to anchor
-  void addDirEdge(anchor from, anchor to);
+  virtual void addDirEdge(anchor from, anchor to);
   
   // Add an undirected edge between the location of the a anchor and the location of the b anchor
-  void addUndirEdge(anchor a, anchor b);
+  virtual void addUndirEdge(anchor a, anchor b);
   
   // Called to notify this block that a sub-block was started/completed inside of it. 
   // Returns true of this notification should be propagated to the blocks 

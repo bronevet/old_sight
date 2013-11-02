@@ -13,7 +13,7 @@
 namespace sight {
 namespace layout {
 
-class mfemLayoutHandlerInstantiator {
+class mfemLayoutHandlerInstantiator : layoutHandlerInstantiator {
   public:
   mfemLayoutHandlerInstantiator();
 };

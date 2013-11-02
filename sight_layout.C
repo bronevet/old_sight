@@ -31,8 +31,8 @@ namespace layout {
 // It is assumed that all objects are hierarchically scoped, in that objects are exted in the 
 //   reverse order of their entry. The layout engine keeps track of the entry/exit stacks and 
 //   ensures that the appropriate object pointers are passed to exit handlers.
-std::map<std::string, layoutEnterHandler> layoutEnterHandlers;
-std::map<std::string, layoutExitHandler> layoutExitHandlers;
+std::map<std::string, layoutEnterHandler>* layoutHandlerInstantiator::layoutEnterHandlers;
+std::map<std::string, layoutExitHandler>* layoutHandlerInstantiator::layoutExitHandlers;
   
 // Default entry/exit handlers to use when no special handling is needed
 void* defaultEntryHandler(properties::iterator props) { return NULL; }
@@ -42,18 +42,18 @@ void* indentEnterHandler(properties::iterator props) { return new indent(props);
 void  indentExitHandler(void* obj) { indent* i = static_cast<indent*>(obj); delete i; }
 
 // Record the layout handlers in this file
-class sightLayoutHandlerInstantiator {
-  public:
-  sightLayoutHandlerInstantiator() { 
-    layoutEnterHandlers["sight"] = &initializeDebug;
-    layoutExitHandlers ["sight"] = &defaultExitHandler;
-    layoutEnterHandlers["indent"] = &indentEnterHandler;
-    layoutExitHandlers ["indent"] = &indentExitHandler;
-    layoutEnterHandlers["link"]   = &anchor::link;
-    layoutExitHandlers ["link"]   = &defaultExitHandler;
+/*class sightLayoutHandlerInstantiator {
+  public:*/
+  sightLayoutHandlerInstantiator::sightLayoutHandlerInstantiator() { 
+    (*layoutEnterHandlers)["sight"] = &initializeDebug;
+    (*layoutExitHandlers )["sight"] = &defaultExitHandler;
+    (*layoutEnterHandlers)["indent"] = &indentEnterHandler;
+    (*layoutExitHandlers )["indent"] = &indentExitHandler;
+    (*layoutEnterHandlers)["link"]   = &anchor::link;
+    (*layoutExitHandlers )["link"]   = &defaultExitHandler;
   }
-};
-static sightLayoutHandlerInstantiator sightLayoutHandlerInstantance;
+//};
+sightLayoutHandlerInstantiator sightLayoutHandlerInstantance;
 
 bool initializedDebug=false;
 // Returns whether log generation has been enabled or explicitly disabled

@@ -33,15 +33,15 @@ class scope: public block, public common::scope
   //    min: none of the above
   // onoffOp - We emit this scope if the current attribute query evaluates to true (i.e. we're emitting debug output) AND
   //           either onoffOp is not provided or its evaluates to true.
-  scope(std::string label,                                   scopeLevel level, const attrOp& onoffOp, properties* props=NULL);
-  scope(std::string label, const anchor& pointsTo,           scopeLevel level, const attrOp& onoffOp, properties* props=NULL);
-  scope(std::string label, const std::set<anchor>& pointsTo, scopeLevel level, const attrOp& onoffOp, properties* props=NULL);
-  scope(std::string label,                                                             const attrOp& onoffOp, properties* props=NULL);
-  scope(std::string label, const anchor& pointsTo,                                     const attrOp& onoffOp, properties* props=NULL);
-  scope(std::string label, const std::set<anchor>& pointsTo,                           const attrOp& onoffOp, properties* props=NULL);
-  scope(std::string label,                                   scopeLevel level=medium,         properties* props=NULL);
-  scope(std::string label, const anchor& pointsTo,           scopeLevel level=medium,         properties* props=NULL);
-  scope(std::string label, const std::set<anchor>& pointsTo, scopeLevel level=medium,         properties* props=NULL);
+  scope(std::string label,                             scopeLevel level, const attrOp& onoffOp, properties* props=NULL);
+  scope(std::string label, anchor& pointsTo,           scopeLevel level, const attrOp& onoffOp, properties* props=NULL);
+  scope(std::string label, std::set<anchor>& pointsTo, scopeLevel level, const attrOp& onoffOp, properties* props=NULL);
+  scope(std::string label,                                               const attrOp& onoffOp, properties* props=NULL);
+  scope(std::string label, anchor& pointsTo,                             const attrOp& onoffOp, properties* props=NULL);
+  scope(std::string label, std::set<anchor>& pointsTo,                   const attrOp& onoffOp, properties* props=NULL);
+  scope(std::string label,                             scopeLevel level=medium,                 properties* props=NULL);
+  scope(std::string label, anchor& pointsTo,           scopeLevel level=medium,                 properties* props=NULL);
+  scope(std::string label, std::set<anchor>& pointsTo, scopeLevel level=medium,                 properties* props=NULL);
   
   private:
   // Sets the properties of this object

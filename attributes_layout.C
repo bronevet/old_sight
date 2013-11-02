@@ -16,9 +16,10 @@ void* attrEnterHandler(properties::iterator props) { return new attr(props); }
 void  attrExitHandler(void* obj) { attr* a = static_cast<attr*>(obj); delete a; }
   
 attributesLayoutHandlerInstantiator::attributesLayoutHandlerInstantiator() { 
-  layoutEnterHandlers["attr"] = &attrEnterHandler;
-  layoutExitHandlers ["attr"] = &attrExitHandler;
+  (*layoutEnterHandlers)["attr"] = &attrEnterHandler;
+  (*layoutExitHandlers) ["attr"] = &attrExitHandler;
 }
+attributesLayoutHandlerInstantiator attributesLayoutHandlerInstance;
 
 // ******************************
 // ***** Attribute Database *****

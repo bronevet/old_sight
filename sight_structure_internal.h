@@ -51,10 +51,11 @@ class location : printable {
   void exitBlock();
 
   void operator=(const location& that);
-  bool operator==(const location& that);
-  bool operator<(const location& that);
+  bool operator==(const location& that) const;
+  bool operator<(const location& that) const;
 
-  void print(std::ofstream& ofs) const;
+  //void print(std::ofstream& ofs) const;
+  std::string str(std::string indent="") const;
 };
 
 /* // Base class of all sight objects that provides some common functionality
@@ -147,16 +148,32 @@ class anchor
   static int maxAnchorID;
   int anchorID;
 
+  // Maps all anchor IDs to their locations, if known. When we establish forward links we create
+  // anchors that are initially not connected to a location (the target location has not yet been reached). Thus,
+  // when we reach a given location we may have multiple anchors with multiple IDs all for a single location.
+  // This map maintains the canonical anchor ID for each location. Other anchors are resynched to used this ID 
+  // whenever they are copied. This means that data structures that index based on anchors may need to be 
+  // reconstructed after we're sure that their targets have been reached to force all anchors to use their canonical IDs.
+  static std::map<int, location> aLocs;
+
   // Itentifies this anchor's location in the file and region hierarchies
-//  location loc;
+  location loc;
 
   // Flag that indicates whether we've already reached this anchor's location in the output
-  //bool located;
+  bool located;
   
   public:
   anchor();
   anchor(const anchor& that);
   anchor(int anchorID);
+
+  ~anchor();
+
+  // Records that this anchor's location is the current spot in the output
+  void isLocated();
+
+  // Updates this anchor to use the canonical ID of its location, if one has been established
+  void update();
   
   int getID() const { return anchorID; }
 
@@ -204,8 +221,8 @@ class block : public common::sightObj
     
   // Initializes this block with the given label.
   // Includes one or more incoming anchors thas should now be connected to this block.
-  block(std::string label, const anchor& pointsTo, properties* props=NULL);
-  block(std::string label, const std::set<anchor>& pointsTo, properties* props=NULL);
+  block(std::string label, anchor& pointsTo, properties* props=NULL);
+  block(std::string label, std::set<anchor>& pointsTo, properties* props=NULL);
  
   ~block();
   
@@ -306,6 +323,8 @@ class dbgStream : public common::dbgStream, public common::sightObj
   std::ofstream *dbgFile;
   // Buffer for the above stream
   dbgBuf* buf;
+  // Holds any text printed out before the dbgStream is fully initialized
+  std::ostringstream preInitStream;
   
   // The total number of images in the output file
   int numImages;
@@ -336,6 +355,9 @@ public:
   const std::string& getImgDir() const { return imgDir; }
   // Return the directory that widgets can use as temporary scratch space
   const std::string& getTmpDir() const { return tmpDir; }
+
+  // Returns the stream's current location
+  location getLoc() { return loc; }
   
   // Called when a block is entered.
   // b: The block that is being entered

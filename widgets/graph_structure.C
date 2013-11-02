@@ -34,12 +34,12 @@ graph::graph(const attrOp& onoffOp, properties* props) :
 /*  init(&onoffOp, inheritedFrom);
 }*/
 
-graph::graph(const anchor& pointsTo, properties* props) : 
+graph::graph(anchor& pointsTo, properties* props) : 
   block("Graph", pointsTo, setProperties(maxGraphID, "", NULL, props)) { graphID=++maxGraphID; }
 /*  init(NULL, inheritedFrom);
 }*/
 
-graph::graph(const std::set<anchor>& pointsTo, const attrOp& onoffOp, properties* props) : 
+graph::graph(std::set<anchor>& pointsTo, const attrOp& onoffOp, properties* props) : 
   block("Graph", pointsTo, setProperties(maxGraphID, "", &onoffOp, props)) { graphID=++maxGraphID; }
 /*  init(&onoffOp);
 }*/
@@ -50,10 +50,10 @@ graph::graph(string dotText,                                                    
 graph::graph(string dotText,                                   const attrOp& onoffOp, properties* props) : 
   block("Graph", setProperties(maxGraphID, dotText, &onoffOp, props)) { graphID=++maxGraphID; }
 
-graph::graph(string dotText, const anchor& pointsTo,                                  properties* props) : 
+graph::graph(string dotText, anchor& pointsTo,                                  properties* props) : 
   block("Graph", pointsTo, setProperties(maxGraphID, dotText, NULL, props)) { graphID=++maxGraphID; }
 
-graph::graph(string dotText, const std::set<anchor>& pointsTo, const attrOp& onoffOp, properties* props) : 
+graph::graph(string dotText, std::set<anchor>& pointsTo, const attrOp& onoffOp, properties* props) : 
   block("Graph", pointsTo, setProperties(maxGraphID, dotText, &onoffOp, props)) { graphID=++maxGraphID; }
 
 // Sets the properties of this object
@@ -113,6 +113,19 @@ void graph::genGraph(std::string dotText) {
   properties["dot"] = dot;
   dbg.tag("graph", properties, false);*/
   //assert(0);
+}
+
+// Sets the structure of the current graph by specifying its dot encoding
+void graph::setGraphEncoding(string dotText) {
+  sightObj obj(new properties());
+  
+  map<string, string> newProps;
+  newProps["dot"] = dotText;
+  obj.props->add("graphEncoding", newProps);
+  
+  //dbg.tag("dirEdge", properties, false);
+  dbg.tag(&obj);
+  
 }
 
 // Add a directed edge from the location of the from anchor to the location of the to anchor

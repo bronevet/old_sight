@@ -13,8 +13,18 @@
 
 namespace sight {
 
-template<typename streamT>
 class structureParser {
+  public:
+  // Differentiates between the entry tag of an object and its exit tag
+  typedef enum {enterTag, exitTag} tagType;
+  
+  // Reads more data from the data source, returning the type of the next tag read and the properties of 
+  // the object it denotes.
+  virtual std::pair<structureParser::tagType, const properties*> next()=0;
+};
+
+template<typename streamT>
+class baseStructureParser : public structureParser{
   protected:
   // Holds the data just read from the data source
   char* buf;
@@ -43,10 +53,9 @@ class structureParser {
   // Returns true if we've encountered an error in input stream
   virtual bool streamError()=0;
 
-  public:
-    
-  structureParser(int bufSize=10000);
-  structureParser(streamT* stream, int bufSize=10000);
+  public:  
+  baseStructureParser(int bufSize=10000);
+  baseStructureParser(streamT* stream, int bufSize=10000);
   void init(streamT* stream);
   
   protected:
@@ -66,7 +75,7 @@ class structureParser {
   public:
   // Reads more data from the data source, returning the type of the next tag read and the properties of 
   // the object it denotes.
-  std::pair<properties::tagType, const properties*> next();
+  std::pair<structureParser::tagType, const properties*> next();
   
   protected:
   // Read a property name/value pair from the given file, setting name and val to them.
@@ -110,7 +119,7 @@ class structureParser {
 };
 
 
-class FILEStructureParser : public structureParser<FILE> {
+class FILEStructureParser : public baseStructureParser<FILE> {
   // Records whether this object opened the file on its own (in which case it needs to close it)
   // or was given a ready FILE* stream
   bool openedFile;
@@ -133,5 +142,8 @@ class FILEStructureParser : public structureParser<FILE> {
   // Returns true if we've encountered an error in input stream
   bool streamError();
 };
+
+// Given a parser that reads the structure of a given log file, lays it out and prints it to the output Sight stream
+void layoutStructure(structureParser& parser);
 
 } // namespace sight

@@ -56,10 +56,11 @@ class printable
 {
   public:
   virtual ~printable() {}
-  virtual void print(std::ofstream& ofs) const=0;
+  //virtual void print(std::ofstream& ofs) const=0;
+  virtual std::string str(std::string indent="") const=0;
 };
 // Call the print method of the given printable object
-std::ofstream& operator<<(std::ofstream& ofs, const printable& p);
+//std::ofstream& operator<<(std::ofstream& ofs, const printable& p);
 
 // Records the properties of a given object
 class properties

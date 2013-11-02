@@ -11,11 +11,12 @@ void* traceEnterHandler(properties::iterator props) { return new trace(props); }
 void  traceExitHandler(void* obj) { trace* t = static_cast<trace*>(obj); delete t; }
   
 traceLayoutHandlerInstantiator::traceLayoutHandlerInstantiator() { 
-  layoutEnterHandlers["trace"] = &traceEnterHandler;
-  layoutExitHandlers ["trace"] = &traceExitHandler;
-  layoutEnterHandlers["traceObs"] = &trace::observe;
-  layoutExitHandlers ["traceObs"] = &defaultExitHandler;
+  (*layoutEnterHandlers)["trace"] = &traceEnterHandler;
+  (*layoutExitHandlers )["trace"] = &traceExitHandler;
+  (*layoutEnterHandlers)["traceObs"] = &trace::observe;
+  (*layoutExitHandlers )["traceObs"] = &defaultExitHandler;
 }
+traceLayoutHandlerInstantiator traceLayoutHandlerInstance;
 
 // Maps the traceIDs of all the currently active traces to their trace objects
 std::map<int, trace*> trace::active;

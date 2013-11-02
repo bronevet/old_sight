@@ -11,15 +11,16 @@ void* colorSelectorEnterHandler(properties::iterator props) { return new colorSe
 void  colorSelectorExitHandler(void* obj) { colorSelector* t = static_cast<colorSelector*>(obj); delete t; }
   
 valSelectorLayoutHandlerInstantiator::valSelectorLayoutHandlerInstantiator() { 
-  layoutEnterHandlers["colorSelector"] = &colorSelectorEnterHandler;
-  layoutExitHandlers ["colorSelector"] = &colorSelectorExitHandler;
-  layoutEnterHandlers["textColor"]     = &textColor::start;
-  layoutExitHandlers ["textColor"]     = &textColor::end;
-  layoutEnterHandlers["bgColor"]       = &bgColor::start;
-  layoutExitHandlers ["bgColor"]       = &bgColor::end;
-  layoutEnterHandlers["borderColor"]   = &borderColor::start;
-  layoutExitHandlers ["borderColor"]   = &borderColor::end;
+  (*layoutEnterHandlers)["colorSelector"] = &colorSelectorEnterHandler;
+  (*layoutExitHandlers )["colorSelector"] = &colorSelectorExitHandler;
+  (*layoutEnterHandlers)["textColor"]     = &textColor::start;
+  (*layoutExitHandlers )["textColor"]     = &textColor::end;
+  (*layoutEnterHandlers)["bgColor"]       = &bgColor::start;
+  (*layoutExitHandlers )["bgColor"]       = &bgColor::end;
+  (*layoutEnterHandlers)["borderColor"]   = &borderColor::start;
+  (*layoutExitHandlers )["borderColor"]   = &borderColor::end;
 }
+valSelectorLayoutHandlerInstantiator valSelectorLayoutHandlerInstance;
 
 /***********************
  ***** valSelector *****

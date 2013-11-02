@@ -1,11 +1,11 @@
+#include <stdlib.h>
+#include <assert.h>
 #include <string>
 #include <iostream>
 #include <sstream>
 #include <ostream>
 #include <fstream>
 #include "attributes_common.h"
-#include "attributes_structure.h"
-#include "attributes_layout.h"
 
 using namespace std;
 

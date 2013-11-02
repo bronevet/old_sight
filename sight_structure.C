@@ -216,13 +216,15 @@ void location::exitBlock() {
 void location::operator=(const location& that)
 { l = that.l; }
 
-bool location::operator==(const location& that)
+bool location::operator==(const location& that) const
 { return l==that.l; }
 
-bool location::operator<(const location& that)
+bool location::operator<(const location& that) const
 { return l<that.l; }
 
-void location::print(std::ofstream& ofs) const {
+//void location::print(std::ofstream& ofs) const {
+std::string location::str(std::string indent) const {
+  ostringstream ofs;
   ofs << "[location: "<<endl;
   for(std::list<std::pair<int, std::list<int> > >::const_iterator i=l.begin(); i!=l.end(); i++) {
     ofs << "    "<<i->first<<" :";
@@ -232,6 +234,7 @@ void location::print(std::ofstream& ofs) const {
     ofs << endl;
   }
   ofs << "]";
+  return ofs.str();
 }
 
 /******************
@@ -333,13 +336,59 @@ std::vector<std::pair<properties::tagType, properties::iterator> >
  ******************/
 int anchor::maxAnchorID=0;
 anchor anchor::noAnchor(-1);
-  
-anchor::anchor()                   : anchorID(maxAnchorID++) {}
-anchor::anchor(const anchor& that) : anchorID(that.anchorID) {} 
-anchor::anchor(int anchorID)       : anchorID(anchorID)      {}
+
+// Maps all anchor IDs to their locations, if known. When we establish forward links we create
+// anchors that are initially not connected to a location (the target location has not yet been reached). Thus,
+// when we reach a given location we may have multiple anchors with multiple IDs all for a single location.
+// This map maintains the canonical anchor ID for each location. Other anchors are resynched to used this ID
+// whenever they are copied. This means that data structures that index based on anchors may need to be
+// reconstructed after we're sure that their targets have been reached to force all anchors to use their canonical IDs.
+map<int, location> anchor::aLocs;
+
+anchor::anchor()                   : anchorID(maxAnchorID++), located(false) {
+}
+anchor::anchor(const anchor& that) : anchorID(that.anchorID), located(false) {
+  // If we know that is located then we just copy its location information since it will not change
+  if(that.located) {
+    located = that.located;
+    loc     = that.loc;
+  // If that's locatedness is unknown, call update to check with the aLocs map
+  } else
+    update();
+} 
+anchor::anchor(int anchorID)       : anchorID(anchorID), located(false)      {
+  // Check to see if this anchorID is already located
+  update();
+}
+
+anchor::~anchor() {
+}
+
+// Records that this anchor's location is the current spot in the output
+void anchor::isLocated() {
+  located = true;
+  loc = dbg.getLoc();
+  aLocs[anchorID] = loc;
+}
+
+// Updates this anchor to use the canonical ID of its location, if one has been established
+void anchor::update() {
+  if(aLocs.find(anchorID) != aLocs.end()) {
+    located = true;
+    loc = aLocs[anchorID];
+  }
+}
+
 
 void anchor::operator=(const anchor& that) {
   anchorID = that.anchorID;
+  // If we know that is located then we just copy its location information since it will not change
+  if(that.located) {
+    located = that.located;
+    loc     = that.loc;
+  // If that's locatedness is unknown, call update to check with the aLocs map
+  } else
+    update();
 }
 
 bool anchor::operator==(const anchor& that) const {
@@ -347,8 +396,14 @@ bool anchor::operator==(const anchor& that) const {
   assert(anchorID>=-1); assert(that.anchorID>=-1);
   if(anchorID==-1 && that.anchorID==-1) return true;
 
-  // They're equal if they have the same ID
-  return anchorID == that.anchorID;
+  // They're equal if they're located and they have the same location OR
+  return (located && that.located && loc == that.loc) ||
+         // either one is not located and have the same ID.
+         (anchorID == that.anchorID);
+  // NOTE: we do not call update on either anchor to make sure that once an anchor is included
+  //       in a data structure, its relations to other anchors do not change. Update is only
+  //       called when anchors are copied, meaning that we cannot simply copy data structures
+  //       that use anchors as keys and must instead re-create them.
 }
 
 bool anchor::operator!=(const anchor& that) const
@@ -360,8 +415,17 @@ bool anchor::operator<(const anchor& that) const
   assert(anchorID>=-1); assert(that.anchorID>=-1);
   if(anchorID==-1 && that.anchorID==-1) return false;
   
+  // They're LT if one is located while the other is not (located anchors are ordered before unlocated ones), OR
+  return (located && !that.located) ||
+          // they're both located and their locations are LT OR
+         (located && that.located && loc < that.loc) ||
+         // neither one is located and their IDs are LT.
+         (!located && !that.located && anchorID < that.anchorID);
+  // NOTE: we do not call update on either anchor to make sure that once an anchor is included
+  //       in a data structure, its relations to other anchors do not change. Update is only
+  //       called when anchors are copied, meaning that we cannot simply copy data structures
+  //       that use anchors as keys and must instead re-create them.
   // Compare their IDs
-  return anchorID < that.anchorID;
 }
 
 // Emits to the output an html tag that denotes a link to this anchor. Embeds the given text in the link.
@@ -396,7 +460,7 @@ void anchor::linkImg(string text) const {
 
 std::string anchor::str(std::string indent) const {
   if(anchorID==-1) return "[noAnchor_structure]";
-  else             return txt()<<"[anchor_structure: ID="<<anchorID<<"\"]";
+  else             return txt()<<"[anchor_structure: ID="<<anchorID<<", "<<(located?"":"not")<<" located"<<(located? ", ": "")<<(located? loc.str(): "")<<"]";
 }
 
 /*****************
@@ -417,6 +481,9 @@ block::block(string label, properties* props) : label(label) {
   else            this->props = props;
   
   if(this->props->active) {
+    // Connect startA to the current location 
+    startA.isLocated();
+
     map<string, string> newProps;
     newProps["label"] = label;
     newProps["ID"] = txt()<<blockID;
@@ -432,7 +499,7 @@ block::block(string label, properties* props) : label(label) {
 
 // Initializes this block with the given label.
 // Includes one or more incoming anchors thas should now be connected to this block.
-block::block(string label, const anchor& pointsTo, properties* props) : label(label) {
+block::block(string label, anchor& pointsTo, properties* props) : label(label) {
   advanceBlockID();
   if(!initializedDebug) initializeDebug("Debug Output", "dbg");
   
@@ -440,6 +507,11 @@ block::block(string label, const anchor& pointsTo, properties* props) : label(la
   else            this->props = props;
   
   if(this->props->active) {
+    // Connect startA and pointsTo anchors to the current location (pointsTo is not modified);
+    startA.isLocated();
+    anchor pointsToCopy(pointsTo);
+    pointsToCopy.isLocated();
+
     map<string, string> newProps;
     newProps["label"] = label;
     newProps["ID"] = txt()<<blockID;
@@ -459,7 +531,7 @@ block::block(string label, const anchor& pointsTo, properties* props) : label(la
 
 // Initializes this block with the given label.
 // Includes one or more incoming anchors thas should now be connected to this block.
-block::block(string label, const set<anchor>& pointsTo, properties* props) : label(label)
+block::block(string label, set<anchor>& pointsTo, properties* props) : label(label)
 {
   advanceBlockID();
   if(!initializedDebug) initializeDebug("Debug Output", "dbg");
@@ -468,6 +540,13 @@ block::block(string label, const set<anchor>& pointsTo, properties* props) : lab
   else            this->props = props;
   
   if(this->props->active) {
+    // Connect startA and pointsTo anchors to the current location (pointsTo is not modified)
+    startA.isLocated();
+    for(set<anchor>::iterator a=pointsTo.begin(); a!=pointsTo.end(); a++) {
+      anchor aCopy(*a);
+      aCopy.isLocated();
+    }
+
     map<string, string> newProps;
     newProps["label"] = label;
     newProps["ID"] = txt()<<blockID;
@@ -653,6 +732,9 @@ void dbgBuf::ownerAccessing() { ownerAccess = true; synched = true; }
 dbgStream::dbgStream() : common::dbgStream(&defaultFileBuf), initialized(false)
 {
   dbgFile = NULL;
+  //buf = new dbgBuf(cout.rdbuf());
+  buf = new dbgBuf(preInitStream.rdbuf());
+  ostream::init(buf);
 }
 
 dbgStream::dbgStream(properties* props, string title, string workDir, string imgDir, std::string tmpDir)
@@ -676,7 +758,13 @@ void dbgStream::init(properties* props, string title, string workDir, string img
     dbgFile = &(createFile(txt()<<workDir<<"/structure"));
     // Call the parent class initialization function to connect it dbgBuf of the output file
     buf=new dbgBuf(dbgFile->rdbuf());
-  // Version 2 (default): write output to a pipe for slayout to use immediately
+  // Version 2 (default): write output to a pipe for a caller-specified layout executable to use immediately
+  } else if(getenv("SIGHT_LAYOUT")) {
+    dbgFile = NULL;
+    FILE *out = popen((txt()<<ROOT_PATH<<"/"<<getenv("SIGHT_LAYOUT")).c_str(), "w");
+    int outFD = fileno(out);
+    buf = new dbgBuf(new fdoutbuf(outFD));
+  // Version 3 (default): write output to a pipe for the default slayout to use immediately
   } else {
     dbgFile = NULL;
     FILE *out = popen((txt()<<ROOT_PATH<<"/slayout").c_str(), "w");
@@ -687,6 +775,12 @@ void dbgStream::init(properties* props, string title, string workDir, string img
 
   this->props = props; 
   enter(this);
+
+  // The application may have written text to this dbgStream before it was fully initialized.
+  // This text was stored in preInitStream. Print it out now.
+  ownerAccessing();
+  dbg << preInitStream.str();
+  userAccessing();
   
   initialized = true;
 }

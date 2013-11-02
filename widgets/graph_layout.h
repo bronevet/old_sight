@@ -14,38 +14,13 @@
 namespace sight {
 namespace layout {
 
-class graphLayoutHandlerInstantiator {
+class graphLayoutHandlerInstantiator : layoutHandlerInstantiator {
   public:
   graphLayoutHandlerInstantiator();
 };
+extern graphLayoutHandlerInstantiator graphLayoutHandlerInstance;
 
-class graph;
-
-class graphEdge {
-  anchor from;
-  anchor to;
-  bool directed;
-  
-  friend class graph;
-  
-  public:
-  graphEdge(anchor from, anchor to, bool directed) :
-    from(from), to(to), directed(directed)
-  {}
-  
-  const anchor& getFrom() { return from; }
-  const anchor& getTo()   { return to; }
-  
-  bool operator==(const graphEdge& that) const {
-    return (from == that.from);
-  }
-  bool operator<(const graphEdge& that) const {
-    return (from < that.from) ||
-           (from == that.from && to < that.to) ||
-           (from == that.from && to == that.to && directed < that.directed);
-  }
-};
-
+typedef common::graphEdge<anchor> graphEdge;
 
 class graph: public block
 {
@@ -100,7 +75,11 @@ class graph: public block
   // Initialize the environment within which generated graphs will operate, including
   // the JavaScript files that are included as well as the directories that are available.
   static void initEnvironment();
-  
+ 
+  // Sets the structure of the current graph by specifying its dot encoding
+  void setGraphEncoding(std::string dotText);
+  static void* setGraphEncoding(properties::iterator props);
+ 
   // Add a directed edge from the location of the from anchor to the location of the to anchor
   void addDirEdge(anchor from, anchor to);
   static void* addDirEdge(properties::iterator props);

@@ -8,26 +8,28 @@
 #include <errno.h>
 #include "process.h"
 #include "sight_common_internal.h"
+#include "sight_layout.h"
 using namespace std;
 using namespace sight::common;
 
 //#define VERBOSE
 namespace sight {
-/***************************
- ***** structureParser *****
- ***************************/
+
+/*******************************
+ ***** baseStructureParser *****
+ *******************************/
 
 template<typename streamT>
-structureParser<streamT>::structureParser(int bufSize) : bufSize(bufSize) {
+baseStructureParser<streamT>::baseStructureParser(int bufSize) : bufSize(bufSize) {
 }
 
 template<typename streamT>
-structureParser<streamT>::structureParser(streamT* stream, int bufSize) : bufSize(bufSize) {
+baseStructureParser<streamT>::baseStructureParser(streamT* stream, int bufSize) : bufSize(bufSize) {
   init(stream);
 }
 
 template<typename streamT>
-void structureParser<streamT>::init(streamT* stream) {
+void baseStructureParser<streamT>::init(streamT* stream) {
   this->stream = stream;
   buf = new char[bufSize];
   assert(buf);
@@ -38,7 +40,7 @@ void structureParser<streamT>::init(streamT* stream) {
 }
 
 template<typename streamT>
-pair<typename properties::tagType, const properties*> structureParser<streamT>::next() {
+pair<typename structureParser::tagType, const properties*> baseStructureParser<streamT>::next() {
   bool success = true;
   string readTxt; // String where text read by readUntil() will be placed
   char termChar;  // Character where readUntil() places the character that caused parsing to terminate
@@ -92,7 +94,7 @@ pair<typename properties::tagType, const properties*> structureParser<streamT>::
       pMap["text"] = readTxt;
       tagProperties.add("text", pMap);
       loc = textRead;
-      return make_pair(properties::enterTag, &tagProperties);
+      return make_pair(structureParser::enterTag, &tagProperties);
     }
     
     if(!success) goto DONE_LOC;
@@ -118,7 +120,7 @@ pair<typename properties::tagType, const properties*> structureParser<streamT>::
       
       tagProperties.add(tagName, pMap);
       loc = exitTagRead;
-      return make_pair(properties::exitTag, &tagProperties);
+      return make_pair(structureParser::exitTag, &tagProperties);
       
       EXIT_TAG_READ_LOC:
       
@@ -200,7 +202,7 @@ pair<typename properties::tagType, const properties*> structureParser<streamT>::
         #endif
         
         loc = enterTagRead;
-        return make_pair(properties::enterTag, &tagProperties);
+        return make_pair(structureParser::enterTag, &tagProperties);
         
         ENTER_TAG_READ_LOC:
         ;
@@ -213,7 +215,7 @@ pair<typename properties::tagType, const properties*> structureParser<streamT>::
 
   DONE_LOC:
   loc = done;
-  return make_pair(properties::exitTag, &tagProperties);
+  return make_pair(structureParser::exitTag, &tagProperties);
 }
 
 // Read a property name/value pair from the given file, setting name and val to them.
@@ -227,7 +229,7 @@ pair<typename properties::tagType, const properties*> structureParser<streamT>::
 // or whether more properties exist in the tag. If readProperty() reads the full 
 // property info before it reaches the end of the file, it returns true and false otherwise.
 template<typename streamT>
-bool structureParser<streamT>::readProperty(std::string& name, std::string& val, char& termChar) {
+bool baseStructureParser<streamT>::readProperty(std::string& name, std::string& val, char& termChar) {
   string readTxt; // Generic string to hold read data
 
   // Skip until the next non-whitespace character
@@ -272,7 +274,7 @@ bool structureParser<streamT>::readProperty(std::string& name, std::string& val,
 // readUntil() finds a terminator char before it reaches the end of the file, it 
 // returns true and false otherwise.
 template<typename streamT>
-bool structureParser<streamT>::readUntil(bool inTerm, const char* termChars, int numTermChars, 
+bool baseStructureParser<streamT>::readUntil(bool inTerm, const char* termChars, int numTermChars, 
                                 char& termHit, string& result) {
   result = "";
   // Outer loop that keeps reading more chunks of size bufSize from the file
@@ -322,7 +324,7 @@ bool structureParser<streamT>::readUntil(bool inTerm, const char* termChars, int
 // Returns the read char. If there is a next character in the file, returns true.
 // Otherwise, returns false.
 template<typename streamT>
-bool structureParser<streamT>::nextChar() {
+bool baseStructureParser<streamT>::nextChar() {
   // If there is another char in buf to read, advance to it
   if(bufIdx<dataInBuf-1) {
     bufIdx++;
@@ -349,7 +351,7 @@ bool structureParser<streamT>::nextChar() {
 // Returns true if character c is in array termChars of size numTermChars and 
 // false otherwise.
 template<typename streamT>
-bool structureParser<streamT>::isMember(char c, const char* termChars, int numTermChars) {
+bool baseStructureParser<streamT>::isMember(char c, const char* termChars, int numTermChars) {
   for(int i=0; i<numTermChars; i++) {
     // If c is found in termChars
     if(c==termChars[i]) return true;
@@ -363,7 +365,7 @@ bool structureParser<streamT>::isMember(char c, const char* termChars, int numTe
  *******************************/
 
 FILEStructureParser::FILEStructureParser(string fName, int bufSize) : 
-  structureParser<FILE>(bufSize)
+  baseStructureParser<FILE>(bufSize)
 { 
   FILE* f = fopen(fName.c_str(), "r");
   if(f==NULL) { cerr << "ERROR opening file \""<<fName<<"\" for reading! "<<strerror(errno)<<endl; exit(-1); }
@@ -371,7 +373,7 @@ FILEStructureParser::FILEStructureParser(string fName, int bufSize) :
   init(f);
 }
 
-FILEStructureParser::FILEStructureParser(FILE* f, int bufSize) : structureParser<FILE>(f, bufSize) {
+FILEStructureParser::FILEStructureParser(FILE* f, int bufSize) : baseStructureParser<FILE>(f, bufSize) {
   openedFile=false;
 }
 
@@ -397,6 +399,39 @@ bool FILEStructureParser::streamEnd() {
 // Returns true if we've encountered an error in input stream
 bool FILEStructureParser::streamError() {
   return ferror(stream);
+}
+
+// Given a parser that reads the structure of a given log file, lays it out and prints it to the output Sight stream
+void layoutStructure(structureParser& parser) {
+  // The stack of all the objects of each type that have been entered but not yet exited
+  map<string, list<void*> > stack;
+  
+  pair<structureParser::tagType, const properties*> props = parser.next();
+  while(props.second->size()>0) {
+    if(props.first == structureParser::enterTag) {
+      // If this is just text between tags, print it out 
+      if(props.second->name() == "text")
+        //fprintf(f, "%s", properties::get(props.second->begin(), "text").c_str());
+        dbg << properties::get(props.second->begin(), "text");
+      // Else, if this is the entry into a new tag, process it
+      else {
+        // Call the entry handler of the most recently-entered object with this tag name
+        // and push the object it returns onto the stack dedicated to objects of this type.
+        if(layoutHandlerInstantiator::layoutEnterHandlers->find(props.second->name()) == layoutHandlerInstantiator::layoutEnterHandlers->end()) { cerr << "ERROR: no entry handler for \""<<props.second->name()<<"\" tags!" << endl; }
+        assert(layoutHandlerInstantiator::layoutEnterHandlers->find(props.second->name()) != layoutHandlerInstantiator::layoutEnterHandlers->end());
+        stack[props.second->name()].push_back((*layoutHandlerInstantiator::layoutEnterHandlers)[props.second->name()](props.second->begin()));
+      }
+    } else if(props.first == structureParser::exitTag) {
+      // Call the exit handler of the most recently-entered object with this tag name
+      // and pop the object off its stack
+      assert(stack[props.second->name()].size()>0);
+      if(layoutHandlerInstantiator::layoutEnterHandlers->find(props.second->name()) == layoutHandlerInstantiator::layoutEnterHandlers->end()) { cerr << "ERROR: no exit handler for \""<<props.second->name()<<"\" tags!" << endl; }
+      assert(layoutHandlerInstantiator::layoutExitHandlers->find(props.second->name()) != layoutHandlerInstantiator::layoutExitHandlers->end());
+      (*layoutHandlerInstantiator::layoutExitHandlers)[props.second->name()](stack[props.second->name()].back());
+      stack[props.second->name()].pop_back();
+    }
+    props = parser.next();
+  }
 }
 
 } // namespace sight

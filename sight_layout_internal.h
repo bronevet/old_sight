@@ -10,7 +10,6 @@
 #include <fstream>
 #include <stdarg.h>
 #include "sight_common.h"
-#include "attributes_layout.h"
 
 namespace sight {
 namespace layout {
@@ -26,13 +25,37 @@ namespace layout {
 //   reverse order of their entry. The layout engine keeps track of the entry/exit stacks and 
 //   ensures that the appropriate object pointers are passed to exit handlers.
 typedef void* (*layoutEnterHandler)(properties::iterator props);
-extern std::map<std::string, layoutEnterHandler> layoutEnterHandlers;
 typedef void (*layoutExitHandler)(void*);
-extern std::map<std::string, layoutExitHandler> layoutExitHandlers;
+class layoutHandlerInstantiator {
+  public:
+  static std::map<std::string, layoutEnterHandler>* layoutEnterHandlers;
+  static std::map<std::string, layoutExitHandler>*  layoutExitHandlers;
+
+  layoutHandlerInstantiator() {
+    if(!getenv("SIGHT_LAYOUT_HANDLERS_INSTANTIATED")) {
+      layoutEnterHandlers = new std::map<std::string, layoutEnterHandler>();
+      layoutExitHandlers  = new std::map<std::string, layoutExitHandler>();
+      setenv("SIGHT_LAYOUT_HANDLERS_INSTANTIATED", "1", 1);
+    }
+  }
+};
+
+class sightLayoutHandlerInstantiator : layoutHandlerInstantiator {
+  public:
+  sightLayoutHandlerInstantiator();
+};
+extern sightLayoutHandlerInstantiator sightLayoutHandlerInstantance;
 
 // Default entry/exit handlers to use when no special handling is needed
 void* defaultEntryHandler(properties::iterator props);
 void  defaultExitHandler(void* obj);
+}
+}
+
+#include "attributes_layout.h"
+
+namespace sight {
+namespace layout {
   
 // Records the information needed to call the application
 extern bool saved_appExecInfo; // Indicates whether the application execution info has been saved

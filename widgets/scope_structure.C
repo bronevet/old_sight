@@ -24,12 +24,12 @@ scope::scope(std::string label,                                    scopeLevel le
 //{ init(level, &onoffOp); }
 {}
 
-scope::scope(string label, const anchor& pointsTo,                 scopeLevel level, const attrOp& onoffOp, properties* props): 
+scope::scope(string label, anchor& pointsTo,                 scopeLevel level, const attrOp& onoffOp, properties* props): 
   block(label, pointsTo, setProperties(level, &onoffOp, props))
 //{ init(level, &onoffOp); }
 {}
 
-scope::scope(string label, const set<anchor>& pointsTo,            scopeLevel level, const attrOp& onoffOp, properties* props) :
+scope::scope(string label, set<anchor>& pointsTo,            scopeLevel level, const attrOp& onoffOp, properties* props) :
   block(label, pointsTo, setProperties(level, &onoffOp, props))
 //{ init(level, &onoffOp); }
 {}
@@ -39,12 +39,12 @@ scope::scope(std::string label,                                                 
 //{ init(medium, &onoffOp); }
 {}
 
-scope::scope(string label, const anchor& pointsTo,                                                  const attrOp& onoffOp, properties* props): 
+scope::scope(string label, anchor& pointsTo,                                                  const attrOp& onoffOp, properties* props): 
   block(label, pointsTo, setProperties(medium, &onoffOp, props))
 //{ init(medium, &onoffOp); }
 {}
 
-scope::scope(string label, const set<anchor>& pointsTo,                                             const attrOp& onoffOp, properties* props) :
+scope::scope(string label, set<anchor>& pointsTo,                                             const attrOp& onoffOp, properties* props) :
   block(label, pointsTo, setProperties(medium, &onoffOp, props))
 //{ init(medium, &onoffOp); }
 {}
@@ -54,12 +54,12 @@ scope::scope(std::string label,                                   scopeLevel lev
 //{ init(level, NULL); }
 {}
 
-scope::scope(std::string label, const anchor& pointsTo,           scopeLevel level,                         properties* props) :
+scope::scope(std::string label, anchor& pointsTo,           scopeLevel level,                         properties* props) :
   block(label, pointsTo, setProperties(level, NULL, props))
 //{ init(level, NULL); }
 {}
 
-scope::scope(std::string label, const std::set<anchor>& pointsTo, scopeLevel level,                         properties* props) :
+scope::scope(std::string label, std::set<anchor>& pointsTo, scopeLevel level,                         properties* props) :
   block(label, pointsTo, setProperties(level, NULL, props))
 //{ init(level, NULL); }
 {}

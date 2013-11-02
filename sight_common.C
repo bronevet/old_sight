@@ -29,10 +29,10 @@ bool isEnabled() {
  *********************/
   
 // Call the print method of the given printable object
-std::ofstream& operator<<(std::ofstream& ofs, const printable& p) {
+/*std::ofstream& operator<<(std::ofstream& ofs, const printable& p) {
   p.print(ofs);
   return ofs;
-}
+}*/
 
 /**********************
  ***** properties *****

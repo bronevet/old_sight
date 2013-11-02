@@ -16,10 +16,11 @@
 namespace sight {
 namespace layout {
 
-class traceLayoutHandlerInstantiator {
+class traceLayoutHandlerInstantiator : layoutHandlerInstantiator {
   public:
   traceLayoutHandlerInstantiator();
 };
+extern traceLayoutHandlerInstantiator traceLayoutHandlerInstance;
 
 void traceAttr(std::string label, std::string key, const attrValue& val);
 

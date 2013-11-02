@@ -15,7 +15,7 @@
 namespace sight {
 namespace layout{
 
-class attributesLayoutHandlerInstantiator {
+class attributesLayoutHandlerInstantiator : layoutHandlerInstantiator {
   public:
   attributesLayoutHandlerInstantiator();
 };

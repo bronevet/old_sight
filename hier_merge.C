@@ -26,7 +26,7 @@ using namespace sight::structure;
 // out - stream to which data will be written
 // Returns a bool vector that records whether each parser that was passed in is still active.
 vector<bool> merge(vector<FILEStructureParser*>& parsers, 
-                   vector<pair<properties::tagType, properties::iterator> >& nextTag, 
+                   vector<pair<structureParser::tagType, properties::iterator> >& nextTag, 
                    int variantStackDepth,
                    structure::dbgStream& out
                    #ifdef VERBOSE
@@ -48,13 +48,13 @@ mfemLayoutHandlerInstantiator mfemLayoutHandlerInstance;
 
 class MergeFunctorBase {
   public:
-  virtual sight::structure::Merger* merge(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags)=0;
+  virtual sight::structure::Merger* merge(const std::vector<std::pair<structureParser::tagType, properties::iterator> >& tags)=0;
 };
 
 template<class M>
 class MergeFunctor : public MergeFunctorBase {
   public:
-  sight::structure::Merger* merge(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags) {
+  sight::structure::Merger* merge(const std::vector<std::pair<structureParser::tagType, properties::iterator> >& tags) {
     return new M(tags);
   }
 };
@@ -80,7 +80,7 @@ int main(int argc, char** argv) {
   mergers["trace"]    = new MergeFunctor<TraceMerger>();
   //mergers["traceObs"] = new MergeFunctor<TraceObsMerger>();
   
-  vector<pair<properties::tagType, properties::iterator> > emptyNextTag;
+  vector<pair<structureParser::tagType, properties::iterator> > emptyNextTag;
   merge(fileParsers, emptyNextTag, 0, dbg
         #ifdef VERBOSE
         , "    "
@@ -104,7 +104,7 @@ int main(int argc, char** argv) {
 // out - stream to which data will be written
 // Returns a bool vector that records whether each parser that was passed in is still active.
 vector<bool> merge(vector<FILEStructureParser*>& parsers, 
-                   vector<pair<properties::tagType, properties::iterator> >& nextTag, 
+                   vector<pair<structureParser::tagType, properties::iterator> >& nextTag, 
                    int variantStackDepth,
                    structure::dbgStream& out
                    #ifdef VERBOSE
@@ -138,7 +138,7 @@ vector<bool> merge(vector<FILEStructureParser*>& parsers,
   int subDirCount=0;
   
   // Maps the next observed tag name/type to the input streams on which tags that match this signature were read
-  map<pair<properties::tagType, string>, list<int> > tag2stream;
+  map<pair<structureParser::tagType, string>, list<int> > tag2stream;
   
   while(numActive>0) {
     #ifdef VERBOSE
@@ -158,7 +158,7 @@ vector<bool> merge(vector<FILEStructureParser*>& parsers,
       
       // If we're ready to read a tag on this parser
       if(readyForTag[parserIdx] && activeParser[parserIdx]) {
-        pair<properties::tagType, const properties*> props = (*p)->next();
+        pair<structureParser::tagType, const properties*> props = (*p)->next();
         #ifdef VERBOSE
         cout << indent << parserIdx << ": "<<const_cast<properties*>(props.second)->str()<<endl;
         #endif
@@ -253,7 +253,7 @@ vector<bool> merge(vector<FILEStructureParser*>& parsers,
       // merge() call. At this point we'll read the next tag from them and see if they can be merged.
       else {
         // Iterate over all the groups that entered a tag
-        for(map<pair<properties::tagType, string>, list<int> >::iterator ts=tag2stream.begin();
+        for(map<pair<structureParser::tagType, string>, list<int> >::iterator ts=tag2stream.begin();
             ts!=tag2stream.end(); ) {
           if(ts->first.first == properties::enterTag) {
             assert(ts->second.size()>0);
@@ -266,7 +266,7 @@ vector<bool> merge(vector<FILEStructureParser*>& parsers,
             }
             
             // Contains the next read tag of just this group
-            vector<pair<properties::tagType, properties::iterator> > groupNextTag;
+            vector<pair<structureParser::tagType, properties::iterator> > groupNextTag;
             for(list<int>::const_iterator i=ts->second.begin(); i!=ts->second.end(); i++)
               groupNextTag.push_back(nextTag[*i]);
               
