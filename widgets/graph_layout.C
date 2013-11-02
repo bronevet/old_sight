@@ -174,7 +174,7 @@ void graph::outputCanvizDotGraph(std::string dot) {
   // Create the explicit DOT file that details the graph's layout
   //ostringstream cmd; cmd << DOT_PATH << "dot "<<origDotFName.str()<<" -Txdot -o"<<placedDotFName.str()<<"&"; 
   ostringstream cmd; cmd << ROOT_PATH << "/widgets/graphviz/bin/dot "<<origDotFName.str()<<" -Txdot -o"<<placedDotFName.str()<<"&"; 
-  //cout << "Command \""<<cmd.str()<<"\"\n";
+  cout << "Command \""<<cmd.str()<<"\"\n";
   system(cmd.str().c_str());
   
   dbg.widgetScriptCommand(txt() << 
@@ -210,8 +210,8 @@ void graph::addDirEdge(anchor from, anchor to) {
 
 // Static version of the call that pulls the from/to anchor IDs from the properties iterator and calls addDirEdge() in the currently active graph
 void* graph::addDirEdge(properties::iterator props) {
-  anchor from(false, properties::getInt(props, "from"));
-  anchor to(false, properties::getInt(props, "to"));
+  anchor from(/*false,*/ properties::getInt(props, "from"));
+  anchor to(/*false,*/ properties::getInt(props, "to"));
   assert(gStack.size()>0);
   gStack.back()->addDirEdge(from, to);
   return NULL;
@@ -225,8 +225,8 @@ void graph::addUndirEdge(anchor a, anchor b) {
 
 // Static version of the call that pulls the from/to anchor IDs from the properties iterator and calls addUndirEdge() in the currently active graph
 void* graph::addUndirEdge(properties::iterator props) {
-  anchor a(false, properties::getInt(props, "a"));
-  anchor b(false, properties::getInt(props, "b"));
+  anchor a(/*false,*/ properties::getInt(props, "a"));
+  anchor b(/*false,*/ properties::getInt(props, "b"));
   assert(gStack.size()>0);
   gStack.back()->addUndirEdge(a, b); 
   return NULL;
@@ -238,7 +238,7 @@ void graph::addNode(anchor a, string label) {
 }
 
 void* graph::addNode(properties::iterator props) {
-  gStack.back()->addNode(anchor(false, properties::getInt(props, "anchorID")), 
+  gStack.back()->addNode(anchor(/*false,*/ properties::getInt(props, "anchorID")), 
                          properties::get(props, "label"));
 }
 

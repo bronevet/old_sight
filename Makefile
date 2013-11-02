@@ -2,7 +2,7 @@ SIGHT_COMMON_O := sight_common.o attributes_common.o binreloc.o getAllHostnames.
 SIGHT_COMMON_H := sight.h sight_common_internal.h attributes_common.h binreloc.h getAllHostnames.h utils.h
 SIGHT_STRUCTURE_O := sight_structure.o attributes_structure.o
 SIGHT_STRUCTURE_H := sight.h sight_structure_internal.h attributes_structure.h
-SIGHT_LAYOUT_O := sight_layout.o attributes_layout.o 
+SIGHT_LAYOUT_O := sight_layout.o attributes_layout.o slayout.o
 SIGHT_LAYOUT_H := sight.h sight_layout_internal.h attributes_layout.h 
 sight := ${sight_O} ${sight_H} gdbLineNum.pl sightDefines.pl
 
@@ -61,8 +61,13 @@ endif
 #pattern${EXE}: pattern.C pattern.h libsight.a ${sight_H}
 #	g++ ${SIGHT_CFLAGS} pattern.C -L. -lsight  -o pattern${EXE}
 
-slayout${EXE}: slayout.C process.o process.h mfem libsight_layout.a 
-	g++ ${SIGHT_CFLAGS} slayout.C -Wl,--whole-archive libsight_layout.a -DMFEM -I. -Iapps/mfem apps/mfem/mfem_layout.o -Wl,-no-whole-archive -o slayout${EXE}
+slayout.o: slayout.C process.C process.h
+	g++ ${SIGHT_CFLAGS} slayout.C -I. -c -o slayout.o
+
+slayout${EXE}: mfem libsight_layout.a 
+	g++ -Wl,--whole-archive libsight_layout.a apps/mfem/mfem_layout.o  -Wl,-no-whole-archive -o slayout${EXE}
+#	ld --whole-archive slayout.o libsight_layout.a apps/mfem/mfem_layout.o -o slayout${EXE}
+#	g++ ${SIGHT_CFLAGS} slayout.C -Wl,--whole-archive libsight_layout.a -DMFEM -I. -Iapps/mfem apps/mfem/mfem_layout.o -Wl,-no-whole-archive -o slayout${EXE}
 
 hier_merge${EXE}: hier_merge.C process.o process.h libsight_structure.a 
 	g++ ${SIGHT_CFLAGS} hier_merge.C libsight_structure.a -DMFEM -I. -o hier_merge${EXE}
@@ -74,8 +79,8 @@ hier_merge${EXE}: hier_merge.C process.o process.h libsight_structure.a
 #	g++ -c slayout.C -o slayout.o
 #	ld slayout.o libsight_layout.a --relocateable -Ur --whole-archive -o slayout${EXE}
 
-process.o: process.C process.h sight_common_internal.h
-	g++ ${SIGHT_CFLAGS} process.C -c -o process.o
+#process.o: process.C process.h sight_common_internal.h
+#	g++ ${SIGHT_CFLAGS} process.C -c -o process.o
 
 #libsight_common.a: ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre
 #	ar -r libsight_common.a ${SIGHT_COMMON_O} widgets/*_common.o

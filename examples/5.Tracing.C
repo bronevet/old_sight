@@ -6,7 +6,7 @@ using namespace std;
 using namespace sight;
 
 int main(int argc, char** argv) {
-  initializeDebug(argc, argv, "5.Tracing", "dbg.5.Tracing");
+  SightInit(argc, argv, "5.Tracing", "dbg.5.Tracing");
   
   dbg << "<h1>Example 5: Tracing</h1>" << endl;  
   

@@ -120,7 +120,7 @@ class dbgStreamMF : public MergeFunctor {
     properties* props = new properties();
     props->add("sight", pMap);
     
-    initializeDebug_internal(props);
+    SightInit_internal(props);
     
     return *props;
   }

@@ -680,7 +680,7 @@ void pattern::report() {
 }
 
 int main(int argc, char** argv) {
-  initializeDebug(argc, argv);
+  SightInit(argc, argv);
   //attr mapVerbose("mapVerbose", (long)1);
   
   pattern p(2);

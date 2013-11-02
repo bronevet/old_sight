@@ -45,7 +45,7 @@ void  indentExitHandler(void* obj) { indent* i = static_cast<indent*>(obj); dele
 /*class sightLayoutHandlerInstantiator {
   public:*/
   sightLayoutHandlerInstantiator::sightLayoutHandlerInstantiator() { 
-    (*layoutEnterHandlers)["sight"] = &initializeDebug;
+    (*layoutEnterHandlers)["sight"] = &SightInit;
     (*layoutExitHandlers )["sight"] = &defaultExitHandler;
     (*layoutEnterHandlers)["indent"] = &indentEnterHandler;
     (*layoutExitHandlers )["indent"] = &indentExitHandler;
@@ -79,12 +79,12 @@ list<string> hostnames;
 // The current user's user name 
 string username;
 
-void* initializeDebug(properties::iterator props) {
+void* SightInit(properties::iterator props) {
   if(!isEnabled()) return NULL;
   // Note: we allow users to specify argc and argv multiple times to support use-cases where
   // sight needs to be used and therefore initialized before main() starts and argc and argv 
   // are not available until after the initialization was first performed.
-  // If a different title and workDir are provided in subsequent initializeDebug() calls, they
+  // If a different title and workDir are provided in subsequent SightInit() calls, they
   // are ignored.
 
   /*char fname[1000];
@@ -164,7 +164,7 @@ dbgStream dbg;
  ***** anchor *****
  ******************/
 int anchor::minAnchorID=0;
-anchor anchor::noAnchor(false, -1);
+anchor anchor::noAnchor(/*false,*/ -1);
 
 // Associates each anchor with its location (if known). Useful for connecting anchor objects with started out
 // unlocated (e.g. forward links) and then were located when we reached their target. Since there may be multiple
@@ -184,9 +184,9 @@ map<location, int> anchor::locAnchorIDs;
   
   anchorID = --minAnchorID;
   //dbg << "anchor="<<anchorID<<endl;
-  // Initialize this->located to false so that reachedAnchor() doesn't think we're calling it for multiple locations
+  // Initialize this->located to false so that reachedLocation() doesn't think we're calling it for multiple locations
   this->located = false;
-  if(located) reachedAnchor();
+  if(located) reachedLocation();
 }*/
 
 anchor::anchor(const anchor& that) {
@@ -199,17 +199,18 @@ anchor::anchor(const anchor& that) {
   //cout << "anchor::anchor() >>> this="<<str()<<" that="<<that.str()<<endl;
 }
 
-anchor::anchor(/*dbgStream& myDbg, */bool located, int anchorID) : 
-  located(located), anchorID(anchorID)
+anchor::anchor(/*dbgStream& myDbg, bool located,*/ int anchorID) : 
+  located(false), anchorID(anchorID)
 {
 //  assert(initializedDebug);
+  update();
 }
 
 /*void anchor::init(bool located) {
   anchorID = --minAnchorID;
-  // Initialize this->located to false so that reachedAnchor() doesn't think we're calling it for multiple locations
+  // Initialize this->located to false so that reachedLocation() doesn't think we're calling it for multiple locations
   this->located = false;
-  if(located) reachedAnchor();
+  if(located) reachedLocation();
 }*/
 
 // If this anchor is unlocated, checks anchorLocs to see if a location has been found and updates this
@@ -256,7 +257,7 @@ bool anchor::operator==(const anchor& that) const {
   const_cast<anchor*>(this)->update();
   const_cast<anchor &>(that).update();
   
-  // If we'ver identified the locations of both anchors
+/*  // If we've identified the locations of both anchors
   if(located && that.located)
     // They're equal if they refer to the same location
     return loc == that.loc;
@@ -266,7 +267,15 @@ bool anchor::operator==(const anchor& that) const {
     return anchorID == that.anchorID;
   // If one has been located while the other has not, they're definitely not equal
   else
-    return false;
+    return false;*/
+  // They're equal if they're located and they have the same location OR
+  return (located && that.located && loc == that.loc) ||
+         // either one is not located and have the same ID.
+         (anchorID == that.anchorID);
+  // NOTE: we do not call update on either anchor to make sure that once an anchor is included
+  //       in a data structure, its relations to other anchors do not change. Update is only
+  //       called when anchors are copied, meaning that we cannot simply copy data structures
+  //       that use anchors as keys and must instead re-create them.
 }
 
 bool anchor::operator!=(const anchor& that) const
@@ -281,7 +290,7 @@ bool anchor::operator<(const anchor& that) const
   const_cast<anchor*>(this)->update();
   const_cast<anchor &>(that).update();
   
-  // If we'ver identified the locations of both anchors
+/*  // If we'ver identified the locations of both anchors
   if(located && that.located)
     // Compare their locations
     return loc < that.loc;
@@ -291,7 +300,18 @@ bool anchor::operator<(const anchor& that) const
     return anchorID < that.anchorID;
   // If one has been located while the other has not, compare their located-ness statuses
   else
-    return located < that.located;
+    return located < that.located;*/
+
+  // They're LT if one is located while the other is not (located anchors are ordered before unlocated ones), OR
+  return (located && !that.located) ||
+          // they're both located and their locations are LT OR
+         (located && that.located && loc < that.loc) ||
+         // neither one is located and their IDs are LT.
+         (!located && !that.located && anchorID < that.anchorID);
+  // NOTE: we do not call update on either anchor to make sure that once an anchor is included
+  //       in a data structure, its relations to other anchors do not change. Update is only
+  //       called when anchors are copied, meaning that we cannot simply copy data structures
+  //       that use anchors as keys and must instead re-create them.
 }
 
 const location& anchor::getLocation() const
@@ -301,8 +321,8 @@ const location& anchor::getLocation() const
 }
 
 // Called when the file location of this anchor has been reached
-void anchor::reachedAnchor() {
-  //dbg << "    reachedAnchor() located="<<located<<", anchorID="<<anchorID<<" dbg.getLocation()="<<dbg.blockGlobalStr(dbg.getLocation())<<"<BR>"<<endl;
+void anchor::reachedLocation() {
+  //dbg << "    reachedLocation() located="<<located<<", anchorID="<<anchorID<<" dbg.getLocation()="<<dbg.blockGlobalStr(dbg.getLocation())<<"<BR>"<<endl;
   // If this anchor has already been set to point to its target location, emit a warning
   if(located && loc != dbg.getLocation())
     cerr << "Warning: anchor "<<anchorID<<" is being set to multiple target locations! current location="<<dbg.blockGlobalStr(loc)<<", new location="<<dbg.blockGlobalStr(dbg.getLocation())<< endl;
@@ -329,7 +349,7 @@ void anchor::reachedAnchor() {
 
 // Emits an <a href> tag that denotes a link to an anchor.
 void* anchor::link(properties::iterator props) {
-  anchor a(false, properties::getInt(props, "anchorID"));
+  anchor a(/*false,*/ properties::getInt(props, "anchorID"));
   
   if(properties::getInt(props, "img"))
     a.linkImg(properties::get(props, "text"));
@@ -400,13 +420,13 @@ std::string anchor::str(std::string indent) const {
 int block::blockCount=0;
 
 // Initializes this block with the given properties
-block::block(properties::iterator props) : startA(false, -1) /*=noAnchor, except that noAnchor may not yet be initialized)*/ {
+block::block(properties::iterator props) : startA(/*false,*/ -1) /*=noAnchor, except that noAnchor may not yet be initialized)*/ {
   assert(initializedDebug);
   label = properties::get(props, "label");
   //blockID = properties::getInt(props, "blockID");
   long numAnchors = properties::getInt(props, "numAnchors");
   for(long i=0; i<numAnchors; i++) {
-    pointsToAnchors.insert(anchor(false, properties::getInt(props, txt()<<"anchor_"<<i)));
+    pointsToAnchors.insert(anchor(/*false,*/ properties::getInt(props, txt()<<"anchor_"<<i)));
   }
   
   startA.setID(properties::getInt(props, "anchorID"));
@@ -417,7 +437,7 @@ block::block(properties::iterator props) : startA(false, -1) /*=noAnchor, except
 }
 
 // Initializes this block with the given label, used for creating additional blocks that were not listed in the structure file
-block::block(string label) : label(label), startA(false, -1) /*=noAnchor, except that noAnchor may not yet be initialized)*/ {
+block::block(string label) : label(label), startA(/*false,*/ -1) /*=noAnchor, except that noAnchor may not yet be initialized)*/ {
   scriptFile       = dbg.getCurScriptFile();      // assert(scriptFile);
   scriptPrologFile = dbg.getCurScriptPrologFile();// assert(scriptPrologFile);
   scriptEpilogFile = dbg.getCurScriptEpilogFile();// assert(scriptEpilogFile);  
@@ -431,7 +451,7 @@ void block::attachAnchor(anchor& a) {
     pointsToAnchors.insert(a);
   // Otherwise, set its location directly
   else
-    a.reachedAnchor();
+    a.reachedLocation();
 }
 
 void block::setLocation(const location& loc) { 
@@ -446,12 +466,12 @@ void block::setLocation(const location& loc) {
   //startA.init(true);
   // If this block's anchor was specified in the structure file, update it's location. 
   // Otherwise, ignore it since this anchor will not be used.
-  if(startA.getID()!=-1) startA.reachedAnchor();
+  if(startA.getID()!=-1) startA.reachedLocation();
   
   //cout << "block("<<getLabel()<<")::setLocation() <<< #pointsToAnchors="<<pointsToAnchors.size()<<"\n";
   for(set<anchor>::iterator a=pointsToAnchors.begin(); a!=pointsToAnchors.end(); a++) {
     anchor a2 = *a;
-    a2.reachedAnchor();
+    a2.reachedLocation();
   }
   //cout << "block::setLocation() >>> \n";
 }

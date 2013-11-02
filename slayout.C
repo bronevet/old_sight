@@ -27,12 +27,6 @@ int main(int argc, char** argv) {
   if(argc!=1 && argc!=2) { cerr<<"Usage: slayout fName"<<endl; exit(-1); }
   char* fName=NULL;
   if(argc==2) fName = argv[1];
-
-  #ifdef VERBOSE
-  cout << "layoutHandlers:\n";
-  for(map<std::string, layoutEnterHandler>::iterator i=layoutHandlerInstantiator::layoutEnterHandlers->begin(); i!=layoutHandlerInstantiator::layoutEnterHandlers->end(); i++)
-    cout << i->first << endl;
-  #endif
  
   FILE* f;
   if(argc==1)

@@ -31,7 +31,7 @@ dbgStream dbg;
 
 bool initializedDebug=false;
 
-void initializeDebug_internal(int argc, char** argv, string title, string workDir);
+void SightInit_internal(int argc, char** argv, string title, string workDir);
 
 // Records the information needed to call the application
 bool saved_appExecInfo=false; // Indicates whether the application execution info has been saved
@@ -39,20 +39,20 @@ int saved_argc = 0;
 char** saved_argv = NULL;
 char* saved_execFile = NULL;
 
-void initializeDebug(int argc, char** argv, string title, string workDir)
+void SightInit(int argc, char** argv, string title, string workDir)
 {
   if(initializedDebug) return;
-  initializeDebug_internal(argc, argv, title, workDir);
+  SightInit_internal(argc, argv, title, workDir);
 }
 
 // Initializes the debug sub-system
-void initializeDebug(string title, string workDir)
+void SightInit(string title, string workDir)
 {
   if(initializedDebug) return; 
-  initializeDebug_internal(0, NULL, title, workDir);
+  SightInit_internal(0, NULL, title, workDir);
 }
 
-void initializeDebug_internal(int argc, char** argv, string title, string workDir)
+void SightInit_internal(int argc, char** argv, string title, string workDir)
 {
   map<string, string> newProps;
 
@@ -146,7 +146,7 @@ void initializeDebug_internal(int argc, char** argv, string title, string workDi
   dbg.init(props, title, workDir, imgDir, tmpDir);
 }
 
-void initializeDebug_internal(properties* props)
+void SightInit_internal(properties* props)
 {
   properties::iterator sightIt = props->find("sight");
   assert(sightIt != props->end());
@@ -218,6 +218,9 @@ void location::operator=(const location& that)
 bool location::operator==(const location& that) const
 { return l==that.l; }
 
+bool location::operator!=(const location& that) const
+{ return l!=that.l; }
+
 bool location::operator<(const location& that) const
 { return l<that.l; }
 
@@ -248,16 +251,21 @@ anchor anchor::noAnchor(-1);
 // This map maintains the canonical anchor ID for each location. Other anchors are resynched to used this ID
 // whenever they are copied. This means that data structures that index based on anchors may need to be
 // reconstructed after we're sure that their targets have been reached to force all anchors to use their canonical IDs.
-map<int, location> anchor::aLocs;
+map<int, location> anchor::anchorLocs;
+
+// Associates each anchor with a unique anchor ID. Useful for connecting multiple anchors that were created
+// independently but then ended up referring to the same location. We'll record the ID of the first one to reach
+// this location on locAnchorIDs and the others will be able to adjust themselves by adopting this ID.
+std::map<location, int> anchor::locAnchorIDs;
 
 anchor::anchor()                   : anchorID(maxAnchorID++), located(false) {
 }
 anchor::anchor(const anchor& that) : anchorID(that.anchorID), located(false) {
   // If we know that is located then we just copy its location information since it will not change
   if(that.located) {
-    located = that.located;
+    located = true;
     loc     = that.loc;
-  // If that's locatedness is unknown, call update to check with the aLocs map
+  // If that's locatedness is unknown, call update to check with the anchorLocs map
   } else
     update();
 } 
@@ -270,18 +278,35 @@ anchor::~anchor() {
 }
 
 // Records that this anchor's location is the current spot in the output
-void anchor::isLocated() {
-  located = true;
-  loc = dbg.getLoc();
-  aLocs[anchorID] = loc;
+void anchor::reachedLocation() {
+  // If this anchor has already been set to point to its target location, emit a warning
+  if(located && loc != dbg.getLocation())
+    cerr << "Warning: anchor "<<anchorID<<" is being set to multiple target locations! current location="<<loc.str()<<", new location="<<dbg.getLocation().str()<< endl;
+  else {
+    located = true;
+    loc = dbg.getLocation();
+    anchorLocs[anchorID] = loc;
+
+    update();
+  }
 }
 
 // Updates this anchor to use the canonical ID of its location, if one has been established
 void anchor::update() {
-  if(aLocs.find(anchorID) != aLocs.end()) {
+  if(anchorLocs.find(anchorID) != anchorLocs.end()) {
     located = true;
-    loc = aLocs[anchorID];
+    loc = anchorLocs[anchorID];
   }
+
+  // If this is the first anchor at this location, associate this location with this anchor ID
+  if(located) {
+    if(locAnchorIDs.find(loc) == locAnchorIDs.end())
+      locAnchorIDs[loc] = anchorID;
+    // If this is not the first anchor here, update this anchor object's ID to be the same as all
+    // the other anchors at this location
+    else
+      anchorID = locAnchorIDs[loc];
+  }  
 }
 
 
@@ -291,7 +316,7 @@ void anchor::operator=(const anchor& that) {
   if(that.located) {
     located = that.located;
     loc     = that.loc;
-  // If that's locatedness is unknown, call update to check with the aLocs map
+  // If that's locatedness is unknown, call update to check with the anchorLocs map
   } else
     update();
 }
@@ -330,7 +355,6 @@ bool anchor::operator<(const anchor& that) const
   //       in a data structure, its relations to other anchors do not change. Update is only
   //       called when anchors are copied, meaning that we cannot simply copy data structures
   //       that use anchors as keys and must instead re-create them.
-  // Compare their IDs
 }
 
 // Emits to the output an html tag that denotes a link to this anchor. Embeds the given text in the link.
@@ -380,14 +404,14 @@ int block::maxBlockID;
 // Initializes this block with the given label
 block::block(string label, properties* props) : label(label) {
   advanceBlockID();
-  if(!initializedDebug) initializeDebug("Debug Output", "dbg");
+  if(!initializedDebug) SightInit("Debug Output", "dbg");
     
   if(props==NULL) this->props = new properties();
   else            this->props = props;
   
   if(this->props->active) {
     // Connect startA to the current location 
-    startA.isLocated();
+    startA.reachedLocation();
 
     map<string, string> newProps;
     newProps["label"] = label;
@@ -406,16 +430,16 @@ block::block(string label, properties* props) : label(label) {
 // Includes one or more incoming anchors thas should now be connected to this block.
 block::block(string label, anchor& pointsTo, properties* props) : label(label) {
   advanceBlockID();
-  if(!initializedDebug) initializeDebug("Debug Output", "dbg");
+  if(!initializedDebug) SightInit("Debug Output", "dbg");
   
   if(props==NULL) this->props = new properties();
   else            this->props = props;
   
   if(this->props->active) {
     // Connect startA and pointsTo anchors to the current location (pointsTo is not modified);
-    startA.isLocated();
+    startA.reachedLocation();
     anchor pointsToCopy(pointsTo);
-    pointsToCopy.isLocated();
+    pointsToCopy.reachedLocation();
 
     map<string, string> newProps;
     newProps["label"] = label;
@@ -439,17 +463,17 @@ block::block(string label, anchor& pointsTo, properties* props) : label(label) {
 block::block(string label, set<anchor>& pointsTo, properties* props) : label(label)
 {
   advanceBlockID();
-  if(!initializedDebug) initializeDebug("Debug Output", "dbg");
+  if(!initializedDebug) SightInit("Debug Output", "dbg");
 
   if(props==NULL) this->props = new properties();
   else            this->props = props;
   
   if(this->props->active) {
     // Connect startA and pointsTo anchors to the current location (pointsTo is not modified)
-    startA.isLocated();
+    startA.reachedLocation();
     for(set<anchor>::iterator a=pointsTo.begin(); a!=pointsTo.end(); a++) {
       anchor aCopy(*a);
-      aCopy.isLocated();
+      aCopy.reachedLocation();
     }
 
     map<string, string> newProps;
@@ -645,13 +669,15 @@ void dbgStream::init(properties* props, string title, string workDir, string img
     // Call the parent class initialization function to connect it dbgBuf of the output file
     buf=new dbgBuf(dbgFile->rdbuf());
   // Version 2 (default): write output to a pipe for a caller-specified layout executable to use immediately
-  } else if(getenv("SIGHT_LAYOUT")) {
+  } else if(getenv("SIGHT_LAYOUT_EXEC")) {
+//cout << "getenv(\"SIGHT_LAYOUT_EXEC\")="<<getenv("SIGHT_LAYOUT_EXEC")<<endl;
     dbgFile = NULL;
-    FILE *out = popen((txt()<<ROOT_PATH<<"/"<<getenv("SIGHT_LAYOUT")).c_str(), "w");
+    FILE *out = popen(getenv("SIGHT_LAYOUT_EXEC"), "w");
     int outFD = fileno(out);
     buf = new dbgBuf(new fdoutbuf(outFD));
   // Version 3 (default): write output to a pipe for the default slayout to use immediately
   } else {
+//cout << "slayout"<<endl;
     dbgFile = NULL;
     FILE *out = popen((txt()<<ROOT_PATH<<"/slayout").c_str(), "w");
     int outFD = fileno(out);
@@ -745,7 +771,7 @@ void dbgStream::ownerAccessing()  {
 // so that the caller can write to it.
 string dbgStream::addImage(string ext)
 {
-  if(!initializedDebug) initializeDebug("Debug Output", "dbg");
+  if(!initializedDebug) SightInit("Debug Output", "dbg");
   
   ostringstream imgFName; imgFName << imgDir << "/image_" << numImages << "." << ext;
   

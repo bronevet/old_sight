@@ -403,6 +403,12 @@ bool FILEStructureParser::streamError() {
 
 // Given a parser that reads the structure of a given log file, lays it out and prints it to the output Sight stream
 void layoutStructure(structureParser& parser) {
+  #ifdef VERBOSE
+  cout << "layoutHandlers:\n";
+  for(map<std::string, layoutEnterHandler>::iterator i=layoutHandlerInstantiator::layoutEnterHandlers->begin(); i!=layoutHandlerInstantiator::layoutEnterHandlers->end(); i++)
+    cout << i->first << endl;
+  #endif
+
   // The stack of all the objects of each type that have been entered but not yet exited
   map<string, list<void*> > stack;
   

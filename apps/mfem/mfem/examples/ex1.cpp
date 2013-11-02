@@ -37,7 +37,7 @@ int main (int argc, char *argv[])
 {
    Mesh *mesh;
 
-   initializeDebug(argc, argv, "ex1", "dbg.MFEM.ex1");
+   SightInit(argc, argv, "ex1", "dbg.MFEM.ex1");
 
    if (argc == 1)
    {

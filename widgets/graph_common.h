@@ -28,8 +28,8 @@ class graphEdge {
     from(from), to(to), directed(directed)
   {}
   
-  const anchor& getFrom() { return from; }
-  const anchor& getTo()   { return to; }
+  const anchor& getFrom() const { return from; }
+  const anchor& getTo()   const { return to; }
   
   bool operator==(const graphEdge& that) const {
     return (from == that.from);

@@ -93,7 +93,7 @@ int main(int argc, char* argv[])
   int mpiTaskID = 0;
   int nMpiTasks = 1;
 
-  initializeDebug(argc, argv, "MCBenchmark", "dbg.MCBenchmark");
+  SightInit(argc, argv, "MCBenchmark", "dbg.MCBenchmark");
 #ifdef USE_MPI
 
 #ifdef USE_OPENMP

@@ -30,9 +30,9 @@ extern char hostname[];
 extern char username[10000];
 
 // Initializes the debug sub-system
-void initializeDebug(int argc, char** argv, std::string title="Debug Output", std::string workDir="dbg");
-void initializeDebug(std::string title, std::string workDir);
-void initializeDebug_internal(properties* props);
+void SightInit(int argc, char** argv, std::string title="Debug Output", std::string workDir="dbg");
+void SightInit(std::string title, std::string workDir);
+void SightInit_internal(properties* props);
 
 class dbgStream;
 
@@ -52,6 +52,7 @@ class location/* : printable*/ {
 
   void operator=(const location& that);
   bool operator==(const location& that) const;
+  bool operator!=(const location& that) const;
   bool operator<(const location& that) const;
 
   //void print(std::ofstream& ofs) const;
@@ -106,7 +107,12 @@ class anchor
   // This map maintains the canonical anchor ID for each location. Other anchors are resynched to used this ID 
   // whenever they are copied. This means that data structures that index based on anchors may need to be 
   // reconstructed after we're sure that their targets have been reached to force all anchors to use their canonical IDs.
-  static std::map<int, location> aLocs;
+  static std::map<int, location> anchorLocs;
+
+  // Associates each anchor with a unique anchor ID. Useful for connecting multiple anchors that were created
+  // independently but then ended up referring to the same location. We'll record the ID of the first one to reach
+  // this location on locAnchorIDs and the others will be able to adjust themselves by adopting this ID.
+  static std::map<location, int> locAnchorIDs;
 
   // Itentifies this anchor's location in the file and region hierarchies
   location loc;
@@ -122,14 +128,14 @@ class anchor
   ~anchor();
 
   // Records that this anchor's location is the current spot in the output
-  void isLocated();
+  void reachedLocation();
 
   // Updates this anchor to use the canonical ID of its location, if one has been established
   void update();
   
   int getID() const { return anchorID; }
 
- // bool isLocated() const { return located; }
+  bool isLocated() const { return located; }
   
   public:
   static anchor noAnchor;
@@ -304,7 +310,7 @@ public:
   const std::string& getTmpDir() const { return tmpDir; }
 
   // Returns the stream's current location
-  location getLoc() { return loc; }
+  location getLocation() { return loc; }
   
   // Called when a block is entered.
   // b: The block that is being entered

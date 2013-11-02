@@ -83,8 +83,8 @@ class graph: public structure::block
   // Called to notify this block that a sub-block was started/completed inside of it. 
   // Returns true of this notification should be propagated to the blocks 
   // that contain this block and false otherwise.
-  bool subBlockEnterNotify(block* subBlock);// { return false; }
-  bool subBlockExitNotify (block* subBlock) { return false; }
+  virtual bool subBlockEnterNotify(block* subBlock);// { return false; }
+  virtual bool subBlockExitNotify (block* subBlock) { return false; }
 };
 
 }; // namespace structure
