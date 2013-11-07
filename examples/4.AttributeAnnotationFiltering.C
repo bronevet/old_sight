@@ -11,7 +11,7 @@ int main(int argc, char** argv) {
   
   srand(time(NULL));
   
-  initializeDebug(argc, argv, "4.AttributeAnnotationFiltering", "dbg.4.AttributeAnnotationFiltering");
+  SightInit(argc, argv, "4.AttributeAnnotationFiltering", "dbg.4.AttributeAnnotationFiltering");
   
   dbg << "<h1>Example 4: Attribute-Based Filtering</h1>" << endl;
   

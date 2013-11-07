@@ -122,12 +122,12 @@ std::string properties::str(iterator props){
   return oss.str();
 }
 
-std::string properties::str() const {
+std::string properties::str(string indent) const {
   ostringstream oss;
   oss << "[properties:"<<endl;
   for(iterator i=begin(); i!=end(); i++)
-    oss << "    "<<properties::str(i)<<endl;
-  oss << "]";
+    oss << indent << "    "<<properties::str(i)<<endl;
+  oss << indent << "]";
   return oss.str();
 }
 

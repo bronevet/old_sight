@@ -105,15 +105,24 @@ scope::~scope()
   }*/
 }
 
-ScopeMerger::ScopeMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags) : BlockMerger(advance(tags)) {
+ScopeMerger::ScopeMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+                         map<string, streamRecord*>& outStreamRecords,
+                         vector<map<string, streamRecord*> >& inStreamRecords) : 
+                                     BlockMerger(advance(tags), outStreamRecords, inStreamRecords) {
   assert(tags.size()>0);
-  set<string> names = getNameSet(tags);
-  assert(names.size()==1);
-  assert(*names.begin() == "scope");
   map<string, string> pMap;
-  
-  pMap["level"] = txt()<<setAvg(str2intSet(getValueSet(tags, "level")));
-  props->add("scope", pMap);
+  properties::tagType type = streamRecord::getTagType(tags); 
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging dbgStream!"<<endl; exit(-1); }
+  if(type==properties::enterTag) {
+    set<string> names = getNameSet(tags);
+    assert(names.size()==1);
+    assert(*names.begin() == "scope");
+    
+    pMap["level"] = txt()<<setAvg(str2intSet(getValueSet(tags, "level")));
+    props->add("scope", pMap);
+  } else {
+    props->add("scope", pMap);
+  }
 }
 
 }; // namespace structure

@@ -199,7 +199,7 @@ void* trace::observe(properties::iterator props)
   for(long i=0; i<numTraceAttrs; i++) {
     if(i!=0) cmd << ", ";
     string tKey = properties::get(props, txt()<<"tKey_"<<i);
-    anchor tAnchor(false, properties::getInt(props, txt()<<"tAnchorID_"<<i));
+    anchor tAnchor(/*false,*/ properties::getInt(props, txt()<<"tAnchorID_"<<i));
     cmd << "'"<< tKey << "': '" << (tAnchor==anchor::noAnchor? "": tAnchor.getLinkJS()) <<"'";
   }
   cmd << "}, {";

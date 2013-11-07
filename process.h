@@ -13,18 +13,8 @@
 
 namespace sight {
 
-class structureParser {
-  public:
-  // Differentiates between the entry tag of an object and its exit tag
-  typedef enum {enterTag, exitTag} tagType;
-  
-  // Reads more data from the data source, returning the type of the next tag read and the properties of 
-  // the object it denotes.
-  virtual std::pair<structureParser::tagType, const properties*> next()=0;
-};
-
 template<typename streamT>
-class baseStructureParser : public structureParser{
+class baseStructureParser : public common::structureParser {
   protected:
   // Holds the data just read from the data source
   char* buf;
@@ -75,7 +65,7 @@ class baseStructureParser : public structureParser{
   public:
   // Reads more data from the data source, returning the type of the next tag read and the properties of 
   // the object it denotes.
-  std::pair<structureParser::tagType, const properties*> next();
+  std::pair<properties::tagType, const properties*> next();
   
   protected:
   // Read a property name/value pair from the given file, setting name and val to them.
@@ -142,8 +132,5 @@ class FILEStructureParser : public baseStructureParser<FILE> {
   // Returns true if we've encountered an error in input stream
   bool streamError();
 };
-
-// Given a parser that reads the structure of a given log file, lays it out and prints it to the output Sight stream
-void layoutStructure(structureParser& parser);
 
 } // namespace sight

@@ -49,6 +49,10 @@ extern sightLayoutHandlerInstantiator sightLayoutHandlerInstantance;
 // Default entry/exit handlers to use when no special handling is needed
 void* defaultEntryHandler(properties::iterator props);
 void  defaultExitHandler(void* obj);
+
+// Given a parser that reads the structure of a given log file, lays it out and prints it to the output Sight stream
+void layoutStructure(common::structureParser& parser);
+
 }
 }
 
@@ -70,7 +74,7 @@ extern std::list<std::string> hostnames;
 extern std::string username;
 
 // Initializes the debug sub-system
-void* initializeDebug(properties::iterator props);
+void* SightInit(properties::iterator props);
 
 class dbgStream;
 typedef std::list<std::pair<int, std::list<int> > > location;
@@ -122,7 +126,7 @@ class anchor
   public:
   //anchor(bool located=false);
   anchor(const anchor& that);
-  anchor(bool located=false, int anchorID=-1);
+  anchor(/*bool located=false,*/ int anchorID=-1);
   
   //void init(bool located);
   
@@ -153,7 +157,7 @@ class anchor
   const location& getLocation() const;
   
   // Called when the file location of this anchor has been reached
-  void reachedAnchor();
+  void reachedLocation();
   
   // Emits an <a href> tag that denotes a link to an anchor.
   static void* link(properties::iterator props);

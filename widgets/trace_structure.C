@@ -173,7 +173,7 @@ void traceAttr(std::string label, std::string key, const attrValue& val, anchor 
   t->traceAttrObserved(key, val, target);
 }
 
-int TraceMerger::maxTraceID=0;
+/*int TraceMerger::maxTraceID=0;
 
 TraceMerger::TraceMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags) : BlockMerger(advance(tags)) {
   assert(tags.size()>0);
@@ -202,7 +202,7 @@ TraceMerger::TraceMerger(std::vector<std::pair<properties::tagType, properties::
     newProps[txt()<<"ctxtAttr_"<<i] = *ca;
   
   props->add("trace", pMap);
-}
+}*/
 
 /*TraceObsMerger::TraceObsMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags) : BlockMerger(advance(tags)) {
   assert(tags.size()>0);

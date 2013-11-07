@@ -62,7 +62,9 @@ class scope: public block, public common::scope
 
 class ScopeMerger : public BlockMerger {
   public:
-  ScopeMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags);
+  ScopeMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+              std::map<std::string, streamRecord*>& outStreamRecords,
+              std::vector<std::map<std::string, streamRecord*> >& inStreamRecords);
 }; // class ScopeMerger
 
 }; // namespace structure

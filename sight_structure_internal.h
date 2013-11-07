@@ -30,11 +30,72 @@ extern char hostname[];
 extern char username[10000];
 
 // Initializes the debug sub-system
-void initializeDebug(int argc, char** argv, std::string title="Debug Output", std::string workDir="dbg");
-void initializeDebug(std::string title, std::string workDir);
-void initializeDebug_internal(properties* props);
+void SightInit(int argc, char** argv, std::string title="Debug Output", std::string workDir="dbg");
+void SightInit(std::string title, std::string workDir);
+void SightInit_internal(properties* props);
 
 class dbgStream;
+
+class variantID {
+  public:
+  std::list<int> ID;
+  
+  variantID() {}
+  variantID(int ID) { this->ID.push_back(ID); }
+  variantID(const std::list<int>& ID) : ID(ID) {}
+    
+  variantID(std::string serialized) {
+    // Deserialized the comma-separated list of integers into the ID std::list
+    int i=0;
+    int next = serialized.find(",", i);
+    while(next<serialized.length()) {
+      ID.push_back(strtol(serialized.substr(i, next-i).c_str(), NULL, 10));
+      next = serialized.find(",", i);
+    }  
+  }
+  
+  std::string serialize() const {
+    // Serialize the ID std::list into a comma-separated list of integers
+    std::ostringstream s;
+    for(std::list<int>::const_iterator i=ID.begin(); i!=ID.end(); i++) {
+      if(i!=ID.begin()) s << ",";
+      s << *i;
+    }
+    return s.str();
+  }
+  
+  // Enter and exit a variant level
+  // vSuffixID: ID that identifies this variant within the next level of variants in the heirarchy
+  void enterVariant(int vSuffixID) { ID.push_back(vSuffixID); }
+  void exitVariant() { assert(ID.size()>0); ID.pop_back(); }
+  
+  // Relational operators
+  bool operator==(const variantID& that) const { return ID==that.ID; }
+  bool operator!=(const variantID& that) const { return ID!=that.ID; }
+  bool operator< (const variantID& that) const { return ID< that.ID; }
+  bool operator<=(const variantID& that) const { return ID<=that.ID; }
+  bool operator> (const variantID& that) const { return ID> that.ID; }
+  bool operator>=(const variantID& that) const { return ID>=that.ID; }
+}; // variantID
+
+// Container for unique IDs that is sensitive to the variant within which the ID is defined
+class streamID {
+  public:
+  int ID;
+  variantID vID;
+  streamID() {}
+  streamID(int ID, const variantID& vID) : ID(ID), vID(vID) {}
+  streamID(const streamID& that) : ID(that.ID), vID(that.vID) {}
+    
+  streamID& operator=(const streamID& that) { ID=that.ID; vID=that.vID; return *this; }
+  
+  // Relational operators
+  bool operator==(const streamID& that) const { return ID==that.ID && vID==that.vID; }
+  bool operator< (const streamID& that) const { return ID<that.ID || (ID==that.ID && vID<that.vID); }
+  
+  std::string str() const 
+  { return txt()<<"[streamID: vID="<<vID.serialize()<<", ID="<<ID<<"]"; }
+}; // class streamID
 
 // Represents a unique location in the sight output
 class location : printable {
@@ -52,11 +113,39 @@ class location : printable {
 
   void operator=(const location& that);
   bool operator==(const location& that) const;
+  bool operator!=(const location& that) const;
   bool operator<(const location& that) const;
 
   //void print(std::ofstream& ofs) const;
   std::string str(std::string indent="") const;
 };
+
+// Container for a variant of locations that is sensitive to the variant the location is referring to
+class streamLocation {
+  variantID vID;
+  location loc;
+  public:
+  streamLocation() {}
+  streamLocation(variantID vID, location loc) : vID(vID), loc(loc) {}
+  streamLocation(const streamLocation& that) : vID(that.vID), loc(that.loc) {}
+    
+  streamLocation& operator=(const streamLocation& that) { vID=that.vID; loc=that.loc; return *this; }
+  
+  // Relational operators
+  bool operator==(const streamLocation& that) const { return loc==that.loc && vID==that.vID; }
+  bool operator!=(const streamLocation& that) const { return !(*this == that); }
+  bool operator< (const streamLocation& that) const { return loc<that.loc || (loc==that.loc && vID<that.vID); }
+  
+  void enterFileBlock() { loc.enterFileBlock(); }
+  void exitFileBlock()  { loc.exitFileBlock(); }
+  void enterBlock()     { loc.enterBlock(); }
+  void exitBlock()      { loc.exitBlock(); }
+  
+  std::string str() const 
+  { return txt()<<"[streamLocation: vID="<<vID.serialize()<<", loc="<<loc.str()<<"]"; }
+}; // class streamLocation
+
+
 
 /* // Base class of all sight objects that provides some common functionality
 class sightObj {
@@ -79,31 +168,85 @@ class sightObj {
 namespace sight {
 namespace structure {
 
+// Base class for objects that maintain information for each incoming or outgoing stream during merging
+class streamRecord : public printable {
+  protected:
+  // Uniquely identifies the stream variant this record corresponds to.
+  variantID vID;
+  
+  streamRecord(int vID) : vID(vID) {}  
+  streamRecord(const variantID& vID) : vID(vID) {}
+  // vSuffixID: ID that identifies this variant within the next level of variants in the heirarchy
+  streamRecord(const streamRecord& that, int vSuffixID) : vID(that.vID) {
+    vID.enterVariant(vSuffixID);
+  }
+  
+  public:
+  const variantID& getVariantID() const { return vID; }
+  
+  // Return the tagType (enter or exit) that is common to all incoming streams in tags, or 
+  // unknownTag if they're not consistent
+  static properties::tagType getTagType(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags);
+  
+  // Given multiple streamRecords from several variants of the same stream, update this streamRecord object
+  // to contain the state that succeeds them all, making it possible to resume processing
+  virtual void resumeFrom(std::vector<std::map<std::string, streamRecord*> >& streams)=0;
+  
+  // Returns a dynamically-allocated copy of this streamRecord, specialized to the given variant ID,
+  // which is appended to the new stream's variant list.
+  virtual streamRecord* copy(int vSuffixID)=0;
+}; // streamRecord
+
+/* // Initializes the streamRecords for the given incoming and outgoing streams for the given sub-type of streamRecord
+template<class StreamRecordType>
+void initStreamRecords(std::string objName, 
+                       std::map<std::string, streamRecord*>& outStreamRecords,
+                       std::vector<std::map<std::string, streamRecord*> >& inStreamRecords) {
+  outStreamRecords[objName] = new StreamRecordType()
+}*/
+
 // Base class for objects used to merge multiple tags into one
 class Merger {
   protected:
   properties* props;
   
+  // Indicates whether a tag should be emitted for this object or not (we may want to delay tag emission until
+  // more information is observed)
+  bool emitTagFlag;
+  
   public:
-  Merger(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags) {
+  // Sometimes to merge the entry/exit of one tag we need to generate many more additional tags. For example,
+  // on exit of a graph we may wish to emit all of its edges. These lists maintain all of the additional tags
+  // that should be emitted before/after the primary tag.
+  std::list<std::pair<properties::tagType, properties> > moreTagsBefore;
+  std::list<std::pair<properties::tagType, properties> > moreTagsAfter;
+  
+  public:
+  Merger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+         std::map<std::string, streamRecord*>& outStreamRecords,
+         std::vector<std::map<std::string, streamRecord*> >& inStreamRecords) {
     props = new properties;
+    emitTagFlag = true;
   }
   
-  const properties& getProps() { return *props; }
+  const properties& getProps() const { return *props; }
+  
+  protected:
+  // Called by derived objects to indicate that this tag should not be emitted
+  bool dontEmit() { emitTagFlag=false; }
+  
+  // Called by merging algorithms to check whether a tag should be emitted
+  public:
+  bool emitTag() const { return emitTagFlag; }
   
   ~Merger() {
     delete props;
   }
     
-  // Given a list of tag property objects and their associated types (entry/exit), return
-  // the properties of the merged object
-  //virtual properties operator()(const vector<pair<properties::tagType, const properties*> >& tags)=0;
     
   // Given a vector of tag properties, returns the set of values assigned to the given key within the given tag
   static std::set<std::string> getValueSet(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags, 
                                            std::string key);
-  
-  
   
   // Converts the given set of strings to the corresponding set of integral numbers
   static std::set<long> str2intSet(const std::set<std::string>& strSet);
@@ -124,8 +267,8 @@ class Merger {
     
   // Advance the iterators in the given tags vector, returning a reference to the vector
   static std::vector<std::pair<properties::tagType, properties::iterator> >
-              advance(std::vector<std::pair<properties::tagType, properties::iterator> > tags);
-}; // class MergeFunctor
+              advance(std::vector<std::pair<properties::tagType, properties::iterator> >& tags);
+}; // class Merger
 
 // Uniquely identifies a location with the debug information, including the file and region hierarchy
 // Anchors can be created in two ways:
@@ -147,14 +290,19 @@ class anchor
   protected:
   static int maxAnchorID;
   int anchorID;
-
+  
   // Maps all anchor IDs to their locations, if known. When we establish forward links we create
   // anchors that are initially not connected to a location (the target location has not yet been reached). Thus,
   // when we reach a given location we may have multiple anchors with multiple IDs all for a single location.
   // This map maintains the canonical anchor ID for each location. Other anchors are resynched to used this ID 
   // whenever they are copied. This means that data structures that index based on anchors may need to be 
   // reconstructed after we're sure that their targets have been reached to force all anchors to use their canonical IDs.
-  static std::map<int, location> aLocs;
+  static std::map<int, location> anchorLocs;
+
+  // Associates each anchor with a unique anchor ID. Useful for connecting multiple anchors that were created
+  // independently but then ended up referring to the same location. We'll record the ID of the first one to reach
+  // this location on locAnchorIDs and the others will be able to adjust themselves by adopting this ID.
+  static std::map<location, int> locAnchorIDs;
 
   // Itentifies this anchor's location in the file and region hierarchies
   location loc;
@@ -170,14 +318,14 @@ class anchor
   ~anchor();
 
   // Records that this anchor's location is the current spot in the output
-  void isLocated();
+  void reachedLocation();
 
   // Updates this anchor to use the canonical ID of its location, if one has been established
   void update();
   
   int getID() const { return anchorID; }
 
- // bool isLocated() const { return located; }
+  bool isLocated() const { return located; }
   
   public:
   static anchor noAnchor;
@@ -197,6 +345,106 @@ class anchor
   
   std::string str(std::string indent="") const;
 };
+
+class AnchorStreamRecord: public streamRecord {
+  friend class BlockMerger;
+  friend class streamAnchor;
+  // Records the maximum anchorID ever generated on a given outgoing stream
+  int maxAnchorID;
+  
+  // Maps the anchorIDs within an incoming stream to the anchorIDs on its corresponding outgoing stream
+  std::map<streamID, streamID> in2outAnchorIDs;
+    
+  // Maps all anchor IDs to their locations, if known. When we establish forward links we create
+  // anchors that are initially not connected to a location (the target location has not yet been reached). Thus,
+  // when we reach a given location we may have multiple anchors with multiple IDs all for a single location.
+  // This map maintains the canonical anchor ID for each location. Other anchors are resynched to used this ID 
+  // whenever they are copied. This means that data structures that index based on anchors may need to be 
+  // reconstructed after we're sure that their targets have been reached to force all anchors to use their canonical IDs.
+  std::map<streamID, streamLocation> anchorLocs;
+
+  // Associates each anchor with a unique anchor ID. Useful for connecting multiple anchors that were created
+  // independently but then ended up referring to the same location. We'll record the ID of the first one to reach
+  // this location on locAnchorIDs and the others will be able to adjust themselves by adopting this ID.
+  std::map<streamLocation, streamID> locAnchorIDs;
+    
+  public:
+  AnchorStreamRecord(variantID vID) : streamRecord(vID) { maxAnchorID=0; }
+  // vSuffixID: ID that identifies this variant within the next level of variants in the heirarchy
+  AnchorStreamRecord(const AnchorStreamRecord& that, int vSuffixID);
+  
+  // Returns a dynamically-allocated copy of this streamRecord, specialized to the given variant ID,
+  // which is appended to the new stream's variant list.
+  streamRecord* copy(int vSuffixID);
+  
+  // Given multiple streamRecords from several variants of the same stream, update this streamRecord object
+  // to contain the state that succeeds them all, making it possible to resume processing
+  void resumeFrom(std::vector<std::map<std::string, streamRecord*> >& streams);
+  
+  // Marge the IDs of the next anchorID field of the current tag (named objName) of each the incoming stream into a 
+  // single ID in the outgoing stream, updating each incoming stream's mappings from its IDs to the outgoing stream's 
+  // IDs. If a given incoming stream anchorID has already been assigned to a different outgoing stream anchorID, yell.
+  static void mergeIDs(std::string objName, std::map<std::string, std::string> pMap, 
+                       const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
+                       std::map<std::string, streamRecord*>& outStreamRecords,
+                       std::vector<std::map<std::string, streamRecord*> >& inStreamRecords);
+
+  // Given an anchor ID on the current incoming stream return its ID in the outgoing stream, yelling if it is missing.
+  streamID in2outAnchorID(streamID inSID) const;
+  
+  std::string str(std::string indent="") const;
+}; // class AnchorStreamRecord
+
+class dbgStreamStreamRecord;
+
+// Analogue of anchors that are explicitly linked to some AnchorStreamRecord of an incoming stream
+class streamAnchor: public printable
+{
+  protected:
+  streamID ID;
+  
+  // Identifies this anchor's location in the file and region hierarchies
+  streamLocation loc;
+
+  // Flag that indicates whether we've already reached this anchor's location in the output
+  bool located;
+  
+  // Refers to the record of the incoming stream this anchor is associated with
+  //std::map<std::string, streamRecord*>& myStream;
+  
+  // Refers to the anchor and dbgStream records of the incoming stream this anchor is associated with
+  dbgStreamStreamRecord* dbgStreamR;
+  // The specific record within myStream associated with anchors
+  AnchorStreamRecord* anchorR;
+  
+  public:
+  streamAnchor(std::map<std::string, streamRecord*>& myStream);
+  streamAnchor(const streamAnchor& that);
+  streamAnchor(int anchorID, std::map<std::string, streamRecord*>& myStream);
+  streamAnchor(streamID ID, std::map<std::string, streamRecord*>& myStream);
+
+  ~streamAnchor();
+
+  // Records that this anchor's location is the current spot in the output
+  void reachedLocation();
+
+  // Updates this anchor to use the canonical ID of its location, if one has been established
+  void update();
+  
+  streamID getID() const { return ID; }
+
+  bool isLocated() const { return located; }
+  
+  public:
+  void operator=(const streamAnchor& that);
+  
+  bool operator==(const streamAnchor& that) const;
+  bool operator!=(const streamAnchor& that) const;
+  
+  bool operator<(const streamAnchor& that) const;
+  
+  std::string str(std::string indent="") const;
+}; // class streamAnchor
 
 // A block out debug output, which may be filled by various visual elements
 class block : public common::sightObj
@@ -247,10 +495,44 @@ class block : public common::sightObj
 }; // class block
 
 class BlockMerger : public Merger {
-  static int maxBlockID;
   public:
-  BlockMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags);
+  BlockMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+              std::map<std::string, streamRecord*>& outStreamRecords,
+              std::vector<std::map<std::string, streamRecord*> >& inStreamRecords);
 }; // class BlockMerger
+
+class BlockStreamRecord: public streamRecord {
+  friend class BlockMerger;
+  // Records the maximum blockID ever generated on a given outgoing stream
+  int maxBlockID;
+  
+  // Maps the blockIDs within an incoming stream to the blockIDs on its corresponding outgoing stream
+  std::map<streamID, streamID> in2outBlockIDs;
+  
+  public:  
+  BlockStreamRecord(int vID)              : streamRecord(vID) { maxBlockID=0; }
+  BlockStreamRecord(const variantID& vID) : streamRecord(vID) { maxBlockID=0; }
+  // vSuffixID: ID that identifies this variant within the next level of variants in the heirarchy
+  BlockStreamRecord(const BlockStreamRecord& that, int vSuffixID);
+  
+  // Returns a dynamically-allocated copy of this streamRecord, specialized to the given variant ID,
+  // which is appended to the new stream's variant list.
+  streamRecord* copy(int vSuffixID);
+  
+  // Given multiple streamRecords from several variants of the same stream, update this streamRecord object
+  // to contain the state that succeeds them all, making it possible to resume processing
+  void resumeFrom(std::vector<std::map<std::string, streamRecord*> >& streams);
+  
+  // Marge the IDs of the next block (stored in tags) along all the incoming streams into a single ID in the outgoing stream,
+  // updating each incoming stream's mappings from its IDs to the outgoing stream's IDs
+  static void mergeIDs(std::map<std::string, std::string> pMap, 
+                       std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+                       std::map<std::string, streamRecord*>& outStreamRecords,
+                       std::vector<std::map<std::string, streamRecord*> >& inStreamRecords);
+
+  std::string str(std::string indent="") const;
+}; // class BlockStreamRecord
+
 
 // Adapted from http://wordaligned.org/articles/cpp-streambufs
 // A extension of stream that corresponds to a single file produced by sight
@@ -357,7 +639,7 @@ public:
   const std::string& getTmpDir() const { return tmpDir; }
 
   // Returns the stream's current location
-  location getLoc() { return loc; }
+  location getLocation() { return loc; }
   
   // Called when a block is entered.
   // b: The block that is being entered
@@ -407,9 +689,43 @@ public:
 }; // dbgStream
 
 class dbgStreamMerger : public Merger {
+  
   public:
-  dbgStreamMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags);
+  dbgStreamMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+                  std::map<std::string, streamRecord*>& outStreamRecords,
+                  std::vector<std::map<std::string, streamRecord*> >& inStreamRecords);
 };
+
+class dbgStreamStreamRecord: public streamRecord {
+  friend class dbgStreamMerger;
+  // The current location within the debug output
+  streamLocation loc;
+  
+  public:  
+  dbgStreamStreamRecord(int vID)              : streamRecord(vID) { }
+  dbgStreamStreamRecord(const variantID& vID) : streamRecord(vID) { }
+  // vSuffixID: ID that identifies this variant within the next level of variants in the heirarchy
+  dbgStreamStreamRecord(const dbgStreamStreamRecord& that, int vSuffixID);
+  
+  // Returns a dynamically-allocated copy of this streamRecord, specialized to the given variant ID,
+  // which is appended to the new stream's variant list.
+  streamRecord* copy(int vSuffixID);
+  
+  // Given multiple streamRecords from several variants of the same stream, update this streamRecord object
+  // to contain the state that succeeds them all, making it possible to resume processing
+  void resumeFrom(std::vector<std::map<std::string, streamRecord*> >& streams);
+    
+  // Returns the stream's current location
+  streamLocation getLocation() { return loc; }
+  
+  // Called when a block is entered or exited.
+  static void enterBlock(std::vector<std::map<std::string, streamRecord*> >& streamRecords);
+  static void enterBlock(std::map<std::string, streamRecord*>&               streamRecord);
+  static void exitBlock (std::vector<std::map<std::string, streamRecord*> >& streamRecords);
+  static void exitBlock (std::map<std::string, streamRecord*>&               streamRecord);
+    
+  std::string str(std::string indent="") const;
+}; // class dbgStreamStreamRecord
 
 extern bool initializedDebug;
 
@@ -438,7 +754,9 @@ class indent : public common::sightObj
 
 class IndentMerger : public Merger {
   public:
-  IndentMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags);
+  IndentMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+               std::map<std::string, streamRecord*>& outStreamRecords,
+               std::vector<std::map<std::string, streamRecord*> >& inStreamRecords);
 }; // class IndentMerger
 
 

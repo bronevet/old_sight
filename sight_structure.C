@@ -32,7 +32,7 @@ dbgStream dbg;
 
 bool initializedDebug=false;
 
-void initializeDebug_internal(int argc, char** argv, string title, string workDir);
+void SightInit_internal(int argc, char** argv, string title, string workDir);
 
 // Records the information needed to call the application
 bool saved_appExecInfo=false; // Indicates whether the application execution info has been saved
@@ -40,20 +40,20 @@ int saved_argc = 0;
 char** saved_argv = NULL;
 char* saved_execFile = NULL;
 
-void initializeDebug(int argc, char** argv, string title, string workDir)
+void SightInit(int argc, char** argv, string title, string workDir)
 {
   if(initializedDebug) return;
-  initializeDebug_internal(argc, argv, title, workDir);
+  SightInit_internal(argc, argv, title, workDir);
 }
 
 // Initializes the debug sub-system
-void initializeDebug(string title, string workDir)
+void SightInit(string title, string workDir)
 {
   if(initializedDebug) return; 
-  initializeDebug_internal(0, NULL, title, workDir);
+  SightInit_internal(0, NULL, title, workDir);
 }
 
-void initializeDebug_internal(int argc, char** argv, string title, string workDir)
+void SightInit_internal(int argc, char** argv, string title, string workDir)
 {
   map<string, string> newProps;
 
@@ -147,7 +147,7 @@ void initializeDebug_internal(int argc, char** argv, string title, string workDi
   dbg.init(props, title, workDir, imgDir, tmpDir);
 }
 
-void initializeDebug_internal(properties* props)
+void SightInit_internal(properties* props)
 {
   properties::iterator sightIt = props->find("sight");
   assert(sightIt != props->end());
@@ -219,6 +219,9 @@ void location::operator=(const location& that)
 bool location::operator==(const location& that) const
 { return l==that.l; }
 
+bool location::operator!=(const location& that) const
+{ return l!=that.l; }
+
 bool location::operator<(const location& that) const
 { return l<that.l; }
 
@@ -235,6 +238,21 @@ std::string location::str(std::string indent) const {
   }
   ofs << "]";
   return ofs.str();
+}
+
+/************************
+ ***** streamRecord *****
+ ************************/
+
+// Return the tagType (enter or exit) that is common to all incoming streams in tags, or 
+// properties::unknownTag if they're not consistent
+properties::tagType streamRecord::getTagType(const vector<pair<properties::tagType, properties::iterator> >& tags) {
+  properties::tagType tag;
+  for(vector<pair<properties::tagType, properties::iterator> >::const_iterator t=tags.begin(); t!=tags.end(); t++) {
+    if(t==tags.begin()) tag = t->first;
+    else if(tag != t->first) return properties::properties::unknownTag;
+  }
+  return tag;
 }
 
 /******************
@@ -320,14 +338,15 @@ double Merger::setAvg(const std::set<double>& floatSet)  {
 
 // Advance the iterators in the given tags vector, returning the resulting vector
 std::vector<std::pair<properties::tagType, properties::iterator> >
-              Merger::advance(std::vector<std::pair<properties::tagType, properties::iterator> > tags) {
-  std::vector<std::pair<properties::tagType, properties::iterator> > advancedTags;
-  for(std::vector<std::pair<properties::tagType, properties::iterator> >::iterator t=tags.begin();
+              Merger::advance(std::vector<std::pair<properties::tagType, properties::iterator> >& tags) {
+  vector<pair<properties::tagType, properties::iterator> > advancedTags;
+  for(vector<pair<properties::tagType, properties::iterator> >::iterator t=tags.begin();
       t!=tags.end(); t++) {
-    std::vector<std::pair<properties::tagType, properties::iterator> >::iterator newT = t;
+    properties::iterator newT = t->second;
     newT++;
-    advancedTags.push_back(*newT);
+    advancedTags.push_back(make_pair(t->first, newT));
   }
+  
   return advancedTags;
 }
 
@@ -343,16 +362,21 @@ anchor anchor::noAnchor(-1);
 // This map maintains the canonical anchor ID for each location. Other anchors are resynched to used this ID
 // whenever they are copied. This means that data structures that index based on anchors may need to be
 // reconstructed after we're sure that their targets have been reached to force all anchors to use their canonical IDs.
-map<int, location> anchor::aLocs;
+map<int, location> anchor::anchorLocs;
+
+// Associates each anchor with a unique anchor ID. Useful for connecting multiple anchors that were created
+// independently but then ended up referring to the same location. We'll record the ID of the first one to reach
+// this location on locAnchorIDs and the others will be able to adjust themselves by adopting this ID.
+std::map<location, int> anchor::locAnchorIDs;
 
 anchor::anchor()                   : anchorID(maxAnchorID++), located(false) {
 }
 anchor::anchor(const anchor& that) : anchorID(that.anchorID), located(false) {
   // If we know that is located then we just copy its location information since it will not change
   if(that.located) {
-    located = that.located;
+    located = true;
     loc     = that.loc;
-  // If that's locatedness is unknown, call update to check with the aLocs map
+  // If that's locatedness is unknown, call update to check with the anchorLocs map
   } else
     update();
 } 
@@ -365,18 +389,35 @@ anchor::~anchor() {
 }
 
 // Records that this anchor's location is the current spot in the output
-void anchor::isLocated() {
-  located = true;
-  loc = dbg.getLoc();
-  aLocs[anchorID] = loc;
+void anchor::reachedLocation() {
+  // If this anchor has already been set to point to its target location, emit a warning
+  if(located && loc != dbg.getLocation())
+    cerr << "Warning: anchor "<<anchorID<<" is being set to multiple target locations! current location="<<loc.str()<<", new location="<<dbg.getLocation().str()<< endl;
+  else {
+    located = true;
+    loc = dbg.getLocation();
+    anchorLocs[anchorID] = loc;
+
+    update();
+  }
 }
 
 // Updates this anchor to use the canonical ID of its location, if one has been established
 void anchor::update() {
-  if(aLocs.find(anchorID) != aLocs.end()) {
+  if(anchorLocs.find(anchorID) != anchorLocs.end()) {
     located = true;
-    loc = aLocs[anchorID];
+    loc = anchorLocs[anchorID];
   }
+
+  // If this is the first anchor at this location, associate this location with this anchor ID
+  if(located) {
+    if(locAnchorIDs.find(loc) == locAnchorIDs.end())
+      locAnchorIDs[loc] = anchorID;
+    // If this is not the first anchor here, update this anchor object's ID to be the same as all
+    // the other anchors at this location
+    else
+      anchorID = locAnchorIDs[loc];
+  }  
 }
 
 
@@ -386,7 +427,7 @@ void anchor::operator=(const anchor& that) {
   if(that.located) {
     located = that.located;
     loc     = that.loc;
-  // If that's locatedness is unknown, call update to check with the aLocs map
+  // If that's locatedness is unknown, call update to check with the anchorLocs map
   } else
     update();
 }
@@ -425,7 +466,6 @@ bool anchor::operator<(const anchor& that) const
   //       in a data structure, its relations to other anchors do not change. Update is only
   //       called when anchors are copied, meaning that we cannot simply copy data structures
   //       that use anchors as keys and must instead re-create them.
-  // Compare their IDs
 }
 
 // Emits to the output an html tag that denotes a link to this anchor. Embeds the given text in the link.
@@ -463,6 +503,237 @@ std::string anchor::str(std::string indent) const {
   else             return txt()<<"[anchor_structure: ID="<<anchorID<<", "<<(located?"":"not")<<" located"<<(located? ", ": "")<<(located? loc.str(): "")<<"]";
 }
 
+// vSuffixID: ID that identifies this variant within the next level of variants in the heirarchy
+AnchorStreamRecord::AnchorStreamRecord(const AnchorStreamRecord& that, int vSuffixID) :
+  streamRecord((const streamRecord&)that, vSuffixID), 
+  maxAnchorID(maxAnchorID), in2outAnchorIDs(that.in2outAnchorIDs), anchorLocs(that.anchorLocs), locAnchorIDs(that.locAnchorIDs) 
+{ }
+
+// Returns a dynamically-allocated copy of this streamRecord, specialized to the given variant ID,
+// which is appended to the new stream's variant list.
+streamRecord* AnchorStreamRecord::copy(int vSuffixID) {
+  return new AnchorStreamRecord(*this, vSuffixID);
+}
+
+// Given multiple streamRecords from several variants of the same stream, update this streamRecord object
+// to contain the state that succeeds them all, making it possible to resume processing
+void AnchorStreamRecord::resumeFrom(std::vector<std::map<std::string, streamRecord*> >& streams) {
+  // Compute the maximum maxAnchorID among all the streams
+  maxAnchorID = -1;
+  for(vector<map<string, streamRecord*> >::iterator s=streams.begin(); s!=streams.end(); s++)
+    maxAnchorID = (((AnchorStreamRecord*)(*s)["anchor"])->maxAnchorID > maxAnchorID? 
+                   ((AnchorStreamRecord*)(*s)["anchor"])->maxAnchorID: 
+                   maxAnchorID);
+  
+  // Set in2outAnchorIDs, anchorLocs and locAnchorIDs to be the union of its counterparts in streams
+  in2outAnchorIDs.clear();
+  anchorLocs.clear();
+  locAnchorIDs.clear();
+  
+  for(vector<map<string, streamRecord*> >::iterator s=streams.begin(); s!=streams.end(); s++) {
+    AnchorStreamRecord* as = (AnchorStreamRecord*)(*s)["anchor"];
+    for(map<streamID, streamID>::const_iterator i=as->in2outAnchorIDs.begin(); i!=as->in2outAnchorIDs.end(); i++)
+      in2outAnchorIDs.insert(*i);
+      
+    for(map<streamID, streamLocation>::const_iterator i=as->anchorLocs.begin(); i!=as->anchorLocs.end(); i++)
+      anchorLocs.insert(*i);
+    
+    for(map<streamLocation, streamID>::const_iterator i=as->locAnchorIDs.begin(); i!=as->locAnchorIDs.end(); i++)
+      locAnchorIDs.insert(*i);
+  }
+}
+
+// Marge the IDs of the next anchorID field of the current tag (named objName) of each the incoming stream into a 
+// single ID in the outgoing stream, updating each incoming stream's mappings from its IDs to the outgoing stream's 
+// IDs. If a given incoming stream anchorID has already been assigned to a different outgoing stream anchorID, yell.
+void AnchorStreamRecord::mergeIDs(std::string objName, 
+                                  std::map<std::string, std::string> pMap, 
+                                  const vector<pair<properties::tagType, properties::iterator> >& tags,
+                                  std::map<std::string, streamRecord*>& outStreamRecords,
+                                  std::vector<std::map<std::string, streamRecord*> >& inStreamRecords) {
+  // Assign to the merged block the next ID for this output stream
+  pMap["anchorID"] = txt()<<((AnchorStreamRecord*)outStreamRecords[objName])->maxAnchorID;
+  //pMap["vID"] = outStreamRecords[objName]->getVariantID().serialize();
+  
+  // The anchor's ID within the outgoing stream    
+  streamID outSID(((AnchorStreamRecord*)outStreamRecords[objName])->maxAnchorID,
+                  outStreamRecords[objName]->getVariantID());
+  
+  // Update inStreamRecords to map the block's ID within each incoming stream to the assigned ID in the outgoing stream
+  for(int i=0; i<tags.size(); i++) {
+    // The anchor's ID within the current incoming stream
+    streamID inSID(properties::getInt(tags[i].second, "anchorID"), 
+                   inStreamRecords[i][objName]->getVariantID());
+    
+    // Yell if we're changing an existing mapping
+    if(((AnchorStreamRecord*)inStreamRecords[i][objName])->in2outAnchorIDs.find(inSID) != 
+       ((AnchorStreamRecord*)inStreamRecords[i][objName])->in2outAnchorIDs.end())
+    { cerr << "ERROR: merging anchorID "<<inSID.str()<<" from incoming stream "<<i<<" multiple times. Old mapping: "<<((AnchorStreamRecord*)inStreamRecords[i][objName])->in2outAnchorIDs[inSID].str()<<". New mapping: "<<outSID.str()<<"."<<endl;
+      exit(-1); }
+
+    ((AnchorStreamRecord*)inStreamRecords[i][objName])->in2outAnchorIDs[inSID] = outSID;
+  }
+  
+  // Advance maxAnchorID
+  ((AnchorStreamRecord*)outStreamRecords[objName])->maxAnchorID++;
+}
+
+// Given an anchor ID on the current incoming stream return its ID in the outgoing stream, yelling if it is missing.
+streamID AnchorStreamRecord::in2outAnchorID(streamID inSID) const {
+  map<streamID, streamID>::const_iterator it = in2outAnchorIDs.find(inSID);
+  if(it==in2outAnchorIDs.end()) { cerr << "ERROR: anchor ID "<<inSID.str()<<" could not be converted from incoming to outgoing because it was not found!"<<endl; exit(-1); }
+   return it->second;
+}
+
+std::string AnchorStreamRecord::str(std::string indent) const {
+  ostringstream s;
+  s << "[AnchorStreamRecord: maxAnchorID="<<maxAnchorID<<endl;
+  
+  s << indent << "in2outAnchorIDs="<<endl;
+  for(map<streamID, streamID>::const_iterator i=in2outAnchorIDs.begin(); i!=in2outAnchorIDs.end(); i++)
+    s << indent << "    "<<i->first.str()<<" =&gt; "<<i->second.str()<<endl;
+  
+  s << indent << "anchorLocs="<<endl;
+  for(map<streamID, streamLocation>::const_iterator i=anchorLocs.begin(); i!=anchorLocs.end(); i++)
+    s << indent << "    "<<i->first.str()<<" =&gt; "<<i->second.str()<<endl;
+  
+  s << indent << "locAnchorIDs="<<endl;
+  for(map<streamLocation, streamID>::const_iterator i=locAnchorIDs.begin(); i!=locAnchorIDs.end(); i++)
+    s << indent << "    "<<i->first.str()<<" =&gt; "<<i->second.str()<<endl;
+  
+  s << indent << "]";
+  
+  return s.str();
+}
+
+/************************
+ ***** streamAnchor *****
+ ************************/
+
+streamAnchor::streamAnchor(std::map<std::string, streamRecord*>& myStream) : located(false) {
+  dbgStreamR = (dbgStreamStreamRecord*)myStream["sight"];  assert(dbgStreamR);
+  anchorR    = (AnchorStreamRecord*)   myStream["anchor"]; assert(anchorR);
+  
+  ID = streamID(anchorR->maxAnchorID++, anchorR->getVariantID());
+}
+
+streamAnchor::streamAnchor(const streamAnchor& that) : ID(that.ID), located(false), dbgStreamR(that.dbgStreamR), anchorR(that.anchorR) {
+  // If we know that is located then we just copy its location information since it will not change
+  if(that.located) {
+    located = true;
+    loc     = that.loc;
+  // If that's locatedness is unknown, call update to check with the anchorLocs map
+  } else
+    update();
+}
+
+streamAnchor::streamAnchor(int anchorID, std::map<std::string, streamRecord*>& myStream) : located(false) {
+  dbgStreamR = (dbgStreamStreamRecord*)myStream["sight"];  assert(dbgStreamR);
+  anchorR    = (AnchorStreamRecord*)   myStream["anchor"]; assert(anchorR);
+  this->ID = streamID(anchorID, anchorR->getVariantID());
+  
+  // Check to see if this anchorID is already located
+  update();
+}
+
+streamAnchor::streamAnchor(streamID ID, std::map<std::string, streamRecord*>& myStream) : ID(ID), located(false) {
+  dbgStreamR = (dbgStreamStreamRecord*)myStream["sight"];  assert(dbgStreamR);
+  anchorR    = (AnchorStreamRecord*)   myStream["anchor"]; assert(anchorR);
+  
+  // Check to see if this anchorID is already located
+  update();
+}
+
+
+streamAnchor::~streamAnchor() {
+}
+
+// Records that this anchor's location is the current spot in the output
+void streamAnchor::reachedLocation() {
+  // If this anchor has already been set to point to its target location, emit a warning
+  if(located && loc != dbgStreamR->getLocation())
+    cerr << "Warning: anchor "<<ID.str()<<" is being set to multiple target locations! current location="<<loc.str()<<", new location="<<dbgStreamR->getLocation().str()<< endl;
+  else {
+    located = true;
+    loc = dbgStreamR->getLocation();
+    anchorR->anchorLocs[ID] = loc;
+
+    update();
+  }
+}
+
+// Updates this anchor to use the canonical ID of its location, if one has been established
+void streamAnchor::update() {
+  if(anchorR->anchorLocs.find(ID) != anchorR->anchorLocs.end()) {
+    located = true;
+    loc = anchorR->anchorLocs[ID];
+  }
+  
+  // If this is the first anchor at this location, associate this location with this anchor ID
+  if(located) {
+    if(anchorR->locAnchorIDs.find(loc) == anchorR->locAnchorIDs.end())
+      anchorR->locAnchorIDs[loc] = ID;
+    // If this is not the first anchor here, update this anchor object's ID to be the same as all
+    // the other anchors at this location
+    else
+      ID = anchorR->locAnchorIDs[loc];
+  }  
+}
+
+void streamAnchor::operator=(const streamAnchor& that) {
+  ID = that.ID;
+  // If we know that is located then we just copy its location information since it will not change
+  if(that.located) {
+    located = that.located;
+    loc     = that.loc;
+  // If that's locatedness is unknown, call update to check with the anchorLocs map
+  } else
+    update();
+}
+
+bool streamAnchor::operator==(const streamAnchor& that) const {
+  // anchorID of -1 indicates that this is the noAnchor object and any copies of it are equivalent
+  assert(ID.ID>=-1); assert(that.ID.ID>=-1);
+  if(ID.ID==-1 && that.ID.ID==-1) return true;
+
+  // They're equal if they're located and they have the same location OR
+  return (located && that.located && loc == that.loc) ||
+         // either one is not located and have the same ID.
+         (ID == that.ID);
+  // NOTE: we do not call update on either anchor to make sure that once an anchor is included
+  //       in a data structure, its relations to other anchors do not change. Update is only
+  //       called when anchors are copied, meaning that we cannot simply copy data structures
+  //       that use anchors as keys and must instead re-create them.
+}
+
+bool streamAnchor::operator!=(const streamAnchor& that) const
+{ return !(*this == that); }
+
+bool streamAnchor::operator<(const streamAnchor& that) const
+{
+  // anchorID of -1 indicates that this is the noAnchor object and any copies of it are equivalent
+  assert(ID.ID>=-1); assert(that.ID.ID>=-1);
+  if(ID.ID==-1 && that.ID.ID==-1) return false;
+  
+  // They're LT if one is located while the other is not (located anchors are ordered before unlocated ones), OR
+  return (located && !that.located) ||
+          // they're both located and their locations are LT OR
+         (located && that.located && loc < that.loc) ||
+         // neither one is located and their IDs are LT.
+         (!located && !that.located && ID < that.ID);
+  // NOTE: we do not call update on either anchor to make sure that once an anchor is included
+  //       in a data structure, its relations to other anchors do not change. Update is only
+  //       called when anchors are copied, meaning that we cannot simply copy data structures
+  //       that use anchors as keys and must instead re-create them.
+}
+
+
+std::string streamAnchor::str(std::string indent) const {
+  ostringstream s;
+  s << "[streamAnchor: ID="<<ID.str()<<" loc="<<loc.str()<<" located="<<located<<"]";
+  return s.str();
+}
+
 /*****************
  ***** block *****
  *****************/
@@ -475,14 +746,14 @@ int block::maxBlockID;
 // Initializes this block with the given label
 block::block(string label, properties* props) : label(label) {
   advanceBlockID();
-  if(!initializedDebug) initializeDebug("Debug Output", "dbg");
+  if(!initializedDebug) SightInit("Debug Output", "dbg");
     
   if(props==NULL) this->props = new properties();
   else            this->props = props;
   
   if(this->props->active) {
     // Connect startA to the current location 
-    startA.isLocated();
+    startA.reachedLocation();
 
     map<string, string> newProps;
     newProps["label"] = label;
@@ -501,16 +772,16 @@ block::block(string label, properties* props) : label(label) {
 // Includes one or more incoming anchors thas should now be connected to this block.
 block::block(string label, anchor& pointsTo, properties* props) : label(label) {
   advanceBlockID();
-  if(!initializedDebug) initializeDebug("Debug Output", "dbg");
+  if(!initializedDebug) SightInit("Debug Output", "dbg");
   
   if(props==NULL) this->props = new properties();
   else            this->props = props;
   
   if(this->props->active) {
     // Connect startA and pointsTo anchors to the current location (pointsTo is not modified);
-    startA.isLocated();
+    startA.reachedLocation();
     anchor pointsToCopy(pointsTo);
-    pointsToCopy.isLocated();
+    pointsToCopy.reachedLocation();
 
     map<string, string> newProps;
     newProps["label"] = label;
@@ -534,17 +805,17 @@ block::block(string label, anchor& pointsTo, properties* props) : label(label) {
 block::block(string label, set<anchor>& pointsTo, properties* props) : label(label)
 {
   advanceBlockID();
-  if(!initializedDebug) initializeDebug("Debug Output", "dbg");
+  if(!initializedDebug) SightInit("Debug Output", "dbg");
 
   if(props==NULL) this->props = new properties();
   else            this->props = props;
   
   if(this->props->active) {
     // Connect startA and pointsTo anchors to the current location (pointsTo is not modified)
-    startA.isLocated();
+    startA.reachedLocation();
     for(set<anchor>::iterator a=pointsTo.begin(); a!=pointsTo.end(); a++) {
       anchor aCopy(*a);
-      aCopy.isLocated();
+      aCopy.reachedLocation();
     }
 
     map<string, string> newProps;
@@ -592,24 +863,143 @@ anchor& block::getAnchorRef()
 anchor block::getAnchor() const
 { return startA; }
 
-int BlockMerger::maxBlockID=0;
-
-BlockMerger::BlockMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags) : Merger(advance(tags)) {
+BlockMerger::BlockMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+                         map<string, streamRecord*>& outStreamRecords,
+                         vector<map<string, streamRecord*> >& inStreamRecords) : 
+                                     Merger(advance(tags), outStreamRecords, inStreamRecords)
+{
   assert(tags.size()>0);
-  set<string> names = getNameSet(tags);
-  assert(names.size()==1);
-  assert(*names.begin() == "block");
+  assert(inStreamRecords.size() == tags.size());
+  
+  cout << "BlockMerger::BlockMerger(), nextTag("<<tags.size()<<")"<<endl;
+  for(vector<pair<properties::tagType, properties::iterator> >::iterator t=tags.begin(); t!=tags.end(); t++)
+    cout << "    "<<(t->first==properties::enterTag? "enterTag": (t->first==properties::exitTag? "exitTag": "unknownTag"))<<", "<<properties::str(t->second)<<endl;
+  
   map<string, string> pMap;
+  properties::tagType type = streamRecord::getTagType(tags);
+  cout << "type="<<(type==properties::enterTag? "enterTag": (type==properties::exitTag? "exitTag": "unknownTag"))<<endl;
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Block!"<<endl; exit(-1); }
+  if(type==properties::enterTag) {
+    set<string> names = getNameSet(tags);
+    assert(names.size()==1);
+    assert(*names.begin() == "block");
+    
+    set<string> labelValues = getValueSet(tags, "label");
+    pMap["label"] = *labelValues.begin();
+    
+    // Initialize the block and anchor entries in outStreamRecords and inStreamRecords if needed
+    //initStreamRecords<BlockStreamRecord> ("block",  outStreamRecords, inStreamRecords);
+    //initStreamRecords<AnchorStreamRecord>("anchor", outStreamRecords, inStreamRecords);
+    
+    // Merge the block IDs along all the streams
+    BlockStreamRecord::mergeIDs(pMap, tags, outStreamRecords, inStreamRecords);
+    
+    set<streamAnchor> outAnchors; // Set of anchorIDs, within the anchor ID space of the outgoing stream, that terminate at this block
+    // Iterate over all the anchors that terminate at this block within all the incoming streams and add their corresponding 
+    // IDs within the outgoing stream to outAnchors
+    for(int i=0; i<tags.size(); i++) {
+      // Iterate over all the anchors within incoming stream i that terminate at this block
+      int inNumAnchors = properties::getInt(tags[i].second, "numAnchors");
+      for(int a=0; a<inNumAnchors; a++) {
+        streamAnchor curInAnchor(properties::getInt(tags[i].second, txt()<<"anchor_"<<a), inStreamRecords[i]);
+        
+        assert(((AnchorStreamRecord*)outStreamRecords["anchor"])->in2outAnchorIDs.find(curInAnchor.getID()) != 
+               ((AnchorStreamRecord*)outStreamRecords["anchor"])->in2outAnchorIDs.end());
+        
+        // Record, within the records of both the incoming and outgoing streams, that this anchor has reached its target
+        streamAnchor curOutAnchor(((AnchorStreamRecord*)outStreamRecords["anchor"])->in2outAnchorIDs[curInAnchor.getID()], outStreamRecords);
+        curInAnchor.reachedLocation(); 
+        curOutAnchor.reachedLocation();
+        
+        outAnchors.insert(curOutAnchor);
+      }
+    }
+    
+    // Add all the IDs within outAnchors to the properties of the merged block
+    pMap["numAnchors"] = txt()<<outAnchors.size();
+    int aIdx=0;
+    for(set<streamAnchor>::iterator a=outAnchors.begin(); a!=outAnchors.end(); a++, aIdx++)
+      pMap[txt()<<"anchor_"<<aIdx] = txt()<<a->getID().ID;
+    
+    props->add("block", pMap);
   
-  set<string> labelValues = getValueSet(tags, "label");
-  pMap["label"] = *labelValues.begin();
+    // Update the current location in the incoming and outgoing streams to account for entry into the block
+    dbgStreamStreamRecord::enterBlock(inStreamRecords);
+    dbgStreamStreamRecord::enterBlock(outStreamRecords);
+  } else {
+    props->add("block", pMap);
+    // Update the current location in the incoming and outgoing streams to account for exit into the block
+    dbgStreamStreamRecord::exitBlock(inStreamRecords);
+    dbgStreamStreamRecord::exitBlock(outStreamRecords);
+  }
+}
+
+// vSuffixID: ID that identifies this variant within the next level of variants in the heirarchy
+BlockStreamRecord::BlockStreamRecord(const BlockStreamRecord& that, int vSuffixID) : 
+  streamRecord((const streamRecord&)that, vSuffixID), maxBlockID(that.maxBlockID), in2outBlockIDs(that.in2outBlockIDs)
+{ }
+
+// Returns a dynamically-allocated copy of this streamRecord, specialized to the given variant ID,
+// which is appended to the new stream's variant list.
+streamRecord* BlockStreamRecord::copy(int vSuffixID) {
+  return new BlockStreamRecord(*this, vSuffixID);
+}
+
+// Given multiple streamRecords from several variants of the same stream, update this streamRecord object
+// to contain the state that succeeds them all, making it possible to resume processing
+void BlockStreamRecord::resumeFrom(std::vector<std::map<std::string, streamRecord*> >& streams) {
+// Compute the maximum maxAnchorID among all the streams
+  maxBlockID = -1;
+  for(vector<map<string, streamRecord*> >::iterator s=streams.begin(); s!=streams.end(); s++)
+    maxBlockID = (((BlockStreamRecord*)(*s)["block"])->maxBlockID > maxBlockID? 
+                   ((BlockStreamRecord*)(*s)["block"])->maxBlockID: 
+                   maxBlockID);
   
-  pMap["ID"] = txt()<<maxBlockID++;
+  // Set in2outBlockIDs to be the union of its counterparts in streams
+  in2outBlockIDs.clear();
   
-  //newProps["anchorID"] = txt()<<startA.getID();
-  // No support for anchors right now
-  pMap["numAnchors"] = "0";
-  props->add("block", pMap);
+  for(vector<map<string, streamRecord*> >::iterator s=streams.begin(); s!=streams.end(); s++) {
+    BlockStreamRecord* as = (BlockStreamRecord*)(*s)["block"];
+    for(map<streamID, streamID>::const_iterator i=as->in2outBlockIDs.begin(); i!=as->in2outBlockIDs.end(); i++)
+      in2outBlockIDs.insert(*i);
+  }
+}
+
+// Marge the IDs of the next block (stored in tags) along all the incoming streams into a single ID in the outgoing stream,
+// updating each incoming stream's mappings from its IDs to the outgoing stream's IDs
+void BlockStreamRecord::mergeIDs(std::map<std::string, std::string> pMap, 
+                                 vector<pair<properties::tagType, properties::iterator> > tags,
+                                 std::map<std::string, streamRecord*>& outStreamRecords,
+                                 std::vector<std::map<std::string, streamRecord*> >& inStreamRecords) {
+  // Assign to the merged block the next ID for this output stream
+  pMap["ID"] = txt()<<((BlockStreamRecord*)outStreamRecords["block"])->maxBlockID;
+
+  // The block's ID within the outgoing stream    
+  streamID outSID(((BlockStreamRecord*)outStreamRecords["block"])->maxBlockID,
+                  outStreamRecords["block"]->getVariantID());
+  
+  // Update inStreamRecords to map the block's ID within each incoming stream to the assigned ID in the outgoing stream
+  for(int i=0; i<tags.size(); i++) {
+    // The block's ID within the current incoming stream
+    streamID inSID(properties::getInt(tags[i].second, "ID"), 
+                   inStreamRecords[i]["block"]->getVariantID());
+    ((BlockStreamRecord*)inStreamRecords[i]["block"])->in2outBlockIDs[inSID] = outSID;
+  }
+  
+  // Advance maxBlockID
+  ((BlockStreamRecord*)outStreamRecords["block"])->maxBlockID++;
+}
+
+std::string BlockStreamRecord::str(std::string indent) const {
+  ostringstream s;
+  s << "[BlockStreamRecord: maxBlockID="<<maxBlockID<<endl;
+  
+  s << indent << "in2outBlockIDs="<<endl;
+  for(map<streamID, streamID>::const_iterator i=in2outBlockIDs.begin(); i!=in2outBlockIDs.end(); i++)
+    s << indent << "    "<<i->first.str()<<" =&gt; "<<i->second.str()<<endl;
+  s << indent << "]";
+  
+  return s.str();
 }
 
 /******************
@@ -751,7 +1141,7 @@ void dbgStream::init(properties* props, string title, string workDir, string img
   this->tmpDir  = tmpDir;
 
   numImages++;
- 
+  
   // Version 1: write output to a file 
   // Create the output file to which the debug log's structure will be written
   if(getenv("SIGHT_FILE_OUT")) {
@@ -759,22 +1149,24 @@ void dbgStream::init(properties* props, string title, string workDir, string img
     // Call the parent class initialization function to connect it dbgBuf of the output file
     buf=new dbgBuf(dbgFile->rdbuf());
   // Version 2 (default): write output to a pipe for a caller-specified layout executable to use immediately
-  } else if(getenv("SIGHT_LAYOUT")) {
+  } else if(getenv("SIGHT_LAYOUT_EXEC")) {
+//cout << "getenv(\"SIGHT_LAYOUT_EXEC\")="<<getenv("SIGHT_LAYOUT_EXEC")<<endl;
     dbgFile = NULL;
-    FILE *out = popen((txt()<<ROOT_PATH<<"/"<<getenv("SIGHT_LAYOUT")).c_str(), "w");
+    FILE *out = popen(getenv("SIGHT_LAYOUT_EXEC"), "w");
     int outFD = fileno(out);
     buf = new dbgBuf(new fdoutbuf(outFD));
   // Version 3 (default): write output to a pipe for the default slayout to use immediately
   } else {
+//cout << "slayout"<<endl;
     dbgFile = NULL;
     FILE *out = popen((txt()<<ROOT_PATH<<"/slayout").c_str(), "w");
     int outFD = fileno(out);
     buf = new dbgBuf(new fdoutbuf(outFD));
   }
   ostream::init(buf);
-
+  
   this->props = props; 
-  enter(this);
+  if(props) enter(this);
 
   // The application may have written text to this dbgStream before it was fully initialized.
   // This text was stored in preInitStream. Print it out now.
@@ -798,7 +1190,7 @@ dbgStream::~dbgStream()
     system(cmd.str().c_str());
   }
   
-  exit(this);
+  if(props) exit(this);
 }
 
 // Called when a block is entered.
@@ -859,7 +1251,7 @@ void dbgStream::ownerAccessing()  {
 // so that the caller can write to it.
 string dbgStream::addImage(string ext)
 {
-  if(!initializedDebug) initializeDebug("Debug Output", "dbg");
+  if(!initializedDebug) SightInit("Debug Output", "dbg");
   
   ostringstream imgFName; imgFName << imgDir << "/image_" << numImages << "." << ext;
   
@@ -947,77 +1339,138 @@ std::string dbgStream::tagStr(sightObj* obj) {
   return enterStr(*(obj->props)) + exitStr(*(obj->props));
 }
 
-dbgStreamMerger::dbgStreamMerger(vector<pair<properties::tagType, properties::iterator> > tags) : 
-    Merger(advance(tags)) {
+dbgStreamMerger::dbgStreamMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+                                 map<string, streamRecord*>& outStreamRecords,
+                                 vector<map<string, streamRecord*> >& inStreamRecords) : 
+                                                    Merger(advance(tags), outStreamRecords, inStreamRecords) {
   assert(tags.size()>0);
-  set<string> names = getNameSet(tags);
-  assert(names.size()==1);
-  assert(*names.begin() == "sight");
   map<string, string> pMap;
   
-  pMap["workDir"] = "merged";
-  
-  set<string> titleValues = getValueSet(tags, "title");
-  pMap["title"] = *titleValues.begin();
-  
-  set<string> commandLineKnownValues = getValueSet(tags, "commandLineKnown");
-  pMap["commandLineKnown"] = "0";
-  for(set<string>::iterator i=commandLineKnownValues.begin(); i!=commandLineKnownValues.end(); i++)
-    if(*i=="1") {
-      pMap["commandLineKnown"] = "1";
-      break;
-    }
-  
-  if(pMap["commandLineKnown"] == "1") {
-    set<string> argcValues = getValueSet(tags, "argc");
-    assert(argcValues.size()==1);
-    pMap["argc"] = *argcValues.begin();
+  properties::tagType type = streamRecord::getTagType(tags); 
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging dbgStream!"<<endl; exit(-1); }
+  if(type==properties::enterTag) {
+    set<string> names = getNameSet(tags);
+    assert(names.size()==1);
+    assert(*names.begin() == "sight");
     
-    long argc = strtol((*argcValues.begin()).c_str(), NULL, 10);
-    for(long i=0; i<argc; i++) {
-      set<string> argvValues = getValueSet(tags, txt()<<"argv_"<<i);
-      assert(argvValues.size()==1);
-      pMap[txt()<<"argv_"<<i] = *argvValues.begin();
-    }
+    pMap["workDir"] = "merged";
     
-    set<string> execFileValues = getValueSet(tags, "execFile");
-    assert(execFileValues.size()==1);
-    pMap["execFile"] = *execFileValues.begin();
+    set<string> titleValues = getValueSet(tags, "title");
+    pMap["title"] = *titleValues.begin();
     
-    set<string> numEnvVarsValues = getValueSet(tags, "numEnvVars");
-    assert(numEnvVarsValues.size()==1);
-    pMap["numEnvVars"] = *numEnvVarsValues.begin();
+    set<string> commandLineKnownValues = getValueSet(tags, "commandLineKnown");
+    pMap["commandLineKnown"] = "0";
+    for(set<string>::iterator i=commandLineKnownValues.begin(); i!=commandLineKnownValues.end(); i++)
+      if(*i=="1") {
+        pMap["commandLineKnown"] = "1";
+        break;
+      }
     
-    long numEnvVars = strtol((*numEnvVarsValues.begin()).c_str(), NULL, 10);
-    for(long i=0; i<numEnvVars; i++) {
-      set<string> envNameValues = getValueSet(tags, txt()<<"envName_"<<i);
-      assert(envNameValues.size()==1);
-      pMap[txt()<<"envName_"<<i] = *envNameValues.begin();
+    if(pMap["commandLineKnown"] == "1") {
+      set<string> argcValues = getValueSet(tags, "argc");
+      assert(argcValues.size()==1);
+      pMap["argc"] = *argcValues.begin();
       
-      set<string> envValValues = getValueSet(tags, txt()<<"envVal_"<<i);
-      assert(envValValues.size()==1);
-      pMap[txt()<<"envVal_"<<i] = *envValValues.begin();
+      long argc = strtol((*argcValues.begin()).c_str(), NULL, 10);
+      for(long i=0; i<argc; i++) {
+        set<string> argvValues = getValueSet(tags, txt()<<"argv_"<<i);
+        assert(argvValues.size()==1);
+        pMap[txt()<<"argv_"<<i] = *argvValues.begin();
+      }
+      
+      set<string> execFileValues = getValueSet(tags, "execFile");
+      assert(execFileValues.size()==1);
+      pMap["execFile"] = *execFileValues.begin();
+      
+      set<string> numEnvVarsValues = getValueSet(tags, "numEnvVars");
+      assert(numEnvVarsValues.size()==1);
+      pMap["numEnvVars"] = *numEnvVarsValues.begin();
+      
+      long numEnvVars = strtol((*numEnvVarsValues.begin()).c_str(), NULL, 10);
+      for(long i=0; i<numEnvVars; i++) {
+        set<string> envNameValues = getValueSet(tags, txt()<<"envName_"<<i);
+        assert(envNameValues.size()==1);
+        pMap[txt()<<"envName_"<<i] = *envNameValues.begin();
+        
+        set<string> envValValues = getValueSet(tags, txt()<<"envVal_"<<i);
+        assert(envValValues.size()==1);
+        pMap[txt()<<"envVal_"<<i] = *envValValues.begin();
+      }
+      
+      set<string> numHostnamesValues = getValueSet(tags, "numHostnames");
+      assert(numHostnamesValues.size()==1);
+      pMap["numHostnames"] = *numHostnamesValues.begin();
+      
+      long numHostnames = strtol((*numHostnamesValues.begin()).c_str(), NULL, 10);
+      for(long i=0; i<numHostnames; i++) {
+        set<string> hostnameValues = getValueSet(tags, txt()<<"hostname_"<<i);
+        assert(hostnameValues.size()==1);
+        pMap[txt()<<"hostname_"<<i] = *hostnameValues.begin();
+      }
+      
+      set<string> usernameValues = getValueSet(tags, "username");
+      assert(usernameValues.size()==1);
+      pMap["username"] = *usernameValues.begin();
     }
     
-    set<string> numHostnamesValues = getValueSet(tags, "numHostnames");
-    assert(numHostnamesValues.size()==1);
-    pMap["numHostnames"] = *numHostnamesValues.begin();
-    
-    long numHostnames = strtol((*numHostnamesValues.begin()).c_str(), NULL, 10);
-    for(long i=0; i<numHostnames; i++) {
-      set<string> hostnameValues = getValueSet(tags, txt()<<"hostname_"<<i);
-      assert(hostnameValues.size()==1);
-      pMap[txt()<<"hostname_"<<i] = *hostnameValues.begin();
-    }
-    
-    set<string> usernameValues = getValueSet(tags, "username");
-    assert(usernameValues.size()==1);
-    pMap["username"] = *usernameValues.begin();
+    props->add("sight", pMap);
+    SightInit_internal(props);
+  } else
+    props->add("sight", pMap);
+}
+
+// vSuffixID: ID that identifies this variant within the next level of variants in the heirarchy
+dbgStreamStreamRecord::dbgStreamStreamRecord(const dbgStreamStreamRecord& that, int vSuffixID) : 
+  streamRecord((const streamRecord&)that, vSuffixID), loc(that.loc)
+{ }
+
+// Returns a dynamically-allocated copy of this streamRecord, specialized to the given variant ID,
+// which is appended to the new stream's variant list.
+streamRecord* dbgStreamStreamRecord::copy(int vSuffixID) {
+  return new dbgStreamStreamRecord(*this, vSuffixID);
+}
+
+// Given multiple streamRecords from several variants of the same stream, update this streamRecord object
+// to contain the state that succeeds them all, making it possible to resume processing
+void dbgStreamStreamRecord::resumeFrom(std::vector<std::map<std::string, streamRecord*> >& streams) {
+  // We don't do anything since dbgStreamStreamRecord only have a location field, which is updated
+  // within BlockStreamRecord, meaning that it is upto-date.
+}
+
+// Called when a block is entered.
+void dbgStreamStreamRecord::enterBlock(vector<map<std::string, streamRecord*> >& streamRecords) {
+  cout << "dbgStreamStreamRecord::enterBlock() In\n";
+  for(vector<map<std::string, streamRecord*> >::iterator r=streamRecords.begin(); r!=streamRecords.end(); r++) {
+    assert(r->find("sight") != r->end());
+    ((dbgStreamStreamRecord*)(*r)["sight"])->loc.enterBlock();
   }
-  
-  props->add("sight", pMap);
-  
-  initializeDebug_internal(props);
+}
+
+void dbgStreamStreamRecord::enterBlock(map<std::string, streamRecord*>& streamRecord) {
+  cout << "dbgStreamStreamRecord::enterBlock() Out\n";
+  assert(streamRecord.find("sight") != streamRecord.end());
+  ((dbgStreamStreamRecord*)streamRecord["sight"])->loc.enterBlock();
+}
+
+// Called when a block is exited.
+void dbgStreamStreamRecord::exitBlock(std::vector<std::map<std::string, streamRecord*> >& streamRecords) {
+  cout << "dbgStreamStreamRecord::exitBlock() In\n";
+  for(vector<map<std::string, streamRecord*> >::iterator r=streamRecords.begin(); r!=streamRecords.end(); r++) {
+    assert(r->find("sight") != r->end());
+    ((dbgStreamStreamRecord*)(*r)["sight"])->loc.exitBlock();
+  }
+}
+
+void dbgStreamStreamRecord::exitBlock(map<std::string, streamRecord*>& streamRecord) {
+  cout << "dbgStreamStreamRecord::exitBlock() Out\n";
+  assert(streamRecord.find("sight") != streamRecord.end());
+  ((dbgStreamStreamRecord*)streamRecord["sight"])->loc.exitBlock();
+}
+
+std::string dbgStreamStreamRecord::str(std::string indent) const {
+  ostringstream s;
+  s << "[dbgStreamStreamRecord: s="<<s.str()<<"]";
+  return s.str();
 }
 
 /******************
@@ -1064,17 +1517,27 @@ indent::~indent() {
   }
 }
 
-IndentMerger::IndentMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags) : Merger(advance(tags)) {
+IndentMerger::IndentMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+                           map<string, streamRecord*>& outStreamRecords,
+                           vector<map<string, streamRecord*> >& inStreamRecords) : 
+                                           Merger(advance(tags), outStreamRecords, inStreamRecords) {
   assert(tags.size()>0);
-  set<string> names = getNameSet(tags);
-  assert(names.size()==1);
-  assert(*names.begin() == "indent");
-  map<string, string> pMap;
   
-  set<string> prefixValues = getValueSet(tags, "prefix");
-  pMap["prefix"] = *prefixValues.begin();
-  pMap["repeatCnt"] = txt()<<setAvg(str2intSet(getValueSet(tags, "repeatCnt")));
-  props->add("indent", pMap);
+  map<string, string> pMap;
+  properties::tagType type = streamRecord::getTagType(tags); 
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Block!"<<endl; exit(-1); }
+  if(type==properties::enterTag) {
+    set<string> names = getNameSet(tags);
+    assert(names.size()==1);
+    assert(*names.begin() == "indent");
+    map<string, string> pMap;
+    
+    set<string> prefixValues = getValueSet(tags, "prefix");
+    pMap["prefix"] = *prefixValues.begin();
+    pMap["repeatCnt"] = txt()<<setAvg(str2intSet(getValueSet(tags, "repeatCnt")));
+  }
+  
+  props->add("block", pMap);
 }
 
 

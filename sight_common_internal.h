@@ -67,7 +67,7 @@ class properties
 {
   public:
   // Differentiates between the entry tag of an object and its exit tag
-  typedef enum {enterTag, exitTag} tagType;
+  typedef enum {enterTag, exitTag, unknownTag} tagType;
   
   // Lists the mapping the name of a class in an inheritance hierarchy to its map of key-value pairs.
   // Objects are ordered according to inheritance depth with the base class at the end of the 
@@ -124,7 +124,7 @@ class properties
   // Returns the string representation of the given properties iterator  
   static std::string str(iterator props);
   
-  std::string str() const;
+  std::string str(std::string indent="") const;
 }; // class properties
 
 namespace common {
@@ -171,6 +171,14 @@ class dbgStream : public std::ostream
 // This function can be called on text that has already been escaped with no harm.
 std::string escape(std::string s);
 std::string unescape(std::string s);
+
+class structureParser {
+  public:
+ 
+  // Reads more data from the data source, returning the type of the next tag read and the properties of 
+  // the object it denotes.
+  virtual std::pair<properties::tagType, const properties*> next()=0;
+};
 
 }; // namespace common
 }; // namespace sight

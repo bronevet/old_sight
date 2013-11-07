@@ -40,7 +40,7 @@ void baseStructureParser<streamT>::init(streamT* stream) {
 }
 
 template<typename streamT>
-pair<typename structureParser::tagType, const properties*> baseStructureParser<streamT>::next() {
+pair<typename properties::tagType, const properties*> baseStructureParser<streamT>::next() {
   bool success = true;
   string readTxt; // String where text read by readUntil() will be placed
   char termChar;  // Character where readUntil() places the character that caused parsing to terminate
@@ -94,7 +94,7 @@ pair<typename structureParser::tagType, const properties*> baseStructureParser<s
       pMap["text"] = readTxt;
       tagProperties.add("text", pMap);
       loc = textRead;
-      return make_pair(structureParser::enterTag, &tagProperties);
+      return make_pair(properties::enterTag, &tagProperties);
     }
     
     if(!success) goto DONE_LOC;
@@ -120,7 +120,7 @@ pair<typename structureParser::tagType, const properties*> baseStructureParser<s
       
       tagProperties.add(tagName, pMap);
       loc = exitTagRead;
-      return make_pair(structureParser::exitTag, &tagProperties);
+      return make_pair(properties::exitTag, &tagProperties);
       
       EXIT_TAG_READ_LOC:
       
@@ -202,7 +202,7 @@ pair<typename structureParser::tagType, const properties*> baseStructureParser<s
         #endif
         
         loc = enterTagRead;
-        return make_pair(structureParser::enterTag, &tagProperties);
+        return make_pair(properties::enterTag, &tagProperties);
         
         ENTER_TAG_READ_LOC:
         ;
@@ -215,7 +215,7 @@ pair<typename structureParser::tagType, const properties*> baseStructureParser<s
 
   DONE_LOC:
   loc = done;
-  return make_pair(structureParser::exitTag, &tagProperties);
+  return make_pair(properties::exitTag, &tagProperties);
 }
 
 // Read a property name/value pair from the given file, setting name and val to them.
@@ -399,39 +399,6 @@ bool FILEStructureParser::streamEnd() {
 // Returns true if we've encountered an error in input stream
 bool FILEStructureParser::streamError() {
   return ferror(stream);
-}
-
-// Given a parser that reads the structure of a given log file, lays it out and prints it to the output Sight stream
-void layoutStructure(structureParser& parser) {
-  // The stack of all the objects of each type that have been entered but not yet exited
-  map<string, list<void*> > stack;
-  
-  pair<structureParser::tagType, const properties*> props = parser.next();
-  while(props.second->size()>0) {
-    if(props.first == structureParser::enterTag) {
-      // If this is just text between tags, print it out 
-      if(props.second->name() == "text")
-        //fprintf(f, "%s", properties::get(props.second->begin(), "text").c_str());
-        dbg << properties::get(props.second->begin(), "text");
-      // Else, if this is the entry into a new tag, process it
-      else {
-        // Call the entry handler of the most recently-entered object with this tag name
-        // and push the object it returns onto the stack dedicated to objects of this type.
-        if(layoutHandlerInstantiator::layoutEnterHandlers->find(props.second->name()) == layoutHandlerInstantiator::layoutEnterHandlers->end()) { cerr << "ERROR: no entry handler for \""<<props.second->name()<<"\" tags!" << endl; }
-        assert(layoutHandlerInstantiator::layoutEnterHandlers->find(props.second->name()) != layoutHandlerInstantiator::layoutEnterHandlers->end());
-        stack[props.second->name()].push_back((*layoutHandlerInstantiator::layoutEnterHandlers)[props.second->name()](props.second->begin()));
-      }
-    } else if(props.first == structureParser::exitTag) {
-      // Call the exit handler of the most recently-entered object with this tag name
-      // and pop the object off its stack
-      assert(stack[props.second->name()].size()>0);
-      if(layoutHandlerInstantiator::layoutEnterHandlers->find(props.second->name()) == layoutHandlerInstantiator::layoutEnterHandlers->end()) { cerr << "ERROR: no exit handler for \""<<props.second->name()<<"\" tags!" << endl; }
-      assert(layoutHandlerInstantiator::layoutExitHandlers->find(props.second->name()) != layoutHandlerInstantiator::layoutExitHandlers->end());
-      (*layoutHandlerInstantiator::layoutExitHandlers)[props.second->name()](stack[props.second->name()].back());
-      stack[props.second->name()].pop_back();
-    }
-    props = parser.next();
-  }
 }
 
 } // namespace sight

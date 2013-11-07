@@ -70,13 +70,13 @@ class trace: public block, public attrObserver, public common::trace
   // Emits the JavaScript command that encodes the observations made since the last time a context attribute changed
   void emitObservations();
 }; // class trace
-
+/*
 class TraceMerger : public BlockMerger {
   static int maxTraceID;
   public:
   TraceMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags);
 }; // class TraceMerger
-
+*/
 /*class TraceObsMerger : public BlockMerger {
   public:
   TraceObsMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags);
