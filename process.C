@@ -147,6 +147,7 @@ pair<typename properties::tagType, const properties*> baseStructureParser<stream
       if(!(success = readUntil(true, " \t\r\n]", 5, termChar, readTxt))) goto DONE_LOC;
 
       // Read the properties of this tag
+      pMap.clear();
       for(long int p=0; p<numProps; p++) {
         // If we reached the end of the tag before processing all the properties
         if(termChar==']') { cerr << "ERROR: reached the end of tag "<<tagName<<" after processing "<<p<<" properties but expected "<<numProps<<" properties!"<<endl; exit(-1); }

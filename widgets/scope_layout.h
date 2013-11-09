@@ -26,25 +26,40 @@ class scope: public block, public common::scope
   static int colorIdx; // The current index into the list of colors 
   
   public:
-  scopeLevel level;
+  //scopeLevel level;
 
   // properties: maps property names to their values
   // level - the type of visualization used, with higher levels associated with more amounts of debug output
   //    There are several features that are enabled by the levels:
   //       own_file: Text inside the scope is written to a separate file. Users must manually click a button to see it.
   //       own_color: The background color of the scope is different from its parent scope.
-  //       label_shown: The label of this scope is shown in a larger font, along with controls to minimize the scope 
+  //       label_interactive: The label of this scope is shown in a larger font, along with controls to minimize the scope 
   //              by clicking on the label and open GDB to the point in the execution where the scope started
+  //       label_shown: The label of this scope is printed out
+  //       summary_entry: A record of this scope is added to the summary frame
   //    Different levels
-  //    high: own_file, own_color, label_shown
-  //    medium: own_color, label_shown
-  //    low: label_shown
-  //    min: none of the above
+  //    high: own_file, own_color, label_interactive, label_shown, summary_entry
+  //    medium: own_color, label_interactive, label_shown, summary_entry
+  //    low: label_interactive, label_shown, summary_entry
+  //    min: label_shown, summary_entry
   scope(properties::iterator props);
+  scope(std::string label, scopeLevel level);
+  scope(std::string label, bool ownFile, bool ownColor, bool labelInteractive, bool labelShown, bool summaryEntry);
+  bool ownFile;
+  bool ownColor;
+  bool labelInteractive;
+  bool labelShown;
+  bool summaryEntry;
   
+  // Index of this block within its parent block
+  int blockIndex;
+    
   private:
+  // Sets the scope's configuration flags based on the given level
+  void level2Config(scopeLevel level);
+  
   // Common initialization code
-  void init(scopeLevel level);
+  void init();
   
   public:
     
@@ -60,36 +75,6 @@ class scope: public block, public common::scope
   
   ~scope();
 }; // scope
-
-/*class workscope: public scope
-{
-  class DiffFunctor {
-    double operator()(void* data1, void* data2);
-  };
-
-  class dataItem {
-    std::string name;
-    void* data;
-    DiffFunctor* diff;
-  };
-    
-  std::set<dataItem> data;
-
-  public:
-  workscope(std::string label,                                   scopeLevel level, const attrOp& onoffOp);
-  workscope(std::string label, const anchor& pointsTo,           scopeLevel level, const attrOp& onoffOp);
-  workscope(std::string label, const std::set<anchor>& pointsTo, scopeLevel level, const attrOp& onoffOp);
-  workscope(std::string label,                                                     const attrOp& onoffOp);
-  workscope(std::string label, const anchor& pointsTo,                             const attrOp& onoffOp);
-  workscope(std::string label, const std::set<anchor>& pointsTo,                   const attrOp& onoffOp);
-  workscope(std::string label,                                   scopeLevel level=medium);
-  workscope(std::string label, const anchor& pointsTo,           scopeLevel level=medium);
-  workscope(std::string label, const std::set<anchor>& pointsTo, scopeLevel level=medium);
-
-  ~workscope();
-
-  void data(std::string name, void* data, DiffFunctor* diff);
-};*/
 
 }; // namespace layout
 }; // namespace sight

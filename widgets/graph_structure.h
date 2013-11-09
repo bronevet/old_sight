@@ -91,7 +91,14 @@ class GraphMerger : public BlockMerger {
   public:
   GraphMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
               std::map<std::string, streamRecord*>& outStreamRecords,
-              std::vector<std::map<std::string, streamRecord*> >& inStreamRecords);
+              std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+              properties* props);
+              
+  // Sets the properties of the merged object
+  static properties* setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+                                   std::map<std::string, streamRecord*>& outStreamRecords,
+                                   std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                                   properties* props=NULL);
 }; // class GraphMerger
 
 class GraphStreamRecord: public streamRecord {
@@ -150,7 +157,7 @@ class GraphStreamRecord: public streamRecord {
   
   // Marge the IDs of the next graph (stored in tags) along all the incoming streams into a single ID in the outgoing stream,
   // updating each incoming stream's mappings from its IDs to the outgoing stream's IDs
-  static void mergeIDs(std::map<std::string, std::string> pMap, 
+  static void mergeIDs(std::map<std::string, std::string>& pMap, 
                        const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
                        std::map<std::string, streamRecord*>& outStreamRecords,
                        std::vector<std::map<std::string, streamRecord*> >& inStreamRecords);
@@ -172,21 +179,24 @@ class DirEdgeMerger : public Merger {
   public:
   DirEdgeMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                 std::map<std::string, streamRecord*>& outStreamRecords,
-                std::vector<std::map<std::string, streamRecord*> >& inStreamRecords);
+                std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                properties* props=NULL);
 }; // class DirEdgeMerger
 
 class UndirEdgeMerger : public Merger {
   public:
   UndirEdgeMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                   std::map<std::string, streamRecord*>& outStreamRecords,
-                  std::vector<std::map<std::string, streamRecord*> >& inStreamRecords);
+                  std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                  properties* props=NULL);
 }; // class UndirEdgeMerger
 
 class NodeMerger : public Merger {
   public:
   NodeMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
              std::map<std::string, streamRecord*>& outStreamRecords,
-             std::vector<std::map<std::string, streamRecord*> >& inStreamRecords);
+             std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+             properties* props=NULL);
 }; // class NodeMerger
 
 class NodeStreamRecord: public streamRecord {
@@ -212,7 +222,7 @@ class NodeStreamRecord: public streamRecord {
   
   // Marge the IDs of the next Node (stored in tags) along all the incoming streams into a single ID in the outgoing stream,
   // updating each incoming stream's mappings from its IDs to the outgoing stream's IDs
-  static void mergeIDs(std::map<std::string, std::string> pMap, 
+  static void mergeIDs(std::map<std::string, std::string>& pMap, 
                        const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
                        std::map<std::string, streamRecord*>& outStreamRecords,
                        std::vector<std::map<std::string, streamRecord*> >& inStreamRecords);

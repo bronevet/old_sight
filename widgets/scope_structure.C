@@ -107,8 +107,18 @@ scope::~scope()
 
 ScopeMerger::ScopeMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                          map<string, streamRecord*>& outStreamRecords,
-                         vector<map<string, streamRecord*> >& inStreamRecords) : 
-                                     BlockMerger(advance(tags), outStreamRecords, inStreamRecords) {
+                         vector<map<string, streamRecord*> >& inStreamRecords,
+                         properties* props) : 
+        BlockMerger(advance(tags), outStreamRecords, inStreamRecords, 
+                    setProperties(tags, outStreamRecords, inStreamRecords, props)) { }
+
+// Sets the properties of the merged object
+properties* ScopeMerger::setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+                                       map<string, streamRecord*>& outStreamRecords,
+                                       vector<map<string, streamRecord*> >& inStreamRecords,
+                                       properties* props) {
+  if(props==NULL) props = new properties();
+  
   assert(tags.size()>0);
   map<string, string> pMap;
   properties::tagType type = streamRecord::getTagType(tags); 
@@ -123,6 +133,8 @@ ScopeMerger::ScopeMerger(std::vector<std::pair<properties::tagType, properties::
   } else {
     props->add("scope", pMap);
   }
+  
+  return props;
 }
 
 }; // namespace structure

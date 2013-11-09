@@ -192,30 +192,17 @@ bool graph::subBlockEnterNotify(block* subBlock) {
 
 GraphMerger::GraphMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                          std::map<std::string, streamRecord*>& outStreamRecords,
-                         std::vector<std::map<std::string, streamRecord*> >& inStreamRecords) : 
-                                          BlockMerger(advance(tags), outStreamRecords, inStreamRecords) {
-  assert(tags.size()>0);
-  map<string, string> pMap;
+                         std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                         properties* props) : 
+        BlockMerger(advance(tags), outStreamRecords, inStreamRecords, 
+                    setProperties(tags, outStreamRecords, inStreamRecords, props))
+{
   properties::tagType type = streamRecord::getTagType(tags); 
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging graph!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
     set<string> names = getNameSet(tags);
     assert(names.size()==1);
     assert(*names.begin() == "graph");
-    
-    // Initialize the graph entry in outStreamRecords and inStreamRecords if needed
-    //initStreamRecords<GraphStreamRecord>("graph", outStreamRecords, inStreamRecords);
-    
-    // Merge the graph IDs along all the streams
-    GraphStreamRecord::mergeIDs(pMap, tags, outStreamRecords, inStreamRecords);
-     
-    set<string> dotTextSet;
-    for(std::vector<std::pair<properties::tagType, properties::iterator> >::iterator t=tags.begin(); t!=tags.end(); t++) {
-      if(properties::exists(t->second, "dotText"))
-        dotTextSet.insert(properties::get(t->second, "dotText"));
-    }
-    if(dotTextSet.size()>0)
-    pMap["dotText"] = *dotTextSet.begin();
     
     GraphStreamRecord::enterGraph(inStreamRecords);
   } else {
@@ -260,7 +247,42 @@ GraphMerger::GraphMerger(std::vector<std::pair<properties::tagType, properties::
     
     GraphStreamRecord::exitGraph(inStreamRecords);
   }
+}
+
+
+// Sets the properties of the merged object
+properties* GraphMerger::setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+                                       map<string, streamRecord*>& outStreamRecords,
+                                       vector<map<string, streamRecord*> >& inStreamRecords,
+                                       properties* props) {
+  if(props==NULL) props = new properties();
+  
+  assert(tags.size()>0);
+  map<string, string> pMap;
+  properties::tagType type = streamRecord::getTagType(tags); 
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging graph!"<<endl; exit(-1); }
+  if(type==properties::enterTag) {
+    set<string> names = getNameSet(tags);
+    assert(names.size()==1);
+    assert(*names.begin() == "graph");
+    
+    // Initialize the graph entry in outStreamRecords and inStreamRecords if needed
+    //initStreamRecords<GraphStreamRecord>("graph", outStreamRecords, inStreamRecords);
+    
+    // Merge the graph IDs along all the streams
+    GraphStreamRecord::mergeIDs(pMap, tags, outStreamRecords, inStreamRecords);
+     
+    set<string> dotTextSet;
+    for(std::vector<std::pair<properties::tagType, properties::iterator> >::iterator t=tags.begin(); t!=tags.end(); t++) {
+      if(properties::exists(t->second, "dotText"))
+        dotTextSet.insert(properties::get(t->second, "dotText"));
+    }
+    if(dotTextSet.size()>0)
+    pMap["dotText"] = *dotTextSet.begin();
+  }
   props->add("graph", pMap);
+  
+  return props;
 }
 
 GraphStreamRecord::GraphStreamRecord(const GraphStreamRecord& that, int vSuffixID) : 
@@ -315,7 +337,7 @@ void GraphStreamRecord::resumeFrom(std::vector<std::map<string, streamRecord*> >
 
 // Marge the IDs of the next graph (stored in tags) along all the incoming streams into a single ID in the outgoing stream,
 // updating each incoming stream's mappings from its IDs to the outgoing stream's IDs
-void GraphStreamRecord::mergeIDs(std::map<std::string, std::string> pMap, 
+void GraphStreamRecord::mergeIDs(std::map<std::string, std::string>& pMap, 
                                  const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
                                  std::map<std::string, streamRecord*>& outStreamRecords,
                                  std::vector<std::map<std::string, streamRecord*> >& inStreamRecords) {
@@ -388,8 +410,12 @@ std::string GraphStreamRecord::str(std::string indent) const {
 
 DirEdgeMerger::DirEdgeMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                              std::map<std::string, streamRecord*>& outStreamRecords,
-                             std::vector<std::map<std::string, streamRecord*> >& inStreamRecords) : 
-                                             Merger(advance(tags), outStreamRecords, inStreamRecords) {
+                             std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                             properties* props) : 
+                                     Merger(advance(tags), outStreamRecords, inStreamRecords, props) {
+  if(props==NULL) props = new properties();
+  this->props = props;
+                                      
   assert(tags.size()>0);
   map<string, string> pMap;
   properties::tagType type = streamRecord::getTagType(tags); 
@@ -418,8 +444,12 @@ DirEdgeMerger::DirEdgeMerger(std::vector<std::pair<properties::tagType, properti
 
 UndirEdgeMerger::UndirEdgeMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                                  std::map<std::string, streamRecord*>& outStreamRecords,
-                                 std::vector<std::map<std::string, streamRecord*> >& inStreamRecords) : 
-                                              Merger(advance(tags), outStreamRecords, inStreamRecords) {
+                                 std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                                 properties* props) : 
+                                       Merger(advance(tags), outStreamRecords, inStreamRecords, props) {
+  if(props==NULL) props = new properties();
+  this->props = props;
+  
   assert(tags.size()>0);
   map<string, string> pMap;
   properties::tagType type = streamRecord::getTagType(tags); 
@@ -448,8 +478,12 @@ UndirEdgeMerger::UndirEdgeMerger(std::vector<std::pair<properties::tagType, prop
 
 NodeMerger::NodeMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                        std::map<std::string, streamRecord*>& outStreamRecords,
-                       std::vector<std::map<std::string, streamRecord*> >& inStreamRecords) : 
-                                                 Merger(advance(tags), outStreamRecords, inStreamRecords) {
+                       std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                       properties* props) : 
+                                Merger(advance(tags), outStreamRecords, inStreamRecords, props) {
+  if(props==NULL) props = new properties();
+  this->props = props;
+
   assert(tags.size()>0);
   map<string, string> pMap;
   properties::tagType type = streamRecord::getTagType(tags); 
@@ -507,7 +541,7 @@ void NodeStreamRecord::resumeFrom(std::vector<std::map<string, streamRecord*> >&
 
 // Marge the IDs of the next Node (stored in tags) along all the incoming streams into a single ID in the outgoing stream,
 // updating each incoming stream's mappings from its IDs to the outgoing stream's IDs
-void NodeStreamRecord::mergeIDs(std::map<std::string, std::string> pMap, 
+void NodeStreamRecord::mergeIDs(std::map<std::string, std::string>& pMap, 
                                 const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
                                 std::map<std::string, streamRecord*>& outStreamRecords,
                                 std::vector<std::map<std::string, streamRecord*> >& inStreamRecords) {

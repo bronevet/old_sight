@@ -64,7 +64,14 @@ class ScopeMerger : public BlockMerger {
   public:
   ScopeMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
               std::map<std::string, streamRecord*>& outStreamRecords,
-              std::vector<std::map<std::string, streamRecord*> >& inStreamRecords);
+              std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+              properties* props=NULL);
+  
+  // Sets the properties of the merged object
+  static properties* setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+                                   std::map<std::string, streamRecord*>& outStreamRecords,
+                                   std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                                   properties* props);
 }; // class ScopeMerger
 
 }; // namespace structure

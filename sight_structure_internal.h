@@ -91,6 +91,7 @@ class streamID {
   
   // Relational operators
   bool operator==(const streamID& that) const { return ID==that.ID && vID==that.vID; }
+  bool operator!=(const streamID& that) const { return ID!=that.ID || vID!=that.vID; }
   bool operator< (const streamID& that) const { return ID<that.ID || (ID==that.ID && vID<that.vID); }
   
   std::string str() const 
@@ -224,8 +225,8 @@ class Merger {
   public:
   Merger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
          std::map<std::string, streamRecord*>& outStreamRecords,
-         std::vector<std::map<std::string, streamRecord*> >& inStreamRecords) {
-    props = new properties;
+         std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+         properties* props): props(props) {
     emitTagFlag = true;
   }
   
@@ -384,7 +385,7 @@ class AnchorStreamRecord: public streamRecord {
   // Marge the IDs of the next anchorID field of the current tag (named objName) of each the incoming stream into a 
   // single ID in the outgoing stream, updating each incoming stream's mappings from its IDs to the outgoing stream's 
   // IDs. If a given incoming stream anchorID has already been assigned to a different outgoing stream anchorID, yell.
-  static void mergeIDs(std::string objName, std::map<std::string, std::string> pMap, 
+  static void mergeIDs(std::string objName, std::map<std::string, std::string>& pMap, 
                        const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
                        std::map<std::string, streamRecord*>& outStreamRecords,
                        std::vector<std::map<std::string, streamRecord*> >& inStreamRecords);
@@ -394,6 +395,14 @@ class AnchorStreamRecord: public streamRecord {
   
   std::string str(std::string indent="") const;
 }; // class AnchorStreamRecord
+
+class LinkMerger : public Merger {
+  public:
+  LinkMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+               std::map<std::string, streamRecord*>& outStreamRecords,
+               std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+               properties* props=NULL);
+}; // class LinkMerger
 
 class dbgStreamStreamRecord;
 
@@ -498,7 +507,8 @@ class BlockMerger : public Merger {
   public:
   BlockMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
               std::map<std::string, streamRecord*>& outStreamRecords,
-              std::vector<std::map<std::string, streamRecord*> >& inStreamRecords);
+              std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+              properties* props=NULL);
 }; // class BlockMerger
 
 class BlockStreamRecord: public streamRecord {
@@ -525,7 +535,7 @@ class BlockStreamRecord: public streamRecord {
   
   // Marge the IDs of the next block (stored in tags) along all the incoming streams into a single ID in the outgoing stream,
   // updating each incoming stream's mappings from its IDs to the outgoing stream's IDs
-  static void mergeIDs(std::map<std::string, std::string> pMap, 
+  static void mergeIDs(std::map<std::string, std::string>& pMap, 
                        std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                        std::map<std::string, streamRecord*>& outStreamRecords,
                        std::vector<std::map<std::string, streamRecord*> >& inStreamRecords);
@@ -682,10 +692,11 @@ public:
   // Emit a full tag an an the structured output file
   //void tag(std::string name, const std::map<std::string, std::string>& properties, bool inheritedFrom);
   void tag(common::sightObj* obj);
-  
+  void tag(const properties& props);
+    
   // Returns the text that should be emitted to the the structured output file to that denotes a full tag an an the structured output file
   //std::string tagStr(std::string name, const std::map<std::string, std::string>& properties, bool inheritedFrom);
-  std::string tagStr(common::sightObj* obj);
+  std::string tagStr(const properties& props);
 }; // dbgStream
 
 class dbgStreamMerger : public Merger {
@@ -693,7 +704,8 @@ class dbgStreamMerger : public Merger {
   public:
   dbgStreamMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                   std::map<std::string, streamRecord*>& outStreamRecords,
-                  std::vector<std::map<std::string, streamRecord*> >& inStreamRecords);
+                  std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                  properties* props=NULL);
 };
 
 class dbgStreamStreamRecord: public streamRecord {
@@ -756,7 +768,8 @@ class IndentMerger : public Merger {
   public:
   IndentMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                std::map<std::string, streamRecord*>& outStreamRecords,
-               std::vector<std::map<std::string, streamRecord*> >& inStreamRecords);
+               std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+               properties* props=NULL);
 }; // class IndentMerger
 
 

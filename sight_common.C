@@ -94,6 +94,11 @@ bool properties::exists(properties::iterator cur, std::string key) {
   return cur->second.find(key) != cur->second.end();
 }
 
+// Given an iterator to a particular key->value mapping, returns the number of keys in the map
+bool properties::getNumKeys(iterator cur) {
+  return cur->second.size();
+}
+
 // Returns the name of the object type referred to by the given iterator
 string properties::name(iterator cur)
 { return cur->first; }
@@ -126,7 +131,7 @@ std::string properties::str(string indent) const {
   ostringstream oss;
   oss << "[properties:"<<endl;
   for(iterator i=begin(); i!=end(); i++)
-    oss << indent << "    "<<properties::str(i)<<endl;
+    oss << indent <<"    "<<properties::str(i)<<endl;
   oss << indent << "]";
   return oss.str();
 }

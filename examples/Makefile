@@ -4,18 +4,21 @@ EXE := .exe
 endif
 
 sight_H := ../*.h ../widgets/*.h
-TESTERS = 1.StructuredFormatting${EXE} 2.ConditionalFormatting${EXE} 3.Navigation${EXE} \
-          4.AttributeAnnotationFiltering${EXE} 5.Tracing${EXE} 6.PerfAnalysis${EXE} 
+TESTERS = 7.GraphMerging${EXE}
+          #1.StructuredFormatting${EXE} 2.ConditionalFormatting${EXE} 3.Navigation${EXE} \
+          #4.AttributeAnnotationFiltering${EXE} 5.Tracing${EXE} 6.PerfAnalysis${EXE} \
+          #7.GraphMerging${EXE}
 
 all: ${TESTERS}
 
 run: ${TESTERS}
-	./1.StructuredFormatting${EXE};         
-	./2.ConditionalFormatting${EXE};        
-	./3.Navigation${EXE};                   
-	./4.AttributeAnnotationFiltering${EXE}; 
-	./5.Tracing${EXE};                      
-	./6.PerfAnalysis${EXE};                 
+	./7.GraphMerging${EXE} 5; ./7.GraphMerging${EXE} 6; SIGHT_FILE_OUT=1; ../hier_merge${EXE} dbg.7.GraphMerging.numIters_5/structure dbg.7.GraphMerging.numIters_6/structure; ../slayout${EXE} merged/structure
+	#./1.StructuredFormatting${EXE};         
+	#./2.ConditionalFormatting${EXE};        
+	#./3.Navigation${EXE};                   
+	#./4.AttributeAnnotationFiltering${EXE}; 
+	#./5.Tracing${EXE};                      
+	#./6.PerfAnalysis${EXE}; 
 
 1.StructuredFormatting${EXE}: 1.StructuredFormatting.C ../libsight_structure.a ${sight_H}
 	g++ -g 1.StructuredFormatting.C -I.. -I../widgets -L.. -lsight_structure -o 1.StructuredFormatting${EXE}
@@ -34,6 +37,9 @@ run: ${TESTERS}
 
 6.PerfAnalysis${EXE}: 6.PerfAnalysis.C ../libsight_structure.a ${sight_H}
 	g++ -g 6.PerfAnalysis.C -I.. -I../widgets -L.. -lsight_structure  -o 6.PerfAnalysis${EXE}
+
+7.GraphMerging${EXE}: 7.GraphMerging.C ../libsight_structure.a ${sight_H}
+	g++ -g 7.GraphMerging.C -I.. -I../widgets -L.. -lsight_structure  -o 7.GraphMerging${EXE}
 
 clean:
 	rm -rf ${TESTERS} dbg.*

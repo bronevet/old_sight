@@ -58,6 +58,7 @@ void printStreamRecords(ostream& out,
                         std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
                         string indent);
 void printTags(ostream& out,
+               std::vector<bool>& activeParser,
                vector<pair<properties::tagType, properties::iterator> >& tags, 
                string indent);
 //#define VERBOSE
@@ -96,6 +97,7 @@ int main(int argc, char** argv) {
   
   mergers["sight"]     = new MergeFunctor<dbgStreamMerger>();
   mergers["block"]     = new MergeFunctor<BlockMerger>();
+  mergers["link"]      = new MergeFunctor<LinkMerger>();
   mergers["indent"]    = new MergeFunctor<IndentMerger>();
   mergers["scope"]     = new MergeFunctor<ScopeMerger>();
   mergers["dirEdge"]   = new MergeFunctor<DirEdgeMerger>();
@@ -111,19 +113,21 @@ int main(int argc, char** argv) {
   // ID starts as 0 as will grow deeper as we discover unmergeable differences
   // between or within the input streams.
   std::map<std::string, streamRecord*> outStreamRecords;
-  outStreamRecords["sight"] = new dbgStreamStreamRecord(0);
-  outStreamRecords["block"] = new BlockStreamRecord(0);
-  outStreamRecords["graph"] = new GraphStreamRecord(0);
-  outStreamRecords["node"]  = new NodeStreamRecord(0);
+  outStreamRecords["sight"]  = new dbgStreamStreamRecord(0);
+  outStreamRecords["anchor"] = new AnchorStreamRecord(0);
+  outStreamRecords["block"]  = new BlockStreamRecord(0);
+  outStreamRecords["graph"]  = new GraphStreamRecord(0);
+  outStreamRecords["node"]   = new NodeStreamRecord(0);
   dbgStreamStreamRecord::enterBlock(outStreamRecords);
   
   std::vector<std::map<std::string, streamRecord*> > inStreamRecords;
   for(int i=0; i<fileParsers.size(); i++) {
     std::map<std::string, streamRecord*> inStreamR;
-    inStreamR["sight"] = new dbgStreamStreamRecord(0);
-    inStreamR["block"] = new BlockStreamRecord(0);
-    inStreamR["graph"] = new GraphStreamRecord(0);
-    inStreamR["node"]  = new NodeStreamRecord(0);
+    inStreamR["sight"]  = new dbgStreamStreamRecord(i);
+    inStreamR["anchor"] = new AnchorStreamRecord(i);
+    inStreamR["block"]  = new BlockStreamRecord(i);
+    inStreamR["graph"]  = new GraphStreamRecord(i);
+    inStreamR["node"]   = new NodeStreamRecord(i);
     inStreamRecords.push_back(inStreamR);
   }
   dbgStreamStreamRecord::enterBlock(inStreamRecords);
@@ -202,8 +206,9 @@ void merge(vector<FILEStructureParser*>& parsers,
   // The current depth of the nesting stack of tags that have been entered but not yet exited. If nextTag
   // is not empty, stackDepth is set to 1 to account for the entry tag read by the caller of merge(). 
   // Otherwise stackDepth is set to 0.
-  int stackDepth=(variantStackDepth==0? 0: 1);
-
+  //int stackDepth=(variantStackDepth==0? 0: 1);
+  int stackDepth=0;
+  
   int numActive = 0;
   for(vector<bool>::const_iterator p=activeParser.begin(); p!=activeParser.end(); p++)
     numActive += (*p? 1: 0);
@@ -228,9 +233,9 @@ void merge(vector<FILEStructureParser*>& parsers,
       // If we're ready to read a tag on this parser
       if(readyForTag[parserIdx] && activeParser[parserIdx]) {
         pair<properties::tagType, const properties*> props = (*p)->next();
-        #ifdef VERBOSE
-        cout << indent << parserIdx << ": "<<const_cast<properties*>(props.second)->str()<<endl;
-        #endif
+        //#ifdef VERBOSE
+        //cout << indent << parserIdx << ": "<<const_cast<properties*>(props.second)->str()<<endl;
+        //#endif
         
         // If we've reached the end of this parser's data
         if(props.second->size()==0) {
@@ -252,12 +257,17 @@ void merge(vector<FILEStructureParser*>& parsers,
                     
           // Record whether we read a text tag on any parser
           numTextTags += (props.second->name() == "text"? 1: 0);
+          
+          // We've just read a tag and are thus not ready for another on this incoming parser
+          // until this one is processed
+          readyForTag[parserIdx] = false;
         }
       }
     }
     
-    cout << indent << "numTextTags="<<numTextTags<<", nextTag("<<nextTag.size()<<")"<<endl;
-    printTags(cout, nextTag, indent+"   .");
+    cout << indent << "numTextTags="<<numTextTags<<", numActive="<<numActive<<", nextTag("<<nextTag.size()<<")"<<endl;
+    if(numActive==0) break;
+    printTags(cout, activeParser, nextTag, indent+"   .");
 
     // If we read text on any parser, emit the text immediately
     if(numTextTags>0) {
@@ -297,8 +307,9 @@ void merge(vector<FILEStructureParser*>& parsers,
       // If there is just one group, then we merge the properties of the tags (all same type)
       // read from all the parsers, and perform the enter/exit action of this group
       if(tag2stream.size()==1) {
+        if(mergers.find(tag2stream.begin()->first.second) == mergers.end()) cerr << "ERROR: cannot find a merger for tag \""<<tag2stream.begin()->first.second<<"\"!"<<endl;
         assert(mergers.find(tag2stream.begin()->first.second) != mergers.end());
-    
+        
         // Merge the properties of all tags
         Merger* m = mergers[tag2stream.begin()->first.second]->merge(nextTag, outStreamRecords, inStreamRecords);
         #ifdef VERBOSE
@@ -322,11 +333,6 @@ void merge(vector<FILEStructureParser*>& parsers,
           } else {
             stackDepth--;
             out.exit(m->getProps());
-            
-            // If we've exited out of the highest-level tag at this variant level, exit out to the parent
-            // call to merge() unless this is the root call to merge()
-            if(stackDepth==0 && variantStackDepth>0)
-              return;//activeParser;
           }
           
           // Emit all the tags that appear after the tag that was actually read
@@ -344,6 +350,11 @@ void merge(vector<FILEStructureParser*>& parsers,
         
         // Reset tag2stream since we'll be reloading it based on the next tag read from each parser
         tag2stream.clear();
+        
+        // If we've exited out of the highest-level tag at this variant level, exit out to the parent
+        // call to merge() unless this is the root call to merge()
+        if(stackDepth==0 && variantStackDepth>0)
+          return;//activeParser;
       }
       
       // If there are multiple groups consider the ones that entered a tag. These clearly diverge from
@@ -360,6 +371,8 @@ void merge(vector<FILEStructureParser*>& parsers,
         cout << indent << "::: "<<tag2stream.size()<<" Variants ::::"<<endl;
         // Iterate over all the groups that entered a tag
         int variantID=0;
+        // Sub-directories that hold the contents of all the variants
+        vector<string> variantSubDirs;
         for(map<pair<properties::tagType, string>, list<int> >::iterator ts=tag2stream.begin();
             ts!=tag2stream.end(); variantID++) {
            cout << indent << "    Variant "<<variantID<<", "<<(ts->first.first == properties::enterTag? "enter": "exit")<<", "<<ts->first.second<<endl;
@@ -417,9 +430,6 @@ void merge(vector<FILEStructureParser*>& parsers,
               // Directory that widgets can use as temporary scratch space
               string tmpDir = createDir(subDir, "html/tmp");
               
-              properties* props = new properties();
-              map<string, string> pMap;
-              props->add("dummy", pMap);
               cout << indent << "Creating groupStream\n";
               structure::dbgStream groupStream(NULL, txt()<<"Variant "<<subDirCount, subDir, imgDir, tmpDir);
               cout << indent << "Created groupStream\n";
@@ -440,8 +450,10 @@ void merge(vector<FILEStructureParser*>& parsers,
               #ifdef VERBOSE
               cout << indent << ">>>>>>>>>>>>>>>>>>>>>>"<<endl;
               #endif
-              out << "[Variant subDir=\""<<subDir<<"\"]\n";
               
+              // Record this variant to include it in the [variants] tag that points to it
+              variantSubDirs.push_back(subDir);
+
               subDirCount++;
 
             // >>>
@@ -486,6 +498,16 @@ void merge(vector<FILEStructureParser*>& parsers,
               i!=allGroupOutStreamRecords.end(); i++)
           delete (*i)[o->first];
         }
+        
+        // Output the [variant] tag that points to the directories that hold the contents of each variant
+        out.ownerAccessing();
+        properties variantProps;
+        map<string, string> pMap;
+        for(int v=0; v<variantSubDirs.size(); v++)
+          pMap[txt()<<"var_"<<v] = variantSubDirs[v];
+        variantProps.add("variants", pMap);
+        out.tag(variantProps);
+              
       }
     } // If we only entered or exited tags
   } // while(numActive>0)
@@ -522,8 +544,14 @@ void printStreamRecords(ostream& out,
 }
 
 void printTags(ostream& out,
+               std::vector<bool>& activeParser,
                vector<pair<properties::tagType, properties::iterator> >& tags, 
                string indent) {
-  for(vector<pair<properties::tagType, properties::iterator> >::iterator t=tags.begin(); t!=tags.end(); t++)
-    out << "    "<<(t->first==properties::enterTag? "enterTag": (t->first==properties::exitTag? "exitTag": "unknownTag"))<<", "<<properties::str(t->second)<<endl;
+  //for(vector<pair<properties::tagType, properties::iterator> >::iterator t=tags.begin(); t!=tags.end(); t++)
+  for(int i=0; i<tags.size(); i++) {
+    if(activeParser[i])
+      out << "    "<<i<<": "<<(tags[i].first==properties::enterTag? "enterTag": (tags[i].first==properties::exitTag? "exitTag": "unknownTag"))<<", "<<properties::str(tags[i].second)<<endl;
+    else
+      out << "    "<<i<<": Inactive"<<endl;
+  }
 }

@@ -14,6 +14,7 @@
 #include <errno.h>
 #include "sight_common.h"
 #include "getAllHostnames.h"
+#include "process.h"
 
 using namespace std;
 using namespace sight::common;
@@ -51,6 +52,24 @@ sightLayoutHandlerInstantiator::sightLayoutHandlerInstantiator() {
 }
 sightLayoutHandlerInstantiator sightLayoutHandlerInstantance;
 
+// Call the entry handler of the most recently-entered object with name objName
+// and push the object it returns onto the stack dedicated to objects of this type.
+void invokeEnterHandler(map<string, list<void*> >& stack, string objName, properties::iterator iter) {
+  if(layoutHandlerInstantiator::layoutEnterHandlers->find(objName) == layoutHandlerInstantiator::layoutEnterHandlers->end()) { cerr << "ERROR: no entry handler for \""<<objName<<"\" tags!" << endl; }
+  assert(layoutHandlerInstantiator::layoutEnterHandlers->find(objName) != layoutHandlerInstantiator::layoutEnterHandlers->end());
+  stack[objName].push_back((*layoutHandlerInstantiator::layoutEnterHandlers)[objName](iter));
+}
+
+// Call the exit handler of the most recently-entered object with name objName
+// and pop the object off its stack
+void invokeExitHandler(map<string, list<void*> >& stack, string objName) {
+  assert(stack[objName].size()>0);
+  if(layoutHandlerInstantiator::layoutEnterHandlers->find(objName) == layoutHandlerInstantiator::layoutEnterHandlers->end()) { cerr << "ERROR: no exit handler for \""<<objName<<"\" tags!" << endl; }
+  assert(layoutHandlerInstantiator::layoutExitHandlers->find(objName) != layoutHandlerInstantiator::layoutExitHandlers->end());
+  (*layoutHandlerInstantiator::layoutExitHandlers)[objName](stack[objName].back());
+  stack[objName].pop_back();
+}
+
 // Given a parser that reads the structure of a given log file, lays it out and prints it to the output Sight stream
 void layoutStructure(structureParser& parser) {
   #ifdef VERBOSE
@@ -69,22 +88,30 @@ void layoutStructure(structureParser& parser) {
       if(props.second->name() == "text")
         //fprintf(f, "%s", properties::get(props.second->begin(), "text").c_str());
         dbg << properties::get(props.second->begin(), "text");
+      
       // Else, if this is the entry into a new tag, process it
       else {
         // Call the entry handler of the most recently-entered object with this tag name
         // and push the object it returns onto the stack dedicated to objects of this type.
-        if(layoutHandlerInstantiator::layoutEnterHandlers->find(props.second->name()) == layoutHandlerInstantiator::layoutEnterHandlers->end()) { cerr << "ERROR: no entry handler for \""<<props.second->name()<<"\" tags!" << endl; }
-        assert(layoutHandlerInstantiator::layoutEnterHandlers->find(props.second->name()) != layoutHandlerInstantiator::layoutEnterHandlers->end());
-        stack[props.second->name()].push_back((*layoutHandlerInstantiator::layoutEnterHandlers)[props.second->name()](props.second->begin()));
+        invokeEnterHandler(stack, props.second->name(), props.second->begin());
+                  
+        // If this tag denotes one or more variants of the log
+        if(props.second->name() == "variants") {
+          // Iterate through the structure files of all the variants, adding their layout to the log
+          int numVariants = properties::getNumKeys(props.second->begin());
+          for(int i=0; i<numVariants; i++) {
+            string variantDir = properties::get(props.second->begin(), txt()<<"var_"<<i);
+            //cout << "variantDir="<<variantDir<<"\n";
+            FILEStructureParser parser(variantDir+"/structure", 10000);
+            layoutStructure(parser);
+            if(i!=numVariants-1) invokeEnterHandler(stack, "inter_variants", props.second->begin());
+          }
+        }
       }
     } else if(props.first == properties::exitTag) {
       // Call the exit handler of the most recently-entered object with this tag name
       // and pop the object off its stack
-      assert(stack[props.second->name()].size()>0);
-      if(layoutHandlerInstantiator::layoutEnterHandlers->find(props.second->name()) == layoutHandlerInstantiator::layoutEnterHandlers->end()) { cerr << "ERROR: no exit handler for \""<<props.second->name()<<"\" tags!" << endl; }
-      assert(layoutHandlerInstantiator::layoutExitHandlers->find(props.second->name()) != layoutHandlerInstantiator::layoutExitHandlers->end());
-      (*layoutHandlerInstantiator::layoutExitHandlers)[props.second->name()](stack[props.second->name()].back());
-      stack[props.second->name()].pop_back();
+      invokeExitHandler(stack, props.second->name());
     }
     props = parser.next();
   }
@@ -357,7 +384,7 @@ const location& anchor::getLocation() const
 
 // Called when the file location of this anchor has been reached
 void anchor::reachedLocation() {
-  //dbg << "    reachedLocation() located="<<located<<", anchorID="<<anchorID<<" dbg.getLocation()="<<dbg.blockGlobalStr(dbg.getLocation())<<"<BR>"<<endl;
+  //cout << "    reachedLocation() located="<<located<<", anchorID="<<anchorID<<" dbg.getLocation()="<<dbg.blockGlobalStr(dbg.getLocation())<<"<BR>"<<endl;
   // If this anchor has already been set to point to its target location, emit a warning
   if(located && loc != dbg.getLocation())
     cerr << "Warning: anchor "<<anchorID<<" is being set to multiple target locations! current location="<<dbg.blockGlobalStr(loc)<<", new location="<<dbg.blockGlobalStr(dbg.getLocation())<< endl;
@@ -414,6 +441,8 @@ void anchor::linkImg(string text) const {
 std::string anchor::getLinkJS() const {
   const_cast<anchor*>(this)->update();
   
+  //cout << "anchor::getLinkJS() a="<<str()<<", anchorID="<<anchorID<<endl;
+  
   ostringstream oss;
   // If we've already reached this link's location (this is a backward link)
   if(located) {
@@ -432,6 +461,7 @@ std::string anchor::getLinkJS() const {
              "}"<<
            ");";
   }
+  //cout << oss.str()<<endl;
   return oss.str();
 }
 
@@ -1080,6 +1110,17 @@ int dbgStream::blockIndex() const {
   else {
     assert(loc.back().second.size()>0);
     return loc.back().second.back();
+  }
+}
+
+// Index of the current block's parent block in the current file
+int dbgStream::parentBlockIndex() const {
+  if(loc.size()<=1) return 0;
+  else {
+    assert(loc.back().second.size()>0);
+    list<int>::const_reverse_iterator it = loc.back().second.rbegin();
+    it++;
+    return *it;
   }
 }
 

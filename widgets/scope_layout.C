@@ -34,6 +34,43 @@ int scope::colorIdx=0; // The current index into the list of colors
 
 scope::scope(properties::iterator props) : block(properties::next(props))
 {
+  level2Config((scopeLevel)properties::getInt(props, "level"));
+  init();
+}
+
+scope::scope(std::string label, scopeLevel level) : block(label) {
+  level2Config(level);
+  init();
+}
+
+scope::scope(std::string label, bool ownFile, bool ownColor, bool labelInteractive, bool labelShown, bool summaryEntry) : 
+  block(label), 
+  ownFile(ownFile), 
+  ownColor(ownColor), 
+  labelInteractive(labelInteractive), 
+  labelShown(labelShown), 
+  summaryEntry(summaryEntry)
+{
+  init();
+}
+
+
+// Sets the scope's configuration flags based on the given level
+void scope::level2Config(scopeLevel level) {
+  switch(level) { 
+    case high:    ownFile=true;  ownColor=true;  labelInteractive=true;  labelShown=true; summaryEntry=true; break;
+    case medium:  ownFile=false; ownColor=true;  labelInteractive=true;  labelShown=true; summaryEntry=true; break;
+    case low:     ownFile=false; ownColor=false; labelInteractive=true;  labelShown=true; summaryEntry=true; break;
+    case minimum: ownFile=false; ownColor=false; labelInteractive=false; labelShown=true; summaryEntry=true; break;
+    default: cerr << "Unknown level "<<level<<"!"<<endl; assert(0);
+  }
+}
+
+// Common initialization code
+void scope::init() {
+  // If labelInteractive is true, then labelShown must also be true
+  assert(!labelInteractive || labelShown);
+  
   //cout << "scope::init() anchor="<<getAnchorRef().str()<<endl;
   
   // If the colors list has not yet been initialized, do so now
@@ -70,64 +107,56 @@ scope::scope(properties::iterator props) : block(properties::next(props))
     colors.push_back("FFED6F");
   }
   
-  this->level = (scopeLevel)properties::getInt(props, "level");
-  // If this block corresponds to a new file, this string will be set to the Javascript command to 
+  /* // If this block corresponds to a new file, this string will be set to the Javascript command to 
   // load this file into the current view
-  string loadCmd="";
-  if(level == high) {
-    colorIdx++; // Advance to a new color for this func
-    loadCmd = dbg.enterFileLevel(this);
-  } else if(level == medium) {
-    colorIdx++; // Advance to a new color for this func
-    dbg.enterBlock(this, false, true);
-  }
-  else if(level == low || level == minimum)
-    dbg.enterBlock(this, false, true);
+  string loadCmd="";*/
+  
+  // Advance to a new color for this func, if needed
+  if(ownColor) colorIdx++; 
+  
+  // Record the index of this block within its parent block
+  blockIndex = dbg.blockIndex();
+  
+  if(ownFile) /*loadCmd = */dbg.enterFileLevel(this);
+  else        dbg.enterBlock(this, false, summaryEntry);
 }
 
 scope::~scope()
 { 
-  if(level == high) {
-    dbg.exitFileLevel();
-    colorIdx--; // Return to the last color for this func's parent
-  }
-  else if(level == medium) {
-    dbg.exitBlock();
-    colorIdx--; // Return to the last color for this func's parent
-  } else if(level == low || level == minimum)
-    dbg.exitBlock();
+  // Return to the last color for this func's parent, if needed
+  if(ownColor) colorIdx--; 
+  
+  if(ownFile) dbg.exitFileLevel();
+  else        dbg.exitBlock();
+  
   assert(colorIdx>=0);
 }
 
 // Called to enable the block to print its entry and exit text
 void scope::printEntry(string loadCmd) {
   dbg.ownerAccessing();
-  //dbg << "blockID="<<getBlockID()<<endl;
-  if(dbg.blockIndex()==0) dbg << "\t\t\t"<<tabs(dbg.blockDepth())<<"</td></tr>\n";
+  if(blockIndex==0) {
+    //if(dbg.blockDepth()>2) dbg << "\t\t\t"<<tabs(dbg.blockDepth())<<"</td></tr></table>\n";
+    dbg << "\t\t\t"<<tabs(dbg.blockDepth())<<"<table>\n";
+  } else
+    dbg << "\t\t\t"<<tabs(dbg.blockDepth())<<"</td></tr>\n";
+  
   dbg << "\t\t\t"<<tabs(dbg.blockDepth())<<"<tr width=\"100%\"><td width=50></td><td width=\"100%\">\n";
   dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"<table bgcolor=\"#"<<colors[(colorIdx-1)%colors.size()]<<"\" width=\"100%\" id=\"table"<<getBlockID()<<"\" style=\"border:1px solid white\" onmouseover=\"this.style.border='1px solid black'; highlightLink('"<<getBlockID()<<"', '#F4FBAA');\" onmouseout=\"this.style.border='1px solid white'; highlightLink('"<<getBlockID()<<"', '#FFFFFF');\" onclick=\"focusLinkSummary('"<<getBlockID()<<"', event);\">\n";
   dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"<tr width=\"100%\"><td width=50></td><td width=\"100%\">";
-  if(level == high || level == medium || level == low) {
+  if(labelInteractive) {
     dbg <<"<h2>\n";
     dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"<a name=\"anchor"<<getBlockID()<<"\" href=\"javascript:unhide('"<<getBlockID()<<"');\">";
   }
   
-  dbg.userAccessing();
-  dbg << getLabel();
-  dbg.ownerAccessing();
-  if(level == high || level == medium || level == low) {
+  if(labelShown) {
+    dbg.userAccessing();
+    dbg << getLabel();
+    dbg.ownerAccessing();
+  }
+  
+  if(labelInteractive) {
     dbg << "</a>\n";
-    /*if(false) { //if(appExecInfo) {
-      dbg << "<script type=\"text/javascript\">\n";
-      dbg << "  document.write(\"<a href=\\\"http://\"+hostname+\""<<":"<<GDB_PORT<<"/gdbwrap.cgi?execFile="<<execFile<<"&tgtCount="<<blockCount<<"&args=";
-  //    dbg << "(<a href=\"http://"<<hostname<<":"<<GDB_PORT<<"/gdbwrap.cgi?execFile="<<execFile<<"&tgtCount="<<blockCount<<"&args=";
-      for(int i=1; i<argc; i++) {
-        if(i!=1) dbg << " ";
-        dbg << argv[i];
-      }
-      dbg << "\\\"><b>GDB</b></a>\");\n";
-      dbg << "</script>\n";
-    }*/
     #if REMOTE_ENABLED
     if(saved_appExecInfo) {
       ostringstream setGDBLink; 
@@ -149,7 +178,7 @@ void scope::printEntry(string loadCmd) {
       dbg << "\t\t\t<a target=\"_top\" href=\"index."<<getFileID()<<".html\">";
       dbg << "<img src=\"img/divGO.gif\" width=35 height=25></a>\n";
     }
-    dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"</h2>";
+    dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"</h2>"<<endl;
   }
   dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"</td></tr>\n";
   dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"<tr width=\"100%\"><td width=50></td><td width=\"100%\">\n";
@@ -158,48 +187,14 @@ void scope::printEntry(string loadCmd) {
 }
 
 void scope::printExit() {
- // Close this scope
+  // Close this scope
   dbg.ownerAccessing();
   dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"</td></tr>\n";
   dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"</table>\n";
-  dbg << "\t\t\t"<<tabs(dbg.blockDepth())<<"</td></tr>\n";
-  dbg << "\t\t\t"<<tabs(dbg.blockDepth())<<"<tr width=\"100%\"><td width=50></td><td width=\"100%\">\n";
+  //dbg << "\t\t\t"<<tabs(dbg.blockDepth())<<"</td></tr>\n";
+  //dbg << "\t\t\t"<<tabs(dbg.blockDepth())<<"<tr width=\"100%\"><td width=50></td><td width=\"100%\">\n";
   dbg.userAccessing();  
 }
-
-/*********************
- ***** workscope *****
- ********************* /
-
-workscope::workscope(std::string label,                                   scopeLevel level, const attrOp& onoffOp) :
-  scope(label, level, onoffOp) {}
-workscope::workscope(std::string label, const anchor& pointsTo,           scopeLevel level, const attrOp& onoffOp) :
-  scope(label, pointsTo, level, onoffOp) {}
-workscope::workscope(std::string label, const std::set<anchor>& pointsTo, scopeLevel level, const attrOp& onoffOp) :
-  scope(label, pointsTo, level, onoffOp) {}
-workscope::workscope(std::string label,                                                     const attrOp& onoffOp) :
-  scope(label, onoffOp) {}
-workscope::workscope(std::string label, const anchor& pointsTo,                             const attrOp& onoffOp) :
-  scope(label, pointsTo, onoffOp) {}
-workscope::workscope(std::string label, const std::set<anchor>& pointsTo,                   const attrOp& onoffOp) :
-  scope(label, pointsTo, onoffOp) {}
-workscope::workscope(std::string label,                                   scopeLevel level :
-  scope(label, level) {}
-workscope::workscope(std::string label, const anchor& pointsTo,           scopeLevel level) :
-  scope(label, pointsTo, level) {}
-workscope::workscope(std::string label, const std::set<anchor>& pointsTo, scopeLevel level) :
-  scope(label, pointsTo, level) {}
-
-workscope::~workscope() {
-  for(set<dataItem>::iterator d=data.begin(); d!=data.end(); d++) {
-    dbg << d->name<<": "<<
-  }
-}
-
-void workscope::data(std::string name, void* data, DiffFunctor* diff) {
-  data.insert(dataItem(name, data, diff));
-}
-*/
 
 }; // namespace layout
 }; // namespace sight

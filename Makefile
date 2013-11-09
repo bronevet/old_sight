@@ -2,8 +2,8 @@ SIGHT_COMMON_O := sight_common.o attributes_common.o binreloc.o getAllHostnames.
 SIGHT_COMMON_H := sight.h sight_common_internal.h attributes_common.h binreloc.h getAllHostnames.h utils.h
 SIGHT_STRUCTURE_O := sight_structure.o attributes_structure.o
 SIGHT_STRUCTURE_H := sight.h sight_structure_internal.h attributes_structure.h
-SIGHT_LAYOUT_O := sight_layout.o attributes_layout.o slayout.o
-SIGHT_LAYOUT_H := sight.h sight_layout_internal.h attributes_layout.h 
+SIGHT_LAYOUT_O := sight_layout.o attributes_layout.o slayout.o variant_layout.o 
+SIGHT_LAYOUT_H := sight.h sight_layout_internal.h attributes_layout.h variant_layout.h
 sight := ${sight_O} ${sight_H} gdbLineNum.pl sightDefines.pl
 
 SIGHT_CFLAGS = -g
@@ -50,7 +50,7 @@ endif
 allExamples: libsight_structure.a
 	cd examples; make ROOT_PATH=${ROOT_PATH} OS=${OS}
 
-runExamples: libsight_structure.a slayout${EXE} apps
+runExamples: libsight_structure.a slayout${EXE} hier_merge${EXE} apps
 	cd examples; make ROOT_PATH=${ROOT_PATH} OS=${OS} run
 	apps/mfem/mfem/examples/ex1 apps/mfem/mfem/data/beam-quad.mesh
 	apps/mfem/mfem/examples/ex2 apps/mfem/mfem/data/beam-tet.mesh 2
@@ -103,6 +103,9 @@ sight_structure.o: sight_structure.C sight_structure_internal.h attributes_struc
 
 sight_layout.o: sight_layout.C sight_layout_internal.h attributes_layout.h sight_common_internal.h attributes_common.h
 	g++ ${SIGHT_CFLAGS} sight_layout.C -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o sight_layout.o
+
+variant_layout.o: variant_layout.C variant_layout.h sight_layout_internal.h attributes_layout.h sight_common_internal.h attributes_common.h
+	g++ ${SIGHT_CFLAGS} variant_layout.C -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o variant_layout.o
 
 
 attributes_common.o: attributes_common.C  sight_common_internal.h attributes_common.h

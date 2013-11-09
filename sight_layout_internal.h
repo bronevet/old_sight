@@ -443,6 +443,8 @@ public:
   int blockDepth() const;
   // Index of the current block in the current fil
   int blockIndex() const;
+  // Index of the current block's parent block in the current file
+  int parentBlockIndex() const;
 
   // Enter a new file level. Return a string that contains the JavaScript command to open this file in the current view.
   std::string enterFileLevel(block* b, bool topLevel=false);

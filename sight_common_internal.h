@@ -108,6 +108,9 @@ class properties
   
   // Given an iterator to a particular key->value mapping, returns whether the given key is mapped to some value
   static bool exists(iterator cur, std::string key);
+  
+  // Given an iterator to a particular key->value mapping, returns the number of keys in the map
+  static bool getNumKeys(iterator cur);
     
   // Returns the name of the object type referred to by the given iterator
   static std::string name(iterator cur);
@@ -137,8 +140,8 @@ class sightObj {
   sightObj(properties* props) : props(props) {}
 
   ~sightObj() {
-    assert(props);
-    delete(props);
+    //assert(props);
+    if(props) delete(props);
   }
 };
 
