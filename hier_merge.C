@@ -449,6 +449,9 @@ void merge(vector<FILEStructureParser*>& parsers,
         vector<std::map<std::string, streamRecord*> > allGroupOutStreamRecords;
         
         cout << indent << "::: "<<tag2stream.size()<<" Variants ::::"<<endl;
+        
+        dbgStreamStreamRecord::enterBlock(outStreamRecords);
+        
         // Iterate over all the groups that entered a tag
         int variantID=0;
         // Sub-directories that hold the contents of all the variants
@@ -517,16 +520,18 @@ void merge(vector<FILEStructureParser*>& parsers,
               #ifdef VERBOSE
               cout << indent << "<<<<<<<<<<<<<<<<<<<<<<"<<endl;
               #endif
-              /*vector<bool> groupActiveParser =*/ merge(groupParsers, groupNextTag, 
-                                                     groupOutStreamRecords, groupInStreamRecords, 
-                                                     groupNotReadyForTag, groupActiveParser,
-                                                     groupTag2stream,
-                                                     numTextTags,
-                                                     variantStackDepth+1, groupStream
-                                                     #ifdef VERBOSE
-                                                     , indent+"   :"
-                                                     #endif
-                                                     );
+              cout << "start outLocation="<<((dbgStreamStreamRecord*)groupOutStreamRecords["sight"])->getLocation().str()<<endl;
+              merge(groupParsers, groupNextTag, 
+                    groupOutStreamRecords, groupInStreamRecords, 
+                    groupNotReadyForTag, groupActiveParser,
+                    groupTag2stream,
+                    numTextTags,
+                    variantStackDepth+1, groupStream
+                    #ifdef VERBOSE
+                    , indent+"   :"
+                    #endif
+                    );
+              cout << "end outLocation="<<((dbgStreamStreamRecord*)groupOutStreamRecords["sight"])->getLocation().str()<<endl;
               #ifdef VERBOSE
               cout << indent << ">>>>>>>>>>>>>>>>>>>>>>"<<endl;
               #endif
@@ -587,7 +592,8 @@ void merge(vector<FILEStructureParser*>& parsers,
           pMap[txt()<<"var_"<<v] = variantSubDirs[v];
         variantProps.add("variants", pMap);
         out.tag(variantProps);
-              
+        
+        dbgStreamStreamRecord::exitBlock(outStreamRecords);
       }
     } // If we only entered or exited tags
   } // while(numActive>0)

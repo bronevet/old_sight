@@ -632,11 +632,12 @@ void AnchorStreamRecord::mergeIDs(std::string objName,
         }
       }
     }
-    
+  AnchorStreamRecord* outAS = (AnchorStreamRecord*)outStreamRecords["anchor"];
+  
   // If none of the anchors on the incoming stream have been mapped to an anchor in the outgoing stream,
   // create a fresh anchorID in the outgoing stream, advancing the maximum anchor ID in the process
   if(!outSIDKnown) {
-    outSID = streamID(((AnchorStreamRecord*)outStreamRecords["anchor"])->maxAnchorID++,
+    outSID = streamID(outAS->maxAnchorID++,
                       outStreamRecords["anchor"]->getVariantID());
     cout << "AnchorStreamRecord::mergeIDs(), assigned new ID on outgoing stream outSID="<<outSID.str()<<endl;
   }
@@ -649,7 +650,7 @@ void AnchorStreamRecord::mergeIDs(std::string objName,
       streamID inSID(properties::getInt(tags[i].second, "anchorID"), 
                      inStreamRecords[i]["anchor"]->getVariantID());
       
-      cout << "|   "<<i<<": inSID="<<inSID.str()<<", in2outAnchorIDs="<<endl;
+      cout << "|   "<<i<<": inSID="<<inSID.str()<<", in2outAnchorIDs=(#"<<as->in2outAnchorIDs.size()<<")"<<endl;
       for(map<streamID, streamID>::iterator j=as->in2outAnchorIDs.begin();
           j!=as->in2outAnchorIDs.end(); j++)
         cout << "|       "<<j->first.str()<<" => "<<j->second.str()<<endl;
@@ -663,6 +664,10 @@ void AnchorStreamRecord::mergeIDs(std::string objName,
       
       as->in2outAnchorIDs[inSID] = outSID;
     }
+  cout << "/outAS->locAnchorIDs(#"<<outAS->locAnchorIDs.size()<<")="<<endl;
+  for(std::map<streamLocation, streamID>::iterator j=outAS->locAnchorIDs.begin(); j!=outAS->locAnchorIDs.end(); j++)
+    cout << "/   "<<j->first.str()<<" => "<<j->second.str()<<endl;
+
   
   // Assign to the merged block the next ID for this output stream
   pMap["anchorID"] = txt()<<outSID.ID;//txt()<<((AnchorStreamRecord*)outStreamRecords["anchor"])->maxAnchorID;
@@ -721,9 +726,11 @@ LinkMerger::LinkMerger(std::vector<std::pair<properties::tagType, properties::it
     
     // Merge the IDs of the anchors this link targets
     AnchorStreamRecord::mergeIDs("link", pMap, tags, outStreamRecords, inStreamRecords);
-    
+      
     set<string> textValues = getValueSet(tags, "text");
     pMap["text"] = *textValues.begin();
+    
+    cout << "LinkMerger::LinkMerger anchorID="<<pMap["anchorID"]<<", text="<<pMap["text"]<<endl;
     
     // If the link in any of the variants has an image, they all do
     set<long> imgFlags = str2intSet(getValueSet(tags, "img"));
@@ -1012,7 +1019,6 @@ BlockMerger::BlockMerger(std::vector<std::pair<properties::tagType, properties::
     for(vector<pair<properties::tagType, properties::iterator> >::iterator t=tags.begin(); t!=tags.end(); t++)
       cout << "    "<<(t->first==properties::enterTag? "enterTag": (t->first==properties::exitTag? "exitTag": "unknownTag"))<<", "<<properties::str(t->second)<<endl;
     
-    
     set<string> names = getNameSet(tags);
     assert(names.size()==1);
     assert(*names.begin() == "block");
@@ -1029,6 +1035,14 @@ BlockMerger::BlockMerger(std::vector<std::pair<properties::tagType, properties::
     
     // Merge the IDs of the anchors that target the block
     AnchorStreamRecord::mergeIDs("block", pMap, tags, outStreamRecords, inStreamRecords);
+    
+    cout << "    anchor="<<pMap["anchorID"]<<endl;
+    
+    // Update the current location in the incoming and outgoing streams to account for entry into the block
+    dbgStreamStreamRecord::enterBlock(inStreamRecords);
+    cout << "outLocation="<<((dbgStreamStreamRecord*)outStreamRecords["sight"])->getLocation().str()<<endl;
+    dbgStreamStreamRecord::enterBlock(outStreamRecords);
+    cout << "outLocation="<<((dbgStreamStreamRecord*)outStreamRecords["sight"])->getLocation().str()<<endl;
     
     set<streamAnchor> outAnchors; // Set of anchorIDs, within the anchor ID space of the outgoing stream, that terminate at this block
     // Iterate over all the anchors that terminate at this block within all the incoming streams and add their corresponding 
@@ -1047,8 +1061,10 @@ BlockMerger::BlockMerger(std::vector<std::pair<properties::tagType, properties::
         
         // Record, within the records of both the incoming and outgoing streams, that this anchor has reached its target
         streamAnchor curOutAnchor(as->in2outAnchorIDs[curInAnchor.getID()], outStreamRecords);
+        cout << "        "<<a<<": curInAnchor="<<curInAnchor.str()<<" => "<<curOutAnchor.str()<<endl;
         curInAnchor.reachedLocation(); 
         curOutAnchor.reachedLocation();
+        cout << "        "<<a<<": curInAnchor="<<curInAnchor.str()<<" => "<<curOutAnchor.str()<<endl;
         
         outAnchors.insert(curOutAnchor);
       }
@@ -1057,14 +1073,13 @@ BlockMerger::BlockMerger(std::vector<std::pair<properties::tagType, properties::
     // Add all the IDs within outAnchors to the properties of the merged block
     pMap["numAnchors"] = txt()<<outAnchors.size();
     int aIdx=0;
-    for(set<streamAnchor>::iterator a=outAnchors.begin(); a!=outAnchors.end(); a++, aIdx++)
+    cout << "    outAnchors="<<endl;
+    for(set<streamAnchor>::iterator a=outAnchors.begin(); a!=outAnchors.end(); a++, aIdx++) {
+      cout << "        "<<a->str()<<endl;
       pMap[txt()<<"anchor_"<<aIdx] = txt()<<a->getID().ID;
+    }
     
     props->add("block", pMap);
-  
-    // Update the current location in the incoming and outgoing streams to account for entry into the block
-    dbgStreamStreamRecord::enterBlock(inStreamRecords);
-    dbgStreamStreamRecord::enterBlock(outStreamRecords);
   } else {
     props->add("block", pMap);
     // Update the current location in the incoming and outgoing streams to account for exit into the block
