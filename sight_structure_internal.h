@@ -271,6 +271,14 @@ class Merger {
               advance(std::vector<std::pair<properties::tagType, properties::iterator> >& tags);
 }; // class Merger
 
+class TextMerger : public Merger {
+  public:
+  TextMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+               std::map<std::string, streamRecord*>& outStreamRecords,
+               std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+               properties* props=NULL);
+}; // class TextMerger
+
 // Uniquely identifies a location with the debug information, including the file and region hierarchy
 // Anchors can be created in two ways:
 // - When their host output locations are reached. In this case the anchor's full file and region location is available

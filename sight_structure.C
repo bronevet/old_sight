@@ -21,6 +21,12 @@
 using namespace std;
 using namespace sight::common;
 
+// Support for text diffs
+#include <dtl/dtl.hpp>
+using namespace std;
+using namespace dtl;
+using dtl::Diff;
+
 namespace sight {
 namespace structure{
 
@@ -350,6 +356,54 @@ std::vector<std::pair<properties::tagType, properties::iterator> >
   return advancedTags;
 }
 
+/**********************
+ ***** TextMerger *****
+ **********************/
+
+string mergeText(const string& a, const string& b) {
+  typedef char   elem;
+  typedef string sequence;
+  
+  Diff< elem, sequence > d(a, b);
+  d.compose();
+  
+  vector< pair< char, elemInfo > > ses_v = d.getSes().getSequence();
+  string merged;
+  for(int i=0; i<ses_v.size(); i++)
+    merged += ses_v[i].first;
+  
+  return merged;
+}
+
+TextMerger::TextMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+                       std::map<std::string, streamRecord*>& outStreamRecords,
+                       std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                       properties* props) :
+                              Merger(advance(tags), outStreamRecords, inStreamRecords, props) {
+  assert(tags.size()>0);
+  
+  if(props==NULL) props = new properties();
+  this->props = props;
+  
+  map<string, string> pMap;
+  properties::tagType type = streamRecord::getTagType(tags); 
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Text!"<<endl; exit(-1); }
+  if(type==properties::enterTag) {
+    set<string> names = getNameSet(tags);
+    assert(names.size()==1);
+    assert(*names.begin() == "text");
+    
+    set<string> textValues = getValueSet(tags, "text");
+    pMap["text"] = "";
+    for(set<string>::iterator v=textValues.begin(); v!=textValues.end(); v++) {
+      if(v==textValues.begin()) pMap["text"] = *v;
+      else                      pMap["text"] = mergeText(*v, pMap["text"]);
+    }
+  }
+  
+  props->add("text", pMap);
+}
+
 /******************
  ***** anchor *****
  ******************/
@@ -643,9 +697,9 @@ std::string AnchorStreamRecord::str(std::string indent) const {
   return s.str();
 }
 
-/************************
+/**********************
  ***** LinkMerger *****
- ************************/
+ **********************/
 
 LinkMerger::LinkMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                        std::map<std::string, streamRecord*>& outStreamRecords,
@@ -659,7 +713,7 @@ LinkMerger::LinkMerger(std::vector<std::pair<properties::tagType, properties::it
   
   map<string, string> pMap;
   properties::tagType type = streamRecord::getTagType(tags); 
-  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Block!"<<endl; exit(-1); }
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Link!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
     set<string> names = getNameSet(tags);
     assert(names.size()==1);
@@ -1623,7 +1677,7 @@ IndentMerger::IndentMerger(std::vector<std::pair<properties::tagType, properties
   
   map<string, string> pMap;
   properties::tagType type = streamRecord::getTagType(tags); 
-  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Block!"<<endl; exit(-1); }
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Indent!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
     set<string> names = getNameSet(tags);
     assert(names.size()==1);

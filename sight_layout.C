@@ -55,6 +55,7 @@ sightLayoutHandlerInstantiator sightLayoutHandlerInstantance;
 // Call the entry handler of the most recently-entered object with name objName
 // and push the object it returns onto the stack dedicated to objects of this type.
 void invokeEnterHandler(map<string, list<void*> >& stack, string objName, properties::iterator iter) {
+  cout << "<<<"<<stack.size()<<": "<<objName<<endl;
   if(layoutHandlerInstantiator::layoutEnterHandlers->find(objName) == layoutHandlerInstantiator::layoutEnterHandlers->end()) { cerr << "ERROR: no entry handler for \""<<objName<<"\" tags!" << endl; }
   assert(layoutHandlerInstantiator::layoutEnterHandlers->find(objName) != layoutHandlerInstantiator::layoutEnterHandlers->end());
   stack[objName].push_back((*layoutHandlerInstantiator::layoutEnterHandlers)[objName](iter));
@@ -63,6 +64,7 @@ void invokeEnterHandler(map<string, list<void*> >& stack, string objName, proper
 // Call the exit handler of the most recently-entered object with name objName
 // and pop the object off its stack
 void invokeExitHandler(map<string, list<void*> >& stack, string objName) {
+  cout << ">>>"<<stack.size()<<": "<<objName<<endl;
   assert(stack[objName].size()>0);
   if(layoutHandlerInstantiator::layoutEnterHandlers->find(objName) == layoutHandlerInstantiator::layoutEnterHandlers->end()) { cerr << "ERROR: no exit handler for \""<<objName<<"\" tags!" << endl; }
   assert(layoutHandlerInstantiator::layoutExitHandlers->find(objName) != layoutHandlerInstantiator::layoutExitHandlers->end());

@@ -12,7 +12,12 @@ TESTERS = 7.GraphMerging${EXE}
 all: ${TESTERS}
 
 run: ${TESTERS}
-	./7.GraphMerging${EXE} 5; ./7.GraphMerging${EXE} 6; SIGHT_FILE_OUT=1; ../hier_merge${EXE} dbg.7.GraphMerging.numIters_5/structure dbg.7.GraphMerging.numIters_6/structure; ../slayout${EXE} merged/structure
+	./7.GraphMerging${EXE} 1; ./7.GraphMerging${EXE} 2;
+	./7.GraphMerging${EXE} 3; ./7.GraphMerging${EXE} 4; 
+	./7.GraphMerging${EXE} 5; ./7.GraphMerging${EXE} 6; 
+	SIGHT_FILE_OUT=1; ../hier_merge${EXE} dbg.7.GraphMerging.numIters_1/structure dbg.7.GraphMerging.numIters_2/structure dbg.7.GraphMerging.numIters_3/structure 
+	../slayout${EXE} merged/structure
+	# dbg.7.GraphMerging.numIters_4/structure dbg.7.GraphMerging.numIters_5/structure dbg.7.GraphMerging.numIters_6/structure; 
 	#./1.StructuredFormatting${EXE};         
 	#./2.ConditionalFormatting${EXE};        
 	#./3.Navigation${EXE};                   

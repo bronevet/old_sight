@@ -198,7 +198,7 @@ GraphMerger::GraphMerger(std::vector<std::pair<properties::tagType, properties::
                     setProperties(tags, outStreamRecords, inStreamRecords, props))
 {
   properties::tagType type = streamRecord::getTagType(tags); 
-  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging graph!"<<endl; exit(-1); }
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Graph!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
     set<string> names = getNameSet(tags);
     assert(names.size()==1);
@@ -453,7 +453,7 @@ UndirEdgeMerger::UndirEdgeMerger(std::vector<std::pair<properties::tagType, prop
   assert(tags.size()>0);
   map<string, string> pMap;
   properties::tagType type = streamRecord::getTagType(tags); 
-  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging dirEdge!"<<endl; exit(-1); }
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging undirEdge!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
     set<string> names = getNameSet(tags);
     assert(names.size()==1);
@@ -487,7 +487,7 @@ NodeMerger::NodeMerger(std::vector<std::pair<properties::tagType, properties::it
   assert(tags.size()>0);
   map<string, string> pMap;
   properties::tagType type = streamRecord::getTagType(tags); 
-  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging node!"<<endl; exit(-1); }
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Node!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
     set<string> names = getNameSet(tags);
     assert(names.size()==1);

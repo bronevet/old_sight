@@ -122,7 +122,8 @@ properties* ScopeMerger::setProperties(std::vector<std::pair<properties::tagType
   assert(tags.size()>0);
   map<string, string> pMap;
   properties::tagType type = streamRecord::getTagType(tags); 
-  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging dbgStream!"<<endl; exit(-1); }
+  cout << "#tags="<<tags.size()<<" type="<<type<<endl;
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Scope!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
     set<string> names = getNameSet(tags);
     assert(names.size()==1);
