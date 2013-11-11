@@ -13,6 +13,8 @@
 #include <assert.h>
 #include "sight_common.h"
 #include "utils.h"
+#include "Callpath.h"
+#include "CallpathRuntime.h"
 
 namespace sight {
 namespace structure{
@@ -97,6 +99,12 @@ class streamID {
   std::string str() const 
   { return txt()<<"[streamID: vID="<<vID.serialize()<<", ID="<<ID<<"]"; }
 }; // class streamID
+
+// Support for call paths
+extern CallpathRuntime CPRuntime;
+std::string cp2str(const Callpath& cp);
+
+//Callpath str2cp(std::string str);
 
 // Represents a unique location in the sight output
 class location : printable {
@@ -248,7 +256,10 @@ class Merger {
   // Given a vector of tag properties, returns the set of values assigned to the given key within the given tag
   static std::set<std::string> getValueSet(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags, 
                                            std::string key);
-  
+  // Returns whether all the elements in the given set are equal to each others
+  template<class T>
+  static bool allSame(const std::set<T>& s);
+
   // Converts the given set of strings to the corresponding set of integral numbers
   static std::set<long> str2intSet(const std::set<std::string>& strSet);
   

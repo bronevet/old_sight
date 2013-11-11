@@ -11,6 +11,7 @@
 #include "../attributes_structure.h"
 #include "scope_common.h"
 #include "../sight_structure_internal.h"
+#include "Callpath.h"
 
 namespace sight {
 namespace structure {

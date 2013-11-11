@@ -13,6 +13,8 @@
 #include <sys/types.h>
 #include <sys/time.h>
 
+#include "CallpathRuntime.h"
+
 using namespace std;
 
 namespace sight {
@@ -68,6 +70,7 @@ properties* graph::setProperties(int graphID, std::string dotText, const attrOp*
     map<string, string> newProps;
     newProps["graphID"] = txt()<<graphID;
     if(dotText != "") newProps["dotText"] = dotText;
+    newProps["callPath"] = cp2str(CPRuntime.doStackwalk());
     props->add("graph", newProps);
   }
   else
@@ -179,6 +182,7 @@ bool graph::subBlockEnterNotify(block* subBlock) {
     newProps["nodeID"]   = txt()<<maxNodeID;
     newProps["anchorID"] = txt()<<subBlock->getAnchor().getID();
     newProps["label"]    = txt()<<subBlock->getLabel();
+    newProps["callPath"] = cp2str(CPRuntime.doStackwalk());
     obj.props->add("node", newProps);
   //dbg.tag("undEdge", properties, false);
   
@@ -505,6 +509,10 @@ NodeMerger::NodeMerger(std::vector<std::pair<properties::tagType, properties::it
     
     set<string> labelSet = getValueSet(tags, "label");
     pMap["label"] = *labelSet.begin();
+    
+    set<string> cpValues = getValueSet(tags, "callPath");
+    assert(allSame<string>(cpValues));
+    pMap["callPath"] = *cpValues.begin();
   }
   
   props->add("node", pMap);

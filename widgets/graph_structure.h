@@ -10,6 +10,7 @@
 #include <fstream>
 #include "../attributes_structure.h"
 #include "../sight_structure_internal.h"
+#include "Callpath.h"
 
 namespace sight {
 namespace structure {

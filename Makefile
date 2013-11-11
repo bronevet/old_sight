@@ -6,14 +6,14 @@ SIGHT_LAYOUT_O := sight_layout.o attributes_layout.o slayout.o variant_layout.o
 SIGHT_LAYOUT_H := sight.h sight_layout_internal.h attributes_layout.h variant_layout.h
 sight := ${sight_O} ${sight_H} gdbLineNum.pl sightDefines.pl
 
-SIGHT_CFLAGS = -g
+SIGHT_CFLAGS = -g -I${ROOT_PATH}/tools/callpath/src 
 
 OS := $(shell uname -o)
 ifeq (${OS}, Cygwin)
 EXE := .exe
 endif
 
-all: sightDefines.pl gdbLineNum.pl libsight_structure.a slayout${EXE} hier_merge${EXE} widgets_post allExamples script/taffydb
+all: sightDefines.pl gdbLineNum.pl libsight_structure.a slayout${EXE} hier_merge${EXE} widgets_post allExamples script/taffydb tools/dtl
 	chmod 755 html img script
 	chmod 644 html/* img/* script/*
 	chmod 755 script/taffydb
@@ -40,7 +40,7 @@ endif
 apps: mfem mcbench
 
 mfem:
-	cd apps/mfem;  make ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS}
+	cd apps/mfem;  make ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}"
 
 mcbench:
 ifneq (${OS}, Cygwin)
@@ -48,17 +48,17 @@ ifneq (${OS}, Cygwin)
 endif
 
 allExamples: libsight_structure.a
-	cd examples; make ROOT_PATH=${ROOT_PATH} OS=${OS}
+	cd examples; make ROOT_PATH=${ROOT_PATH} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}"
 
-runExamples: libsight_structure.a slayout${EXE} hier_merge${EXE} apps
-	cd examples; make ROOT_PATH=${ROOT_PATH} OS=${OS} run
-	apps/mfem/mfem/examples/ex1 apps/mfem/mfem/data/beam-quad.mesh
-	apps/mfem/mfem/examples/ex2 apps/mfem/mfem/data/beam-tet.mesh 2
-	apps/mfem/mfem/examples/ex3 apps/mfem/mfem/data/ball-nurbs.mesh
-	apps/mfem/mfem/examples/ex4 apps/mfem/mfem/data/fichera-q3.mesh
-ifneq (${OS}, Cygwin)
-	apps/mcbench/src/MCBenchmark.exe --nCores=1 --distributedSource --numParticles=13107 --nZonesX=256 --nZonesY=256 --xDim=16 --yDim=16 --mirrorBoundary --multiSigma --nThreadCore=1
-endif
+runExamples: libsight_structure.a slayout${EXE} hier_merge${EXE} #apps
+	cd examples; make ROOT_PATH=${ROOT_PATH} OS=${OS}  SIGHT_CFLAGS="${SIGHT_CFLAGS}" run
+#	apps/mfem/mfem/examples/ex1 apps/mfem/mfem/data/beam-quad.mesh
+#	apps/mfem/mfem/examples/ex2 apps/mfem/mfem/data/beam-tet.mesh 2
+#	apps/mfem/mfem/examples/ex3 apps/mfem/mfem/data/ball-nurbs.mesh
+#	apps/mfem/mfem/examples/ex4 apps/mfem/mfem/data/fichera-q3.mesh
+#ifneq (${OS}, Cygwin)
+#	apps/mcbench/src/MCBenchmark.exe --nCores=1 --distributedSource --numParticles=13107 --nZonesX=256 --nZonesY=256 --xDim=16 --yDim=16 --mirrorBoundary --multiSigma --nThreadCore=1
+#endif
 
 #pattern${EXE}: pattern.C pattern.h libsight.a ${sight_H}
 #	g++ ${SIGHT_CFLAGS} pattern.C -L. -lsight  -o pattern${EXE}
@@ -72,7 +72,7 @@ slayout${EXE}: mfem libsight_layout.a
 #	g++ ${SIGHT_CFLAGS} slayout.C -Wl,--whole-archive libsight_layout.a -DMFEM -I. -Iapps/mfem apps/mfem/mfem_layout.o -Wl,-no-whole-archive -o slayout${EXE}
 
 hier_merge${EXE}: hier_merge.C process.C process.h libsight_structure.a 
-	g++ ${SIGHT_CFLAGS} hier_merge.C libsight_structure.a -DMFEM -I. -o hier_merge${EXE}
+	g++ ${SIGHT_CFLAGS} hier_merge.C libsight_structure.a tools/callpath/src/src/libcallpath.so -DMFEM -I. -o hier_merge${EXE}
 
 
 #	g++ -c slayout.C -o slayout.o
@@ -98,7 +98,7 @@ libsight_layout.a: ${SIGHT_LAYOUT_O} ${SIGHT_LAYOUT_H} ${SIGHT_COMMON_O} ${SIGHT
 sight_common.o: sight_common.C sight_common_internal.h attributes_common.h
 	g++ ${SIGHT_CFLAGS} sight_common.C -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o sight_common.o
 
-sight_structure.o: sight_structure.C sight_structure_internal.h attributes_structure.h sight_common_internal.h attributes_common.h
+sight_structure.o: sight_structure.C sight_structure_internal.h attributes_structure.h sight_common_internal.h attributes_common.h tools/dtl tools/callpath
 	g++ ${SIGHT_CFLAGS} sight_structure.C -Itools/dtl -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o sight_structure.o
 
 sight_layout.o: sight_layout.C sight_layout_internal.h attributes_layout.h sight_common_internal.h attributes_common.h
@@ -150,7 +150,7 @@ clean:
 	cd apps/mcbench; ./clean-linux-x86_64.sh
 	cd apps/mfem; make clean
 	rm -rf dbg dbg.* libsight.a *.o widgets/shellinabox* widgets/mongoose* widgets/graphviz* gdbLineNum.pl
-	rm -rf script/taffydb sightDefines.pl gdbscript
+	rm -rf script/taffydb tools sightDefines.pl gdbscript
 
 clean_objects:
 	rm -f *.a *.o widgets/*.o
@@ -162,4 +162,15 @@ script/taffydb:
 	rm script/master*
 	chmod 755 script/taffydb
 	chmod 644 script/taffydb/*
+
+tools/dtl: #tools
+	cd tools; wget --no-check-certificate https://dtl-cpp.googlecode.com/files/dtl-1.17.tar.gz
+	cd tools; tar -xf dtl-1.17.tar.gz 
+	cd tools; mv dtl-1.17 dtl
+	rm tools/dtl-1.17.tar.gz 
+
+tools/callpath:
+	
+tools:
+	mkdir -p tools
 

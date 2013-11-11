@@ -13,6 +13,7 @@
 #include <sys/types.h>
 #include <sys/time.h>
 
+
 using namespace std;
 using namespace sight::common;
   
@@ -75,6 +76,8 @@ properties* scope::setProperties(scopeLevel level, const attrOp* onoffOp, proper
     props->active = true;
     map<string, string> newProps;
     newProps["level"] = txt()<<level;
+    //cout << "scope: "<<cp2str(CPRuntime.doStackwalk())<<endl;
+    newProps["callPath"] = cp2str(CPRuntime.doStackwalk());
     //dbg.enter("scope", properties, inheritedFrom);
     props->add("scope", newProps);
   }
@@ -130,6 +133,11 @@ properties* ScopeMerger::setProperties(std::vector<std::pair<properties::tagType
     assert(*names.begin() == "scope");
     
     pMap["level"] = txt()<<setAvg(str2intSet(getValueSet(tags, "level")));
+    
+    set<string> cpValues = getValueSet(tags, "callPath");
+    assert(allSame<string>(cpValues));
+    pMap["callPath"] = *cpValues.begin();
+    
     props->add("scope", pMap);
   } else {
     props->add("scope", pMap);

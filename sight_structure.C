@@ -1,4 +1,4 @@
-// Licence information included in file LICENCE
+    // Licence information included in file LICENCE
 #include "sight_common_internal.h"
 #include "sight_structure_internal.h"
 #include <fstream>
@@ -18,6 +18,7 @@
 #include "getAllHostnames.h" 
 #include "utils.h"
 #include "fdstream.h"
+
 using namespace std;
 using namespace sight::common;
 
@@ -173,6 +174,26 @@ void SightInit_internal(properties* props, bool storeProps)
   dbg.init(storeProps? props: NULL, properties::get(sightIt, "title"), properties::get(sightIt, "workDir"), imgDir, tmpDir);
 }
 
+/**********************
+ ***** Call Paths *****
+ **********************/
+
+CallpathRuntime CPRuntime;
+string cp2str(const Callpath& cp) {
+  ostringstream s;
+  //const_cast<Callpath&>(cp).write_out(s);
+  //Callpath cp2 = cp;
+  //cp2.write_out(s);
+  s << cp;
+  //cout << "callpath: "<<s.str()<<endl<<cp<<endl;
+  return s.str();
+}
+
+/*Callpath str2cp(string str) {
+  istringstream s(str);
+  return Callpath::read_in(s);
+}*/
+
 /********************
  ***** location *****
  ********************/
@@ -273,6 +294,14 @@ std::set<std::string> Merger::getValueSet(const std::vector<std::pair<properties
     vals.insert(properties::get(t->second, key));
   }
   return vals;
+}
+
+// Returns whether all the elements in the given set are equal to each others
+template<class T>
+bool Merger::allSame(const std::set<T>& s) {
+  for(typename set<T>::const_iterator i=s.begin(); i!=s.end(); i++)
+    if(i!=s.begin() && *i!=*s.begin()) return false;
+  return true;
 }
 
 // Given a vector of tag property iterators, returns the set of names of all the object types they refer to
@@ -530,6 +559,7 @@ void anchor::link(string text) const {
   newProps["anchorID"] = txt()<<anchorID;
   newProps["text"] = text;
   newProps["img"] = "0";
+  newProps["callPath"] = cp2str(CPRuntime.doStackwalk());
   obj->props->add("link", newProps);
   
   dbg.tag(obj);
@@ -545,6 +575,7 @@ void anchor::linkImg(string text) const {
   newProps["anchorID"] = txt()<<anchorID;
   newProps["text"] = text;
   newProps["img"] = "1";
+  newProps["callPath"] = cp2str(CPRuntime.doStackwalk());
   obj->props->add("link", newProps);
   
   dbg.tag(obj);
@@ -736,6 +767,10 @@ LinkMerger::LinkMerger(std::vector<std::pair<properties::tagType, properties::it
     set<long> imgFlags = str2intSet(getValueSet(tags, "img"));
     if(imgFlags.size()==1) pMap["img"] = txt()<<*imgFlags.begin();
     else                   pMap["img"] = "1";
+    
+    set<string> cpValues = getValueSet(tags, "callPath");
+    assert(allSame<string>(cpValues));
+    pMap["callPath"] = *cpValues.begin();
   }
   
   props->add("link", pMap);
@@ -892,6 +927,7 @@ block::block(string label, properties* props) : label(label) {
 
     map<string, string> newProps;
     newProps["label"] = label;
+    newProps["callPath"] = cp2str(CPRuntime.doStackwalk());
     newProps["ID"] = txt()<<blockID;
     newProps["anchorID"] = txt()<<startA.getID();
     newProps["numAnchors"] = "0";
@@ -920,6 +956,7 @@ block::block(string label, anchor& pointsTo, properties* props) : label(label) {
 
     map<string, string> newProps;
     newProps["label"] = label;
+    newProps["callPath"] = cp2str(CPRuntime.doStackwalk());
     newProps["ID"] = txt()<<blockID;
     newProps["anchorID"] = txt()<<startA.getID();
     if(pointsTo != anchor::noAnchor) {
@@ -955,6 +992,7 @@ block::block(string label, set<anchor>& pointsTo, properties* props) : label(lab
 
     map<string, string> newProps;
     newProps["label"] = label;
+    newProps["callPath"] = cp2str(CPRuntime.doStackwalk());
     newProps["ID"] = txt()<<blockID;
     newProps["anchorID"] = txt()<<startA.getID();
     
@@ -1078,6 +1116,10 @@ BlockMerger::BlockMerger(std::vector<std::pair<properties::tagType, properties::
       cout << "        "<<a->str()<<endl;
       pMap[txt()<<"anchor_"<<aIdx] = txt()<<a->getID().ID;
     }
+    
+    set<string> cpValues = getValueSet(tags, "callPath");
+    assert(allSame<string>(cpValues));
+    pMap["callPath"] = *cpValues.begin();
     
     props->add("block", pMap);
   } else {
@@ -1413,6 +1455,7 @@ string dbgStream::addImage(string ext)
   
   map<string, string> newProps;
   newProps["path"] = imgFName.str();
+  newProps["callPath"] = cp2str(CPRuntime.doStackwalk());
   obj->props->add("image", newProps);
   
   tag(obj);
@@ -1448,8 +1491,9 @@ string dbgStream::enterStr(const properties& props) {
     oss << "numProperties=\""<<i->second.size()<<"\"";
     
     int j=0;
-    for(std::map<std::string, std::string>::const_iterator p=i->second.begin(); p!=i->second.end(); p++, j++)
+    for(std::map<std::string, std::string>::const_iterator p=i->second.begin(); p!=i->second.end(); p++, j++) {
       oss << " name"<<j<<"=\""<<escape(p->first)<<"\" val"<<j<<"=\""<<escape(p->second)<<"\"";
+    }
     
     oss << "]";
   }
@@ -1666,6 +1710,7 @@ void indent::init(std::string prefix, int repeatCnt, const attrOp* onoffOp, prop
     map<string, string> newProps;
     newProps["prefix"] = prefix;
     newProps["repeatCnt"] = txt()<<repeatCnt;
+    newProps["callPath"] = cp2str(CPRuntime.doStackwalk());
     props->add("indent", newProps);
     
     dbg.enter(this);
@@ -1701,6 +1746,10 @@ IndentMerger::IndentMerger(std::vector<std::pair<properties::tagType, properties
     set<string> prefixValues = getValueSet(tags, "prefix");
     pMap["prefix"] = *prefixValues.begin();
     pMap["repeatCnt"] = txt()<<setAvg(str2intSet(getValueSet(tags, "repeatCnt")));
+    
+    set<string> cpValues = getValueSet(tags, "callPath");
+    assert(allSame<string>(cpValues));
+    pMap["callPath"] = *cpValues.begin();
   }
   
   props->add("indent", pMap);
