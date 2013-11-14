@@ -31,6 +31,22 @@ using dtl::Diff;
 namespace sight {
 namespace structure{
 
+// Merges the two strings into one
+string mergeText(const string& a, const string& b) {
+  typedef char   elem;
+  typedef string sequence;
+  
+  Diff< elem, sequence > d(a, b);
+  d.compose();
+  
+  vector< pair< char, elemInfo > > ses_v = d.getSes().getSequence();
+  string merged;
+  for(int i=0; i<ses_v.size(); i++)
+    merged += ses_v[i].first;
+  
+  return merged;
+}
+
 /***************
  ***** dbg *****
  ***************/
@@ -46,6 +62,9 @@ bool saved_appExecInfo=false; // Indicates whether the application execution inf
 int saved_argc = 0;
 char** saved_argv = NULL;
 char* saved_execFile = NULL;
+
+// The unique ID of this process' output stream
+int outputStreamID=0;
 
 void SightInit(int argc, char** argv, string title, string workDir)
 {
@@ -135,6 +154,10 @@ void SightInit_internal(int argc, char** argv, string title, string workDir)
     if(fgets(username, sizeof(username), fp) == NULL) { cerr << "Failed to read output of \""<<cmd.str()<<"\"!"<<endl; exit(-1); }
   }
   newProps["username"] = string(username);
+
+  // Set the unique ID of this process' output stream
+  outputStreamID = getpid();
+  newProps["outputStreamID"] = txt()<<outputStreamID;
   
   properties* props = new properties();
   props->add("sight", newProps);
@@ -282,100 +305,258 @@ properties::tagType streamRecord::getTagType(const vector<pair<properties::tagTy
   return tag;
 }
 
+// Merge the IDs of the next ID field (named IDName, e.g. "anchorID" or "blockID") of the current tag maintained 
+// within object nameed objName (e.g. "anchor" or "block") of each the incoming stream into a single ID in the 
+// outgoing stream, updating each incoming stream's mappings from its IDs to the outgoing stream's 
+// IDs. If a given incoming stream anchorID has already been assigned to a different outgoing stream anchorID, yell.
+// For example, to merge the anchorIDs of anchors, blocks or any other tags that maintain anchorIDs, we need to set 
+//    objName="anchor" and IDName="anchorID", while to merge the blockIDs of Blocks we set objName="block", 
+//    IDName="blockID". Thus, anchor objects maintain the anchorID mappings for blocks as well as others, 
+//    while blocks maintain blockID mappings for themselves. This means that each object type (e.g. anchor, block, 
+//    trace) can only maintain one type of ID in its own streamRecord.
+// Returns the merged ID in the outgoing stream.
+int streamRecord::mergeIDs(std::string objName, std::string IDName, 
+                           std::map<std::string, std::string>& pMap, 
+                           const vector<pair<properties::tagType, properties::iterator> >& tags,
+                           std::map<std::string, streamRecord*>& outStreamRecords,
+                           std::vector<std::map<std::string, streamRecord*> >& inStreamRecords) {
+  cout << "streamRecord::mergeIDs()\n";
+  
+  // Find the anchorID in the outgoing stream that the anchors in the incoming streams will be mapped to.
+  // First, See if the anchors on the incoming streams have already been assigned an anchorID on the outgoing stream
+  std::pair<bool, streamID> ret = streamRecord::sameID_ex(objName, IDName, pMap, tags, outStreamRecords, inStreamRecords);
+  // Records whether we've found the outSID that the anchor on at least one incoming stream has been mapped to
+  bool outSIDKnown = ret.first; 
+  // The anchor's ID within the outgoing stream
+  streamID outSID = ret.second;
+
+  streamRecord* outS = outStreamRecords[objName];
+  
+  // If none of the anchors on the incoming stream have been mapped to an anchor in the outgoing stream,
+  // create a fresh anchorID in the outgoing stream, advancing the maximum anchor ID in the process
+  if(!outSIDKnown) {
+    outSID = streamID(outS->maxID++, outS->getVariantID());
+    cout << "streamRecord::mergeIDs(), assigned new ID on outgoing stream outSID="<<outSID.str()<<endl;
+  }
+  
+  // Update inStreamRecords to map the anchor's ID within each incoming stream to the assigned ID in the outgoing stream
+    for(int i=0; i<tags.size(); i++) {
+      streamRecord* s = (streamRecord*)inStreamRecords[i][objName];
+      
+      // The anchor's ID within the current incoming stream
+      streamID inSID(properties::getInt(tags[i].second, IDName), s->getVariantID());
+      
+      cout << "|   "<<i<<": inSID="<<inSID.str()<<", in2outIDs=(#"<<s->in2outIDs.size()<<")"<<endl;
+      for(map<streamID, streamID>::iterator j=s->in2outIDs.begin(); j!=s->in2outIDs.end(); j++)
+        cout << "|       "<<j->first.str()<<" => "<<j->second.str()<<endl;
+      
+      // Yell if we're changing an existing mapping
+      if((s->in2outIDs.find(inSID) != s->in2outIDs.end()) && s->in2outIDs[inSID] != outSID)
+      { cerr << "ERROR: merging ID "<<inSID.str()<<" for object "<<objName<<" from incoming stream "<<i<<" multiple times. Old mapping: "<<s->in2outIDs[inSID].str()<<". New mapping: "<<outSID.str()<<"."<<endl; exit(-1); }
+      cout << "|    outSID="<<outSID.str()<<endl;
+      
+      s->in2outIDs[inSID] = outSID;
+    }
+    
+  // Assign to the merged block the next ID for this output stream
+  pMap[IDName] = txt()<<outSID.ID;
+  //pMap["vID"] = outS->getVariantID().serialize();
+  
+  return outSID.ID;
+}
+
+// Variant of mergeIDs where it is assumed that all the IDs in the incoming stream map to the same ID in the outgoing
+// stream and an error is thrown if this is not the case
+int streamRecord::sameID(std::string objName, std::string IDName, 
+                         std::map<std::string, std::string>& pMap, 
+                         const vector<pair<properties::tagType, properties::iterator> >& tags,
+                         std::map<std::string, streamRecord*>& outStreamRecords,
+                         std::vector<std::map<std::string, streamRecord*> >& inStreamRecords) {
+  std::pair<bool, streamID> ret = streamRecord::sameID_ex(objName, IDName, pMap, tags, outStreamRecords, inStreamRecords);
+  if(!ret.first) { cerr << "ERROR: expecting IDs of object "<<objName<<" to be known but they currently are not!"; exit(-1); }
+  
+  return ret.second.ID;
+}
+
+// Variant of mergeIDs where it is assumed that all the IDs in the incoming stream map to the same ID in the outgoing
+// stream and an error is thrown if this is not the case. Returns a pair containing a flag that indicates whether
+// an ID on the outgoing stream is known and if so, the ID itself
+std::pair<bool, streamID> streamRecord::sameID_ex(
+                            std::string objName, std::string IDName, 
+                            std::map<std::string, std::string>& pMap, 
+                            const vector<pair<properties::tagType, properties::iterator> >& tags,
+                            std::map<std::string, streamRecord*>& outStreamRecords,
+                            std::vector<std::map<std::string, streamRecord*> >& inStreamRecords) {
+  // Identify the ID on the outgoing stream that the IDs on the incoming streams have been assigned to, 
+  // ensuring that they've all been assigned to the same one.
+    
+  // The ID within the outgoing stream
+  streamID outSID;
+  // Records whether we've found the outSID that the anchor on at least one incoming stream has been mapped to
+  bool outSIDKnown=false; 
+  
+  for(int i=0; i<tags.size(); i++) {
+    streamRecord* s = inStreamRecords[i][objName];
+    
+    // The anchor's ID within the current incoming stream
+    streamID inSID(properties::getInt(tags[i].second, IDName), 
+                   inStreamRecords[i][objName]->getVariantID());
+    
+    if(s->in2outIDs.find(inSID) != s->in2outIDs.end()) {
+      // If we've already found an outSID, make this it is the same one
+      if(outSIDKnown) {
+        if(outSID != s->in2outIDs[inSID]) { cerr << "ERROR: Attempting to merge IDs of object "<<objName<<" of multiple incoming streams but they are mapped to different anchorIDs in the outgoing stream!"<<endl; assert(0); }
+      } else {
+        outSID = s->in2outIDs[inSID];
+        outSIDKnown = true;
+      }
+    }
+  }
+  
+  return make_pair(outSIDKnown, outSID);
+}
+
+// Given an anchor ID on the current incoming stream return its ID in the outgoing stream, yelling if it is missing.
+streamID streamRecord::in2outID(streamID inSID) const {
+  map<streamID, streamID>::const_iterator it = in2outIDs.find(inSID);
+  if(it==in2outIDs.end()) { cerr << "ERROR: ID "<<inSID.str()<<" could not be converted from incoming to outgoing because it was not found!"<<endl; exit(-1); }
+   return it->second;
+}
+
+// Given multiple streamRecords from several variants of the same stream, update this streamRecord object
+// to contain the state that succeeds them all, making it possible to resume processing
+void streamRecord::resumeFrom(std::vector<std::map<std::string, streamRecord*> >& streams) {
+  // Compute the maximum maxID among all the streams
+  maxID = -1;
+  for(vector<map<string, streamRecord*> >::iterator s=streams.begin(); s!=streams.end(); s++)
+    maxID = ((*s)[objName]->maxID > maxID? (*s)[objName]->maxID: maxID);
+  
+  // Set in2outIDs to be the union of its counterparts in streams
+  in2outIDs.clear();
+  
+  for(vector<map<string, streamRecord*> >::iterator s=streams.begin(); s!=streams.end(); s++) {
+    for(map<streamID, streamID>::const_iterator i=(*s)[objName]->in2outIDs.begin(); i!=(*s)[objName]->in2outIDs.end(); i++)
+      in2outIDs.insert(*i);
+  }
+}
+
+std::string streamRecord::str(std::string indent) const {
+  ostringstream s;
+  s << "[streamRecord: maxID="<<maxID<<endl;
+  
+  s << indent << "in2outIDs(#"<<in2outIDs.size()<<")="<<endl;
+  for(map<streamID, streamID>::const_iterator i=in2outIDs.begin(); i!=in2outIDs.end(); i++)
+    s << indent << "    "<<i->first.str()<<" =&gt; "<<i->second.str()<<endl;
+  s << indent << "]";
+  
+  return s.str();
+}
+
 /******************
  ***** Merger *****
  ******************/
 
 // Given a vector of tag properties, returns the set of values assigned to the given key within the given tag
-std::set<std::string> Merger::getValueSet(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags, 
-                                          std::string key) {
-  set<string> vals;
+std::vector<std::string> Merger::getValues(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags, 
+                                           std::string key) {
+  vector<string> vals;
   for(vector<pair<properties::tagType, properties::iterator> >::const_iterator t=tags.begin(); t!=tags.end(); t++) {
-    vals.insert(properties::get(t->second, key));
+    vals.push_back(properties::get(t->second, key));
   }
   return vals;
 }
 
-// Returns whether all the elements in the given set are equal to each others
-template<class T>
-bool Merger::allSame(const std::set<T>& s) {
-  for(typename set<T>::const_iterator i=s.begin(); i!=s.end(); i++)
-    if(i!=s.begin() && *i!=*s.begin()) return false;
-  return true;
+// Given a vector of tag properties, merges their values and returns the merged string
+std::string Merger::getMergedValue(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags, 
+                                  std::string key) {
+	string merged;
+  for(vector<pair<properties::tagType, properties::iterator> >::const_iterator t=tags.begin(); t!=tags.end(); t++) {
+    if(t==tags.begin()) merged = properties::get(t->second, key);
+    else                merged = mergeText(properties::get(t->second, key), merged);
+  }
+  return merged;
 }
 
+// Returns whether all the elements in the given set are equal to each others
+/*template<class T>
+bool Merger::allSame(const std::vector<T>& s) {
+  for(typename vector<T>::const_iterator i=s.begin(); i!=s.end(); i++)
+    if(i!=s.begin() && *i!=*s.begin()) return false;
+  return true;
+}*/
+
 // Given a vector of tag property iterators, returns the set of names of all the object types they refer to
-std::set<std::string> Merger::getNameSet(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags) {
-  set<string> names;
+std::vector<std::string> Merger::getNames(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags) {
+  vector<string> names;
   for(vector<pair<properties::tagType, properties::iterator> >::const_iterator t=tags.begin(); t!=tags.end(); t++) {
-    names.insert(properties::name(t->second));
+    names.push_back(properties::name(t->second));
   }
   return names;
 }
 
 // Converts the given set of strings to the corresponding set of integral numbers
-std::set<long> Merger::str2intSet(const std::set<std::string>& strSet) {
-  set<long> intSet;
-  for(set<string>::const_iterator s=strSet.begin(); s!=strSet.end(); s++)
-    intSet.insert(strtol(s->c_str(), NULL, 10));
+std::vector<long> Merger::str2int(const std::vector<std::string>& strSet) {
+  vector<long> intSet;
+  for(vector<string>::const_iterator s=strSet.begin(); s!=strSet.end(); s++)
+    intSet.push_back(strtol(s->c_str(), NULL, 10));
   return intSet;
 }
   
-long Merger::setMax(const std::set<long>& intSet) {
+long Merger::vMax(const std::vector<long>& intSet) {
   long m=LONG_MIN;
-  for(set<long>::const_iterator i=intSet.begin(); i!=intSet.end(); i++)
+  for(vector<long>::const_iterator i=intSet.begin(); i!=intSet.end(); i++)
     m = (*i>m? *i: m);
   return m;
 }
 
-long Merger::setMin(const std::set<long>& intSet)  {
+long Merger::vMin(const std::vector<long>& intSet)  {
   long m=LONG_MAX;
-  for(set<long>::const_iterator i=intSet.begin(); i!=intSet.end(); i++)
+  for(vector<long>::const_iterator i=intSet.begin(); i!=intSet.end(); i++)
     m = (*i<m? *i: m);
   return m;
 }
 
-long Merger::setAvg(const std::set<long>& intSet)  {
+long Merger::vAvg(const std::vector<long>& intSet)  {
   long sum=0;
-  for(set<long>::const_iterator i=intSet.begin(); i!=intSet.end(); i++)
+  for(vector<long>::const_iterator i=intSet.begin(); i!=intSet.end(); i++)
     sum += *i;
   return sum/intSet.size();
 }
  
 // Converts the given set of strings to the corresponding set of floating point numbers
-std::set<double> Merger::str2floatSet(const std::set<std::string>& strSet) {
-  set<double> floatSet;
-  for(set<string>::const_iterator s=strSet.begin(); s!=strSet.end(); s++)
-    floatSet.insert(strtod(s->c_str(), NULL));
+std::vector<double> Merger::str2float(const std::vector<std::string>& strSet) {
+  vector<double> floatSet;
+  for(vector<string>::const_iterator s=strSet.begin(); s!=strSet.end(); s++)
+    floatSet.push_back(strtod(s->c_str(), NULL));
   return floatSet;
 }
 
-double Merger::setMax(const std::set<double>& floatSet) {
+double Merger::vMax(const std::vector<double>& floatSet) {
   double m=-1e100;//DBL_MIN;
-  for(set<double>::const_iterator i=floatSet.begin(); i!=floatSet.end(); i++)
+  for(vector<double>::const_iterator i=floatSet.begin(); i!=floatSet.end(); i++)
     m = (*i>m? *i: m);
   return m;
 }
 
-double Merger::setMin(const std::set<double>& floatSet)  {
+double Merger::vMin(const std::vector<double>& floatSet)  {
   double m=1e100;//DBL_MAX;
-  for(set<double>::const_iterator i=floatSet.begin(); i!=floatSet.end(); i++)
+  for(vector<double>::const_iterator i=floatSet.begin(); i!=floatSet.end(); i++)
     m = (*i<m? *i: m);
   return m;
 }
 
-double Merger::setAvg(const std::set<double>& floatSet)  {
+double Merger::vAvg(const std::vector<double>& floatSet)  {
   double sum=0;
-  for(set<double>::const_iterator i=floatSet.begin(); i!=floatSet.end(); i++)
+  for(vector<double>::const_iterator i=floatSet.begin(); i!=floatSet.end(); i++)
     sum += *i;
   return sum/floatSet.size();
 }
 
 // Advance the iterators in the given tags vector, returning the resulting vector
 std::vector<std::pair<properties::tagType, properties::iterator> >
-              Merger::advance(std::vector<std::pair<properties::tagType, properties::iterator> >& tags) {
+              Merger::advance(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags) {
   vector<pair<properties::tagType, properties::iterator> > advancedTags;
-  for(vector<pair<properties::tagType, properties::iterator> >::iterator t=tags.begin();
+  for(vector<pair<properties::tagType, properties::iterator> >::const_iterator t=tags.begin();
       t!=tags.end(); t++) {
     properties::iterator newT = t->second;
     newT++;
@@ -389,21 +570,6 @@ std::vector<std::pair<properties::tagType, properties::iterator> >
  ***** TextMerger *****
  **********************/
 
-string mergeText(const string& a, const string& b) {
-  typedef char   elem;
-  typedef string sequence;
-  
-  Diff< elem, sequence > d(a, b);
-  d.compose();
-  
-  vector< pair< char, elemInfo > > ses_v = d.getSes().getSequence();
-  string merged;
-  for(int i=0; i<ses_v.size(); i++)
-    merged += ses_v[i].first;
-  
-  return merged;
-}
-
 TextMerger::TextMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                        std::map<std::string, streamRecord*>& outStreamRecords,
                        std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
@@ -413,21 +579,16 @@ TextMerger::TextMerger(std::vector<std::pair<properties::tagType, properties::it
   
   if(props==NULL) props = new properties();
   this->props = props;
+
+  vector<string> names = getNames(tags); assert(allSame<string>(names));
+  assert(*names.begin() == "text");
   
   map<string, string> pMap;
   properties::tagType type = streamRecord::getTagType(tags); 
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Text!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
-    set<string> names = getNameSet(tags);
-    assert(names.size()==1);
-    assert(*names.begin() == "text");
     
-    set<string> textValues = getValueSet(tags, "text");
-    pMap["text"] = "";
-    for(set<string>::iterator v=textValues.begin(); v!=textValues.end(); v++) {
-      if(v==textValues.begin()) pMap["text"] = *v;
-      else                      pMap["text"] = mergeText(*v, pMap["text"]);
-    }
+    pMap["text"] = getMergedValue(tags, "text");
   }
   
   props->add("text", pMap);
@@ -591,7 +752,7 @@ std::string anchor::str(std::string indent) const {
 // vSuffixID: ID that identifies this variant within the next level of variants in the heirarchy
 AnchorStreamRecord::AnchorStreamRecord(const AnchorStreamRecord& that, int vSuffixID) :
   streamRecord((const streamRecord&)that, vSuffixID), 
-  maxAnchorID(that.maxAnchorID), in2outAnchorIDs(that.in2outAnchorIDs), anchorLocs(that.anchorLocs), locAnchorIDs(that.locAnchorIDs) 
+  /*maxAnchorID(that.maxAnchorID), in2outAnchorIDs(that.in2outAnchorIDs), */anchorLocs(that.anchorLocs), locAnchorIDs(that.locAnchorIDs) 
 { }
 
 // Returns a dynamically-allocated copy of this streamRecord, specialized to the given variant ID,
@@ -603,22 +764,24 @@ streamRecord* AnchorStreamRecord::copy(int vSuffixID) {
 // Given multiple streamRecords from several variants of the same stream, update this streamRecord object
 // to contain the state that succeeds them all, making it possible to resume processing
 void AnchorStreamRecord::resumeFrom(std::vector<std::map<std::string, streamRecord*> >& streams) {
-  // Compute the maximum maxAnchorID among all the streams
+  /* // Compute the maximum maxAnchorID among all the streams
   maxAnchorID = -1;
   for(vector<map<string, streamRecord*> >::iterator s=streams.begin(); s!=streams.end(); s++)
     maxAnchorID = (((AnchorStreamRecord*)(*s)["anchor"])->maxAnchorID > maxAnchorID? 
                    ((AnchorStreamRecord*)(*s)["anchor"])->maxAnchorID: 
-                   maxAnchorID);
+                   maxAnchorID);*/
+  
+  streamRecord::resumeFrom(streams);
   
   // Set in2outAnchorIDs, anchorLocs and locAnchorIDs to be the union of its counterparts in streams
-  in2outAnchorIDs.clear();
+  //in2outAnchorIDs.clear();
   anchorLocs.clear();
   locAnchorIDs.clear();
   
   for(vector<map<string, streamRecord*> >::iterator s=streams.begin(); s!=streams.end(); s++) {
     AnchorStreamRecord* as = (AnchorStreamRecord*)(*s)["anchor"];
-    for(map<streamID, streamID>::const_iterator i=as->in2outAnchorIDs.begin(); i!=as->in2outAnchorIDs.end(); i++)
-      in2outAnchorIDs.insert(*i);
+    /*for(map<streamID, streamID>::const_iterator i=as->in2outAnchorIDs.begin(); i!=as->in2outAnchorIDs.end(); i++)
+      in2outAnchorIDs.insert(*i);*/
       
     for(map<streamID, streamLocation>::const_iterator i=as->anchorLocs.begin(); i!=as->anchorLocs.end(); i++)
       anchorLocs.insert(*i);
@@ -631,7 +794,7 @@ void AnchorStreamRecord::resumeFrom(std::vector<std::map<std::string, streamReco
 // Marge the IDs of the next anchorID field of the current tag (named objName) of each the incoming stream into a 
 // single ID in the outgoing stream, updating each incoming stream's mappings from its IDs to the outgoing stream's 
 // IDs. If a given incoming stream anchorID has already been assigned to a different outgoing stream anchorID, yell.
-void AnchorStreamRecord::mergeIDs(std::string objName, 
+/*void AnchorStreamRecord::mergeIDs(std::string objName, 
                                   std::map<std::string, std::string>& pMap, 
                                   const vector<pair<properties::tagType, properties::iterator> >& tags,
                                   std::map<std::string, streamRecord*>& outStreamRecords,
@@ -673,7 +836,7 @@ void AnchorStreamRecord::mergeIDs(std::string objName,
     cout << "AnchorStreamRecord::mergeIDs(), assigned new ID on outgoing stream outSID="<<outSID.str()<<endl;
   }
   
-  // Update inStreamRecords to map the block's ID within each incoming stream to the assigned ID in the outgoing stream
+  // Update inStreamRecords to map the anchor's ID within each incoming stream to the assigned ID in the outgoing stream
     for(int i=0; i<tags.size(); i++) {
       AnchorStreamRecord* as = (AnchorStreamRecord*)inStreamRecords[i]["anchor"];
       
@@ -710,15 +873,17 @@ streamID AnchorStreamRecord::in2outAnchorID(streamID inSID) const {
   map<streamID, streamID>::const_iterator it = in2outAnchorIDs.find(inSID);
   if(it==in2outAnchorIDs.end()) { cerr << "ERROR: anchor ID "<<inSID.str()<<" could not be converted from incoming to outgoing because it was not found!"<<endl; exit(-1); }
    return it->second;
-}
+}*/
 
 std::string AnchorStreamRecord::str(std::string indent) const {
   ostringstream s;
-  s << "[AnchorStreamRecord: maxAnchorID="<<maxAnchorID<<endl;
+  s << "[AnchorStreamRecord: ";
+  s << streamRecord::str(indent+"    ") << endl;
+  /*maxAnchorID="<<maxAnchorID<<endl;
   
   s << indent << "in2outAnchorIDs(#"<<in2outAnchorIDs.size()<<")="<<endl;
   for(map<streamID, streamID>::const_iterator i=in2outAnchorIDs.begin(); i!=in2outAnchorIDs.end(); i++)
-    s << indent << "    "<<i->first.str()<<" =&gt; "<<i->second.str()<<endl;
+    s << indent << "    "<<i->first.str()<<" =&gt; "<<i->second.str()<<endl;*/
   
   s << indent << "anchorLocs(#"<<anchorLocs.size()<<")="<<endl;
   for(map<streamID, streamLocation>::const_iterator i=anchorLocs.begin(); i!=anchorLocs.end(); i++)
@@ -746,29 +911,27 @@ LinkMerger::LinkMerger(std::vector<std::pair<properties::tagType, properties::it
   
   if(props==NULL) props = new properties();
   this->props = props;
-  
+
+  vector<string> names = getNames(tags); assert(allSame<string>(names));
+  assert(*names.begin() == "link");
+
   map<string, string> pMap;
   properties::tagType type = streamRecord::getTagType(tags); 
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Link!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
-    set<string> names = getNameSet(tags);
-    assert(names.size()==1);
-    assert(*names.begin() == "link");
-    
     // Merge the IDs of the anchors this link targets
-    AnchorStreamRecord::mergeIDs("link", pMap, tags, outStreamRecords, inStreamRecords);
+    streamRecord::mergeIDs("anchor", "anchorID", pMap, tags, outStreamRecords, inStreamRecords);
       
-    set<string> textValues = getValueSet(tags, "text");
-    pMap["text"] = *textValues.begin();
+    pMap["text"] = getMergedValue(tags, "text");
     
     cout << "LinkMerger::LinkMerger anchorID="<<pMap["anchorID"]<<", text="<<pMap["text"]<<endl;
     
     // If the link in any of the variants has an image, they all do
-    set<long> imgFlags = str2intSet(getValueSet(tags, "img"));
+    vector<long> imgFlags = str2int(getValues(tags, "img"));
     if(imgFlags.size()==1) pMap["img"] = txt()<<*imgFlags.begin();
     else                   pMap["img"] = "1";
     
-    set<string> cpValues = getValueSet(tags, "callPath");
+    vector<string> cpValues = getValues(tags, "callPath");
     assert(allSame<string>(cpValues));
     pMap["callPath"] = *cpValues.begin();
   }
@@ -784,7 +947,7 @@ streamAnchor::streamAnchor(std::map<std::string, streamRecord*>& myStream) : loc
   dbgStreamR = (dbgStreamStreamRecord*)myStream["sight"];  assert(dbgStreamR);
   anchorR    = (AnchorStreamRecord*)   myStream["anchor"]; assert(anchorR);
   
-  ID = streamID(anchorR->maxAnchorID++, anchorR->getVariantID());
+  ID = streamID(anchorR->maxID++, anchorR->getVariantID());
 }
 
 streamAnchor::streamAnchor(const streamAnchor& that) : ID(that.ID), located(false), dbgStreamR(that.dbgStreamR), anchorR(that.anchorR) {
@@ -1047,32 +1210,30 @@ BlockMerger::BlockMerger(std::vector<std::pair<properties::tagType, properties::
  
   if(props==NULL) props = new properties();
   this->props = props;
-  
+
   map<string, string> pMap;
   properties::tagType type = streamRecord::getTagType(tags);
   cout << "type="<<(type==properties::enterTag? "enterTag": (type==properties::exitTag? "exitTag": "unknownTag"))<<endl;
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Block!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
+    vector<string> names = getNames(tags); assert(allSame<string>(names));
+    assert(*names.begin() == "block");
+  
     cout << "BlockMerger::BlockMerger(), nextTag("<<tags.size()<<")"<<endl;
     for(vector<pair<properties::tagType, properties::iterator> >::iterator t=tags.begin(); t!=tags.end(); t++)
       cout << "    "<<(t->first==properties::enterTag? "enterTag": (t->first==properties::exitTag? "exitTag": "unknownTag"))<<", "<<properties::str(t->second)<<endl;
     
-    set<string> names = getNameSet(tags);
-    assert(names.size()==1);
-    assert(*names.begin() == "block");
-    
-    set<string> labelValues = getValueSet(tags, "label");
-    pMap["label"] = *labelValues.begin();
+    pMap["label"] = getMergedValue(tags, "label");
     
     // Initialize the block and anchor entries in outStreamRecords and inStreamRecords if needed
     //initStreamRecords<BlockStreamRecord> ("block",  outStreamRecords, inStreamRecords);
     //initStreamRecords<AnchorStreamRecord>("anchor", outStreamRecords, inStreamRecords);
     
     // Merge the block IDs along all the streams
-    BlockStreamRecord::mergeIDs(pMap, tags, outStreamRecords, inStreamRecords);
+    streamRecord::mergeIDs("block", "ID", pMap, tags, outStreamRecords, inStreamRecords);
     
     // Merge the IDs of the anchors that target the block
-    AnchorStreamRecord::mergeIDs("block", pMap, tags, outStreamRecords, inStreamRecords);
+    streamRecord::mergeIDs("anchor", "anchorID", pMap, tags, outStreamRecords, inStreamRecords);
     
     cout << "    anchor="<<pMap["anchorID"]<<endl;
     
@@ -1093,12 +1254,12 @@ BlockMerger::BlockMerger(std::vector<std::pair<properties::tagType, properties::
       for(int a=0; a<inNumAnchors; a++) {
         streamAnchor curInAnchor(properties::getInt(tags[i].second, txt()<<"anchor_"<<a), inStreamRecords[i]);
         
-        if(as->in2outAnchorIDs.find(curInAnchor.getID()) == as->in2outAnchorIDs.end())
+        if(as->in2outIDs.find(curInAnchor.getID()) == as->in2outIDs.end())
           cerr << "ERROR: Do not have a mapping for anchor "<<curInAnchor.str()<<" on incoming stream "<<i<<" to its anchorID in the outgoing stream!";
-        assert(as->in2outAnchorIDs.find(curInAnchor.getID()) != as->in2outAnchorIDs.end());
+        assert(as->in2outIDs.find(curInAnchor.getID()) != as->in2outIDs.end());
         
         // Record, within the records of both the incoming and outgoing streams, that this anchor has reached its target
-        streamAnchor curOutAnchor(as->in2outAnchorIDs[curInAnchor.getID()], outStreamRecords);
+        streamAnchor curOutAnchor(as->in2outIDs[curInAnchor.getID()], outStreamRecords);
         cout << "        "<<a<<": curInAnchor="<<curInAnchor.str()<<" => "<<curOutAnchor.str()<<endl;
         curInAnchor.reachedLocation(); 
         curOutAnchor.reachedLocation();
@@ -1117,7 +1278,7 @@ BlockMerger::BlockMerger(std::vector<std::pair<properties::tagType, properties::
       pMap[txt()<<"anchor_"<<aIdx] = txt()<<a->getID().ID;
     }
     
-    set<string> cpValues = getValueSet(tags, "callPath");
+    vector<string> cpValues = getValues(tags, "callPath");
     assert(allSame<string>(cpValues));
     pMap["callPath"] = *cpValues.begin();
     
@@ -1130,9 +1291,21 @@ BlockMerger::BlockMerger(std::vector<std::pair<properties::tagType, properties::
   }
 }
 
+// Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+// tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
+// Each level of the inheritance hierarchy may add zero or more elements to the given list and 
+// call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
+void BlockMerger::mergeKey(properties::tagType type, properties::iterator tag, 
+                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
+  if(type==properties::enterTag) {
+    key.push_back(properties::get(tag, "callPath"));
+  }
+}
+
 // vSuffixID: ID that identifies this variant within the next level of variants in the heirarchy
 BlockStreamRecord::BlockStreamRecord(const BlockStreamRecord& that, int vSuffixID) : 
-  streamRecord((const streamRecord&)that, vSuffixID), maxBlockID(that.maxBlockID), in2outBlockIDs(that.in2outBlockIDs)
+  streamRecord((const streamRecord&)that, vSuffixID)//, maxBlockID(that.maxBlockID)//, in2outBlockIDs(that.in2outBlockIDs)
 { }
 
 // Returns a dynamically-allocated copy of this streamRecord, specialized to the given variant ID,
@@ -1143,7 +1316,7 @@ streamRecord* BlockStreamRecord::copy(int vSuffixID) {
 
 // Given multiple streamRecords from several variants of the same stream, update this streamRecord object
 // to contain the state that succeeds them all, making it possible to resume processing
-void BlockStreamRecord::resumeFrom(std::vector<std::map<std::string, streamRecord*> >& streams) {
+/*void BlockStreamRecord::resumeFrom(std::vector<std::map<std::string, streamRecord*> >& streams) {
 // Compute the maximum maxAnchorID among all the streams
   maxBlockID = -1;
   for(vector<map<string, streamRecord*> >::iterator s=streams.begin(); s!=streams.end(); s++)
@@ -1152,16 +1325,16 @@ void BlockStreamRecord::resumeFrom(std::vector<std::map<std::string, streamRecor
                    maxBlockID);
   
   // Set in2outBlockIDs to be the union of its counterparts in streams
-  in2outBlockIDs.clear();
+  in2outIDs.clear();
   
   for(vector<map<string, streamRecord*> >::iterator s=streams.begin(); s!=streams.end(); s++) {
-    BlockStreamRecord* as = (BlockStreamRecord*)(*s)["block"];
-    for(map<streamID, streamID>::const_iterator i=as->in2outBlockIDs.begin(); i!=as->in2outBlockIDs.end(); i++)
-      in2outBlockIDs.insert(*i);
+    BlockStreamRecord* bs = (BlockStreamRecord*)(*s)["block"];
+    for(map<streamID, streamID>::const_iterator i=bs->in2outIDs.begin(); i!=bs->in2outIDs.end(); i++)
+      in2outIDs.insert(*i);
   }
-}
+}*/
 
-// Marge the IDs of the next block (stored in tags) along all the incoming streams into a single ID in the outgoing stream,
+/* // Marge the IDs of the next block (stored in tags) along all the incoming streams into a single ID in the outgoing stream,
 // updating each incoming stream's mappings from its IDs to the outgoing stream's IDs
 void BlockStreamRecord::mergeIDs(std::map<std::string, std::string>& pMap, 
                                  vector<pair<properties::tagType, properties::iterator> > tags,
@@ -1184,16 +1357,18 @@ void BlockStreamRecord::mergeIDs(std::map<std::string, std::string>& pMap,
   
   // Advance maxBlockID
   ((BlockStreamRecord*)outStreamRecords["block"])->maxBlockID++;
-}
+}*/
 
 std::string BlockStreamRecord::str(std::string indent) const {
   ostringstream s;
-  s << "[BlockStreamRecord: maxBlockID="<<maxBlockID<<endl;
+  s << "[BlockStreamRecord: ";
+  s << streamRecord::str(indent+"    ") << "]";
+  /*maxBlockID="<<maxBlockID<<endl;
   
   s << indent << "in2outBlockIDs="<<endl;
   for(map<streamID, streamID>::const_iterator i=in2outBlockIDs.begin(); i!=in2outBlockIDs.end(); i++)
     s << indent << "    "<<i->first.str()<<" =&gt; "<<i->second.str()<<endl;
-  s << indent << "]";
+  s << indent << "]";*/
   
   return s.str();
 }
@@ -1552,71 +1727,69 @@ dbgStreamMerger::dbgStreamMerger(std::vector<std::pair<properties::tagType, prop
   
   if(props==NULL) props = new properties();
   this->props = props;
+
+  vector<string> names = getNames(tags); assert(allSame<string>(names));
+  assert(*names.begin() == "sight");
   
   properties::tagType type = streamRecord::getTagType(tags); 
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging dbgStream!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
-    set<string> names = getNameSet(tags);
-    assert(names.size()==1);
-    assert(*names.begin() == "sight");
-    
     pMap["workDir"] = "merged";
     
-    set<string> titleValues = getValueSet(tags, "title");
-    pMap["title"] = *titleValues.begin();
+    pMap["title"] = getMergedValue(tags, "title");
     
-    set<string> commandLineKnownValues = getValueSet(tags, "commandLineKnown");
+    vector<string> commandLineKnownValues = getValues(tags, "commandLineKnown");
     pMap["commandLineKnown"] = "0";
-    for(set<string>::iterator i=commandLineKnownValues.begin(); i!=commandLineKnownValues.end(); i++)
+    for(vector<string>::iterator i=commandLineKnownValues.begin(); i!=commandLineKnownValues.end(); i++)
       if(*i=="1") {
         pMap["commandLineKnown"] = "1";
         break;
       }
     
     if(pMap["commandLineKnown"] == "1") {
-      set<string> argcValues = getValueSet(tags, "argc");
-      assert(argcValues.size()==1);
+      vector<string> argcValues = getValues(tags, "argc");
+      assert(allSame<string>(argcValues));
       pMap["argc"] = *argcValues.begin();
       
       long argc = strtol((*argcValues.begin()).c_str(), NULL, 10);
       for(long i=0; i<argc; i++) {
-        set<string> argvValues = getValueSet(tags, txt()<<"argv_"<<i);
-        //assert(argvValues.size()==1);
+        vector<string> argvValues = getValues(tags, txt()<<"argv_"<<i);
+        //assert(allSame<string>(argvValues));
         pMap[txt()<<"argv_"<<i] = *argvValues.begin();
       }
       
-      set<string> execFileValues = getValueSet(tags, "execFile");
-      assert(execFileValues.size()==1);
+      vector<string> execFileValues = getValues(tags, "execFile");
+      assert(allSame<string>(execFileValues));
       pMap["execFile"] = *execFileValues.begin();
       
-      set<string> numEnvVarsValues = getValueSet(tags, "numEnvVars");
-      assert(numEnvVarsValues.size()==1);
+      vector<string> numEnvVarsValues = getValues(tags, "numEnvVars");
+      assert(allSame<string>(numEnvVarsValues));
       pMap["numEnvVars"] = *numEnvVarsValues.begin();
       
       long numEnvVars = strtol((*numEnvVarsValues.begin()).c_str(), NULL, 10);
       for(long i=0; i<numEnvVars; i++) {
-        set<string> envNameValues = getValueSet(tags, txt()<<"envName_"<<i);
-        //assert(envNameValues.size()==1);
+        vector<string> envNameValues = getValues(tags, txt()<<"envName_"<<i);
+        //assert(allSame<string>(envNameValues));
         pMap[txt()<<"envName_"<<i] = *envNameValues.begin();
         
-        set<string> envValValues = getValueSet(tags, txt()<<"envVal_"<<i);
-        //assert(envValValues.size()==1);
+        vector<string> envValValues = getValues(tags, txt()<<"envVal_"<<i);
+        //assert(allSame<string>(envNameValues));
         pMap[txt()<<"envVal_"<<i] = *envValValues.begin();
       }
       
-      set<string> numHostnamesValues = getValueSet(tags, "numHostnames");
-      assert(numHostnamesValues.size()==1);
+      vector<string> numHostnamesValues = getValues(tags, "numHostnames");
+      assert(allSame<string>(numHostnamesValues));
       pMap["numHostnames"] = *numHostnamesValues.begin();
       
       long numHostnames = strtol((*numHostnamesValues.begin()).c_str(), NULL, 10);
       for(long i=0; i<numHostnames; i++) {
-        set<string> hostnameValues = getValueSet(tags, txt()<<"hostname_"<<i);
-        //assert(hostnameValues.size()==1);
+        vector<string> hostnameValues = getValues(tags, txt()<<"hostname_"<<i);
+        //assert(allSame<string>(hostnameValues));
         pMap[txt()<<"hostname_"<<i] = *hostnameValues.begin();
       }
       
-      set<string> usernameValues = getValueSet(tags, "username");
-      //assert(usernameValues.size()==1);
+      vector<string> usernameValues = getValues(tags, "username");
+      //assert(allSame<string>(usernameValues));
       pMap["username"] = *usernameValues.begin();
     }
     
@@ -1639,10 +1812,10 @@ streamRecord* dbgStreamStreamRecord::copy(int vSuffixID) {
 
 // Given multiple streamRecords from several variants of the same stream, update this streamRecord object
 // to contain the state that succeeds them all, making it possible to resume processing
-void dbgStreamStreamRecord::resumeFrom(std::vector<std::map<std::string, streamRecord*> >& streams) {
+/*void dbgStreamStreamRecord::resumeFrom(std::vector<std::map<std::string, streamRecord*> >& streams) {
   // We don't do anything since dbgStreamStreamRecord only have a location field, which is updated
   // within BlockStreamRecord, meaning that it is upto-date.
-}
+}*/
 
 // Called when a block is entered.
 void dbgStreamStreamRecord::enterBlock(vector<map<std::string, streamRecord*> >& streamRecords) {
@@ -1735,19 +1908,17 @@ IndentMerger::IndentMerger(std::vector<std::pair<properties::tagType, properties
   if(props==NULL) props = new properties();
   this->props = props;
   
+  vector<string> names = getNames(tags); assert(allSame<string>(names));
+  assert(*names.begin() == "indent");
+  
   map<string, string> pMap;
   properties::tagType type = streamRecord::getTagType(tags); 
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Indent!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
-    set<string> names = getNameSet(tags);
-    assert(names.size()==1);
-    assert(*names.begin() == "indent");
+    pMap["prefix"] = getMergedValue(tags, "prefix");
+    pMap["repeatCnt"] = txt()<<vAvg(str2int(getValues(tags, "repeatCnt")));
     
-    set<string> prefixValues = getValueSet(tags, "prefix");
-    pMap["prefix"] = *prefixValues.begin();
-    pMap["repeatCnt"] = txt()<<setAvg(str2intSet(getValueSet(tags, "repeatCnt")));
-    
-    set<string> cpValues = getValueSet(tags, "callPath");
+    vector<string> cpValues = getValues(tags, "callPath");
     assert(allSame<string>(cpValues));
     pMap["callPath"] = *cpValues.begin();
   }

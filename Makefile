@@ -6,7 +6,7 @@ SIGHT_LAYOUT_O := sight_layout.o attributes_layout.o slayout.o variant_layout.o
 SIGHT_LAYOUT_H := sight.h sight_layout_internal.h attributes_layout.h variant_layout.h
 sight := ${sight_O} ${sight_H} gdbLineNum.pl sightDefines.pl
 
-SIGHT_CFLAGS = -g -I${ROOT_PATH}/tools/callpath/src 
+SIGHT_CFLAGS = -g -I${ROOT_PATH}/tools/callpath/src -I${ROOT_PATH}/tools/adept-utils/include
 
 OS := $(shell uname -o)
 ifeq (${OS}, Cygwin)
@@ -170,6 +170,21 @@ tools/dtl: #tools
 	rm tools/dtl-1.17.tar.gz 
 
 tools/callpath:
+	cd tools; rm -f master.zip
+	cd tools; wget --no-check-certificate https://github.com/tgamblin/adept-utils/archive/master.zip
+	rm -fr tools/adept-utils
+	cd tools; unzip master.zip
+	mv tools/adept-utils-master tools/adept-utils
+	cp tools/adept-utils-makefiles/CMakeLists.root.txt   tools/adept-utils
+	cp tools/adept-utils-makefiles/CMakeLists.cutils.txt tools/adept-utils/cutils/CMakeLists.txt
+	cp tools/adept-utils-makefiles/CMakeLists.utils.txt  tools/adept-utils/utils/CMakeLists.txt
+	cd tools/adept-utils; cmake -DCMAKE_INSTALL_PREFIX=${ROOT_PATH}/tools/adept-utils .; make; make install
+	cd tools; rm -f master.zip
+	cd tools; wget --no-check-certificate https://github.com/tgamblin/callpath/archive/master.zip
+	rm -fr tools/callpath
+	cd tools; unzip master.zip
+	cd tools; mv callpath-master callpath
+	cd tools/callpath/src; cmake -DCMAKE_INSTALL_PREFIX=${ROOT_PATH}/tools/callpath -DCALLPATH_WALKER=backtrace -DCMAKE_BUILD_TYPE=RelWithDebInfo -Dadept_utils_DIR=${ROOT_PATH}/tools/adept-utils/share/cmake/adept_utils ..; make; make install
 	
 tools:
 	mkdir -p tools

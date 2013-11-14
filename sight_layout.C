@@ -55,7 +55,7 @@ sightLayoutHandlerInstantiator sightLayoutHandlerInstantance;
 // Call the entry handler of the most recently-entered object with name objName
 // and push the object it returns onto the stack dedicated to objects of this type.
 void invokeEnterHandler(map<string, list<void*> >& stack, string objName, properties::iterator iter) {
-  cout << "<<<"<<stack.size()<<": "<<objName<<endl;
+  cout << "<<<"<<stack[objName].size()<<": "<<objName<<endl;
   if(layoutHandlerInstantiator::layoutEnterHandlers->find(objName) == layoutHandlerInstantiator::layoutEnterHandlers->end()) { cerr << "ERROR: no entry handler for \""<<objName<<"\" tags!" << endl; }
   assert(layoutHandlerInstantiator::layoutEnterHandlers->find(objName) != layoutHandlerInstantiator::layoutEnterHandlers->end());
   stack[objName].push_back((*layoutHandlerInstantiator::layoutEnterHandlers)[objName](iter));
@@ -64,7 +64,7 @@ void invokeEnterHandler(map<string, list<void*> >& stack, string objName, proper
 // Call the exit handler of the most recently-entered object with name objName
 // and pop the object off its stack
 void invokeExitHandler(map<string, list<void*> >& stack, string objName) {
-  cout << ">>>"<<stack.size()<<": "<<objName<<endl;
+  cout << ">>>"<<stack[objName].size()<<": "<<objName<<endl;
   assert(stack[objName].size()>0);
   if(layoutHandlerInstantiator::layoutEnterHandlers->find(objName) == layoutHandlerInstantiator::layoutEnterHandlers->end()) { cerr << "ERROR: no exit handler for \""<<objName<<"\" tags!" << endl; }
   assert(layoutHandlerInstantiator::layoutExitHandlers->find(objName) != layoutHandlerInstantiator::layoutExitHandlers->end());
@@ -928,7 +928,7 @@ void dbgStream::includeScript(std::string scriptPath, std::string scriptType) {
 // Add an include of the given script in the generated HTML output. The path of the script must be relative
 // to the output HTML directory
 void dbgStream::includeWidgetScript(std::string scriptPath, std::string scriptType) {
-  includeScript(string("widgets/") + scriptPath);
+  includeScript(string("widgets/") + scriptPath, scriptType);
 }
 
 // Adds the given JavaScript command text to the script that will be loaded with the current file.

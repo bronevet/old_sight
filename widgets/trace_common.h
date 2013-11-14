@@ -13,6 +13,17 @@ class trace {
   
   // Returns a string representation of a showLocT object
   static std::string showLoc2Str(showLocT showLoc);
+    
+  // The way trace observations from multiple stream are combined together
+  typedef enum {disjMerge, // Observations with the same context from different streams are differentiated by the stream's ID
+                // Observations with the same context from different streams are
+                avgMerge,  // averaged
+                maxMerge,  // max-ed
+                minMerge}  // min-ed
+            mergeT;
+  
+  // Returns a string representation of a mergeT object
+  static std::string mergeT2Str(mergeT merge);
   
   // Returns a string representation of a vizT object
   static std::string viz2Str(vizT viz);

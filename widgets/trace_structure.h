@@ -36,17 +36,19 @@ class trace: public block, public attrObserver, public common::trace
   
   // Names of attributes to be used as context when visualizing the values of trace observations
   std::list<std::string> contextAttrs;
+    
+  mergeT merge;
   
   public:
-  trace(std::string label, const std::list<std::string>& contextAttrs, showLocT showLoc=showBegin, vizT viz=table, properties* props=NULL);
-  trace(std::string label, std::string contextAttr,                    showLocT showLoc=showBegin, vizT viz=table, properties* props=NULL);
+  trace(std::string label, const std::list<std::string>& contextAttrs, showLocT showLoc=showBegin, vizT viz=table, mergeT merge=disjMerge, properties* props=NULL);
+  trace(std::string label, std::string contextAttr,                    showLocT showLoc=showBegin, vizT viz=table, mergeT merge=disjMerge, properties* props=NULL);
   
   private:
   // Sets the properties of this object
-  static properties* setProperties(int traceID, showLocT showLoc, vizT viz, const std::list<std::string>& contextAttrs, properties* props);
-  static properties* setProperties(int traceID, showLocT showLoc, vizT viz, std::string contextAttr,                    properties* props);
+  static properties* setProperties(int traceID, showLocT showLoc, vizT viz, mergeT merge, const std::list<std::string>& contextAttrs, properties* props);
+  static properties* setProperties(int traceID, showLocT showLoc, vizT viz, mergeT merge, std::string contextAttr,                    properties* props);
   
-  void init(std::string label, showLocT showLoc, vizT viz);
+  void init(std::string label, showLocT showLoc, vizT viz, mergeT merge);
   
   public:
   ~trace();
@@ -70,19 +72,6 @@ class trace: public block, public attrObserver, public common::trace
   // Emits the JavaScript command that encodes the observations made since the last time a context attribute changed
   void emitObservations();
 }; // class trace
-/*
-class TraceMerger : public BlockMerger {
-  static int maxTraceID;
-  public:
-  TraceMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags);
-}; // class TraceMerger
-*/
-/*class TraceObsMerger : public BlockMerger {
-  public:
-  TraceObsMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags);
-}; // class TraceObsMerger
-*/
-
 
 // Basic API for measuring the elapsed counts of events.
 // The measure class starts the measurement when instances of this class are constructed and stops when they are deconstructed.
@@ -120,6 +109,80 @@ class measure {
 
 measure* startMeasure(std::string traceLabel, std::string valLabel);
 double endMeasure(measure* m);
+
+class TraceMerger : public BlockMerger {
+  public:
+  TraceMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+              std::map<std::string, streamRecord*>& outStreamRecords,
+              std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+              properties* props=NULL);
+              
+  // Sets the properties of the merged object
+  static properties* setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+                                   std::map<std::string, streamRecord*>& outStreamRecords,
+                                   std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                                   properties* props);
+
+  // Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+  // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
+  // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
+  // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
+  static void mergeKey(properties::tagType type, properties::iterator tag, 
+                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key);
+}; // class TraceMerger
+
+class TraceObsMerger : public Merger {
+  public:
+  TraceObsMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+              std::map<std::string, streamRecord*>& outStreamRecords,
+              std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+              properties* props=NULL);
+
+  // Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+  // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
+  // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
+  // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
+  static void mergeKey(properties::tagType type, properties::iterator tag, 
+                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key);
+}; // class TraceObsMerger
+
+class TraceStreamRecord: public streamRecord {
+  friend class TraceMerger;
+  friend class TraceObsMerger;
+  
+  // Records the maximum TraceID ever generated on a given outgoing stream
+  int maxTraceID;
+  
+  // Maps traceIDs to their merge types
+  std::map<int, trace::mergeT> merge;
+  
+  // Maps the TraceIDs within an incoming stream to the TraceIDs on its corresponding outgoing stream
+  std::map<streamID, streamID> in2outTraceIDs;
+  
+  public:
+  TraceStreamRecord(int vID)              : streamRecord(vID, "trace") { /*maxTraceID=0;*/ }
+  TraceStreamRecord(const variantID& vID) : streamRecord(vID, "trace") { /*maxTraceID=0;*/ }
+  TraceStreamRecord(const TraceStreamRecord& that, int vSuffixID);
+  
+  // Returns a dynamically-allocated copy of this streamRecord, specialized to the given variant ID,
+  // which is appended to the new stream's variant list.
+  streamRecord* copy(int vSuffixID);
+  
+  // Given multiple streamRecords from several variants of the same stream, update this streamRecord object
+  // to contain the state that succeeds them all, making it possible to resume processing
+  void resumeFrom(std::vector<std::map<std::string, streamRecord*> >& streams);
+  
+  // Marge the IDs of the next graph (stored in tags) along all the incoming streams into a single ID in the outgoing stream,
+  // updating each incoming stream's mappings from its IDs to the outgoing stream's IDs. Returns the traceID of the merged trace
+  // in the outgoing stream.
+  static int mergeIDs(std::map<std::string, std::string>& pMap, 
+                       const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
+                       std::map<std::string, streamRecord*>& outStreamRecords,
+                       std::vector<std::map<std::string, streamRecord*> >& inStreamRecords);
+      
+  std::string str(std::string indent="") const;
+}; // class TraceStreamRecord
+
 
 }; // namespace structure 
 }; // namespace sight

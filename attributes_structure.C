@@ -364,6 +364,59 @@ void* attrFalse_enter() { return new attrFalse(); }
 void attrFalse_exit(void* subQ) { delete (attrFalse*)subQ; }
 }
 
+/***************************
+ ***** AttributeMerger *****
+ ***************************/
+AttributeMerger::AttributeMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+                       std::map<std::string, streamRecord*>& outStreamRecords,
+                       std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                       properties* props) : 
+                                Merger(advance(tags), outStreamRecords, inStreamRecords, props) {
+  if(props==NULL) props = new properties();
+  this->props = props;
+
+  assert(tags.size()>0);
+  vector<string> names = getNames(tags);
+  assert(allSame<string>(names));
+  assert(*names.begin() == "attr");
+  
+  map<string, string> pMap;
+  properties::tagType type = streamRecord::getTagType(tags); 
+    
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging TraceObs!"<<endl; exit(-1); }
+  if(type==properties::enterTag) {
+    vector<string> keysVec = getValues(tags, "key");
+    cout << "keysVec="<<str(keysVec)<<endl;
+    assert(allSame<string>(keysVec));
+    
+    //vector<string> valVec = getValues(tags, "val");
+    //assert(allSame<string>(valVec));
+    
+    vector<string> typeVec = getValues(tags, "type");
+    assert(allSame<string>(typeVec));
+    
+    pMap["key"]  = *keysVec.begin();
+    pMap["val"]  = getMergedValue(tags, "val");//*valVec.begin();
+    pMap["type"] = *typeVec.begin();
+  }
+  
+  props->add("attr", pMap);
+}
+
+// Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+// tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
+// Each level of the inheritance hierarchy may add zero or more elements to the given list and 
+// call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
+void AttributeMerger::mergeKey(properties::tagType type, properties::iterator tag, 
+                               std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
+  if(type==properties::enterTag) {
+    key.push_back(properties::get(tag, "key"));
+    key.push_back(properties::get(tag, "type"));
+  }
+}
+
+
 }; // namespace structure
 }; // namespace sight
 

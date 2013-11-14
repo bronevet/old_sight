@@ -31,6 +31,9 @@ extern char hostname[];
 // The current user's user name
 extern char username[10000];
 
+// The unique ID of this process' output stream
+extern int outputStreamID;
+
 // Initializes the debug sub-system
 void SightInit(int argc, char** argv, std::string title="Debug Output", std::string workDir="dbg");
 void SightInit(std::string title, std::string workDir);
@@ -169,24 +172,25 @@ class sightObj {
   }
 };*/
 
-}; // namespace structure
-}; // namespace sight
-
-#include "attributes_structure.h"
-
-namespace sight {
-namespace structure {
-
 // Base class for objects that maintain information for each incoming or outgoing stream during merging
 class streamRecord : public printable {
   protected:
   // Uniquely identifies the stream variant this record corresponds to.
   variantID vID;
   
-  streamRecord(int vID) : vID(vID) {}  
-  streamRecord(const variantID& vID) : vID(vID) {}
+  // Records the maximum ID ever generated on a given outgoing stream
+  int maxID;
+  
+  // Maps the anchorIDs within an incoming stream to the anchorIDs on its corresponding outgoing stream
+  std::map<streamID, streamID> in2outIDs;
+    
+  // The name of the object type this stream corresponds to.
+  std::string objName;
+  
+  streamRecord(int vID,              std::string objName) : vID(vID), maxID(0), objName(objName) {}  
+  streamRecord(const variantID& vID, std::string objName) : vID(vID), maxID(0), objName(objName) {}
   // vSuffixID: ID that identifies this variant within the next level of variants in the heirarchy
-  streamRecord(const streamRecord& that, int vSuffixID) : vID(that.vID) {
+  streamRecord(const streamRecord& that, int vSuffixID) : vID(that.vID), maxID(that.maxID), in2outIDs(that.in2outIDs), objName(that.objName) {
     vID.enterVariant(vSuffixID);
   }
   
@@ -197,22 +201,55 @@ class streamRecord : public printable {
   // unknownTag if they're not consistent
   static properties::tagType getTagType(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags);
   
-  // Given multiple streamRecords from several variants of the same stream, update this streamRecord object
-  // to contain the state that succeeds them all, making it possible to resume processing
-  virtual void resumeFrom(std::vector<std::map<std::string, streamRecord*> >& streams)=0;
-  
   // Returns a dynamically-allocated copy of this streamRecord, specialized to the given variant ID,
   // which is appended to the new stream's variant list.
   virtual streamRecord* copy(int vSuffixID)=0;
+  
+  public:
+  // Merge the IDs of the next ID field (named IDName, e.g. "anchorID" or "blockID") of the current tag maintained 
+  // within object nameed objName (e.g. "anchor" or "block") of each the incoming stream into a single ID in the 
+  // outgoing stream, updating each incoming stream's mappings from its IDs to the outgoing stream's 
+  // IDs. If a given incoming stream anchorID has already been assigned to a different outgoing stream anchorID, yell.
+  // For example, to merge the anchorIDs of anchors, blocks or any other tags that maintain anchorIDs, we need to set 
+  //    objName="anchor" and IDName="anchorID", while to merge the blockIDs of Blocks we set objName="block", 
+  //    IDName="blockID". Thus, anchor objects maintain the anchorID mappings for blocks as well as others, 
+  //    while blocks maintain blockID mappings for themselves. This means that each object type (e.g. anchor, block, 
+  //    trace) can only maintain one type of ID in its own streamRecord.
+  // Returns the merged ID in the outgoing stream.
+  static int mergeIDs(std::string objName, std::string IDName, 
+                      std::map<std::string, std::string>& pMap, 
+                      const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
+                      std::map<std::string, streamRecord*>& outStreamRecords,
+                      std::vector<std::map<std::string, streamRecord*> >& inStreamRecords);
+  
+  // Variant of mergeIDs where it is assumed that all the IDs in the incoming stream map to the same ID in the outgoing
+  // stream and an error is thrown if this is not the case
+  static int sameID(std::string objName, std::string IDName, 
+                    std::map<std::string, std::string>& pMap, 
+                    const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
+                    std::map<std::string, streamRecord*>& outStreamRecords,
+                    std::vector<std::map<std::string, streamRecord*> >& inStreamRecords);
+  protected:
+  // Variant of mergeIDs where it is assumed that all the IDs in the incoming stream map to the same ID in the outgoing
+  // stream and an error is thrown if this is not the case. Returns a pair containing a flag that indicates whether
+  // an ID on the outgoing stream is known and if so, the ID itself
+  static std::pair<bool, streamID> sameID_ex(
+                              std::string objName, std::string IDName, 
+                              std::map<std::string, std::string>& pMap, 
+                              const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
+                              std::map<std::string, streamRecord*>& outStreamRecords,
+                              std::vector<std::map<std::string, streamRecord*> >& inStreamRecords);
+  
+  public:
+  // Given a streamID in the current incoming stream return its streamID in the outgoing stream, yelling if it is missing.
+  streamID in2outID(streamID inSID) const;
+  
+  // Given multiple streamRecords from several variants of the same stream, update this streamRecord object
+  // to contain the state that succeeds them all, making it possible to resume processing
+  virtual void resumeFrom(std::vector<std::map<std::string, streamRecord*> >& streams);
+  
+  std::string str(std::string indent="") const;
 }; // streamRecord
-
-/* // Initializes the streamRecords for the given incoming and outgoing streams for the given sub-type of streamRecord
-template<class StreamRecordType>
-void initStreamRecords(std::string objName, 
-                       std::map<std::string, streamRecord*>& outStreamRecords,
-                       std::vector<std::map<std::string, streamRecord*> >& inStreamRecords) {
-  outStreamRecords[objName] = new StreamRecordType()
-}*/
 
 // Base class for objects used to merge multiple tags into one
 class Merger {
@@ -237,7 +274,7 @@ class Merger {
          properties* props): props(props) {
     emitTagFlag = true;
   }
-  
+   
   const properties& getProps() const { return *props; }
   
   protected:
@@ -253,41 +290,78 @@ class Merger {
   }
     
     
-  // Given a vector of tag properties, returns the set of values assigned to the given key within the given tag
-  static std::set<std::string> getValueSet(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags, 
-                                           std::string key);
+  // Given a vector of tag properties, returns the vector of values assigned to the given key within the given tag
+  static std::vector<std::string> getValues(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags, 
+                                            std::string key);
+  
+  // Given a vector of tag properties, merges their values and returns the merged string
+  static std::string getMergedValue(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags, 
+                                    std::string key);
+  	
   // Returns whether all the elements in the given set are equal to each others
   template<class T>
-  static bool allSame(const std::set<T>& s);
-
-  // Converts the given set of strings to the corresponding set of integral numbers
-  static std::set<long> str2intSet(const std::set<std::string>& strSet);
+  static bool allSame(const std::vector<T>& s) {
+    for(typename std::vector<T>::const_iterator i=s.begin(); i!=s.end(); i++)
+      if(i!=s.begin() && *i!=*s.begin()) return false;
+    return true;
+  }
   
-  static long setMax(const std::set<long>& intSet);
-  static long setMin(const std::set<long>& intSet);
-  static long setAvg(const std::set<long>& intSet);
+  // Returns the string representation of the given vector 
+  template<class T>
+  std::string str(const std::vector<T>& v) {
+    std::ostringstream s;
+    s << "[";
+    for(typename std::vector<T>::const_iterator i=v.begin(); i!=v.end(); i++) {
+      if(i!=v.begin()) s << ", ";
+      s << *i;
+    }
+    s << "]";
+    return s.str();
+  }
+  
+  // Converts the given set of strings to the corresponding set of integral numbers
+  static std::vector<long> str2int(const std::vector<std::string>& strSet);
+  
+  static long vMax(const std::vector<long>& intSet);
+  static long vMin(const std::vector<long>& intSet);
+  static long vAvg(const std::vector<long>& intSet);
     
   // Converts the given set of strings to the corresponding set of floating point numbers
-  static std::set<double> str2floatSet(const std::set<std::string>& strSet);
+  static std::vector<double> str2float(const std::vector<std::string>& strSet);
   
-  static double setMax(const std::set<double>& intSet);
-  static double setMin(const std::set<double>& intSet);
-  static double setAvg(const std::set<double>& intSet);
+  static double vMax(const std::vector<double>& intSet);
+  static double vMin(const std::vector<double>& intSet);
+  static double vAvg(const std::vector<double>& intSet);
     
-  // Given a vector of tag property iterators, returns the set of names of all the object types they refer to
-  static std::set<std::string> getNameSet(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags);
+  // Given a vector of tag property iterators, returns the list of names of all the object types they refer to
+  static std::vector<std::string> getNames(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags);
     
   // Advance the iterators in the given tags vector, returning a reference to the vector
   static std::vector<std::pair<properties::tagType, properties::iterator> >
-              advance(std::vector<std::pair<properties::tagType, properties::iterator> >& tags);
+              advance(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags);
 }; // class Merger
+
+}; // namespace structure
+}; // namespace sight
+
+#include "attributes_structure.h"
+
+namespace sight {
+namespace structure {
 
 class TextMerger : public Merger {
   public:
   TextMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
-               std::map<std::string, streamRecord*>& outStreamRecords,
-               std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
-               properties* props=NULL);
+             std::map<std::string, streamRecord*>& outStreamRecords,
+             std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+             properties* props=NULL);
+
+  // Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+  // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
+  // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
+  // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
+  static void mergeKey(properties::tagType type, properties::iterator tag, 
+                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {}
 }; // class TextMerger
 
 // Uniquely identifies a location with the debug information, including the file and region hierarchy
@@ -370,10 +444,10 @@ class AnchorStreamRecord: public streamRecord {
   friend class BlockMerger;
   friend class streamAnchor;
   // Records the maximum anchorID ever generated on a given outgoing stream
-  int maxAnchorID;
+  /*int maxAnchorID;
   
   // Maps the anchorIDs within an incoming stream to the anchorIDs on its corresponding outgoing stream
-  std::map<streamID, streamID> in2outAnchorIDs;
+  std::map<streamID, streamID> in2outAnchorIDs;*/
     
   // Maps all anchor IDs to their locations, if known. When we establish forward links we create
   // anchors that are initially not connected to a location (the target location has not yet been reached). Thus,
@@ -389,7 +463,7 @@ class AnchorStreamRecord: public streamRecord {
   std::map<streamLocation, streamID> locAnchorIDs;
     
   public:
-  AnchorStreamRecord(variantID vID) : streamRecord(vID) { maxAnchorID=0; }
+  AnchorStreamRecord(variantID vID) : streamRecord(vID, "anchor") { /*maxAnchorID=0;*/ }
   // vSuffixID: ID that identifies this variant within the next level of variants in the heirarchy
   AnchorStreamRecord(const AnchorStreamRecord& that, int vSuffixID);
   
@@ -404,13 +478,13 @@ class AnchorStreamRecord: public streamRecord {
   // Marge the IDs of the next anchorID field of the current tag (named objName) of each the incoming stream into a 
   // single ID in the outgoing stream, updating each incoming stream's mappings from its IDs to the outgoing stream's 
   // IDs. If a given incoming stream anchorID has already been assigned to a different outgoing stream anchorID, yell.
-  static void mergeIDs(std::string objName, std::map<std::string, std::string>& pMap, 
+  /*static void mergeIDs(std::string objName, std::map<std::string, std::string>& pMap, 
                        const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
                        std::map<std::string, streamRecord*>& outStreamRecords,
                        std::vector<std::map<std::string, streamRecord*> >& inStreamRecords);
 
   // Given an anchor ID on the current incoming stream return its ID in the outgoing stream, yelling if it is missing.
-  streamID in2outAnchorID(streamID inSID) const;
+  streamID in2outAnchorID(streamID inSID) const;*/
   
   std::string str(std::string indent="") const;
 }; // class AnchorStreamRecord
@@ -421,6 +495,13 @@ class LinkMerger : public Merger {
                std::map<std::string, streamRecord*>& outStreamRecords,
                std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
                properties* props=NULL);
+  
+  // Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+  // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
+  // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
+  // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
+  static void mergeKey(properties::tagType type, properties::iterator tag, 
+                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) { }
 }; // class LinkMerger
 
 class dbgStreamStreamRecord;
@@ -528,19 +609,26 @@ class BlockMerger : public Merger {
               std::map<std::string, streamRecord*>& outStreamRecords,
               std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
               properties* props=NULL);
+  
+  // Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+  // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
+  // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
+  // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
+  static void mergeKey(properties::tagType type, properties::iterator tag, 
+                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key);
 }; // class BlockMerger
 
 class BlockStreamRecord: public streamRecord {
   friend class BlockMerger;
-  // Records the maximum blockID ever generated on a given outgoing stream
+  /* // Records the maximum blockID ever generated on a given outgoing stream
   int maxBlockID;
   
   // Maps the blockIDs within an incoming stream to the blockIDs on its corresponding outgoing stream
-  std::map<streamID, streamID> in2outBlockIDs;
+  std::map<streamID, streamID> in2outBlockIDs;*/
   
   public:  
-  BlockStreamRecord(int vID)              : streamRecord(vID) { maxBlockID=0; }
-  BlockStreamRecord(const variantID& vID) : streamRecord(vID) { maxBlockID=0; }
+  BlockStreamRecord(int vID)              : streamRecord(vID, "block") { /*maxBlockID=0;*/ }
+  BlockStreamRecord(const variantID& vID) : streamRecord(vID, "block") { /*maxBlockID=0;*/ }
   // vSuffixID: ID that identifies this variant within the next level of variants in the heirarchy
   BlockStreamRecord(const BlockStreamRecord& that, int vSuffixID);
   
@@ -550,14 +638,14 @@ class BlockStreamRecord: public streamRecord {
   
   // Given multiple streamRecords from several variants of the same stream, update this streamRecord object
   // to contain the state that succeeds them all, making it possible to resume processing
-  void resumeFrom(std::vector<std::map<std::string, streamRecord*> >& streams);
+  //void resumeFrom(std::vector<std::map<std::string, streamRecord*> >& streams);
   
   // Marge the IDs of the next block (stored in tags) along all the incoming streams into a single ID in the outgoing stream,
   // updating each incoming stream's mappings from its IDs to the outgoing stream's IDs
-  static void mergeIDs(std::map<std::string, std::string>& pMap, 
+  /*static void mergeIDs(std::map<std::string, std::string>& pMap, 
                        std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                        std::map<std::string, streamRecord*>& outStreamRecords,
-                       std::vector<std::map<std::string, streamRecord*> >& inStreamRecords);
+                       std::vector<std::map<std::string, streamRecord*> >& inStreamRecords);*/
 
   std::string str(std::string indent="") const;
 }; // class BlockStreamRecord
@@ -725,6 +813,13 @@ class dbgStreamMerger : public Merger {
                   std::map<std::string, streamRecord*>& outStreamRecords,
                   std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
                   properties* props=NULL);
+                  
+  // Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+  // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
+  // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
+  // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
+  static void mergeKey(properties::tagType type, properties::iterator tag, 
+                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) { }
 };
 
 class dbgStreamStreamRecord: public streamRecord {
@@ -733,8 +828,8 @@ class dbgStreamStreamRecord: public streamRecord {
   streamLocation loc;
   
   public:  
-  dbgStreamStreamRecord(int vID)              : streamRecord(vID) { }
-  dbgStreamStreamRecord(const variantID& vID) : streamRecord(vID) { }
+  dbgStreamStreamRecord(int vID)              : streamRecord(vID, "sight") { }
+  dbgStreamStreamRecord(const variantID& vID) : streamRecord(vID, "sight") { }
   // vSuffixID: ID that identifies this variant within the next level of variants in the heirarchy
   dbgStreamStreamRecord(const dbgStreamStreamRecord& that, int vSuffixID);
   
@@ -744,8 +839,8 @@ class dbgStreamStreamRecord: public streamRecord {
   
   // Given multiple streamRecords from several variants of the same stream, update this streamRecord object
   // to contain the state that succeeds them all, making it possible to resume processing
-  void resumeFrom(std::vector<std::map<std::string, streamRecord*> >& streams);
-    
+  //void resumeFrom(std::vector<std::map<std::string, streamRecord*> >& streams);
+  
   // Returns the stream's current location
   streamLocation getLocation() { return loc; }
   
@@ -789,6 +884,13 @@ class IndentMerger : public Merger {
                std::map<std::string, streamRecord*>& outStreamRecords,
                std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
                properties* props=NULL);
+               
+  // Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+  // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
+  // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
+  // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
+  static void mergeKey(properties::tagType type, properties::iterator tag, 
+                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) { }
 }; // class IndentMerger
 
 

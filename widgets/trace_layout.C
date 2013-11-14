@@ -183,7 +183,7 @@ void* trace::observe(properties::iterator props)
     t->tracerKeys.insert(properties::get(props, txt()<<"tKey_"<<i));
     
   ostringstream cmd;
-  cmd << "traceRecord('"<<t->getLabel()<<"', ";
+  cmd << "traceRecord(\""<<t->getLabel()<<"\", ";
   
   // Emit the observed values of tracer attributes
   cmd << "{";
@@ -191,7 +191,7 @@ void* trace::observe(properties::iterator props)
     if(i!=0) cmd << ", ";
     string tKey = properties::get(props, txt()<<"tKey_"<<i);
     string tVal = properties::get(props, txt()<<"tVal_"<<i);
-    cmd << "'"<< tKey << "': '" << tVal <<"'";
+    cmd << "\""<< tKey << "\": \"" << tVal <<"\"";
   }
   cmd << "}, {";
   
@@ -200,7 +200,7 @@ void* trace::observe(properties::iterator props)
     if(i!=0) cmd << ", ";
     string tKey = properties::get(props, txt()<<"tKey_"<<i);
     anchor tAnchor(/*false,*/ properties::getInt(props, txt()<<"tAnchorID_"<<i));
-    cmd << "'"<< tKey << "': '" << (tAnchor==anchor::noAnchor? "": tAnchor.getLinkJS()) <<"'";
+    cmd << "\""<< tKey << "\": \"" << (tAnchor==anchor::noAnchor? "": tAnchor.getLinkJS()) <<"\"";
   }
   cmd << "}, {";
   
@@ -209,9 +209,9 @@ void* trace::observe(properties::iterator props)
     if(i!=0) cmd << ", ";
     string cKey = properties::get(props, txt()<<"cKey_"<<i);
     string cVal = properties::get(props, txt()<<"cVal_"<<i);
-    cmd << "'" << cKey << "': '" << cVal << "'";
+    cmd << "\"" << cKey << "\": \"" << cVal << "\"";
   }
-  cmd << "}, '"<<viz2Str(t->viz)<<"');";
+  cmd << "}, \""<<viz2Str(t->viz)<<"\");";
   
   dbg.widgetScriptCommand(cmd.str());
   

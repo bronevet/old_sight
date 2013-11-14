@@ -21,26 +21,29 @@ class tagGroup {
   public:
   properties::tagType type;
   std::string objName;
-  //std::string callpath;
-  Callpath cp;
+  //Callpath cp;
+  // A list of key strings provided by the object-specific merger
+  std::list<std::string> key;
   
-  tagGroup(properties::tagType type, const properties* props) {
+  tagGroup(properties::tagType type, const properties* props, std::list<std::string> key) {
     this->type = type;
     objName = props->name();
-    if(properties::exists(props->begin(), "callPath")) {
-    	cout << objName<<": "<<properties::get(props->begin(), "callPath")<<endl;
+/*    if(properties::exists(props->begin(), "callPath")) {
+    	//cout << objName<*<": "<<properties::get(props->begin(), "callPath")<<endl;
       cp = make_path(properties::get(props->begin(), "callPath"));
-    }
+    }*/
+    this->key = key;
   }
   
   bool operator==(const tagGroup& that) const
-  { return type==that.type && objName==that.objName && cp==that.cp; }
+  { return type==that.type && objName==that.objName /*&& cp==that.cp */&& ((key.size()==0 && that.key.size()==0) || key==that.key); }
   
   bool operator<(const tagGroup& that) const
   { return type< that.type ||
            (type==that.type && objName< that.objName) ||
-           (type==that.type && objName==that.objName && cp<that.cp); }
-};
+           //(type==that.type && objName==that.objName && cp< that.cp) ||
+           (type==that.type && objName==that.objName /*&& cp==that.cp*/ && key<that.key); }
+}; // class tagGroup
 
 
 // parsers - Vector of parsers from which information will be read
@@ -101,6 +104,8 @@ class MergeFunctorBase {
                        const vector<pair<properties::tagType, properties::iterator> >& tags,
                        std::map<std::string, streamRecord*>& outStreamRecords,
                        std::vector<std::map<std::string, streamRecord*> >& inStreamRecords)=0;
+
+  virtual std::list<std::string> mergeKey(properties::tagType type, properties::iterator tag, std::map<std::string, streamRecord*>& inStreamRecords)=0;
 };
 
 // M - class derived from Merger
@@ -111,6 +116,12 @@ class MergeFunctor : public MergeFunctorBase {
                                   std::map<std::string, streamRecord*>& outStreamRecords,
                                   std::vector<std::map<std::string, streamRecord*> >& inStreamRecords) {
     return new M(tags, outStreamRecords, inStreamRecords);
+  }
+  
+  std::list<std::string> mergeKey(properties::tagType type, properties::iterator tag, std::map<std::string, streamRecord*>& inStreamRecords) {
+    std::list<std::string> key;
+    M::mergeKey(type, tag, inStreamRecords, key);
+    return key;
   }
 };
 
@@ -130,13 +141,15 @@ int main(int argc, char** argv) {
   mergers["text"]      = new MergeFunctor<TextMerger>();
   mergers["block"]     = new MergeFunctor<BlockMerger>();
   mergers["link"]      = new MergeFunctor<LinkMerger>();
+  mergers["attr"]      = new MergeFunctor<AttributeMerger>();
   mergers["indent"]    = new MergeFunctor<IndentMerger>();
   mergers["scope"]     = new MergeFunctor<ScopeMerger>();
+  mergers["graph"]     = new MergeFunctor<GraphMerger>();
   mergers["dirEdge"]   = new MergeFunctor<DirEdgeMerger>();
   mergers["undirEdge"] = new MergeFunctor<UndirEdgeMerger>();
   mergers["node"]      = new MergeFunctor<NodeMerger>();
-  //mergers["trace"]    = new MergeFunctor<TraceMerger>();
-  //mergers["traceObs"] = new MergeFunctor<TraceObsMerger>();
+  mergers["trace"]    = new MergeFunctor<TraceMerger>();
+  mergers["traceObs"] = new MergeFunctor<TraceObsMerger>();
   
   
   vector<pair<properties::tagType, properties::iterator> > emptyNextTag;
@@ -150,6 +163,7 @@ int main(int argc, char** argv) {
   outStreamRecords["block"]  = new BlockStreamRecord(0);
   outStreamRecords["graph"]  = new GraphStreamRecord(0);
   outStreamRecords["node"]   = new NodeStreamRecord(0);
+  outStreamRecords["trace"]  = new TraceStreamRecord(0);
   dbgStreamStreamRecord::enterBlock(outStreamRecords);
   
   std::vector<std::map<std::string, streamRecord*> > inStreamRecords;
@@ -160,6 +174,7 @@ int main(int argc, char** argv) {
     inStreamR["block"]  = new BlockStreamRecord(i);
     inStreamR["graph"]  = new GraphStreamRecord(i);
     inStreamR["node"]   = new NodeStreamRecord(i);
+    inStreamR["trace"]  = new TraceStreamRecord(i);
     inStreamRecords.push_back(inStreamR);
   }
   dbgStreamStreamRecord::enterBlock(inStreamRecords);
@@ -205,12 +220,14 @@ void mergeTags(properties::tagType type, string objName,
   cout << indent << "merged="<<m->getProps().str()<<endl;
   if(objName == "sight")
     cout << indent << "dir="<<structure::dbg.workDir<<endl;
+  cout << "emit="<<m->emitTag()<<", #moreTagsBefore="<<m->moreTagsBefore.size()<<", #moreTagsAfter="<<m->moreTagsAfter.size()<<endl;
   #endif
   
   // If the merger requests that this tag be emitted, do so
   if(m->emitTag()) {
     // Emit all the tags that appear before the tag that was actually read
     for(list<pair<properties::tagType, properties> >::iterator t=m->moreTagsBefore.begin(); t!=m->moreTagsBefore.end(); t++) {
+    	cout << "before: "<<(t->first == properties::enterTag? "enter": "exit")<<": "<<t->second.str()<<endl;
            if(t->first == properties::enterTag) out.enter(t->second);
       else if(t->first == properties::exitTag)  out.exit (t->second);
     }
@@ -220,9 +237,11 @@ void mergeTags(properties::tagType type, string objName,
       out << properties::get(m->getProps().find("text"), "text");
     } else {
       if(type == properties::enterTag) {
+      	cout << "Entering props="<<m->getProps().str()<<"\n";
         stackDepth++;
         out.enter(m->getProps());
       } else {
+      	cout << "Exiting props="<<m->getProps().str()<<"\n";
         stackDepth--;
         out.exit(m->getProps());
       }
@@ -311,7 +330,7 @@ void merge(vector<FILEStructureParser*>& parsers,
       if(readyForTag[parserIdx] && activeParser[parserIdx]) {
         pair<properties::tagType, const properties*> props = (*p)->next();
         //#ifdef VERBOSE
-        //cout << indent << parserIdx << ": "<<const_cast<properties*>(props.second)->str()<<endl;
+        //cout << indent << parserIdx << ": "<<(props.first==properties::enterTag? "enterTag": "exitTag")<<" "<<const_cast<properties*>(props.second)->str()<<endl;
         //#endif
         
         // If we've reached the end of this parser's data
@@ -330,7 +349,9 @@ void merge(vector<FILEStructureParser*>& parsers,
             nextTag[parserIdx] = make_pair(props.first, props.second->begin());
             
           // Group this parser with all the other parsers that just read a tag with the same name and type (enter/exit)
-          tag2stream[tagGroup(props.first, props.second)].push_back(parserIdx);
+          tag2stream[tagGroup(props.first, props.second, mergers[props.second->name()]->
+                         mergeKey(props.first, props.second->begin(), inStreamRecords[parserIdx]))
+                    ].push_back(parserIdx);
                     
           // Record whether we read a text tag on any parser
           numTextTags += (props.second->name() == "text"? 1: 0);
@@ -413,44 +434,10 @@ void merge(vector<FILEStructureParser*>& parsers,
         std::vector<std::map<std::string, streamRecord*> > groupInStreamRecords;
         collectGroupVectorBool<std::map<std::string, streamRecord*> >(inStreamRecords, activeParser, groupInStreamRecords);
 
-        cout << "tag2stream.begin()->first.objName="<<tag2stream.begin()->first.objName<<endl;
+        //cout << "tag2stream.begin()->first.objName="<<tag2stream.begin()->first.objName<<endl;
         mergeTags(tag2stream.begin()->first.type, tag2stream.begin()->first.objName,
                   groupNextTag, outStreamRecords, groupInStreamRecords,
                   stackDepth, out, indent+"   .");
-
-/*        // Merge the properties of all tags
-        Merger* m = mergers[tag2stream.begin()->first.second]->merge(nextTag, outStreamRecords, inStreamRecords);
-        #ifdef VERBOSE
-        cout << indent << "merged="<<m->getProps().str()<<endl;
-        if(tag2stream.begin()->first.second == "sight")
-          cout << indent << "dir="<<structure::dbg.workDir<<endl;
-        #endif
-        
-        // If the merger requests that this tag be emitted, do so
-        if(m->emitTag()) {
-          // Emit all the tags that appear before the tag that was actually read
-          for(list<pair<properties::tagType, properties> >::iterator t=m->moreTagsBefore.begin(); t!=m->moreTagsBefore.end(); t++) {
-                 if(t->first == properties::enterTag) out.enter(t->second);
-            else if(t->first == properties::exitTag)  out.exit (t->second);
-          }
-          
-          // Perform the common action of entering/exiting this tag
-          if(tag2stream.begin()->first.first == properties::enterTag) {
-            stackDepth++;
-            out.enter(m->getProps());
-          } else {
-            stackDepth--;
-            out.exit(m->getProps());
-          }
-          
-          // Emit all the tags that appear after the tag that was actually read
-          for(list<pair<properties::tagType, properties> >::iterator t=m->moreTagsAfter.begin(); t!=m->moreTagsAfter.end(); t++) {
-                 if(t->first == properties::enterTag) out.enter(t->second);
-            else if(t->first == properties::exitTag)  out.exit (t->second);
-          }
-        }
-        
-        delete(m);*/
 
         // Record that we're ready for more tags on all the parsers
         for(vector<bool>::iterator i=readyForTag.begin(); i!=readyForTag.end(); i++)

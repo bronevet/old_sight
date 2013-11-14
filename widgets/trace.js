@@ -157,13 +157,14 @@ var displayTraceCalled = {};
 function displayTrace(traceLabel, blockID, contextAttrs, traceAttrs, viz, loc) {
   if(viz == 'table') {
     var ctxtCols = [];
-    for(i in contextAttrs)
+    for(i in contextAttrs) { if(contextAttrs.hasOwnProperty(i)) {
       ctxtCols.push({key:contextAttrs[i], label:contextAttrs[i], sortable:true});
+    } }
     
     var traceCols = [];
-    for(i in traceAttrs)
+    for(i in traceAttrs) { if(traceAttrs.hasOwnProperty(i)) {
       traceCols.push({key:traceAttrs[i], label:traceAttrs[i], sortable:true});
-    
+    } }
     YUI().use("datatable-sort", function (Y) {
         // A table from data with keys that work fine as column names
         var traceTable = new Y.DataTable({
@@ -177,12 +178,12 @@ function displayTrace(traceLabel, blockID, contextAttrs, traceAttrs, viz, loc) {
       });
   } else if(viz == 'lines') {
     var minVal=1e100, maxVal=-1e100;
-    for(i in traceAttrs) { 
+    for(i in traceAttrs) { if(traceAttrs.hasOwnProperty(i)) {
         if(minVal>minData[traceAttrs[i]]) 
-          minVal=minData[traceAttrs[i]]; }
-    for(o in traceAttrs) { 
+          minVal=minData[traceAttrs[i]]; } }
+    for(i in traceAttrs) { if(traceAttrs.hasOwnProperty(i)) {
         if(maxVal<minData[traceAttrs[i]]) 
-          maxVal=maxData[traceAttrs[i]]; }
+          maxVal=maxData[traceAttrs[i]]; } }
     
     // Create a div in which to place this context attribute's line graph 
     YUI().use("charts", function (Y) {
@@ -219,19 +220,19 @@ function displayTrace(traceLabel, blockID, contextAttrs, traceAttrs, viz, loc) {
         height = 500 - margin.top - margin.bottom;
 
     var divsForBoxplot = "";
-    for(c in contextAttrs) {
-    for(t in traceAttrs) {
+    for(c in contextAttrs) { if(contexteAttrs.hasOwnProperty(c)) {
+    for(t in traceAttrs) {   if(traceAttrs.hasOwnProperty(t)) {
       divsForBoxplot += "Context=" + contextAttrs[c] + ", Trace=" + traceAttrs[t] + "\n";
       divsForBoxplot += "<div id=\"div" + blockID + "_" + contextAttrs[c] + "_" + traceAttrs[t] + "\"></div>\n";
-    }}
+    } } } }
     if(loc == "showBegin")    document.getElementById("div"+blockID).innerHTML = divsForBoxplot + document.getElementById("div"+blockID).innerHTML;
     else if(loc == "showEnd") document.getElementById("div"+blockID).innerHTML += divsForBoxplot;
 
-    for(c in contextAttrs) {
-    for(t in traceAttrs) {
+    for(c in contextAttrs) { if(contextAttrs.hasOwnProperty(c)) {
+    for(t in traceAttrs) {   if(traceAttrs.hasOwnProperty(t)) {
       //showBoxPlot(traceDataList[traceID], "div"+blockID+"_"+contextAttrs[0]+"_"+traceAttrs[0], contextAttrs[0], traceAttrs[0], width, height, margin);
       showBoxPlot(traceDataList[traceLabel], "div"+blockID+"_"+contextAttrs[c]+"_"+traceAttrs[t], contextAttrs[c], traceAttrs[t], width, height, margin);
-    } }
+    } } } }
   } else if(viz == 'heatmap') {
     /* // Array of keys of the context variables. Only the first two are used.
     var ctxtKeys = [];
@@ -264,14 +265,14 @@ function displayTrace(traceLabel, blockID, contextAttrs, traceAttrs, viz, loc) {
     // sub-array per entry in traceAttrs) and the individual tiles in each heatmap (second-level array,
     // one entry for each pair of items in ctxt0KeyVals and ctxt1KeyVals)
     var data = [];
-    for(traceAttrIdx in traceAttrs) { 
+    for(traceAttrIdx in traceAttrs) { if(traceAttrs.hasOwnProperty(traceAttrIdx)) {
       valBucketSize[traceAttrIdx] = (maxData[traceAttrs[traceAttrIdx]] - minData[traceAttrs[traceAttrIdx]])/numColors;
 
       // attrData records the row and column of each tile in its heatmap (separate heatmap for each trace attribute), 
       // along with the index of the trace attribute in traceAttrs.
       var attrData = [];
-      for(k1 in ctxt1KeyVals) {
-      for(k0 in ctxt0KeyVals) {
+      for(k1 in ctxt1KeyVals) { if(ctxt1KeyVals.hasOwnProperty(k1)) {
+      for(k0 in ctxt0KeyVals) { if(ctxt0KeyVals.hasOwnProperty(k0)) {
         var contextVals = {};
         contextVals[ctxtKeys[traceLabel][0]] = ctxt0KeyVals[k0];
         contextVals[ctxtKeys[traceLabel][1]] = ctxt1KeyVals[k1];
@@ -285,11 +286,11 @@ function displayTrace(traceLabel, blockID, contextAttrs, traceAttrs, viz, loc) {
                          traceAttrIdx:traceAttrIdx,
                          traceVals:traceVals, 
                          traceLinks:traceLinks});
-      } }
+      } } } }
       
       // Add the data for the current trace attribute to the dataset
       data.push(attrData);
-    }
+    } }
     var tileWidth=20;
     var tileHeight=20;
     var titleHeight=20;

@@ -78,6 +78,11 @@ class properties
   bool active;
 
   properties(): active(true) {}
+  // Creates properties where the object name objName is mapped to no properties
+  properties(std::string objName) {
+    std::map<std::string, std::string> emptyMap;
+    add(objName, emptyMap);
+  }
   properties(const std::list<std::pair<std::string, std::map<std::string, std::string> > >& p, const bool& active): p(p), active(active) {}
   properties(const properties& that) : p(that.p), active(that.active) {}
     

@@ -123,18 +123,17 @@ properties* ScopeMerger::setProperties(std::vector<std::pair<properties::tagType
   if(props==NULL) props = new properties();
   
   assert(tags.size()>0);
+
+  vector<string> names = getNames(tags); assert(allSame<string>(names));
+  assert(*names.begin() == "scope");
+
   map<string, string> pMap;
   properties::tagType type = streamRecord::getTagType(tags); 
-  cout << "#tags="<<tags.size()<<" type="<<type<<endl;
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Scope!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
-    set<string> names = getNameSet(tags);
-    assert(names.size()==1);
-    assert(*names.begin() == "scope");
+    pMap["level"] = txt()<<vAvg(str2int(getValues(tags, "level")));
     
-    pMap["level"] = txt()<<setAvg(str2intSet(getValueSet(tags, "level")));
-    
-    set<string> cpValues = getValueSet(tags, "callPath");
+    vector<string> cpValues = getValues(tags, "callPath");
     assert(allSame<string>(cpValues));
     pMap["callPath"] = *cpValues.begin();
     
@@ -144,6 +143,16 @@ properties* ScopeMerger::setProperties(std::vector<std::pair<properties::tagType
   }
   
   return props;
+}
+
+// Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+// tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
+// Each level of the inheritance hierarchy may add zero or more elements to the given list and 
+// call their parents so they can add any info,
+void ScopeMerger::mergeKey(properties::tagType type, properties::iterator tag, 
+                           std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
+  properties::iterator blockTag = tag;
+  BlockMerger::mergeKey(type, ++blockTag, inStreamRecords, key);
 }
 
 }; // namespace structure

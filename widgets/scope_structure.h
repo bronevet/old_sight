@@ -73,6 +73,13 @@ class ScopeMerger : public BlockMerger {
                                    std::map<std::string, streamRecord*>& outStreamRecords,
                                    std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
                                    properties* props);
+                                   
+  // Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+  // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
+  // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
+  // call their parents so they can add any info,
+  static void mergeKey(properties::tagType type, properties::iterator tag, 
+                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key);
 }; // class ScopeMerger
 
 }; // namespace structure
