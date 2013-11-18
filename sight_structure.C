@@ -1084,7 +1084,7 @@ block::block(string label, properties* props) : label(label) {
   if(props==NULL) props = new properties();
   this->props = props;
   
-  if(props->active) {
+  if(props->active && props->emitTag) {
     // Connect startA to the current location 
     startA.reachedLocation();
 
@@ -1111,7 +1111,7 @@ block::block(string label, anchor& pointsTo, properties* props) : label(label) {
   if(props==NULL) props = new properties();
   this->props = props;
   
-  if(props->active) {
+  if(props->active && props->emitTag) {
     // Connect startA and pointsTo anchors to the current location (pointsTo is not modified);
     startA.reachedLocation();
     anchor pointsToCopy(pointsTo);
@@ -1145,7 +1145,7 @@ block::block(string label, set<anchor>& pointsTo, properties* props) : label(lab
   if(props==NULL) props = new properties();
   this->props = props;
   
-  if(props->active) {
+  if(props->active && props->emitTag) {
     // Connect startA and pointsTo anchors to the current location (pointsTo is not modified)
     startA.reachedLocation();
     for(set<anchor>::iterator a=pointsTo.begin(); a!=pointsTo.end(); a++) {
@@ -1178,7 +1178,7 @@ block::block(string label, set<anchor>& pointsTo, properties* props) : label(lab
 
 block::~block() {
   assert(props);
-  if(props->active) {
+  if(props->active && props->emitTag) {
     dbg.exitBlock();
     dbg.exit(this);
   }

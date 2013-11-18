@@ -857,6 +857,10 @@ void dbgStream::init(string title, string workDir, string imgDir, std::string tm
   } catch (ofstream::failure e)
   { cout << "dbgStream::init() ERROR opening file \""<<scriptIncludesFName.str()<<"\" for writing!"; exit(-1); }
   
+  // Including jQuery, which is required by the trace widget and must be loaded before prototype.js, which is part of Canviz
+  // and is used by the graph and module widgets
+  dbg.includeWidgetScript("jquery-1.8.1.min.js", "text/javascript"); dbg.includeFile("jquery-1.8.1.min.js");
+  
   // This should be recorded in the structure log
   enterFileLevel(new block(title), true);
   
@@ -1496,7 +1500,7 @@ string dbgStream::enterBlock(block* b, bool newFileEntered, bool addSummaryEntry
 // Called to enter a mini-block between the start/end of a block and the definition of an attribute and between
 // adjacent attribute definitions
 string dbgStream::enterAttrSubBlock() {
-//!!!  dbg << "enterAttrSubBlock()"<<endl;
+  cout << "enterAttrSubBlock()"<<endl;
   // Only enter an attribute sub-block if we've already begun a block
   return enterBlock(new block(""), false, false, true);
 }
@@ -1506,7 +1510,7 @@ string dbgStream::enterAttrSubBlock() {
 //    the most recent setting of an attribute and the end of this block
 block* dbgStream::exitBlock(bool recursiveExitBlock)
 {
-  //!!!dbg << "<<<exitBlock("<<recursiveExitBlock<<") fileBufs.size()="<<fileBufs.size()<<" && #blocks="<<blocks.size()<<", #blocks.back().second="<<blocks.back().second.size()<<", #fileBufs.back()->blocks="<<(fileBufs.size()==0? -1: fileBufs.back()->blocks.size())<<endl;
+  //cout << "<<<exitBlock("<<recursiveExitBlock<<") fileBufs.size()="<<fileBufs.size()<<" && #blocks="<<blocks.size()<<", #blocks.back().second="<<blocks.back().second.size()<<", #fileBufs.back()->blocks="<<(fileBufs.size()==0? -1: fileBufs.back()->blocks.size())<<endl;
 /*  if(!recursiveExitBlock)
     exitAttrSubBlock();*/
   

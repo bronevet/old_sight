@@ -36,7 +36,8 @@ trace::trace(properties::iterator props) : block(properties::next(props)) {
     //dbg.includeScript("http://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.3.3/underscore-min.js", "text/javascript");
     //dbg.includeScript("http://d3js.org/d3.v2.js", "text/javascript");
     
-    dbg.includeWidgetScript("jquery-1.8.1.min.js", "text/javascript"); dbg.includeFile("jquery-1.8.1.min.js");
+    // JQuery must be loaded before prototype.js. Because we don't have a clean way to guaranteed this, we'll load jquery in sight_layout.C
+    //dbg.includeWidgetScript("jquery-1.8.1.min.js", "text/javascript"); dbg.includeFile("jquery-1.8.1.min.js");
     dbg.includeWidgetScript("underscore-min.js",   "text/javascript"); dbg.includeFile("underscore-min.js");
     
     dbg.includeWidgetScript("ID3-Decision-Tree/js/id3.js", "text/javascript");
@@ -64,6 +65,7 @@ trace::trace(properties::iterator props) : block(properties::next(props)) {
     //attributes.addObs(properties::get(props, txt()<<"ctxtAttr_"<<i), this);
   }
   active[traceID] = this;
+  cout << "New Trace "<<traceID<<", this="<<this<<", label="<<getLabel()<<endl;
   
   dbg.enterBlock(this, false, true);
   
@@ -72,6 +74,7 @@ trace::trace(properties::iterator props) : block(properties::next(props)) {
 }
 
 trace::~trace() {
+  cout << "trace::~trace() this="<<this<<", traceID="<<traceID<<endl;
   // If we should show the visualization at the end of the block
   if(showLoc == showEnd) showViz();
   
@@ -171,18 +174,22 @@ void trace::showViz() {
 // Record an observation
 void* trace::observe(properties::iterator props)
 {
+/*  cout << "trace::observe() props="<<properties::str(props)<<endl;
   long traceID = properties::getInt(props, "traceID");
   assert(active.find(traceID) != active.end());
   trace* t = active[traceID];
+  cout << "    t="<<t<<endl;
+  cout << "    #t->tracerKeys="<<t->tracerKeys.size()<<endl;
+  t->tracerKeys.insert("hi");
   
   long numTraceAttrs = properties::getInt(props, "numTraceAttrs");
   long numCtxtAttrs = properties::getInt(props, "numCtxtAttrs");
   
   // Update the tracer with the keys of this observation's traced values
   for(long i=0; i<numTraceAttrs; i++)
-    t->tracerKeys.insert(properties::get(props, txt()<<"tKey_"<<i));
+    t->tracerKeys.insert(properties::get(props, txt()<<"tKey_"<<i));*/
     
-  ostringstream cmd;
+/*  ostringstream cmd;
   cmd << "traceRecord(\""<<t->getLabel()<<"\", ";
   
   // Emit the observed values of tracer attributes
@@ -199,7 +206,7 @@ void* trace::observe(properties::iterator props)
   for(long i=0; i<numTraceAttrs; i++) {
     if(i!=0) cmd << ", ";
     string tKey = properties::get(props, txt()<<"tKey_"<<i);
-    anchor tAnchor(/*false,*/ properties::getInt(props, txt()<<"tAnchorID_"<<i));
+    anchor tAnchor(properties::getInt(props, txt()<<"tAnchorID_"<<i));
     cmd << "\""<< tKey << "\": \"" << (tAnchor==anchor::noAnchor? "": tAnchor.getLinkJS()) <<"\"";
   }
   cmd << "}, {";
@@ -213,7 +220,7 @@ void* trace::observe(properties::iterator props)
   }
   cmd << "}, \""<<viz2Str(t->viz)<<"\");";
   
-  dbg.widgetScriptCommand(cmd.str());
+  dbg.widgetScriptCommand(cmd.str());*/
   
   return NULL;
 }

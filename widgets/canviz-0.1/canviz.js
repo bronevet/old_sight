@@ -3,6 +3,8 @@
  * $Id: canviz.js 265 2009-05-19 13:35:13Z ryandesign.com $
  */
 
+var CanvizBoxID=0;
+
 var CanvizTokenizer = Class.create({
 	initialize: function(str) {
 		this.str = str;
@@ -136,27 +138,71 @@ var CanvizEntity = Class.create({
 							var rx = tokenizer.takeNumber();
 							var ry = tokenizer.takeNumber();
 							var path = new Ellipse(cx, cy, rx, ry);
+							
+							
+              /* // Create a div to surround the polygon
+          		var newDiv = new Element('div');
+          		newDiv.setAttribute("id", "CanvizBoxID"+CanvizBoxID); CanvizBoxID++;
+          		newDiv.style.position = "absolute";
+          		newDiv.style.borderColor = "#0000ff";
+          		newDiv.style.borderStyle = "solid";
+          		newDiv.style.left   = ctxScale*cx-rx  - this.canviz.padding;;
+          		newDiv.style.top    = ctxScale*cy-ry;
+          		newDiv.style.width  = ctxScale*rx*2;
+          		newDiv.style.height = ctxScale*ry*2;
+          		newDiv.zIndex = 100;
+          		this.canviz.elements.appendChild(newDiv);*/
+							
 							break;
 						case 'P': // filled polygon
 						case 'p': // unfilled polygon
 						case 'L': // polyline
 							var filled = ('P' == token);
 							var closed = ('L' != token);
+							
 							var numPoints = tokenizer.takeNumber();
-							tokens = tokenizer.takeNumber(2 * numPoints); // points
-							var path = new Path();
-							for (i = 2; i < 2 * numPoints; i += 2) {
-								path.addBezier([
-									new Point(tokens[i - 2], this.canviz.height - tokens[i - 1]),
-									new Point(tokens[i],     this.canviz.height - tokens[i + 1])
-								]);
-							}
-							if (closed) {
-								path.addBezier([
-									new Point(tokens[2 * numPoints - 2], this.canviz.height - tokens[2 * numPoints - 1]),
-									new Point(tokens[0],                  this.canviz.height - tokens[1])
-								]);
-							}
+  					  tokens = tokenizer.takeNumber(2 * numPoints); // points
+							
+							// If this polygon was marked to be replaced by a div
+							if(ctx.fillStyle.toUpperCase()=="#FF00FF" && ctx.strokeStyle.toUpperCase()=="#FF00FF") {
+							  // Compute the bounding box of this polygon
+  							var minX=this.canviz.width, minY=this.canviz.height, maxX=0, maxY=0;
+  							for (i = 0; i < 2 * numPoints; i += 2) {
+  							  minX = (tokens[i]  <minX? tokens[i]  : minX);
+  							  minY = (tokens[i+1]<minY? tokens[i+1]: minY);
+  							  maxX = (tokens[i]  >maxX? tokens[i]  : maxX);
+  							  maxY = (tokens[i+1]>maxY? tokens[i+1]: maxY);
+  							}
+							
+                // Create a div to surround the polygon
+            		var newDiv = new Element('div');
+            		newDiv.setAttribute("id", "CanvizBoxID"+CanvizBoxID); CanvizBoxID++;
+            		newDiv.style.position = "absolute";
+            		newDiv.style.backgroundColor = "#0000ff";
+            		newDiv.style.borderStyle = "solid";
+            		newDiv.style.left   = ctxScale*minX + this.canviz.padding-3;
+            		newDiv.style.top    = ctxScale*(this.canviz.height-maxY) + this.canviz.padding-2;
+            		newDiv.style.width  = ctxScale*(maxX - minX);
+            		newDiv.style.height = ctxScale*(this.canviz.height-minY - (this.canviz.height-maxY));
+            		newDiv.zIndex = 100;
+            		this.canviz.elements.appendChild(newDiv);
+          		
+          		// If this is a normal polygon
+          		} else if(ctx.fillStyle.toUpperCase()!="#FF00FF" && ctx.strokeStyle.toUpperCase()!="#FF00FF") {
+  							var path = new Path();
+  							for (i = 2; i < 2 * numPoints; i += 2) {
+  								path.addBezier([
+  									new Point(tokens[i - 2], this.canviz.height - tokens[i - 1]),
+  									new Point(tokens[i],     this.canviz.height - tokens[i + 1])
+  								]);
+  							}
+  							if (closed) {
+  								path.addBezier([
+  									new Point(tokens[2 * numPoints - 2], this.canviz.height - tokens[2 * numPoints - 1]),
+  									new Point(tokens[0],                  this.canviz.height - tokens[1])
+  								]);
+  							}
+  						}
 							break;
 						case 'B': // unfilled b-spline
 						case 'b': // filled b-spline

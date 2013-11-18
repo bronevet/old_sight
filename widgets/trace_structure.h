@@ -16,14 +16,44 @@
 namespace sight {
 namespace structure {
 
+class trace;
 void traceAttr(std::string label, std::string key, const attrValue& val);
 void traceAttr(std::string label, std::string key, const attrValue& val, anchor target);
+void traceAttr(trace* t,          std::string key, const attrValue& val);
+void traceAttr(trace* t,          std::string key, const attrValue& val, anchor target);
+void traceAttr(std::string label, 
+               const std::list<std::string>& ctxt, 
+               const std::list<std::pair<std::string, attrValue> >& obsList);
+void traceAttr(std::string label, 
+               const std::list<std::string>& ctxt, 
+               const std::list<std::pair<std::string, attrValue> >& obsList, 
+               const anchor& target);
+void traceAttr(trace* t, 
+               const std::list<std::string>& ctxt, 
+               const std::list<std::pair<std::string, attrValue> >& obsList);
+void traceAttr(trace* t, 
+               const std::list<std::string>& ctxt, 
+               const std::list<std::pair<std::string, attrValue> >& obsList, 
+               const anchor& target);
+// Syntactic sugar for specifying contexts
+typedef common::easylist<std::string> context;
+  
+// Syntactic sugar for specifying observations
+typedef common::easylist<std::pair<std::string, attrValue> > observation;
+
+// Syntactic sugar for specifying anchors to observation sites
+//typedef common::easylist<anchor> obsAnchors;
 
 class trace: public block, public attrObserver, public common::trace
 {
   friend void traceAttr(std::string label, std::string key, const attrValue& val);
   friend void traceAttr(std::string label, std::string key, const attrValue& val, anchor target);
-  
+  friend void traceAttr(trace* t,          std::string key, const attrValue& val);
+  friend void traceAttr(trace* t,          std::string key, const attrValue& val, anchor target);
+  friend void traceAttr(std::string label, const std::list<std::string>& ctxt, const std::list<std::pair<std::string, attrValue> >& obsList);
+  friend void traceAttr(std::string label, const std::list<std::string>& ctxt, const std::list<std::pair<std::string, attrValue> >& obsList, const anchor& target);
+  friend void traceAttr(trace* t,          const std::list<std::string>& ctxt, const std::list<std::pair<std::string, attrValue> >& obsList);
+  friend void traceAttr(trace* t,          const std::list<std::string>& ctxt, const std::list<std::pair<std::string, attrValue> >& obsList, const anchor& target);
   private:
   // Unique ID of this trace
   int traceID;
@@ -42,11 +72,11 @@ class trace: public block, public attrObserver, public common::trace
   public:
   trace(std::string label, const std::list<std::string>& contextAttrs, showLocT showLoc=showBegin, vizT viz=table, mergeT merge=disjMerge, properties* props=NULL);
   trace(std::string label, std::string contextAttr,                    showLocT showLoc=showBegin, vizT viz=table, mergeT merge=disjMerge, properties* props=NULL);
+  trace(std::string label,                                             showLocT showLoc=showBegin, vizT viz=table, mergeT merge=disjMerge, properties* props=NULL);
   
   private:
   // Sets the properties of this object
   static properties* setProperties(int traceID, showLocT showLoc, vizT viz, mergeT merge, const std::list<std::string>& contextAttrs, properties* props);
-  static properties* setProperties(int traceID, showLocT showLoc, vizT viz, mergeT merge, std::string contextAttr,                    properties* props);
   
   void init(std::string label, showLocT showLoc, vizT viz, mergeT merge);
   
@@ -59,7 +89,7 @@ class trace: public block, public attrObserver, public common::trace
   std::map<std::string, std::pair<attrValue, anchor> > obs;
     
   // The keys of all the tracer attributes ever observed
-  std::set<std::string> tracerKeys;
+  //std::set<std::string> tracerKeys;
   
   public:
   // Observe for changes to the values mapped to the given key
@@ -67,10 +97,18 @@ class trace: public block, public attrObserver, public common::trace
   
   // Called by traceAttr() to inform the trace that a new observation has been made
   void traceAttrObserved(std::string key, const attrValue& val, anchor target);
+    
+  // Records the full observation, including all the values of the context and observation values.
+  // This observation is emitted immediately regardless of the current state of other observations
+  // that have been recorded via traceAttrObserved.
+  void traceFullObservation(const std::list<std::string>& ctxt, 
+                            const std::list<std::pair<std::string, attrValue> >& obsList, 
+                            const anchor& target);
   
   private:
-  // Emits the JavaScript command that encodes the observations made since the last time a context attribute changed
-  void emitObservations();
+  // Emits the output record records the given context and observations pairing
+  void emitObservations(const std::list<std::string>& contextAttrs, 
+                        std::map<std::string, std::pair<attrValue, anchor> >& obs);
 }; // class trace
 
 // Basic API for measuring the elapsed counts of events.
@@ -79,6 +117,7 @@ class trace: public block, public attrObserver, public common::trace
 // Users who wish to get the measurement value back may perform the measurement manually by calling doMeasure().
 // The startMeasure()/endMeasure() API provides this direct access to measurement.
 class measure {
+  trace* t;
   std::string traceLabel;
   std::string valLabel;
   // Counts the total time elapsed so far, accounting for any pauses and resumes
@@ -92,10 +131,25 @@ class measure {
   // Records whether we've already performed the measure
   bool measureDone;
   
+  // Records whether the measurement will be a full measure, in the sense that when the measurement by itself
+  // represents all the information that will ever be recorded for a given context rather than trickle in 
+  // observation-by-observation.
+  bool fullMeasure;
+  // If we're doing a full measure, this is the context that will be used for this measurement
+  std::list<std::string> fullMeasureCtxt;
+  
   public:
+  // Non-full measure
   measure(std::string traceLabel, std::string valLabel);
+  measure(trace* t,               std::string valLabel);
+  // Full measure
+  measure(std::string traceLabel, std::string valLabel, const std::list<std::string>& fullMeasureCtxt);
+  measure(trace* t,               std::string valLabel, const std::list<std::string>& fullMeasureCtxt);
   ~measure();
  
+  // Common initialization code
+  void init();
+   
   // Pauses the measurement so that time elapsed between this call and resume() is not counted.
   // Returns true if the measure is not currently paused and false if it is (i.e. the pause command has no effect)
   bool pause();
@@ -107,7 +161,12 @@ class measure {
   double doMeasure();
 }; // class measure
 
+// Non-full measure
 measure* startMeasure(std::string traceLabel, std::string valLabel);
+measure* startMeasure(trace* t,               std::string valLabel);
+// Full measure
+measure* startMeasure(std::string traceLabel, std::string valLabel, const std::list<std::string>& fullMeasureCtxt);
+measure* startMeasure(trace* t,               std::string valLabel, const std::list<std::string>& fullMeasureCtxt);
 double endMeasure(measure* m);
 
 class TraceMerger : public BlockMerger {
@@ -182,7 +241,6 @@ class TraceStreamRecord: public streamRecord {
       
   std::string str(std::string indent="") const;
 }; // class TraceStreamRecord
-
 
 }; // namespace structure 
 }; // namespace sight

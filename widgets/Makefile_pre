@@ -1,9 +1,9 @@
-WIDGETS_COMMON_O := scope_common.o graph_common.o valSelector_common.o trace_common.o
-WIDGETS_COMMON_H := scope_common.h graph_common.h valSelector_common.h trace_common.h
-WIDGETS_STRUCTURE_O := scope_structure.o graph_structure.o valSelector_structure.o trace_structure.o
-WIDGETS_STRUCTURE_H := scope_structure.h graph_structure.h valSelector_structure.h trace_structure.h
-WIDGETS_LAYOUT_O := scope_layout.o graph_layout.o valSelector_layout.o trace_layout.o
-WIDGETS_LAYOUT_H := scope_layout.h graph_layout.h valSelector_layout.h trace_layout.h
+WIDGETS_COMMON_O := scope_common.o graph_common.o valSelector_common.o trace_common.o module_common.o
+WIDGETS_COMMON_H := scope_common.h graph_common.h valSelector_common.h trace_common.h module_common.h
+WIDGETS_STRUCTURE_O := scope_structure.o graph_structure.o valSelector_structure.o trace_structure.o module_structure.o
+WIDGETS_STRUCTURE_H := scope_structure.h graph_structure.h valSelector_structure.h trace_structure.h module_structure.h
+WIDGETS_LAYOUT_O := scope_layout.o graph_layout.o valSelector_layout.o trace_layout.o module_layout.o
+WIDGETS_LAYOUT_H := scope_layout.h graph_layout.h valSelector_layout.h trace_layout.h module_layout.h
 WIDGETS := ${WIDGETS_O} ${WIDGETS_H}
 
 all: ${WIDGETS_COMMON_O} ${WIDGETS_COMMON_H} ${WIDGETS_STRUCTURE_O} ${WIDGETS_STRUCTURE_H} ${WIDGETS_LAYOUT_O} ${WIDGETS_LAYOUT_H}  \
@@ -57,6 +57,18 @@ trace_layout.o: trace_layout.C trace_layout.h ../sight_layout.h
 	g++ ${SIGHT_CFLAGS} trace_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o trace_layout.o
 
 
+module_common.o: module_common.C module_common.h ../attributes_common.h ../sight_common.h
+	g++ ${SIGHT_CFLAGS} module_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o module_common.o
+
+module_structure.o: module_structure.C module_structure.h ../attributes_structure.h ../sight_structure.h
+	g++ ${SIGHT_CFLAGS} module_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o module_structure.o
+
+module_layout.o: module_layout.C module_layout.h ../attributes_layout.h ../sight_layout.h
+	g++ ${SIGHT_CFLAGS} module_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o module_layout.o
+
+
+
+
 ifneq (${OS}, Cygwin)
 xdotool:
 	rm -rf xdotool-2.20110530.1.tar.gz xdottool
@@ -92,28 +104,37 @@ endif
 
 mongoose/mongoose${EXE}:
 	rm -f mongoose-3.8.tgz
-	cd widgets; wget --no-check-certificate https://mongoose.googlecode.com/files/mongoose-3.8.tgz
-	cd widgets; tar -xf mongoose-3.8.tgz
-	cd widgets; rm mongoose-3.8.tgz
+	wget --no-check-certificate https://mongoose.googlecode.com/files/mongoose-3.8.tgz
+	tar -xf mongoose-3.8.tgz
+	rm mongoose-3.8.tgz
 	cd mongoose; ${MAKE} ${OS_MONGOOSE}
 
-graphviz/bin/dot${EXE}:
+graphviz/bin/dot${EXE}: expat
 ifeq (${OS},Cygwin)
 	rm -rf graphviz-2.32.zip release
-	cd widgets; wget http://www.graphviz.org/pub/graphviz/stable/windows/graphviz-2.32.zip
-	cd widgets; unzip graphviz-2.32.zip
+	wget http://www.graphviz.org/pub/graphviz/stable/windows/graphviz-2.32.zip
+	unzip graphviz-2.32.zip
 	mkdir graphviz
 	mv release/* graphviz
 	rm -r graphviz-2.32.zip release
 	chmod 755 graphviz/bin/*
 else
-	cd widgets; wget http://www.graphviz.org/pub/graphviz/stable/SOURCES/graphviz-2.32.0.tar.gz
-	cd widgets; tar -xf graphviz-2.32.0.tar.gz
-	cd graphviz-2.32.0; export CC=gcc; export CXX=g++; ./configure --prefix=${ROOT_PATH}/widgets/graphviz --disable-swig --disable-sharp --disable-go --disable-io --disable-java --disable-lua --disable-ocaml --disable-perl --disable-php --disable-python --disable-r --disable-ruby --disable-tcl --without-pic --without-efence --without-expat --without-devil --without-webp --without-poppler --without-ghostscript --without-visio --without-pangocairo --without-lasi --without-glitz --without-freetype2 --without-fontconfig --without-gdk-pixbuf --without-gtk --without-gtkgl --without-gtkglext --without-gts --without-glade --without-ming --without-qt --without-quartz --without-gdiplus --without-libgd --without-glut --without-sfdp --without-smyrna --without-ortho --without-digcola --without-ipsepcola --enable-static --disable-shared
+#	wget http://www.graphviz.org/pub/graphviz/stable/SOURCES/graphviz-2.32.0.tar.gz
+	tar -xf graphviz-2.32.0.tar.gz
+	cd graphviz-2.32.0; export CC=gcc; export CXX=g++; ./configure --prefix=${ROOT_PATH}/widgets/graphviz --disable-swig --disable-sharp --disable-go --disable-io --disable-java --disable-lua --disable-ocaml --disable-perl --disable-php --disable-python --disable-r --disable-ruby --disable-tcl --without-pic --without-efence --with-expat=yes --with-expatlibdir=${ROOT_PATH}/widgets/expat/lib --with-expatincludedir=${ROOT_PATH}/widgets/expat/include --without-devil --without-webp --without-poppler --without-ghostscript --without-visio --without-pangocairo --without-lasi --without-glitz --without-freetype2 --without-fontconfig --without-gdk-pixbuf --without-gtk --without-gtkgl --without-gtkglext --without-gts --without-glade --without-ming --without-qt --without-quartz --without-gdiplus --without-libgd --without-glut --without-sfdp --without-smyrna --without-ortho --without-digcola --without-ipsepcola --enable-static --disable-shared
 	cd graphviz-2.32.0; ${MAKE}
 	cd graphviz-2.32.0; ${MAKE} install
 	mv graphviz/bin/dot_static graphviz/bin/dot
-	rm -r graphviz-2.32.0 graphviz-2.32.0.tar.gz
+#	rm -r graphviz-2.32.0 graphviz-2.32.0.tar.gz
+endif
+
+expat:
+ifneq (${OS},Cygwin)
+	wget http://downloads.sourceforge.net/expat/expat-2.0.1.tar.gz
+	tar -xf expat-2.0.1.tar.gz 
+	cd expat-2.0.1; --prefix=${ROOT_PATH}/widgets/expat
+	cd expat-2.0.1; make; make install
+	rm -r widgets/expat-2.0.1
 endif
 
 ID3-Decision-Tree:

@@ -19,6 +19,17 @@ attrValue::attrValue() {
   type = unknownT;
 }
 
+attrValue::attrValue(const std::string& strV, attrValue::valueType type) : type(type) {
+  istringstream iss(strV);
+  switch(type) {
+    case strT:   store = (void*)(new string(strV));             break;
+    case ptrT:   store = new void*;   iss >> *((void**)store);  break;
+    case intT:   store = new long*;   iss >> *((long*)store);   break;
+    case floatT: store = new double*; iss >> *((double*)store); break;
+    default: assert(0);
+  }
+}
+
 attrValue::attrValue(const string& strV) {
   type  = strT;
   store = (void*)(new string(strV));
@@ -263,7 +274,8 @@ bool attributesC::replace(string key, double val)
 { return replace(key, attrValue(val)); }
 
 bool attributesC::replace(string key, const attrValue& val) {
-  bool modified = (m.find(key)==m.end());
+  bool modified = (m.find(key)==m.end()) || (m[key].find(val) == m[key].end());
+  cout << "attributesC::replace("<<key<<") modified="<<modified<<endl;
   if(modified) {
     notifyObsPre(key);
     m[key].clear();
@@ -356,6 +368,7 @@ void attributesC::remObs(std::string key, attrObserver* obs)
   if(o[key].find(obs) == o[key].end()) { cerr << "attributesC::remObs() ERROR: this observer not registered for key "<<key<<"!\n"; exit(-1); }
   assert(o[key][obs] > 0);
   
+  cout << "attributesC::remObs() key="<<key<<", obs="<<obs<<", o[key][obs]="<<o[key][obs]<<endl;
   if(o[key][obs]==1) {
     o[key].erase(obs);
     if(o[key].size()==0)
@@ -376,6 +389,7 @@ void attributesC::remObs(std::string key)
 
 // Notify all the observers of the given key before its mapping is changed (call attrObserver::observePre())
 void attributesC::notifyObsPre(std::string key) {
+  cout << "    attributesC::notifyObsPre("<<key<<") #o[key]="<<o[key].size()<<endl;
   for(map<attrObserver*, int>::iterator i=o[key].begin(); i!=o[key].end(); i++) {
     assert(i->second>0);
     i->first->observePre(key);

@@ -46,6 +46,7 @@ class attrValue {
   
   public:
   attrValue();
+  attrValue(const std::string& strV, attrValue::valueType type);
   attrValue(const std::string& strV);
   attrValue(char* strV);
   attrValue(void* ptrV);
