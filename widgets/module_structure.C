@@ -32,7 +32,7 @@ std::map<std::string, int> module::numModuleInputs;
 std::map<std::string, int> module::numModuleOutputs;
 
 // Maps each module name to the set of contexts in which it was executed
-std::map<std::string, std::set<context> > module::module2Ctxt;
+//std::map<std::string, std::set<context> > module::module2Ctxt;
 
 // Maps each context to the number of times it was ever observed
 std::map</*common::module::context*/string, int> module::ctxtCount;
@@ -41,7 +41,8 @@ std::map</*common::module::context*/string, int> module::ctxtCount;
 //std::map<common::module::context, trace*> module::ctxtTrace;
 
 // The trace that records performance observations of different modules and contexts
-trace* module::tr;
+//trace* module::tr;
+std::map<std::string, traceStream*> module::moduleTrace;
 
 // Records all the edges ever observed, mapping them to the number of times each edge was observed
 std::map<std::pair<common::module::port, common::module::port>, int> module::edges;
@@ -78,8 +79,8 @@ module::module(const context& c, const std::vector<port>& in, const attrOp& onof
 void module::init(const context& c, const std::vector<port>& in) {
   if(this->props->active) {
     // If this is the root module, create a trace to record observations for all the modules within it
-    if(mStack.size()==0)
-      tr = new trace(c.name, /*trace::context("Name", "Context"), */trace::showBegin, trace::table, trace::disjMerge);
+    //if(mStack.size()==0)
+    //  tr = new trace(c.name, /*trace::context("Name", "Context"), */trace::showBegin, trace::table, trace::disjMerge);
     
     mStack.push_back(this);
     
@@ -96,7 +97,7 @@ void module::init(const context& c, const std::vector<port>& in) {
     //instanceAttr = new attr(c.UID(), ctxtCount[c]);
     
     // Begin measuring this module instance
-    moduleMeasure = startMeasure(tr, "measure", trace::ctxtVals("Name", c.name, "Context", c.configStr()));
+    moduleMeasure = startMeasure(moduleTrace[c.name], "measure", trace::ctxtVals("Context", c.configStr()));
     
   } else {
     moduleMeasure = NULL;
@@ -155,6 +156,9 @@ module::~module()
     for(std::map<context, int>::iterator c=knownCtxt.begin(); c!=knownCtxt.end(); c++)
       cout << "    "<<c->first.UID()<<" ==> "<<c->second<<endl;
     */
+    for(map<string, traceStream*>::iterator m=moduleTrace.begin(); m!=moduleTrace.end(); m++) {
+      delete m->second;
+    }
     
     // Emit the information on all the known contexts
     for(std::map<string, int>::iterator c=knownCtxt.begin(); c!=knownCtxt.end(); c++) {
@@ -207,7 +211,7 @@ module::~module()
   
   if(props->active) {
     // If this is the root module
-    if(mStack.size()==1) {
+    /*if(mStack.size()==1) {
       // Emit a tag that records the ID of its associated trace. This must be done before the trace is 
       // deleted to make sure that when this ID is read by the layout layer the module can inform the
       // tracer of the divs where its trace visualizations must be placed.
@@ -220,7 +224,7 @@ module::~module()
       // Delete the module's associated trace
       delete(tr);
       tr = NULL;
-    }
+    }*/
     
     // Pop this module from the mStack
     assert(mStack.size()>0);
@@ -267,12 +271,24 @@ void module::addNode(const context& c, int nodeID) {
     // Create a trace for this module that is common to all instances of the module
     //ctxtTrace[c] = new trace(c.UID(), c.UID(), trace::showBegin, trace::table, trace::disjMerge);
     //ctxtTrace[c] = new trace(c.UID(), trace::showBegin, trace::boxplot, trace::disjMerge);
+    
+    traceStream* ts = new traceStream(trace::boxplot, trace::disjMerge);
+    moduleTrace[c.name] = ts;
+    
+    // Record the traceStream, along with the name of the module this steam is associated with
+    properties streamProps;
+    streamProps.add("module_traceStream", ts->getProperties());
+    map<string, string> pMap;
+    pMap["ModuleName"] = c.name;
+    pMap["nodeID"] = txt()<<nodeID;
+    streamProps.add("module_traceStream_name", pMap);
+    dbg.tag(streamProps);
   } else {
     ctxtCount[c.name]++;
     assert(numModuleInputs[c.name] == c.numInputs);
     assert(numModuleOutputs[c.name] = c.numOutputs);
   }
-  module2Ctxt[c.name].insert(c);
+  //module2Ctxt[c.name].insert(c);
 }
 
 // Removes a module node from consideration

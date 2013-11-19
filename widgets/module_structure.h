@@ -29,7 +29,7 @@ class module: public block, public common::module
   static std::map<std::string, int> numModuleInputs;
   static std::map<std::string, int> numModuleOutputs;
   // Maps each module name to the set of contexts in which it was executed
-  static std::map<std::string, std::set<context> > module2Ctxt;
+  //static std::map<std::string, std::set<context> > module2Ctxt;
   	
   // Maps each context to the number of times it was ever observed
   static std::map<std::string, int> ctxtCount;
@@ -38,7 +38,7 @@ class module: public block, public common::module
   //static std::map<context, trace*> ctxtTrace;
   
   // The trace that records performance observations of different modules and contexts
-  static trace* tr;
+  static std::map<std::string, traceStream*> moduleTrace;
   
   // Records all the edges ever observed, mapping them to the number of times each edge was observed
   static std::map<std::pair<port, port>, int> edges;

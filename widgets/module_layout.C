@@ -38,8 +38,10 @@ void  moduleExitHandler(void* obj) { module* m = static_cast<module*>(obj); dele
 moduleLayoutHandlerInstantiator::moduleLayoutHandlerInstantiator() { 
   (*layoutEnterHandlers)["module"]      = &moduleEnterHandler;
   (*layoutExitHandlers )["module"]      = &moduleExitHandler;
-  (*layoutEnterHandlers)["moduleTrace"] = &module::registerTraceID;
-  (*layoutExitHandlers )["moduleTrace"] = &defaultExitHandler;
+  //(*layoutEnterHandlers)["moduleTrace"] = &module::registerTraceID;
+  //(*layoutExitHandlers )["moduleTrace"] = &defaultExitHandler;
+  (*layoutEnterHandlers)["module_traceStream"] = &module::enterTraceStream;
+  (*layoutExitHandlers )["module_traceStream"] = &defaultExitHandler;
   (*layoutEnterHandlers)["moduleNode"]  = &module::addNode;
   (*layoutExitHandlers )["moduleNode"]  = &defaultExitHandler;
   (*layoutEnterHandlers)["moduleEdge"]  = &module::addEdge;
@@ -129,12 +131,30 @@ module::~module() {
 /*  #else
   dbg << "<b>graphviz not available</b>" << endl;
   #endif*/
-
+  
+  // Delete all the traceStreams associated with the given trace, which emits their output
+  for(map<string, traceStream*>::iterator m=moduleTraces.begin(); m!=moduleTraces.end(); m++)
+    delete m->second;
   
   // Remove the current graph from the stack
   assert(mStack.size()>0);
   assert(mStack.back()==this);
   mStack.pop_back();
+}
+
+void *module::enterTraceStream(properties::iterator props) {
+  properties::iterator nameProps = props; nameProps++;
+  assert(properties::name(nameProps) == "module_traceStream_name");
+  string moduleName = properties::get(nameProps, "ModuleName");
+  int nodeID = properties::getInt(nameProps, "nodeID");
+    
+  // Get the currently active trace that this traceStream belongs to
+  assert(mStack.size()>0);
+  module* m = mStack.back();
+  assert(m->moduleTraces.find(moduleName) == m->moduleTraces.end());
+  m->moduleTraces[moduleName] = new traceStream(props, txt()<<"CanvizBox_node"<<nodeID);
+  
+  return NULL;
 }
 
 string portName(const common::module::context& node, common::module::ioT type, int index) 
@@ -148,7 +168,7 @@ string portNameSuffix(common::module::ioT type, int index)
 
 
 
-// Registers the ID of the trace that is associated with the current module
+/* // Registers the ID of the trace that is associated with the current module
 void module::registerTraceID(int traceID) {
   // [{ctxt:{key0:..., val0:..., key1:..., val1:..., ...}, div:divID}, ...]
   std::list<std::pair<std::list<std::pair<std::string, std::string> >, std::string> > modules;
@@ -166,7 +186,7 @@ void* module::registerTraceID(properties::iterator props) {
   assert(mStack.size()>0);
   mStack.back()->registerTraceID(properties::getInt(props, "traceID")); 
   return NULL;
-}
+}*/
 
 // Add a a module node
 void module::addNode(/*context node, */string node, int numInputs, int numOutputs, int ID, int count/*, const set<string>& nodeContexts*/) {
@@ -213,7 +233,7 @@ void module::addNode(/*context node, */string node, int numInputs, int numOutput
   //if(numInputs + numOutputs > 0) dotFile << " COLSPAN=\""<<(numInputs>numOutputs? numInputs: numOutputs)<<"\"";
   dotFile << ">"<<node/*.str()*/<<"</TD></TR>"<<endl;
   
-  dotFile << "\t\t<TR><TD><TABLE><TR><TD BGCOLOR=\"#FF00FF\" COLOR=\"#FF00FF\" WIDTH=\"200\" HEIGHT=\"100\">Box</TD></TR></TABLE></TD></TR>"<<endl;
+  dotFile << "\t\t<TR><TD><TABLE><TR><TD BGCOLOR=\"#FF00FF\" COLOR=\"#FF00FF\" WIDTH=\"220\" HEIGHT=\"500\"></TD></TR></TABLE></TD></TR>"<<endl;
   // <IMG SRC=\"img/attrAnd.gif\" SCALE=\"WIDTH\"/>
   
   // Output ports

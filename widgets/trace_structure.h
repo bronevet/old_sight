@@ -23,42 +23,27 @@ void traceAttr(trace* t,          std::string key, const attrValue& val);
 void traceAttr(trace* t,          std::string key, const attrValue& val, anchor target);
 void traceAttr(std::string label, 
                const std::map<std::string, attrValue>& ctxt, 
-               const std::list<std::pair<std::string, attrValue> >& obsList);
-void traceAttr(std::string label, 
-               const std::map<std::string, attrValue>& ctxt, 
                const std::list<std::pair<std::string, attrValue> >& obsList, 
-               const anchor& target);
-void traceAttr(trace* t, 
-               const std::map<std::string, attrValue>& ctxt, 
-               const std::list<std::pair<std::string, attrValue> >& obsList);
+               const anchor& target=anchor::noAnchor);
 void traceAttr(trace* t, 
                const std::map<std::string, attrValue>& ctxt, 
                const std::list<std::pair<std::string, attrValue> >& obsList, 
-               const anchor& target);
+               const anchor& target=anchor::noAnchor);
 // Syntactic sugar for specifying anchors to observation sites
 //typedef common::easylist<anchor> obsAnchors;
 
-class trace: public block, public attrObserver, public common::trace
+// Traces are organized as a two-level hierarchy. The traceStream class performs all the work of collecting
+// trace data, emitting it to the output and laying the data out within some div in an HTML page. 
+// traceStreams are contained in classes that derive from block and denote a specific location in the output.
+// Such container point traceStream to the div in which it should render its results. The trace class is
+// one such container but other classes may serve as containers for one or more traceStreams to make it possible
+// for them to include data visualizations inside their other visualizations. One example, is the module
+// widget, which shows data visualizations inside dot graphs.
+
+class traceStream;
+
+class trace: public block, public common::trace
 {
-  friend void traceAttr(std::string label, std::string key, const attrValue& val);
-  friend void traceAttr(std::string label, std::string key, const attrValue& val, anchor target);
-  friend void traceAttr(trace* t,          std::string key, const attrValue& val);
-  friend void traceAttr(trace* t,          std::string key, const attrValue& val, anchor target);
-  friend void traceAttr(std::string label, 
-                 const std::map<std::string, attrValue>& ctxt, 
-                 const std::list<std::pair<std::string, attrValue> >& obsList);
-  friend void traceAttr(std::string label, 
-                 const std::map<std::string, attrValue>& ctxt, 
-                 const std::list<std::pair<std::string, attrValue> >& obsList, 
-                 const anchor& target);
-  friend void traceAttr(trace* t, 
-                 const std::map<std::string, attrValue>& ctxt, 
-                 const std::list<std::pair<std::string, attrValue> >& obsList);
-  friend void traceAttr(trace* t, 
-                 const std::map<std::string, attrValue>& ctxt, 
-                 const std::list<std::pair<std::string, attrValue> >& obsList, 
-                 const anchor& target);
-  
   public:
   // Syntactic sugar for specifying contexts
   typedef common::easylist<std::string> context;
@@ -70,42 +55,61 @@ class trace: public block, public attrObserver, public common::trace
   typedef common::easylist<std::pair<std::string, attrValue> > observation;
     
   private:
-  // Unique ID of this trace
-  int traceID;
+  traceStream* stream;
   
-  // Maximum ID assigned to any trace object
-  static int maxTraceID;
-    
   // Maps the names of all the currently active traces to their trace objects
   static std::map<std::string, trace*> active;
-  
-  // Names of attributes to be used as context when visualizing the values of trace observations
-  std::list<std::string> contextAttrs;
-    
-  mergeT merge;
   
   public:
   trace(std::string label, const std::list<std::string>& contextAttrs, showLocT showLoc=showBegin, vizT viz=table, mergeT merge=disjMerge, properties* props=NULL);
   trace(std::string label, std::string contextAttr,                    showLocT showLoc=showBegin, vizT viz=table, mergeT merge=disjMerge, properties* props=NULL);
   trace(std::string label,                                             showLocT showLoc=showBegin, vizT viz=table, mergeT merge=disjMerge, properties* props=NULL);
+  ~trace();
   
-  private:
   // Sets the properties of this object
-  static properties* setProperties(int traceID, showLocT showLoc, vizT viz, mergeT merge, const std::list<std::string>& contextAttrs, properties* props);
+  static properties* setProperties(showLocT showLoc, properties* props);
   
-  void init(std::string label, showLocT showLoc, vizT viz, mergeT merge);
+  void init(std::string label, const std::list<std::string>& contextAttrs, showLocT showLoc, vizT viz, mergeT merge);
+  
+  static trace*       getT (std::string label);
+  static traceStream* getTS(std::string label);
+  traceStream* getTS() const { return stream; }
+ }; // class trace
+
+class traceStream: public attrObserver, public common::trace
+{    
+  private:
+  // Unique ID of this trace
+  int traceID;
+  
+  // Maximum ID assigned to any trace object
+  static int maxTraceID;
+  
+  // Names of attributes to be used as context when visualizing the values of trace observations
+  std::list<std::string> contextAttrs;
+  
+  vizT viz;
+  mergeT merge;
   
   public:
-  ~trace();
+  traceStream(const std::list<std::string>& contextAttrs, vizT viz=table, mergeT merge=disjMerge);
+  traceStream(std::string contextAttr,                    vizT viz=table, mergeT merge=disjMerge);
+  traceStream(                                            vizT viz=table, mergeT merge=disjMerge);
+  
+  // Returns the properties of this object
+  std::map<std::string, std::string> getProperties();
+
+  private:  
+  void init();
+  
+  public:
+  ~traceStream();
   
   private:
   
   // Records all the observations of trace variables since the last time variables in contextAttrs changed values
   std::map<std::string, std::pair<attrValue, anchor> > obs;
     
-  // The keys of all the tracer attributes ever observed
-  //std::set<std::string> tracerKeys;
-  
   public:
   int getTraceID() const { return traceID; }
   
@@ -131,7 +135,7 @@ class trace: public block, public attrObserver, public common::trace
   // Emits the output record records the given context and observations pairing
   void emitObservations(const std::map<std::string, attrValue>& contextAttrsMap, 
                         std::map<std::string, std::pair<attrValue, anchor> >& obs);
-}; // class trace
+}; // class traceStream
 
 // Basic API for measuring the elapsed counts of events.
 // The measure class starts the measurement when instances of this class are constructed and stops when they are deconstructed.
@@ -139,8 +143,7 @@ class trace: public block, public attrObserver, public common::trace
 // Users who wish to get the measurement value back may perform the measurement manually by calling doMeasure().
 // The startMeasure()/endMeasure() API provides this direct access to measurement.
 class measure {
-  trace* t;
-  std::string traceLabel;
+  traceStream* ts;
   std::string valLabel;
   // Counts the total time elapsed so far, accounting for any pauses and resumes
   double elapsed;
@@ -164,9 +167,11 @@ class measure {
   // Non-full measure
   measure(std::string traceLabel, std::string valLabel);
   measure(trace* t,               std::string valLabel);
+  measure(traceStream* ts,        std::string valLabel);
   // Full measure
   measure(std::string traceLabel, std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt);
   measure(trace* t,               std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt);
+  measure(traceStream* ts,        std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt);
   ~measure();
  
   // Common initialization code
@@ -186,9 +191,11 @@ class measure {
 // Non-full measure
 measure* startMeasure(std::string traceLabel, std::string valLabel);
 measure* startMeasure(trace* t,               std::string valLabel);
+measure* startMeasure(traceStream* ts,        std::string valLabel);
 // Full measure
 measure* startMeasure(std::string traceLabel, std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt);
 measure* startMeasure(trace* t,               std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt);
+measure* startMeasure(traceStream* ts,        std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt);
 double endMeasure(measure* m);
 
 class TraceMerger : public BlockMerger {

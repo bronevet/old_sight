@@ -172,7 +172,7 @@ var displayTraceCalled = {};
 //    is not specified in splitCtxtHostDivs will be placed.
 // viz: name of the visualization type to be used
 // loc: location where the visualization will be shown relative to the trace: "showBegin" or "showEnd"
-function displayTrace(traceLabel, splitCtxtAttrs, projectCtxtAttrs, traceAttrs, hostDivID, splitCtxtHostDivs, viz, loc) {
+/*function displayTrace(traceLabel, splitCtxtAttrs, projectCtxtAttrs, traceAttrs, hostDivID, splitCtxtHostDivs, viz, loc) {
   var numSplitContextAttrs=0;
   for(i in splitCtxtAttrs)   { if(splitCtxtAttrs.hasOwnProperty(i))   { numSplitContextAttrs++; } }
   
@@ -226,11 +226,11 @@ function displayTrace(traceLabel, splitCtxtAttrs, projectCtxtAttrs, traceAttrs, 
       else    displayTraceProjection(traceLabel, dataList, hostDivID, projectCtxtAttrs, traceAttrs, viz, loc); 
       });
   }
-}
+}*/
 
-function displayTraceProjection(traceLabel, dataList, hostDivID, projectCtxtAttrs, traceAttrs, viz, loc) {
+function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, viz) {
   var numContextAttrs=0;
-  for(i in projectCtxtAttrs) { if(projectCtxtAttrs.hasOwnProperty(i)) { numContextAttrs++; } }
+  for(i in ctxtAttrs) { if(ctxtAttrs.hasOwnProperty(i)) { numContextAttrs++; } }
   
   var hostDiv = document.getElementById(hostDivID);
   
@@ -239,8 +239,8 @@ function displayTraceProjection(traceLabel, dataList, hostDivID, projectCtxtAttr
   
   if(viz == 'table') {
     var ctxtCols = [];
-    for(i in projectCtxtAttrs) { if(projectCtxtAttrs.hasOwnProperty(i)) {
-      ctxtCols.push({key:projectCtxtAttrs[i], label:projectCtxtAttrs[i], sortable:true});
+    for(i in ctxtAttrs) { if(ctxtAttrs.hasOwnProperty(i)) {
+      ctxtCols.push({key:ctxtAttrs[i], label:ctxtAttrs[i], sortable:true});
     } }
     
     var traceCols = [];
@@ -252,13 +252,17 @@ function displayTraceProjection(traceLabel, dataList, hostDivID, projectCtxtAttr
     if(numContextAttrs>0) columns.push({label:"Context", children:ctxtCols});
     columns.push({label:"Trace",   children:traceCols});
     
-    hostDiv.innerHTML += "<div class=\"example yui3-skin-sam\"><div id=\""+hostDivID+"-Table\"></div></div>";
+    hostDiv.innerHTML += "<div class=\"example yui3-skin-sam\" id=\""+hostDivID+"-Table\"></div>";
+    
+    var tgtDiv = document.getElementById(hostDivID+"-Table");
+    tgtDiv.innerHTML = "MARK!";
+    tgtDiv.style.width=1000;
     
     YUI().use("datatable-sort", function (Y) {
         // A table from data with keys that work fine as column names
         var traceTable = new Y.DataTable({
             columns: columns, 
-            data   : dataList,
+            data   : traceDataList[traceLabel],
             caption: traceLabel
         });
         
@@ -268,8 +272,8 @@ function displayTraceProjection(traceLabel, dataList, hostDivID, projectCtxtAttr
   } else if(viz == 'lines') {
     if(numContextAttrs!=1) { alert("Line visualizations require requre exactly one context variable for each chart"); return; }
     
-    hostDiv.innerHTML += projectCtxtAttrs[0] + "\n" +
-                         "<div id=\""+hostDivID+"_"+projectCtxtAttrs[0]+"\" style=\"height:300\"></div>\n";
+    hostDiv.innerHTML += ctxtAttrs[0] + "\n" +
+                         "<div id=\""+hostDivID+"_"+ctxtAttrs[0]+"\" style=\"height:300\"></div>\n";
     
     var minVal=1e100, maxVal=-1e100;
     for(i in traceAttrs) { if(traceAttrs.hasOwnProperty(i)) {
@@ -293,12 +297,12 @@ function displayTraceProjection(traceLabel, dataList, hostDivID, projectCtxtAttr
         // A table from data with keys that work fine as column names
         var traceChart = new Y.Chart({
             type: "line",
-            dataProvider: dataList,
-            categoryKey: projectCtxtAttrs[0],
+            dataProvider: traceDataList[traceLabel],
+            categoryKey: ctxtAttrs[0],
             seriesKeys: traceAttrs,
             axes:myAxes,
-            //render: "#div"+blockID+"_"+projectCtxtAttrs[0]
-            render: "#"+hostDivID+"_"+projectCtxtAttrs[0]
+            //render: "#div"+blockID+"_"+ctxtAttrs[0]
+            render: "#"+hostDivID+"_"+ctxtAttrs[0]
         });
       });
   } else if(viz == 'decTree') {
@@ -309,11 +313,11 @@ function displayTraceProjection(traceLabel, dataList, hostDivID, projectCtxtAttr
     
     
     //if(!displayTraceCalled.hasOwnProperty(traceLabel)) {
-    dataList = _(dataList);
-    var model = id3(dataList, traceAttrs[0], projectCtxtAttrs);
-    //alert(document.getElementById("div"+blockID).innerHTML)
+    traceDataList[traceLabel] = _(traceDataList[traceLabel]);
+    var model = id3(traceDataList[traceLabel], traceAttrs[0], ctxtAttrs);
+    //alert(document.getElementById(hostDivID).innerHTML)
     // Create a div in which to place this attribute's decision tree
-    //document.getElementById("div"+blockID).innerHTML += traceAttrs[0]+"<div id='div"+blockID+":"+traceAttrs[0]+"'></div>";
+    //document.getElementById(hostDivID).innerHTML += traceAttrs[0]+"<div id='div"+blockID+":"+traceAttrs[0]+"'></div>";
     drawGraph(model,hostDivID+"_"+traceAttrs[0]);
   } else if(viz == 'boxplot') {
     var margin = {top: 10, right: 50, bottom: 20, left: 50},
@@ -322,31 +326,31 @@ function displayTraceProjection(traceLabel, dataList, hostDivID, projectCtxtAttr
 
     var divsForBoxplot = "";
     if(numContextAttrs>0) {
-      for(c in projectCtxtAttrs) { if(projectCtxtAttrs.hasOwnProperty(c)) {
+      for(c in ctxtAttrs) { if(ctxtAttrs.hasOwnProperty(c)) {
       for(t in traceAttrs) {   if(traceAttrs.hasOwnProperty(t)) {
-        divsForBoxplot += "Context=" + projectCtxtAttrs[c] + ", Trace=" + traceAttrs[t] + "\n";
-        divsForBoxplot += "<div id=\"div" + blockID + "_" + projectCtxtAttrs[c] + "_" + traceAttrs[t] + "\"></div>\n";
+        divsForBoxplot += "Context=" + ctxtAttrs[c] + ", Trace=" + traceAttrs[t] + "\n";
+        divsForBoxplot += "<div id=\"" + hostDivID + "_" + ctxtAttrs[c] + "_" + traceAttrs[t] + "\"></div>\n";
       } } } }
     } else {
       for(t in traceAttrs) {   if(traceAttrs.hasOwnProperty(t)) {
         divsForBoxplot += "Trace=" + traceAttrs[t] + "\n";
-        divsForBoxplot += "<div id=\"div" + blockID + "_" + traceAttrs[t] + "\"></div>\n";
+        divsForBoxplot += "<div id=\"" + hostDivID + "_" + traceAttrs[t] + "\"></div>\n";
       } }
     }
     
-    if(loc == "showBegin")    document.getElementById("div"+blockID).innerHTML = divsForBoxplot + document.getElementById("div"+blockID).innerHTML;
-    else if(loc == "showEnd") document.getElementById("div"+blockID).innerHTML += divsForBoxplot;
+    /*if(loc == "showBegin")    */document.getElementById(hostDivID).innerHTML = divsForBoxplot + document.getElementById(hostDivID).innerHTML;
+    //else if(loc == "showEnd") document.getElementById(hostDivID).innerHTML += divsForBoxplot;
 
     if(numContextAttrs>0) {
-      for(c in projectCtxtAttrs) { if(projectCtxtAttrs.hasOwnProperty(c)) {
+      for(c in ctxtAttrs) { if(ctxtAttrs.hasOwnProperty(c)) {
       for(t in traceAttrs) {   if(traceAttrs.hasOwnProperty(t)) {
-        //showBoxPlot(traceDataList[traceID], "div"+blockID+"_"+projectCtxtAttrs[0]+"_"+traceAttrs[0], projectCtxtAttrs[0], traceAttrs[0], width, height, margin);
-        showBoxPlot(dataList, hostDivID+"-Boxplot-"+projectCtxtAttrs[c]+"_"+traceAttrs[t], projectCtxtAttrs[c], traceAttrs[t], width, height, margin);
+        //showBoxPlot(traceDataList[traceID], hostDivID+"_"+ctxtAttrs[0]+"_"+traceAttrs[0], ctxtAttrs[0], traceAttrs[0], width, height, margin);
+        showBoxPlot(traceDataList[traceLabel], hostDivID+"_"+ctxtAttrs[c]+"_"+traceAttrs[t], ctxtAttrs[c], traceAttrs[t], width, height, margin);
       } } } }
     } else {
       for(t in traceAttrs) {   if(traceAttrs.hasOwnProperty(t)) {
-        hostDiv.innerHTML += "<div id=\""+hostDivID+"-Boxplot-"+traceAttrs[t]+"></div>";
-        showBoxPlot(dataList, hostDivID+"-Boxplot-"+traceAttrs[t], "", traceAttrs[t], width, height, margin);
+        //hostDiv.innerHTML += "<div id=\""+hostDivID+"-Boxplot-"+traceAttrs[t]+"></div>";
+        showBoxPlot(traceDataList[traceLabel], hostDivID+"_"+traceAttrs[t], "", traceAttrs[t], width, height, margin);
       } }
     }
   } else if(viz == 'heatmap') {

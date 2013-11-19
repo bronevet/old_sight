@@ -6,80 +6,85 @@ using namespace sight::common;
 namespace sight {
 namespace structure {
 
-// Maximum ID assigned to any trace object
-int trace::maxTraceID=0;
+void traceAttr(std::string label, std::string key, const attrValue& val) {
+  // Inform the chosen tracer of the observation
+  trace::getTS(label)->traceAttrObserved(key, val, anchor::noAnchor);
+}
+
+void traceAttr(std::string label, std::string key, const attrValue& val, anchor target) {
+  // Inform the chosen tracer of the observation
+  trace::getTS(label)->traceAttrObserved(key, val, target);
+}
+
+void traceAttr(trace* t, std::string key, const attrValue& val) {
+  // Inform the chosen tracer of the observation
+  t->getTS()->traceAttrObserved(key, val, anchor::noAnchor);
+}
+
+void traceAttr(std::string label, 
+               const std::map<std::string, attrValue>& ctxt, 
+               const std::list<std::pair<std::string, attrValue> >& obsList, 
+               const anchor& target) {
+  // Inform the chosen tracer of the observation
+  trace::getTS(label)->traceFullObservation(ctxt, obsList, target);
+}
+
+void traceAttr(trace* t, 
+               const std::map<std::string, attrValue>& ctxt, 
+               const std::list<std::pair<std::string, attrValue> >& obsList, 
+               const anchor& target) {
+  // Inform the chosen tracer of the observation
+  t->getTS()->traceFullObservation(ctxt, obsList, target);
+}
+
+/*****************
+ ***** trace *****
+ *****************/
 
 // Maps the names of all the currently active traces to their trace objects
 std::map<std::string, trace*> trace::active;  
-  
+
 trace::trace(std::string label, const std::list<std::string>& contextAttrs, showLocT showLoc, vizT viz, mergeT merge, properties* props) : 
-  block(label, setProperties(maxTraceID, showLoc, viz, merge, contextAttrs, props)), contextAttrs(contextAttrs), merge(merge)
+  block(label, setProperties(showLoc, props))
 {
   if(contextAttrs.size()==0) { cerr << "trace::trace() ERROR: contextAttrs must be non-empty!"; exit(-1); }
   
-  init(label, showLoc, viz, merge);
+  init(label, contextAttrs, showLoc, viz, merge);
 }
 
 trace::trace(std::string label, std::string contextAttr, showLocT showLoc, vizT viz, mergeT merge, properties* props) : 
-  block(label, setProperties(maxTraceID, showLoc, viz, merge, context(contextAttr), props)), merge(merge)
+  block(label, setProperties(showLoc, props))
 {
-  contextAttrs.push_back(contextAttr);
-  
-  init(label, showLoc, viz, merge);
+  init(label, context(contextAttr), showLoc, viz, merge);
 }
 
 trace::trace(std::string label, showLocT showLoc, vizT viz, mergeT merge, properties* props) : 
-  block(label, setProperties(maxTraceID, showLoc, viz, merge, context(), props)), merge(merge)
+  block(label, setProperties(showLoc, props))
 {
-  init(label, showLoc, viz, merge);
+  init(label, context(), showLoc, viz, merge);
 }
 
 // Sets the properties of this object
-properties* trace::setProperties(int traceID, showLocT showLoc, vizT viz, mergeT merge, const std::list<std::string>& contextAttrs, properties* props) {
+properties* trace::setProperties(showLocT showLoc, properties* props) {
   if(props==NULL) props = new properties();
   
   map<string, string> newProps;
-  newProps["traceID"] = txt()<<traceID;
   newProps["showLoc"] = txt()<<showLoc;
-  newProps["viz"]     = txt()<<viz;
-  newProps["merge"]   = txt()<<merge;
-  
-  newProps["numCtxtAttrs"] = txt()<<contextAttrs.size();
-  
-  // Record the attributes this traces uses as context
-  int i=0;
-  for(list<string>::const_iterator ca=contextAttrs.begin(); ca!=contextAttrs.end(); ca++, i++)
-    newProps[txt()<<"ctxtAttr_"<<i] = *ca;
-  
   props->add("trace", newProps);
-  cout << "Emitting trace "<<traceID<<", props->active="<<props->active<<endl;
-  //dbg.enter("trace", properties, inheritedFrom);
   return props;
 }
 
-void trace::init(std::string label, showLocT showLoc, vizT viz, mergeT merge) {
+void trace::init(std::string label, const std::list<std::string>& contextAttrs, showLocT showLoc, vizT viz, mergeT merge) {
   cout << "trace::init() label="<<label<<", this="<<this<<endl;
-/*  map<string, string> properties;
-  properties["showLoc"] = common::showLoc2Str(showLoc);
-  properties["viz"] = common::viz2Str(viz);
   
-  properties["numCtxtAttrs"] = txt()<<contextAttrs.size();
-  
-  // Record the attributes this traces uses as context
-  int i=0;
-  for(list<string>::iterator ca=contextAttrs.begin(); ca!=contextAttrs.end(); ca++, i++)
-    properties[txt()<<"ctxtAttr_"<<i] = *ca;
-  
-  dbg.enter("trace", properties, inheritedFrom);*/
-  
-  traceID = maxTraceID;
-  maxTraceID++;
-  
-  // Add this trace object as a change listener to all the context variables
-  for(list<string>::iterator ca=contextAttrs.begin(); ca!=contextAttrs.end(); ca++)
-    attributes.addObs(*ca, this);
-  
+  // Record that this trace is active
   active[label] = this;
+  
+  // Create a stream for this trace and emit a tag that describes it
+  stream = new traceStream(contextAttrs, viz, merge);
+  properties streamProps;
+  streamProps.add("trace_traceStream", stream->getProperties());
+  dbg.tag(streamProps);
 }
 
 trace::~trace() {
@@ -88,28 +93,92 @@ trace::~trace() {
   assert(active.find(getLabel()) != active.end());
   active.erase(getLabel());
   
-  cout << "#active="<<active.size()<<", #contextAttrs="<<contextAttrs.size()<<endl;//", #tracerKeys="<<tracerKeys.size()<<endl;
+  assert(stream);
+  delete(stream);
+}
+
+trace* trace::getT(string label) {
+  map<string, trace*>::iterator t=active.find(label);
+  // Find the tracer with the name label
+  if(t == active.end()) cerr << "ERROR: trace \""<<label<<"\" not active!"<<endl; 
+  assert(t != trace::active.end());
+  return t->second;
+}
+
+traceStream* trace::getTS(string label) {
+  return getT(label)->stream;
+}
+
+/***********************
+ ***** traceStream *****
+ ***********************/
+
+// Maximum ID assigned to any trace object
+int traceStream::maxTraceID=0;
+  
+traceStream::traceStream(const std::list<std::string>& contextAttrs, vizT viz, mergeT merge) : 
+  contextAttrs(contextAttrs), viz(viz), merge(merge)
+{ init(); }
+
+traceStream::traceStream(std::string contextAttr, vizT viz, mergeT merge) : 
+  contextAttrs(structure::trace::context(contextAttr)), viz(viz), merge(merge)
+{ init(); }
+
+traceStream::traceStream(vizT viz, mergeT merge) : 
+  viz(viz), merge(merge)
+{ init(); }
+
+// Returns the properties of this object
+map<string, string> traceStream::getProperties() {
+  map<string, string> pMap;
+  pMap["traceID"] = txt()<<traceID;
+  pMap["viz"]     = txt()<<viz;
+  pMap["merge"]   = txt()<<merge;
+  
+  pMap["numCtxtAttrs"] = txt()<<contextAttrs.size();
+  
+  // Record the attributes this traces uses as context
+  int i=0;
+  for(list<string>::const_iterator ca=contextAttrs.begin(); ca!=contextAttrs.end(); ca++, i++)
+    pMap[txt()<<"ctxtAttr_"<<i] = *ca;
+  
+  //props->add("trace", pMap);
+  cout << "Emitting trace "<<traceID<<endl;
+  
+  return pMap;
+}
+
+void traceStream::init() {
+  traceID = maxTraceID;
+  maxTraceID++;
+  
+  // Add this trace object as a change listener to all the context variables
+  for(list<string>::iterator ca=contextAttrs.begin(); ca!=contextAttrs.end(); ca++)
+    attributes.addObs(*ca, this);
+  
+  //active[label] = this;
+}
+
+traceStream::~traceStream() {
+  //cout << "#active="<<active.size()<<", #contextAttrs="<<contextAttrs.size()<<endl;//", #tracerKeys="<<tracerKeys.size()<<endl;
   
   // Stop this object's observations of changes in context variables
   for(list<string>::iterator ca=contextAttrs.begin(); ca!=contextAttrs.end(); ca++) {
     cout << "    *ca="<<*ca<<endl;
     attributes.remObs(*ca, this);
   }
-  
-  /*for(set<string>::iterator t=tracerKeys.begin(); t!=tracerKeys.end(); t++)
-    cout << "t="<<*t<<endl;*/
 }
 
 // Observe for changes to the values mapped to the given key
-void trace::observePre(std::string key)
+void traceStream::observePre(std::string key)
 {
-  cout << "trace::observePre("<<key<<")"<<endl;
+  cout << "traceStream::observePre("<<key<<")"<<endl;
   // Emit any observations performed since the last change of any of the context variables
   emitObservations(contextAttrs, obs);
 }
 
 // Called by traceAttr() to inform the trace that a new observation has been made
-void trace::traceAttrObserved(std::string key, const attrValue& val, anchor target) {
+void traceStream::traceAttrObserved(std::string key, const attrValue& val, anchor target) {
   //cout << "trace::traceAttrObserved("<<key<<", "<<val.str()<<")"<<endl;
   obs[key] = make_pair(val, target);
   //tracerKeys.insert(key);
@@ -118,7 +187,7 @@ void trace::traceAttrObserved(std::string key, const attrValue& val, anchor targ
 // Records the full observation, including all the values of the context and observation values.
 // This observation is emitted immediately regardless of the current state of other observations
 // that have been recorded via traceAttrObserved.
-void trace::traceFullObservation(const std::map<std::string, attrValue>& contextAttrsMap, 
+void traceStream::traceFullObservation(const std::map<std::string, attrValue>& contextAttrsMap, 
                                  const std::list<std::pair<std::string, attrValue> >& obsList, 
                                  const anchor& target) {
   // Temporary observation map for just this observation
@@ -126,21 +195,21 @@ void trace::traceFullObservation(const std::map<std::string, attrValue>& context
   for(list<pair<string, attrValue> >::const_iterator o=obsList.begin(); o!=obsList.end(); o++)
     curObs[o->first] = make_pair(o->second, target);
 
-cout << "trace::traceFullObservation() #contextAttrsMap="<<contextAttrsMap.size()<<", #obsList="<<obsList.size()<<", #obs="<<obs.size()<<endl;  
+cout << "traceStream::traceFullObservation() #contextAttrsMap="<<contextAttrsMap.size()<<", #obsList="<<obsList.size()<<", #obs="<<obs.size()<<endl;  
   // Call emitObservations with the temporary context and observation records, which are separate from the
   // ones that are maintained by this trace and record multiple separate observations for the same context
   emitObservations(contextAttrsMap, curObs);
 }
 
 // Emits the output record records the given context and observations pairing
-void trace::emitObservations(const std::list<std::string>& contextAttrs, 
+void traceStream::emitObservations(const std::list<std::string>& contextAttrs, 
                              std::map<std::string, std::pair<attrValue, anchor> >& obs) {
   // Read out the current values of the context attributes and store them in a map
   std::map<std::string, attrValue> contextAttrsMap;
   for(std::list<std::string>::const_iterator a=contextAttrs.begin(); a!=contextAttrs.end(); a++) {
     const std::set<attrValue>& vals = attributes.get(*a);
     assert(vals.size()>0);
-    if(vals.size()>1) { cerr << "trace::traceAttr() ERROR: context attribute "<<*a<<" has multiple values!"; }
+    if(vals.size()>1) { cerr << "traceStream::traceAttr() ERROR: context attribute "<<*a<<" has multiple values!"; }
     contextAttrsMap[*a] = vals.begin()->getAsStr();
   }
   
@@ -148,143 +217,90 @@ void trace::emitObservations(const std::list<std::string>& contextAttrs,
 }
 
 // Emits the output record records the given context and observations pairing
-void trace::emitObservations(const std::map<std::string, attrValue>& contextAttrsMap, 
-                             std::map<std::string, std::pair<attrValue, anchor> >& obs) {
+void traceStream::emitObservations(const std::map<std::string, attrValue>& contextAttrsMap, 
+                                   std::map<std::string, std::pair<attrValue, anchor> >& obs) {
   // Only emit observations of the trace variables if we have made any observations since the last change in the context variables
   if(obs.size()==0) return;
     
-  sightObj *obj = new sightObj(new properties());
+  properties props;
+  map<string, string> pMap;
   
-  map<string, string> newProps;
-  
-  /* ??? Why look up the trace, why not use this?
-  assert(active.find(getLabel()) != active.end());
-  trace* t = active[getLabel()];*/
-  trace* t = this;
-  
-  newProps["traceID"] = txt()<<t->traceID;
+  pMap["traceID"] = txt()<<traceID;
   
   // If we'll keep observations from different streams disjoint, record this stream's ID in each observation
-  if(merge == disjMerge) newProps["outputStreamID"] = txt()<<outputStreamID;
+  if(merge == disjMerge) pMap["outputStreamID"] = txt()<<outputStreamID;
   
-  newProps["numTraceAttrs"] = txt()<<obs.size();
+  pMap["numTraceAttrs"] = txt()<<obs.size();
   // Emit the recently observed values and anchors of tracer attributes
   int i=0;
   for(map<string, pair<attrValue, anchor> >::const_iterator o=obs.begin(); o!=obs.end(); o++, i++) {
-    newProps[txt()<<"tKey_"<<i] = o->first;
-    newProps[txt()<<"tVal_"<<i] = o->second.first.getAsStr();
-    newProps[txt()<<"tAnchorID_"<<i] = txt()<<o->second.second.getID();
+    pMap[txt()<<"tKey_"<<i] = o->first;
+    pMap[txt()<<"tVal_"<<i] = o->second.first.getAsStr();
+    pMap[txt()<<"tAnchorID_"<<i] = txt()<<o->second.second.getID();
   }
   
   // Emit the current values of the context attributes
-  newProps["numCtxtAttrs"] = txt()<<contextAttrsMap.size();
+  pMap["numCtxtAttrs"] = txt()<<contextAttrsMap.size();
   i=0;
   for(std::map<std::string, attrValue>::const_iterator a=contextAttrsMap.begin(); a!=contextAttrsMap.end(); a++, i++) {
-    newProps[txt()<<"cKey_"<<i] = a->first;
-    newProps[txt()<<"cVal_"<<i] = a->second.getAsStr();
+    pMap[txt()<<"cKey_"<<i] = a->first;
+    pMap[txt()<<"cVal_"<<i] = a->second.getAsStr();
   }
   
-  obj->props->add("traceObs", newProps);
-  
-  //dbg.tag("traceObs", properties, false);
-  dbg.tag(obj);
-  
-  delete obj;
+  props.add("traceObs", pMap);
+  dbg.tag(props);
   
   // Reset the obs[] map since we've just emitted all these observations
   obs.clear();
 }
 
-void traceAttr(std::string label, std::string key, const attrValue& val) {
-  // Find the tracer with the name label
-  if(trace::active.find(label) == trace::active.end()) cerr << "traceAttr() ERROR: trace \""<<label<<"\" not active when observation \""<<key<<"\"=>\""<<val.str()<<"\" was observed!"<<endl; 
-  assert(trace::active.find(label) != trace::active.end());
-  trace* t = trace::active[label];
-  
-  // Inform the chosen tracer of the observation
-  t->traceAttrObserved(key, val, anchor::noAnchor);
-}
-
-void traceAttr(std::string label, std::string key, const attrValue& val, anchor target) {
-  // Find the tracer with the name label
-  if(trace::active.find(label) == trace::active.end()) cerr << "traceAttr() ERROR: trace \""<<label<<"\" not active when observation \""<<key<<"\"=>\""<<val.str()<<"\" was observed!"; 
-  assert(trace::active.find(label) != trace::active.end());
-  trace* t = trace::active[label];
-  
-  // Inform the chosen tracer of the observation
-  t->traceAttrObserved(key, val, target);
-}
-
-void traceAttr(trace* t, std::string key, const attrValue& val) {
-  // Inform the chosen tracer of the observation
-  t->traceAttrObserved(key, val, anchor::noAnchor);
-}
-
-void traceAttr(std::string label, 
-               const std::map<std::string, attrValue>& ctxt, 
-               const std::list<std::pair<std::string, attrValue> >& obsList) {
-  traceAttr(label, ctxt, obsList, anchor::noAnchor);
-}
-
-void traceAttr(std::string label, 
-               const std::map<std::string, attrValue>& ctxt, 
-               const std::list<std::pair<std::string, attrValue> >& obsList, 
-               const anchor& target) {
-  // Find the tracer with the name label
-  if(trace::active.find(label) == trace::active.end()) cerr << "traceAttr() ERROR: trace \""<<label<<"\" not active!"; 
-  assert(trace::active.find(label) != trace::active.end());
-  trace* t = trace::active[label];
-  
-  // Inform the chosen tracer of the observation
-  t->traceFullObservation(ctxt, obsList, target);
-}
-
-void traceAttr(trace* t, 
-               const std::map<std::string, attrValue>& ctxt, 
-               const std::list<std::pair<std::string, attrValue> >& obsList) {
-  // Inform the chosen tracer of the observation
-  t->traceFullObservation(ctxt, obsList, anchor::noAnchor);
-}
-
-void traceAttr(trace* t, 
-               const std::map<std::string, attrValue>& ctxt, 
-               const std::list<std::pair<std::string, attrValue> >& obsList, 
-               const anchor& target) {
-  // Inform the chosen tracer of the observation
-  t->traceFullObservation(ctxt, obsList, target);
-}
 
 /*******************
  ***** measure *****
  *******************/
  
 // Non-full measure
-measure::measure(std::string traceLabel, std::string valLabel): t(NULL), traceLabel(traceLabel), valLabel(valLabel)
+measure::measure(std::string traceLabel, std::string valLabel): ts(trace::getTS(traceLabel)), valLabel(valLabel)
 {
   fullMeasure = false;
   init();
 }
 
-measure::measure(trace* t,               std::string valLabel): t(t),    traceLabel(""),          valLabel(valLabel)
+measure::measure(trace* t,               std::string valLabel): ts(t->getTS()),               valLabel(valLabel)
 {
   fullMeasure = false;
   init();
 }
+
+measure::measure(traceStream* ts,        std::string valLabel): ts(ts),                       valLabel(valLabel)
+{
+  fullMeasure = false;
+  init();
+}
+
 
 // Full measure
 measure::measure(std::string traceLabel, std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt) :
-     t(NULL), traceLabel(traceLabel), valLabel(valLabel), fullMeasureCtxt(fullMeasureCtxt)
+     ts(trace::getTS(traceLabel)), fullMeasureCtxt(fullMeasureCtxt)
 {
   fullMeasure = true;
   init();
 }
 
 measure::measure(trace* t,               std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt) :
-     t(t), traceLabel(""), valLabel(valLabel), fullMeasureCtxt(fullMeasureCtxt)
+     ts(t->getTS()), valLabel(valLabel), fullMeasureCtxt(fullMeasureCtxt)
 {
   fullMeasure = true;
   init();
 }
+
+measure::measure(traceStream* ts,        std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt) :
+     ts(ts), valLabel(valLabel), fullMeasureCtxt(fullMeasureCtxt)
+{
+  fullMeasure = true;
+  init();
+}
+
 
 measure::~measure() {
   if(!measureDone) doMeasure();
@@ -300,20 +316,18 @@ void measure::init() {
 }
 
 double measure::doMeasure() {
-  if(measureDone) { cerr << "measure::doMeasure() ERROR: measuring variable \""<<valLabel<<"\" in trace \""<<traceLabel<<"\" multiple times!"<<endl; exit(-1); }
+  if(measureDone) { cerr << "measure::doMeasure() ERROR: measuring variable \""<<valLabel<<"\" multiple times!"<<endl; exit(-1); }
   measureDone = true;
  
   // Call pause() to update elapsed with the time since the start of the measure or the last call to resume() 
   pause(); 
   
+  assert(ts);
   //cout << "measure::doMeasure() fullMeasure="<<fullMeasure<<endl;
-  if(fullMeasure) {
-    if(t) traceAttr(t,          fullMeasureCtxt, trace::observation(make_pair(valLabel, attrValue((double)elapsed))));
-    else  traceAttr(traceLabel, fullMeasureCtxt, trace::observation(make_pair(valLabel, attrValue((double)elapsed))));
-  } else {
-    if(t) traceAttr(t,          valLabel, attrValue((double)elapsed));
-    else  traceAttr(traceLabel, valLabel, attrValue((double)elapsed));
-  }
+  if(fullMeasure)
+    ts->traceFullObservation(fullMeasureCtxt, trace::observation(make_pair(valLabel, attrValue((double)elapsed))), anchor::noAnchor);
+  else
+    ts->traceAttrObserved(valLabel, attrValue((double)elapsed), anchor::noAnchor);
   return elapsed;
 }
 
@@ -347,12 +361,20 @@ measure* startMeasure(trace* t,               std::string valLabel) {
   return new measure(t, valLabel);
 }
 
+measure* startMeasure(traceStream* ts,        std::string valLabel) {
+  return new measure(ts, valLabel);
+}
+
 measure* startMeasure(std::string traceLabel, std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt) {
   return new measure(traceLabel, valLabel, fullMeasureCtxt);
 }
 
 measure* startMeasure(trace* t,               std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt) {
   return new measure(t, valLabel, fullMeasureCtxt);
+}
+
+measure* startMeasure(traceStream* ts,        std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt) {
+  return new measure(ts, valLabel, fullMeasureCtxt);
 }
 
 double endMeasure(measure* m) {

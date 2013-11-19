@@ -46,6 +46,9 @@ class module: public block, public common::module
   // Stack of the modules that are currently in scope
   static std::list<module*> mStack;
   
+  // Maps each module name to the trace that holds the observations performed within it
+  std::map<std::string, traceStream*> moduleTraces;
+  
   // The dot file that will hold the representation of the module interaction graph
   std::ofstream dotFile;
   
@@ -58,12 +61,14 @@ class module: public block, public common::module
   // the JavaScript files that are included as well as the directories that are available.
   static void initEnvironment();
   
+  static void *enterTraceStream(properties::iterator props);
+  
   // Registers the ID of the trace that is associated with the current module
-  void registerTraceID(int traceID);
-  static void* registerTraceID(properties::iterator props);
+  //void registerTraceID(int traceID);
+  //static void* registerTraceID(properties::iterator props);
   
   // Add a node to the modules graph
-  void addNode(/*common::module::context*/std::string node, int numInputs, int numOutputs, int ID, int count, const set<string>& nodeContexts);
+  void addNode(/*common::module::context*/std::string node, int numInputs, int numOutputs, int ID, int count/*, const std::set<std::string>& nodeContexts*/);
   static void* addNode(properties::iterator props);
   
   // Add a directed edge from the location of the from anchor to the location of the to anchor
