@@ -188,7 +188,7 @@ var CanvizEntity = Class.create({
             		this.canviz.elements.appendChild(newDiv);
           		
           		// If this is a normal polygon
-          		} else if(ctx.fillStyle.toUpperCase()!="#FF00FF" && ctx.strokeStyle.toUpperCase()!="#FF00FF") {
+          		} else { //if(ctx.fillStyle.toUpperCase()!="#FF00FF" && ctx.strokeStyle.toUpperCase()!="#FF00FF") {
   							var path = new Path();
   							for (i = 2; i < 2 * numPoints; i += 2) {
   								path.addBezier([

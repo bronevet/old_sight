@@ -81,7 +81,7 @@ attrValue::attrValue(const attrValue& that) {
   else if(type == unknownT) { }
   else {
     cerr << "attrValue::attrValue() ERROR: invalid value type "<<type<<"!"<<endl;
-    exit(-1);
+    assert(0);
   }
 }
 
@@ -92,7 +92,7 @@ attrValue::~attrValue() {
   else if(type == intT)   delete (long*)store;
   else if(type == floatT) delete (double*)store;
   else if(type != unknownT)
-  { cerr << "attrValue::~attrValue() ERROR: invalid value type "<<type<<"!"<<endl; exit(-1); }
+  { cerr << "attrValue::~attrValue() ERROR: invalid value type "<<type<<"!"<<endl; assert(0); }
 }
 
 
@@ -145,7 +145,7 @@ attrValue& attrValue::operator=(const attrValue& that) {
   else if(type == unknownT) { }
   else {
     cerr << "attrValue::operator=() ERROR: invalid value type "<<type<<"!"<<endl;
-    exit(-1);
+    assert(0);
   }
 }
 
@@ -156,25 +156,25 @@ attrValue::valueType attrValue::getType() const
 // Return the contents of this attrValue, aborting if there is a type incompatibility
 std::string attrValue::getStr() const {
   if(type == strT) return *((string*)store);
-  cerr << "attrValue::getStr() ERROR: value type is "<<type<<"!"<<endl; exit(-1);
+  cerr << "attrValue::getStr() ERROR: value type is "<<type<<"!"<<endl; assert(0);
 }
 
 // Return the contents of this attrValue, aborting if there is a type incompatibility
 void*       attrValue::getPtr() const {
   if(type == ptrT) return *((void**)store);
-  cerr << "attrValue::getPtr() ERROR: value type is "<<type<<"!"<<endl; exit(-1);
+  cerr << "attrValue::getPtr() ERROR: value type is "<<type<<"!"<<endl; assert(0);
 }
 
 // Return the contents of this attrValue, aborting if there is a type incompatibility
 long        attrValue::getInt() const {
   if(type == intT) return *((long*)store);
-  cerr << "attrValue::getInt() ERROR: value type is "<<type<<"!"<<endl; exit(-1);
+  cerr << "attrValue::getInt() ERROR: value type is "<<type<<"!"<<endl; assert(0);
 }
 
 // Return the contents of this attrValue, aborting if there is a type incompatibility
 double      attrValue::getFloat() const {
   if(type == floatT) return *((double*)store);
-  cerr << "attrValue::getFloat() ERROR: value type is "<<type<<"!"<<endl; exit(-1);
+  cerr << "attrValue::getFloat() ERROR: value type is "<<type<<"!"<<endl; assert(0);
 }
 
 // Encodes the contents of this attrValue into a string and returns the result.
@@ -187,7 +187,7 @@ std::string attrValue::getAsStr() const {
     else if(type == floatT) oss << *((double*)store);
     else  {
       cerr << "attrValue::str() ERROR: unknown attribute value type: "<<type<<"!"<<endl;
-      exit(-1);
+      assert(0);
     }
     return oss.str();
   }
@@ -201,7 +201,7 @@ bool attrValue::operator==(const attrValue& that) const {
     else if(type == floatT) return *((double*)store) == *((double*)that.store);
     else {
       cerr << "attrValue::operator== ERROR: invalid value type "<<type<<"!"<<endl;
-      exit(-1);
+      assert(0);
     }
   } else
     return false;
@@ -215,7 +215,7 @@ bool attrValue::operator<(const attrValue& that) const {
     else if(type == floatT) return *((double*)store) < *((double*)that.store);
     else {
       cerr << "attrValue::operator< ERROR: invalid value type "<<type<<"!"<<endl;
-      exit(-1);
+      assert(0);
     }
   } else {\
     // All instances of each type are < or > all instances of other types, in some canonical order
@@ -283,7 +283,7 @@ bool attributesC::replace(string key, const attrValue& val) {
     notifyObsPost(key);
   } else if(m[key].size() == 0) {
     cerr << "attributesC::replace() ERROR: key "<<key<<" is mapped to an empty set of values!"<<endl;
-    exit(-1);
+    assert(0);
   }
   
   return modified;
@@ -300,12 +300,12 @@ const set<attrValue>& attributesC::get(std::string key) const {
   if(i != m.end()) {
     if(i->second.size() == 0) {
       cerr << "attributesC::get() ERROR: key "<<key<<" is mapped to an empty set of values!"<<endl;
-      exit(-1);
+      assert(0);
     }
     return i->second;
   } else {
     cerr << "attributesC::get() ERROR: key "<<key<<" is not mapped to any value!"<<endl;
-    exit(-1);
+    assert(0);
   }
 }
 
@@ -363,9 +363,9 @@ void attributesC::addObs(std::string key, attrObserver* obs)
 // Remove a given observer from the given key
 void attributesC::remObs(std::string key, attrObserver* obs)
 {
-  if(o.find(key) == o.end()) { cerr << "attributesC::remObs() ERROR: no observers for key "<<key<<"!\n"; exit(-1); }
+  if(o.find(key) == o.end()) { cerr << "attributesC::remObs() ERROR: no observers for key "<<key<<"!\n"; assert(0); }
   assert(o[key].size() > 0);
-  if(o[key].find(obs) == o[key].end()) { cerr << "attributesC::remObs() ERROR: this observer not registered for key "<<key<<"!\n"; exit(-1); }
+  if(o[key].find(obs) == o[key].end()) { cerr << "attributesC::remObs() ERROR: this observer not registered for key "<<key<<"!\n"; assert(0); }
   assert(o[key][obs] > 0);
   
   cout << "attributesC::remObs() key="<<key<<", obs="<<obs<<", o[key][obs]="<<o[key][obs]<<endl;
@@ -380,7 +380,7 @@ void attributesC::remObs(std::string key, attrObserver* obs)
 // Remove all observers from a given key
 void attributesC::remObs(std::string key)
 {
-  if(o.find(key) == o.end()) { cerr << "attributesC::remObs() ERROR: no observers for key "<<key<<"!\n"; exit(-1); }  
+  if(o.find(key) == o.end()) { cerr << "attributesC::remObs() ERROR: no observers for key "<<key<<"!\n"; assert(0); }  
   assert(o[key].size() > 0);
   
   o[key].clear();

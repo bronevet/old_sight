@@ -153,30 +153,124 @@ function getDataHash(dataHash, contextVals) {
 }
 
 var displayTraceCalled = {};
-// loc = "showBegin" or "showEnd"
-function displayTrace(traceLabel, blockID, contextAttrs, traceAttrs, viz, loc) {
+// traceLabel: the string label of the trace that needs to be displayed.
+// We provide to ways to organize information based on the values of context attributes: split and project, each 
+//       of which apply to a subset of the context attributes.
+//   Split: We split the observations according to the values of the context attributes and 
+//   show the subset of observations that share the same values of the context attributes separately.
+//   Project: We show all the data as a function of the context attributes.
+//   We ignore the differences among the remaining attributes. Thus, if we have attributes a0, a1, a2, where
+//   a0 is split and a1 is projected, we break up the observations according to the values that a0 took on in
+//   each observation. Within each such split we plot all the observations as a function of their value for the
+//   a1 attribute and do not differentiate according to the value of the a2 attribute.
+// splitCtxtAttrs, projectCtxtAttrs: Lists of attribute names to treat according to each organization policy.
+// splitCtxtHostDivs: list of hashes that map each combination of keys in splitCtxtAttrs and their values to the 
+//    ID of the div where their visualization will be displayed in format:
+//    [{ctxt:{key0:..., val0:..., key1:..., val1:..., ...}, div:divID}, ...]
+// traceAttrs: The names of the trace attributes, the observed values of which are displayed.
+// hostDivID: ID of the div where the visualizations for each combination of values of the split context keys that
+//    is not specified in splitCtxtHostDivs will be placed.
+// viz: name of the visualization type to be used
+// loc: location where the visualization will be shown relative to the trace: "showBegin" or "showEnd"
+function displayTrace(traceLabel, splitCtxtAttrs, projectCtxtAttrs, traceAttrs, hostDivID, splitCtxtHostDivs, viz, loc) {
+  var numSplitContextAttrs=0;
+  for(i in splitCtxtAttrs)   { if(splitCtxtAttrs.hasOwnProperty(i))   { numSplitContextAttrs++; } }
+  
+  // If no split was requested, show all the data in hostDivID
+  if(numSplitContextAttrs==0)
+    displayTraceProjection(traceLabel, traceDataList[traceLabel], hostDivID, projectCtxtAttrs, traceAttrs, viz, loc); 
+  else {
+    // Hash that maps the keys in splitCtxtAttrs to true for faster membership lookups
+    var splitCtxtAttrsHash = {};
+    for(k in splitCtxtAttrs) { if(splitCtxtAttrs.hasOwnProperty(k)) {
+      splitCtxtAttrsHash[k] = true;
+    } }
+    
+    // Multi-level hashtable that maps the various observed combinations of values for the split context keys
+    // to just the observations that have these values for these keys
+    var splitTDL = new HTNode();
+    for(i in traceDataList[traceLabel]) { if(traceDataList[traceLabel].hasOwnProperty(i)) {
+      // Records the values of the split context keys for observation i
+      var splitCtxtKeyVals = {};
+      for(k in traceDataList[traceLabel][i]) { if(traceDataList[traceLabel][i].hasOwnProperty(k)) {
+        // If this key is a member of splitCtxtAttrs, record its value in splitCtxtKeyVals
+        splitCtxtKeyVals[k] = traceDataList[traceLabel][i][k];
+      } }
+      
+      // Convert splitCtxtKeyVals into an array of values for keys in splitCtxtAttrs, sorted in the same order 
+      // as the keys in splitCtxtAttrs
+      var splitValsArray = [];
+      for(k in splitCtxtAttrs) { if(splitCtxtAttrs.hasOwnProperty(k)) {
+        splitCtxtAttrs.push(splitCtxtKeyVals[k]);
+      } }
+      
+      // Add the current observation to the sublist dedicated to observations with the same values for the split context keys
+      splitTDL = pushHash(splitTDL, splitValsArray, "obs", traceDataList[traceLabel][i]);
+    } }
+    
+    // Turn splitCtxtHostDivs into a hashtable with the values of the split context as keys
+    var splitDivs = new HTNode();
+    for(i in splitCtxtHostDivs) { if(splitCtxtHostDivs.hasOwnProperty(i)) {
+      var splitValsArray = [];
+      for(k in splitCtxtAttrs) { if(splitCtxtAttrs.hasOwnProperty(k)) {
+        splitCtxtAttrs.push(splitCtxtHostDivs[i]["ctxt"][k]);
+      } }
+      splitDivs = recordHash(splitDivs, splitValsArray, "div", splitCtxtHostDivs[i]["div"]);
+    } }
+    
+    // Iterate over all the observed combinations of split attribute key/value pairs, showing each sub-trace
+    // within its requested div
+    mapHash(splitTDL, function(splitCtxtAttrVals, rKey, dataList, indent) {
+      var div = getHash(splitDivs, splitCtxtAttrVals, "div");
+      if(div) displayTraceProjection(traceLabel, dataList, div, projectCtxtAttrs, traceAttrs, viz, loc); 
+      else    displayTraceProjection(traceLabel, dataList, hostDivID, projectCtxtAttrs, traceAttrs, viz, loc); 
+      });
+  }
+}
+
+function displayTraceProjection(traceLabel, dataList, hostDivID, projectCtxtAttrs, traceAttrs, viz, loc) {
+  var numContextAttrs=0;
+  for(i in projectCtxtAttrs) { if(projectCtxtAttrs.hasOwnProperty(i)) { numContextAttrs++; } }
+  
+  var hostDiv = document.getElementById(hostDivID);
+  
+  // Create a version of traceList[traceLabel] where observations with different values for the context keys
+  // in splitCtxtAttrs is placed in separate lists
+  
   if(viz == 'table') {
     var ctxtCols = [];
-    for(i in contextAttrs) { if(contextAttrs.hasOwnProperty(i)) {
-      ctxtCols.push({key:contextAttrs[i], label:contextAttrs[i], sortable:true});
+    for(i in projectCtxtAttrs) { if(projectCtxtAttrs.hasOwnProperty(i)) {
+      ctxtCols.push({key:projectCtxtAttrs[i], label:projectCtxtAttrs[i], sortable:true});
     } }
     
     var traceCols = [];
     for(i in traceAttrs) { if(traceAttrs.hasOwnProperty(i)) {
       traceCols.push({key:traceAttrs[i], label:traceAttrs[i], sortable:true});
     } }
+    
+    var columns = [];
+    if(numContextAttrs>0) columns.push({label:"Context", children:ctxtCols});
+    columns.push({label:"Trace",   children:traceCols});
+    
+    hostDiv.innerHTML += "<div class=\"example yui3-skin-sam\"><div id=\""+hostDivID+"-Table\"></div></div>";
+    
     YUI().use("datatable-sort", function (Y) {
         // A table from data with keys that work fine as column names
         var traceTable = new Y.DataTable({
-            columns: [ {label:"Context", children:ctxtCols},
-                       {label:"Trace",   children:traceCols} ],
-            data   : traceDataList[traceLabel],
+            columns: columns, 
+            data   : dataList,
             caption: traceLabel
         });
         
-        traceTable.render("#div"+blockID);
+        //traceTable.render("#div"+blockID);
+        traceTable.render("#"+hostDivID+"-Table");
       });
   } else if(viz == 'lines') {
+    if(numContextAttrs!=1) { alert("Line visualizations require requre exactly one context variable for each chart"); return; }
+    
+    hostDiv.innerHTML += projectCtxtAttrs[0] + "\n" +
+                         "<div id=\""+hostDivID+"_"+projectCtxtAttrs[0]+"\" style=\"height:300\"></div>\n";
+    
     var minVal=1e100, maxVal=-1e100;
     for(i in traceAttrs) { if(traceAttrs.hasOwnProperty(i)) {
         if(minVal>minData[traceAttrs[i]]) 
@@ -199,41 +293,67 @@ function displayTrace(traceLabel, blockID, contextAttrs, traceAttrs, viz, loc) {
         // A table from data with keys that work fine as column names
         var traceChart = new Y.Chart({
             type: "line",
-            dataProvider: traceDataList[traceLabel],
-            categoryKey: contextAttrs[0],
+            dataProvider: dataList,
+            categoryKey: projectCtxtAttrs[0],
             seriesKeys: traceAttrs,
             axes:myAxes,
-            render: "#div"+blockID+"_"+contextAttrs[0]
+            //render: "#div"+blockID+"_"+projectCtxtAttrs[0]
+            render: "#"+hostDivID+"_"+projectCtxtAttrs[0]
         });
       });
   } else if(viz == 'decTree') {
+    if(numContextAttrs==0) { alert("Decision Tree visualizations require one or more context variables"); return; }
+    
+    hostDiv.innerHTML += traceAttrs[0] + "\n" +
+                         "<div id=\""+hostDivID+"_"+traceAttrs[0]+"\" style=\"height:300\"></div>\n";
+    
+    
     //if(!displayTraceCalled.hasOwnProperty(traceLabel)) {
-    traceDataList[traceLabel] = _(traceDataList[traceLabel]);
-    var model = id3(traceDataList[traceLabel], traceAttrs[0], contextAttrs);
+    dataList = _(dataList);
+    var model = id3(dataList, traceAttrs[0], projectCtxtAttrs);
     //alert(document.getElementById("div"+blockID).innerHTML)
     // Create a div in which to place this attribute's decision tree
     //document.getElementById("div"+blockID).innerHTML += traceAttrs[0]+"<div id='div"+blockID+":"+traceAttrs[0]+"'></div>";
-    drawGraph(model,"div"+blockID+"_"+traceAttrs[0]);
+    drawGraph(model,hostDivID+"_"+traceAttrs[0]);
   } else if(viz == 'boxplot') {
     var margin = {top: 10, right: 50, bottom: 20, left: 50},
         width = 120 - margin.left - margin.right,
         height = 500 - margin.top - margin.bottom;
 
     var divsForBoxplot = "";
-    for(c in contextAttrs) { if(contexteAttrs.hasOwnProperty(c)) {
-    for(t in traceAttrs) {   if(traceAttrs.hasOwnProperty(t)) {
-      divsForBoxplot += "Context=" + contextAttrs[c] + ", Trace=" + traceAttrs[t] + "\n";
-      divsForBoxplot += "<div id=\"div" + blockID + "_" + contextAttrs[c] + "_" + traceAttrs[t] + "\"></div>\n";
-    } } } }
+    if(numContextAttrs>0) {
+      for(c in projectCtxtAttrs) { if(projectCtxtAttrs.hasOwnProperty(c)) {
+      for(t in traceAttrs) {   if(traceAttrs.hasOwnProperty(t)) {
+        divsForBoxplot += "Context=" + projectCtxtAttrs[c] + ", Trace=" + traceAttrs[t] + "\n";
+        divsForBoxplot += "<div id=\"div" + blockID + "_" + projectCtxtAttrs[c] + "_" + traceAttrs[t] + "\"></div>\n";
+      } } } }
+    } else {
+      for(t in traceAttrs) {   if(traceAttrs.hasOwnProperty(t)) {
+        divsForBoxplot += "Trace=" + traceAttrs[t] + "\n";
+        divsForBoxplot += "<div id=\"div" + blockID + "_" + traceAttrs[t] + "\"></div>\n";
+      } }
+    }
+    
     if(loc == "showBegin")    document.getElementById("div"+blockID).innerHTML = divsForBoxplot + document.getElementById("div"+blockID).innerHTML;
     else if(loc == "showEnd") document.getElementById("div"+blockID).innerHTML += divsForBoxplot;
 
-    for(c in contextAttrs) { if(contextAttrs.hasOwnProperty(c)) {
-    for(t in traceAttrs) {   if(traceAttrs.hasOwnProperty(t)) {
-      //showBoxPlot(traceDataList[traceID], "div"+blockID+"_"+contextAttrs[0]+"_"+traceAttrs[0], contextAttrs[0], traceAttrs[0], width, height, margin);
-      showBoxPlot(traceDataList[traceLabel], "div"+blockID+"_"+contextAttrs[c]+"_"+traceAttrs[t], contextAttrs[c], traceAttrs[t], width, height, margin);
-    } } } }
+    if(numContextAttrs>0) {
+      for(c in projectCtxtAttrs) { if(projectCtxtAttrs.hasOwnProperty(c)) {
+      for(t in traceAttrs) {   if(traceAttrs.hasOwnProperty(t)) {
+        //showBoxPlot(traceDataList[traceID], "div"+blockID+"_"+projectCtxtAttrs[0]+"_"+traceAttrs[0], projectCtxtAttrs[0], traceAttrs[0], width, height, margin);
+        showBoxPlot(dataList, hostDivID+"-Boxplot-"+projectCtxtAttrs[c]+"_"+traceAttrs[t], projectCtxtAttrs[c], traceAttrs[t], width, height, margin);
+      } } } }
+    } else {
+      for(t in traceAttrs) {   if(traceAttrs.hasOwnProperty(t)) {
+        hostDiv.innerHTML += "<div id=\""+hostDivID+"-Boxplot-"+traceAttrs[t]+"></div>";
+        showBoxPlot(dataList, hostDivID+"-Boxplot-"+traceAttrs[t], "", traceAttrs[t], width, height, margin);
+      } }
+    }
   } else if(viz == 'heatmap') {
+    if(numContextAttrs!=2) { alert("Heatmap visualizations require exactly two context variables"); return; }
+    
+    hostDiv.innerHTML += "<div id=\""+hostDivID+"-Heatmap\"></div>";
+    
     /* // Array of keys of the context variables. Only the first two are used.
     var ctxtKeys = [];
     for(ctxtKey in allCtxtVals) { if(allCtxtVals.hasOwnProperty(ctxtKey)) {
@@ -297,7 +417,7 @@ function displayTrace(traceLabel, blockID, contextAttrs, traceAttrs, viz, loc) {
     var titleGap=5;
     
     var container = 
-           d3.select("#div"+blockID).selectAll("svg")
+           d3.select("#"+hostDivID+"-Heatmap").selectAll("svg")
                   .data(data)
                 .enter()
                 .append("svg")

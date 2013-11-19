@@ -60,10 +60,19 @@ trace::trace(properties::iterator props) : block(properties::next(props)) {
   
   // Add this trace object as a change listener to all the context variables
   long numCtxtAttrs = properties::getInt(props, "numCtxtAttrs");
-  for(long i=0; i<numCtxtAttrs; i++) {
-    contextAttrs.push_back(properties::get(props, txt()<<"ctxtAttr_"<<i));
-    //attributes.addObs(properties::get(props, txt()<<"ctxtAttr_"<<i), this);
-  }
+  if(numCtxtAttrs > 0) {
+    for(long i=0; i<numCtxtAttrs; i++) {
+      string ctxtName = properties::get(props, txt()<<"ctxtAttr_"<<i);
+      contextAttrs.push_back(ctxtName);
+      // Context attributes cannot be repeated
+      assert(contextAttrsSet.find(ctxtName) == contextAttrsSet.end());
+      contextAttrsSet.insert(ctxtName);
+      //attributes.addObs(properties::get(props, txt()<<"ctxtAttr_"<<i), this);
+    }
+    contextAttrsInitialized = true;
+  } else
+    contextAttrsInitialized = false;
+  
   active[traceID] = this;
   cout << "New Trace "<<traceID<<", this="<<this<<", label="<<getLabel()<<endl;
   
@@ -73,54 +82,69 @@ trace::trace(properties::iterator props) : block(properties::next(props)) {
   if(showLoc == showBegin) showViz();
 }
 
+// Returns the representation of the given list as a JavaScript array
+template<class aggr>
+string JSArray(const aggr& l) {
+  ostringstream s;
+  s << "[";
+  for(typename aggr::const_iterator a=l.begin(); a!=l.end(); a++) {
+    if(a!=l.begin()) s << ", ";
+    s << "'"<<*a<<"'";
+  }
+  s << "]";
+  return s.str();
+}
+
 trace::~trace() {
   cout << "trace::~trace() this="<<this<<", traceID="<<traceID<<endl;
   // If we should show the visualization at the end of the block
   if(showLoc == showEnd) showViz();
   
+  string splitCtxtStr = JSArray<list<string> >(splitContextAttrs);
+  
   // String that contains the names of all the context attributes 
-  ostringstream contextAttrsStr;
-  if(viz==table || viz==decTree || viz==heatmap || viz==boxplot) {
-    contextAttrsStr << "[";
-    for(std::list<std::string>::iterator a=contextAttrs.begin(); a!=contextAttrs.end(); a++) {
-      if(a!=contextAttrs.begin()) contextAttrsStr << ", ";
-      contextAttrsStr << "'"<<*a<<"'";
-    }
-    contextAttrsStr << "]";
-  }
+  string projectCtxtStr;
+  if(viz==table || viz==decTree || viz==heatmap || viz==boxplot)
+    projectCtxtStr = JSArray<list<string> >(projectContextAttrs);
   
   // String that contains the names of all the trace attributes
-  ostringstream tracerAttrsStr;
-  if(viz==table || viz==lines || viz==heatmap || viz==boxplot) {
-    tracerAttrsStr << "[";
-    for(set<string>::iterator a=tracerKeys.begin(); a!=tracerKeys.end(); a++) {
-      if(a!=tracerKeys.begin()) tracerAttrsStr << ", ";
-      tracerAttrsStr << "'"<<*a<<"'";
-    }
-    tracerAttrsStr << "]";
-  }
+  string tracerAttrsStr;
+  if(viz==table || viz==lines || viz==heatmap || viz==boxplot)
+    tracerAttrsStr = JSArray<set<string> >(tracerKeys);
+  
+  string tgtBlockID = getBlockID();
   
   // Now that we know all the trace variables that are included in this trace, emit the trace
   if(viz==table || viz==heatmap) {
     //dbg.widgetScriptPrologCommand(txt()<<"loadGoogleAPI();");
     ostringstream cmd; 
-    cmd<<"displayTrace('"<<getLabel()<<"', '"<<tgtBlockID<<"-"<<(viz==table?"Table": (viz==heatmap?"Heatmap": "???"))<<"', "<<
-                       contextAttrsStr.str()<<", " << 
-                       tracerAttrsStr.str()<<", "<<  
+    cmd<<"displayTrace('"<<getLabel()<<"', "<<
+                       splitCtxtStr<<", "<<
+                       projectCtxtStr<<", " << 
+                       tracerAttrsStr<<", "<<  
+                       "'div"<<tgtBlockID<<"', undefined, "<<
                        "'"<<viz2Str(viz)<<"', "<<
                        "'"<<showLoc2Str(showLoc)<<"');";
     dbg.widgetScriptEpilogCommand(cmd.str());
   } else if(viz==lines) {
-    // Create a separate decision tree for each context attribute
-    for(std::list<std::string>::iterator c=contextAttrs.begin(); c!=contextAttrs.end(); c++) {
-      dbg.widgetScriptEpilogCommand(txt()<<"displayTrace('"<<getLabel()<<"', '"<<tgtBlockID<<"', ['"<<*c<<"'], "<<tracerAttrsStr.str()<<", "<<
+    // Create a separate line graph for each context attribute
+    for(std::list<std::string>::iterator c=projectContextAttrs.begin(); c!=projectContextAttrs.end(); c++) {
+      dbg.widgetScriptEpilogCommand(txt()<<"displayTrace('"<<getLabel()<<"', "<<
+                                    splitCtxtStr<<", "<<
+                                    "['"<<*c<<"'], "<<
+                                    tracerAttrsStr<<", "<<
+                                    "'div"<<tgtBlockID<<"', undefined, "<<
                                     "'"<<viz2Str(viz)<<"', "<<
                                     "'"<<showLoc2Str(showLoc)<<"');");
     }
   } else if(viz==decTree) {
     // Create a separate decision tree for each tracer attribute
     for(set<string>::iterator t=tracerKeys.begin(); t!=tracerKeys.end(); t++) {
-      dbg.widgetScriptEpilogCommand(txt()<<"displayTrace('"<<getLabel()<<"', '"<<tgtBlockID<<"', "<<contextAttrsStr.str()<<", ['"<<*t<<"'], "<<
+      dbg.widgetScriptEpilogCommand(txt()<<"displayTrace('"<<getLabel()<<"', "<<
+                                    splitCtxtStr<<", "<<
+                                    projectCtxtStr<<", "<<
+                                    "['"<<*t<<"'], "<<
+                                    "'div"<<tgtBlockID<<"', undefined, "<<
                                     "'"<<viz2Str(viz)<<"', "<<
                                     "'"<<showLoc2Str(showLoc)<<"');");
     }
@@ -130,9 +154,11 @@ trace::~trace() {
     for(set<string>::iterator t=tracerKeys.begin(); t!=tracerKeys.end(); t++) {
       dbg.widgetScriptEpilogCommand(txt()<<"displayTrace('"<<getLabel()<<"', '"<<tgtBlockID<<"', ['"<<*c<<"'], ['"<<*t<<"'], '"<<viz2Str(viz)<<"');");
     } }*/
-    dbg.widgetScriptEpilogCommand(txt()<<"displayTrace('"<<getLabel()<<"', '"<<tgtBlockID<<"', "<<
-                                  contextAttrsStr.str()<<", "<<
-                                  tracerAttrsStr.str()<<", "<<
+    dbg.widgetScriptEpilogCommand(txt()<<"displayTrace('"<<getLabel()<<"', "<<
+                                  splitCtxtStr<<", "<<
+                                  projectCtxtStr<<", "<<
+                                  tracerAttrsStr<<", "<<
+                                  "'div"<<tgtBlockID<<"', undefined, "<<
                                   "'"<<viz2Str(viz)<<"', "<<
                                   "'"<<showLoc2Str(showLoc)<<"');");
   }
@@ -151,45 +177,92 @@ trace::~trace() {
 
 // Place the code to show the visualization
 void trace::showViz() {
-  tgtBlockID = getBlockID();
+  /*tgtBlockID = getBlockID();
   if(viz==table) {
-    dbg << "<div class=\"example yui3-skin-sam\"><div id=\"div"<<tgtBlockID<<"-Table\"></div></div>";
+    dbg << "<div class=\"example yui3-skin-sam\"><div id=\"'div"<<tgtBlockID<<"'-Table\"></div></div>";
   } else if(viz==lines) {
     // Create a separate line graph for each context attribute
     for(std::list<std::string>::iterator c=contextAttrs.begin(); c!=contextAttrs.end(); c++) {
       dbg << *c << endl;
-      dbg << "<div id=\"div"<<tgtBlockID<<"_"<<*c<<"\" style=\"height:300\"></div>\n";
+      dbg << "<div id=\"'div"<<tgtBlockID<<"'_"<<*c<<"\" style=\"height:300\"></div>\n";
     }
   } else if(viz==decTree) {
     // Create a separate decision tree for each tracer attribute
     for(set<string>::iterator t=tracerKeys.begin(); t!=tracerKeys.end(); t++) {
       dbg << *t << endl;
-      dbg << "<div id=\"div"<<tgtBlockID<<"_"<<*t<<"\"></div>\n";
+      dbg << "<div id=\"'div"<<tgtBlockID<<"'_"<<*t<<"\"></div>\n";
     }
   } else if(viz==heatmap) {
-    dbg << "<div id=\"div"<<tgtBlockID<<"-Heatmap\"></div>";
+    dbg << "<div id=\"'div"<<tgtBlockID<<"'-Heatmap\"></div>";
+  }*/
+}
+
+void module::setSplitCtxtHostDivs(const std::list<std::pair<std::list<std::pair<std::string, std::string> >, std::string> >& splitCtxtHostDivs)
+{ 
+  this->splitCtxtHostDivs = splitCtxtHostDivs;
+  
+  // Move all the attribute names in splitCtxtHostDivs from projectContextAttrs to splitContextAttrs
+  for(list<pair<list<pair<string, string> >, string> >::iterator i=splitCtxtHostDivs.begin(); 
+      i!=splitCtxtHostDivs.end(); i++) {
+    if(i==splitCtxtHostDivs.begin()) {
+      for(list<pair<string, string> >::iterator j=i->first.begin(); j!=i->first.end(); j++) {
+        // Move the current key from projectContextAttrs to splitContextAttrs
+        projectContextAttrs.remove(j->first);
+        splitContextAttrs.push_back(j->first);
+      }
+    } else {
+      assert(i->first.size() == projectContextAttrs.size());
+      list<string>::iterator p=projectContextAttrs;
+      for(list<pair<string, string> >::iterator j=i->first.begin(); j!=i->first.end(); j++, p++)
+      { assert(j->first == *p); }
+    }
   }
 }
 
 // Record an observation
 void* trace::observe(properties::iterator props)
 {
-/*  cout << "trace::observe() props="<<properties::str(props)<<endl;
+  //cout << "trace::observe() props="<<properties::str(props)<<endl;
   long traceID = properties::getInt(props, "traceID");
   assert(active.find(traceID) != active.end());
   trace* t = active[traceID];
-  cout << "    t="<<t<<endl;
-  cout << "    #t->tracerKeys="<<t->tracerKeys.size()<<endl;
-  t->tracerKeys.insert("hi");
+  //cout << "    t="<<t<<endl;
+  //cout << "    #t->tracerKeys="<<t->tracerKeys.size()<<endl;
   
   long numTraceAttrs = properties::getInt(props, "numTraceAttrs");
   long numCtxtAttrs = properties::getInt(props, "numCtxtAttrs");
+    
+  // Read all the context attributes. If contextAttrs is empty, it is filled with the context attributes of 
+  // this observation. Otherwise, we verify that this observation's context is identical to prior observations.
+  
+/*  // If this trace has no explicit context attributes
+  if(numCtxtAttrs==0) {
+    if(t->contextAttrsInitialized) assert(t->contextAttrs.size() == 1);
+    // Add a single attribute that contains the instance ID*/
+
+  if(t->contextAttrsInitialized) assert(t->contextAttrs.size() == numCtxtAttrs);
+  for(long i=0; i<numCtxtAttrs; i++) {
+    string ctxtName = properties::get(props, txt()<<"cKey_"<<i);
+    if(!t->contextAttrsInitialized) {
+      t->contextAttrs.push_back(ctxtName);
+      // Context attributes cannot be repeated
+      assert(t->contextAttrsSet.find(ctxtName) == t->contextAttrsSet.end());
+      t->contextAttrsSet.insert(ctxtName);
+    } else
+      assert(t->contextAttrsSet.find(ctxtName) != t->contextAttrsSet.end());
+  }
+  if(!t->contextAttrsInitialized) {
+    // Initialize so that we project on all the context attributes. This can be adjusted on request.
+    t->projectContextAttrs = t->contextAttrs;
+    // The context attributes of this trace are now definitely initialized
+    t->contextAttrsInitialized = true;
+  }
   
   // Update the tracer with the keys of this observation's traced values
   for(long i=0; i<numTraceAttrs; i++)
-    t->tracerKeys.insert(properties::get(props, txt()<<"tKey_"<<i));*/
+    t->tracerKeys.insert(properties::get(props, txt()<<"tKey_"<<i));
     
-/*  ostringstream cmd;
+  ostringstream cmd;
   cmd << "traceRecord(\""<<t->getLabel()<<"\", ";
   
   // Emit the observed values of tracer attributes
@@ -220,9 +293,16 @@ void* trace::observe(properties::iterator props)
   }
   cmd << "}, \""<<viz2Str(t->viz)<<"\");";
   
-  dbg.widgetScriptCommand(cmd.str());*/
+  dbg.widgetScriptCommand(cmd.str());
   
   return NULL;
+}
+
+// Given a traceID returns a pointer to the corresponding trace object
+trace* trace::getTrace(int traceID) {
+  std::map<int, trace*>::iterator it = active.find(traceID);
+  assert(it != active.end());
+  return it->second;
 }
 
 }; // namespace layout

@@ -22,25 +22,19 @@ void traceAttr(std::string label, std::string key, const attrValue& val, anchor 
 void traceAttr(trace* t,          std::string key, const attrValue& val);
 void traceAttr(trace* t,          std::string key, const attrValue& val, anchor target);
 void traceAttr(std::string label, 
-               const std::list<std::string>& ctxt, 
+               const std::map<std::string, attrValue>& ctxt, 
                const std::list<std::pair<std::string, attrValue> >& obsList);
 void traceAttr(std::string label, 
-               const std::list<std::string>& ctxt, 
+               const std::map<std::string, attrValue>& ctxt, 
                const std::list<std::pair<std::string, attrValue> >& obsList, 
                const anchor& target);
 void traceAttr(trace* t, 
-               const std::list<std::string>& ctxt, 
+               const std::map<std::string, attrValue>& ctxt, 
                const std::list<std::pair<std::string, attrValue> >& obsList);
 void traceAttr(trace* t, 
-               const std::list<std::string>& ctxt, 
+               const std::map<std::string, attrValue>& ctxt, 
                const std::list<std::pair<std::string, attrValue> >& obsList, 
                const anchor& target);
-// Syntactic sugar for specifying contexts
-typedef common::easylist<std::string> context;
-  
-// Syntactic sugar for specifying observations
-typedef common::easylist<std::pair<std::string, attrValue> > observation;
-
 // Syntactic sugar for specifying anchors to observation sites
 //typedef common::easylist<anchor> obsAnchors;
 
@@ -50,10 +44,31 @@ class trace: public block, public attrObserver, public common::trace
   friend void traceAttr(std::string label, std::string key, const attrValue& val, anchor target);
   friend void traceAttr(trace* t,          std::string key, const attrValue& val);
   friend void traceAttr(trace* t,          std::string key, const attrValue& val, anchor target);
-  friend void traceAttr(std::string label, const std::list<std::string>& ctxt, const std::list<std::pair<std::string, attrValue> >& obsList);
-  friend void traceAttr(std::string label, const std::list<std::string>& ctxt, const std::list<std::pair<std::string, attrValue> >& obsList, const anchor& target);
-  friend void traceAttr(trace* t,          const std::list<std::string>& ctxt, const std::list<std::pair<std::string, attrValue> >& obsList);
-  friend void traceAttr(trace* t,          const std::list<std::string>& ctxt, const std::list<std::pair<std::string, attrValue> >& obsList, const anchor& target);
+  friend void traceAttr(std::string label, 
+                 const std::map<std::string, attrValue>& ctxt, 
+                 const std::list<std::pair<std::string, attrValue> >& obsList);
+  friend void traceAttr(std::string label, 
+                 const std::map<std::string, attrValue>& ctxt, 
+                 const std::list<std::pair<std::string, attrValue> >& obsList, 
+                 const anchor& target);
+  friend void traceAttr(trace* t, 
+                 const std::map<std::string, attrValue>& ctxt, 
+                 const std::list<std::pair<std::string, attrValue> >& obsList);
+  friend void traceAttr(trace* t, 
+                 const std::map<std::string, attrValue>& ctxt, 
+                 const std::list<std::pair<std::string, attrValue> >& obsList, 
+                 const anchor& target);
+  
+  public:
+  // Syntactic sugar for specifying contexts
+  typedef common::easylist<std::string> context;
+  
+  // Syntactix sugar for specifying context name=>value mappings
+  typedef common::easymap<std::string, attrValue> ctxtVals;
+  
+  // Syntactic sugar for specifying observations
+  typedef common::easylist<std::pair<std::string, attrValue> > observation;
+    
   private:
   // Unique ID of this trace
   int traceID;
@@ -92,6 +107,8 @@ class trace: public block, public attrObserver, public common::trace
   //std::set<std::string> tracerKeys;
   
   public:
+  int getTraceID() const { return traceID; }
+  
   // Observe for changes to the values mapped to the given key
   void observePre(std::string key);
   
@@ -101,13 +118,18 @@ class trace: public block, public attrObserver, public common::trace
   // Records the full observation, including all the values of the context and observation values.
   // This observation is emitted immediately regardless of the current state of other observations
   // that have been recorded via traceAttrObserved.
-  void traceFullObservation(const std::list<std::string>& ctxt, 
+  void traceFullObservation(const std::map<std::string, attrValue>& contextAttrsMap, 
                             const std::list<std::pair<std::string, attrValue> >& obsList, 
                             const anchor& target);
   
   private:
+  
   // Emits the output record records the given context and observations pairing
   void emitObservations(const std::list<std::string>& contextAttrs, 
+                        std::map<std::string, std::pair<attrValue, anchor> >& obs);
+  
+  // Emits the output record records the given context and observations pairing
+  void emitObservations(const std::map<std::string, attrValue>& contextAttrsMap, 
                         std::map<std::string, std::pair<attrValue, anchor> >& obs);
 }; // class trace
 
@@ -136,15 +158,15 @@ class measure {
   // observation-by-observation.
   bool fullMeasure;
   // If we're doing a full measure, this is the context that will be used for this measurement
-  std::list<std::string> fullMeasureCtxt;
+  std::map<std::string, attrValue> fullMeasureCtxt;
   
   public:
   // Non-full measure
   measure(std::string traceLabel, std::string valLabel);
   measure(trace* t,               std::string valLabel);
   // Full measure
-  measure(std::string traceLabel, std::string valLabel, const std::list<std::string>& fullMeasureCtxt);
-  measure(trace* t,               std::string valLabel, const std::list<std::string>& fullMeasureCtxt);
+  measure(std::string traceLabel, std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt);
+  measure(trace* t,               std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt);
   ~measure();
  
   // Common initialization code
@@ -165,8 +187,8 @@ class measure {
 measure* startMeasure(std::string traceLabel, std::string valLabel);
 measure* startMeasure(trace* t,               std::string valLabel);
 // Full measure
-measure* startMeasure(std::string traceLabel, std::string valLabel, const std::list<std::string>& fullMeasureCtxt);
-measure* startMeasure(trace* t,               std::string valLabel, const std::list<std::string>& fullMeasureCtxt);
+measure* startMeasure(std::string traceLabel, std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt);
+measure* startMeasure(trace* t,               std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt);
 double endMeasure(measure* m);
 
 class TraceMerger : public BlockMerger {

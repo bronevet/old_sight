@@ -11,23 +11,26 @@ function showBoxPlot(vizData, targetDiv, keyName, valName, width, height, margin
     var data = [];
     // Maps names of keys to their numeric indexes within the data array
     var key2Idx = {};
-    var key2Min = {}, key2Max = {};
+    //var key2Min = {}, key2Max = {};
     
     vizData.forEach(function(x) {
-      if(key2Idx[x[keyName]] == undefined)
-        key2Idx[x[keyName]] = Object.keys(key2Idx).length;
+      var keyVal;
+      if(keyName != "") keyVal = x[keyName];
+      else              keyVal = "";
+
+      if(key2Idx[keyVal] == undefined) key2Idx[keyVal] = Object.keys(key2Idx).length;
       
       var s = x[valName],
-          d = data[key2Idx[x[keyName]]];
+          d = data[key2Idx[keyVal]];
       
       if (!d) { 
-        d = data[key2Idx[x[keyName]]] = [s];
-        key2Min[x[keyName]] = s;
-        key2Max[x[keyName]] = s;
+        d = data[key2Idx[keyVal]] = [s];
+        //key2Min[keyVal] = s;
+        //key2Max[keyVal] = s;
       } else {
         d.push(s);
-        key2Min[x[keyName]] = Math.min(s, key2Min[x[keyName]]);
-        key2Max[x[keyName]] = Math.max(s, key2Max[x[keyName]]);
+        //key2Min[keyVal] = Math.min(s, key2Min[keyVal]);
+        //key2Max[keyVal] = Math.max(s, key2Max[keyVal]);
       }
       
 /*      if (s > max) max = s;

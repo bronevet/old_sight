@@ -271,6 +271,8 @@ class easyvector : public std::vector<T> {
 template<class KeyT, class ValT>
 class easymap: public std::map<KeyT, ValT> {
 	public:
+	easymap() {} 
+	
   easymap(const KeyT& key0, const ValT& val0)
   { (*this)[key0] = val0; }
   

@@ -27,13 +27,21 @@ namespace structure {
  ******************/
 
 // Records all the known contexts, mapping each context to its unique ID
-std::map<common::module::context, int> module::knownCtxt;
-  
+std::map</*common::module::context*/string, int> module::knownCtxt;
+std::map<std::string, int> module::numModuleInputs;
+std::map<std::string, int> module::numModuleOutputs;
+
+// Maps each module name to the set of contexts in which it was executed
+std::map<std::string, std::set<context> > module::module2Ctxt;
+
 // Maps each context to the number of times it was ever observed
-std::map<common::module::context, int> module::ctxtCount;
+std::map</*common::module::context*/string, int> module::ctxtCount;
 
 // Maps each context to the trace that records its performance properties
-std::map<common::module::context, trace*> module::ctxtTrace;
+//std::map<common::module::context, trace*> module::ctxtTrace;
+
+// The trace that records performance observations of different modules and contexts
+trace* module::tr;
 
 // Records all the edges ever observed, mapping them to the number of times each edge was observed
 std::map<std::pair<common::module::port, common::module::port>, int> module::edges;
@@ -69,6 +77,10 @@ module::module(const context& c, const std::vector<port>& in, const attrOp& onof
 
 void module::init(const context& c, const std::vector<port>& in) {
   if(this->props->active) {
+    // If this is the root module, create a trace to record observations for all the modules within it
+    if(mStack.size()==0)
+      tr = new trace(c.name, /*trace::context("Name", "Context"), */trace::showBegin, trace::table, trace::disjMerge);
+    
     mStack.push_back(this);
     
   	//cout << "module c="<<c.str()<<endl;
@@ -83,8 +95,8 @@ void module::init(const context& c, const std::vector<port>& in) {
     // Create an instance of the trace attribute that is unique to this context but common to all of its instances
     //instanceAttr = new attr(c.UID(), ctxtCount[c]);
     
-    // Begin measuring this instance
-    moduleMeasure = startMeasure(ctxtTrace[c], "measure");
+    // Begin measuring this module instance
+    moduleMeasure = startMeasure(tr, "measure", trace::ctxtVals("Name", c.name, "Context", c.configStr()));
     
   } else {
     moduleMeasure = NULL;
@@ -123,6 +135,8 @@ properties* module::setProperties(const context& c, const std::vector<port>& inp
 
 module::~module()
 { 
+  cout << "~module() props->active="<<props->active<<endl;
+  
   // Complete the measurement of application's behavior during the module's lifetime
   if(props->active) {
     //cout << "module "<<c.str()<<" measured. ctxtTrace[c] "<<(ctxtTrace.find(c) != ctxtTrace.end())<<endl;
@@ -140,17 +154,24 @@ module::~module()
     /*cout << "knownCtxt="<<endl;
     for(std::map<context, int>::iterator c=knownCtxt.begin(); c!=knownCtxt.end(); c++)
       cout << "    "<<c->first.UID()<<" ==> "<<c->second<<endl;
-    
     */
     
     // Emit the information on all the known contexts
-    for(std::map<context, int>::iterator c=knownCtxt.begin(); c!=knownCtxt.end(); c++) {
+    for(std::map<string, int>::iterator c=knownCtxt.begin(); c!=knownCtxt.end(); c++) {
       properties nodeP;
-      map<string, string> pMap = c->first.getProperties();
+      map<string, string> pMap;// = c->first.getProperties();
+      pMap["name"] = c->first;
+      pMap["numInputs"]  = txt()<<numModuleInputs[c->first];
+      pMap["numOutputs"] = txt()<<numModuleOutputs[c->first];
       pMap["ID"] = txt()<<c->second;
       
       assert(ctxtCount.find(c->first) != ctxtCount.end());
       pMap["count"] = txt()<<ctxtCount[c->first];
+      
+      /*pMap["numContexts"] = txt()<<module2Ctxt.size();
+      int i=0;
+      for(std::set<context>::iterator m=module2Ctxt[c->first].begin(); m!=module2Ctxt[c->first].end(); m++, i++)
+        pMap[txt()<<"context_"<<i] = m->str();*/
       
       nodeP.add("moduleNode", pMap);
       dbg.tag(nodeP);
@@ -161,8 +182,8 @@ module::~module()
       delete ctxtTrace[c->first];
       cout << "deleted ctxtTrace["<<c->first.str()<<"]"<<endl;  cout.flush();
       ctxtTrace.erase(c->first);*/
-      delete ctxtTrace[c->first];
-      ctxtTrace.erase(c->first);
+      /*delete ctxtTrace[c->first];
+      ctxtTrace.erase(c->first);*/
     }
     
     // Emit all the context->context edges collected while this module object was live.
@@ -170,10 +191,10 @@ module::~module()
     for(std::map<pair<port, port>, int>::iterator e=edges.begin(); e!=edges.end(); e++) {
       properties edgeP;
       map<string, string> pMap;
-      pMap["fromCID"] = txt()<<knownCtxt[e->first.first.c];
+      pMap["fromCID"] = txt()<<knownCtxt[e->first.first.c.name];
       pMap["fromT"]   = txt()<<e->first.first.type;
       pMap["fromP"]   = txt()<<e->first.first.index;
-      pMap["toCID"]   = txt()<<knownCtxt[e->first.second.c];
+      pMap["toCID"]   = txt()<<knownCtxt[e->first.second.c.name];
       pMap["toT"]     = txt()<<e->first.second.type;
       pMap["toP"]     = txt()<<e->first.second.index;
       pMap["count"]   = txt()<<e->second;
@@ -185,6 +206,22 @@ module::~module()
   }
   
   if(props->active) {
+    // If this is the root module
+    if(mStack.size()==1) {
+      // Emit a tag that records the ID of its associated trace. This must be done before the trace is 
+      // deleted to make sure that when this ID is read by the layout layer the module can inform the
+      // tracer of the divs where its trace visualizations must be placed.
+      map<string, string> trMap;
+      trMap["traceID"] = txt() << tr->getTraceID();
+      properties p;
+      p.add("moduleTrace", trMap);
+      dbg.tag(p);
+      
+      // Delete the module's associated trace
+      delete(tr);
+      tr = NULL;
+    }
+    
     // Pop this module from the mStack
     assert(mStack.size()>0);
     assert(mStack.back()==this);
@@ -217,19 +254,25 @@ module* module::getCurrent() {
 
 // Records the mapping from a module's context to its unique ID
 void module::addNode(const context& c, int nodeID) {
+  cout << "addNode() new node c="<<c.str()<<", nodeID="<<nodeID<<", c.numInputs="<<c.numInputs<<", c.numOutputs="<<c.numOutputs<<endl;
   // If this context doesn't yet have an ID, set one
-  if(knownCtxt.find(c) == knownCtxt.end()) {
-    cout << "addNode() new node c="<<c.str()<<", nodeID="<<nodeID<<endl;
-    knownCtxt[c] = nodeID;
-    ctxtCount[c] = 1;
+  if(knownCtxt.find(c.name) == knownCtxt.end()) {
+    knownCtxt[c.name] = nodeID;
+    numModuleInputs[c.name] = c.numInputs;
+    numModuleOutputs[c.name] = c.numOutputs;
+    ctxtCount[c.name] = 1;
     //string contextAttr = txt()<<"moduleInstance_"<<nodeID;
     //ctxtTrace[c] = new trace(txt()<<"module_"<<nodeID, contextAttr, trace::showBegin, trace::table, trace::disjMerge);
     
     // Create a trace for this module that is common to all instances of the module
     //ctxtTrace[c] = new trace(c.UID(), c.UID(), trace::showBegin, trace::table, trace::disjMerge);
-    ctxtTrace[c] = new trace(c.UID(), trace::showBegin, trace::table, trace::disjMerge);
-  } else
-    ctxtCount[c]++;
+    //ctxtTrace[c] = new trace(c.UID(), trace::showBegin, trace::boxplot, trace::disjMerge);
+  } else {
+    ctxtCount[c.name]++;
+    assert(numModuleInputs[c.name] == c.numInputs);
+    assert(numModuleOutputs[c.name] = c.numOutputs);
+  }
+  module2Ctxt[c.name].insert(c);
 }
 
 // Removes a module node from consideration

@@ -35,8 +35,14 @@ class module: public block, public common::module
   int moduleID;
   
   // Maps IDs of nodes to their full contexts
-  std::map<int, common::module::context> knownCtxt;
+  //std::map<int, common::module::context> knownCtxt;
     
+  // Maps IDs of nodes to the list of known contexts in which they were executed
+  //std::map<int, set<std::string>> > knownCtxt;
+  
+  // The names of all the modules
+  std::set<std::string> moduleNames;
+  
   // Stack of the modules that are currently in scope
   static std::list<module*> mStack;
   
@@ -52,8 +58,12 @@ class module: public block, public common::module
   // the JavaScript files that are included as well as the directories that are available.
   static void initEnvironment();
   
+  // Registers the ID of the trace that is associated with the current module
+  void registerTraceID(int traceID);
+  static void* registerTraceID(properties::iterator props);
+  
   // Add a node to the modules graph
-  void addNode(common::module::context node, int ID, int count);
+  void addNode(/*common::module::context*/std::string node, int numInputs, int numOutputs, int ID, int count, const set<string>& nodeContexts);
   static void* addNode(properties::iterator props);
   
   // Add a directed edge from the location of the from anchor to the location of the to anchor

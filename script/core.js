@@ -37,24 +37,25 @@ function toggleVisibility(blockID, visible) {
   }
 }
 
-function FileHash() {
+function HTNode() {
   this.items = new HashTable();
   this.leaf  = new HashTable();
-  this.objectType = "FileHash";
+  this.objectType = "HTNode";
 }
 
-var fileInfo = new FileHash();
+var fileInfo = new HTNode();
 
 function recordFile(fileID, rKey, rVal) {
-    if(fileID.length==0) return;
+  fileInfo = recordHash(fileInfo, fileID, rKey, rVal);
+/*    if(fileID.length==0) return;
     //console.debug("recordFile("+fileID+", #"+fileID.length+", rKey="+rKey+", rVal="+rVal+"): "+fileInfoStr());
     fileInfo = recordFile_rec(fileInfo, fileID, 0, rKey, rVal);
-    console.debug("recordFile="+fileInfoStr());
+    console.debug("recordFile="+fileInfoStr());*/
 }
 
-function recordFile_rec(subfileInfo, fileID, index, rKey, rVal) {
+/*function recordFile_rec(subfileInfo, fileID, index, rKey, rVal) {
   //console.debug("recordFile_rec("+fileID+", #"+fileID.length+", rKey="+rKey+", rVal="+rVal+"), typeof subfileInfo="+(typeof subfileInfo)+": "+fileInfoStr());
-  if(typeof subfileInfo === 'undefined') subfileInfo = new FileHash();
+  if(typeof subfileInfo === 'undefined') subfileInfo = new HTNode();
   
   var fileKey = fileID[index];
   //console.debug("fileKey="+fileKey);
@@ -66,29 +67,32 @@ function recordFile_rec(subfileInfo, fileID, index, rKey, rVal) {
     subfileInfo.items.setItem(fileKey, recordFile_rec(subfileInfo.items.getItem(fileKey), fileID, index+1, rKey, rVal));
   }
   return subfileInfo;
-}
+}*/
 
 function getFile(fileID, rKey) {
   console.debug("getFile: fileID="+fileID+", rKey="+rKey);
   console.debug(fileInfoStr());
+  return getHash(fileInfo, fileID, rKey);
+/*  return 
     if(fileID.length==0) return undefined;
-    return getFile_rec(fileInfo, fileID, 0, rKey);
+    return getFile_rec(fileInfo, fileID, 0, rKey);*/
 }
 
-function getFile_rec(subfileInfo, fileID, index, rKey) {
+/*function getFile_rec(subfileInfo, fileID, index, rKey) {
   var fileKey = fileID[index];
   if(index == fileID.length-1) {
     return subfileInfo.leaf.getItem(fileKey).getItem(rKey);
   } else {
     return getFile_rec(subfileInfo.items.getItem(fileKey), fileID, index+1, rKey);
   }
-}
+}*/
 
 function fileInfoStr() {
-  return fileInfoStr_rec(fileInfo, "");
+  return hash2Str(fileInfo);
+  //return fileInfoStr_rec(fileInfo, "");
 }
 
-function fileInfoStr_rec(subfileInfo, indent) {
+/*function fileInfoStr_rec(subfileInfo, indent) {
   var str = "{\n";
   subfileInfo.leaf.each(function(k, v) {
     str += indent + "    L: " + k + " => \n";
@@ -96,14 +100,127 @@ function fileInfoStr_rec(subfileInfo, indent) {
   });
   subfileInfo.items.each(function(k, v) {
     str += indent + "    I: " + k + " => ";
-    if(v.objectType == "FileHash")
+    if(v.objectType == "HTNode")
       str += fileInfoStr_rec(v, indent+"    ");
     else
       str += v;
     str += "\n";
   });
   return str + "\n" + indent + "}";
+}*/
+
+// Given a hashtable, record the given key=>value mapping under the given UID, which is a list of keys
+function recordHash(HT, UID, rKey, rVal) {
+    if(UID.length==0) return undefined;
+    return recordHash_rec(HT, UID, 0, rKey, rVal);
 }
+
+function recordHash_rec(subHT, UID, index, rKey, rVal) {
+  //console.debug("recordFile_rec("+UID+", #"+UID.length+", rKey="+rKey+", rVal="+rVal+"), typeof subfileInfo="+(typeof subfileInfo)+": "+fileInfoStr());
+  if(typeof subHT === 'undefined') subHT = new HTNode();
+  
+  var subKey = UID[index];
+  //console.debug("subKey="+subKey);
+  if(index == UID.length-1) {
+    // If the given subKey has not yet been mapped within this fileInfo sub-tree, create a HashTable for it
+    if(!subHT.leaf.hasItem(subKey)) subHT.leaf.setItem(subKey, new HashTable());
+    subHT.leaf.getItem(subKey).setItem(rKey, rVal);
+  } else {
+    subHT.items.setItem(subKey, recordHash_rec(subHT.items.getItem(subKey), UID, index+1, rKey, rVal));
+  }
+  return subHT;
+}
+
+// Given a hashtable, push the given value to the list associated with given key, under the given UID, which is a list of keys
+function pushHash(HT, UID, rKey, rVal) {
+    if(UID.length==0) return undefined;
+    return pushHash_rec(HT, UID, 0, rKey, rVal);
+}
+
+function pushHash_rec(subHT, UID, index, rKey, rVal) {
+  //console.debug("recordFile_rec("+UID+", #"+UID.length+", rKey="+rKey+", rVal="+rVal+"), typeof subfileInfo="+(typeof subfileInfo)+": "+fileInfoStr());
+  if(typeof subHT === 'undefined') subHT = new HTNode();
+  
+  var subKey = UID[index];
+  //console.debug("subKey="+subKey);
+  if(index == UID.length-1) {
+    // If the given subKey has not yet been mapped within this fileInfo sub-tree, create a HashTable for it
+    if(!subHT.leaf.hasItem(subKey)) {
+      subHT.leaf.setItem(subKey, new HashTable());
+      subHT.leaf.getItem(subKey).setItem(rKey, [rVal]);
+    } else {
+      var curList = subHT.leaf.getItem(subKey);
+      curList.push(rVal);
+    }
+  } else {
+    subHT.items.setItem(subKey, pushHash_rec(subHT.items.getItem(subKey), UID, index+1, rKey, rVal));
+  }
+  return subHT;
+}
+
+// Given a hashtable, return the value mapped to the given combination of key and UID, which is a list of keys
+function getHash(HT, UID, rKey) {
+  if(UID.length==0) return undefined;
+  return getHash_rec(HT, UID, 0, rKey);
+}
+
+function getHash_rec(subHT, UID, index, rKey) {
+  var subKey = UID[index];
+  if(index == UID.length-1) {
+    return subHT.leaf.getItem(subKey).getItem(rKey);
+  } else {
+    return getFile_rec(subHT.items.getItem(subKey), UID, index+1, rKey);
+  }
+}
+
+// Returns a string representation of the given hashtable
+function hash2Str(HT) {
+  return hash2Str_rec(HT, "");
+}
+
+function hash2Str_rec(subHT, indent) {
+  var str = "{\n";
+  subHT.leaf.each(function(k, v) {
+    str += indent + "    L: " + k + " => \n";
+    if(v.objectType == "Array") {
+      str += indent + "        [";
+      for(i in v) { if(v.hasOwnProperty(i)) {
+        str += v[i]+" ";
+      } }
+      str += "]\n";
+    } else
+      str += indent + "        "+v/*.str(indent + "        ")*/+"\n";
+  });
+  subHT.items.each(function(k, v) {
+    str += indent + "    I: " + k + " => ";
+    if(v.objectType == "HTNode")
+      str += hash2Str_rec(v, indent+"    ");
+    else
+      str += v;
+    str += "\n";
+  });
+  return str + "\n" + indent + "}";
+}
+
+
+// Maps the given function to each key list / key=>value combination stored in the hashtable,
+// providing as arguments mapFunc(UID, key, val, indent), where indent makes it easy to print human-readable debug output
+function mapHash(HT, mapFunc) {
+  mapHash_rec(HT, [], mapFunc, "");
+}
+
+function mapHash_rec(subHT, UID, mapFunc, indent) {
+  subHT.leaf.each(function(k, v) {
+    mapFunc(UID, k, v, indent);
+  });
+  subHT.items.each(function(k, v) {
+    if(v.objectType == "HTNode") {
+      var subUID = UID; subUID.push(k);
+      mapHash_rec(v, subUID, mapFunc, indent+"    ");
+    }
+  });
+}
+
 
 /***************************
  ***** File Management *****

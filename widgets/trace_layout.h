@@ -35,7 +35,7 @@ class trace: public block, public attrObserver, public common::trace
   showLocT showLoc;
   
   // The ID of the block into which the trace visualization will be written
-  std::string tgtBlockID;
+  //std::string tgtBlockID;
   
   public:
   vizT viz;
@@ -48,6 +48,19 @@ class trace: public block, public attrObserver, public common::trace
   
   // Names of attributes to be used as context when visualizing the values of trace observations
   std::list<std::string> contextAttrs;
+  
+  std::list<std::string> splitContextAttrs;
+  std::list<std::string> projectContextAttrs;
+    
+ 
+  private:
+  // Set that contains the same attributes as contextAttrs. It is used for quick lookups to ensure that
+  // all observations have the same set of context attributes, even for cases where the context is not
+  // specified up-front for the entire trace but separately for each observation.
+  std::set<std::string> contextAttrsSet;
+  
+  // Flag that indicates whether this trace's context has already been initialized (it may have 0 keys)
+  bool contextAttrsInitialized;
   
   public:
   trace(properties::iterator props);
@@ -62,6 +75,11 @@ class trace: public block, public attrObserver, public common::trace
   // Place the code to show the visualization
   void showViz();
   
+   // [{ctxt:{key0:..., val0:..., key1:..., val1:..., ...}, div:divID}, ...]
+  std::list<std::pair<std::list<std::pair<std::string, std::string> >, std::string> > splitCtxtHostDivs;
+  public:
+  void setSplitCtxtHostDivs(const std::list<std::pair<std::list<std::pair<std::string, std::string> >, std::string> >& splitCtxtHostDivs);
+  
   // Records all the observations of trace variables since the last time variables in contextAttrs changed values
   std::map<std::string, std::pair<attrValue, anchor> > obs;
   
@@ -71,6 +89,9 @@ class trace: public block, public attrObserver, public common::trace
   public:
   // Record an observation
   static void* observe(properties::iterator props);
+    
+  // Given a traceID returns a pointer to the corresponding trace object
+  static trace* getTrace(int traceID);
 }; // class trace
 
 }; // namespace layout

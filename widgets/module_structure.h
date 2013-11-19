@@ -25,13 +25,20 @@ class module: public block, public common::module
   // Records all the known contexts, mapping each context to its count of input and output ports
   //std::map<context, std::pair<int, int> > knownCtxt;
   // Records all the known contexts, mapping each context to its unique ID
-  static std::map<context, int> knownCtxt;
+  static std::map<std::string, int> knownCtxt;
+  static std::map<std::string, int> numModuleInputs;
+  static std::map<std::string, int> numModuleOutputs;
+  // Maps each module name to the set of contexts in which it was executed
+  static std::map<std::string, std::set<context> > module2Ctxt;
   	
   // Maps each context to the number of times it was ever observed
-  static std::map<context, int> ctxtCount;
+  static std::map<std::string, int> ctxtCount;
   
   // Maps each context to the trace that records its performance properties
-  static std::map<context, trace*> ctxtTrace;
+  //static std::map<context, trace*> ctxtTrace;
+  
+  // The trace that records performance observations of different modules and contexts
+  static trace* tr;
   
   // Records all the edges ever observed, mapping them to the number of times each edge was observed
   static std::map<std::pair<port, port>, int> edges;

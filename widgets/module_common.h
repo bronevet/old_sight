@@ -98,6 +98,9 @@ class module {
       
     // Returns a human-readable string that describes this context
     std::string str() const;
+      
+    // Returns a human-readable string that describes the configuration of this context
+    std::string configStr() const;
   }; // class context
   
   typedef enum {input, output} ioT;
@@ -112,12 +115,12 @@ class module {
     port(const context& c, ioT type, int index) : c(c), type(type), index(index) {}
       
     bool operator==(const port& that) const
-    { return c==that.c && type==that.type && index==that.index; }
+    { return c.name==that.c.name && type==that.type && index==that.index; }
     
     bool operator<(const port& that) const
-    { return (c< that.c) ||
-             (c==that.c && type< that.type) ||
-             (c==that.c && type==that.type && index<that.index); }
+    { return (c.name< that.c.name) ||
+             (c.name==that.c.name && type< that.type) ||
+             (c.name==that.c.name && type==that.type && index<that.index); }
     
     // Returns a human-readable string that describes this context
     std::string str() const;

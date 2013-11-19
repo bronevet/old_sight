@@ -36,8 +36,10 @@ void* moduleEnterHandler(properties::iterator props) { return new module(props);
 void  moduleExitHandler(void* obj) { module* m = static_cast<module*>(obj); delete m; }
   
 moduleLayoutHandlerInstantiator::moduleLayoutHandlerInstantiator() { 
-  (*layoutEnterHandlers)["module"] = &moduleEnterHandler;
-  (*layoutExitHandlers )["module"] = &moduleExitHandler;
+  (*layoutEnterHandlers)["module"]      = &moduleEnterHandler;
+  (*layoutExitHandlers )["module"]      = &moduleExitHandler;
+  (*layoutEnterHandlers)["moduleTrace"] = &module::registerTraceID;
+  (*layoutExitHandlers )["moduleTrace"] = &defaultExitHandler;
   (*layoutEnterHandlers)["moduleNode"]  = &module::addNode;
   (*layoutExitHandlers )["moduleNode"]  = &defaultExitHandler;
   (*layoutEnterHandlers)["moduleEdge"]  = &module::addEdge;
@@ -144,56 +146,80 @@ string portNamePrefix(const common::module::context& node)
 string portNameSuffix(common::module::ioT type, int index) 
 { return txt()<<(type==common::module::input?"In":"Out")<<index; }
 
+
+
+// Registers the ID of the trace that is associated with the current module
+void module::registerTraceID(int traceID) {
+  // [{ctxt:{key0:..., val0:..., key1:..., val1:..., ...}, div:divID}, ...]
+  std::list<std::pair<std::list<std::pair<std::string, std::string> >, std::string> > modules;
+  
+  for(std::set<std::string>::iterator m=moduleNames.begin(); m!=moduleNames.end(); m++) {
+    std::list<std::pair<std::string, std::string> moduleName;
+    moduleName.push_back(make_pair("Name", *m))
+    modules.push_back(make_pair(moduleName, "div_"+*m));
+  }
+  
+  trace::getTrace(traceID)->setSplitCtxtHostDivs(modules);
+}
+
+void* module::registerTraceID(properties::iterator props) {
+  assert(mStack.size()>0);
+  mStack.back()->registerTraceID(properties::getInt(props, "traceID")); 
+  return NULL;
+}
+
 // Add a a module node
-void module::addNode(context node, int ID, int count) {
-  knownCtxt[ID] = node;
+void module::addNode(/*context node, */string node, int numInputs, int numOutputs, int ID, int count/*, const set<string>& nodeContexts*/) {
+  //knownCtxt[ID] = node;
+  //knownCtxt[ID] = nodeContexts;
+  moduleNames.insert(node);
   
   /*dotFile << "subgraph cluster"<<ID<<" {"<<endl;
   dotFile << "\tstyle=filled;"<<endl;
   dotFile << "\tcolor=lightgrey;"<<endl;*/
   //dotFile << "\tlabel=\""<<node.str()<<"\";"<<endl;
   
-  /*for(int i=0; i<node.numInputs; i++) {
+  /*for(int i=0; i<numInputs; i++) {
     dotFile << "\t\t"<<portName(node, input, i)<<" [shape=box, label=\"In "<<i<<"\"];\n";//, href=\"javascript:"<<b->first.getLinkJS()<<"\"];\n";
     if(i>0) dotFile << "\t\t"<<portName(node, input, i-1)<<" -> "<<portName(node, input, i)<<" [style=invis];"<<endl;
   }
   
-  for(int o=0; o<node.numOutputs; o++)
+  for(int o=0; o<numOutputs; o++)
     dotFile << "\t\t"<<portName(node, output, o)<<" [shape=box, label=\"Out "<<o<<"\"];\n";//, href=\"javascript:"<<b->first.getLinkJS()<<"\"];\n";
   
-  if(node.numInputs>0) { 
+  if(numInputs>0) { 
     dotFile << "\t{rank=\"source\"";
-    for(int i=0; i<node.numInputs; i++) dotFile << " "<<portName(node, input, i)<<"";
+    for(int i=0; i<numInputs; i++) dotFile << " "<<portName(node, input, i)<<"";
     dotFile << "}"<<endl;
   }
   
-  if(node.numOutputs>0) { 
+  if(numOutputs>0) { 
     dotFile << "\t{rank=\"sink\"";
-    for(int o=0; o<node.numOutputs; o++) dotFile << " "<<portName(node, output, o)<<"";
+    for(int o=0; o<numOutputs; o++) dotFile << " "<<portName(node, output, o)<<"";
     dotFile << "}"<<endl;
   }*/
   //dotFile << "\t\""<<portNamePrefix(node)<<"\" [shape=none, fill=lightgrey, label=<<TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\">"<<endl;
   dotFile << "\tnode"<<ID<<" [shape=none, fill=lightgrey, label=<<TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\">"<<endl;
   
   // Input ports
-  if(node.numInputs>0) {
+  if(numInputs>0) {
     dotFile << "\t\t<TR><TD><TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\"><TR>";
-    for(int i=0; i<node.numInputs; i++) dotFile << "<TD PORT=\""<<portNameSuffix(input, i)<<"\">In "<<i<<"</TD>";
+    for(int i=0; i<numInputs; i++) dotFile << "<TD PORT=\""<<portNameSuffix(input, i)<<"\">In "<<i<<"</TD>";
     dotFile << "</TR></TABLE></TD></TR>"<<endl;
   }
   
   // Node Info
   dotFile << "\t\t<TR><TD";
-  //if(node.numInputs + node.numOutputs > 0) dotFile << " COLSPAN=\""<<(node.numInputs>node.numOutputs? node.numInputs: node.numOutputs)<<"\"";
-  dotFile << ">"<<node.str()<<"</TD></TR>"<<endl;
+  //if(numInputs + numOutputs > 0) dotFile << " COLSPAN=\""<<(numInputs>numOutputs? numInputs: numOutputs)<<"\"";
+  dotFile << ">"<<node/*.str()*/<<"</TD></TR>"<<endl;
   
   dotFile << "\t\t<TR><TD><TABLE><TR><TD BGCOLOR=\"#FF00FF\" COLOR=\"#FF00FF\" WIDTH=\"200\" HEIGHT=\"100\">Box</TD></TR></TABLE></TD></TR>"<<endl;
   // <IMG SRC=\"img/attrAnd.gif\" SCALE=\"WIDTH\"/>
   
   // Output ports
-  if(node.numOutputs>0) {
+  if(numOutputs>0) {
     dotFile << "\t\t<TR><TD><TABLE CELLBORDER=\"1\" CELLSPACING=\"0\"><TR>";
-    for(int o=0; o<node.numOutputs; o++) dotFile << "<TD PORT=\""<<portNameSuffix(output, o)<<"\">Out "<<o<<"</TD>";
+    for(int o=0; o<numOutputs; o++) dotFile << "<TD PORT=\""<<portNameSuffix(output, o)<<"\">Out "<<o<<"</TD>";
     dotFile << "</TR></TABLE></TD></TR>"<<endl;
   }  
   dotFile << "</TABLE>>];" <<endl;
@@ -203,8 +229,17 @@ void module::addNode(context node, int ID, int count) {
 
 // Static version of the call that pulls the from/to anchor IDs from the properties iterator and calls addUndirEdge() in the currently active graph
 void* module::addNode(properties::iterator props) {
+  /*set<string> nodeContexts;
+  int numContexts = properties::getInt(props, "numContexts");
+  for(int i=0; i<numContexts; i++)
+    nodeContexts.insert(properties::get(props, txt()<<"context_"<<i));*/
+  
   assert(mStack.size()>0);
-  mStack.back()->addNode(context(props), properties::getInt(props, "ID"), properties::getInt(props, "count")); 
+  //mStack.back()->addNode(context(props), properties::getInt(props, "ID"), properties::getInt(props, "count")); 
+  mStack.back()->addNode(properties::get(props, "name"), 
+                         properties::getInt(props, "numInputs"), properties::getInt(props, "numOutputs"), 
+                         properties::getInt(props, "ID"), properties::getInt(props, "count")/*, 
+                         nodeContexts*/); 
   return NULL;
 }
 

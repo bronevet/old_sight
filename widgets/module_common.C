@@ -53,6 +53,13 @@ std::string module::context::UID() const {
 std::string module::context::str() const {
   ostringstream s;
   s << name;
+  s << configStr();
+  return s.str();
+}
+
+// Returns a human-readable string that describes the configuration of this context
+std::string module::context::configStr() const {
+  ostringstream s;
   for(map<string, attrValue>::const_iterator c=configuration.begin(); c!=configuration.end(); c++)
     s << " ("<<c->first<<": "<<c->second.getAsStr()<<")";
   return s.str();
