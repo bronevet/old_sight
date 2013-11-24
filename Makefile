@@ -90,8 +90,14 @@ hier_merge${EXE}: hier_merge.C process.C process.h libsight_structure.a
 libsight_structure.a: ${SIGHT_STRUCTURE_O} ${SIGHT_STRUCTURE_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre
 	ar -r libsight_structure.a ${SIGHT_STRUCTURE_O} ${SIGHT_COMMON_O} widgets/*_structure.o widgets/*_common.o
 
-libsight_layout.a: ${SIGHT_LAYOUT_O} ${SIGHT_LAYOUT_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre
-	ar -r libsight_layout.a    ${SIGHT_LAYOUT_O}    ${SIGHT_COMMON_O} widgets/*_layout.o     widgets/*_common.o
+libsight_layout.a: ${SIGHT_LAYOUT_O} ${SIGHT_LAYOUT_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre widgets/gsl/lib/libgsl.a widgets/gsl/lib/libgslcblas.a
+	mkdir -p tmp
+	cd tmp; ar -x ../widgets/gsl/lib/libgsl.a; ar -x ../widgets/gsl/lib/libgslcblas.a
+	ar -r libsight_layout.a    ${SIGHT_LAYOUT_O}    ${SIGHT_COMMON_O} widgets/*_layout.o  widgets/*_common.o tmp/*.o
+	rm -fr tmp
+	
+#libaz.a: libabc.a(*.o) libxyz.a(*.o)
+#    ar rcs $@ $^
 #	ld libsight_layout.a    ${SIGHT_LAYOUT_O}    ${SIGHT_COMMON_O} widgets/*_layout.o     widgets/*_common.o
 
 

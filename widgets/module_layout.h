@@ -11,6 +11,7 @@
 #include "../sight_common.h"
 #include "../sight_layout.h"
 #include "module_common.h"
+#include <gsl/gsl_multifit.h>
 
 namespace sight {
 namespace layout {
@@ -21,7 +22,7 @@ class moduleLayoutHandlerInstantiator : layoutHandlerInstantiator {
 };
 extern moduleLayoutHandlerInstantiator moduleLayoutHandlerInstance;
 
-class module: public block, public common::module
+class module: public block, public common::module, public traceObserver
 {
   protected:
   
@@ -34,20 +35,17 @@ class module: public block, public common::module
   // Unique ID of this module object
   int moduleID;
   
-  // Maps IDs of nodes to their full contexts
-  //std::map<int, common::module::context> knownCtxt;
-    
-  // Maps IDs of nodes to the list of known contexts in which they were executed
-  //std::map<int, set<std::string>> > knownCtxt;
-  
   // The names of all the modules
   std::set<std::string> moduleNames;
   
   // Stack of the modules that are currently in scope
   static std::list<module*> mStack;
   
-  // Maps each module name to the trace that holds the observations performed within it
-  std::map<std::string, traceStream*> moduleTraces;
+  // Maps each module group's ID to the trace that holds the observations performed within it
+  std::map<int, traceStream*> moduleTraces;
+    
+  // Maps each traceStream's ID to the ID of its corresponding module graph node
+  std::map<int, int> trace2nodeID;
   
   // The dot file that will hold the representation of the module interaction graph
   std::ofstream dotFile;
@@ -67,8 +65,12 @@ class module: public block, public common::module
   //void registerTraceID(int traceID);
   //static void* registerTraceID(properties::iterator props);
   
+  // Do a multi-variate polynomial fit of the data observed for the given nodeID and return for each trace attribute 
+  // a string that describes the function that best fits its values
+  std::vector<std::string> polyFit(int nodeID);
+  
   // Add a node to the modules graph
-  void addNode(/*common::module::context*/std::string node, int numInputs, int numOutputs, int ID, int count/*, const std::set<std::string>& nodeContexts*/);
+  void addNode(std::string node, int numInputs, int numOutputs, int ID, int count/*, const std::set<std::string>& nodeContexts*/);
   static void* addNode(properties::iterator props);
   
   // Add a directed edge from the location of the from anchor to the location of the to anchor
@@ -81,6 +83,37 @@ class module: public block, public common::module
   // that contain this block and false otherwise.
   bool subBlockEnterNotify(block* subBlock) { return false; }
   bool subBlockExitNotify (block* subBlock) { return false; }
+  
+  protected:
+  // Maps each nodeID to the data needed to compute a polynomial approximation of the relationship
+  // between its input context and its observations
+  
+  // Matrix of polynomial terms composed of context values, 1 row per observation, 1 column for each combination of terms
+  std::map<int, gsl_matrix*> polyfitCtxt;
+  
+  // For each value that is observed, a vector of the values actually observed, one entry per observation
+  std::map<int, std::vector<gsl_vector*> >  polyfitObs;
+    
+  // The number of observations made for each node
+  std::map<int, int> numObs;
+    
+  // The number of numeric context attributes of each node. Should be the same for all observations for the node
+  std::map<int, int> numNumericCtxt;
+  std::map<int, std::list<std::string> > numericCtxtNames;
+    
+  // For each node, for each input, the names of its context attributes
+  std::map<int, std::map<int, std::list<std::string> > > ctxtNames;
+    
+  // The names of the observation trace attributes
+  std::map<int, std::vector<std::string> > traceAttrNames;
+  
+  public:
+  // Interface implemented by objects that listen for observations a traceStream reads. Such objects
+  // call traceStream::registerObserver() to inform a given traceStream that it should observations.
+  void observe(int traceID,
+               const std::map<std::string, std::string>& ctxt, 
+               const std::map<std::string, std::string>& obs,
+               const std::map<std::string, anchor>&      obsAnchor);
 }; // class module
 
 }; // namespace layout

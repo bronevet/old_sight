@@ -31,35 +31,49 @@ int main(int argc, char** argv)
   //trace t4("MT Module B",  "Module B",  trace::showBegin, trace::table, trace::disjMerge);
   //attr a("ModuleCtxt", 1);
   srand(time(NULL));
-  module mg(common::module::context("Root", 0, 0));
+  module mg(group("Root", 0, 0));
   
-  module mInput(common::module::context("Input", 0, 1));
+  module mInput(group("Input", 0, 4));
+  mInput.setOutCtxt(0, context(config("nonzeros", 0)));
+  mInput.setOutCtxt(1, context(config("CondNum", 0)));
+  mInput.setOutCtxt(2, context(config("solnErr", 2)));
+  mInput.setOutCtxt(3, context(config("solnVal", 5)));
   
-  //vector<common::module::port> 
-  common::module::port B1Out;
-  for(int i=0; i<5; i++)
+  //vector<port> 
+  std::vector<port> mtxGenOutputs;
+  for(int i=0; i<10; i++)
   {
-    module mIter(common::module::context("Iteration", 0, 1));
+    module mIter(group("Iteration", 0, 1));
     {
       //cout << "mIter.getContext()="<<mIter.getContext().str()<<endl;
-      std::vector<common::module::port> ma1Outputs;
-      { module ma1(common::module::context("Module A", 2, 2, "intArg", 1, "strArg", string("val")), 
-                   inputs(common::module::outport(mIter.getContext(), 0), 
-                                        (i==0? common::module::outport(mInput.getContext(), 0): B1Out)));
-    	  usleep(rand()%150);
-    	  ma1Outputs = ma1.outputPorts();
+      std::vector<port> ma1Outputs;
+      { module ma1(group("Lin Solve", 2, 2), 
+                   inputs(//nonzeros
+                          (i==0? mInput.outPort(0): mtxGenOutputs[0]),
+                          // CondNum
+                          (i==0? mInput.outPort(1): mtxGenOutputs[1])),
+                   ma1Outputs);
+    	  usleep(200+i*i*100 + i*1000/*rand()%50*/);
+    	  ma1.setOutCtxt(0, context(config("solnErr", (i+1)*2)));
+    	  ma1.setOutCtxt(1, context(config("solnVal", (i+1)*5)));
     	}
     	
-    	{ module mb1(common::module::context("Module B", 2, 1, "intArg", 1, "strArg", string("val1")), 
-    	             inputs(ma1Outputs[0], ma1Outputs[1]));
-    	  B1Out = common::module::outport(mb1.getContext(), 0);
-    	  usleep(rand()%50);
+    	{ module mb1(group("Mtx Gen", 2, 2),
+    	             inputs(ma1Outputs[0], ma1Outputs[1]),
+    	             mtxGenOutputs);
+    	  mb1.setOutCtxt(0, context(config("nonzeros", i+1)));
+    	  mb1.setOutCtxt(1, context(config("CondNum", i*i)));
+    	    
+    	  usleep(1000+i*100/*rand()%150*/);
     	}
     	
-  		{ module mb2(common::module::context("Module B", 2, 1, "intArg", 2, "strArg", string("val2")), 
-  			           inputs(ma1Outputs[0], B1Out));
-  		  usleep(rand()%80);
-  		}
+    	/*{ module mb1(group("Mtx Gen", 2, 2),
+    	             inputs(mInput.outPort(2), ma1Outputs[1]));
+    	  mb1.setOutCtxt(0, context(config("nonzeros", i+1)));
+    	  mb1.setOutCtxt(1, context(config("CondNum", i*i)));
+    	    
+    	  usleep(100+i*10/*rand()%150* /);
+    	}*/
   	}
   }
   /* //graph g;
@@ -68,7 +82,7 @@ int main(int argc, char** argv)
   map<int, anchor> iterAnchor;
   
   for(int i=0; i<numIters; i++) {
-    // Create iteration i's scope, anchoring all incoming links to it
+    // Create iteration i'i*icope, anchoring all incominlinks to it
     scope si(txt()<<i, pointsTo[i]);
     
     // We can now erase all the anchors that refer to this scope from pointsTo[] since we've successfully terminated them.

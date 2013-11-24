@@ -1,3 +1,4 @@
+
 function showBoxPlot(vizData, targetDiv, keyName, valName, width, height, margin) {
   var min = Infinity,
       max = -Infinity;
@@ -15,6 +16,8 @@ function showBoxPlot(vizData, targetDiv, keyName, valName, width, height, margin
     
     vizData.forEach(function(x) {
       var keyVal;
+      
+      
       if(keyName != "") keyVal = x[keyName];
       else              keyVal = "";
 

@@ -254,18 +254,42 @@ var CanvizEntity = Class.create({
 								var href = this.getAttr('URL', true) || this.getAttr('href', true);
 								if (href) {
 									var target = this.getAttr('target', true) || '_self';
-									var tooltip = this.getAttr('tooltip', true) || this.getAttr('label', true);
-//									debug(this.name + ', href ' + href + ', target ' + target + ', tooltip ' + tooltip);
-									text = new Element('a', {href: href, target: target, title: tooltip});
-									['onclick', 'onmousedown', 'onmouseup', 'onmouseover', 'onmousemove', 'onmouseout'].each(function(attrName) {
-										var attrValue = this.getAttr(attrName, true);
-										if (attrValue) {
-											text.writeAttribute(attrName, attrValue);
-										}
-									}.bind(this));
-									text.setStyle({
-										textDecoration: 'none'
-									});
+									var nodeLabel = this.getAttr('label', true);
+  								// If this node has an HTML table label
+  								var HTMLnode = false;
+  								if(nodeLabel.charAt(0) == "<" && nodeLabel.charAt(nodeLabel.length-1)==">") {
+  									// When the code that generated this node wishes to use javascript events with HTML tables there is no way
+  									// to get graphviz/Canviz to differentiate the pieces of text that got clicked. As such, we use a special encoding
+  									// "ID:text" for each piece of text within tables, where ID is the ID that uniquely identifies the piece of text
+  									// and text is the actual text that should be displayed. ID must not contain ":" but text may. 
+  									var splitLoc = str.indexOf(":");
+  								  if(splitLoc==-1) {
+  								    alert("Canviz error: HTML node with javascript events contains text \""+str+"\" that is not in format \"ID:text\"!");
+  								  } else {
+    									var ID = str.substring(0, splitLoc);
+    									str = str.substring(splitLoc+1);
+    									HTMLnode = true;
+    							  }
+									}
+									
+									// Don't add a link if this is an HTML node and ID is empty
+									if(HTMLnode && ID=="") 
+									  text = new Element('span');
+									else {
+  									var tooltip = this.getAttr('tooltip', true) || this.getAttr('label', true);
+  //									debug(this.name + ', href ' + href + ', target ' + target + ', tooltip ' + tooltip);
+  									text = new Element('a', {href: href, target: target, title: tooltip});
+  									['onclick', 'onmousedown', 'onmouseup', 'onmouseover', 'onmousemove', 'onmouseout'].each(function(attrName) {
+  										var attrValue = this.getAttr(attrName, true);
+  										if (attrValue) {
+  										  // If this is a properly formatted link in an HTML node, provide the link'd ID to its javascript code
+  										  if(HTMLnode) text.writeAttribute(attrName, "var ID='"+ID+"'; "+attrValue);
+  										  else         text.writeAttribute(attrName, attrValue);
+  										}
+  									}.bind(this));
+  									if(HTMLnode) text.setStyle({ textDecoration: 'underline'});
+    							  else         text.setStyle({ textDecoration: 'none'});
+  								}
 								} else {
 									text = new Element('span');
 								}

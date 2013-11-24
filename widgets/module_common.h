@@ -17,110 +17,98 @@ namespace common {
 
 class module {
   public:
-  class context {
+  
+  // Module relations are organized based two data structures: groups and contexts.
+  // A group defines the granularity at which different executions of a module are differentiated. A group
+  //    may be the module's name, its name+nesting stack within other modules, name+call stack or name+context.
+  //    All module groups that map to the same group must have the same number of inputs and outputs.
+  // Context defines the properties of a given data item propagated from one module to another. A context is a mapping
+  //    from one or more property names to their values. The context of a given group of a module is the combination
+  //    of the contexts of its inputs.
+    
+  class group {
     public:
     std::string name;
-    std::map<std::string, attrValue> configuration;
-    // If two contexts have the same name and configuration, they must have the same values of numInputs and numOutputs
+    // nesting stack?
+    
     int numInputs;
     int numOutputs;
     
+    group() {}
+    group(std::string name, int numInputs, int numOutputs) : name(name), numInputs(numInputs), numOutputs(numOutputs) {}
+    group(const group& that) : name(that.name), numInputs(that.numInputs), numOutputs(that.numOutputs) {}
+    
+    group(properties::iterator props);
+    
+    // Returns the properties map that describes this group object;
+    std::map<std::string, std::string> getProperties() const;
+    
+    bool operator==(const group& that) const
+    { return name==that.name; }
+    
+    bool operator<(const group& that) const
+    { return name<that.name; }
+    
+    // Returns a human-readable string that describes this context
+    std::string str() const;
+  }; // class group
+  
+  class context {
+    public:
+    std::map<std::string, attrValue> configuration;
+    
+    typedef common::easymap<std::string, attrValue> config;
+    
     context() {}
     
-    context(const context& that) : name(that.name), configuration(that.configuration), numInputs(that.numInputs), numOutputs(that.numOutputs) {}
+    context(const context& that) : configuration(that.configuration) {}
     
-    context(const std::string& name, int numInputs=0, int numOutputs=0) :
-    	name(name), configuration(configuration), numInputs(numInputs), numOutputs(numOutputs) {}
-    
-    context(const std::string& name, int numInputs, int numOutputs, const std::map<std::string, attrValue>& configuration) :
-      name(name), configuration(configuration), numInputs(numInputs), numOutputs(numOutputs) {}
-    
-    context(const std::string& name, int numInputs, int numOutputs, std::string key0, attrValue val0) :
-      name(name), numInputs(numInputs), numOutputs(numOutputs) 
-    { configuration[key0] = val0; }
-    
-    context(const std::string& name, int numInputs, int numOutputs, std::string key0, attrValue val0, std::string key1, attrValue val1) :
-      name(name), numInputs(numInputs), numOutputs(numOutputs) 
-    { configuration[key0] = val0; configuration[key1] = val1; }
-    
-    context(const std::string& name, int numInputs, int numOutputs, std::string key0, attrValue val0, std::string key1, attrValue val1, std::string key2, attrValue val2) :
-      name(name), numInputs(numInputs), numOutputs(numOutputs) 
-    { configuration[key0] = val0; configuration[key1] = val1; configuration[key2] = val2; }
-    
-    context(const std::string& name, int numInputs, int numOutputs, std::string key0, attrValue val0, std::string key1, attrValue val1, std::string key2, attrValue val2, std::string key3, attrValue val3) :
-      name(name), numInputs(numInputs), numOutputs(numOutputs) 
-    { configuration[key0] = val0; configuration[key1] = val1; configuration[key2] = val2; configuration[key3] = val3; }
-    
-    context(const std::string& name, int numInputs, int numOutputs, std::string key0, attrValue val0, std::string key1, attrValue val1, std::string key2, attrValue val2, std::string key3, attrValue val3, std::string key4, attrValue val4) :
-      name(name), numInputs(numInputs), numOutputs(numOutputs) 
-    { configuration[key0] = val0; configuration[key1] = val1; configuration[key2] = val2; configuration[key3] = val3; configuration[key4] = val4; }
-    
-    context(const std::string& name, int numInputs, int numOutputs, std::string key0, attrValue val0, std::string key1, attrValue val1, std::string key2, attrValue val2, std::string key3, attrValue val3, std::string key4, attrValue val4, std::string key5, attrValue val5) :
-      name(name), numInputs(numInputs), numOutputs(numOutputs) 
-    { configuration[key0] = val0; configuration[key1] = val1; configuration[key2] = val2; configuration[key3] = val3; configuration[key4] = val4; configuration[key5] = val5; }
-    
-    context(const std::string& name, int numInputs, int numOutputs, std::string key0, attrValue val0, std::string key1, attrValue val1, std::string key2, attrValue val2, std::string key3, attrValue val3, std::string key5, std::string key4, attrValue val4, attrValue val5, std::string key6, attrValue val6) :
-      name(name), numInputs(numInputs), numOutputs(numOutputs) 
-    { configuration[key0] = val0; configuration[key1] = val1; configuration[key2] = val2; configuration[key3] = val3; configuration[key4] = val4; configuration[key5] = val5; configuration[key6] = val6; }
-    
-    context(const std::string& name, int numInputs, int numOutputs, std::string key0, attrValue val0, std::string key1, attrValue val1, std::string key2, attrValue val2, std::string key3, attrValue val3, std::string key5, std::string key4, attrValue val4, attrValue val5, std::string key6, attrValue val6, std::string key7, attrValue val7) :
-      name(name), numInputs(numInputs), numOutputs(numOutputs) 
-    { configuration[key0] = val0; configuration[key1] = val1; configuration[key2] = val2; configuration[key3] = val3; configuration[key4] = val4; configuration[key5] = val5; configuration[key6] = val6; configuration[key7] = val7; }
-    
-    context(const std::string& name, int numInputs, int numOutputs, std::string key0, attrValue val0, std::string key1, attrValue val1, std::string key2, attrValue val2, std::string key3, attrValue val3, std::string key5, std::string key4, attrValue val4, attrValue val5, std::string key6, attrValue val6, std::string key7, attrValue val7, std::string key8, attrValue val8) :
-      name(name), numInputs(numInputs), numOutputs(numOutputs) 
-    { configuration[key0] = val0; configuration[key1] = val1; configuration[key2] = val2; configuration[key3] = val3; configuration[key4] = val4; configuration[key5] = val5; configuration[key6] = val6; configuration[key7] = val7; configuration[key8] = val8; }
-    
-    context(const std::string& name, int numInputs, int numOutputs, std::string key0, attrValue val0, std::string key1, attrValue val1, std::string key2, attrValue val2, std::string key3, attrValue val3, std::string key5, std::string key4, attrValue val4, attrValue val5, std::string key6, attrValue val6, std::string key7, attrValue val7, std::string key8, attrValue val8, std::string key9, attrValue val9) :
-      name(name), numInputs(numInputs), numOutputs(numOutputs) 
-    { configuration[key0] = val0; configuration[key1] = val1; configuration[key2] = val2; configuration[key3] = val3; configuration[key4] = val4; configuration[key5] = val5; configuration[key6] = val6; configuration[key7] = val7; configuration[key8] = val8; configuration[key9] = val9; }
+    context(const std::map<std::string, attrValue>& configuration) : configuration(configuration) {}
     
     context(properties::iterator props);
     
     bool operator==(const context& that) const
-    { return name==that.name && configuration==that.configuration; }
+    { return configuration==that.configuration; }
     
     bool operator<(const context& that) const
-    { 
-      //std::cout << ":           ("<<((name< that.name) || (name==that.name && configuration<that.configuration)? "<": "!<")<<") this="<<UID()<<", that="<<that.UID()<<std::endl;
-      
-      return (name< that.name) ||
-             (name==that.name && configuration<that.configuration); }
+    { return configuration<that.configuration; }
     
     void add(std::string key, const attrValue& val)
     { configuration[key] = val; }
     
+    const std::map<std::string, attrValue>& getCfg() const { return configuration; }
+    
     // Returns the properties map that describes this context object;
     std::map<std::string, std::string> getProperties() const;
-  
-    // Returns a string that uniquely identifies this context
-    std::string UID() const;
-      
+    
     // Returns a human-readable string that describes this context
     std::string str() const;
-      
-    // Returns a human-readable string that describes the configuration of this context
-    std::string configStr() const;
   }; // class context
+  
   
   typedef enum {input, output} ioT;
   
   class port {
     public:
-    context c;
+    group g;
+    context ctxt;
     ioT type;
     int index;
     
     port() {}
-    port(const context& c, ioT type, int index) : c(c), type(type), index(index) {}
+    port(const group& g, const context& ctxt, ioT type, int index) : g(g), ctxt(ctxt), type(type), index(index) {}
       
     bool operator==(const port& that) const
-    { return c.name==that.c.name && type==that.type && index==that.index; }
+    { return g==that.g && ctxt==that.ctxt && type==that.type && index==that.index; }
     
     bool operator<(const port& that) const
-    { return (c.name< that.c.name) ||
-             (c.name==that.c.name && type< that.type) ||
-             (c.name==that.c.name && type==that.type && index<that.index); }
+    { return (g< that.g) ||
+             (g==that.g && ctxt< that.ctxt) ||
+             (g==that.g && ctxt==that.ctxt && type< that.type) ||
+             (g==that.g && ctxt==that.ctxt && type==that.type && index<that.index); }
+  
+    // Erase the context within this port. This is important for data-structures that ignore context details
+    void clearContext() { ctxt.configuration.clear(); }
     
     // Returns a human-readable string that describes this context
     std::string str() const;
@@ -129,50 +117,15 @@ class module {
   class inport : public port {
     public:
     inport() {}
-    inport(const context& c, int index) : port(c, input, index) {}
+    inport(const group& g, const context& c, int index) : port(g, c, input, index) {}
   };
   
   class outport : public port {
     public:
     outport() {}
-    outport(const context& c, int index) : port(c, output, index) {}
+    outport(const group& g, const context& c, int index) : port(g, c, output, index) {}
   };
 
-  /* // Syntactic sugar for specifying ports that connect to a module's inputs
-	class inputs : public std::vector<port> {
-		public:
-		inputs() {}
-		  
-		inputs(const port& p0)
-		{ push_back(p0); }
-		
-		inputs(const port& p0, const port& p1)
-		{ push_back(p0); push_back(p1); }
-		
-		inputs(const port& p0, const port& p1, const port& p2)
-		{ push_back(p0); push_back(p1); push_back(p2); }
-		
-		inputs(const port& p0, const port& p1, const port& p2, const port& p3)
-		{ push_back(p0); push_back(p1); push_back(p2); push_back(p3); }
-		
-		inputs(const port& p0, const port& p1, const port& p2, const port& p3, const port& p4)
-		{ push_back(p0); push_back(p1); push_back(p2); push_back(p3); push_back(p4); }
-		
-		inputs(const port& p0, const port& p1, const port& p2, const port& p3, const port& p4, const port& p5)
-		{ push_back(p0); push_back(p1); push_back(p2); push_back(p3); push_back(p4); push_back(p5); }
-		
-		inputs(const port& p0, const port& p1, const port& p2, const port& p3, const port& p4, const port& p5, const port& p6)
-		{ push_back(p0); push_back(p1); push_back(p2); push_back(p3); push_back(p4); push_back(p5); push_back(p6); }
-		
-		inputs(const port& p0, const port& p1, const port& p2, const port& p3, const port& p4, const port& p5, const port& p6, const port& p7)
-		{ push_back(p0); push_back(p1); push_back(p2); push_back(p3); push_back(p4); push_back(p5); push_back(p6); push_back(p7); }
-		
-		inputs(const port& p0, const port& p1, const port& p2, const port& p3, const port& p4, const port& p5, const port& p6, const port& p7, const port& p8)
-		{ push_back(p0); push_back(p1); push_back(p2); push_back(p3); push_back(p4); push_back(p5); push_back(p6); push_back(p7); push_back(p8); }
-		
-		inputs(const port& p0, const port& p1, const port& p2, const port& p3, const port& p4, const port& p5, const port& p6, const port& p7, const port& p8, const port& p9)
-		{ push_back(p0); push_back(p1); push_back(p2); push_back(p3); push_back(p4); push_back(p5); push_back(p6); push_back(p7); push_back(p8); push_back(p8); push_back(p9); }
-	}; // class inputs */
 }; // class module
 
 }; // namespace common

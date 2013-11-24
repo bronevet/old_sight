@@ -11,6 +11,7 @@ all: ${WIDGETS_COMMON_O} ${WIDGETS_COMMON_H} ${WIDGETS_STRUCTURE_O} ${WIDGETS_ST
      ID3-Decision-Tree \
      xdotool \
      noVNC \
+     gsl \
      external_scripts
 	chmod 755 canviz-0.1 
 	chmod 644 canviz-0.1/*
@@ -64,7 +65,7 @@ module_structure.o: module_structure.C module_structure.h ../attributes_structur
 	g++ ${SIGHT_CFLAGS} module_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o module_structure.o
 
 module_layout.o: module_layout.C module_layout.h ../attributes_layout.h ../sight_layout.h
-	g++ ${SIGHT_CFLAGS} module_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o module_layout.o
+	g++ ${SIGHT_CFLAGS} module_layout.C -I.. -Igsl/include -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o module_layout.o
 
 
 
@@ -156,6 +157,12 @@ noVNC:
 	mv kanaka-noVNC-* noVNC
 	rm master.tar.gz
 
+gsl:
+	wget ftp://ftp.gnu.org/gnu/gsl/gsl-1.9.tar.gz
+	tar -xf gsl-1.9.tar.gz 
+	cd gsl-1.9; ./configure --prefix=${ROOT_PATH}/widgets/gsl
+	cd gsl-1.9; make; make install
+
 # JavaScript files from standard JS libraries that we wish to keep local copies of
 
 external_scripts: yui-min.js jquery-1.8.1.min.js underscore-min.js d3.v3.min.js
@@ -171,6 +178,7 @@ underscore-min.js:
 
 d3.v3.min.js:
 	cd widgets; wget http://d3js.org/d3.v3.min.js
+	cd widgets; wget http://d3js.org/d3.v3.js
 
 clean:
 	rm -fr xdotool

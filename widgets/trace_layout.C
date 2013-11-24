@@ -67,7 +67,12 @@ void *trace::enterTraceStream(properties::iterator props) {
 // Maps the traceIDs of all the currently active traces to their trace objects
 std::map<int, traceStream*> traceStream::active;
 
-traceStream::traceStream(properties::iterator props, std::string hostDiv) : hostDiv(hostDiv) {
+// hostDiv - the div where the trace data should be displayed
+  // showTrace - indicates whether the trace should be shown by default (true) or whether the host will control
+  //             when it is shown
+traceStream::traceStream(properties::iterator props, std::string hostDiv, bool showTrace) : 
+  hostDiv(hostDiv), showTrace(showTrace)
+{
   static bool initialized = false;
   
   if(!initialized) {
@@ -91,8 +96,10 @@ traceStream::traceStream(properties::iterator props, std::string hostDiv) : host
     
     // D3 Widgets
     dbg.includeWidgetScript("d3.v3.min.js", "text/javascript"); dbg.includeFile("d3.v3.min.js");
+    //dbg.includeWidgetScript("d3.v3.js", "text/javascript"); dbg.includeFile("d3.v3.js");
     dbg.includeWidgetScript("boxplot.js",   "text/javascript"); dbg.includeFile("boxplot.js");
     dbg.includeWidgetScript("gradient.js",  "text/javascript"); dbg.includeFile("gradient.js");
+    dbg.includeWidgetScript("scatter.js",   "text/javascript"); dbg.includeFile("scatter.js");
 
     dbg.includeFile("trace.js"); dbg.includeWidgetScript("trace.js", "text/javascript");
     
@@ -117,6 +124,8 @@ traceStream::traceStream(properties::iterator props, std::string hostDiv) : host
   } else
     contextAttrsInitialized = false;
   
+  traceAttrsInitialized = false;
+
   active[traceID] = this;
   cout << "New Trace "<<traceID<<", this="<<this<<endl;
 }
@@ -135,53 +144,55 @@ string JSArray(const aggr& l) {
 }
 
 traceStream::~traceStream() {
-  cout << "traceStream::~traceStream() this="<<this<<", traceID="<<traceID<<endl;
-  // String that contains the names of all the context attributes 
-  string ctxtAttrsStr;
-  if(viz==table || viz==decTree || viz==heatmap || viz==boxplot)
-    ctxtAttrsStr = JSArray<list<string> >(contextAttrs);
-  
-  // String that contains the names of all the trace attributes
-  string tracerAttrsStr;
-  if(viz==table || viz==lines || viz==heatmap || viz==boxplot)
-    tracerAttrsStr = JSArray<set<string> >(tracerKeys);
-  
-  assert(hostDiv != "");
-  
-  // Now that we know all the trace variables that are included in this trace, emit the trace
-  if(viz==table || viz==heatmap) {
-    //dbg.widgetScriptPrologCommand(txt()<<"loadGoogleAPI();");
-    ostringstream cmd; 
-    cmd<<"displayTrace('"<<traceID<<"', "<<
-                       "'"<<hostDiv<<"', "<<
-                       ctxtAttrsStr<<", " << 
-                       tracerAttrsStr<<", "<<  
-                       "'"<<viz2Str(viz)<<"');";
-    dbg.widgetScriptEpilogCommand(cmd.str());
-  } else if(viz==lines) {
-    // Create a separate line graph for each context attribute
-    for(std::set<std::string>::iterator c=contextAttrsSet.begin(); c!=contextAttrsSet.end(); c++) {
-      dbg.widgetScriptEpilogCommand(txt()<<"displayTrace('"<<traceID<<"', "<<
-                                    "'"<<hostDiv<<"', "<<
-                                    "['"<<*c<<"'], "<<
-                                    tracerAttrsStr<<", "<<
-                                    "'"<<viz2Str(viz)<<"');");
-    }
-  } else if(viz==decTree) {
-    // Create a separate decision tree for each tracer attribute
-    for(set<string>::iterator t=tracerKeys.begin(); t!=tracerKeys.end(); t++) {
+  // If the trace is shown by default
+  if(showTrace) { 
+    // String that contains the names of all the context attributes 
+    string ctxtAttrsStr;
+    if(viz==table || viz==decTree || viz==heatmap || viz==boxplot)
+      ctxtAttrsStr = JSArray<list<string> >(contextAttrs);
+    
+    // String that contains the names of all the trace attributes
+    string tracerAttrsStr;
+    if(viz==table || viz==lines || viz==heatmap || viz==boxplot)
+      tracerAttrsStr = JSArray<list<string> >(traceAttrs);
+    
+    assert(hostDiv != "");
+    
+    // Now that we know all the trace variables that are included in this trace, emit the trace
+    if(viz==table || viz==heatmap) {
+      //dbg.widgetScriptPrologCommand(txt()<<"loadGoogleAPI();");
+      ostringstream cmd; 
+      cmd<<"displayTrace('"<<traceID<<"', "<<
+                         "'"<<hostDiv<<"', "<<
+                         ctxtAttrsStr<<", " << 
+                         tracerAttrsStr<<", "<<  
+                         "'"<<viz2Str(viz)<<"', true, true);";
+      dbg.widgetScriptEpilogCommand(cmd.str());
+    } else if(viz==lines) {
+      // Create a separate line graph for each context attribute
+      for(std::set<std::string>::iterator c=contextAttrsSet.begin(); c!=contextAttrsSet.end(); c++) {
+        dbg.widgetScriptEpilogCommand(txt()<<"displayTrace('"<<traceID<<"', "<<
+                                      "'"<<hostDiv<<"', "<<
+                                      "['"<<*c<<"'], "<<
+                                      tracerAttrsStr<<", "<<
+                                      "'"<<viz2Str(viz)<<"', false, true);");
+      }
+    } else if(viz==decTree) {
+      // Create a separate decision tree for each tracer attribute
+      for(list<string>::iterator t=traceAttrs.begin(); t!=traceAttrs.end(); t++) {
+        dbg.widgetScriptEpilogCommand(txt()<<"displayTrace('"<<traceID<<"', "<<
+                                      "'"<<hostDiv<<"', "<<
+                                      ctxtAttrsStr<<", "<<
+                                      "['"<<*t<<"'], "<<
+                                      "'"<<viz2Str(viz)<<"', false, true);");
+      }
+    } else if(viz==boxplot) {
       dbg.widgetScriptEpilogCommand(txt()<<"displayTrace('"<<traceID<<"', "<<
                                     "'"<<hostDiv<<"', "<<
                                     ctxtAttrsStr<<", "<<
-                                    "['"<<*t<<"'], "<<
-                                    "'"<<viz2Str(viz)<<"');");
+                                    tracerAttrsStr<<", "<<
+                                    "'"<<viz2Str(viz)<<"', false, true);");
     }
-  } else if(viz==boxplot) {
-    dbg.widgetScriptEpilogCommand(txt()<<"displayTrace('"<<traceID<<"', "<<
-                                  "'"<<hostDiv<<"', "<<
-                                  ctxtAttrsStr<<", "<<
-                                  tracerAttrsStr<<", "<<
-                                  "'"<<viz2Str(viz)<<"');");
   }
   
   /*assert(stack.size()>0);
@@ -190,25 +201,57 @@ traceStream::~traceStream() {
   active.erase(traceID);
 }
 
+// Given a set of context and trace attributes to visualize, a target div and a visualization type, returns the command 
+// to do this visualization.
+// showFresh: boolean that indicates whether we should overwrite the prior contents of hostDiv (true) or whether we should append
+//      to them (false)
+// showLabels: boolean that indicates whether we should show a label that annotates a data plot (true) or whether
+//      we should just show the plot (false)
+std::string traceStream::getDisplayJSCmd(const std::list<std::string>& contextAttrs, const std::list<std::string>& traceAttrs,
+                                         std::string hostDiv, vizT viz, bool showFresh, bool showLabels) {
+  // Default contextAttrs, traceAttrs, hostDiv and viz to be the values set within this traceStream
+  const std::list<std::string> *localContextAttrs = &contextAttrs,
+                               *localTraceAttrs   = &traceAttrs;
+  if(contextAttrs.size()==0) localContextAttrs = &(this->contextAttrs);
+  if(traceAttrs.size()==0)   localTraceAttrs = &(this->traceAttrs);
+  if(hostDiv=="")            hostDiv = this->hostDiv;
+  if(viz == unknown)         viz = this->viz;
+    
+  string ctxtAttrsStr = JSArray<list<string> >(*localContextAttrs);
+  string tracerAttrsStr = JSArray<list<string> >(*localTraceAttrs);
+  
+  return txt()<<"displayTrace('"<<traceID<<"', "<<
+                             "'"<<hostDiv<<"', "<<
+                             ctxtAttrsStr<<", " << 
+                             tracerAttrsStr<<", "<<  
+                             "'"<<viz2Str(viz)<<"', "<<
+                             (showFresh?"true":"false")<<", "<<
+                             (showLabels?"true":"false")<<");";
+}
+
 // Record an observation
 void* traceStream::observe(properties::iterator props)
 {
-  //cout << "trace::observe() props="<<properties::str(props)<<endl;
+  cout << "trace::observe() props="<<properties::str(props)<<endl;
   long traceID = properties::getInt(props, "traceID");
   assert(active.find(traceID) != active.end());
   traceStream* ts = active[traceID];
   //cout << "    t="<<t<<endl;
-  //cout << "    #ts->tracerKeys="<<ts->tracerKeys.size()<<endl;
+  //cout << "    #ts->traceAttrs="<<ts->traceAttrs.size()<<endl;
   
   long numTraceAttrs = properties::getInt(props, "numTraceAttrs");
-  long numCtxtAttrs = properties::getInt(props, "numCtxtAttrs");
-    
+  long numCtxtAttrs  = properties::getInt(props, "numCtxtAttrs");
+  
+  // Maps that record the observation to be forwarded to any observers listening on this traceStream
+  map<string, string> ctxtToObs, traceToObs;
+  map<std::string, anchor> traceAnchorToObs;
+  
   // Read all the context attributes. If contextAttrs is empty, it is filled with the context attributes of 
   // this observation. Otherwise, we verify that this observation's context is identical to prior observations.
-
-  if(ts->contextAttrsInitialized) assert(ts->contextAttrs.size() == numCtxtAttrs);
+ if(ts->contextAttrsInitialized) assert(ts->contextAttrs.size() == numCtxtAttrs);
   for(long i=0; i<numCtxtAttrs; i++) {
     string ctxtName = properties::get(props, txt()<<"cKey_"<<i);
+      cout << traceID<<": "<<ctxtName<<", ts->contextAttrsInitialized="<<ts->contextAttrsInitialized<<endl;
     if(!ts->contextAttrsInitialized) {
       ts->contextAttrs.push_back(ctxtName);
       // Context attributes cannot be repeated
@@ -220,10 +263,22 @@ void* traceStream::observe(properties::iterator props)
   // The context attributes of this trace are now definitely initialized
   ts->contextAttrsInitialized = true;
   
-  // Update the tracer with the keys of this observation's traced values
-  for(long i=0; i<numTraceAttrs; i++)
-    ts->tracerKeys.insert(properties::get(props, txt()<<"tKey_"<<i));
-    
+  // Read all the trace attributes. If traceAttrs is empty, it is filled with the trace attributes of 
+  // this observation. Otherwise, we verify that this observation's trace is identical to prior observations.
+  if(ts->traceAttrsInitialized) assert(ts->traceAttrs.size() == numTraceAttrs);
+  for(long i=0; i<numTraceAttrs; i++) {
+    string traceName = properties::get(props, txt()<<"tKey_"<<i);
+    if(!ts->traceAttrsInitialized) {
+      ts->traceAttrs.push_back(traceName);
+      // Trace attributes cannot be repeated
+      assert(ts->traceAttrsSet.find(traceName) == ts->traceAttrsSet.end());
+      ts->traceAttrsSet.insert(traceName);
+    } else
+      assert(ts->traceAttrsSet.find(traceName) != ts->traceAttrsSet.end());
+  }
+  // The trace attributes of this trace are now definitely initialized
+  ts->traceAttrsInitialized = true;
+  
   ostringstream cmd;
   cmd << "traceRecord(\""<<ts->traceID<<"\", ";
   
@@ -234,6 +289,9 @@ void* traceStream::observe(properties::iterator props)
     string tKey = properties::get(props, txt()<<"tKey_"<<i);
     string tVal = properties::get(props, txt()<<"tVal_"<<i);
     cmd << "\""<< tKey << "\": \"" << tVal <<"\"";
+    
+    // If some observers are listening on this traceStream, record the current observation so they can look at it
+    if(ts->observers.size()>0) traceToObs[tKey] = tVal;
   }
   cmd << "}, {";
   
@@ -243,6 +301,9 @@ void* traceStream::observe(properties::iterator props)
     string tKey = properties::get(props, txt()<<"tKey_"<<i);
     anchor tAnchor(properties::getInt(props, txt()<<"tAnchorID_"<<i));
     cmd << "\""<< tKey << "\": \"" << (tAnchor==anchor::noAnchor? "": tAnchor.getLinkJS()) <<"\"";
+      
+    // If some observers are listening on this traceStream, record the current observation so they can look at it
+    if(ts->observers.size()>0) traceAnchorToObs[tKey] = tAnchor;
   }
   cmd << "}, {";
   
@@ -252,10 +313,17 @@ void* traceStream::observe(properties::iterator props)
     string cKey = properties::get(props, txt()<<"cKey_"<<i);
     string cVal = properties::get(props, txt()<<"cVal_"<<i);
     cmd << "\"" << cKey << "\": \"" << cVal << "\"";
+    
+    // If some observers are listening on this traceStream, record the current observation so they can look at it
+    if(ts->observers.size()>0) ctxtToObs[cKey] = cVal;
   }
   cmd << "}, \""<<viz2Str(ts->viz)<<"\");";
   
   dbg.widgetScriptCommand(cmd.str());
+  
+  // Inform any observers listening on this traceStream of the new observation
+  for(set<traceObserver*>::iterator o=ts->observers.begin(); o!=ts->observers.end(); o++)
+    (*o)->observe(traceID, ctxtToObs, traceToObs, traceAnchorToObs);
   
   return NULL;
 }
