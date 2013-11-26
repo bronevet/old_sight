@@ -31,12 +31,21 @@ mfemLayoutHandlerInstantiator mfemLayoutHandlerInstance;
 mfem::mfem(properties::iterator props) : block(properties::next(props)) {
   #if REMOTE_ENABLED
   dbg.ownerAccessing();
-//    dbg << "<a href=\"#\" onclick=\"javascript:setGDBLink(this, ':"<<GDB_PORT<<"/apps/mfem/mfemwrap.cgi?HOME="<<getenv("HOME")<<"&USER="<<getenv("USER")<<"&execFile="<<ROOT_PATH<<"/apps/mfem/glvis/glvis&mesh="<<meshPath<<"&soln="<<solnPath<<"')\"\">Mesh</a>\n";
   string divName = txt()<<"mfem_mesh_container_"<<properties::getInt(props, "widgetID");
+  
+  dbg << "<iframe id=\""<<divName<<"\" width=0 height=0></iframe>\n";
+  
+//    dbg << "<a href=\"#\" onclick=\"javascript:setGDBLink(this, ':"<<GDB_PORT<<"/apps/mfem/mfemwrap.cgi?HOME="<<getenv("HOME")<<"&USER="<<getenv("USER")<<"&execFile="<<ROOT_PATH<<"/apps/mfem/glvis/glvis&mesh="<<meshPath<<"&soln="<<solnPath<<"')\"\">Mesh</a>\n";
+
   dbg << "<a href=\"#\" onclick=\""<<
            "javascript:document.getElementsByTagName('iframe')['"<<divName<<"'].width=1024; "<<
                       "document.getElementsByTagName('iframe')['"<<divName<<"'].height=768; "<<
-                      "document.getElementsByTagName('iframe')['"<<divName<<"'].src=getHostLink(':"<<GDB_PORT<<"/apps/mfem/mfemwrap.cgi?HOME="<<getenv("HOME")<<"&USER="<<getenv("USER")<<"&execFile="<<ROOT_PATH<<"/apps/mfem/glvis/glvis&mesh="<<properties::get(props, "meshFName")<<"&soln="<<properties::get(props, "solnFName")<<"'); this.innerHTML=''; return false;\">Mesh</a>"<<endl;
+                      "document.getElementsByTagName('iframe')['"<<divName<<"'].src=getHostLink"<<
+                           "(':"<<GDB_PORT<<"/apps/mfem/mfemwrap.cgi?HOME="<<getenv("HOME")<<"&"<<
+                                                                    "USER="<<getenv("USER")<<"&"<<
+                                                                    "execFile="<<ROOT_PATH<<"/apps/mfem/glvis/glvis&"<<
+                                                                    "mesh="<<dbg.getWorkDir()<<"/html/"<<properties::get(props, "meshFName")<<"&"<<
+                                                                    "soln="<<dbg.getWorkDir()<<"/html/"<<properties::get(props, "solnFName")<<"'); this.innerHTML=''; return false;\">Mesh</a>"<<endl;
   dbg.userAccessing();
   #endif
 }

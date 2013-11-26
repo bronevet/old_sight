@@ -32,7 +32,7 @@ print $f "file $execFile\n";
 #print $f "sharedlibrary sight.o\n";
 #print $f "break advanceBlockCount\n";
 print $f "break sight_structure.C:$main::gdbLineNum\n";
-print $f "cond 1 blockCount==$tgtCount\n";
+print $f "cond 1 blockID==$tgtCount\n";
 print $f "r $args\n";
 print $f "finish\n";
 print $f "finish\n";
