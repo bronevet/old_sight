@@ -22,7 +22,7 @@ int main(int argc, char** argv)
 
   dbg << "<h1>Example 7: Graph Merging</h1>" << endl;
   dbg << numIters << " Iterations."<<endl;
-  scope s("We make output more navigable by linking related outer iterations", scope::medium);
+/*  scope s("We make output more navigable by linking related outer iterations", scope::medium);
   
   //trace t0("MT Root",      "Root",      trace::showBegin, trace::table, trace::disjMerge);
   //trace t1("MT Input",     "Input",     trace::showBegin, trace::table, trace::disjMerge);
@@ -53,7 +53,7 @@ int main(int argc, char** argv)
                           // CondNum
                           (i==0? mInput.outPort(1): mtxGenOutputs[1])),
                    ma1Outputs);
-    	  usleep(200+i*i*100 + i*1000/*rand()%50*/);
+    	  usleep(200+i*i*100 + i*1000/ *rand()%50* /);
     	  ma1.setOutCtxt(0, context(config("solnErr", (i+1)*2)));
     	  ma1.setOutCtxt(1, context(config("solnVal", (i+1)*5)));
     	}
@@ -64,18 +64,18 @@ int main(int argc, char** argv)
     	  mb1.setOutCtxt(0, context(config("nonzeros", i+1)));
     	  mb1.setOutCtxt(1, context(config("CondNum", i*i)));
     	    
-    	  usleep(1000+i*100/*rand()%150*/);
+    	  usleep(1000+i*100/ *rand()%150* /);
     	}
     	
-    	/*{ module mb1(group("Mtx Gen", 2, 2),
+    	/ *{ module mb1(group("Mtx Gen", 2, 2),
     	             inputs(mInput.outPort(2), ma1Outputs[1]));
     	  mb1.setOutCtxt(0, context(config("nonzeros", i+1)));
     	  mb1.setOutCtxt(1, context(config("CondNum", i*i)));
     	    
     	  usleep(100+i*10/*rand()%150* /);
-    	}*/
+    	}* /
   	}
-  }
+  }*/
   /* //graph g;
   // Maps each iteration number to the link anchors that will point to this iteration's scope
   map<int, set<anchor> > pointsTo;
@@ -107,7 +107,7 @@ int main(int argc, char** argv)
     }
   }*/
   
-  /*list<string> contextAttrs;
+  list<string> contextAttrs;
   contextAttrs.push_back("depth");
   contextAttrs.push_back("val");
   trace tableTrace("Table", contextAttrs, trace::showBegin, trace::table, trace::disjMerge);
@@ -120,8 +120,8 @@ int main(int argc, char** argv)
     
     /*anchor toChild; 
     toChild.linkImg("Root Node"); dbg << endl;
-    fibLinks(0, numIters, NULL, toChild);* /
-  }*/
+    fibLinks(0, numIters, NULL, toChild);*/
+  }
 }
 
 // Fibonacci, where we create graph edges from each call to its children.

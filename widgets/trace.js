@@ -244,7 +244,9 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, viz, showFre
   if(viz == 'table') {
     // NOTE: we always overwrite prior contents regardless of the value of showFresh, although this can be fixed in the future
     
-    var ctxtCols = [];
+    showTable(traceDataList[traceLabel], hostDivID, ctxtAttrs[0]);
+    
+    /*var ctxtCols = [];
     for(i in ctxtAttrs) { if(ctxtAttrs.hasOwnProperty(i)) {
       ctxtCols.push({key:ctxtAttrs[i], label:ctxtAttrs[i], sortable:true});
     } }
@@ -273,7 +275,7 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, viz, showFre
         
         //traceTable.render("#div"+blockID);
         traceTable.render("#"+hostDivID+"-Table");
-      });
+      });*/
   } else if(viz == 'lines') {
     if(numContextAttrs!=1) { alert("Line visualizations require requre exactly one context variable for each chart"); return; }
     

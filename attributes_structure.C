@@ -232,7 +232,7 @@ attr::attr(std::string key, double      val, properties* props) : key(key), val(
 
 template<typename T>
 void attr::init(std::string key, T val, properties* props) {
-cout << "attr::init("<<key<<", "<<val<<"), attributes.exists(key)="<<attributes.exists(key)<<"\n"; cout.flush();
+//cout << "attr::init("<<key<<", "<<val<<"), attributes.exists(key)="<<attributes.exists(key)<<"\n"; cout.flush();
   if(attributes.exists(key)) {
     keyPreviouslySet = true;
     const std::set<attrValue>& curValues = attributes.get(key);
@@ -259,7 +259,7 @@ cout << "attr::init("<<key<<", "<<val<<"), attributes.exists(key)="<<attributes.
 }
 
 attr::~attr() {
-cout << "attr::~attr("<<key<<", "<<val.str()<<"), keyPreviouslySet="<<keyPreviouslySet<<"\n"; cout.flush();
+//cout << "attr::~attr("<<key<<", "<<val.str()<<"), keyPreviouslySet="<<keyPreviouslySet<<"\n"; cout.flush();
   // If this mapping replaced some prior mapping, return key to its original state
   if(keyPreviouslySet)
     attributes.replace(key, oldVal);

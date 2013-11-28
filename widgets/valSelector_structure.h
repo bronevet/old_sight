@@ -15,7 +15,7 @@
 namespace sight {
 namespace structure {
 
-class valSelector: public common::sightObj
+class valSelector: public sightObj
 {
   protected:
   

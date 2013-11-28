@@ -34,6 +34,8 @@ extern char username[10000];
 // The unique ID of this process' output stream
 extern int outputStreamID;
 
+extern bool initializedDebug;
+
 // Initializes the debug sub-system
 void SightInit(int argc, char** argv, std::string title="Debug Output", std::string workDir="dbg");
 void SightInit(std::string title, std::string workDir);
@@ -157,20 +159,20 @@ class streamLocation {
   { return txt()<<"[streamLocation: vID="<<vID.serialize()<<", loc="<<loc.str()<<"]"; }
 }; // class streamLocation
 
-
-
-/* // Base class of all sight objects that provides some common functionality
+// Base class of all sight objects that provides some common functionality
 class sightObj {
   public:
   properties* props;
-  sightObj() : props(NULL) {}
-  sightObj(properties* props) : props(props) {}
-    
-  ~sightObj() {
-    assert(props);
-    delete(props);
-  }
-};*/
+  
+  // Records whether we should emit the exit tag in the destructor (true) or whether this was already taken
+  // care of in the constructor (false)
+  bool emitExitTag;
+  
+  sightObj();
+  // isTag - if true, we emit a single enter/exit tag combo in the constructor and nothing in the destructor
+  sightObj(properties* props, bool isTag=false);
+  ~sightObj();
+};
 
 // Base class for objects that maintain information for each incoming or outgoing stream during merging
 class streamRecord : public printable {
@@ -556,7 +558,7 @@ class streamAnchor: public printable
 }; // class streamAnchor
 
 // A block out debug output, which may be filled by various visual elements
-class block : public common::sightObj
+class block : public sightObj
 {
   std::string label;
   // The unique ID of this block as well as the static global counter of the maximum ID assigned to any block.
@@ -580,6 +582,11 @@ class block : public common::sightObj
   // Includes one or more incoming anchors thas should now be connected to this block.
   block(std::string label, anchor& pointsTo, properties* props=NULL);
   block(std::string label, std::set<anchor>& pointsTo, properties* props=NULL);
+    
+  // Sets the properties of this object
+  properties* setProperties(std::string label,                             properties* props);
+  properties* setProperties(std::string label, anchor& pointsTo,           properties* props);
+  properties* setProperties(std::string label, std::set<anchor>& pointsTo, properties* props);
  
   ~block();
   
@@ -715,7 +722,7 @@ protected:
 
 
 // Stream that uses dbgBuf
-class dbgStream : public common::dbgStream, public common::sightObj
+class dbgStream : public common::dbgStream, public sightObj
 {
   dbgBuf defaultFileBuf;
   // Stream to the file where the structure will be written
@@ -778,7 +785,7 @@ public:
   // ----- Output of tags ----
   // Emit the entry into a tag to the structured output file. The tag is set to the given property key/value pairs
   //void enter(std::string name, const std::map<std::string, std::string>& properties, bool inheritedFrom);
-  void enter(common::sightObj* obj);
+  void enter(sightObj* obj);
     
   void enter(const properties& props);
     
@@ -789,7 +796,7 @@ public:
     
   // Emit the exit from a given tag to the structured output file
   //void exit(std::string name);
-  void exit(common::sightObj* obj);
+  void exit(sightObj* obj);
   void exit(const properties& props);
     
   // Returns the text that should be emitted to the the structured output file to that denotes exit from a given tag
@@ -798,13 +805,15 @@ public:
   
   // Emit a full tag an an the structured output file
   //void tag(std::string name, const std::map<std::string, std::string>& properties, bool inheritedFrom);
-  void tag(common::sightObj* obj);
+  void tag(sightObj* obj);
   void tag(const properties& props);
     
   // Returns the text that should be emitted to the the structured output file to that denotes a full tag an an the structured output file
   //std::string tagStr(std::string name, const std::map<std::string, std::string>& properties, bool inheritedFrom);
   std::string tagStr(const properties& props);
 }; // dbgStream
+
+extern dbgStream dbg;
 
 class dbgStreamMerger : public Merger {
   
@@ -853,11 +862,7 @@ class dbgStreamStreamRecord: public streamRecord {
   std::string str(std::string indent="") const;
 }; // class dbgStreamStreamRecord
 
-extern bool initializedDebug;
-
-extern dbgStream dbg;
-
-class indent : public common::sightObj
+class indent : public sightObj
 {
   public:
   //bool active;
@@ -873,7 +878,7 @@ class indent : public common::sightObj
   indent(                    int repeatCnt, const structure::attrOp& onoffOp, properties* props=NULL);
   indent(                                   const structure::attrOp& onoffOp, properties* props=NULL);
   indent(                                                          properties* props=NULL);
-  void init(std::string prefix, int repeatCnt, const structure::attrOp* onoffOp, properties* props);
+  static properties* setProperties(std::string prefix, int repeatCnt, const structure::attrOp* onoffOp, properties* props);
     
   ~indent();
 }; // indent

@@ -75,20 +75,20 @@ properties* trace::setProperties(showLocT showLoc, properties* props) {
 }
 
 void trace::init(std::string label, const std::list<std::string>& contextAttrs, showLocT showLoc, vizT viz, mergeT merge) {
-  cout << "trace::init() label="<<label<<", this="<<this<<endl;
+  //cout << "trace::init() label="<<label<<", this="<<this<<endl;
   
   // Record that this trace is active
   active[label] = this;
   
   // Create a stream for this trace and emit a tag that describes it
   stream = new traceStream(contextAttrs, viz, merge);
-  properties streamProps;
-  streamProps.add("trace_traceStream", stream->getProperties());
-  dbg.tag(streamProps);
+  /*properties streamProps;
+  streamProps.add("trace_traceStream", stream->setProperties());
+  dbg.tag(streamProps);*/
 }
 
 trace::~trace() {
-  cout << "trace::~trace() label="<<getLabel()<<", this="<<this<<endl; cout.flush();
+  //cout << "trace::~trace() label="<<getLabel()<<", this="<<this<<endl; cout.flush();
   
   assert(active.find(getLabel()) != active.end());
   active.erase(getLabel());
@@ -116,36 +116,43 @@ traceStream* trace::getTS(string label) {
 // Maximum ID assigned to any trace object
 int traceStream::maxTraceID=0;
   
-traceStream::traceStream(const std::list<std::string>& contextAttrs, vizT viz, mergeT merge) : 
+traceStream::traceStream(const std::list<std::string>& contextAttrs, vizT viz, mergeT merge, properties* props) : 
+  sightObj(setProperties(contextAttrs, viz, merge, props), true),
   contextAttrs(contextAttrs), viz(viz), merge(merge)
 { init(); }
 
-traceStream::traceStream(std::string contextAttr, vizT viz, mergeT merge) : 
+traceStream::traceStream(std::string contextAttr, vizT viz, mergeT merge, properties* props) : 
+  sightObj(setProperties(structure::trace::context(contextAttr), viz, merge, props), true),
   contextAttrs(structure::trace::context(contextAttr)), viz(viz), merge(merge)
 { init(); }
 
-traceStream::traceStream(vizT viz, mergeT merge) : 
+traceStream::traceStream(vizT viz, mergeT merge, properties* props) : 
+  sightObj(setProperties(structure::trace::context(), viz, merge, props), true),
   viz(viz), merge(merge)
 { init(); }
 
 // Returns the properties of this object
-map<string, string> traceStream::getProperties() {
-  map<string, string> pMap;
-  pMap["traceID"] = txt()<<traceID;
-  pMap["viz"]     = txt()<<viz;
-  pMap["merge"]   = txt()<<merge;
+properties* traceStream::setProperties(const std::list<std::string>& contextAttrs, vizT viz, mergeT merge, properties* props) {
+  if(props==NULL) props = new properties();
   
-  pMap["numCtxtAttrs"] = txt()<<contextAttrs.size();
+  if(props->active && props->emitTag) {
+    map<string, string> pMap;
+    pMap["traceID"] = txt()<<maxTraceID;
+    pMap["viz"]     = txt()<<viz;
+    pMap["merge"]   = txt()<<merge;
+    
+    pMap["numCtxtAttrs"] = txt()<<contextAttrs.size();
+    
+    // Record the attributes this traces uses as context
+    int i=0;
+    for(list<string>::const_iterator ca=contextAttrs.begin(); ca!=contextAttrs.end(); ca++, i++)
+      pMap[txt()<<"ctxtAttr_"<<i] = *ca;
   
-  // Record the attributes this traces uses as context
-  int i=0;
-  for(list<string>::const_iterator ca=contextAttrs.begin(); ca!=contextAttrs.end(); ca++, i++)
-    pMap[txt()<<"ctxtAttr_"<<i] = *ca;
+    props->add("traceStream", pMap);
+  }
+  //cout << "Emitting trace "<<traceID<<endl;
   
-  //props->add("trace", pMap);
-  cout << "Emitting trace "<<traceID<<endl;
-  
-  return pMap;
+  return props;
 }
 
 void traceStream::init() {
@@ -155,26 +162,47 @@ void traceStream::init() {
   // Add this trace object as a change listener to all the context variables
   for(list<string>::iterator ca=contextAttrs.begin(); ca!=contextAttrs.end(); ca++)
     attributes.addObs(*ca, this);
-  
-  //active[label] = this;
+    
+  //cout << "traceStream::init(), emitExitTag="<<emitExitTag<<endl;
 }
 
 traceStream::~traceStream() {
+  //cout << "traceStream::~traceStream()"<<endl;
   //cout << "#active="<<active.size()<<", #contextAttrs="<<contextAttrs.size()<<endl;//", #tracerKeys="<<tracerKeys.size()<<endl;
   
   // Stop this object's observations of changes in context variables
   for(list<string>::iterator ca=contextAttrs.begin(); ca!=contextAttrs.end(); ca++) {
-    cout << "    *ca="<<*ca<<endl;
+    //cout << "    *ca="<<*ca<<endl;
     attributes.remObs(*ca, this);
   }
 }
 
 // Observe for changes to the values mapped to the given key
-void traceStream::observePre(std::string key)
+void traceStream::observePre(std::string key, attrObserver::attrObsAction action)
 {
-  cout << "traceStream::observePre("<<key<<")"<<endl;
-  // Emit any observations performed since the last change of any of the context variables
-  emitObservations(contextAttrs, obs);
+  // If an attribute is about to be removed, emit the current observation, if one is available
+  if(action==attrObserver::attrRemove) {
+    // If values for all context keys are still available
+    if(initializedCtxtAttrs.size() == contextAttrs.size())
+      // Emit any observations performed since the last change of any of the context variables
+      emitObservations(contextAttrs, obs);
+  
+    initializedCtxtAttrs.erase(key);
+  }
+}
+
+// Observe for changes to the values mapped to the given key
+void traceStream::observePost(std::string key, attrObserver::attrObsAction action)
+{
+  //cout << "traceStream::observePost("<<key<<", "<<attrObserver::attrObsAction2Str(action)<<")"<<endl;
+  // If we just got a new attribute value 
+  if(action==attrObserver::attrAdd || action==attrObserver::attrReplace) {
+    // If values for all context keys are still available
+    if(initializedCtxtAttrs.size() == contextAttrs.size())
+      // Emit any observations performed since the last change of any of the context variables
+      emitObservations(contextAttrs, obs);
+    if(action==attrObserver::attrAdd) initializedCtxtAttrs.insert(key);
+  }
 }
 
 // Called by traceAttr() to inform the trace that a new observation has been made
@@ -195,7 +223,7 @@ void traceStream::traceFullObservation(const std::map<std::string, attrValue>& c
   for(list<pair<string, attrValue> >::const_iterator o=obsList.begin(); o!=obsList.end(); o++)
     curObs[o->first] = make_pair(o->second, target);
 
-cout << "traceStream::traceFullObservation() #contextAttrsMap="<<contextAttrsMap.size()<<", #obsList="<<obsList.size()<<", #obs="<<obs.size()<<endl;  
+//cout << "traceStream::traceFullObservation() #contextAttrsMap="<<contextAttrsMap.size()<<", #obsList="<<obsList.size()<<", #obs="<<obs.size()<<endl;  
   // Call emitObservations with the temporary context and observation records, which are separate from the
   // ones that are maintained by this trace and record multiple separate observations for the same context
   emitObservations(contextAttrsMap, curObs);
@@ -213,7 +241,7 @@ void traceStream::emitObservations(const std::list<std::string>& contextAttrs,
     contextAttrsMap[*a] = vals.begin()->getAsStr();
   }
   
-  emitObservations(contextAttrs, obs);
+  emitObservations(contextAttrsMap, obs);
 }
 
 // Emits the output record records the given context and observations pairing
@@ -411,10 +439,6 @@ properties* TraceMerger::setProperties(std::vector<std::pair<properties::tagType
   properties::tagType type = streamRecord::getTagType(tags); 
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Trace!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
-    // Merge the trace IDs along all the streams
-    //int mergedTraceID = mergeIDs("trace", "traceID", pMap, tags, outStreamRecords, inStreamRecords);
-    int mergedTraceID = streamRecord::mergeIDs("trace", "traceID", pMap, tags, outStreamRecords, inStreamRecords);
-    
     // Default to showing before the trace, unless showLoc==showEnd on all incoming streams
     vector<long> showLocs = str2int(getValues(tags, "showLoc"));
     trace::showLocT showLoc;
@@ -423,6 +447,50 @@ properties* TraceMerger::setProperties(std::vector<std::pair<properties::tagType
       else if(showLoc != (trace::showLocT)(*i)) showLoc = trace::showBegin;
     }
     pMap["showLoc"] = txt()<<showLoc;
+  }
+  props->add("trace", pMap);
+  
+  return props;
+}
+
+// Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+// tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
+// Each level of the inheritance hierarchy may add zero or more elements to the given list and 
+// call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
+void TraceMerger::mergeKey(properties::tagType type, properties::iterator tag, 
+                           std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
+  properties::iterator blockTag = tag;
+  BlockMerger::mergeKey(type, ++blockTag, inStreamRecords, key);
+    
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
+  if(type==properties::enterTag) {
+    // We don't specify a key for traces since they're mostly shells for traceStreams and there isn't much to differentiate them
+  }
+}
+
+/*****************************
+ ***** TraceStreamMerger *****
+ *****************************/
+
+TraceStreamMerger::TraceStreamMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+                         std::map<std::string, streamRecord*>& outStreamRecords,
+                         std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                         properties* props) :
+                    Merger(advance(tags), outStreamRecords, inStreamRecords, props)
+{
+  if(props==NULL) props = new properties();
+  this->props = props;
+  
+  assert(tags.size()>0);
+  vector<string> names = getNames(tags); assert(allSame<string>(names));
+  assert(*names.begin() == "traceStream");
+  
+  map<string, string> pMap;
+  properties::tagType type = streamRecord::getTagType(tags); 
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Trace!"<<endl; exit(-1); }
+  if(type==properties::enterTag) {
+    // Merge the trace IDs along all the streams
+    int mergedTraceID = streamRecord::mergeIDs("traceStream", "traceID", pMap, tags, outStreamRecords, inStreamRecords);
     
     // If the visualization values disagree then we have an error. In the future we'll need to
     // reject merges of traces that use different visualizations.
@@ -437,7 +505,7 @@ properties* TraceMerger::setProperties(std::vector<std::pair<properties::tagType
     pMap["merge"] = txt()<<*merge.begin();
     
     // Set the merge type of the merged trace in the outgoing stream
-    ((TraceStreamRecord*)outStreamRecords["trace"])->merge[mergedTraceID] = (trace::mergeT)*merge.begin();
+    ((TraceStreamRecord*)outStreamRecords["traceStream"])->merge[mergedTraceID] = (trace::mergeT)*merge.begin();
 
     // If the set of context variables used by the different traces disagree then we have an error. 
     // In the future we'll need to reject merges of traces that use different visualizations.
@@ -459,19 +527,16 @@ properties* TraceMerger::setProperties(std::vector<std::pair<properties::tagType
       else     assert(contextAttrs == curContextAttrs);
     }
   }
-  props->add("trace", pMap);
-  
-  return props;
+  props->add("traceStream", pMap);
 }
 
 // Sets a list of strings that denotes a unique ID according to which instances of this merger's 
 // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
-void TraceMerger::mergeKey(properties::tagType type, properties::iterator tag, 
+void TraceStreamMerger::mergeKey(properties::tagType type, properties::iterator tag, 
                            std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
   properties::iterator blockTag = tag;
-  BlockMerger::mergeKey(type, ++blockTag, inStreamRecords, key);
     
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
@@ -483,6 +548,10 @@ void TraceMerger::mergeKey(properties::tagType type, properties::iterator tag,
     for(int c=0; c<numCtxtAttrs; c++) key.push_back(properties::get(tag, txt()<<"ctxtAttr_"<<c));
   }
 }
+
+/**************************
+ ***** TraceObsMerger *****
+ **************************/
 
 TraceObsMerger::TraceObsMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                        std::map<std::string, streamRecord*>& outStreamRecords,
@@ -502,12 +571,12 @@ TraceObsMerger::TraceObsMerger(std::vector<std::pair<properties::tagType, proper
   if(type==properties::enterTag) {
     // Merge the trace IDs along all the streams
     //int mergedTraceID = TraceStreamRecord::mergeIDs(pMap, tags, outStreamRecords, inStreamRecords);
-    int mergedTraceID = streamRecord::sameID("trace", "traceID", pMap, tags, outStreamRecords, inStreamRecords);
+    int mergedTraceID = streamRecord::sameID("traceStream", "traceID", pMap, tags, outStreamRecords, inStreamRecords);
         
-    cout << "TraceObsMerger::TraceObsMerger() mergedTraceID="<<mergedTraceID<<" outStreamRecords[trace]="<<outStreamRecords["trace"]->str()<<endl;
+    cout << "TraceObsMerger::TraceObsMerger() mergedTraceID="<<mergedTraceID<<" outStreamRecords[trace]="<<outStreamRecords["traceStream"]->str()<<endl;
       
     // Get the trace merging policy
-    trace::mergeT merge = (trace::mergeT)((TraceStreamRecord*)outStreamRecords["trace"])->merge[mergedTraceID];
+    trace::mergeT merge = (trace::mergeT)((TraceStreamRecord*)outStreamRecords["traceStream"])->merge[mergedTraceID];
     
     // Create a separate tag for each observation on each stream (we'll add aggregation code in the future)
     // The last stream's entry tag will be written to pMap, while the other streams' entry and exit tags will be 
@@ -517,7 +586,7 @@ TraceObsMerger::TraceObsMerger(std::vector<std::pair<properties::tagType, proper
     // If we need to keep separate observations for each stream
     if(merge == trace::disjMerge) {
       for(int t=0; t<tags.size(); t++) {
-        TraceStreamRecord* ts = (TraceStreamRecord*)inStreamRecords[t]["trace"];
+        TraceStreamRecord* ts = (TraceStreamRecord*)inStreamRecords[t]["traceStream"];
         
         map<string, string> traceObsMap = pMap;
         map<string, string>& curMap = (t<tags.size()-1? traceObsMap: pMap);
@@ -532,7 +601,7 @@ TraceObsMerger::TraceObsMerger(std::vector<std::pair<properties::tagType, proper
           curMap[txt()<<"tKey_"<<i] = properties::get(tags[t].second, txt()<<"tKey_"<<i);
           curMap[txt()<<"tVal_"<<i] = properties::get(tags[t].second, txt()<<"tVal_"<<i);
           streamID inSID(properties::getInt(tags[t].second, txt()<<"tAnchorID_"<<i), 
-                         inStreamRecords[t]["trace"]->getVariantID());
+                         inStreamRecords[t]["traceStream"]->getVariantID());
           streamID outSID = inStreamRecords[t]["anchor"]->in2outID(inSID);
           curMap[txt()<<"tAnchorID_"<<i] = txt()<<outSID.ID;
         }
@@ -627,8 +696,8 @@ void TraceObsMerger::mergeKey(properties::tagType type, properties::iterator tag
   if(type==properties::enterTag) {
     // Observations may only be merged if they correspond to traces that were merged in the outgoing stream
     streamID inSID(properties::getInt(tag, "traceID"), 
-                   inStreamRecords["trace"]->getVariantID());
-    key.push_back(txt()<<inStreamRecords["trace"]->in2outID(inSID).ID);
+                   inStreamRecords["traceStream"]->getVariantID());
+    key.push_back(txt()<<inStreamRecords["traceStream"]->in2outID(inSID).ID);
   }
 }
 
@@ -650,21 +719,23 @@ streamRecord* TraceStreamRecord::copy(int vSuffixID) {
 // to contain the state that succeeds them all, making it possible to resume processing
 void TraceStreamRecord::resumeFrom(std::vector<std::map<std::string, streamRecord*> >& streams) {
   // Compute the maximum maxTraceID among all the streams
-  maxTraceID = -1;
+  /*maxTraceID = -1;
   for(vector<map<string, streamRecord*> >::iterator s=streams.begin(); s!=streams.end(); s++)
-    maxTraceID = (((TraceStreamRecord*)(*s)["trace"])->maxTraceID > maxTraceID? 
-                   ((TraceStreamRecord*)(*s)["trace"])->maxTraceID: 
-                   maxTraceID);
+    maxTraceID = (((TraceStreamRecord*)(*s)["traceStream"])->maxTraceID > maxTraceID? 
+                   ((TraceStreamRecord*)(*s)["traceStream"])->maxTraceID: 
+                   maxTraceID);*/
+  streamRecord::resumeFrom(streams);
   
   // Set edges and in2outTraceIDs to be the union of its counterparts in streams
-  in2outTraceIDs.clear();
+  /*in2outTraceIDs.clear();
   for(vector<map<string, streamRecord*> >::iterator s=streams.begin(); s!=streams.end(); s++) {
-    TraceStreamRecord* ns = (TraceStreamRecord*)(*s)["trace"];
+    TraceStreamRecord* ns = (TraceStreamRecord*)(*s)["traceStream"];
     for(map<streamID, streamID>::const_iterator i=ns->in2outTraceIDs.begin(); i!=ns->in2outTraceIDs.end(); i++)
       in2outTraceIDs.insert(*i);
-  }
+  }*/
 }
 
+/*
 // Marge the IDs of the next graph (stored in tags) along all the incoming streams into a single ID in the outgoing stream,
 // updating each incoming stream's mappings from its IDs to the outgoing stream's IDs. Returns the traceID of the merged trace
 // in the outgoing stream.
@@ -673,39 +744,35 @@ int TraceStreamRecord::mergeIDs(std::map<std::string, std::string>& pMap,
                      std::map<std::string, streamRecord*>& outStreamRecords,
                      std::vector<std::map<std::string, streamRecord*> >& inStreamRecords) {
   // Assign to the merged trace the next ID for this output stream
-  int mergedTraceID = ((TraceStreamRecord*)outStreamRecords["trace"])->maxTraceID;
+  int mergedTraceID = ((TraceStreamRecord*)outStreamRecords["traceStream"])->maxTraceID;
   pMap["traceID"] = txt()<<mergedTraceID;
   
   // The trace's ID within the outgoing stream    
-  streamID outSID(((TraceStreamRecord*)outStreamRecords["trace"])->maxTraceID,
-                  outStreamRecords["trace"]->getVariantID());
+  streamID outSID(((TraceStreamRecord*)outStreamRecords["traceStream"])->maxTraceID,
+                  outStreamRecords["traceStream"]->getVariantID());
   
   // Update inStreamRecords to map the trace's ID within each incoming stream to the assigned ID in the outgoing stream
   for(int t=0; t<tags.size(); t++) {
-    TraceStreamRecord* ts = (TraceStreamRecord*)inStreamRecords[t]["trace"];
+    TraceStreamRecord* ts = (TraceStreamRecord*)inStreamRecords[t]["traceStream"];
     
     // The graph's ID within the current incoming stream
     streamID inSID(properties::getInt(tags[t].second, "traceID"), 
-                   inStreamRecords[t]["trace"]->getVariantID());
+                   inStreamRecords[t]["traceStream"]->getVariantID());
     
     if(ts->in2outTraceIDs.find(inSID) == ts->in2outTraceIDs.end())
-      ((TraceStreamRecord*)inStreamRecords[t]["trace"])->in2outTraceIDs[inSID] = outSID;
+      ((TraceStreamRecord*)inStreamRecords[t]["traceStream"])->in2outTraceIDs[inSID] = outSID;
   }
   
   // Advance maxTraceID
-  ((TraceStreamRecord*)outStreamRecords["trace"])->maxTraceID++;
+  ((TraceStreamRecord*)outStreamRecords["traceStream"])->maxTraceID++;
   
   return mergedTraceID;
-}
+}*/
   
 std::string TraceStreamRecord::str(std::string indent) const {
   ostringstream s;
-  s << "[TraceStreamRecord: maxTraceID="<<maxTraceID<<endl;
-  
-  s << indent << "in2outTraceIDs="<<endl;
-  for(map<streamID, streamID>::const_iterator i=in2outTraceIDs.begin(); i!=in2outTraceIDs.end(); i++)
-    s << indent << "    "<<i->first.str()<<" =&gt; "<<i->second.str()<<endl;
-  
+  s << "[TraceStreamRecord: ";
+  s << streamRecord::str(indent+"    ") << endl;  
   s << indent << "]";
   
   return s.str();

@@ -290,6 +290,38 @@ std::string location::str(std::string indent) const {
   return ofs.str();
 }
 
+/********************
+ ***** sightObj *****
+ ********************/
+
+sightObj::sightObj() : props(NULL), emitExitTag(false) {}
+
+// isTag - if true, we emit a single enter/exit tag combo in the constructor and nothing in the destructor
+sightObj::sightObj(properties* props, bool isTag) : props(props) {
+  //cout << "sightObj::sightObj isTag="<<isTag<<" props="<<props->str()<<endl;
+  if(props && props->active && props->emitTag) {
+    if(isTag) {
+      dbg.tag(this);
+      emitExitTag = false;
+    } else {
+      dbg.enter(this);
+      emitExitTag = true;
+    }
+  } else
+    emitExitTag = false;
+}
+
+sightObj::~sightObj() {
+  //assert(props);
+  if(props) {
+    //cout << "sightObj::~sightObj(), emitExitTag="<<emitExitTag<<" props="<<props->str()<<endl;
+    if(props->active && props->emitTag && emitExitTag)
+      dbg.exit(this);
+    delete(props);
+    props = NULL;
+  }
+}
+
 /************************
  ***** streamRecord *****
  ************************/
@@ -635,9 +667,14 @@ anchor::~anchor() {
 // Records that this anchor's location is the current spot in the output
 void anchor::reachedLocation() {
   // If this anchor has already been set to point to its target location, emit a warning
-  if(located && loc != dbg.getLocation())
+  if(located && loc != dbg.getLocation()) {
     cerr << "Warning: anchor "<<anchorID<<" is being set to multiple target locations! current location="<<loc.str()<<", new location="<<dbg.getLocation().str()<< endl;
-  else {
+    cerr << "noAnchor="<<noAnchor.str()<<endl;
+    if(anchorLocs.find(anchorID) != anchorLocs.end())
+      cerr << "anchorLocs[anchorID]="<<anchorLocs[anchorID].str()<<endl;
+    for(map<int, location>::iterator i=anchorLocs.begin(); i!=anchorLocs.end(); i++)
+      cerr << "    "<<i->first<<" => "<<i->second.str()<<endl;
+  } else {
     located = true;
     loc = dbg.getLocation();
     anchorLocs[anchorID] = loc;
@@ -714,34 +751,28 @@ bool anchor::operator<(const anchor& that) const
 
 // Emits to the output an html tag that denotes a link to this anchor. Embeds the given text in the link.
 void anchor::link(string text) const {
-  sightObj *obj = new sightObj(new properties());
-  
+  properties p;
   map<string, string> newProps;
   newProps["anchorID"] = txt()<<anchorID;
   newProps["text"] = text;
   newProps["img"] = "0";
   newProps["callPath"] = cp2str(CPRuntime.doStackwalk());
-  obj->props->add("link", newProps);
+  p.add("link", newProps);
   
-  dbg.tag(obj);
-  
-  delete(obj);
+  dbg.tag(p);
 }
 
 // Emits to the output an html tag that denotes a link to this anchor, using the default link image, which is followed by the given text.
 void anchor::linkImg(string text) const {
-  sightObj *obj = new sightObj(new properties());
-  
+  properties p;
   map<string, string> newProps;
   newProps["anchorID"] = txt()<<anchorID;
   newProps["text"] = text;
   newProps["img"] = "1";
   newProps["callPath"] = cp2str(CPRuntime.doStackwalk());
-  obj->props->add("link", newProps);
+  p.add("link", newProps);
   
-  dbg.tag(obj);
-  
-  delete(obj);
+  dbg.tag(p);
 }
 
 std::string anchor::str(std::string indent) const {
@@ -1077,17 +1108,24 @@ std::string streamAnchor::str(std::string indent) const {
 int block::maxBlockID;
 
 // Initializes this block with the given label
-block::block(string label, properties* props) : label(label) {
+block::block(string label, properties* props) : label(label), sightObj(setProperties(label, props)) {
   advanceBlockID();
+  if(this->props->active && this->props->emitTag) {
+    // Connect startA to the current location 
+    startA.reachedLocation();
+    
+    dbg.enterBlock(this);
+  }
+}
+
+// Sets the properties of this object
+properties* block::setProperties(string label, properties* props) {
   if(!initializedDebug) SightInit("Debug Output", "dbg");
     
   if(props==NULL) props = new properties();
   this->props = props;
   
   if(props->active && props->emitTag) {
-    // Connect startA to the current location 
-    startA.reachedLocation();
-
     map<string, string> newProps;
     newProps["label"] = label;
     newProps["callPath"] = cp2str(CPRuntime.doStackwalk());
@@ -1095,27 +1133,30 @@ block::block(string label, properties* props) : label(label) {
     newProps["anchorID"] = txt()<<startA.getID();
     newProps["numAnchors"] = "0";
     props->add("block", newProps);
-    
-    dbg.enter(this);
-
-    dbg.enterBlock(this);
   }
+  return props;
 }
 
 // Initializes this block with the given label.
 // Includes one or more incoming anchors thas should now be connected to this block.
-block::block(string label, anchor& pointsTo, properties* props) : label(label) {
+block::block(string label, anchor& pointsTo, properties* props) : label(label), sightObj(setProperties(label, pointsTo, props))  {
   advanceBlockID();
+  
+  if(this->props->active && this->props->emitTag)
+    dbg.enterBlock(this);
+}
+
+// Sets the properties of this object
+properties* block::setProperties(string label, anchor& pointsTo, properties* props) {
   if(!initializedDebug) SightInit("Debug Output", "dbg");
   
   if(props==NULL) props = new properties();
-  this->props = props;
   
   if(props->active && props->emitTag) {
     // Connect startA and pointsTo anchors to the current location (pointsTo is not modified);
     startA.reachedLocation();
     anchor pointsToCopy(pointsTo);
-    pointsToCopy.reachedLocation();
+    if(pointsToCopy!=anchor::noAnchor) pointsToCopy.reachedLocation();
 
     map<string, string> newProps;
     newProps["label"] = label;
@@ -1128,29 +1169,34 @@ block::block(string label, anchor& pointsTo, properties* props) : label(label) {
     } else
       newProps["numAnchors"] = "0";
     props->add("block", newProps);
-    
-    dbg.enter(this);
-
-    dbg.enterBlock(this);
   }
+  
+  return props;
 }
 
 // Initializes this block with the given label.
 // Includes one or more incoming anchors thas should now be connected to this block.
-block::block(string label, set<anchor>& pointsTo, properties* props) : label(label)
-{
+block::block(string label, set<anchor>& pointsTo, properties* props) : label(label), sightObj(setProperties(label, pointsTo, props)) {
   advanceBlockID();
+    
+  if(this->props->active && this->props->emitTag)
+    dbg.enterBlock(this);
+}
+  
+// Sets the properties of this object
+properties* block::setProperties(string label, set<anchor>& pointsTo, properties* props) {
   if(!initializedDebug) SightInit("Debug Output", "dbg");
 
   if(props==NULL) props = new properties();
-  this->props = props;
   
   if(props->active && props->emitTag) {
     // Connect startA and pointsTo anchors to the current location (pointsTo is not modified)
     startA.reachedLocation();
     for(set<anchor>::iterator a=pointsTo.begin(); a!=pointsTo.end(); a++) {
-      anchor aCopy(*a);
-      aCopy.reachedLocation();
+      if(*a!=anchor::noAnchor) {
+        anchor aCopy(*a);
+        aCopy.reachedLocation();
+      }
     }
 
     map<string, string> newProps;
@@ -1169,19 +1215,15 @@ block::block(string label, set<anchor>& pointsTo, properties* props) : label(lab
     newProps["numAnchors"] = txt()<<i;
 
     props->add("block", newProps);
-    
-    dbg.enter(this);
-
-    dbg.enterBlock(this);
   }
+  
+  return props;
 }
 
 block::~block() {
   assert(props);
-  if(props->active && props->emitTag) {
+  if(props->active && props->emitTag)
     dbg.exitBlock();
-    dbg.exit(this);
-  }
 }
 
 // Increments blockD. This function serves as the one location that we can use to target conditional
@@ -1209,7 +1251,6 @@ BlockMerger::BlockMerger(std::vector<std::pair<properties::tagType, properties::
   assert(inStreamRecords.size() == tags.size());
  
   if(props==NULL) props = new properties();
-  this->props = props;
 
   map<string, string> pMap;
   properties::tagType type = streamRecord::getTagType(tags);
@@ -1590,12 +1631,10 @@ block* dbgStream::exitBlock() {
 // Called to inform the blocks that contain the given block that it has been entered
 void dbgStream::subBlockEnterNotify(block* subBlock)
 {
-  //cout << "subBlockEnterNotify("<<subBlock->getLabel()<<")"<<endl;
   // Walk up the block stack, informing each block about the new arrival until the block's
   // subBlockEnterNotify() function returns false to indicate that the notification should not be propagated further.
   for(list<block*>::const_reverse_iterator b=blocks.rbegin(); b!=blocks.rend(); b++)
   {
-    //cout << "    "<<(*b)->getLabel()<<endl;
     if(!(*b)->subBlockEnterNotify(subBlock)) return;
   }
 }
@@ -1626,17 +1665,13 @@ string dbgStream::addImage(string ext)
   
   ostringstream imgFName; imgFName << imgDir << "/image_" << numImages << "." << ext;
   
-  sightObj *obj = new sightObj(new properties());
-  
+  properties p;
   map<string, string> newProps;
   newProps["path"] = imgFName.str();
   newProps["callPath"] = cp2str(CPRuntime.doStackwalk());
-  obj->props->add("image", newProps);
+  p.add("image", newProps);
   
-  tag(obj);
-  
-  delete(obj);
-  
+  tag(p);
   return imgFName.str();
 }
 
@@ -1857,27 +1892,19 @@ std::string dbgStreamStreamRecord::str(std::string indent) const {
  ***** indent *****
  ******************/
 
-indent::indent(std::string prefix,                                       properties* props)
-{ init(prefix, 1, NULL, props); }
-indent::indent(std::string prefix, int repeatCnt, const attrOp& onoffOp, properties* props)
-{ init(prefix, repeatCnt, &onoffOp, props); }
-indent::indent(std::string prefix, int repeatCnt,                        properties* props)
-{ init(prefix, repeatCnt, NULL, props); }
-indent::indent(                    int repeatCnt,                        properties* props)
-{ init("    ", repeatCnt, NULL, props); }
-indent::indent(std::string prefix,                const attrOp& onoffOp, properties* props)
-{ init(prefix, 1, &onoffOp, props); }
-indent::indent(                    int repeatCnt, const attrOp& onoffOp, properties* props)
-{ init("    ", repeatCnt, &onoffOp, props); }
-indent::indent(                                   const attrOp& onoffOp, properties* props)
-{ init("    ", 1, &onoffOp, props); }
-indent::indent(                                                          properties* props)
-{ init("    ", 1, NULL, props); }
+indent::indent(std::string prefix,                                       properties* props) : sightObj(setProperties(prefix, 1,         NULL,     props)) {}
+indent::indent(std::string prefix, int repeatCnt, const attrOp& onoffOp, properties* props) : sightObj(setProperties(prefix, repeatCnt, &onoffOp, props)) {}
+indent::indent(std::string prefix, int repeatCnt,                        properties* props) : sightObj(setProperties(prefix, repeatCnt, NULL,     props)) {}
+indent::indent(                    int repeatCnt,                        properties* props) : sightObj(setProperties("    ", repeatCnt, NULL,     props)) {}
+indent::indent(std::string prefix,                const attrOp& onoffOp, properties* props) : sightObj(setProperties(prefix, 1,         &onoffOp, props)) {}
+indent::indent(                    int repeatCnt, const attrOp& onoffOp, properties* props) : sightObj(setProperties("    ", repeatCnt, &onoffOp, props)) {}
+indent::indent(                                   const attrOp& onoffOp, properties* props) : sightObj(setProperties("    ", 1,         &onoffOp, props)) {}
+indent::indent(                                                          properties* props) : sightObj(setProperties("    ", 1,         NULL,     props)) {}
 
-void indent::init(std::string prefix, int repeatCnt, const attrOp* onoffOp, properties* props) {
+
+properties* indent::setProperties(std::string prefix, int repeatCnt, const attrOp* onoffOp, properties* props) {
   if(props==NULL) props = new properties();
-  this->props = props;
-  
+    
   if(repeatCnt>0 && attributes.query() && (onoffOp? onoffOp->apply(): true)) {
     props->active = true;
     map<string, string> newProps;
@@ -1885,17 +1912,17 @@ void indent::init(std::string prefix, int repeatCnt, const attrOp* onoffOp, prop
     newProps["repeatCnt"] = txt()<<repeatCnt;
     newProps["callPath"] = cp2str(CPRuntime.doStackwalk());
     props->add("indent", newProps);
-    
-    dbg.enter(this);
   } else
     props->active = false;
+    
+  return props;
 }
 
 indent::~indent() {
-  assert(props);
+ /* assert(props);
   if(props->active) {
     dbg.exit(this);
-  }
+  }*/
 }
 
 IndentMerger::IndentMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,

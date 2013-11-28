@@ -45,6 +45,7 @@ int main(int argc, char** argv)
     }
   }
   
+  
   {
     scope s("We make output more navigable by linking related outer iterations", scope::high);
     dbg << "Note: click on the title link of this scope to minimize it when done viewing."<<endl;

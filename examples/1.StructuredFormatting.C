@@ -38,6 +38,13 @@ int main(int argc, char** argv)
   for(int i=1; i<=4; i++)
     dbg << "<h"<<i<<">This text is an H"<<i<<" header</h"<<i<<">";
   
+  for(int i=0; i<2; i++) {
+    scope s(txt()<<"Iteration "<<i);
+    for(int j=0; j<2; j++) {
+      scope s(txt()<<"Inner "<<j);
+    }
+  }
+  
   // Text can be indented as much as needed
   {
     indent indA;

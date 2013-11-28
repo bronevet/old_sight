@@ -468,7 +468,7 @@ extern structure::attributesC attributes;
 // *******************************
 
 // C++ interface for attribute creation, destruction
-class attr : public common::sightObj
+class attr : public sightObj
 {
   // The key/value of this attribute
   std::string key;

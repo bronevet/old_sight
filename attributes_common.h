@@ -101,11 +101,16 @@ class attrValue {
 // Interface implemented by objects that wish to listen for changes to mappings of a given key
 class attrObserver {
   public:
+  typedef enum {attrAdd, attrReplace, attrRemove} attrObsAction;
+  
   // Called before key's mapping is changed
-  virtual void observePre(std::string key) { }
+  virtual void observePre(std::string key, attrObsAction action) { }
     
   // Called after key's mapping is changed
-  virtual void observePost(std::string key) { }
+  virtual void observePost(std::string key, attrObsAction action) { }
+    
+  std::string attrObsAction2Str(attrObsAction action)
+  { return (action==attrAdd? "attrAdd": (action==attrReplace? "attrReplace": (action==attrRemove? "attrRemove": "???"))); }
 };
 
 namespace common {
@@ -179,9 +184,9 @@ class attributesC
   
   protected:
   // Notify all the observers of the given key before its mapping is changed (call attrObserver::observePre())
-  void notifyObsPre(std::string key);
+  void notifyObsPre(std::string key, attrObserver::attrObsAction action);
   // Notify all the observers of the given key after its mapping is changed (call attrObserver::observePost())
-  void notifyObsPost(std::string key);
+  void notifyObsPost(std::string key, attrObserver::attrObsAction action);
 }; // class attributes
 
 }; // namespace common

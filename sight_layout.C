@@ -103,7 +103,7 @@ void layoutStructure(structureParser& parser) {
           int numVariants = properties::getNumKeys(props.second->begin());
           for(int i=0; i<numVariants; i++) {
             string variantDir = properties::get(props.second->begin(), txt()<<"var_"<<i);
-            //cout << "variantDir="<<variantDir<<"\n";
+            cout << "variantDir="<<variantDir<<"\n";
             FILEStructureParser parser(variantDir+"/structure", 10000);
             layoutStructure(parser);
             if(i!=numVariants-1) invokeEnterHandler(stack, "inter_variants", props.second->begin());
@@ -1344,7 +1344,7 @@ void dbgStream::printDetailFileContainerHTML(string absoluteFileName, string tit
   det << "<html>\n";
   det << "\t<head>\n";
   det << "\t<title>"<<title<<"</title>\n";
-  det << "\t<script type='text/javascript' src='https://www.google.com/jsapi?autoload={\"modules\":[{\"name\":\"visualization\",\"version\":\"1\",\"packages\":[\"orgchart\"]}]}'></script>\n";
+  //det << "\t<script type='text/javascript' src='https://www.google.com/jsapi?autoload={\"modules\":[{\"name\":\"visualization\",\"version\":\"1\",\"packages\":[\"orgchart\"]}]}'></script>\n";
   det << "\t<script src=\"script/hashtable.js\"></script>\n";
   det << "\t<script src=\"script/taffydb/taffy.js\"></script>\n";
   det << "\t<script src=\"script/placement.js\"></script>\n";
@@ -1500,7 +1500,7 @@ string dbgStream::enterBlock(block* b, bool newFileEntered, bool addSummaryEntry
 // Called to enter a mini-block between the start/end of a block and the definition of an attribute and between
 // adjacent attribute definitions
 string dbgStream::enterAttrSubBlock() {
-  cout << "enterAttrSubBlock()"<<endl;
+  //cout << "enterAttrSubBlock()"<<endl;
   // Only enter an attribute sub-block if we've already begun a block
   return enterBlock(new block(""), false, false, true);
 }

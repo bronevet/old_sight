@@ -13,8 +13,8 @@ void  traceExitHandler(void* obj) { trace* t = static_cast<trace*>(obj); delete 
 traceLayoutHandlerInstantiator::traceLayoutHandlerInstantiator() { 
   (*layoutEnterHandlers)["trace"] = &traceEnterHandler;
   (*layoutExitHandlers )["trace"] = &traceExitHandler;
-  (*layoutEnterHandlers)["trace_traceStream"] = &trace::enterTraceStream;
-  (*layoutExitHandlers )["trace_traceStream"] = &defaultExitHandler;
+  (*layoutEnterHandlers)["traceStream"] = &trace::enterTraceStream;
+  (*layoutExitHandlers )["traceStream"] = &defaultExitHandler;
   (*layoutEnterHandlers)["traceObs"] = &traceStream::observe;
   (*layoutExitHandlers )["traceObs"] = &defaultExitHandler;
 }
@@ -33,7 +33,7 @@ trace::trace(properties::iterator props) : block(properties::next(props)) {
   dbg.enterBlock(this, false, true);
   
   // If we should show the visualization at the beginning of the block
-  if(showLoc == showBegin) dbg << "<div id=\"'div"<<getBlockID()<<"-Trace\"></div>";
+  if(showLoc == showBegin) dbg << "<div id=\"div"<<getBlockID()<<"-Trace\"></div>";
   
   stream = NULL;
     
@@ -97,6 +97,7 @@ traceStream::traceStream(properties::iterator props, std::string hostDiv, bool s
     // D3 Widgets
     dbg.includeWidgetScript("d3.v3.min.js", "text/javascript"); dbg.includeFile("d3.v3.min.js");
     //dbg.includeWidgetScript("d3.v3.js", "text/javascript"); dbg.includeFile("d3.v3.js");
+    dbg.includeWidgetScript("table.js",     "text/javascript"); dbg.includeFile("table.js");
     dbg.includeWidgetScript("boxplot.js",   "text/javascript"); dbg.includeFile("boxplot.js");
     dbg.includeWidgetScript("gradient.js",  "text/javascript"); dbg.includeFile("gradient.js");
     dbg.includeWidgetScript("scatter.js",   "text/javascript"); dbg.includeFile("scatter.js");
@@ -232,7 +233,7 @@ std::string traceStream::getDisplayJSCmd(const std::list<std::string>& contextAt
 // Record an observation
 void* traceStream::observe(properties::iterator props)
 {
-  cout << "trace::observe() props="<<properties::str(props)<<endl;
+  //cout << "trace::observe() props="<<properties::str(props)<<endl;
   long traceID = properties::getInt(props, "traceID");
   assert(active.find(traceID) != active.end());
   traceStream* ts = active[traceID];
@@ -251,7 +252,7 @@ void* traceStream::observe(properties::iterator props)
  if(ts->contextAttrsInitialized) assert(ts->contextAttrs.size() == numCtxtAttrs);
   for(long i=0; i<numCtxtAttrs; i++) {
     string ctxtName = properties::get(props, txt()<<"cKey_"<<i);
-      cout << traceID<<": "<<ctxtName<<", ts->contextAttrsInitialized="<<ts->contextAttrsInitialized<<endl;
+      //cout << traceID<<": "<<ctxtName<<", ts->contextAttrsInitialized="<<ts->contextAttrsInitialized<<endl;
     if(!ts->contextAttrsInitialized) {
       ts->contextAttrs.push_back(ctxtName);
       // Context attributes cannot be repeated

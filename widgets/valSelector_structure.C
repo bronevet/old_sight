@@ -110,27 +110,27 @@ string start_internal(valSelector& sel, const attrValue* val, string name) {
   if(val) valueStr = sel.observeSelection(*val);
   else    valueStr = sel.observeSelection();
   
-  common::sightObj obj(new properties());
+  properties p;
   map<string, string> newProps;
   newProps["selID"] = txt()<<sel.getID();
   newProps["instanceID"] = txt()<<instanceID++;
   newProps["value"] = valueStr;
-  obj.props->add(name, newProps);
+  p.add(name, newProps);
   
   //dbg.enter(name, properties, false);
-  return dbg.enterStr(*obj.props);
+  return dbg.enterStr(p);
 }
 
 string end_internal(string name) {
   // Only bother if this text will be emitted
   if(!attributes.query()) return "";
   
-  common::sightObj obj(new properties());
+  properties p;
   map<string, string> newProps;
-  obj.props->add(name, newProps);
+  p.add(name, newProps);
   
   //dbg.exit(name);
-  return dbg.exitStr(*obj.props);
+  return dbg.exitStr(p);
 }
 
 /*string textColor::start(valSelector& sel, const attrValue& val)

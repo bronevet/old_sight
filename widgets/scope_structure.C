@@ -103,6 +103,7 @@ properties* scope::setProperties(scopeLevel level, const attrOp* onoffOp, proper
 
 scope::~scope()
 { 
+  
   /*if(props->active) {
     dbg.exit(this);
   }*/

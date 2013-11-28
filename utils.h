@@ -18,4 +18,8 @@ std::ofstream& createFile(std::string fName);
 // Returns a string that contains n tabs
 std::string tabs(int n);
 
+// Given a string and a line width returns a variant of the string where line breaks are inserted
+// at approximately every lineWidth characters.
+std::string wrapStr(std::string str, unsigned int lineWidth);
+
 }; // namespace sight

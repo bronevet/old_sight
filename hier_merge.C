@@ -137,19 +137,20 @@ int main(int argc, char** argv) {
   cout << "#fileParserRefs="<<fileParsers.size()<<endl;
   #endif
   
-  mergers["sight"]     = new MergeFunctor<dbgStreamMerger>();
-  mergers["text"]      = new MergeFunctor<TextMerger>();
-  mergers["block"]     = new MergeFunctor<BlockMerger>();
-  mergers["link"]      = new MergeFunctor<LinkMerger>();
-  mergers["attr"]      = new MergeFunctor<AttributeMerger>();
-  mergers["indent"]    = new MergeFunctor<IndentMerger>();
-  mergers["scope"]     = new MergeFunctor<ScopeMerger>();
-  mergers["graph"]     = new MergeFunctor<GraphMerger>();
-  mergers["dirEdge"]   = new MergeFunctor<DirEdgeMerger>();
-  mergers["undirEdge"] = new MergeFunctor<UndirEdgeMerger>();
-  mergers["node"]      = new MergeFunctor<NodeMerger>();
-  mergers["trace"]    = new MergeFunctor<TraceMerger>();
-  mergers["traceObs"] = new MergeFunctor<TraceObsMerger>();
+  mergers["sight"]       = new MergeFunctor<dbgStreamMerger>();
+  mergers["text"]        = new MergeFunctor<TextMerger>();
+  mergers["block"]       = new MergeFunctor<BlockMerger>();
+  mergers["link"]        = new MergeFunctor<LinkMerger>();
+  mergers["attr"]        = new MergeFunctor<AttributeMerger>();
+  mergers["indent"]      = new MergeFunctor<IndentMerger>();
+  mergers["scope"]       = new MergeFunctor<ScopeMerger>();
+  mergers["graph"]       = new MergeFunctor<GraphMerger>();
+  mergers["dirEdge"]     = new MergeFunctor<DirEdgeMerger>();
+  mergers["undirEdge"]   = new MergeFunctor<UndirEdgeMerger>();
+  mergers["node"]        = new MergeFunctor<NodeMerger>();
+  mergers["trace"]       = new MergeFunctor<TraceMerger>();
+  mergers["traceStream"] = new MergeFunctor<TraceStreamMerger>();
+  mergers["traceObs"]    = new MergeFunctor<TraceObsMerger>();
   
   
   vector<pair<properties::tagType, properties::iterator> > emptyNextTag;
@@ -163,7 +164,7 @@ int main(int argc, char** argv) {
   outStreamRecords["block"]  = new BlockStreamRecord(0);
   outStreamRecords["graph"]  = new GraphStreamRecord(0);
   outStreamRecords["node"]   = new NodeStreamRecord(0);
-  outStreamRecords["trace"]  = new TraceStreamRecord(0);
+  outStreamRecords["traceStream"]  = new TraceStreamRecord(0);
   dbgStreamStreamRecord::enterBlock(outStreamRecords);
   
   std::vector<std::map<std::string, streamRecord*> > inStreamRecords;
@@ -174,7 +175,7 @@ int main(int argc, char** argv) {
     inStreamR["block"]  = new BlockStreamRecord(i);
     inStreamR["graph"]  = new GraphStreamRecord(i);
     inStreamR["node"]   = new NodeStreamRecord(i);
-    inStreamR["trace"]  = new TraceStreamRecord(i);
+    inStreamR["traceStream"]  = new TraceStreamRecord(i);
     inStreamRecords.push_back(inStreamR);
   }
   dbgStreamStreamRecord::enterBlock(inStreamRecords);
@@ -349,6 +350,12 @@ void merge(vector<FILEStructureParser*>& parsers,
             nextTag[parserIdx] = make_pair(props.first, props.second->begin());
             
           // Group this parser with all the other parsers that just read a tag with the same name and type (enter/exit)
+          /*cout << "props.second="<<props.second->str()<<endl;
+          std::list<std::string> key = mergers[props.second->name()]->mergeKey(props.first, props.second->begin(), inStreamRecords[parserIdx]);
+          cout << "key=";
+          for(list<string>::iterator k=key.begin(); k!=key.end(); k++) cout << *k << " ";
+          cout << endl;*/
+          
           tag2stream[tagGroup(props.first, props.second, mergers[props.second->name()]->
                          mergeKey(props.first, props.second->begin(), inStreamRecords[parserIdx]))
                     ].push_back(parserIdx);
@@ -471,6 +478,9 @@ void merge(vector<FILEStructureParser*>& parsers,
         int variantID=0;
         // Sub-directories that hold the contents of all the variants
         vector<string> variantSubDirs;
+        
+        // Check if we're at the tag exits on all streams
+        
         for(map<tagGroup, list<int> >::iterator ts=tag2stream.begin(); ts!=tag2stream.end(); variantID++) {
            cout << indent << "    Variant "<<variantID<<", "<<(ts->first.type == properties::enterTag? "enter": "exit")<<", "<<ts->first.objName<<endl;
           

@@ -54,7 +54,7 @@ std::string attributesC::strJS() const {
 // *******************************
 
 attr::attr(properties::iterator props) { 
-  /*key = properties::get(props, "key");
+  key = properties::get(props, "key");
   // Assign the value to the key using the appropriate type of this value
   switch((attrValue::valueType)properties::getInt(props, "type")) {
     case attrValue::strT:   init<string>(key, properties::get(props, "val"));           break;
@@ -63,7 +63,7 @@ attr::attr(properties::iterator props) {
     case attrValue::floatT: init<double>(key, properties::getFloat(props, "val"));      break;
     default: cerr << "layout::attr::attr() ERROR: unknown value type!"; exit(-1);
   }
-  */
+  
   dbg.enterAttrSubBlock();
 }
 

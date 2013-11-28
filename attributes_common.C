@@ -253,9 +253,9 @@ bool attributesC::add(string key, double val)
 bool attributesC::add(string key, const attrValue& val) {
   bool modified = (m.find(key)==m.end()) || m[key].find(val)==m[key].end();
   if(modified) {
-    notifyObsPre(key);
+    notifyObsPre(key, attrObserver::attrAdd);
     m[key].insert(val);
-    notifyObsPost(key);
+    notifyObsPost(key, attrObserver::attrAdd);
   }
   return modified;
 }
@@ -275,12 +275,12 @@ bool attributesC::replace(string key, double val)
 
 bool attributesC::replace(string key, const attrValue& val) {
   bool modified = (m.find(key)==m.end()) || (m[key].find(val) == m[key].end());
-  cout << "attributesC::replace("<<key<<") modified="<<modified<<endl;
+  //cout << "attributesC::replace("<<key<<") modified="<<modified<<endl;
   if(modified) {
-    notifyObsPre(key);
+    notifyObsPre(key, attrObserver::attrReplace);
     m[key].clear();
     m[key].insert(val);
-    notifyObsPost(key);
+    notifyObsPost(key, attrObserver::attrReplace);
   } else if(m[key].size() == 0) {
     cerr << "attributesC::replace() ERROR: key "<<key<<" is mapped to an empty set of values!"<<endl;
     assert(0);
@@ -325,12 +325,12 @@ bool attributesC::remove(string key, double val)
 bool attributesC::remove(string key, const attrValue& val) {
   bool modified = (m.find(key)!=m.end()) && m[key].find(val)!=m[key].end();
   if(modified) {
-    notifyObsPre(key);
+    notifyObsPre(key, attrObserver::attrRemove);
     // Remove the key->val mapping and if this is the only mapping for key, remove its entry in m[] as well
     m[key].erase(val);
     if(m[key].size()==0)
       m.erase(key);
-    notifyObsPost(key);
+    notifyObsPost(key, attrObserver::attrRemove);
   }
   return modified;
 }
@@ -340,10 +340,10 @@ bool attributesC::remove(string key, const attrValue& val) {
 bool attributesC::remove(string key) {
   bool modified = (m.find(key)!=m.end());
   if(modified) {
-    notifyObsPre(key);
+    notifyObsPre(key, attrObserver::attrRemove);
     // Remove the key and all its mappings from m[]
     m.erase(key);
-    notifyObsPost(key);
+    notifyObsPost(key, attrObserver::attrRemove);
   }
   return modified;
 }
@@ -368,7 +368,7 @@ void attributesC::remObs(std::string key, attrObserver* obs)
   if(o[key].find(obs) == o[key].end()) { cerr << "attributesC::remObs() ERROR: this observer not registered for key "<<key<<"!\n"; assert(0); }
   assert(o[key][obs] > 0);
   
-  cout << "attributesC::remObs() key="<<key<<", obs="<<obs<<", o[key][obs]="<<o[key][obs]<<endl;
+  //cout << "attributesC::remObs() key="<<key<<", obs="<<obs<<", o[key][obs]="<<o[key][obs]<<endl;
   if(o[key][obs]==1) {
     o[key].erase(obs);
     if(o[key].size()==0)
@@ -388,19 +388,19 @@ void attributesC::remObs(std::string key)
 }
 
 // Notify all the observers of the given key before its mapping is changed (call attrObserver::observePre())
-void attributesC::notifyObsPre(std::string key) {
-  cout << "    attributesC::notifyObsPre("<<key<<") #o[key]="<<o[key].size()<<endl;
+void attributesC::notifyObsPre(std::string key, attrObserver::attrObsAction action) {
+  //cout << "    attributesC::notifyObsPre("<<key<<") #o[key]="<<o[key].size()<<endl;
   for(map<attrObserver*, int>::iterator i=o[key].begin(); i!=o[key].end(); i++) {
     assert(i->second>0);
-    i->first->observePre(key);
+    i->first->observePre(key, action);
   }
 }
 
 // Notify all the observers of the given key after its mapping is changed (call attrObserver::observePost())
-void attributesC::notifyObsPost(std::string key) {
+void attributesC::notifyObsPost(std::string key, attrObserver::attrObsAction action) {
   for(map<attrObserver*, int>::iterator i=o[key].begin(); i!=o[key].end(); i++) {
     assert(i->second>0);
-    i->first->observePost(key);
+    i->first->observePost(key, action);
   }
 }
 

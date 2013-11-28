@@ -76,7 +76,7 @@ class trace: public block, public common::trace
   traceStream* getTS() const { return stream; }
  }; // class trace
 
-class traceStream: public attrObserver, public common::trace
+class traceStream: public attrObserver, public common::trace, public sightObj
 {    
   private:
   // Unique ID of this trace
@@ -87,17 +87,19 @@ class traceStream: public attrObserver, public common::trace
   
   // Names of attributes to be used as context when visualizing the values of trace observations
   std::list<std::string> contextAttrs;
+  // Records the context attributes that have already been initialized
+  std::set<std::string> initializedCtxtAttrs;
   
   vizT viz;
   mergeT merge;
   
   public:
-  traceStream(const std::list<std::string>& contextAttrs, vizT viz=table, mergeT merge=disjMerge);
-  traceStream(std::string contextAttr,                    vizT viz=table, mergeT merge=disjMerge);
-  traceStream(                                            vizT viz=table, mergeT merge=disjMerge);
+  traceStream(const std::list<std::string>& contextAttrs, vizT viz=table, mergeT merge=disjMerge, properties* props=NULL);
+  traceStream(std::string contextAttr,                    vizT viz=table, mergeT merge=disjMerge, properties* props=NULL);
+  traceStream(                                            vizT viz=table, mergeT merge=disjMerge, properties* props=NULL);
   
-  // Returns the properties of this object
-  std::map<std::string, std::string> getProperties();
+  // Sets the properties of this object
+  properties* setProperties(const std::list<std::string>& contextAttrs, vizT viz, mergeT merge, properties* props);
 
   private:  
   void init();
@@ -114,7 +116,8 @@ class traceStream: public attrObserver, public common::trace
   int getTraceID() const { return traceID; }
   
   // Observe for changes to the values mapped to the given key
-  void observePre(std::string key);
+  void observePre(std::string key, attrObserver::attrObsAction action);
+  void observePost(std::string key, attrObserver::attrObsAction action);
   
   // Called by traceAttr() to inform the trace that a new observation has been made
   void traceAttrObserved(std::string key, const attrValue& val, anchor target);
@@ -219,6 +222,27 @@ class TraceMerger : public BlockMerger {
                        std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key);
 }; // class TraceMerger
 
+class TraceStreamMerger : public Merger {
+  public:
+  TraceStreamMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+              std::map<std::string, streamRecord*>& outStreamRecords,
+              std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+              properties* props=NULL);
+              
+  // Sets the properties of the merged object
+  static properties* setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+                                   std::map<std::string, streamRecord*>& outStreamRecords,
+                                   std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                                   properties* props);
+
+  // Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+  // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
+  // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
+  // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
+  static void mergeKey(properties::tagType type, properties::iterator tag, 
+                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key);
+}; // class TraceStreamMerger
+
 class TraceObsMerger : public Merger {
   public:
   TraceObsMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
@@ -235,21 +259,21 @@ class TraceObsMerger : public Merger {
 }; // class TraceObsMerger
 
 class TraceStreamRecord: public streamRecord {
-  friend class TraceMerger;
+  friend class TraceStreamMerger;
   friend class TraceObsMerger;
   
   // Records the maximum TraceID ever generated on a given outgoing stream
-  int maxTraceID;
+  //int maxTraceID;
   
   // Maps traceIDs to their merge types
   std::map<int, trace::mergeT> merge;
   
   // Maps the TraceIDs within an incoming stream to the TraceIDs on its corresponding outgoing stream
-  std::map<streamID, streamID> in2outTraceIDs;
+  //std::map<streamID, streamID> in2outTraceIDs;
   
   public:
-  TraceStreamRecord(int vID)              : streamRecord(vID, "trace") { /*maxTraceID=0;*/ }
-  TraceStreamRecord(const variantID& vID) : streamRecord(vID, "trace") { /*maxTraceID=0;*/ }
+  TraceStreamRecord(int vID)              : streamRecord(vID, "traceStream") { /*maxTraceID=0;*/ }
+  TraceStreamRecord(const variantID& vID) : streamRecord(vID, "traceStream") { /*maxTraceID=0;*/ }
   TraceStreamRecord(const TraceStreamRecord& that, int vSuffixID);
   
   // Returns a dynamically-allocated copy of this streamRecord, specialized to the given variant ID,
@@ -263,10 +287,10 @@ class TraceStreamRecord: public streamRecord {
   // Marge the IDs of the next graph (stored in tags) along all the incoming streams into a single ID in the outgoing stream,
   // updating each incoming stream's mappings from its IDs to the outgoing stream's IDs. Returns the traceID of the merged trace
   // in the outgoing stream.
-  static int mergeIDs(std::map<std::string, std::string>& pMap, 
+  /*static int mergeIDs(std::map<std::string, std::string>& pMap, 
                        const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
                        std::map<std::string, streamRecord*>& outStreamRecords,
-                       std::vector<std::map<std::string, streamRecord*> >& inStreamRecords);
+                       std::vector<std::map<std::string, streamRecord*> >& inStreamRecords);*/
       
   std::string str(std::string indent="") const;
 }; // class TraceStreamRecord

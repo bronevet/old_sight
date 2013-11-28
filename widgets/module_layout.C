@@ -37,14 +37,14 @@ void* moduleEnterHandler(properties::iterator props) { return new module(props);
 void  moduleExitHandler(void* obj) { module* m = static_cast<module*>(obj); delete m; }
   
 moduleLayoutHandlerInstantiator::moduleLayoutHandlerInstantiator() { 
-  (*layoutEnterHandlers)["module"]      = &moduleEnterHandler;
-  (*layoutExitHandlers )["module"]      = &moduleExitHandler;
-  (*layoutEnterHandlers)["module_traceStream"] = &module::enterTraceStream;
-  (*layoutExitHandlers )["module_traceStream"] = &defaultExitHandler;
-  (*layoutEnterHandlers)["moduleNode"]  = &module::addNode;
-  (*layoutExitHandlers )["moduleNode"]  = &defaultExitHandler;
-  (*layoutEnterHandlers)["moduleEdge"]  = &module::addEdge;
-  (*layoutExitHandlers )["moduleEdge"]  = &defaultExitHandler;
+  (*layoutEnterHandlers)["module"]       = &moduleEnterHandler;
+  (*layoutExitHandlers )["module"]       = &moduleExitHandler;
+  (*layoutEnterHandlers)["moduleNodeTS"] = &module::enterTraceStream;
+  (*layoutExitHandlers )["moduleNodeTS"] = &defaultExitHandler;
+  (*layoutEnterHandlers)["moduleNode"]   = &module::addNode;
+  (*layoutExitHandlers )["moduleNode"]   = &defaultExitHandler;
+  (*layoutEnterHandlers)["moduleEdge"]   = &module::addEdge;
+  (*layoutExitHandlers )["moduleEdge"]   = &defaultExitHandler;
 }
 moduleLayoutHandlerInstantiator moduleLayoutHandlerInstance;
 
@@ -135,26 +135,36 @@ module::~module() {
 }
 
 void *module::enterTraceStream(properties::iterator props) {
-  properties::iterator nameProps = props; nameProps++;
-  assert(properties::name(nameProps) == "module_traceStream_name");
+  assert(properties::name(props) == "moduleNodeTS");
   //string moduleName = properties::get(nameProps, "ModuleName");
-  int nodeID = properties::getInt(nameProps, "nodeID");
+  
+  // Allocate a new moduleNodeTraceStream. The constructor takes care of registering it with the currently active module
+  new moduleNodeTraceStream(props);
+  
+  return NULL;
+}
+
+moduleNodeTraceStream::moduleNodeTraceStream(properties::iterator props) : 
+  traceStream(properties::next(props), txt()<<"CanvizBox_node"<<properties::getInt(props, "nodeID"), false)
+{
+  assert(properties::name(props) == "moduleNodeTS");
     
+  int nodeID = properties::getInt(props, "nodeID");
+  
   // Get the currently active module that this traceStream belongs to
-  assert(mStack.size()>0);
-  module* m = mStack.back();
+  assert(module::mStack.size()>0);
+  module* m = module::mStack.back();
   assert(m->moduleTraces.find(nodeID) == m->moduleTraces.end());
   
   // Create a new traceStream object to collect the observations for this module node
-  m->moduleTraces[nodeID] = new traceStream(props, txt()<<"CanvizBox_node"<<nodeID, false);
-  
+  m->moduleTraces[nodeID] = this;
+    
   // Register this module to listen in on observations recorded by this traceStream
   m->moduleTraces[nodeID]->registerObserver(m);
   
   // Record the mapping between traceStream IDs and the IDs of the nodes they're associated with
   m->trace2nodeID[m->moduleTraces[nodeID]->getID()] = nodeID;
   cout << "nodeID="<<nodeID<<", traceID="<<m->moduleTraces[nodeID]->getID()<<endl;
-  return NULL;
 }
 
 string portName(common::module::ioT type, int index) 
@@ -188,18 +198,33 @@ void addPolyTerms(const map<string, double>& numericCtxt, int termCnt, int maxDe
 // subName - the name string that has been computed so far for the current prefix of terms in the polynomial product
 void selTerms2Names(const list<string>& ctxtNames, const set<int>& selTerms, 
                     list<pair<int, string> >& selCtxt, 
-                    int termCnt, int maxDegree, int& idx, string subName) {
+                    int termCnt, int maxDegree, int& idx, map<string, int>& subNames) {
   // If product contains maxDegree terms, add it to the given column of polyfitObs and increment the column counter
   if(termCnt==maxDegree) {
     // If the current product index exists in selTerms
-    if(selTerms.find(idx) != selTerms.end())
+    if(selTerms.find(idx) != selTerms.end()) {
       // Match it to its name and add it to selCtx.
-      selCtxt.push_back(make_pair(idx, subName));
+      //selCtxt.push_back(make_pair(idx, subName));
+      ostringstream name;
+      for(map<string, int>::iterator n=subNames.begin(); n!=subNames.end(); n++) {
+        assert(n->second>0);
+        if(n!=subNames.begin()) name << "*";
+        name << n->first;
+        if(n->second>1) name << "^"<<n->second;
+      }
+      selCtxt.push_back(make_pair(idx, name.str()));
+    }
     idx++;
   } else {
     // Iterate through all the possible choices of the next factor in the current polynomial term
     for(list<string>::const_iterator c=ctxtNames.begin(); c!=ctxtNames.end(); c++) {
-      selTerms2Names(ctxtNames, selTerms, selCtxt, termCnt+1, maxDegree, idx, subName+(termCnt>0?"*":"")+*c);
+      if(subNames.find(*c) == subNames.end()) subNames[*c] = 1;
+      else                                    subNames[*c]++;
+      
+      selTerms2Names(ctxtNames, selTerms, selCtxt, termCnt+1, maxDegree, idx, subNames/*subName+(termCnt>0?"*":"")+*c*/);
+      
+      subNames[*c]--;
+      if(subNames[*c]==0) subNames.erase(*c);
     }
   }
 }
@@ -215,22 +240,26 @@ std::vector<std::string> module::polyFit(int nodeID)
     
   assert(numObs.find(nodeID)      != numObs.end());
   assert(polyfitObs.find(nodeID)  != polyfitObs.end());
-  assert(polyfitObs[nodeID].size()>0);
+  //assert(polyfitObs[nodeID].size()>0);
   
   // Fit a polynomial to the observed data
   int maxDegree = 2;
   long numTerms = polyfitCtxt[nodeID]->size2;
-  
+  //cout << "polyFit() numObs["<<nodeID<<"]="<<numObs[nodeID]<<", numTerms="<<numTerms<<endl; 
   // Covariance matrix
   gsl_matrix *polyfitCov = gsl_matrix_alloc(numTerms, numTerms);
 
-  for(int i=0; i<polyfitObs[nodeID].size(); i++) {
+  //for(int i=0; i<polyfitObs[nodeID].size(); i++) {
+  for(int i=0; i<traceAttrNames[nodeID].size(); i++) {
     gsl_vector* polyfitCoeff = gsl_vector_alloc(numTerms);
     gsl_multifit_linear_workspace *polyfitWS = gsl_multifit_linear_alloc(numObs[nodeID], numTerms);
     double chisq;
     gsl_matrix_view ctxtView = gsl_matrix_submatrix (polyfitCtxt[nodeID], 0, 0, numObs[nodeID], numTerms);
     //gsl_matrix_view ctxtView = gsl_matrix_submatrix (polyfitObs[nodeID][i], 0, 0, numObs[nodeID], numTerms);
-    gsl_vector_view obsView = gsl_vector_subvector(polyfitObs[nodeID][i], 0, numObs[nodeID]);
+    //gsl_vector_view obsView = gsl_vector_subvector(polyfitObs[nodeID][i], 0, numObs[nodeID]);
+    //gsl_vector_view obsView = gsl_matrix_subcolumn(polyfitObs[nodeID][i], i, 0, numObs[nodeID]);
+    gsl_vector_view obsView1 = gsl_matrix_column(polyfitObs[nodeID], i);
+    gsl_vector_view obsView = gsl_vector_subvector(&(obsView1.vector), 0, numObs[nodeID]);
     
     /*for(int j=0; j<numObs[nodeID]; j++) {
       for(int k=0; k<numTerms; k++)
@@ -238,67 +267,92 @@ std::vector<std::string> module::polyFit(int nodeID)
       cout << " => "<<gsl_vector_get(&(obsView.vector), j)<<endl;
     }*/
     
-    // Use a linear solver to fit the coefficients of the polynomial
-    // ******
-    gsl_multifit_linear(&(ctxtView.matrix), &(obsView.vector), polyfitCoeff, polyfitCov, &chisq, polyfitWS);
-    // ******
     
-    /*cout << "polyfitCoeff=";
-    for(int t=0; t<numTerms; t++) cout << gsl_vector_get(polyfitCoeff, t)<<" ";
-    cout << endl;*/
-    
-    // Identify the pair of coefficients in the sorted order with the largest relative difference between them
-    map<double, int> sortedCoeff;
-    for(int t=0; t<numTerms; t++) sortedCoeff[fabs(gsl_vector_get(polyfitCoeff, t))] = t;
-    map<double, int>::reverse_iterator splitIter = sortedCoeff.rend();
-    
-    double maxDiff = 0;
-    map<double, int>::reverse_iterator c=sortedCoeff.rbegin();
-    map<double, int>::reverse_iterator next = c; next++;
-    while(next!=sortedCoeff.rend() && next->first!=0) {
-      //cout << c->first<<" / "<<next->first<<endl;
-      double diff = c->first / next->first;
-      if(diff>maxDiff) {
-        maxDiff = diff;
-        splitIter = next;
-      }
-      c++;
-      next = c; next++;
-    }
-    // Create a set of just the indexes of the large coefficients
-    set<int> coeffIdxes;
-    //cout << "sortedCoeff: ";
-    for(map<double, int>::reverse_iterator c=sortedCoeff.rbegin(); c!=splitIter; c++) {
-      //cout << c->second<<"/"<<c->first<<" ";
-      coeffIdxes.insert(c->second);
-    }
-    //cout << endl;
-
-    list<pair<int, string> > selCtxt;
-    
-    // Add the constant term, if it is in coeffIdxes
-    if(coeffIdxes.find(0) != coeffIdxes.end()) selCtxt.push_back(make_pair(0,""));
+    // If we have enough observations to fit a model
+    if(numTerms <= numObs[nodeID]) {
+      // Use a linear solver to fit the coefficients of the polynomial
+      // ******
+      gsl_multifit_linear(&(ctxtView.matrix), &(obsView.vector), polyfitCoeff, polyfitCov, &chisq, polyfitWS);
+      // ******
       
-    int idx=1;
-    for(int degree=1; degree<=maxDegree; degree++)
-      selTerms2Names(numericCtxtNames[nodeID], coeffIdxes, selCtxt, 0, degree, idx, "");
-    
-    ostringstream polyStr;
-    for(list<pair<int, string> >::iterator c=selCtxt.begin(); c!=selCtxt.end(); c++) {
-      if(c!=selCtxt.begin()) polyStr << " + ";
-      polyStr << setiosflags(ios::scientific) << setprecision(2) << 
-                 gsl_vector_get(polyfitCoeff, c->first) << 
-                 (c->second==""?"":"*") << 
-                 c->second;
-    }
-    polynomials.push_back(polyStr.str());
+      /*cout << "polyfitCoeff=";
+      for(int t=0; t<numTerms; t++) cout << gsl_vector_get(polyfitCoeff, t)<<" ";
+      cout << endl;*/
+      
+      // Identify the pair of coefficients in the sorted order with the largest relative difference between them
+      map<double, int> sortedCoeff;
+      map<int, double> sortedCoeffInv;
+      for(int t=0; t<numTerms; t++) {
+        sortedCoeff[fabs(gsl_vector_get(polyfitCoeff, t))] = t;
+        sortedCoeffInv[t] = fabs(gsl_vector_get(polyfitCoeff, t));
+      }
+      map<double, int>::reverse_iterator splitIter = sortedCoeff.rend();
+      double largestCoeff = sortedCoeff.rbegin()->first;
+      
+      // Iterate sortedCoeff from the largest to smallest coefficient, looking for the largest gap between adjacent coefficients
+      double maxDiff = 0;
+      map<double, int>::reverse_iterator c=sortedCoeff.rbegin();
+      map<double, int>::reverse_iterator next = c; next++;
+      while(next!=sortedCoeff.rend() && next->first!=0) {
+        //cout << c->first<<" / "<<next->first<<endl;
+        double diff = c->first / next->first;
+        if(diff>maxDiff) {
+          maxDiff = diff;
+          splitIter = next;
+        }
+        c++;
+        next = c; next++;
+      }
+      
+      // Create a set of just the indexes of the large coefficients, which are the coefficients larger than the largest 
+      // coefficient drop and are not irrelevantly small compared to the largest coefficient
+      set<int> coeffIdxes;
+      //cout << "sortedCoeff: ";
+      for(map<double, int>::reverse_iterator c=sortedCoeff.rbegin(); c!=splitIter && c->first>=largestCoeff*1e-3; c++) {
+        //cout << c->second<<"/"<<c->first<<" ";
+        coeffIdxes.insert(c->second);
+      }
+      //cout << endl;
+  
+      list<pair<int, string> > selCtxt;
+      
+      // Add the constant term, if it is in coeffIdxes
+      if(coeffIdxes.find(0) != coeffIdxes.end()) selCtxt.push_back(make_pair(0,""));
+        
+      int idx=1;
+      for(int degree=1; degree<=maxDegree; degree++) {
+        map<string, int> subNames;
+        selTerms2Names(numericCtxtNames[nodeID], coeffIdxes, selCtxt, 0, degree, idx, subNames/*""*/);
+      }
+      
+      // Sort the selected names according to the size of their coefficients
+      map<double, pair<int, string> > selCtxtSorted;
+      for(list<pair<int, string> >::iterator c=selCtxt.begin(); c!=selCtxt.end(); c++)
+        selCtxtSorted[sortedCoeffInv[c->first]] = *c;
+      
+      //cout << "selCtxtSorted="<<selCtxtSorted.size()<<" #selCtxt="<<selCtxt.size()<<endl;
+      
+      // Serialize the polynomial fit terms in the order from largest to smallest coefficient
+      ostringstream polyStr;
+      for(map<double, pair<int, string> >::reverse_iterator c=selCtxtSorted.rbegin(); c!=selCtxtSorted.rend(); c++) {
+        if(c!=selCtxtSorted.rbegin()) polyStr << " + ";
+        polyStr << setiosflags(ios::scientific) << setprecision(2) << 
+                   gsl_vector_get(polyfitCoeff, c->second.first) << 
+                   (c->second.second==""?"":"*") << 
+                   c->second.second;
+      }
+      polynomials.push_back(polyStr.str());
+    // If we didn't get enough observations to train a model
+    } else
+      polynomials.push_back("");
 
-    gsl_vector_free(polyfitObs[nodeID][i]);
+    //gsl_vector_free(polyfitObs[nodeID][i]);
     gsl_vector_free(polyfitCoeff);
   }
   
   gsl_matrix_free(polyfitCov);
   gsl_matrix_free(polyfitCtxt[nodeID]);
+  gsl_matrix_free(polyfitObs[nodeID]);
   
   polyfitCtxt.erase(nodeID);
   polyfitObs.erase(nodeID);
@@ -307,11 +361,44 @@ std::vector<std::string> module::polyFit(int nodeID)
   return polynomials;
 }
 
+// Given the name of a trace attribute, the string representation of its polynomial fit and a line width 
+// emits to dotFile HTML where line breaks are inserted at approximately every lineWidth characters.
+void printPolyFitStr(ostream& dotFile, std::string traceName, std::string polyFit, unsigned int lineWidth) {
+  unsigned int i=0;
+  dotFile << "\t\t<TR><TD><TABLE BORDER=\"0\"  CELLBORDER=\"0\">"<<endl;
+  dotFile << "\t\t\t<TR><TD>:"<<traceName<<"</TD>";
+  
+  while(i<polyFit.length()) {
+    // Look for the next line-break
+    unsigned int nextLB = polyFit.find_first_of("\n", i);
+    // If the next line is shorter than lineWidth, add it to labelMulLineStr and move on to the next line
+    if(nextLB-i < lineWidth) {
+      if(i!=0) dotFile << "\t\t<TR><TD></TD>";
+      dotFile << "<TD>:"<<polyFit.substr(i, nextLB-i+1)<<"</TD></TR>"<<endl;
+      i = nextLB+1;
+    // If the next line is longer than lineWidth, add just lineWidth characters to labelMulLineStr
+    } else {
+      // If it is not much longer than lineWidth, don't break it up
+      if(i>=polyFit.length() - lineWidth) break;
+      
+      if(i!=0) dotFile << "\t\t<TR><TD></TD>";
+      dotFile << "<TD>:"<<polyFit.substr(i, lineWidth)<<"</TD></TR>"<<endl;
+      
+      i += lineWidth;
+    }
+  }
+  
+  if(i<polyFit.length()) {
+    if(i!=0) dotFile << "\t\t<TR><TD></TD>";
+    dotFile << "<TD>:"<<polyFit.substr(i, polyFit.length()-i)<<"</TD></TR>"<<endl;
+  }
+  dotFile << "</TABLE></TD></TR>"<<endl;
+}
 
 // Add a a module node
 void module::addNode(string node, int numInputs, int numOutputs, int ID, int count/*, const set<string>& nodeContexts*/) {
   moduleNames.insert(node);
-  cout << "addNode() nodeID="<<ID<<", name="<<node<<endl;
+  //cout << "addNode() nodeID="<<ID<<", name="<<node<<endl;
   
   static int maxButtonID=0; // The maximum ID that has ever been assigned to a button
   
@@ -401,8 +488,11 @@ void module::addNode(string node, int numInputs, int numOutputs, int ID, int cou
       // Polynomial fit of the observations
       vector<string> polynomials = polyFit(ID);
       assert(polynomials.size() == traceAttrNames[ID].size());
-      for(int i=0; i<polynomials.size(); i++)
-        dotFile << "\t\t<TR><TD>:"<<traceAttrNames[ID][i]<< ": "<<polynomials[i]<<"</TD></TR>"<<endl;
+      for(int i=0; i<polynomials.size(); i++) {
+        // If we were able to train a model for the current trace attribute, emit it
+        if(polynomials[i] != "") printPolyFitStr(dotFile, traceAttrNames[ID][i], polynomials[i], 80);
+      }
+        //dotFile << "\t\t<TR><TD>:"<<traceAttrNames[ID][i]<< ": "<<wrapStr(polynomials[i], 50)<<"</TD></TR>"<<endl;
     }
     
     if(traceAttrNames[ID].size()>0) {
@@ -503,16 +593,35 @@ void module::observe(int traceID,
                        // #numericCtxt^0 + #numericCtxt^1 + #numericCtxt^2 + ... + #numericCtxt^maxDegree = #numericCtxt^(maxDegree+1) - 1
                        pow(numericCtxt.size(), maxDegree+1));
   
-  cout << "module::observe() nodeID="<<nodeID<<", #numericCtxt="<<numericCtxt.size()<<", numTerms="<<numTerms<<endl;
+  //cout << "module::observe() nodeID="<<nodeID<<", #numericCtxt="<<numericCtxt.size()<<", numTerms="<<numTerms<<endl;
      
   // If this is the first observation we have from the given traceStream, allocate the
   // polynomial fit datastructures
   if(polyfitCtxt.find(nodeID) == polyfitCtxt.end()) {
     polyfitCtxt[nodeID] = gsl_matrix_alloc(1000, numTerms);
-    for(map<string, string>::const_iterator o=obs.begin(); o!=obs.end(); o++) {
-      polyfitObs[nodeID].push_back(gsl_vector_alloc(1000));
-    }
+    
+    //for(map<string, string>::const_iterator o=obs.begin(); o!=obs.end(); o++) {
+    //  polyfitObs[nodeID].push_back(gsl_vector_alloc(1000));
+    //}
+    polyfitObs[nodeID] = gsl_matrix_alloc(1000, obs.size());
+    
     numObs[nodeID] = 0;
+    numAllocObs[nodeID] = 1000;
+  }
+  
+  // If we're out of space in polyfitCtxt[nodeID] and polyfitObs[nodeID] to store another observation, grow them
+  if(numObs[nodeID] == numAllocObs[nodeID]) {
+    gsl_matrix* newCtxt = gsl_matrix_alloc(numAllocObs[nodeID]*2, numTerms);
+    gsl_matrix_view newCtxtView = gsl_matrix_submatrix (newCtxt, 0, 0, numObs[nodeID], numTerms);
+    gsl_matrix_memcpy (&(newCtxtView.matrix), polyfitCtxt[nodeID]);
+    gsl_matrix_free(polyfitCtxt[nodeID]);
+    polyfitCtxt[nodeID] = newCtxt;
+    
+    gsl_matrix* newObs = gsl_matrix_alloc(numAllocObs[nodeID]*2, numTerms);
+    gsl_matrix_view newObsView = gsl_matrix_submatrix (newObs, 0, 0, numObs[nodeID], obs.size());
+    gsl_matrix_memcpy (&(newObsView.matrix), polyfitObs[nodeID]);
+    gsl_matrix_free(polyfitObs[nodeID]);
+    polyfitObs[nodeID] = newObs;
   }
   
   // Add this observation to polyfitObs
@@ -524,7 +633,8 @@ void module::observe(int traceID,
     double v = strtod(valStr, &nextValStr);
     assert(nextValStr != valStr);
     
-    gsl_vector_set(polyfitObs[nodeID][obsIdx], numObs[nodeID], v);
+    //gsl_vector_set(polyfitObs[nodeID][obsIdx], numObs[nodeID], v);
+    gsl_matrix_set(polyfitObs[nodeID], numObs[nodeID], obsIdx, v);
   }
 
   // Add the context of the observation to polyfitCtxt

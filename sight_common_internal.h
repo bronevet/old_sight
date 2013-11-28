@@ -141,19 +141,6 @@ class properties
 
 namespace common {
 
-// Base class of all sight objects that provides some common functionality
-class sightObj {
-  public:
-  properties* props;
-  sightObj() : props(NULL) {}
-  sightObj(properties* props) : props(props) {}
-
-  ~sightObj() {
-    //assert(props);
-    if(props) delete(props);
-  }
-};
-
 // Stream that uses dbgBuf
 class dbgStream : public std::ostream
 {

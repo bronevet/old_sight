@@ -134,16 +134,18 @@ scope::~scope()
 
 // Called to enable the block to print its entry and exit text
 void scope::printEntry(string loadCmd) {
+  //cout << getLabel()<<": blockIndex="<<blockIndex<<endl;
   dbg.ownerAccessing();
-  if(blockIndex==0) {
+  /*if(blockIndex==0) {
     //if(dbg.blockDepth()>2) dbg << "\t\t\t"<<tabs(dbg.blockDepth())<<"</td></tr></table>\n";
     dbg << "\t\t\t"<<tabs(dbg.blockDepth())<<"<table>\n";
-  } else
-    dbg << "\t\t\t"<<tabs(dbg.blockDepth())<<"</td></tr>\n";
+    dbg << "\t\t\t"<<tabs(dbg.blockDepth())<<"<tr width=\"100%\"><td width=0></td><td width=\"100%\">\n";
+  } //else
+    //dbg << "\t\t\t"<<tabs(dbg.blockDepth())<<"</td></tr>\n";
+  */
   
-  dbg << "\t\t\t"<<tabs(dbg.blockDepth())<<"<tr width=\"100%\"><td width=50></td><td width=\"100%\">\n";
   dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"<table bgcolor=\"#"<<colors[(colorIdx-1)%colors.size()]<<"\" width=\"100%\" id=\"table"<<getBlockID()<<"\" style=\"border:1px solid white\" onmouseover=\"this.style.border='1px solid black'; highlightLink('"<<getBlockID()<<"', '#F4FBAA');\" onmouseout=\"this.style.border='1px solid white'; highlightLink('"<<getBlockID()<<"', '#FFFFFF');\" onclick=\"focusLinkSummary('"<<getBlockID()<<"', event);\">\n";
-  dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"<tr width=\"100%\"><td width=50></td><td width=\"100%\">";
+  dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"<tr width=\"100%\"><td width=0></td><td width=\"100%\">";
   if(labelInteractive) {
     dbg <<"<h2>\n";
     dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"<a name=\"anchor"<<getBlockID()<<"\" href=\"javascript:unhide('"<<getBlockID()<<"');\">";
@@ -181,7 +183,7 @@ void scope::printEntry(string loadCmd) {
     dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"</h2>"<<endl;
   }
   dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"</td></tr>\n";
-  dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"<tr width=\"100%\"><td width=50></td><td width=\"100%\">\n";
+  dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"<tr width=\"100%\"><td width=0></td><td width=\"100%\">\n";
   dbg.flush();
   dbg.userAccessing();  
 }
@@ -191,8 +193,12 @@ void scope::printExit() {
   dbg.ownerAccessing();
   dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"</td></tr>\n";
   dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"</table>\n";
+  /*if(blockIndex==0) {
+    dbg << "\t\t\t"<<tabs(dbg.blockDepth())<<"</td></tr>\n";
+    dbg << "\t\t\t"<<tabs(dbg.blockDepth())<<"</table>\n";
+  }*/
   //dbg << "\t\t\t"<<tabs(dbg.blockDepth())<<"</td></tr>\n";
-  //dbg << "\t\t\t"<<tabs(dbg.blockDepth())<<"<tr width=\"100%\"><td width=50></td><td width=\"100%\">\n";
+  //dbg << "\t\t\t"<<tabs(dbg.blockDepth())<<"<tr width=\"100%\"><td width=0></td><td width=\"100%\">\n";
   dbg.userAccessing();  
 }
 

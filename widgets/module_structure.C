@@ -155,7 +155,10 @@ void module::init(const group& g, const std::vector<port>& in) {
     for(int i=0; i<g.numOutputs; i++) {
       outputs.push_back(port(g, context(), output, i));
       // If the user provided an output vector, initialize it as well
-      if(externalOutputs) externalOutputs->push_back(port(g, context(), output, i));
+      if(externalOutputs) { 
+        externalOutputs->clear(); 
+        externalOutputs->push_back(port(g, context(), output, i));
+      }
     }
     
     
@@ -175,23 +178,25 @@ properties* module::setProperties(const group& g, const std::vector<port>& input
   if(g.numInputs!=inputs.size()) cerr << "ERROR: module group \""<<g.name<<"\" has "<<g.numInputs<<" inputs but "<<inputs.size()<<" inputs were provided!"<<endl; 
   assert(g.numInputs==inputs.size());
   
-  // We only emit tags at the very end of the outer-most module
-  props->emitTag = (props->active && mStack.size()==0);
-  
-  // If the current attribute query evaluates to true (we're emitting debug output) AND
-  // either onoffOp is not provided or it evaluates to true
-  if(attributes.query() && (onoffOp? onoffOp->apply(): true)) {
-  	props->active = true;
+  if(props->active && props->emitTag) {
+    // We only emit tags at the very end of the outer-most module
+    props->emitTag = (props->active && mStack.size()==0);
     
-    if(props->emitTag) {
-      /*map<string, string> pMap = c->first.getProperties();
-      //newProps["callPath"] = cp2str(CPRuntime.doStackwalk());*/
-      map<string, string> pMap;
-      pMap["moduleID"]   = txt()<<maxModuleID;
-      props->add("module", pMap);
-    }
-  } else
-  	props->active = false;
+    // If the current attribute query evaluates to true (we're emitting debug output) AND
+    // either onoffOp is not provided or it evaluates to true
+    if(attributes.query() && (onoffOp? onoffOp->apply(): true)) {
+    	props->active = true;
+      
+      if(props->emitTag) {
+        /*map<string, string> pMap = c->first.getProperties();
+        //newProps["callPath"] = cp2str(CPRuntime.doStackwalk());*/
+        map<string, string> pMap;
+        pMap["moduleID"]   = txt()<<maxModuleID;
+        props->add("module", pMap);
+      }
+    } else
+    	props->active = false;
+  }
   
   return props;  
 }
@@ -321,23 +326,23 @@ module* module::getCurrent() {
 
 // Records the mapping from a module's context to its unique ID
 void module::addNode(const group& g, int nodeID) {
-  cout << "addNode() new node g="<<g.str()<<", nodeID="<<nodeID<<endl;
+  //cout << "addNode() new node g="<<g.str()<<", nodeID="<<nodeID<<endl;
   // If this context doesn't yet have an ID, set one
   if(group2ID.find(g) == group2ID.end()) {
     group2ID[g] = nodeID;
     group2Count[g] = 1;
 
-    traceStream* ts = new traceStream(trace::lines, trace::disjMerge);
+    traceStream* ts = new moduleNodeTraceStream(nodeID, trace::lines, trace::disjMerge);
     moduleTrace[g] = ts;
     
     // Record the traceStream, along with the name of the module this steam is associated with
-    properties streamProps;
+    /*properties streamProps;
     streamProps.add("module_traceStream", ts->getProperties());
     map<string, string> pMap;
     //pMap["ModuleName"] = g.name;
     pMap["nodeID"] = txt()<<nodeID;
     streamProps.add("module_traceStream_name", pMap);
-    dbg.tag(streamProps);
+    dbg.tag(streamProps);*/
   } else {
     group2Count[g]++;
   }
@@ -370,6 +375,28 @@ void module::addEdge(port from, port to) {
 void module::addEdge(group fromG, ioT fromT, int fromP, group toG, ioT toT, int toP) {
   addEdge(port(fromG, context(), fromT, fromP), port(toG, context(), toT, toP));
 }
+
+
+/*********************************
+ ***** moduleNodeTraceStream *****
+ *********************************/
+
+moduleNodeTraceStream::moduleNodeTraceStream(int nodeID, vizT viz, mergeT merge, properties* props) : 
+  traceStream(viz, merge, setProperties(nodeID, viz, merge, props))
+{ }
+
+properties* moduleNodeTraceStream::setProperties(int nodeID, vizT viz, mergeT merge, properties* props) {
+  if(props==NULL) props = new properties();
+  
+  if(props->active && props->emitTag) {
+    map<string, string> pMap;
+    pMap["nodeID"] = txt()<<nodeID;
+    props->add("moduleNodeTS", pMap);
+  }
+  
+  return props;
+}
+
 
 /************************
  ***** ModuleMerger *****

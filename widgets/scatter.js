@@ -2,18 +2,45 @@
 
 // Adapted from http://bl.ocks.org/bunkat/2595950   
 
+function createNumericScale(data, idx, minVisCoord, maxVisCoord) {
+  var Min = d3.min(data, function(d) { return parseFloat(d[idx]); });
+  var Avg = d3.sum(data, function(d) { return parseFloat(d[idx]); }) / data.length;
+  var Max = d3.max(data, function(d) { return parseFloat(d[idx]); });
+
+  // If there is a huge range in the x coordinates, use a log scale
+  if(Max / Avg > 1e3) 
+    return d3.scale.log()
+            .domain([0, Max])
+            .range([ minVisCoord, maxVisCoord ]);
+  // Otherwise, use a linear scale
+  else 
+    return d3.scale.linear()
+            .domain([0, Max])
+            .range([ minVisCoord, maxVisCoord ]);  
+}
+
 function showScatterplot(data, hostDiv) {
   var margin = {top: 20, right: 15, bottom: 60, left: 60},
       width = document.getElementById(hostDiv).clientWidth - margin.left - margin.right,
       height = document.getElementById(hostDiv).clientHeight - margin.top - margin.bottom;
   
-  var x = d3.scale.linear()
-          .domain([0, d3.max(data, function(d) { return d[0]; })])
-          .range([ 0, width ]);
+  // Determine whether the x and y axes are numeric or categorical
+  var isXNumeric=true, isYNumeric=true;
+  for(d in data) { if(data.hasOwnProperty(d)) {
+    if(!isNumber(data[d][0])) { isXNumeric = false; }
+    if(!isNumber(data[d][1])) { isYNumeric = false; }
+    if(!isXNumeric && !isYNumeric) break;
+  } }
   
-  var y = d3.scale.linear()
-        .domain([0, d3.max(data, function(d) { return d[1]; })])
-        .range([ height, 0 ]);
+  var x, y;
+  
+  if(isXNumeric) x = createNumericScale(data, 0, 0, width);
+  else           x = d3.scale.ordinal()
+                           .domain(data.map(function (d) {return d[0]; }))
+                           .rangeRoundBands([0, width]);
+  
+  if(isYNumeric) y = createNumericScale(data, 1, height, 0);
+  else           y = d3.scale.ordinal().range([height, 0]);
   
   var chart = d3.select("#"+hostDiv)
                   .append('svg:svg')
@@ -54,8 +81,9 @@ function showScatterplot(data, hostDiv) {
   g.selectAll("scatter-dots")
        .data(data)
        .enter().append("svg:circle")
-           .attr("cx", function (d,i) { return x(d[0]); } )
-           .attr("cy", function (d) { return y(d[1]); } )
-           .attr("r", 8)
+           .attr("cx", function (d,i) { /*alert("d="+d+", i="+i+", x(d[0])="+x(d[0])+", y(d[1])="+y(d[1]));*/ 
+                                         return (isXNumeric? x(parseFloat(d[0])): x(d[0]) + x.rangeBand()/2); } )
+           .attr("cy", function (d) { return y(parseFloat(d[1])); } )
+           .attr("r", 3)
            .style("fill", "red");
 }

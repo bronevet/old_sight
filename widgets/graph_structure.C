@@ -176,17 +176,16 @@ bool graph::subBlockEnterNotify(block* subBlock) {
      subBlock->getLocation().size() == common.size()/ * &&
      subBlock->getLocation().back().second.size()-1 == common.back().second.size() * /)*/
   { 
-    sightObj obj(new properties());
-  
+    properties p;
     map<string, string> newProps;
     newProps["nodeID"]   = txt()<<maxNodeID;
     newProps["anchorID"] = txt()<<subBlock->getAnchor().getID();
     newProps["label"]    = txt()<<subBlock->getLabel();
     newProps["callPath"] = cp2str(CPRuntime.doStackwalk());
-    obj.props->add("node", newProps);
+    p.add("node", newProps);
   //dbg.tag("undEdge", properties, false);
   
-    dbg.tag(&obj);
+    dbg.tag(p);
    //nodes[subBlock->getLocation()] = node(maxNodeID, subBlock->getLabel(), subBlock->getAnchor());
     maxNodeID++;
   }
@@ -272,6 +271,8 @@ properties* GraphMerger::setProperties(std::vector<std::pair<properties::tagType
       if(properties::exists(t->second, "dotText"))
         pMap["dotText"] += properties::get(t->second, "dotText");
     }
+    // If the dotText field was not set on any of the incoming streams, remove it from pMap
+    if(pMap["dotText"] == "") pMap.erase("dotText");
   }
   props->add("graph", pMap);
   

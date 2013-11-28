@@ -60,4 +60,31 @@ string tabs(int n)
   return s;
 }
 
+// Given a string and a line width returns a variant of the string where line breaks are inserted
+// at approximately every lineWidth characters.
+std::string wrapStr(std::string str, unsigned int lineWidth) {
+  string multiLineStr = "";
+  unsigned int i=0;
+  while(i<str.length()-lineWidth) {
+    // Look for the next line-break
+    unsigned int nextLB = str.find_first_of("\n", i);
+    // If the next line is shorter than lineWidth, add it to labelMulLineStr and move on to the next line
+    if(nextLB-i < lineWidth) {
+      multiLineStr += str.substr(i, nextLB-i+1);
+      i = nextLB+1;
+    // If the next line is longer than lineWidth, add just lineWidth characters to labelMulLineStr
+    } else {
+      // If it is not much longer than lineWidth, don't break it up
+      if(i>=str.length()-lineWidth*1.25) break;
+      multiLineStr += str.substr(i, lineWidth) + "\\n";
+      i += lineWidth;
+    }
+  }
+  // Add the last line in str to labelMulLineStr
+  if(i<str.length())
+    multiLineStr += str.substr(i, str.length()-i);
+  
+  return multiLineStr;
+}
+
 } // namespace sight

@@ -132,7 +132,7 @@ int main(int argc, char** argv) {
          "It will be placed at the spot int the output where the trace variable exited scope and will use a Decision "<<
          "Tree visualization."<<endl;
   contextAttrs.push_back("mvmLoop");
-  trace mvmT("MVM Loop Elapsed", contextAttrs, trace::showEnd, trace::decTree);
+  trace mvmT("MVM Loop Elapsed", contextAttrs, trace::showEnd, trace::table);
     
   // Color selectors to assign different colors to lines associated with different MMMs and that have different elapsed times
   colorSelector loopColor("mmmLoop",0,0,.3,0,0,1); // Blue gradient

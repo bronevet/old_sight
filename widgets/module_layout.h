@@ -22,8 +22,11 @@ class moduleLayoutHandlerInstantiator : layoutHandlerInstantiator {
 };
 extern moduleLayoutHandlerInstantiator moduleLayoutHandlerInstance;
 
+class moduleNodeTraceStream;
+
 class module: public block, public common::module, public traceObserver
 {
+  friend class moduleNodeTraceStream;
   protected:
   
   // The path the directory where output files of the graph widget are stored
@@ -92,11 +95,15 @@ class module: public block, public common::module, public traceObserver
   std::map<int, gsl_matrix*> polyfitCtxt;
   
   // For each value that is observed, a vector of the values actually observed, one entry per observation
-  std::map<int, std::vector<gsl_vector*> >  polyfitObs;
+  //std::map<int, std::vector<gsl_vector*> >  polyfitObs;
+  std::map<int, gsl_matrix*> polyfitObs;
     
   // The number of observations made for each node
   std::map<int, int> numObs;
     
+  // The number of observations for which we've allocated space in polyfitCtxt and polyfitObs
+  std::map<int, int> numAllocObs;
+  
   // The number of numeric context attributes of each node. Should be the same for all observations for the node
   std::map<int, int> numNumericCtxt;
   std::map<int, std::list<std::string> > numericCtxtNames;
@@ -115,6 +122,14 @@ class module: public block, public common::module, public traceObserver
                const std::map<std::string, std::string>& obs,
                const std::map<std::string, anchor>&      obsAnchor);
 }; // class module
+
+// Specialization of traceStreams for the case where they are hosted by a module node
+class moduleNodeTraceStream: public traceStream
+{
+  public:
+  moduleNodeTraceStream(properties::iterator props);
+};
+
 
 }; // namespace layout
 }; // namespace sight

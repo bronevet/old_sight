@@ -132,6 +132,16 @@ class module: public block, public common::module
   bool subBlockExitNotify (block* subBlock) { return true; }
 }; // moduleGraph
 
+
+// Specialization of traceStreams for the case where they are hosted by a module node
+class moduleNodeTraceStream: public traceStream
+{
+  public:
+  moduleNodeTraceStream(int nodeID, vizT viz, mergeT merge, properties* props=NULL);
+  
+  static properties* setProperties(int nodeID, vizT viz, mergeT merge, properties* props);
+};
+
 class ModuleMerger : public BlockMerger {
   public:
   ModuleMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,

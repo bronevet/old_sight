@@ -169,7 +169,7 @@ function getHash_rec(subHT, UID, index, rKey) {
   if(index == UID.length-1) {
     return subHT.leaf.getItem(subKey).getItem(rKey);
   } else {
-    return getFile_rec(subHT.items.getItem(subKey), UID, index+1, rKey);
+    return getHash_rec(subHT.items.getItem(subKey), UID, index+1, rKey);
   }
 }
 
@@ -182,14 +182,16 @@ function hash2Str_rec(subHT, indent) {
   var str = "{\n";
   subHT.leaf.each(function(k, v) {
     str += indent + "    L: " + k + " => \n";
-    if(v.objectType == "Array") {
-      str += indent + "        [";
-      for(i in v) { if(v.hasOwnProperty(i)) {
-        str += v[i]+" ";
-      } }
-      str += "]\n";
-    } else
-      str += indent + "        "+v/*.str(indent + "        ")*/+"\n";
+    v.each(function(k2, v2) {
+      if(v2.objectType == "Array") {
+        str += indent + "        [";
+        for(i in v2) { if(v2.hasOwnProperty(i)) {
+          str += v2[i]+" ";
+        } }
+        str += "]\n";
+      } else
+        str += indent + "        "+v2+"\n";
+      });
   });
   subHT.items.each(function(k, v) {
     str += indent + "    I: " + k + " => ";
