@@ -77,7 +77,7 @@ properties* scope::setProperties(scopeLevel level, const attrOp* onoffOp, proper
     map<string, string> newProps;
     newProps["level"] = txt()<<level;
     //cout << "scope: "<<cp2str(CPRuntime.doStackwalk())<<endl;
-    newProps["callPath"] = cp2str(CPRuntime.doStackwalk());
+    //newProps["callPath"] = cp2str(CPRuntime.doStackwalk());
     //dbg.enter("scope", properties, inheritedFrom);
     props->add("scope", newProps);
   }
@@ -134,9 +134,9 @@ properties* ScopeMerger::setProperties(std::vector<std::pair<properties::tagType
   if(type==properties::enterTag) {
     pMap["level"] = txt()<<vAvg(str2int(getValues(tags, "level")));
     
-    vector<string> cpValues = getValues(tags, "callPath");
+    /*vector<string> cpValues = getValues(tags, "callPath");
     assert(allSame<string>(cpValues));
-    pMap["callPath"] = *cpValues.begin();
+    pMap["callPath"] = *cpValues.begin();*/
     
     props->add("scope", pMap);
   } else {

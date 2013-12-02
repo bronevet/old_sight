@@ -20,11 +20,11 @@ namespace sight {
 namespace layout {
 
 // Record the layout handlers in this file
-void* variantEnterHandler(properties::iterator props) { return new variant(props); }
+void* variantEnterHandler(properties::iterator props) { variant* v=new variant(props); return v; }
 void  variantExitHandler(void* obj) { variant* v = static_cast<variant*>(obj); delete v; }
 void* interVariantHandler(properties::iterator props) { 
   dbg.ownerAccessing();
-  dbg << endl << "</td></td>" << endl;
+  dbg << endl << "</td><td>" << endl;
   dbg.userAccessing();
 }
   

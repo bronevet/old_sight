@@ -22,105 +22,79 @@ int main(int argc, char** argv)
 
   dbg << "<h1>Example 7: Graph Merging</h1>" << endl;
   dbg << numIters << " Iterations."<<endl;
-/*  scope s("We make output more navigable by linking related outer iterations", scope::medium);
-  
-  //trace t0("MT Root",      "Root",      trace::showBegin, trace::table, trace::disjMerge);
-  //trace t1("MT Input",     "Input",     trace::showBegin, trace::table, trace::disjMerge);
-  //trace t2("MT Iteration", "Iteration", trace::showBegin, trace::table, trace::disjMerge);
-  //trace t3("MT Module A",  "Module A",  trace::showBegin, trace::table, trace::disjMerge);
-  //trace t4("MT Module B",  "Module B",  trace::showBegin, trace::table, trace::disjMerge);
-  //attr a("ModuleCtxt", 1);
-  srand(time(NULL));
-  module mg(group("Root", 0, 0));
-  
-  module mInput(group("Input", 0, 4));
-  mInput.setOutCtxt(0, context(config("nonzeros", 0)));
-  mInput.setOutCtxt(1, context(config("CondNum", 0)));
-  mInput.setOutCtxt(2, context(config("solnErr", 2)));
-  mInput.setOutCtxt(3, context(config("solnVal", 5)));
-  
-  //vector<port> 
-  std::vector<port> mtxGenOutputs;
-  for(int i=0; i<10; i++)
+
   {
-    module mIter(group("Iteration", 0, 1));
-    {
-      //cout << "mIter.getContext()="<<mIter.getContext().str()<<endl;
-      std::vector<port> ma1Outputs;
-      { module ma1(group("Lin Solve", 2, 2), 
-                   inputs(//nonzeros
-                          (i==0? mInput.outPort(0): mtxGenOutputs[0]),
-                          // CondNum
-                          (i==0? mInput.outPort(1): mtxGenOutputs[1])),
-                   ma1Outputs);
-    	  usleep(200+i*i*100 + i*1000/ *rand()%50* /);
-    	  ma1.setOutCtxt(0, context(config("solnErr", (i+1)*2)));
-    	  ma1.setOutCtxt(1, context(config("solnVal", (i+1)*5)));
-    	}
-    	
-    	{ module mb1(group("Mtx Gen", 2, 2),
-    	             inputs(ma1Outputs[0], ma1Outputs[1]),
-    	             mtxGenOutputs);
-    	  mb1.setOutCtxt(0, context(config("nonzeros", i+1)));
-    	  mb1.setOutCtxt(1, context(config("CondNum", i*i)));
-    	    
-    	  usleep(1000+i*100/ *rand()%150* /);
-    	}
-    	
-    	/ *{ module mb1(group("Mtx Gen", 2, 2),
-    	             inputs(mInput.outPort(2), ma1Outputs[1]));
-    	  mb1.setOutCtxt(0, context(config("nonzeros", i+1)));
-    	  mb1.setOutCtxt(1, context(config("CondNum", i*i)));
-    	    
-    	  usleep(100+i*10/*rand()%150* /);
-    	}* /
-  	}
-  }*/
-  /* //graph g;
-  // Maps each iteration number to the link anchors that will point to this iteration's scope
-  map<int, set<anchor> > pointsTo;
-  map<int, anchor> iterAnchor;
-  
-  for(int i=0; i<numIters; i++) {
-    // Create iteration i'i*icope, anchoring all incominlinks to it
-    scope si(txt()<<i, pointsTo[i]);
+    scope s("Iteration Sequence");
+    dbg << "This segment corresponds to a single loop where text in each iteration contains a link to the "<<
+           "preceding iteration and a link to the following iteration. In addition to links the loop creates "<<
+           "edges in a graph from each iteration to the one that follows. The numIters parameter determine this "<<
+           "loop's iteration count. When logs from multiple such runs with different values of numIters are "<< 
+           "merged it is clear that the first iteration is common to all runs, the second to only a subset and "<<
+           "so on. Importantly, the forward and backward links, as well as the links from graph nodes to the scopes "<<
+           "they refer to, are valid after merging and can be used to navigate within the merged output."<<endl;
     
-    // We can now erase all the anchors that refer to this scope from pointsTo[] since we've successfully terminated them.
-    pointsTo[i].clear(); 
-    
-    iterAnchor[i] = si.getAnchor();
-    
-    if(i>0) {
-      iterAnchor[i-1].linkImg(txt()<<(i-1));
-      iterAnchor.erase(i-1);
-    }
-    
-    if(i+1 < numIters) {
-      // This is an anchor that will be anchored at iteration j of the outer loop once we reach it.
-      anchor toAnchor;
-      pointsTo[i+1].insert(toAnchor);
-      
-      toAnchor.linkImg(txt()<<(i+1)); dbg << endl;
-      
-      // Add a graph edge from the current scope to the iteration of the number proven to be not prime
-      //g.addDirEdge(si.getAnchor(), toAnchor);
-    }
-  }*/
-  
-  list<string> contextAttrs;
-  contextAttrs.push_back("depth");
-  contextAttrs.push_back("val");
-  trace tableTrace("Table", contextAttrs, trace::showBegin, trace::table, trace::disjMerge);
-  
-  // Call a recursive Fibonacci, where we create a graph of the recursion hierarchy
-  {
-    scope s("Recursive Fibonacci", scope::medium);
     graph g;
-    fibGraph(0, numIters, g, NULL);
     
-    /*anchor toChild; 
-    toChild.linkImg("Root Node"); dbg << endl;
-    fibLinks(0, numIters, NULL, toChild);*/
+    // Maps each iteration number to the link anchors that will point to this iteration's scope
+    map<int, set<anchor> > pointsTo;
+    map<int, anchor> iterAnchor;
+    
+    for(int i=0; i<numIters; i++) {
+      // Create iteration i'i*icope, anchoring all incominlinks to it
+      scope si(txt()<<i, pointsTo[i]);
+      
+      //cout << i<<": anchor="<<si.getAnchor().str()<<endl;
+      
+      // We can now erase all the anchors that refer to this scope from pointsTo[] since we've successfully terminated them.
+      pointsTo[i].clear(); 
+      
+      iterAnchor[i] = si.getAnchor();
+      
+      // Backward link
+      if(i>0) {
+        //cout << "iterAnchor["<<(i-1)<<"]="<<iterAnchor[i-1].str()<<endl;
+        iterAnchor[i-1].linkImg(txt()<<(i-1));
+        iterAnchor.erase(i-1);
+      }
+      
+      // Forward Link
+      if(i+1 < numIters) {
+        // This is an anchor that will be anchored at iteration j of the outer loop once we reach it.
+        anchor toAnchor;
+        pointsTo[i+1].insert(toAnchor);
+        //cout << "forward link toAnchor="<<toAnchor.str()<<endl;
+        
+        toAnchor.linkImg(txt()<<(i+1)); dbg << endl;
+        
+        // Add a graph edge from the current scope to the iteration of the number proven to be not prime
+        g.addDirEdge(si.getAnchor(), toAnchor);
+      }
+    }
+  }
+  
+  {
+    scope s("Recursion sequence");
+    
+    dbg << "This segment corresponds to recursive calls to the Fibonacci function. The numIters parameter determines "<<
+           "the depth of the recursion. Each recursive call establishes a new scope and sets up an edge in the graph "<<
+           "from the scope of the calling function to the scope of the callee. Further, each run maintains a trace that "<<
+           "includes one observation for each recursive Fibonacci call, with the depth of the call and its argument as "<<
+           "the observation's context and the product of depth and argument as the observation. When multiple runs with "<<
+           "multiple values of numIters are merged, the common portions of the recursion tree are visible, as well as "<<
+           "the portions that are only executed for larger values of numIters. We also see all the trace observations "<<
+           "performed in any of the runs."<<endl;
+    
+    list<string> contextAttrs;
+    contextAttrs.push_back("depth");
+    contextAttrs.push_back("val");
+    trace tableTrace("Table", contextAttrs, trace::showBegin, trace::table, trace::disjMerge);
+    
+    // Call a recursive Fibonacci, where we create a graph of the recursion hierarchy
+    {
+      scope s("Recursive Fibonacci", scope::medium);
+      graph g;
+      fibGraph(0, numIters, g, NULL);
+    }
   }
 }
 

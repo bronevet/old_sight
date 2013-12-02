@@ -246,7 +246,7 @@ class streamRecord : public printable {
   // Given a streamID in the current incoming stream return its streamID in the outgoing stream, yelling if it is missing.
   streamID in2outID(streamID inSID) const;
   
-  // Given multiple streamRecords from several variants of the same stream, update this streamRecord object
+  // Given multiple streamRecords from several variants of the same outgoing stream, update this streamRecord object
   // to contain the state that succeeds them all, making it possible to resume processing
   virtual void resumeFrom(std::vector<std::map<std::string, streamRecord*> >& streams);
   
@@ -473,7 +473,7 @@ class AnchorStreamRecord: public streamRecord {
   // which is appended to the new stream's variant list.
   streamRecord* copy(int vSuffixID);
   
-  // Given multiple streamRecords from several variants of the same stream, update this streamRecord object
+  // Given multiple streamRecords from several variants of the same outgoing stream, update this streamRecord object
   // to contain the state that succeeds them all, making it possible to resume processing
   void resumeFrom(std::vector<std::map<std::string, streamRecord*> >& streams);
   
@@ -584,9 +584,9 @@ class block : public sightObj
   block(std::string label, std::set<anchor>& pointsTo, properties* props=NULL);
     
   // Sets the properties of this object
-  properties* setProperties(std::string label,                             properties* props);
-  properties* setProperties(std::string label, anchor& pointsTo,           properties* props);
-  properties* setProperties(std::string label, std::set<anchor>& pointsTo, properties* props);
+  static properties* setProperties(std::string label,                             properties* props);
+  static properties* setProperties(std::string label, anchor& pointsTo,           properties* props);
+  static properties* setProperties(std::string label, std::set<anchor>& pointsTo, properties* props);
  
   ~block();
   
@@ -643,7 +643,7 @@ class BlockStreamRecord: public streamRecord {
   // which is appended to the new stream's variant list.
   streamRecord* copy(int vSuffixID);
   
-  // Given multiple streamRecords from several variants of the same stream, update this streamRecord object
+  // Given multiple streamRecords from several variants of the same outgoing stream, update this streamRecord object
   // to contain the state that succeeds them all, making it possible to resume processing
   //void resumeFrom(std::vector<std::map<std::string, streamRecord*> >& streams);
   
@@ -846,7 +846,7 @@ class dbgStreamStreamRecord: public streamRecord {
   // which is appended to the new stream's variant list.
   streamRecord* copy(int vSuffixID);
   
-  // Given multiple streamRecords from several variants of the same stream, update this streamRecord object
+  // Given multiple streamRecords from several variants of the same outgoing stream, update this streamRecord object
   // to contain the state that succeeds them all, making it possible to resume processing
   //void resumeFrom(std::vector<std::map<std::string, streamRecord*> >& streams);
   

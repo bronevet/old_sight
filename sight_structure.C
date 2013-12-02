@@ -352,10 +352,10 @@ int streamRecord::mergeIDs(std::string objName, std::string IDName,
                            const vector<pair<properties::tagType, properties::iterator> >& tags,
                            std::map<std::string, streamRecord*>& outStreamRecords,
                            std::vector<std::map<std::string, streamRecord*> >& inStreamRecords) {
-  cout << "streamRecord::mergeIDs()\n";
+  //cout << "streamRecord::mergeIDs()\n";
   
   // Find the anchorID in the outgoing stream that the anchors in the incoming streams will be mapped to.
-  // First, See if the anchors on the incoming streams have already been assigned an anchorID on the outgoing stream
+  // First, see if the anchors on the incoming streams have already been assigned an anchorID on the outgoing stream
   std::pair<bool, streamID> ret = streamRecord::sameID_ex(objName, IDName, pMap, tags, outStreamRecords, inStreamRecords);
   // Records whether we've found the outSID that the anchor on at least one incoming stream has been mapped to
   bool outSIDKnown = ret.first; 
@@ -368,7 +368,7 @@ int streamRecord::mergeIDs(std::string objName, std::string IDName,
   // create a fresh anchorID in the outgoing stream, advancing the maximum anchor ID in the process
   if(!outSIDKnown) {
     outSID = streamID(outS->maxID++, outS->getVariantID());
-    cout << "streamRecord::mergeIDs(), assigned new ID on outgoing stream outSID="<<outSID.str()<<endl;
+    //cout << "streamRecord::mergeIDs(), assigned new ID on outgoing stream outSID="<<outSID.str()<<endl;
   }
   
   // Update inStreamRecords to map the anchor's ID within each incoming stream to the assigned ID in the outgoing stream
@@ -378,14 +378,14 @@ int streamRecord::mergeIDs(std::string objName, std::string IDName,
       // The anchor's ID within the current incoming stream
       streamID inSID(properties::getInt(tags[i].second, IDName), s->getVariantID());
       
-      cout << "|   "<<i<<": inSID="<<inSID.str()<<", in2outIDs=(#"<<s->in2outIDs.size()<<")"<<endl;
+      /*cout << "|   "<<i<<": inSID="<<inSID.str()<<", in2outIDs=(#"<<s->in2outIDs.size()<<")"<<endl;
       for(map<streamID, streamID>::iterator j=s->in2outIDs.begin(); j!=s->in2outIDs.end(); j++)
-        cout << "|       "<<j->first.str()<<" => "<<j->second.str()<<endl;
+        cout << "|       "<<j->first.str()<<" => "<<j->second.str()<<endl;*/
       
       // Yell if we're changing an existing mapping
       if((s->in2outIDs.find(inSID) != s->in2outIDs.end()) && s->in2outIDs[inSID] != outSID)
       { cerr << "ERROR: merging ID "<<inSID.str()<<" for object "<<objName<<" from incoming stream "<<i<<" multiple times. Old mapping: "<<s->in2outIDs[inSID].str()<<". New mapping: "<<outSID.str()<<"."<<endl; exit(-1); }
-      cout << "|    outSID="<<outSID.str()<<endl;
+      //cout << "|    outSID="<<outSID.str()<<endl;
       
       s->in2outIDs[inSID] = outSID;
     }
@@ -455,7 +455,7 @@ streamID streamRecord::in2outID(streamID inSID) const {
    return it->second;
 }
 
-// Given multiple streamRecords from several variants of the same stream, update this streamRecord object
+// Given multiple streamRecords from several variants of the same outgoing stream, update this streamRecord object
 // to contain the state that succeeds them all, making it possible to resume processing
 void streamRecord::resumeFrom(std::vector<std::map<std::string, streamRecord*> >& streams) {
   // Compute the maximum maxID among all the streams
@@ -792,7 +792,7 @@ streamRecord* AnchorStreamRecord::copy(int vSuffixID) {
   return new AnchorStreamRecord(*this, vSuffixID);
 }
 
-// Given multiple streamRecords from several variants of the same stream, update this streamRecord object
+// Given multiple streamRecords from several variants of the same outgoing stream, update this streamRecord object
 // to contain the state that succeeds them all, making it possible to resume processing
 void AnchorStreamRecord::resumeFrom(std::vector<std::map<std::string, streamRecord*> >& streams) {
   /* // Compute the maximum maxAnchorID among all the streams
@@ -822,99 +822,10 @@ void AnchorStreamRecord::resumeFrom(std::vector<std::map<std::string, streamReco
   }
 }
 
-// Marge the IDs of the next anchorID field of the current tag (named objName) of each the incoming stream into a 
-// single ID in the outgoing stream, updating each incoming stream's mappings from its IDs to the outgoing stream's 
-// IDs. If a given incoming stream anchorID has already been assigned to a different outgoing stream anchorID, yell.
-/*void AnchorStreamRecord::mergeIDs(std::string objName, 
-                                  std::map<std::string, std::string>& pMap, 
-                                  const vector<pair<properties::tagType, properties::iterator> >& tags,
-                                  std::map<std::string, streamRecord*>& outStreamRecords,
-                                  std::vector<std::map<std::string, streamRecord*> >& inStreamRecords) {
-  cout << "AnchorStreamRecord::mergeIDs()\n";
-  
-  // Find the anchorID in the outgoing stream that the anchors in the incoming streams will be mapped to.
-  // First, See if the anchors on the incoming streams have already been assigned an anchorID on the outgoing stream
-    
-    // The anchor's ID within the outgoing stream
-    streamID outSID;
-    // Records whether we've found the outSID that the anchor on at least one incoming stream has been mapped to
-    bool outSIDKnown=false; 
-    
-    for(int i=0; i<tags.size(); i++) {
-      AnchorStreamRecord* as = (AnchorStreamRecord*)inStreamRecords[i]["anchor"];
-      
-      // The anchor's ID within the current incoming stream
-      streamID inSID(properties::getInt(tags[i].second, "anchorID"), 
-                     inStreamRecords[i]["anchor"]->getVariantID());
-      
-      if(as->in2outAnchorIDs.find(inSID) != as->in2outAnchorIDs.end()) {
-        // If we've already found an outSID, make this it is the same one
-        if(outSIDKnown) {
-          if(outSID != as->in2outAnchorIDs[inSID]) { cerr << "ERROR: Attempting to merge anchorIDs of multiple incoming streams but they are mapped to different anchorIDs in the outgoing stream!"<<endl; assert(0); }
-        } else {
-          outSID = as->in2outAnchorIDs[inSID];
-          outSIDKnown = true;
-        }
-      }
-    }
-  AnchorStreamRecord* outAS = (AnchorStreamRecord*)outStreamRecords["anchor"];
-  
-  // If none of the anchors on the incoming stream have been mapped to an anchor in the outgoing stream,
-  // create a fresh anchorID in the outgoing stream, advancing the maximum anchor ID in the process
-  if(!outSIDKnown) {
-    outSID = streamID(outAS->maxAnchorID++,
-                      outStreamRecords["anchor"]->getVariantID());
-    cout << "AnchorStreamRecord::mergeIDs(), assigned new ID on outgoing stream outSID="<<outSID.str()<<endl;
-  }
-  
-  // Update inStreamRecords to map the anchor's ID within each incoming stream to the assigned ID in the outgoing stream
-    for(int i=0; i<tags.size(); i++) {
-      AnchorStreamRecord* as = (AnchorStreamRecord*)inStreamRecords[i]["anchor"];
-      
-      // The anchor's ID within the current incoming stream
-      streamID inSID(properties::getInt(tags[i].second, "anchorID"), 
-                     inStreamRecords[i]["anchor"]->getVariantID());
-      
-      cout << "|   "<<i<<": inSID="<<inSID.str()<<", in2outAnchorIDs=(#"<<as->in2outAnchorIDs.size()<<")"<<endl;
-      for(map<streamID, streamID>::iterator j=as->in2outAnchorIDs.begin();
-          j!=as->in2outAnchorIDs.end(); j++)
-        cout << "|       "<<j->first.str()<<" => "<<j->second.str()<<endl;
-      
-      // Yell if we're changing an existing mapping
-      if((as->in2outAnchorIDs.find(inSID) != as->in2outAnchorIDs.end()) &&
-          as->in2outAnchorIDs[inSID] != outSID)
-      { cerr << "ERROR: merging anchorID "<<inSID.str()<<" from incoming stream "<<i<<" multiple times. Old mapping: "<<as->in2outAnchorIDs[inSID].str()<<". New mapping: "<<outSID.str()<<"."<<endl;
-        exit(-1); }
-      cout << "|    outSID="<<outSID.str()<<endl;
-      
-      as->in2outAnchorIDs[inSID] = outSID;
-    }
-  cout << "/outAS->locAnchorIDs(#"<<outAS->locAnchorIDs.size()<<")="<<endl;
-  for(std::map<streamLocation, streamID>::iterator j=outAS->locAnchorIDs.begin(); j!=outAS->locAnchorIDs.end(); j++)
-    cout << "/   "<<j->first.str()<<" => "<<j->second.str()<<endl;
-
-  
-  // Assign to the merged block the next ID for this output stream
-  pMap["anchorID"] = txt()<<outSID.ID;//txt()<<((AnchorStreamRecord*)outStreamRecords["anchor"])->maxAnchorID;
-  //pMap["vID"] = outStreamRecords[objName]->getVariantID().serialize();
-}
-
-// Given an anchor ID on the current incoming stream return its ID in the outgoing stream, yelling if it is missing.
-streamID AnchorStreamRecord::in2outAnchorID(streamID inSID) const {
-  map<streamID, streamID>::const_iterator it = in2outAnchorIDs.find(inSID);
-  if(it==in2outAnchorIDs.end()) { cerr << "ERROR: anchor ID "<<inSID.str()<<" could not be converted from incoming to outgoing because it was not found!"<<endl; exit(-1); }
-   return it->second;
-}*/
-
 std::string AnchorStreamRecord::str(std::string indent) const {
   ostringstream s;
   s << "[AnchorStreamRecord: ";
   s << streamRecord::str(indent+"    ") << endl;
-  /*maxAnchorID="<<maxAnchorID<<endl;
-  
-  s << indent << "in2outAnchorIDs(#"<<in2outAnchorIDs.size()<<")="<<endl;
-  for(map<streamID, streamID>::const_iterator i=in2outAnchorIDs.begin(); i!=in2outAnchorIDs.end(); i++)
-    s << indent << "    "<<i->first.str()<<" =&gt; "<<i->second.str()<<endl;*/
   
   s << indent << "anchorLocs(#"<<anchorLocs.size()<<")="<<endl;
   for(map<streamID, streamLocation>::const_iterator i=anchorLocs.begin(); i!=anchorLocs.end(); i++)
@@ -1111,7 +1022,7 @@ int block::maxBlockID;
 block::block(string label, properties* props) : label(label), sightObj(setProperties(label, props)) {
   advanceBlockID();
   if(this->props->active && this->props->emitTag) {
-    // Connect startA to the current location 
+    // Connect startA and pointsTo anchors to the current location (pointsTo is not modified);
     startA.reachedLocation();
     
     dbg.enterBlock(this);
@@ -1123,13 +1034,17 @@ properties* block::setProperties(string label, properties* props) {
   if(!initializedDebug) SightInit("Debug Output", "dbg");
     
   if(props==NULL) props = new properties();
-  this->props = props;
   
   if(props->active && props->emitTag) {
+    // Connect startA to the current location (pointsTo is not modified). We do this for 
+    // local variable because we cannot reference the anchorA field of a particular
+    // block since the block that called setProperties() has not yet been constructed.
+    anchor startA; startA.reachedLocation();
+    
     map<string, string> newProps;
     newProps["label"] = label;
     newProps["callPath"] = cp2str(CPRuntime.doStackwalk());
-    newProps["ID"] = txt()<<blockID;
+    newProps["ID"] = txt()<<maxBlockID;
     newProps["anchorID"] = txt()<<startA.getID();
     newProps["numAnchors"] = "0";
     props->add("block", newProps);
@@ -1142,8 +1057,17 @@ properties* block::setProperties(string label, properties* props) {
 block::block(string label, anchor& pointsTo, properties* props) : label(label), sightObj(setProperties(label, pointsTo, props))  {
   advanceBlockID();
   
-  if(this->props->active && this->props->emitTag)
+  if(this->props->active && this->props->emitTag) {
+    // Connect startA and pointsTo anchors to the current location (pointsTo is not modified);
+    startA.reachedLocation();
+    
+    // Record that all the anchors in pointsTo have reached their target location, making sure
+    // not to modify the original pointsTo anchor.
+    anchor pointsToCopy(pointsTo);
+    if(pointsToCopy!=anchor::noAnchor) pointsToCopy.reachedLocation();
+    
     dbg.enterBlock(this);
+  }
 }
 
 // Sets the properties of this object
@@ -1153,15 +1077,15 @@ properties* block::setProperties(string label, anchor& pointsTo, properties* pro
   if(props==NULL) props = new properties();
   
   if(props->active && props->emitTag) {
-    // Connect startA and pointsTo anchors to the current location (pointsTo is not modified);
-    startA.reachedLocation();
-    anchor pointsToCopy(pointsTo);
-    if(pointsToCopy!=anchor::noAnchor) pointsToCopy.reachedLocation();
-
+    // Connect startA to the current location (pointsTo is not modified). We do this for 
+    // local variable because we cannot reference the anchorA field of a particular
+    // block since the block that called setProperties() has not yet been constructed.
+    anchor startA; startA.reachedLocation();
+    
     map<string, string> newProps;
     newProps["label"] = label;
     newProps["callPath"] = cp2str(CPRuntime.doStackwalk());
-    newProps["ID"] = txt()<<blockID;
+    newProps["ID"] = txt()<<maxBlockID;
     newProps["anchorID"] = txt()<<startA.getID();
     if(pointsTo != anchor::noAnchor) {
       newProps["numAnchors"] = "1";
@@ -1179,8 +1103,22 @@ properties* block::setProperties(string label, anchor& pointsTo, properties* pro
 block::block(string label, set<anchor>& pointsTo, properties* props) : label(label), sightObj(setProperties(label, pointsTo, props)) {
   advanceBlockID();
     
-  if(this->props->active && this->props->emitTag)
+  if(this->props->active && this->props->emitTag) {    
+    // Connect startA and pointsTo anchors to the current location (pointsTo is not modified)
+    startA.reachedLocation();
+    
+    // Record that all the anchors in pointsTo have reached their target location, making sure
+    // not to modify the original anchors since the pointsTo set may be used by the caller for other
+    // purposes and we cannot invalidate its order.
+    for(set<anchor>::iterator a=pointsTo.begin(); a!=pointsTo.end(); a++) {
+      if(*a!=anchor::noAnchor) {
+        anchor aCopy(*a);
+        aCopy.reachedLocation();
+      }
+    }
+    
     dbg.enterBlock(this);
+  }
 }
   
 // Sets the properties of this object
@@ -1190,19 +1128,15 @@ properties* block::setProperties(string label, set<anchor>& pointsTo, properties
   if(props==NULL) props = new properties();
   
   if(props->active && props->emitTag) {
-    // Connect startA and pointsTo anchors to the current location (pointsTo is not modified)
-    startA.reachedLocation();
-    for(set<anchor>::iterator a=pointsTo.begin(); a!=pointsTo.end(); a++) {
-      if(*a!=anchor::noAnchor) {
-        anchor aCopy(*a);
-        aCopy.reachedLocation();
-      }
-    }
-
+    // Connect startA to the current location (pointsTo is not modified). We do this for 
+    // local variable because we cannot reference the anchorA field of a particular
+    // block since the block that called setProperties() has not yet been constructed.
+    anchor startA; startA.reachedLocation();
+    
     map<string, string> newProps;
     newProps["label"] = label;
     newProps["callPath"] = cp2str(CPRuntime.doStackwalk());
-    newProps["ID"] = txt()<<blockID;
+    newProps["ID"] = txt()<<maxBlockID;
     newProps["anchorID"] = txt()<<startA.getID();
     
     int i=0;
@@ -1355,61 +1289,10 @@ streamRecord* BlockStreamRecord::copy(int vSuffixID) {
   return new BlockStreamRecord(*this, vSuffixID);
 }
 
-// Given multiple streamRecords from several variants of the same stream, update this streamRecord object
-// to contain the state that succeeds them all, making it possible to resume processing
-/*void BlockStreamRecord::resumeFrom(std::vector<std::map<std::string, streamRecord*> >& streams) {
-// Compute the maximum maxAnchorID among all the streams
-  maxBlockID = -1;
-  for(vector<map<string, streamRecord*> >::iterator s=streams.begin(); s!=streams.end(); s++)
-    maxBlockID = (((BlockStreamRecord*)(*s)["block"])->maxBlockID > maxBlockID? 
-                   ((BlockStreamRecord*)(*s)["block"])->maxBlockID: 
-                   maxBlockID);
-  
-  // Set in2outBlockIDs to be the union of its counterparts in streams
-  in2outIDs.clear();
-  
-  for(vector<map<string, streamRecord*> >::iterator s=streams.begin(); s!=streams.end(); s++) {
-    BlockStreamRecord* bs = (BlockStreamRecord*)(*s)["block"];
-    for(map<streamID, streamID>::const_iterator i=bs->in2outIDs.begin(); i!=bs->in2outIDs.end(); i++)
-      in2outIDs.insert(*i);
-  }
-}*/
-
-/* // Marge the IDs of the next block (stored in tags) along all the incoming streams into a single ID in the outgoing stream,
-// updating each incoming stream's mappings from its IDs to the outgoing stream's IDs
-void BlockStreamRecord::mergeIDs(std::map<std::string, std::string>& pMap, 
-                                 vector<pair<properties::tagType, properties::iterator> > tags,
-                                 std::map<std::string, streamRecord*>& outStreamRecords,
-                                 std::vector<std::map<std::string, streamRecord*> >& inStreamRecords) {
-  // Assign to the merged block the next ID for this output stream
-  pMap["ID"] = txt()<<((BlockStreamRecord*)outStreamRecords["block"])->maxBlockID;
-
-  // The block's ID within the outgoing stream    
-  streamID outSID(((BlockStreamRecord*)outStreamRecords["block"])->maxBlockID,
-                  outStreamRecords["block"]->getVariantID());
-  
-  // Update inStreamRecords to map the block's ID within each incoming stream to the assigned ID in the outgoing stream
-  for(int i=0; i<tags.size(); i++) {
-    // The block's ID within the current incoming stream
-    streamID inSID(properties::getInt(tags[i].second, "ID"), 
-                   inStreamRecords[i]["block"]->getVariantID());
-    ((BlockStreamRecord*)inStreamRecords[i]["block"])->in2outBlockIDs[inSID] = outSID;
-  }
-  
-  // Advance maxBlockID
-  ((BlockStreamRecord*)outStreamRecords["block"])->maxBlockID++;
-}*/
-
 std::string BlockStreamRecord::str(std::string indent) const {
   ostringstream s;
   s << "[BlockStreamRecord: ";
   s << streamRecord::str(indent+"    ") << "]";
-  /*maxBlockID="<<maxBlockID<<endl;
-  
-  s << indent << "in2outBlockIDs="<<endl;
-  for(map<streamID, streamID>::const_iterator i=in2outBlockIDs.begin(); i!=in2outBlockIDs.end(); i++)
-    s << indent << "    "<<i->first.str()<<" =&gt; "<<i->second.str()<<endl;
-  s << indent << "]";*/
   
   return s.str();
 }
@@ -1845,7 +1728,7 @@ streamRecord* dbgStreamStreamRecord::copy(int vSuffixID) {
   return new dbgStreamStreamRecord(*this, vSuffixID);
 }
 
-// Given multiple streamRecords from several variants of the same stream, update this streamRecord object
+// Given multiple streamRecords from several variants of the same outgoing stream, update this streamRecord object
 // to contain the state that succeeds them all, making it possible to resume processing
 /*void dbgStreamStreamRecord::resumeFrom(std::vector<std::map<std::string, streamRecord*> >& streams) {
   // We don't do anything since dbgStreamStreamRecord only have a location field, which is updated

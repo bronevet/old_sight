@@ -41,8 +41,8 @@ std::string graph::outDir="";
 // Relative to root of HTML document
 std::string graph::htmlOutDir="";
 
-// Stack of the graphs that are currently in scope
-std::list<graph*> graph::gStack;
+// Maps the IDs of the currently active graphs to their graph objects
+std::map<int, graph*> graph::active;
 
 graph::graph(properties::iterator props) : block(properties::next(props)) {
   dbg.enterBlock(this, false, true);
@@ -67,8 +67,10 @@ graph::graph(properties::iterator props) : block(properties::next(props)) {
   } else
     graphOutput = false;
   
-  // Add the current graph to the stack
-  gStack.push_back(this);
+  //cout << "Entering graphID="<<graphID<<endl;
+  
+  // Add the current graph to the map of ative graphs
+  active[graphID] = this;
 }
 
 // Initialize the environment within which generated graphs will operate, including
@@ -104,10 +106,13 @@ graph::~graph() {
   
   dbg.exitBlock();
   
-  // Remove the current graph from the stack
-  assert(gStack.size()>0);
-  assert(gStack.back()==this);
-  gStack.pop_back();
+  //cout << "Exiting graphID="<<graphID<<endl;
+  
+  // Remove the current graph from the map of active graphs
+  assert(active.size()>0);
+  assert(active.find(graphID) != active.end());
+  assert(active[graphID] == this);
+  active.erase(graphID);
 }
 
 // Generates and returns the dot graph code for this graph
@@ -197,8 +202,10 @@ void graph::setGraphEncoding(string dotText) {
 }
 
 void* graph::setGraphEncoding(properties::iterator props) {
-  assert(gStack.size()>0);
-  gStack.back()->setGraphEncoding(properties::get(props, "dot"));
+  int graphID = properties::getInt(props, "graphID");
+  assert(active.find(graphID) != active.end());
+  
+  active[graphID]->setGraphEncoding(properties::get(props, "dot"));
   return NULL;
 }
 
@@ -212,8 +219,11 @@ void graph::addDirEdge(anchor from, anchor to) {
 void* graph::addDirEdge(properties::iterator props) {
   anchor from(/*false,*/ properties::getInt(props, "from"));
   anchor to(/*false,*/ properties::getInt(props, "to"));
-  assert(gStack.size()>0);
-  gStack.back()->addDirEdge(from, to);
+  
+  int graphID = properties::getInt(props, "graphID");
+  assert(active.find(graphID) != active.end());
+  
+  active[graphID]->addDirEdge(from, to);
   return NULL;
 }
 
@@ -227,8 +237,11 @@ void graph::addUndirEdge(anchor a, anchor b) {
 void* graph::addUndirEdge(properties::iterator props) {
   anchor a(/*false,*/ properties::getInt(props, "a"));
   anchor b(/*false,*/ properties::getInt(props, "b"));
-  assert(gStack.size()>0);
-  gStack.back()->addUndirEdge(a, b); 
+  
+  int graphID = properties::getInt(props, "graphID");
+  assert(active.find(graphID) != active.end());
+  
+  active[graphID]->addUndirEdge(a, b); 
   return NULL;
 }
 
@@ -238,8 +251,15 @@ void graph::addNode(anchor a, string label) {
 }
 
 void* graph::addNode(properties::iterator props) {
-  gStack.back()->addNode(anchor(/*false,*/ properties::getInt(props, "anchorID")), 
-                         properties::get(props, "label"));
+  int graphID = properties::getInt(props, "graphID");
+    /*cout << "addNode() props="<<properties::str(props)<<endl;
+    cout << "active="<<endl;
+    for(map<int, graph*>::iterator i=active.begin(); i!=active.end(); i++)
+      cout << "    "<<i->first<<": "<<i->second->getLabel()<<endl;*/
+  assert(active.find(graphID) != active.end());
+  
+  active[graphID]->addNode(anchor(/*false,*/ properties::getInt(props, "anchorID")), 
+                           properties::get(props, "label"));
 }
 
 }; // namespace layout

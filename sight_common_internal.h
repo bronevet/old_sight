@@ -119,7 +119,7 @@ class properties
   static bool exists(iterator cur, std::string key);
   
   // Given an iterator to a particular key->value mapping, returns the number of keys in the map
-  static bool getNumKeys(iterator cur);
+  static int getNumKeys(iterator cur);
     
   // Returns the name of the object type referred to by the given iterator
   static std::string name(iterator cur);

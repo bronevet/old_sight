@@ -143,12 +143,11 @@ class GraphStreamRecord: public streamRecord {
   // Records the maximum GraphID ever generated on a given outgoing stream
   int maxGraphID;
   
-  // Maps each currently active graph (there is a stack since they nest hierarchically) to 
-  // the list of its known edges
-  std::list<std::set<streamGraphEdge> > edges;
+  // Stack of the IDs of currently active graphs
+  std::list<int> gStack;
   
-  // Maps the GraphIDs within an incoming stream to the GraphIDs on its corresponding outgoing stream
-  std::map<streamID, streamID> in2outGraphIDs;
+  // Maps the ID of each currently active graph to the list of its known edges
+  std::map<int, std::set<streamGraphEdge> > edges;
   
   public:
   GraphStreamRecord(int vID)              : streamRecord(vID, "graph") { maxGraphID=0; }
@@ -159,7 +158,7 @@ class GraphStreamRecord: public streamRecord {
   // which is appended to the new stream's variant list.
   streamRecord* copy(int vSuffixID);
   
-  // Given multiple streamRecords from several variants of the same stream, update this streamRecord object
+  // Given multiple streamRecords from several variants of the same outgoing stream, update this streamRecord object
   // to contain the state that succeeds them all, making it possible to resume processing
   void resumeFrom(std::vector<std::map<std::string, streamRecord*> >& streams);
   
@@ -170,15 +169,23 @@ class GraphStreamRecord: public streamRecord {
                        std::map<std::string, streamRecord*>& outStreamRecords,
                        std::vector<std::map<std::string, streamRecord*> >& inStreamRecords);*/
   
-  // Indicates that we've entered/exited a graph
-  static void enterGraph(std::vector<std::map<std::string, streamRecord*> >& inStreamRecords);
+  // Indicates that we've entered a graph (for incoming streams)
+  static void enterGraph(std::vector<std::pair<properties::tagType, properties::iterator> > tags, 
+                         std::vector<std::map<std::string, streamRecord*> >& inStreamRecords);
+  // Indicates that we've entered a graph (for outgoing streams)
+  static void enterGraph(int graphID,
+                         std::map<std::string, streamRecord*>& outStreamRecord);
+  
+  // Indicates that we've exited a graph (for incoming streams)
   static void exitGraph(std::vector<std::map<std::string, streamRecord*> >& inStreamRecords);
+  // Indicates that we've exited a graph (for outgoing streams)
+  static void exitGraph(std::map<std::string, streamRecord*>& outStreamRecord);
     
   // Adds an edge to the current graph
-  void addEdge(streamGraphEdge edge);
+  void addEdge(int graphID, streamGraphEdge edge);
   
   // Returns a reference to all of the edges of the most deeply nested graph in this incoming stream
-  const std::set<streamGraphEdge>& getEdges() const;
+  const std::set<streamGraphEdge>& getEdges(int graphID) const;
     
   std::string str(std::string indent="") const;
 }; // class GraphStreamRecord
@@ -245,7 +252,7 @@ class NodeStreamRecord: public streamRecord {
   // which is appended to the new stream's variant list.
   streamRecord* copy(int vSuffixID);
   
-  // Given multiple streamRecords from several variants of the same stream, update this streamRecord object
+  // Given multiple streamRecords from several variants of the same outgoing stream, update this streamRecord object
   // to contain the state that succeeds them all, making it possible to resume processing
   //void resumeFrom(std::vector<std::map<std::string, streamRecord*> >& streams);
   

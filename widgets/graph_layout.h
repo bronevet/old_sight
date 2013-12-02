@@ -54,8 +54,8 @@ class graph: public block
   // Maximum ID assigned to any graph object
   //static int maxWidgetID;
   
-  // Stack of the graphs that are currently in scope
-  static std::list<graph*> gStack;
+  // Maps the IDs of the currently active graphs to their graph objects
+  static std::map<int, graph*> active;
   
   // Records whether this graph has already been output by a call to outputCanvizDotGraph()
   bool graphOutput;

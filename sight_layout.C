@@ -510,6 +510,10 @@ block::block(string label) : label(label), startA(/*false,*/ -1) /*=noAnchor, ex
   scriptEpilogFile = dbg.getCurScriptEpilogFile();// assert(scriptEpilogFile);  
 }
 
+block::~block() {
+  //cout << "deleting block "<<this<<", label="<<label<<endl;
+}
+
 // Attaches a given un-located anchor at this block
 void block::attachAnchor(anchor& a) {
   // If this block has not yet been located, add the anchor to pointsToAnchors so that it can be
@@ -1281,11 +1285,17 @@ block* dbgStream::exitFileLevel(bool topLevel)
 
 // Record the mapping from the given anchor ID to the given string in the global script file
 void dbgStream::writeToAnchorScript(int anchorID, const location& myLoc) {
-// Open the file that holds the anchorID's within this ID's block
-  ostringstream anchorScriptFName; anchorScriptFName << workDir << "/html/script/anchor_script."<<(anchorID/anchorsPerScriptFile);
+  int anchorFileIdx=anchorID/anchorsPerScriptFile;
+  // Open the file that holds the anchorID's within this ID's block
+  ostringstream anchorScriptFName; anchorScriptFName << workDir << "/html/script/anchor_script."<<anchorFileIdx;
   try {
-    ofstream anchorScriptFile(anchorScriptFName.str().c_str(), std::fstream::app);
-
+    // If we haven't already created this file, open it for output, otherwise for appending
+    bool alreadyCreated = createdAnchorFiles.find(anchorFileIdx) != createdAnchorFiles.end();
+    ofstream anchorScriptFile(anchorScriptFName.str().c_str(), 
+                              alreadyCreated? std::fstream::app: 
+                                              std::fstream::out);
+    if(!alreadyCreated) createdAnchorFiles.insert(anchorFileIdx);
+    
     // Write the anchor's record into this file
     anchorScriptFile << "anchors.setItem("<<anchorID<<", new anchor("<<fileLevelJSIntArray(myLoc)<<", \""<<blockGlobalStr(myLoc)<<"\"));"<<endl;
 
@@ -1419,7 +1429,7 @@ void dbgStream::printDetailFileContainerHTML(string absoluteFileName, string tit
 //    the start of this major block and the next setting of an attribute.
 string dbgStream::enterBlock(block* b, bool newFileEntered, bool addSummaryEntry, bool recursiveEnterBlock)
 {
-//!!!  dbg << "<<<enter(newFileEntered="<<newFileEntered<<", addSummaryEntry="<<addSummaryEntry<<", recursiveEnterBlock="<<recursiveEnterBlock<<") b="<<(b? b->getLabel(): "NULL")<<endl;
+  //cout << "<<<enter(newFileEntered="<<newFileEntered<<", addSummaryEntry="<<addSummaryEntry<<", recursiveEnterBlock="<<recursiveEnterBlock<<") b="<<b<<"="<<(b? b->getLabel(): "NULL")<<endl;
 //!!!  dbg << "<<<enter() fileBufs.size()="<<fileBufs.size()<<" && #blocks="<<blocks.size()<<", #blocks.back().second="<<blocks.back().second.size()<<", #fileBufs.back()->blocks="<<(fileBufs.size()==0? -1: fileBufs.back()->blocks.size())<<endl;
 /*  if(!recursiveEnterBlock)
     exitAttrSubBlock();*/
@@ -1510,7 +1520,7 @@ string dbgStream::enterAttrSubBlock() {
 //    the most recent setting of an attribute and the end of this block
 block* dbgStream::exitBlock(bool recursiveExitBlock)
 {
-  //cout << "<<<exitBlock("<<recursiveExitBlock<<") fileBufs.size()="<<fileBufs.size()<<" && #blocks="<<blocks.size()<<", #blocks.back().second="<<blocks.back().second.size()<<", #fileBufs.back()->blocks="<<(fileBufs.size()==0? -1: fileBufs.back()->blocks.size())<<endl;
+  //cout << "<<<exitBlock(recursiveExitBlock="<<recursiveExitBlock<<") fileBufs.size()="<<fileBufs.size()<<" && #blocks="<<blocks.size()<<", #blocks.back().second="<<blocks.back().second.size()<<", #fileBufs.back()->blocks="<<(fileBufs.size()==0? -1: fileBufs.back()->blocks.size())<<endl;
 /*  if(!recursiveExitBlock)
     exitAttrSubBlock();*/
   

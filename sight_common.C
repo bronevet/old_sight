@@ -95,7 +95,7 @@ bool properties::exists(properties::iterator cur, std::string key) {
 }
 
 // Given an iterator to a particular key->value mapping, returns the number of keys in the map
-bool properties::getNumKeys(iterator cur) {
+int properties::getNumKeys(iterator cur) {
   return cur->second.size();
 }
 

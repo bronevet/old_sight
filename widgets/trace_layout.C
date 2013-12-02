@@ -46,6 +46,8 @@ trace::~trace() {
   assert(stream);
   delete(stream);
   
+  dbg.exitBlock();
+  
   assert(tStack.size()>0);
   assert(tStack.back()==this);
   tStack.pop_back();
@@ -128,7 +130,7 @@ traceStream::traceStream(properties::iterator props, std::string hostDiv, bool s
   traceAttrsInitialized = false;
 
   active[traceID] = this;
-  cout << "New Trace "<<traceID<<", this="<<this<<endl;
+  //cout << "New Trace "<<traceID<<", this="<<this<<endl;
 }
 
 // Returns the representation of the given list as a JavaScript array

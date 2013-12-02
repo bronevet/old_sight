@@ -188,7 +188,7 @@ class block
   // Set of anchors that point to this block. Once we know this block's location we
   // locate them there.
   std::set<anchor> pointsToAnchors;
-    
+  
   // File that contains commands to be executed when the sub-file this block is in is loaded
   std::ofstream* scriptFile;
   // Files that contain the commands to be executed before/after all the commands in the script file are executed
@@ -205,6 +205,8 @@ class block
   
   // Initializes this block with the given label, used for creating additional blocks that were not listed in the structure file
   block(std::string label);
+    
+  ~block();
     
   // Attaches a given un-located anchor at this block
   void attachAnchor(anchor& a);
@@ -348,6 +350,8 @@ class dbgStream : public common::dbgStream
   std::set<std::string>     includedFiles;  
   // Number of anchor IDs to store in a single anchor script file
   int                       anchorsPerScriptFile;
+  // Keeps track of the anchor script files that have been created so far
+  std::set<int>             createdAnchorFiles;
   public:
   int getAnchorsPerScriptFile() const { return anchorsPerScriptFile; }
   private:
