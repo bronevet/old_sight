@@ -14,7 +14,7 @@ using namespace std;
 using namespace sight;
 using namespace sight::structure;
 
-#define VERBOSE
+//#define VERBOSE
 
 // A unique signature that differentiates tags of incompatible types from each other
 class tagGroup {
@@ -73,11 +73,8 @@ int merge(vector<FILEStructureParser*>& parsers,
                    map<tagGroup, list<int> > tag2stream,
                    int numTextTags,
                    int variantStackDepth,
-                   structure::dbgStream& out
-                   #ifdef VERBOSE
-                   , string indent
-                   #endif
-                  );
+                   structure::dbgStream& out, 
+                   string indent);
 
 // Given a vector of entities and a list of indexes within the vector,
 // fills groupVec with just the entities at the indexes in selIdxes.
@@ -113,7 +110,7 @@ class MergeFunctorBase {
 template<class M>
 class MergeFunctor : public MergeFunctorBase {
   public:
-  sight::structure::Merger* merge(const vector<pair<properties::tagType, properties::iterator> >& tags,
+  virtual sight::structure::Merger* merge(const vector<pair<properties::tagType, properties::iterator> >& tags,
                                   std::map<std::string, streamRecord*>& outStreamRecords,
                                   std::vector<std::map<std::string, streamRecord*> >& inStreamRecords) {
     return new M(tags, outStreamRecords, inStreamRecords);
@@ -126,33 +123,55 @@ class MergeFunctor : public MergeFunctorBase {
   }
 };
 
+class dbgStreamMergeFunctor : public MergeFunctorBase {
+  string workDir;
+  public:
+  dbgStreamMergeFunctor(string workDir) : workDir(workDir) {}
+  
+  sight::structure::Merger* merge(const vector<pair<properties::tagType, properties::iterator> >& tags,
+                                  std::map<std::string, streamRecord*>& outStreamRecords,
+                                  std::vector<std::map<std::string, streamRecord*> >& inStreamRecords) {
+    return new dbgStreamMerger(workDir, tags, outStreamRecords, inStreamRecords);
+  }
+  
+  std::list<std::string> mergeKey(properties::tagType type, properties::iterator tag, std::map<std::string, streamRecord*>& inStreamRecords) {
+    std::list<std::string> key;
+    dbgStreamMerger::mergeKey(type, tag, inStreamRecords, key);
+    return key;
+  }
+};
+
 map<string, MergeFunctorBase*> mergers;
 
 int main(int argc, char** argv) {
-  if(argc<3) { cerr<<"Usage: slayout [fNames]"<<endl; exit(-1); }
+  if(argc<3) { cerr<<"Usage: hier_merge outDir [fNames]"<<endl; exit(-1); }
   vector<FILEStructureParser*> fileParsers;
-  for(int i=1; i<argc; i++) {
+  const char* outDir = argv[1];
+  for(int i=2; i<argc; i++) {
     fileParsers.push_back(new FILEStructureParser(argv[i], 10000));
   }
   #ifdef VERBOSE
   cout << "#fileParserRefs="<<fileParsers.size()<<endl;
   #endif
   
-  mergers["sight"]       = new MergeFunctor<dbgStreamMerger>();
-  mergers["text"]        = new MergeFunctor<TextMerger>();
-  mergers["block"]       = new MergeFunctor<BlockMerger>();
-  mergers["link"]        = new MergeFunctor<LinkMerger>();
-  mergers["attr"]        = new MergeFunctor<AttributeMerger>();
-  mergers["indent"]      = new MergeFunctor<IndentMerger>();
-  mergers["scope"]       = new MergeFunctor<ScopeMerger>();
-  mergers["graph"]       = new MergeFunctor<GraphMerger>();
-  mergers["dirEdge"]     = new MergeFunctor<DirEdgeMerger>();
-  mergers["undirEdge"]   = new MergeFunctor<UndirEdgeMerger>();
-  mergers["node"]        = new MergeFunctor<NodeMerger>();
-  mergers["trace"]       = new MergeFunctor<TraceMerger>();
-  mergers["traceStream"] = new MergeFunctor<TraceStreamMerger>();
-  mergers["traceObs"]    = new MergeFunctor<TraceObsMerger>();
-  
+  mergers["sight"]        = new dbgStreamMergeFunctor(string(outDir));
+  mergers["text"]         = new MergeFunctor<TextMerger>();
+  mergers["block"]        = new MergeFunctor<BlockMerger>();
+  mergers["link"]         = new MergeFunctor<LinkMerger>();
+  mergers["attr"]         = new MergeFunctor<AttributeMerger>();
+  mergers["indent"]       = new MergeFunctor<IndentMerger>();
+  mergers["scope"]        = new MergeFunctor<ScopeMerger>();
+  mergers["graph"]        = new MergeFunctor<GraphMerger>();
+  mergers["dirEdge"]      = new MergeFunctor<DirEdgeMerger>();
+  mergers["undirEdge"]    = new MergeFunctor<UndirEdgeMerger>();
+  mergers["node"]         = new MergeFunctor<NodeMerger>();
+  mergers["trace"]        = new MergeFunctor<TraceMerger>();
+  mergers["traceStream"]  = new MergeFunctor<TraceStreamMerger>();
+  mergers["traceObs"]     = new MergeFunctor<TraceObsMerger>();
+  mergers["module"]       = new MergeFunctor<ModuleMerger>();
+  mergers["moduleNode"]   = new MergeFunctor<ModuleNodeMerger>();
+  mergers["moduleEdge"]   = new MergeFunctor<ModuleEdgeMerger>();
+  mergers["moduleNodeTS"] = new MergeFunctor<ModuleNodeTraceStreamMerger>();
   
   vector<pair<properties::tagType, properties::iterator> > emptyNextTag;
     
@@ -160,23 +179,25 @@ int main(int argc, char** argv) {
   // ID starts as 0 as will grow deeper as we discover unmergeable differences
   // between or within the input streams.
   std::map<std::string, streamRecord*> outStreamRecords;
-  outStreamRecords["sight"]  = new dbgStreamStreamRecord(0);
-  outStreamRecords["anchor"] = new AnchorStreamRecord(0);
-  outStreamRecords["block"]  = new BlockStreamRecord(0);
-  outStreamRecords["graph"]  = new GraphStreamRecord(0);
-  outStreamRecords["node"]   = new NodeStreamRecord(0);
-  outStreamRecords["traceStream"]  = new TraceStreamRecord(0);
+  outStreamRecords["sight"]       = new dbgStreamStreamRecord(0);
+  outStreamRecords["anchor"]      = new AnchorStreamRecord(0);
+  outStreamRecords["block"]       = new BlockStreamRecord(0);
+  outStreamRecords["graph"]       = new GraphStreamRecord(0);
+  outStreamRecords["node"]        = new NodeStreamRecord(0);
+  outStreamRecords["traceStream"] = new TraceStreamRecord(0);
+  outStreamRecords["module"]      = new ModuleStreamRecord(0);
   dbgStreamStreamRecord::enterBlock(outStreamRecords);
   
   std::vector<std::map<std::string, streamRecord*> > inStreamRecords;
   for(int i=0; i<fileParsers.size(); i++) {
     std::map<std::string, streamRecord*> inStreamR;
-    inStreamR["sight"]  = new dbgStreamStreamRecord(i);
-    inStreamR["anchor"] = new AnchorStreamRecord(i);
-    inStreamR["block"]  = new BlockStreamRecord(i);
-    inStreamR["graph"]  = new GraphStreamRecord(i);
-    inStreamR["node"]   = new NodeStreamRecord(i);
-    inStreamR["traceStream"]  = new TraceStreamRecord(i);
+    inStreamR["sight"]       = new dbgStreamStreamRecord(i);
+    inStreamR["anchor"]      = new AnchorStreamRecord(i);
+    inStreamR["block"]       = new BlockStreamRecord(i);
+    inStreamR["graph"]       = new GraphStreamRecord(i);
+    inStreamR["node"]        = new NodeStreamRecord(i);
+    inStreamR["traceStream"] = new TraceStreamRecord(i);
+    inStreamR["module"]      = new ModuleStreamRecord(i);
     inStreamRecords.push_back(inStreamR);
   }
   dbgStreamStreamRecord::enterBlock(inStreamRecords);
@@ -197,11 +218,7 @@ int main(int argc, char** argv) {
   merge(fileParsers, emptyNextTag, outStreamRecords, inStreamRecords, 
         readyForTagFromAll, allParsersActive,
         tag2stream, numTextTags,
-        0, structure::dbg
-        #ifdef VERBOSE
-        , "   :"
-        #endif
-        );
+        0, structure::dbg, "   :");
   
   // Close all the parsers and their files
   for(vector<FILEStructureParser*>::iterator p=fileParsers.begin(); p!=fileParsers.end(); p++)
@@ -236,7 +253,7 @@ int mergeTags(properties::tagType type, string objName,
   if(m->emitTag()) {
     // Emit all the tags that appear before the tag that was actually read
     for(list<pair<properties::tagType, properties> >::iterator t=m->moreTagsBefore.begin(); t!=m->moreTagsBefore.end(); t++) {
-    	cout << "before: "<<(t->first == properties::enterTag? "enter": "exit")<<": "<<t->second.str()<<endl;
+    	//cout << "before: "<<(t->first == properties::enterTag? "enter": "exit")<<": "<<t->second.str()<<endl;
            if(t->first == properties::enterTag) out.enter(t->second);
       else if(t->first == properties::exitTag)  out.exit (t->second);
     }
@@ -246,11 +263,15 @@ int mergeTags(properties::tagType type, string objName,
       out << properties::get(m->getProps().find("text"), "text");
     } else {
       if(type == properties::enterTag) {
+      	#ifdef VERBOSE
       	cout << "Entering props="<<m->getProps().str()<<"\n";
+        #endif
         stackDepth++;
         out.enter(m->getProps());
       } else {
+        #ifdef VERBOSE
       	cout << "Exiting props="<<m->getProps().str()<<"\n";
+      	#endif
         stackDepth--;
         out.exit(m->getProps());
       }
@@ -308,17 +329,16 @@ int merge(vector<FILEStructureParser*>& parsers,
            map<tagGroup, list<int> > tag2stream,
            int numTextTags,
            int variantStackDepth,
-           structure::dbgStream& out
-           #ifdef VERBOSE
-           , string indent
-           #endif
-                  ) {
+           structure::dbgStream& out, 
+          string indent) {
   #ifdef VERBOSE
   cout << indent << "#parsers="<<parsers.size()<<", variantStackDepth="<<variantStackDepth<<", dir="<<out.workDir<<endl;
   #endif
   int numTagsEmitted = 0;
   
+  #ifdef VERBOSE
   printStreamRecords(cout, outStreamRecords, inStreamRecords, indent);
+  #endif
   
   // If this is not the root call to merge (variantStackDepth>1), nextTag is set to the tag entry items that were
   // just read on every parser in parsers. Otherwise, nextTag is empty
@@ -395,10 +415,14 @@ int merge(vector<FILEStructureParser*>& parsers,
       }
     }
     
+    #ifdef VERBOSE
     cout << indent << "numTextTags="<<numTextTags<<", numActive="<<numActive<<", nextTag("<<nextTag.size()<<")"<<endl;
+    #endif
     if(numActive==0) break;
+    #ifdef VERBOSE
     printTags(cout, activeParser, nextTag, indent+"   .");
-
+    #endif
+    
     // If we read text on any parser, emit the text immediately
     if(numTextTags>0) {
       for(map<tagGroup, list<int> >::iterator i=tag2stream.begin(); i!=tag2stream.end(); i++) {
@@ -406,10 +430,10 @@ int merge(vector<FILEStructureParser*>& parsers,
       if(i->first.type==properties::enterTag && i->first.objName=="text") {
         // Parsers on which we read text
         const list<int>& textParsers = i->second; //tag2stream[make_pair(properties::enterTag, "text")];
-        cout << indent << "#textParsers="<<textParsers.size()<<endl;
+        //cout << indent << "#textParsers="<<textParsers.size()<<endl;
         assert(textParsers.size()>0);
         for(list<int>::const_iterator j=textParsers.begin(); j!=textParsers.end(); j++) {
-          cout << indent << "j="<<*j<<", #nextTag="<<nextTag.size()<<endl;
+          //cout << indent << "j="<<*j<<", #nextTag="<<nextTag.size()<<endl;
           assert(activeParser[*j]);
         }
         /*  out << "{"<<properties::get(nextTag[*i].second, "text")<<"}"<<endl;
@@ -449,8 +473,9 @@ int merge(vector<FILEStructureParser*>& parsers,
     
     // If we did not read text on any parser
     } else {
-      cout << indent << "#tag2stream="<<tag2stream.size()<<endl;
-      
+      #ifdef VERBOSE
+      cout << indent << tag2stream.size() << " key groups"<<endl;
+      #endif
       // Group all the streams with the same next tag name/type. Since all parsers must have the same
       // stack of tags that have been entered, if we read the exit of a tag on any parser(s), they all 
       // must exit the same tag. However, different parsers may enter different tags.
@@ -469,12 +494,12 @@ int merge(vector<FILEStructureParser*>& parsers,
         std::vector<std::map<std::string, streamRecord*> > groupInStreamRecords;
         collectGroupVectorBool<std::map<std::string, streamRecord*> >(inStreamRecords, activeParser, groupInStreamRecords);
 
-        cout << indent << "calling mergeTags, objName="<<tag2stream.begin()->first.objName<<endl;
+        //cout << indent << "calling mergeTags, objName="<<tag2stream.begin()->first.objName<<endl;
         numTagsEmitted +=
           mergeTags(tag2stream.begin()->first.type, tag2stream.begin()->first.objName,
                   groupNextTag, outStreamRecords, groupInStreamRecords,
                   stackDepth, out, indent+"   .");
-        cout << indent << "post-mergeTags() stackDepth="<<stackDepth<<endl;
+        //cout << indent << "post-mergeTags() stackDepth="<<stackDepth<<endl;
         
         // Record that we're ready for more tags on all the parsers
         for(vector<bool>::iterator i=readyForTag.begin(); i!=readyForTag.end(); i++)
@@ -500,7 +525,9 @@ int merge(vector<FILEStructureParser*>& parsers,
         // Each group gets a separate copy of outStreamRecords. This list stores them all so that we can later merge them.
         vector<std::map<std::string, streamRecord*> > allGroupOutStreamRecords;
         
+        #ifdef VERBOSE
         cout << indent << "::: "<<tag2stream.size()<<" Variants ::::"<<endl;
+        #endif
         
         dbgStreamStreamRecord::enterBlock(outStreamRecords);
         
@@ -512,7 +539,9 @@ int merge(vector<FILEStructureParser*>& parsers,
         // Check if we're at the tag exits on all streams
         
         for(map<tagGroup, list<int> >::iterator ts=tag2stream.begin(); ts!=tag2stream.end(); variantID++) {
-           cout << indent << "    Variant "<<variantID<<", "<<(ts->first.type == properties::enterTag? "enter": "exit")<<", "<<ts->first.objName<<endl;
+          #ifdef VERBOSE
+          cout << indent << "    Variant "<<variantID<<", "<<(ts->first.type == properties::enterTag? "enter": "exit")<<", "<<ts->first.objName<<endl;
+          #endif
           
           if(ts->first.type == properties::enterTag) {
             assert(ts->second.size()>0);
@@ -555,7 +584,7 @@ int merge(vector<FILEStructureParser*>& parsers,
             
             // <<< Recursively Call merge()
               string subDir = txt()<<out.workDir<<"/"<<"var_"<<subDirCount;
-              cout << "subDir="<<subDir<<endl;
+              //cout << "subDir="<<subDir<<endl;
               
               // Create the directory structure for the structural information
               // Main output directory
@@ -567,27 +596,24 @@ int merge(vector<FILEStructureParser*>& parsers,
               // Directory that widgets can use as temporary scratch space
               string tmpDir = createDir(subDir, "html/tmp");
               
-              cout << indent << "Creating groupStream\n";
+              //cout << indent << "Creating groupStream\n";
               structure::dbgStream groupStream(NULL, txt()<<"Variant "<<subDirCount, subDir, imgDir, tmpDir);
               //cout << indent << "Created groupStream\n";
               
               #ifdef VERBOSE
               cout << indent << "<<<<<<<<<<<<<<<<<<<<<<"<<endl;
               #endif
-              cout << indent << "start outLocation="<<((dbgStreamStreamRecord*)groupOutStreamRecords["sight"])->getLocation().str()<<endl;
+              //cout << indent << "start outLocation="<<((dbgStreamStreamRecord*)groupOutStreamRecords["sight"])->getLocation().str()<<endl;
               int numVariantTagsEmitted = 
                 merge(groupParsers, groupNextTag, 
                       groupOutStreamRecords, groupInStreamRecords, 
                       groupNotReadyForTag, groupActiveParser,
                       groupTag2stream,
                       numTextTags,
-                      variantStackDepth+1, groupStream
-                      #ifdef VERBOSE
-                      , indent+"   :"
-                      #endif
-                      );
-              cout << indent << "end outLocation="<<((dbgStreamStreamRecord*)groupOutStreamRecords["sight"])->getLocation().str()<<endl;
-              cout << indent << "end numVariantTagsEmitted="<<numVariantTagsEmitted<<endl;
+                      variantStackDepth+1, groupStream, 
+                      indent+"   :");
+              //cout << indent << "end outLocation="<<((dbgStreamStreamRecord*)groupOutStreamRecords["sight"])->getLocation().str()<<endl;
+              //cout << indent << "end numVariantTagsEmitted="<<numVariantTagsEmitted<<endl;
               #ifdef VERBOSE
               cout << indent << ">>>>>>>>>>>>>>>>>>>>>>"<<endl;
               #endif
@@ -694,7 +720,7 @@ void printStreamRecords(ostream& out,
                         string indent) {
   out << indent << "outStreamRecords="<<endl;
   for(std::map<std::string, streamRecord*>::iterator o=outStreamRecords.begin(); o!=outStreamRecords.end(); o++)
-    cout << indent << "    "<<o->first<<": "<<o->second->str(indent+"    ")<<endl;
+    out << indent << "    "<<o->first<<": "<<o->second->str(indent+"    ")<<endl;
   
   out << indent << "inStreamRecords="<<endl;
   int idx=0;

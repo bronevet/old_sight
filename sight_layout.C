@@ -55,7 +55,7 @@ sightLayoutHandlerInstantiator sightLayoutHandlerInstantance;
 // Call the entry handler of the most recently-entered object with name objName
 // and push the object it returns onto the stack dedicated to objects of this type.
 void invokeEnterHandler(map<string, list<void*> >& stack, string objName, properties::iterator iter) {
-  cout << "<<<"<<stack[objName].size()<<": "<<objName<<endl;
+  //cout << "<<<"<<stack[objName].size()<<": "<<objName<<endl;
   if(layoutHandlerInstantiator::layoutEnterHandlers->find(objName) == layoutHandlerInstantiator::layoutEnterHandlers->end()) { cerr << "ERROR: no entry handler for \""<<objName<<"\" tags!" << endl; }
   assert(layoutHandlerInstantiator::layoutEnterHandlers->find(objName) != layoutHandlerInstantiator::layoutEnterHandlers->end());
   stack[objName].push_back((*layoutHandlerInstantiator::layoutEnterHandlers)[objName](iter));
@@ -64,7 +64,7 @@ void invokeEnterHandler(map<string, list<void*> >& stack, string objName, proper
 // Call the exit handler of the most recently-entered object with name objName
 // and pop the object off its stack
 void invokeExitHandler(map<string, list<void*> >& stack, string objName) {
-  cout << ">>>"<<stack[objName].size()<<": "<<objName<<endl;
+  //cout << ">>>"<<stack[objName].size()<<": "<<objName<<endl;
   assert(stack[objName].size()>0);
   if(layoutHandlerInstantiator::layoutEnterHandlers->find(objName) == layoutHandlerInstantiator::layoutEnterHandlers->end()) { cerr << "ERROR: no exit handler for \""<<objName<<"\" tags!" << endl; }
   assert(layoutHandlerInstantiator::layoutExitHandlers->find(objName) != layoutHandlerInstantiator::layoutExitHandlers->end());
@@ -103,7 +103,7 @@ void layoutStructure(structureParser& parser) {
           int numVariants = properties::getNumKeys(props.second->begin());
           for(int i=0; i<numVariants; i++) {
             string variantDir = properties::get(props.second->begin(), txt()<<"var_"<<i);
-            cout << "variantDir="<<variantDir<<"\n";
+            //cout << "variantDir="<<variantDir<<"\n";
             FILEStructureParser parser(variantDir+"/structure", 10000);
             layoutStructure(parser);
             if(i!=numVariants-1) invokeEnterHandler(stack, "inter_variants", props.second->begin());
@@ -1202,7 +1202,7 @@ string dbgStream::enterFileLevel(block* b, bool topLevel)
   ostream::init(nextBuf);
   
   // Create the html file container for the detail html text
-  printDetailFileContainerHTML(detailAbsFName.str(), b->getLabel());
+  printDetailFileContainerHTML(detailAbsFName.str(), /*b->getLabel()*/"");
   
   // Create the summary file. It is initially set to be an empty table and is filled with entries each time
   // a region is opened inside the detail file.

@@ -137,9 +137,9 @@ class module: public block, public common::module
 class moduleNodeTraceStream: public traceStream
 {
   public:
-  moduleNodeTraceStream(int nodeID, vizT viz, mergeT merge, properties* props=NULL);
+  moduleNodeTraceStream(int nodeID, std::string name, int numInputs, int numOutputs, vizT viz, mergeT merge, properties* props=NULL);
   
-  static properties* setProperties(int nodeID, vizT viz, mergeT merge, properties* props);
+  static properties* setProperties(int nodeID, std::string name, int numInputs, int numOutputs, vizT viz, mergeT merge, properties* props);
 };
 
 class ModuleMerger : public BlockMerger {
@@ -162,6 +162,119 @@ class ModuleMerger : public BlockMerger {
   static void mergeKey(properties::tagType type, properties::iterator tag, 
                        std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key);
 }; // class ModuleMerger
+
+class ModuleNodeMerger : public Merger {
+  public:
+  ModuleNodeMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+              std::map<std::string, streamRecord*>& outStreamRecords,
+              std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+              properties* props=NULL);
+  
+  // Sets the properties of the merged object
+  static properties* setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+                                   std::map<std::string, streamRecord*>& outStreamRecords,
+                                   std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                                   properties* props);
+                                   
+  // Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+  // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
+  // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
+  // call their parents so they can add any info,
+  static void mergeKey(properties::tagType type, properties::iterator tag, 
+                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key);
+}; // class ModuleNodeMerger
+
+class ModuleEdgeMerger : public Merger {
+  public:
+  ModuleEdgeMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+              std::map<std::string, streamRecord*>& outStreamRecords,
+              std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+              properties* props=NULL);
+  
+  // Sets the properties of the merged object
+  static properties* setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+                                   std::map<std::string, streamRecord*>& outStreamRecords,
+                                   std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                                   properties* props);
+                                   
+  // Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+  // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
+  // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
+  // call their parents so they can add any info,
+  static void mergeKey(properties::tagType type, properties::iterator tag, 
+                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key);
+}; // class ModuleEdgeMerger
+
+class ModuleNodeTraceStreamMerger : public TraceStreamMerger {
+  public:
+  ModuleNodeTraceStreamMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+              std::map<std::string, streamRecord*>& outStreamRecords,
+              std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+              properties* props=NULL);
+              
+  // Sets the properties of the merged object
+  static properties* setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+                                   std::map<std::string, streamRecord*>& outStreamRecords,
+                                   std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                                   properties* props);
+
+  // Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+  // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
+  // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
+  // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
+  static void mergeKey(properties::tagType type, properties::iterator tag, 
+                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key);
+}; // class ModuleNodeTraceStreamMerger
+
+class ModuleStreamRecord: public streamRecord {
+  friend class ModuleMerger;
+  friend class ModuleNodeMerger;
+  friend class ModuleEdgeMerger;
+  friend class ModuleNodeTraceStreamMerger;
+  
+  // The stack of streamRecords that record for each currently active module group 
+  // (they are nested hierarchically), the mappings of nodes IDs from incoming to 
+  // outgoing streams.
+  std::list<streamRecord*> mStack;
+    
+  public:
+  ModuleStreamRecord(int vID)              : streamRecord(vID, "module") { }
+  ModuleStreamRecord(const variantID& vID) : streamRecord(vID, "module") { }
+  ModuleStreamRecord(const ModuleStreamRecord& that, int vSuffixID);
+  
+  // Called to record that we've entered/exited a module
+  void enterModule();
+  static void enterModule(std::map<std::string, streamRecord*>& outStreamRecords,
+                     std::vector<std::map<std::string, streamRecord*> >& incomingStreamRecords);
+  void exitModule();
+  static void exitModule(std::map<std::string, streamRecord*>& outStreamRecords,
+                    std::vector<std::map<std::string, streamRecord*> >& incomingStreamRecords);
+  
+  // Returns a dynamically-allocated copy of this streamRecord, specialized to the given variant ID,
+  // which is appended to the new stream's variant list.
+  streamRecord* copy(int vSuffixID);
+  
+  // Given a vector of streamRecord maps, collects the streamRecords associated with the currently active module (top of the gStack)
+  // within each stream into nodeStreamRecords and returns the height of the gStacks on all the streams (must be the same number)
+  static int collectNodeStreamRecords(std::vector<std::map<std::string, streamRecord*> >& streams,
+                                      std::vector<std::map<std::string, streamRecord*> >& nodeStreamRecords);
+  
+  // Applies streamRecord::mergeIDs to the nodeIDs of the currently active module
+  static int mergeNodeIDs(std::string objName, 
+                          std::map<std::string, std::string>& pMap, 
+                          const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
+                          std::map<std::string, streamRecord*>& outStreamRecords,
+                          std::vector<std::map<std::string, streamRecord*> >& inStreamRecords);
+  
+  // Given a streamID in the current incoming stream return its streamID in the outgoing stream, yelling if it is missing.
+  streamID in2outNodeID(streamID inSID) const;
+  
+  // Given multiple streamRecords from several variants of the same stream, update this streamRecord object
+  // to contain the state that succeeds them all, making it possible to resume processing
+  void resumeFrom(std::vector<std::map<std::string, streamRecord*> >& streams);
+      
+  std::string str(std::string indent="") const;
+}; // class ModuleStreamRecord
 
 }; // namespace structure
 }; // namespace sight

@@ -6,7 +6,8 @@ SIGHT_LAYOUT_O := sight_layout.o attributes_layout.o slayout.o variant_layout.o
 SIGHT_LAYOUT_H := sight.h sight_layout_internal.h attributes_layout.h variant_layout.h
 sight := ${sight_O} ${sight_H} gdbLineNum.pl sightDefines.pl
 
-SIGHT_CFLAGS = -g -I${ROOT_PATH}/tools/callpath/src -I${ROOT_PATH}/tools/adept-utils/include
+SIGHT_CFLAGS = -g -I${ROOT_PATH}/tools/callpath/src -I${ROOT_PATH}/tools/adept-utils/include 
+SIGHT_LINKFLAGS = ${ROOT_PATH}/tools/callpath/src/src/libcallpath.so -Wl,-rpath ${ROOT_PATH}/tools/callpath/src/src
 
 OS := $(shell uname -o)
 ifeq (${OS}, Cygwin)
@@ -40,7 +41,7 @@ endif
 apps: mfem mcbench
 
 mfem:
-	cd apps/mfem;  make ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}"
+	cd apps/mfem;  make ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}"
 
 mcbench:
 ifneq (${OS}, Cygwin)
@@ -48,10 +49,10 @@ ifneq (${OS}, Cygwin)
 endif
 
 allExamples: libsight_structure.a
-	cd examples; make ROOT_PATH=${ROOT_PATH} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}"
+	cd examples; make ROOT_PATH=${ROOT_PATH} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}"
 
 runExamples: libsight_structure.a slayout${EXE} hier_merge${EXE} #apps
-	cd examples; make ROOT_PATH=${ROOT_PATH} OS=${OS}  SIGHT_CFLAGS="${SIGHT_CFLAGS}" run
+	cd examples; make ROOT_PATH=${ROOT_PATH} OS=${OS}  SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" run
 #	apps/mfem/mfem/examples/ex1 apps/mfem/mfem/data/beam-quad.mesh
 #	apps/mfem/mfem/examples/ex2 apps/mfem/mfem/data/beam-tet.mesh 2
 #	apps/mfem/mfem/examples/ex3 apps/mfem/mfem/data/ball-nurbs.mesh
@@ -72,7 +73,7 @@ slayout${EXE}: mfem libsight_layout.a
 #	g++ ${SIGHT_CFLAGS} slayout.C -Wl,--whole-archive libsight_layout.a -DMFEM -I. -Iapps/mfem apps/mfem/mfem_layout.o -Wl,-no-whole-archive -o slayout${EXE}
 
 hier_merge${EXE}: hier_merge.C process.C process.h libsight_structure.a 
-	g++ ${SIGHT_CFLAGS} hier_merge.C libsight_structure.a tools/callpath/src/src/libcallpath.so -DMFEM -I. -o hier_merge${EXE}
+	g++ ${SIGHT_CFLAGS} hier_merge.C libsight_structure.a tools/callpath/src/src/libcallpath.so -DMFEM -I. ${SIGHT_LINKFLAGS} -o hier_merge${EXE}
 
 
 #	g++ -c slayout.C -o slayout.o
@@ -127,11 +128,11 @@ attributes_layout.o: attributes_layout.C attributes_layout.h sight_common_intern
 # Rule for compiling the aspects of widgets that libsight.a requires
 .PHONY: widgets_pre
 widgets_pre:
-	cd widgets; make -f Makefile_pre ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}"
+	cd widgets; make -f Makefile_pre ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}"
 
 # Rule for compiling the aspects of widgets that require libsight.a
 widgets_post: libsight_layout.a libsight_structure.a
-	cd widgets; make -f Makefile_post ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}"
+	cd widgets; make -f Makefile_post ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}"
 
 binreloc.o: binreloc.c binreloc.h
 	g++ ${SIGHT_CFLAGS} binreloc.c -c -o binreloc.o

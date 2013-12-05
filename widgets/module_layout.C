@@ -1,4 +1,5 @@
 // Licence information included in file LICENCE
+#define MODULE_LAYOUT_C
 #include "../sight_layout.h"
 #include <fstream>
 #include <iostream>
@@ -164,7 +165,7 @@ moduleNodeTraceStream::moduleNodeTraceStream(properties::iterator props) :
   
   // Record the mapping between traceStream IDs and the IDs of the nodes they're associated with
   m->trace2nodeID[m->moduleTraces[nodeID]->getID()] = nodeID;
-  cout << "nodeID="<<nodeID<<", traceID="<<m->moduleTraces[nodeID]->getID()<<endl;
+  ///cout << "nodeID="<<nodeID<<", traceID="<<m->moduleTraces[nodeID]->getID()<<endl;
 }
 
 string portName(common::module::ioT type, int index) 
@@ -518,7 +519,7 @@ void* module::addNode(properties::iterator props) {
   assert(mStack.size()>0);
   mStack.back()->addNode(properties::get(props, "name"), 
                          properties::getInt(props, "numInputs"), properties::getInt(props, "numOutputs"), 
-                         properties::getInt(props, "ID"), properties::getInt(props, "count")); 
+                         properties::getInt(props, "nodeID"), properties::getInt(props, "count")); 
   return NULL;
 }
 

@@ -481,25 +481,25 @@ TraceStreamMerger::TraceStreamMerger(std::vector<std::pair<properties::tagType, 
   if(props==NULL) props = new properties();
   this->props = props;
   
-  assert(tags.size()>0);
-  vector<string> names = getNames(tags); assert(allSame<string>(names));
-  assert(*names.begin() == "traceStream");
-  
   map<string, string> pMap;
   properties::tagType type = streamRecord::getTagType(tags); 
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Trace!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
+    assert(tags.size()>0);
+    vector<string> names = getNames(tags); assert(allSame<string>(names));
+    assert(*names.begin() == "traceStream");
+    
     // Merge the trace IDs along all the streams
     int mergedTraceID = streamRecord::mergeIDs("traceStream", "traceID", pMap, tags, outStreamRecords, inStreamRecords);
     
-    // If the visualization values disagree then we have an error. In the future we'll need to
-    // reject merges of traces that use different visualizations.
+    // If the visualization values disagree then we have an error. We differentiate traces that 
+    // use different visualizations in mergeKey().
     vector<string> viz = getValues(tags, "viz");
     assert(allSame<string>(viz));
     pMap["viz"] = *viz.begin();
     
-    // If the merge values disagree then we have an error. In the future we'll need to
-    // reject merges of traces that use different merge types.
+    // If the merge values disagree then we have an error. We differentiate traces that 
+    // use different merge types in mergeKey().
     vector<long> merge = str2int(getValues(tags, "merge"));
     assert(allSame<long>(merge));
     pMap["merge"] = txt()<<*merge.begin();
@@ -573,7 +573,7 @@ TraceObsMerger::TraceObsMerger(std::vector<std::pair<properties::tagType, proper
     //int mergedTraceID = TraceStreamRecord::mergeIDs(pMap, tags, outStreamRecords, inStreamRecords);
     int mergedTraceID = streamRecord::sameID("traceStream", "traceID", pMap, tags, outStreamRecords, inStreamRecords);
         
-    cout << "TraceObsMerger::TraceObsMerger() mergedTraceID="<<mergedTraceID<<" outStreamRecords[trace]="<<outStreamRecords["traceStream"]->str()<<endl;
+    //cout << "TraceObsMerger::TraceObsMerger() mergedTraceID="<<mergedTraceID<<" outStreamRecords[trace]="<<outStreamRecords["traceStream"]->str()<<endl;
       
     // Get the trace merging policy
     trace::mergeT merge = (trace::mergeT)((TraceStreamRecord*)outStreamRecords["traceStream"])->merge[mergedTraceID];
@@ -600,10 +600,17 @@ TraceObsMerger::TraceObsMerger(std::vector<std::pair<properties::tagType, proper
         for(int i=0; i<numTraceAttrs; i++) {
           curMap[txt()<<"tKey_"<<i] = properties::get(tags[t].second, txt()<<"tKey_"<<i);
           curMap[txt()<<"tVal_"<<i] = properties::get(tags[t].second, txt()<<"tVal_"<<i);
-          streamID inSID(properties::getInt(tags[t].second, txt()<<"tAnchorID_"<<i), 
-                         inStreamRecords[t]["traceStream"]->getVariantID());
-          streamID outSID = inStreamRecords[t]["anchor"]->in2outID(inSID);
-          curMap[txt()<<"tAnchorID_"<<i] = txt()<<outSID.ID;
+          
+          // If the anchorID is noAnchor, leave it as it is
+          int tAnchorID = properties::getInt(tags[t].second, txt()<<"tAnchorID_"<<i);
+          if(tAnchorID==-1) curMap[txt()<<"tAnchorID_"<<i] = -1;
+          // Otherwise, convert it from its ID in the incoming stream to its ID in the outgoing stream
+          else {
+            streamID inSID(properties::getInt(tags[t].second, txt()<<"tAnchorID_"<<i), 
+                           inStreamRecords[t]["traceStream"]->getVariantID());
+            streamID outSID = inStreamRecords[t]["anchor"]->in2outID(inSID);
+            curMap[txt()<<"tAnchorID_"<<i] = txt()<<outSID.ID;
+          }
         }
         
         curMap["numCtxtAttrs"] = properties::get(tags[t].second, "numCtxtAttrs");

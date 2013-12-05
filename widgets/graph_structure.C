@@ -98,7 +98,7 @@ graph::~graph() {
 // Return the path of the image.
 void graph::genGraph(dottable& obj) {
   graph g(obj.toDOT("graphsight"));
-  dbg.tag(&g);
+  //dbg.tag(&g);
   /*map<string, string> properties;
   // !!! SHOULD CREATE A graph OBJECT !!!
   properties["dot"] = obj.toDOT("graphsight");
@@ -110,7 +110,7 @@ void graph::genGraph(dottable& obj) {
 // Return the path of the image.
 void graph::genGraph(std::string dotText) {
   graph g(dotText);
-  dbg.tag(&g);
+  //dbg.tag(&g);
   /*map<string, string> properties;
   // !!! SHOULD CREATE A graph OBJECT !!!
   properties["dot"] = dot;
@@ -220,8 +220,6 @@ GraphMerger::GraphMerger(std::vector<std::pair<properties::tagType, properties::
     // with no duplication
     set<GraphStreamRecord::streamGraphEdge> outEdges;
     
-cout << "GraphMerger::GraphMerger"<<endl;
-    
     // Iterate over all the edges that have been recorded for this graph, adding tags to moreTags for each edge
     for(vector<map<string, streamRecord*> >::iterator r=inStreamRecords.begin(); r!=inStreamRecords.end(); r++) {
       GraphStreamRecord* inGS = (GraphStreamRecord*)(*r)["graph"];
@@ -236,8 +234,8 @@ cout << "GraphMerger::GraphMerger"<<endl;
       for(std::set<GraphStreamRecord::streamGraphEdge>::const_iterator e=edges.begin(); e!=edges.end(); e++) {
         streamID outAnchorIDFrom = (*r)["anchor"]->in2outID(e->fromAnchor.getID());
         streamID outAnchorIDTo   = (*r)["anchor"]->in2outID(e->toAnchor.getID());
-        cout << "    e->fromAnchor="<<e->fromAnchor.str()<<", e->toAnchor="<<e->toAnchor.str()<<endl;
-        cout << "    outAnchorIDFrom="<<outAnchorIDFrom.str()<<", outAnchorIDTo="<<outAnchorIDTo.str()<<endl;
+        //cout << "    e->fromAnchor="<<e->fromAnchor.str()<<", e->toAnchor="<<e->toAnchor.str()<<endl;
+        //cout << "    outAnchorIDFrom="<<outAnchorIDFrom.str()<<", outAnchorIDTo="<<outAnchorIDTo.str()<<endl;
         outEdges.insert(GraphStreamRecord::streamGraphEdge(
                                  streamAnchor(outAnchorIDFrom, outStreamRecords),
                                  streamAnchor(outAnchorIDTo,   outStreamRecords),
@@ -335,7 +333,7 @@ void GraphStreamRecord::resumeFrom(std::vector<std::map<string, streamRecord*> >
   edges.clear();
   gStack.clear();
   
-  cout << "GraphStreamRecord::resumeFrom()"<<endl;
+  //cout << "GraphStreamRecord::resumeFrom()"<<endl;
   
   int idx=0;
   for(vector<map<string, streamRecord*> >::iterator s=streams.begin(); s!=streams.end(); s++, idx++) {
@@ -353,12 +351,12 @@ void GraphStreamRecord::resumeFrom(std::vector<std::map<string, streamRecord*> >
         edges[i->first].insert(*e);
     }
     
-    cout << idx<<": gStack=[";
+    /*cout << idx<<": gStack=[";
     for(list<int>::iterator i=gs->gStack.begin(); i!=gs->gStack.end(); i++) {
       if(i!=gStack.begin()) cout << " ";
       cout << *i;
     }
-    cout << "]"<<endl;
+    cout << "]"<<endl;*/
     
     // Union gs->gStack into gStack
     list<int>::iterator unionIt=gStack.begin();
@@ -378,12 +376,12 @@ void GraphStreamRecord::resumeFrom(std::vector<std::map<string, streamRecord*> >
     }
   }
   
-  cout << "Union gStack=[";
+  /*cout << "Union gStack=[";
   for(list<int>::iterator i=gStack.begin(); i!=gStack.end(); i++) {
     if(i!=gStack.begin()) cout << " ";
     cout << *i;
   }
-  cout << "]"<<endl;
+  cout << "]"<<endl;*/
 }
 
 // Indicates that we've entered a graph (for incoming streams)
@@ -487,8 +485,8 @@ DirEdgeMerger::DirEdgeMerger(std::vector<std::pair<properties::tagType, properti
       streamID fromInSID(properties::getInt(tags[i].second, "from"), inStreamRecords[i]["graph"]->getVariantID());
       streamID toInSID  (properties::getInt(tags[i].second, "to"),   inStreamRecords[i]["graph"]->getVariantID());
       
-      cout << "DirEdgeMerger::DirEdgeMerger() "<<i<<": tags="<<properties::str(tags[i].second)<<endl;
-      cout << "    fromInSID="<<fromInSID.str()<<", toInSID="<<toInSID.str()<<endl;
+      /*cout << "DirEdgeMerger::DirEdgeMerger() "<<i<<": tags="<<properties::str(tags[i].second)<<endl;
+      cout << "    fromInSID="<<fromInSID.str()<<", toInSID="<<toInSID.str()<<endl;*/
       
       ((GraphStreamRecord*)(*r)["graph"])->addEdge(properties::getInt(tags[i].second, "graphID"),
                                                    GraphStreamRecord::streamGraphEdge(

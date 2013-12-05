@@ -386,7 +386,7 @@ AttributeMerger::AttributeMerger(std::vector<std::pair<properties::tagType, prop
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging TraceObs!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
     vector<string> keysVec = getValues(tags, "key");
-    cout << "keysVec="<<str(keysVec)<<endl;
+    //cout << "keysVec="<<str(keysVec)<<endl;
     assert(allSame<string>(keysVec));
     
     //vector<string> valVec = getValues(tags, "val");

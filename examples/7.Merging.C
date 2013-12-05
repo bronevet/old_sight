@@ -1,5 +1,4 @@
 #include "sight.h"
-#include "widgets/module_structure.h"
 #include <math.h>
 #include <map>
 #include <assert.h>
@@ -9,18 +8,16 @@ using namespace sight;
 
 // Fibonacci, where we create graph edges from each call to its children.
 int fibGraph(int a, int numIters, graph& g, anchor* parent);
-	// Fibonacci, where we create links edges from each call to its children and back
-int fibLinks(int a, int numIters, /*graph& g, */anchor* parent, anchor fromParent);
 
 int main(int argc, char** argv)
 {
-  if(argc<=1) { cerr << "Usage: 7.GraphMerging numIters"<<endl; exit(-1); }
+  if(argc<=1) { cerr << "Usage: 7.Merging numIters"<<endl; exit(-1); }
   long numIters = strtol(argv[1], NULL, 10);
 
-  SightInit(argc, argv, txt()<<"7.GraphMerging, "<<numIters<<" iterations", 
-                        txt()<<"dbg.7.GraphMerging.numIters_"<<numIters);
+  SightInit(argc, argv, txt()<<"7.Merging, "<<numIters<<" iterations", 
+                        txt()<<"dbg.7.Merging.numIters_"<<numIters);
 
-  dbg << "<h1>Example 7: Graph Merging</h1>" << endl;
+  dbg << "<h1>Example 7: Merging</h1>" << endl;
   dbg << numIters << " Iterations."<<endl;
 
   {
@@ -120,27 +117,3 @@ int fibGraph(int a, int numIters, graph& g, anchor* parent) {
     return val;
   }
 }
-
-
-// Fibonacci, where we create links edges from each call to its children and back
-int fibLinks(int a, int numIters, /*graph& g, */anchor* parent, anchor fromParent) {
-  scope s(txt()<<"fib("<<a<<")", fromParent);
-  anchor sAnchor = s.getAnchor();
-  
-  // Create a link from the calling scope to this one
-  if(parent) //g.addDirEdge(*parent, sAnchor);
-  	parent->linkImg("Parent"); dbg << endl;
-  
-  if(a>=numIters) { 
-    dbg << "="<<1<<endl;
-    return 1;
-  } else {
-  	anchor left, right;
-  	left.linkImg("Left"); right.linkImg("Right"); dbg << endl;
-    int val = fibLinks(a+1, numIters, /*g, */&sAnchor, left) + fibLinks(a+2, numIters, /*g, */&sAnchor, right);
-    dbg << "="<<val<<endl;
-    return val;
-  }
-}
-
-

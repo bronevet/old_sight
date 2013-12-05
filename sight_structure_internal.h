@@ -189,6 +189,8 @@ class streamRecord : public printable {
   // The name of the object type this stream corresponds to.
   std::string objName;
   
+  public:
+  
   streamRecord(int vID,              std::string objName) : vID(vID), maxID(0), objName(objName) {}  
   streamRecord(const variantID& vID, std::string objName) : vID(vID), maxID(0), objName(objName) {}
   // vSuffixID: ID that identifies this variant within the next level of variants in the heirarchy
@@ -205,7 +207,8 @@ class streamRecord : public printable {
   
   // Returns a dynamically-allocated copy of this streamRecord, specialized to the given variant ID,
   // which is appended to the new stream's variant list.
-  virtual streamRecord* copy(int vSuffixID)=0;
+  virtual streamRecord* copy(int vSuffixID)
+  { return new streamRecord(*this, vSuffixID); }
   
   public:
   // Merge the IDs of the next ID field (named IDName, e.g. "anchorID" or "blockID") of the current tag maintained 
@@ -326,14 +329,16 @@ class Merger {
   
   static long vMax(const std::vector<long>& intSet);
   static long vMin(const std::vector<long>& intSet);
+  static long vSum(const std::vector<long>& intSet);
   static long vAvg(const std::vector<long>& intSet);
-    
+  
   // Converts the given set of strings to the corresponding set of floating point numbers
   static std::vector<double> str2float(const std::vector<std::string>& strSet);
   
-  static double vMax(const std::vector<double>& intSet);
-  static double vMin(const std::vector<double>& intSet);
-  static double vAvg(const std::vector<double>& intSet);
+  static double vMax(const std::vector<double>& floatSet);
+  static double vMin(const std::vector<double>& floatSet);
+  static double vSum(const std::vector<double>& floatSet);
+  static double vAvg(const std::vector<double>& floatSet);
     
   // Given a vector of tag property iterators, returns the list of names of all the object types they refer to
   static std::vector<std::string> getNames(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags);
@@ -445,11 +450,6 @@ class anchor
 class AnchorStreamRecord: public streamRecord {
   friend class BlockMerger;
   friend class streamAnchor;
-  // Records the maximum anchorID ever generated on a given outgoing stream
-  /*int maxAnchorID;
-  
-  // Maps the anchorIDs within an incoming stream to the anchorIDs on its corresponding outgoing stream
-  std::map<streamID, streamID> in2outAnchorIDs;*/
     
   // Maps all anchor IDs to their locations, if known. When we establish forward links we create
   // anchors that are initially not connected to a location (the target location has not yet been reached). Thus,
@@ -816,9 +816,9 @@ public:
 extern dbgStream dbg;
 
 class dbgStreamMerger : public Merger {
-  
   public:
-  dbgStreamMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+  dbgStreamMerger(std::string workDir, 
+                  std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                   std::map<std::string, streamRecord*>& outStreamRecords,
                   std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
                   properties* props=NULL);

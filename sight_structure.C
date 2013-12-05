@@ -103,10 +103,10 @@ void SightInit_internal(int argc, char** argv, string title, string workDir)
                    (error==BR_INIT_ERROR_DISABLED?  "BinReloc is disabled (the ENABLE_BINRELOC macro is not defined)" :
                     "???"
               ))))<<endl;
-      exit(-1);
+      assert(0);
     }
     char* execFile = br_find_exe(NULL);
-    if(execFile==NULL) { cerr << "ERROR reading application's executable name after successful initialization!"<<endl; exit(-1); }
+    if(execFile==NULL) { cerr << "ERROR reading application's executable name after successful initialization!"<<endl; assert(0); }
     newProps["execFile"] = execFile;
     
     char cwd[FILENAME_MAX];
@@ -149,9 +149,9 @@ void SightInit_internal(int argc, char** argv, string title, string workDir)
     ostringstream cmd;
     cmd << "id --user --name";
     FILE* fp = popen(cmd.str().c_str(), "r");
-    if(fp == NULL) { cerr << "Failed to run command \""<<cmd.str()<<"\"!"<<endl; exit(-1); }
+    if(fp == NULL) { cerr << "Failed to run command \""<<cmd.str()<<"\"!"<<endl; assert(0); }
     
-    if(fgets(username, sizeof(username), fp) == NULL) { cerr << "Failed to read output of \""<<cmd.str()<<"\"!"<<endl; exit(-1); }
+    if(fgets(username, sizeof(username), fp) == NULL) { cerr << "Failed to read output of \""<<cmd.str()<<"\"!"<<endl; assert(0); }
   }
   newProps["username"] = string(username);
 
@@ -384,7 +384,7 @@ int streamRecord::mergeIDs(std::string objName, std::string IDName,
       
       // Yell if we're changing an existing mapping
       if((s->in2outIDs.find(inSID) != s->in2outIDs.end()) && s->in2outIDs[inSID] != outSID)
-      { cerr << "ERROR: merging ID "<<inSID.str()<<" for object "<<objName<<" from incoming stream "<<i<<" multiple times. Old mapping: "<<s->in2outIDs[inSID].str()<<". New mapping: "<<outSID.str()<<"."<<endl; exit(-1); }
+      { cerr << "ERROR: merging ID "<<inSID.str()<<" for object "<<objName<<" from incoming stream "<<i<<" multiple times. Old mapping: "<<s->in2outIDs[inSID].str()<<". New mapping: "<<outSID.str()<<"."<<endl; assert(0); }
       //cout << "|    outSID="<<outSID.str()<<endl;
       
       s->in2outIDs[inSID] = outSID;
@@ -405,7 +405,7 @@ int streamRecord::sameID(std::string objName, std::string IDName,
                          std::map<std::string, streamRecord*>& outStreamRecords,
                          std::vector<std::map<std::string, streamRecord*> >& inStreamRecords) {
   std::pair<bool, streamID> ret = streamRecord::sameID_ex(objName, IDName, pMap, tags, outStreamRecords, inStreamRecords);
-  if(!ret.first) { cerr << "ERROR: expecting IDs of object "<<objName<<" to be known but they currently are not!"; exit(-1); }
+  if(!ret.first) { cerr << "ERROR: expecting IDs of object "<<objName<<" to be known but they currently are not!"; assert(0); }
   
   return ret.second.ID;
 }
@@ -451,7 +451,7 @@ std::pair<bool, streamID> streamRecord::sameID_ex(
 // Given an anchor ID on the current incoming stream return its ID in the outgoing stream, yelling if it is missing.
 streamID streamRecord::in2outID(streamID inSID) const {
   map<streamID, streamID>::const_iterator it = in2outIDs.find(inSID);
-  if(it==in2outIDs.end()) { cerr << "ERROR: ID "<<inSID.str()<<" could not be converted from incoming to outgoing because it was not found!"<<endl; exit(-1); }
+  if(it==in2outIDs.end()) { cerr << "ERROR: ID "<<inSID.str()<<" could not be converted from incoming to outgoing because it was not found!"<<endl<<str("")<<endl; assert(0); }
    return it->second;
 }
 
@@ -548,13 +548,17 @@ long Merger::vMin(const std::vector<long>& intSet)  {
   return m;
 }
 
-long Merger::vAvg(const std::vector<long>& intSet)  {
+long Merger::vSum(const std::vector<long>& intSet)  {
   long sum=0;
   for(vector<long>::const_iterator i=intSet.begin(); i!=intSet.end(); i++)
     sum += *i;
-  return sum/intSet.size();
+  return sum;
 }
- 
+
+long Merger::vAvg(const std::vector<long>& intSet)  {
+  return vSum(intSet)/intSet.size();
+}
+
 // Converts the given set of strings to the corresponding set of floating point numbers
 std::vector<double> Merger::str2float(const std::vector<std::string>& strSet) {
   vector<double> floatSet;
@@ -577,11 +581,15 @@ double Merger::vMin(const std::vector<double>& floatSet)  {
   return m;
 }
 
-double Merger::vAvg(const std::vector<double>& floatSet)  {
+double Merger::vSum(const std::vector<double>& floatSet)  {
   double sum=0;
   for(vector<double>::const_iterator i=floatSet.begin(); i!=floatSet.end(); i++)
     sum += *i;
-  return sum/floatSet.size();
+  return sum;
+}
+
+double Merger::vAvg(const std::vector<double>& floatSet)  {
+  return vSum(floatSet)/floatSet.size();
 }
 
 // Advance the iterators in the given tags vector, returning the resulting vector
@@ -617,7 +625,7 @@ TextMerger::TextMerger(std::vector<std::pair<properties::tagType, properties::it
   
   map<string, string> pMap;
   properties::tagType type = streamRecord::getTagType(tags); 
-  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Text!"<<endl; exit(-1); }
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Text!"<<endl; assert(0); }
   if(type==properties::enterTag) {
     
     pMap["text"] = getMergedValue(tags, "text");
@@ -795,24 +803,14 @@ streamRecord* AnchorStreamRecord::copy(int vSuffixID) {
 // Given multiple streamRecords from several variants of the same outgoing stream, update this streamRecord object
 // to contain the state that succeeds them all, making it possible to resume processing
 void AnchorStreamRecord::resumeFrom(std::vector<std::map<std::string, streamRecord*> >& streams) {
-  /* // Compute the maximum maxAnchorID among all the streams
-  maxAnchorID = -1;
-  for(vector<map<string, streamRecord*> >::iterator s=streams.begin(); s!=streams.end(); s++)
-    maxAnchorID = (((AnchorStreamRecord*)(*s)["anchor"])->maxAnchorID > maxAnchorID? 
-                   ((AnchorStreamRecord*)(*s)["anchor"])->maxAnchorID: 
-                   maxAnchorID);*/
-  
   streamRecord::resumeFrom(streams);
   
-  // Set in2outAnchorIDs, anchorLocs and locAnchorIDs to be the union of its counterparts in streams
-  //in2outAnchorIDs.clear();
+  // Set anchorLocs and locAnchorIDs to be the union of its counterparts in streams
   anchorLocs.clear();
   locAnchorIDs.clear();
   
   for(vector<map<string, streamRecord*> >::iterator s=streams.begin(); s!=streams.end(); s++) {
     AnchorStreamRecord* as = (AnchorStreamRecord*)(*s)["anchor"];
-    /*for(map<streamID, streamID>::const_iterator i=as->in2outAnchorIDs.begin(); i!=as->in2outAnchorIDs.end(); i++)
-      in2outAnchorIDs.insert(*i);*/
       
     for(map<streamID, streamLocation>::const_iterator i=as->anchorLocs.begin(); i!=as->anchorLocs.end(); i++)
       anchorLocs.insert(*i);
@@ -859,14 +857,14 @@ LinkMerger::LinkMerger(std::vector<std::pair<properties::tagType, properties::it
 
   map<string, string> pMap;
   properties::tagType type = streamRecord::getTagType(tags); 
-  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Link!"<<endl; exit(-1); }
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Link!"<<endl; assert(0); }
   if(type==properties::enterTag) {
     // Merge the IDs of the anchors this link targets
     streamRecord::mergeIDs("anchor", "anchorID", pMap, tags, outStreamRecords, inStreamRecords);
       
     pMap["text"] = getMergedValue(tags, "text");
     
-    cout << "LinkMerger::LinkMerger anchorID="<<pMap["anchorID"]<<", text="<<pMap["text"]<<endl;
+    //cout << "LinkMerger::LinkMerger anchorID="<<pMap["anchorID"]<<", text="<<pMap["text"]<<endl;
     
     // If the link in any of the variants has an image, they all do
     vector<long> imgFlags = str2int(getValues(tags, "img"));
@@ -1188,15 +1186,15 @@ BlockMerger::BlockMerger(std::vector<std::pair<properties::tagType, properties::
 
   map<string, string> pMap;
   properties::tagType type = streamRecord::getTagType(tags);
-  cout << "type="<<(type==properties::enterTag? "enterTag": (type==properties::exitTag? "exitTag": "unknownTag"))<<endl;
-  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Block!"<<endl; exit(-1); }
+  //cout << "type="<<(type==properties::enterTag? "enterTag": (type==properties::exitTag? "exitTag": "unknownTag"))<<endl;
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Block!"<<endl; assert(0); }
   if(type==properties::enterTag) {
     vector<string> names = getNames(tags); assert(allSame<string>(names));
     assert(*names.begin() == "block");
   
-    cout << "BlockMerger::BlockMerger(), nextTag("<<tags.size()<<")"<<endl;
+    /*cout << "BlockMerger::BlockMerger(), nextTag("<<tags.size()<<")"<<endl;
     for(vector<pair<properties::tagType, properties::iterator> >::iterator t=tags.begin(); t!=tags.end(); t++)
-      cout << "    "<<(t->first==properties::enterTag? "enterTag": (t->first==properties::exitTag? "exitTag": "unknownTag"))<<", "<<properties::str(t->second)<<endl;
+      cout << "    "<<(t->first==properties::enterTag? "enterTag": (t->first==properties::exitTag? "exitTag": "unknownTag"))<<", "<<properties::str(t->second)<<endl;*/
     
     pMap["label"] = getMergedValue(tags, "label");
     
@@ -1210,13 +1208,13 @@ BlockMerger::BlockMerger(std::vector<std::pair<properties::tagType, properties::
     // Merge the IDs of the anchors that target the block
     streamRecord::mergeIDs("anchor", "anchorID", pMap, tags, outStreamRecords, inStreamRecords);
     
-    cout << "    anchor="<<pMap["anchorID"]<<endl;
+    //cout << "    anchor="<<pMap["anchorID"]<<endl;
     
     // Update the current location in the incoming and outgoing streams to account for entry into the block
     dbgStreamStreamRecord::enterBlock(inStreamRecords);
-    cout << "outLocation="<<((dbgStreamStreamRecord*)outStreamRecords["sight"])->getLocation().str()<<endl;
+    //cout << "outLocation="<<((dbgStreamStreamRecord*)outStreamRecords["sight"])->getLocation().str()<<endl;
     dbgStreamStreamRecord::enterBlock(outStreamRecords);
-    cout << "outLocation="<<((dbgStreamStreamRecord*)outStreamRecords["sight"])->getLocation().str()<<endl;
+    //cout << "outLocation="<<((dbgStreamStreamRecord*)outStreamRecords["sight"])->getLocation().str()<<endl;
     
     set<streamAnchor> outAnchors; // Set of anchorIDs, within the anchor ID space of the outgoing stream, that terminate at this block
     // Iterate over all the anchors that terminate at this block within all the incoming streams and add their corresponding 
@@ -1235,10 +1233,10 @@ BlockMerger::BlockMerger(std::vector<std::pair<properties::tagType, properties::
         
         // Record, within the records of both the incoming and outgoing streams, that this anchor has reached its target
         streamAnchor curOutAnchor(as->in2outIDs[curInAnchor.getID()], outStreamRecords);
-        cout << "        "<<a<<": curInAnchor="<<curInAnchor.str()<<" => "<<curOutAnchor.str()<<endl;
+        //cout << "        "<<a<<": curInAnchor="<<curInAnchor.str()<<" => "<<curOutAnchor.str()<<endl;
         curInAnchor.reachedLocation(); 
         curOutAnchor.reachedLocation();
-        cout << "        "<<a<<": curInAnchor="<<curInAnchor.str()<<" => "<<curOutAnchor.str()<<endl;
+        //cout << "        "<<a<<": curInAnchor="<<curInAnchor.str()<<" => "<<curOutAnchor.str()<<endl;
         
         outAnchors.insert(curOutAnchor);
       }
@@ -1247,9 +1245,9 @@ BlockMerger::BlockMerger(std::vector<std::pair<properties::tagType, properties::
     // Add all the IDs within outAnchors to the properties of the merged block
     pMap["numAnchors"] = txt()<<outAnchors.size();
     int aIdx=0;
-    cout << "    outAnchors="<<endl;
+    //cout << "    outAnchors="<<endl;
     for(set<streamAnchor>::iterator a=outAnchors.begin(); a!=outAnchors.end(); a++, aIdx++) {
-      cout << "        "<<a->str()<<endl;
+      //cout << "        "<<a->str()<<endl;
       pMap[txt()<<"anchor_"<<aIdx] = txt()<<a->getID().ID;
     }
     
@@ -1272,7 +1270,7 @@ BlockMerger::BlockMerger(std::vector<std::pair<properties::tagType, properties::
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
 void BlockMerger::mergeKey(properties::tagType type, properties::iterator tag, 
                        std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
-  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; assert(0); }
   if(type==properties::enterTag) {
     key.push_back(properties::get(tag, "callPath"));
   }
@@ -1635,7 +1633,8 @@ std::string dbgStream::tagStr(const properties& props) {
   return enterStr(props) + exitStr(props);
 }
 
-dbgStreamMerger::dbgStreamMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+dbgStreamMerger::dbgStreamMerger(std::string workDir, 
+                                 std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                                  map<string, streamRecord*>& outStreamRecords,
                                  vector<map<string, streamRecord*> >& inStreamRecords,
                                  properties* props) : 
@@ -1650,9 +1649,9 @@ dbgStreamMerger::dbgStreamMerger(std::vector<std::pair<properties::tagType, prop
   assert(*names.begin() == "sight");
   
   properties::tagType type = streamRecord::getTagType(tags); 
-  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging dbgStream!"<<endl; exit(-1); }
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging dbgStream!"<<endl; assert(0); }
   if(type==properties::enterTag) {
-    pMap["workDir"] = "merged";
+    pMap["workDir"] = workDir;
     
     pMap["title"] = getMergedValue(tags, "title");
     
@@ -1737,7 +1736,7 @@ streamRecord* dbgStreamStreamRecord::copy(int vSuffixID) {
 
 // Called when a block is entered.
 void dbgStreamStreamRecord::enterBlock(vector<map<std::string, streamRecord*> >& streamRecords) {
-  cout << "dbgStreamStreamRecord::enterBlock() In\n";
+  //cout << "dbgStreamStreamRecord::enterBlock() In\n";
   for(vector<map<std::string, streamRecord*> >::iterator r=streamRecords.begin(); r!=streamRecords.end(); r++) {
     assert(r->find("sight") != r->end());
     ((dbgStreamStreamRecord*)(*r)["sight"])->loc.enterBlock();
@@ -1745,14 +1744,14 @@ void dbgStreamStreamRecord::enterBlock(vector<map<std::string, streamRecord*> >&
 }
 
 void dbgStreamStreamRecord::enterBlock(map<std::string, streamRecord*>& streamRecord) {
-  cout << "dbgStreamStreamRecord::enterBlock() Out\n";
+  //cout << "dbgStreamStreamRecord::enterBlock() Out\n";
   assert(streamRecord.find("sight") != streamRecord.end());
   ((dbgStreamStreamRecord*)streamRecord["sight"])->loc.enterBlock();
 }
 
 // Called when a block is exited.
 void dbgStreamStreamRecord::exitBlock(std::vector<std::map<std::string, streamRecord*> >& streamRecords) {
-  cout << "dbgStreamStreamRecord::exitBlock() In\n";
+  //cout << "dbgStreamStreamRecord::exitBlock() In\n";
   for(vector<map<std::string, streamRecord*> >::iterator r=streamRecords.begin(); r!=streamRecords.end(); r++) {
     assert(r->find("sight") != r->end());
     ((dbgStreamStreamRecord*)(*r)["sight"])->loc.exitBlock();
@@ -1760,7 +1759,7 @@ void dbgStreamStreamRecord::exitBlock(std::vector<std::map<std::string, streamRe
 }
 
 void dbgStreamStreamRecord::exitBlock(map<std::string, streamRecord*>& streamRecord) {
-  cout << "dbgStreamStreamRecord::exitBlock() Out\n";
+  //cout << "dbgStreamStreamRecord::exitBlock() Out\n";
   assert(streamRecord.find("sight") != streamRecord.end());
   ((dbgStreamStreamRecord*)streamRecord["sight"])->loc.exitBlock();
 }
@@ -1823,7 +1822,7 @@ IndentMerger::IndentMerger(std::vector<std::pair<properties::tagType, properties
   
   map<string, string> pMap;
   properties::tagType type = streamRecord::getTagType(tags); 
-  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Indent!"<<endl; exit(-1); }
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Indent!"<<endl; assert(0); }
   if(type==properties::enterTag) {
     pMap["prefix"] = getMergedValue(tags, "prefix");
     pMap["repeatCnt"] = txt()<<vAvg(str2int(getValues(tags, "repeatCnt")));
