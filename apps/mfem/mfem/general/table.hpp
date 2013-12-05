@@ -12,8 +12,7 @@
 #ifndef MFEM_TABLE
 #define MFEM_TABLE
 
-#include "sight.h"
-using namespace sight;
+#include "sight_ns.h"
 
 
 // Data types for Table.
@@ -112,7 +111,7 @@ public:
    void LoseData() { size = -1; I = J = NULL; }
 
    /// Prints the table to stream out.
-   void Print(ostream & out = dbg, int width = 4) const;
+   void Print(ostream & out = sightN::dbg, int width = 4) const;
 
    void Save(ostream & out) const;
 

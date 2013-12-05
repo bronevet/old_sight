@@ -10,7 +10,7 @@
 # Software Foundation) version 2.1 dated February 1999.
 
 CC = g++
-OPTS = -O3
+OPTS = -O3 ${SIGHT_CFLAGS}
 DEBUG_OPTS = -g -DGLVIS_DEBUG
 
 #DEFINES = -DGLVIS_MULTISAMPLE=2 -DGLVIS_MS_LINEWIDTH=1.4
@@ -22,7 +22,7 @@ USE_LAPACK  = NO
 
 # GLVis requires the MFEM library
 MFEM_DIR   = ../mfem
-MFEM_LIB   = -L$(MFEM_DIR) -lmfem -L${ROOT_PATH} -lsight_structure
+MFEM_LIB   = -L$(MFEM_DIR) -lmfem -L${ROOT_PATH} -lsight_structure ${SIGHT_LINKFLAGS}
 
 # LAPACK and BLAS
 LAPACK_DIR = $(HOME)/lapack

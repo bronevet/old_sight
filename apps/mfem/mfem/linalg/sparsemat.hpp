@@ -18,8 +18,7 @@
 #include "../general/table.hpp"
 #include "densemat.hpp"
 
-#include "sight.h"
-using namespace sight;
+#include "sight_ns.h"
 
 
 class RowNode
@@ -202,13 +201,13 @@ public:
    SparseMatrix &operator=(double a);
 
    /// Prints matrix to stream out.
-   void Print(ostream &out = dbg, int width = 4) const;
+   void Print(ostream &out = sightN::dbg, int width = 4) const;
 
    /// Prints matrix in matlab format.
-   void PrintMatlab(ostream &out = dbg) const;
+   void PrintMatlab(ostream &out = sightN::dbg) const;
 
    /// Prints matrix in Matrix Market sparse format.
-   void PrintMM(ostream &out = dbg) const;
+   void PrintMM(ostream &out = sightN::dbg) const;
 
    /// Prints matrix to stream out in hypre_CSRMatrix format.
    void PrintCSR(ostream &out) const;

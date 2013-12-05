@@ -17,8 +17,7 @@
 #include "../general/array.hpp"
 #include "operator.hpp"
 
-#include "sight.h"
-using namespace sight;
+#include "sight_ns.h"
 
 
 class  MatrixInverse;
@@ -44,7 +43,7 @@ public:
    virtual void Finalize(int) { }
 
    /// Prints matrix to stream out.
-   virtual void Print (ostream & out = dbg, int width = 4) const;
+   virtual void Print (ostream & out = sightN::dbg, int width = 4) const;
 
    /// Destroys matrix.
    virtual ~Matrix() { }

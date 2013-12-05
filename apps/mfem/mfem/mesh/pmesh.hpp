@@ -12,7 +12,7 @@
 #ifndef MFEM_PMESH
 #define MFEM_PMESH
 
-#include "sight.hpp"
+#include "sight_ns.hpp"
 
 /// Class for parallel meshes
 class ParMesh : public Mesh
@@ -80,24 +80,24 @@ public:
 
    /** Print the part of the mesh in the calling processor adding the interface
        as boundary (for visualization purposes) using the default format. */
-   virtual void Print(ostream &out = dbg) const;
+   virtual void Print(ostream &out = sightN::dbg) const;
 
    /** Print the part of the mesh in the calling processor adding the interface
        as boundary (for visualization purposes) using Netgen/Truegrid format .*/
-   virtual void PrintXG(ostream &out = dbg) const;
+   virtual void PrintXG(ostream &out = sightN::dbg) const;
 
    /** Write the mesh to the stream 'out' on Process 0 in a form
        suitable for visualization: the mesh is written as a disjoint
        mesh and the shared boundary is added to the actual boundary;
        both the element and boundary attributes are set to the
        precessor number.  */
-   void PrintAsOne(ostream &out = dbg);
+   void PrintAsOne(ostream &out = sightN::dbg);
 
    /// Old mesh format (Netgen/Truegrid) version of 'PrintAsOne'
-   void PrintAsOneXG(ostream &out = dbg);
+   void PrintAsOneXG(ostream &out = sightN::dbg);
 
    /// Print various parallel mesh stats
-   void PrintInfo(ostream &out = dbg);
+   void PrintInfo(ostream &out = sightN::dbg);
 
    virtual ~ParMesh();
 };

@@ -120,7 +120,7 @@ ifeq (${OS},Cygwin)
 	rm -r graphviz-2.32.zip release
 	chmod 755 graphviz/bin/*
 else
-#	wget http://www.graphviz.org/pub/graphviz/stable/SOURCES/graphviz-2.32.0.tar.gz
+	wget http://www.graphviz.org/pub/graphviz/stable/SOURCES/graphviz-2.32.0.tar.gz
 	tar -xf graphviz-2.32.0.tar.gz
 	cd graphviz-2.32.0; export CC=gcc; export CXX=g++; ./configure --prefix=${ROOT_PATH}/widgets/graphviz --disable-swig --disable-sharp --disable-go --disable-io --disable-java --disable-lua --disable-ocaml --disable-perl --disable-php --disable-python --disable-r --disable-ruby --disable-tcl --without-pic --without-efence --with-expat=yes --with-expatlibdir=${ROOT_PATH}/widgets/expat/lib --with-expatincludedir=${ROOT_PATH}/widgets/expat/include --without-devil --without-webp --without-poppler --without-ghostscript --without-visio --without-pangocairo --without-lasi --without-glitz --without-freetype2 --without-fontconfig --without-gdk-pixbuf --without-gtk --without-gtkgl --without-gtkglext --without-gts --without-glade --without-ming --without-qt --without-quartz --without-gdiplus --without-libgd --without-glut --without-sfdp --without-smyrna --without-ortho --without-digcola --without-ipsepcola --enable-static --disable-shared
 	cd graphviz-2.32.0; ${MAKE}
@@ -133,9 +133,9 @@ expat:
 ifneq (${OS},Cygwin)
 	wget http://downloads.sourceforge.net/expat/expat-2.0.1.tar.gz
 	tar -xf expat-2.0.1.tar.gz 
-	cd expat-2.0.1; --prefix=${ROOT_PATH}/widgets/expat
+	cd expat-2.0.1; ./configure --prefix=${ROOT_PATH}/widgets/expat
 	cd expat-2.0.1; make; make install
-	rm -r widgets/expat-2.0.1
+	rm -r expat-2.0.1 expat-2.0.1.tar.gz
 endif
 
 ID3-Decision-Tree:
@@ -160,7 +160,7 @@ noVNC:
 gsl:
 	wget ftp://ftp.gnu.org/gnu/gsl/gsl-1.9.tar.gz
 	tar -xf gsl-1.9.tar.gz 
-	cd gsl-1.9; ./configure --prefix=${ROOT_PATH}/widgets/gsl
+	cd gsl-1.9; CC=gcc; ./configure --prefix=${ROOT_PATH}/widgets/gsl
 	cd gsl-1.9; make; make install
 
 # JavaScript files from standard JS libraries that we wish to keep local copies of

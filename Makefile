@@ -180,7 +180,7 @@ tools/callpath:
 	cd tools; rm -f master.zip
 	cd tools; wget --no-check-certificate https://github.com/tgamblin/adept-utils/archive/master.zip
 	rm -fr tools/adept-utils
-	cd tools; unzip master.zip
+	cd tools; mv master master.zip; unzip master.zip
 	mv tools/adept-utils-master tools/adept-utils
 	cp tools/adept-utils-makefiles/CMakeLists.root.txt   tools/adept-utils
 	cp tools/adept-utils-makefiles/CMakeLists.cutils.txt tools/adept-utils/cutils/CMakeLists.txt
@@ -189,9 +189,9 @@ tools/callpath:
 	cd tools; rm -f master.zip
 	cd tools; wget --no-check-certificate https://github.com/tgamblin/callpath/archive/master.zip
 	rm -fr tools/callpath
-	cd tools; unzip master.zip
+	cd tools; mv master master.zip; unzip master.zip
 	cd tools; mv callpath-master callpath
-	cd tools/callpath/src; cmake -DCMAKE_INSTALL_PREFIX=${ROOT_PATH}/tools/callpath -DCALLPATH_WALKER=backtrace -DCMAKE_BUILD_TYPE=RelWithDebInfo -Dadept_utils_DIR=${ROOT_PATH}/tools/adept-utils/share/cmake/adept_utils ..; make; make install
+	cd tools/callpath/src; cmake -DCMAKE_INSTALL_PREFIX=${ROOT_PATH}/tools/callpath -DCALLPATH_WALKER=backtrace -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_FLAGS=-fpermissive -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCALLPATH_HAVE_MPI=false -Dadept_utils_DIR=${ROOT_PATH}/tools/adept-utils/share/cmake/adept_utils ..; make; make install
 	
 tools:
 	mkdir -p tools

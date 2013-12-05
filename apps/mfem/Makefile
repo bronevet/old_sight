@@ -2,10 +2,10 @@ all: mfem mfem_layout.o mfem_structure.o mfem_examples meshFile2Socket glvis
 
 .PHONY: mfem
 mfem:
-	cd mfem; make ROOT_PATH=${ROOT_PATH}
+	cd mfem; make ROOT_PATH=${ROOT_PATH} SIGHT_CFLAGS="${SIGHT_CFLAGS}"
 
 mfem_examples:
-	cd mfem/examples; make ROOT_PATH=${ROOT_PATH}
+	cd mfem/examples; make ROOT_PATH=${ROOT_PATH} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}"
 #	wget --no-check-certificate https://mfem.googlecode.com/files/mfem-2.0.tgz
 #	tar -xf mfem-2.0.tgz
 #	rm mfem-2.0.tgz
@@ -19,7 +19,7 @@ mfem_structure.o: mfem_structure.C mfem_structure.h ../../sight_structure_intern
 	g++ ${SIGHT_CFLAGS} mfem_structure.C -c -I${ROOT_PATH} -Imfem -DROOT_PATH="\"${ROOT_PATH}\"" -DGDB_PORT=${GDB_PORT} -o mfem_structure.o
 
 meshFile2Socket: meshFile2Socket.cpp mfem/mfem.hpp 
-	g++ ${SIGHT_CFLAGS} meshFile2Socket.cpp -Imfem -Lmfem -lmfem -I${ROOT_PATH} -L${ROOT_PATH} -lsight_structure -DROOT_PATH=${ROOT_PATH} -o meshFile2Socket
+	g++ ${SIGHT_CFLAGS} meshFile2Socket.cpp -Imfem -Lmfem -lmfem -I${ROOT_PATH} -L${ROOT_PATH} -lsight_structure -DROOT_PATH=${ROOT_PATH} ${SIGHT_LINKFLAGS} -o meshFile2Socket
 
 glvis:
 #	cd glvis; make ROOT_PATH=${ROOT_PATH}
@@ -27,7 +27,7 @@ glvis:
 	tar -xf glvis-2.0.tgz
 	rm glvis-2.0.tgz
 	cp glvismakefile glvis-2.0/makefile
-	cd glvis-2.0; make
+	cd glvis-2.0; make ROOT_PATH=${ROOT_PATH} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}"
 	mv glvis-2.0 glvis
 
 clean:

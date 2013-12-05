@@ -11,9 +11,9 @@
 
 # Serial compiler
 CC = g++
-OPTS = -O3 -I$(MFEM_DIR) -I${ROOT_PATH} -I../..
+OPTS = -O3 -I$(MFEM_DIR) -I${ROOT_PATH} -I../.. ${SIGHT_CFLAGS}
 DEBUG_OPTS = -g -I$(MFEM_DIR)
-LIBS = $(MFEM_LIB) $(LAPACK_LIBS) $(OPENMP_LIBS)
+LIBS = $(MFEM_LIB) $(LAPACK_LIBS) $(OPENMP_LIBS) ${ROOT_PATH}/tools/callpath/src/src/libcallpath.so -Wl,-rpath ${SIGHT_LINKFLAGS}
 
 # Parallel compiler
 MPICC = mpicxx

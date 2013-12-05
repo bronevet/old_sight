@@ -12,8 +12,7 @@
 #ifndef MFEM_DENSEMAT
 #define MFEM_DENSEMAT
 
-#include "sight.h"
-using namespace sight;
+#include "sight_ns.h"
 
 
 /// Data type dense matrix
@@ -218,9 +217,9 @@ public:
    void AdjustDofDirection(Array<int> &dofs);
 
    /// Prints matrix to stream out.
-   virtual void Print(ostream &out = dbg, int width = 4) const;
+   virtual void Print(ostream &out = sightN::dbg, int width = 4) const;
    /// Prints the transpose matrix to stream out.
-   virtual void PrintT(ostream &out = dbg, int width = 4) const;
+   virtual void PrintT(ostream &out = sightN::dbg, int width = 4) const;
 
    /// Invert and print the numerical conditioning of the inversion.
    void TestInversion();

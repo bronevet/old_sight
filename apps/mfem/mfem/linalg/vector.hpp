@@ -17,9 +17,7 @@
 #include <math.h>
 #include "../general/array.hpp"
 
-#include "sight.h"
-using namespace sight;
-
+#include "sight_ns.h"
 
 /// Vector data type.
 class Vector
@@ -159,7 +157,7 @@ public:
                          const Vector & elemvect);
 
    /// Prints vector to stream out.
-   void Print(ostream & out = dbg, int width = 8) const;
+   void Print(ostream & out = sightN::dbg, int width = 8) const;
 
    /// Prints vector to stream out in HYPRE_Vector format.
    void Print_HYPRE(ostream &out) const;
