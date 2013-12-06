@@ -74,7 +74,7 @@ colorSelector::colorSelector(properties::iterator props) : valSelector()
     dbg.includeWidgetScript("valSelector.js", "text/javascript");
     initialized=true;
   }
-  
+cout << "colorSelector::colorSelector() props="<<properties::str(props)<<endl;
   selID=properties::getInt(props, "selID");
   assert(active.find(selID) == active.end());
   active[selID] = this;

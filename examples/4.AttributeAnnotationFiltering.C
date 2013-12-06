@@ -5,13 +5,19 @@ using namespace std;
 using namespace sight;
 
 int main(int argc, char** argv) {
+  int selectedClientID=-1;
+  if(argc==2)
+    selectedClientID = atoi(argv[1]);
+  
   int numServers=3;
   int numClients=10;
   string requests[] = {"read", "write", "status"};
   
   srand(time(NULL));
   
-  SightInit(argc, argv, "4.AttributeAnnotationFiltering", "dbg.4.AttributeAnnotationFiltering");
+  SightInit(argc, argv, "4.AttributeAnnotationFiltering", 
+                        "dbg.4.AttributeAnnotationFiltering"+(selectedClientID==-1 ? string(""):
+                                                                   txt()<<".client_"<<selectedClientID));
   
   dbg << "<h1>Example 4: Attribute-Based Filtering</h1>" << endl;
   
@@ -37,7 +43,9 @@ int main(int argc, char** argv) {
     
   for(int i=0; i<100; i++) {
     int serverID = rand()%numServers;
-    int clientID = rand()%numClients;
+    int clientID;
+    if(selectedClientID>=0) clientID = selectedClientID;
+    else                    clientID = rand()%numClients;
     string request = requests[rand()%3];
     
     // Create attributes that identify the server, client and request type for sight
