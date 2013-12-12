@@ -123,15 +123,15 @@ properties* ScopeMerger::setProperties(std::vector<std::pair<properties::tagType
                                        properties* props) {
   if(props==NULL) props = new properties();
   
-  assert(tags.size()>0);
-
-  vector<string> names = getNames(tags); assert(allSame<string>(names));
-  assert(*names.begin() == "scope");
-
   map<string, string> pMap;
   properties::tagType type = streamRecord::getTagType(tags); 
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Scope!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
+    assert(tags.size()>0);
+
+    vector<string> names = getNames(tags); assert(allSame<string>(names));
+    assert(*names.begin() == "scope");
+
     pMap["level"] = txt()<<vAvg(str2int(getValues(tags, "level")));
     
     /*vector<string> cpValues = getValues(tags, "callPath");

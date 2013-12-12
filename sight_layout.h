@@ -6,5 +6,6 @@
 #include "widgets/valSelector_layout.h"
 #include "widgets/trace_layout.h"
 //#include "widgets/module_layout.h"
+//#include "widgets/source/source_layout.h"
 
 using namespace sight::layout;

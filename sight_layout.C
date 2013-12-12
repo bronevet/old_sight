@@ -501,13 +501,17 @@ block::block(properties::iterator props) : startA(/*false,*/ -1) /*=noAnchor, ex
   scriptFile       = dbg.getCurScriptFile();      // assert(scriptFile);
   scriptPrologFile = dbg.getCurScriptPrologFile();// assert(scriptPrologFile);
   scriptEpilogFile = dbg.getCurScriptEpilogFile();// assert(scriptEpilogFile);
+
+  blockCount++;
 }
 
 // Initializes this block with the given label, used for creating additional blocks that were not listed in the structure file
 block::block(string label) : label(label), startA(/*false,*/ -1) /*=noAnchor, except that noAnchor may not yet be initialized)*/ {
   scriptFile       = dbg.getCurScriptFile();      // assert(scriptFile);
   scriptPrologFile = dbg.getCurScriptPrologFile();// assert(scriptPrologFile);
-  scriptEpilogFile = dbg.getCurScriptEpilogFile();// assert(scriptEpilogFile);  
+  scriptEpilogFile = dbg.getCurScriptEpilogFile();// assert(scriptEpilogFile); 
+
+  blockCount++;
 }
 
 block::~block() {

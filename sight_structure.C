@@ -367,7 +367,7 @@ int streamRecord::mergeIDs(std::string objName, std::string IDName,
   // If none of the anchors on the incoming stream have been mapped to an anchor in the outgoing stream,
   // create a fresh anchorID in the outgoing stream, advancing the maximum anchor ID in the process
   if(!outSIDKnown) {
-    outSID = streamID(outS->maxID++, outS->getVariantID());
+    outSID = streamID(++outS->maxID, outS->getVariantID());
     //cout << "streamRecord::mergeIDs(), assigned new ID on outgoing stream outSID="<<outSID.str()<<endl;
   }
   

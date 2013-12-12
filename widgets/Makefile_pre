@@ -1,9 +1,9 @@
-WIDGETS_COMMON_O := scope_common.o graph_common.o valSelector_common.o trace_common.o module_common.o
-WIDGETS_COMMON_H := scope_common.h graph_common.h valSelector_common.h trace_common.h module_common.h
-WIDGETS_STRUCTURE_O := scope_structure.o graph_structure.o valSelector_structure.o trace_structure.o module_structure.o
-WIDGETS_STRUCTURE_H := scope_structure.h graph_structure.h valSelector_structure.h trace_structure.h module_structure.h
-WIDGETS_LAYOUT_O := scope_layout.o graph_layout.o valSelector_layout.o trace_layout.o module_layout.o
-WIDGETS_LAYOUT_H := scope_layout.h graph_layout.h valSelector_layout.h trace_layout.h module_layout.h
+WIDGETS_COMMON_O := scope_common.o graph_common.o valSelector_common.o trace_common.o module_common.o source/source_common.o
+WIDGETS_COMMON_H := scope_common.h graph_common.h valSelector_common.h trace_common.h module_common.h source/source_common.h
+WIDGETS_STRUCTURE_O := scope_structure.o graph_structure.o valSelector_structure.o trace_structure.o module_structure.o source/source_structure.o
+WIDGETS_STRUCTURE_H := scope_structure.h graph_structure.h valSelector_structure.h trace_structure.h module_structure.h source/source_structure.h
+WIDGETS_LAYOUT_O := scope_layout.o graph_layout.o valSelector_layout.o trace_layout.o module_layout.o source/source_layout.o
+WIDGETS_LAYOUT_H := scope_layout.h graph_layout.h valSelector_layout.h trace_layout.h module_layout.h source/source_layout.o
 WIDGETS := ${WIDGETS_O} ${WIDGETS_H}
 
 all: ${WIDGETS_COMMON_O} ${WIDGETS_COMMON_H} ${WIDGETS_STRUCTURE_O} ${WIDGETS_STRUCTURE_H} ${WIDGETS_LAYOUT_O} ${WIDGETS_LAYOUT_H}  \
@@ -12,6 +12,7 @@ all: ${WIDGETS_COMMON_O} ${WIDGETS_COMMON_H} ${WIDGETS_STRUCTURE_O} ${WIDGETS_ST
      xdotool \
      noVNC \
      gsl \
+     source/sh_main.js source/sh_cpp.js \
      external_scripts
 	chmod 755 canviz-0.1 
 	chmod 644 canviz-0.1/*
@@ -67,6 +68,15 @@ module_structure.o: module_structure.C module_structure.h ../attributes_structur
 module_layout.o: module_layout.C module_layout.h ../attributes_layout.h ../sight_layout.h
 	g++ ${SIGHT_CFLAGS} module_layout.C -I.. -Igsl/include -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o module_layout.o
 
+
+source/source_common.o: source/source_common.C source/source_common.h ../attributes_common.h ../sight_common.h
+	g++ ${SIGHT_CFLAGS} source/source_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o source/source_common.o
+
+source/source_structure.o: source/source_structure.C source/source_structure.h ../attributes_structure.h ../sight_structure.h
+	g++ ${SIGHT_CFLAGS} source/source_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o source/source_structure.o
+
+source/source_layout.o: source/source_layout.C source/source_layout.h ../attributes_layout.h ../sight_layout.h
+	g++ ${SIGHT_CFLAGS} source/source_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o source/source_layout.o
 
 
 
@@ -179,6 +189,12 @@ underscore-min.js:
 d3.v3.min.js:
 	cd widgets; wget http://d3js.org/d3.v3.min.js
 	cd widgets; wget http://d3js.org/d3.v3.js
+
+source/sh_main.js:
+	cd source; wget http://shjs.sourceforge.net/sh_main.js
+
+source/sh_cpp.js:
+	cd source; wget http://shjs.sourceforge.net/lang/sh_cpp.js
 
 clean:
 	rm -fr xdotool

@@ -172,6 +172,7 @@ int main(int argc, char** argv) {
   mergers["moduleNode"]   = new MergeFunctor<ModuleNodeMerger>();
   mergers["moduleEdge"]   = new MergeFunctor<ModuleEdgeMerger>();
   mergers["moduleNodeTS"] = new MergeFunctor<ModuleNodeTraceStreamMerger>();
+  mergers["source"]       = new MergeFunctor<SourceMerger>();
   
   vector<pair<properties::tagType, properties::iterator> > emptyNextTag;
     
@@ -395,6 +396,7 @@ int merge(vector<FILEStructureParser*>& parsers,
             nextTag[parserIdx] = make_pair(props.first, props.second->begin());
             
           // Group this parser with all the other parsers that just read a tag with the same name and type (enter/exit)
+          assert(mergers.find(props.second->name()) != mergers.end());
           /*cout << "props.second="<<props.second->str()<<endl;
           std::list<std::string> key = mergers[props.second->name()]->mergeKey(props.first, props.second->begin(), inStreamRecords[parserIdx]);
           cout << "key=";

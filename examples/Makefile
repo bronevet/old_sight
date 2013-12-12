@@ -4,7 +4,8 @@ EXE := .exe
 endif
 
 sight_H := ../*.h ../widgets/*.h
-TESTERS = 1.StructuredFormatting${EXE} 2.ConditionalFormatting${EXE} 3.Navigation${EXE} \
+TESTERS = demo${EXE}
+#1.StructuredFormatting${EXE} 2.ConditionalFormatting${EXE} 3.Navigation${EXE} \
           4.AttributeAnnotationFiltering${EXE} 5.Tracing${EXE} 6.PerfAnalysis${EXE} \
           7.Merging${EXE} 8.Modules${EXE}
 
@@ -25,6 +26,9 @@ run: ${TESTERS}
 	export SIGHT_FILE_OUT=1; rm -rf dbg.8.Modules; ../hier_merge dbg.8.Modules dbg.8.Modules.1_dims.10_particles/structure dbg.8.Modules.1_dims.30_particles/structure dbg.8.Modules.1_dims.100_particles/structure dbg.8.Modules.2_dims.10_particles/structure dbg.8.Modules.2_dims.30_particles/structure dbg.8.Modules.2_dims.100_particles/structure dbg.8.Modules.3_dims.10_particles/structure dbg.8.Modules.3_dims.30_particles/structure dbg.8.Modules.3_dims.100_particles/structure
 	rm -rf dbg.8.Modules.*;
 	../slayout${EXE} dbg.8.Modules/structure;	
+
+demo${EXE}: demo.C ../libsight_structure.a ${sight_H}
+	g++ ${SIGHT_CFLAGS} demo.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o demo${EXE}
 
 1.StructuredFormatting${EXE}: 1.StructuredFormatting.C ../libsight_structure.a ${sight_H}
 	g++ ${SIGHT_CFLAGS} 1.StructuredFormatting.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 1.StructuredFormatting${EXE}

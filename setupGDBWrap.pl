@@ -23,5 +23,5 @@ close($fin);
 if(!$found) { die "ERROR: cannot find the line within sight_structure.C where gdb should break!"; }
 
 open(my $fout, ">gdbLineNum.pl") || die "ERROR opening file gdbLineNum.pl for writing! $!";
-print $fout "\$main::gdbLineNum = $lnum;\n";
+print $fout "\$main::gdbLineNum = ",($lnum+1),";\n";
 close($fout);

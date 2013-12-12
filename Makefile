@@ -41,7 +41,8 @@ endif
 apps: mfem mcbench
 
 mfem:
-	cd apps/mfem;  make ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}"
+	cd apps/mfem; make ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}"
+	cd apps/mfem; make ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS}
 
 mcbench:
 ifneq (${OS}, Cygwin)
@@ -53,13 +54,13 @@ allExamples: libsight_structure.a
 
 runExamples: libsight_structure.a slayout${EXE} hier_merge${EXE} #apps
 	cd examples; make ROOT_PATH=${ROOT_PATH} OS=${OS}  SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" run
-#	apps/mfem/mfem/examples/ex1 apps/mfem/mfem/data/beam-quad.mesh
-#	apps/mfem/mfem/examples/ex2 apps/mfem/mfem/data/beam-tet.mesh 2
-#	apps/mfem/mfem/examples/ex3 apps/mfem/mfem/data/ball-nurbs.mesh
-#	apps/mfem/mfem/examples/ex4 apps/mfem/mfem/data/fichera-q3.mesh
-#ifneq (${OS}, Cygwin)
-#	apps/mcbench/src/MCBenchmark.exe --nCores=1 --distributedSource --numParticles=13107 --nZonesX=256 --nZonesY=256 --xDim=16 --yDim=16 --mirrorBoundary --multiSigma --nThreadCore=1
-#endif
+	apps/mfem/mfem/examples/ex1 apps/mfem/mfem/data/beam-quad.mesh
+	apps/mfem/mfem/examples/ex2 apps/mfem/mfem/data/beam-tet.mesh 2
+	apps/mfem/mfem/examples/ex3 apps/mfem/mfem/data/ball-nurbs.mesh
+	apps/mfem/mfem/examples/ex4 apps/mfem/mfem/data/fichera-q3.mesh
+ifneq (${OS}, Cygwin)
+	apps/mcbench/src/MCBenchmark.exe --nCores=1 --distributedSource --numParticles=13107 --nZonesX=256 --nZonesY=256 --xDim=16 --yDim=16 --mirrorBoundary --multiSigma --nThreadCore=1
+endif
 
 #pattern${EXE}: pattern.C pattern.h libsight.a ${sight_H}
 #	g++ ${SIGHT_CFLAGS} pattern.C -L. -lsight  -o pattern${EXE}
@@ -89,12 +90,12 @@ hier_merge${EXE}: hier_merge.C process.C process.h libsight_structure.a
 #	ar -r libsight_common.a ${SIGHT_COMMON_O} widgets/*_common.o
 
 libsight_structure.a: ${SIGHT_STRUCTURE_O} ${SIGHT_STRUCTURE_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre
-	ar -r libsight_structure.a ${SIGHT_STRUCTURE_O} ${SIGHT_COMMON_O} widgets/*_structure.o widgets/*_common.o
+	ar -r libsight_structure.a ${SIGHT_STRUCTURE_O} ${SIGHT_COMMON_O} widgets/*_structure.o widgets/*_common.o widgets/*/*_structure.o widgets/*/*_common.o
 
 libsight_layout.a: ${SIGHT_LAYOUT_O} ${SIGHT_LAYOUT_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre widgets/gsl/lib/libgsl.a widgets/gsl/lib/libgslcblas.a
 	mkdir -p tmp
 	cd tmp; ar -x ../widgets/gsl/lib/libgsl.a; ar -x ../widgets/gsl/lib/libgslcblas.a
-	ar -r libsight_layout.a    ${SIGHT_LAYOUT_O}    ${SIGHT_COMMON_O} widgets/*_layout.o  widgets/*_common.o tmp/*.o
+	ar -r libsight_layout.a    ${SIGHT_LAYOUT_O}    ${SIGHT_COMMON_O} widgets/*_layout.o widgets/*_common.o widgets/*/*_layout.o widgets/*/*_common.o tmp/*.o
 	rm -fr tmp
 	
 #libaz.a: libabc.a(*.o) libxyz.a(*.o)
@@ -160,7 +161,7 @@ clean:
 	rm -rf script/taffydb tools sightDefines.pl gdbscript
 
 clean_objects:
-	rm -f *.a *.o widgets/*.o
+	rm -f *.a *.o widgets/*.o widgets/*/*.o
 
 script/taffydb:
 	cd script; wget --no-check-certificate https://github.com/typicaljoe/taffydb/archive/master.zip

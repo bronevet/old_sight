@@ -5,5 +5,6 @@
 #include "widgets/valSelector_structure.h"
 #include "widgets/trace_structure.h"
 #include "widgets/module_structure.h"
+#include "widgets/source/source_structure.h"
 
 using namespace sight::structure;

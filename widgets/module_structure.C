@@ -152,11 +152,11 @@ void module::init(const group& g, const std::vector<port>& in) {
     } }
 
     // Initialize the output ports of this module
+    if(externalOutputs) externalOutputs->clear(); 
     for(int i=0; i<g.numOutputs; i++) {
       outputs.push_back(port(g, context(), output, i));
       // If the user provided an output vector, initialize it as well
       if(externalOutputs) { 
-        externalOutputs->clear(); 
         externalOutputs->push_back(port(g, context(), output, i));
       }
     }
@@ -430,6 +430,7 @@ properties* ModuleMerger::setProperties(std::vector<std::pair<properties::tagTyp
   if(type==properties::enterTag) {
     // Merge the module IDs along all the streams
     int mergedTraceID = streamRecord::mergeIDs("module", "moduleID", pMap, tags, outStreamRecords, inStreamRecords);
+    //cout << "mergedTraceID="<<mergedTraceID<<endl;
     
     /*vector<string> cpValues = getValues(tags, "callPath");
     assert(allSame<string>(cpValues));

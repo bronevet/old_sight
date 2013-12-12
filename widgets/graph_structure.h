@@ -40,16 +40,24 @@ class graph: public structure::block
   // Records whether this scope is included in the emitted output (true) or not (false)
   bool active;
   
+  // Records whether we should include a graph node for each sub-block inside the graph
+  bool includeAllSubBlocks;
+  
+  // Maps the anchor IDs of nodes that have been observed but not yet emitted to their labels and node IDs.
+  // This is useful for cases where includeAllSubBlocks and thus, we only emit a node if we observe an edge that 
+  // involves it.
+  std::map<int, std::pair<std::string, int> > unEmittedNodes;
+  
   public:
   
-  graph(                                                                        properties* props=NULL);
-  graph(                                                 const attrOp& onoffOp, properties* props=NULL);
-  graph(                     anchor& pointsTo,                                  properties* props=NULL);
-  graph(                     std::set<anchor>& pointsTo, const attrOp& onoffOp, properties* props=NULL);
-  graph(std::string dotText,                                                    properties* props=NULL);
-  graph(std::string dotText,                             const attrOp& onoffOp, properties* props=NULL);
-  graph(std::string dotText, anchor& pointsTo,                                  properties* props=NULL);
-  graph(std::string dotText, std::set<anchor>& pointsTo, const attrOp& onoffOp, properties* props=NULL);
+  graph(                                                                        bool includeAllSubBlocks=false, properties* props=NULL);
+  graph(                                                 const attrOp& onoffOp, bool includeAllSubBlocks=false, properties* props=NULL);
+  graph(                     anchor& pointsTo,                                  bool includeAllSubBlocks=false, properties* props=NULL);
+  graph(                     std::set<anchor>& pointsTo, const attrOp& onoffOp, bool includeAllSubBlocks=false, properties* props=NULL);
+  graph(std::string dotText,                                                    bool includeAllSubBlocks=false, properties* props=NULL);
+  graph(std::string dotText,                             const attrOp& onoffOp, bool includeAllSubBlocks=false, properties* props=NULL);
+  graph(std::string dotText, anchor& pointsTo,                                  bool includeAllSubBlocks=false, properties* props=NULL);
+  graph(std::string dotText, std::set<anchor>& pointsTo, const attrOp& onoffOp, bool includeAllSubBlocks=false, properties* props=NULL);
     
   private:
   // Sets the properties of this object
@@ -84,8 +92,12 @@ class graph: public structure::block
   // Called to notify this block that a sub-block was started/completed inside of it. 
   // Returns true of this notification should be propagated to the blocks 
   // that contain this block and false otherwise.
-  virtual bool subBlockEnterNotify(block* subBlock);// { return false; }
+  virtual bool subBlockEnterNotify(block* subBlock);
   virtual bool subBlockExitNotify (block* subBlock) { return false; }
+
+  private:
+  // Emits a tag for the given node
+  void emitNodeTag(int anchorID, std::string label, int nodeID);
 }; // graph
 
 class GraphMerger : public BlockMerger {

@@ -26,37 +26,37 @@ int graph::maxGraphID=0;
 // Maximum ID assigned to any graph node
 int graph::maxNodeID=0;
 
-graph::graph(properties* props) : 
-  block("Graph", setProperties(maxGraphID, "", NULL, props)) { graphID=maxGraphID++; }
-/*  init(NULL, inheritedFrom);
-}*/
+graph::graph(bool includeAllSubBlocks, properties* props) : 
+  block("Graph", setProperties(maxGraphID, "", NULL, props)), includeAllSubBlocks(includeAllSubBlocks)
+{ graphID=maxGraphID++; }
 
-graph::graph(const attrOp& onoffOp, properties* props) : 
-  block("Graph", setProperties(maxGraphID, "", &onoffOp, props)) { graphID=maxGraphID++; }
-/*  init(&onoffOp, inheritedFrom);
-}*/
+graph::graph(const attrOp& onoffOp, bool includeAllSubBlocks, properties* props) : 
+  block("Graph", setProperties(maxGraphID, "", &onoffOp, props)), includeAllSubBlocks(includeAllSubBlocks)
+{ graphID=maxGraphID++; }
 
-graph::graph(anchor& pointsTo, properties* props) : 
-  block("Graph", pointsTo, setProperties(maxGraphID, "", NULL, props)) { graphID=maxGraphID++; }
-/*  init(NULL, inheritedFrom);
-}*/
+graph::graph(anchor& pointsTo, bool includeAllSubBlocks, properties* props) : 
+  block("Graph", pointsTo, setProperties(maxGraphID, "", NULL, props)), includeAllSubBlocks(includeAllSubBlocks)
+{ graphID=maxGraphID++; }
 
-graph::graph(std::set<anchor>& pointsTo, const attrOp& onoffOp, properties* props) : 
-  block("Graph", pointsTo, setProperties(maxGraphID, "", &onoffOp, props)) { graphID=maxGraphID++; }
-/*  init(&onoffOp);
-}*/
+graph::graph(std::set<anchor>& pointsTo, const attrOp& onoffOp, bool includeAllSubBlocks, properties* props) : 
+  block("Graph", pointsTo, setProperties(maxGraphID, "", &onoffOp, props)), includeAllSubBlocks(includeAllSubBlocks)
+{ graphID=maxGraphID++; }
 
-graph::graph(string dotText,                                                          properties* props) : 
-  block("Graph", setProperties(maxGraphID, dotText, NULL, props)) { graphID=maxGraphID++; }
+graph::graph(string dotText,                                                          bool includeAllSubBlocks, properties* props) : 
+  block("Graph", setProperties(maxGraphID, dotText, NULL, props)), includeAllSubBlocks(includeAllSubBlocks)
+{ graphID=maxGraphID++; }
 
-graph::graph(string dotText,                                   const attrOp& onoffOp, properties* props) : 
-  block("Graph", setProperties(maxGraphID, dotText, &onoffOp, props)) { graphID=maxGraphID++; }
+graph::graph(string dotText,                                   const attrOp& onoffOp, bool includeAllSubBlocks, properties* props) : 
+  block("Graph", setProperties(maxGraphID, dotText, &onoffOp, props)), includeAllSubBlocks(includeAllSubBlocks)
+{ graphID=maxGraphID++; }
 
-graph::graph(string dotText, anchor& pointsTo,                                  properties* props) : 
-  block("Graph", pointsTo, setProperties(maxGraphID, dotText, NULL, props)) { graphID=maxGraphID++; }
+graph::graph(string dotText, anchor& pointsTo,                                        bool includeAllSubBlocks, properties* props) : 
+  block("Graph", pointsTo, setProperties(maxGraphID, dotText, NULL, props)), includeAllSubBlocks(includeAllSubBlocks)
+{ graphID=maxGraphID++; }
 
-graph::graph(string dotText, std::set<anchor>& pointsTo, const attrOp& onoffOp, properties* props) : 
-  block("Graph", pointsTo, setProperties(maxGraphID, dotText, &onoffOp, props)) { graphID=maxGraphID++; }
+graph::graph(string dotText, std::set<anchor>& pointsTo,       const attrOp& onoffOp, bool includeAllSubBlocks, properties* props) : 
+  block("Graph", pointsTo, setProperties(maxGraphID, dotText, &onoffOp, props)), includeAllSubBlocks(includeAllSubBlocks)
+{ graphID=maxGraphID++; }
 
 // Sets the properties of this object
 properties* graph::setProperties(int graphID, std::string dotText, const attrOp* onoffOp, properties* props)
@@ -78,44 +78,19 @@ properties* graph::setProperties(int graphID, std::string dotText, const attrOp*
   return props;
 }
 
-/*void graph::init(const attrOp* onoffOp, properties* props) {
-  // If the current attribute query evaluates to true (we're emitting debug output) AND
-  // either onoffOp is not provided or its evaluates to true
-  if(attributes.query() && (onoffOp==NULL || onoffOp->apply())) {
-    map<string, string> properties;
-    dbg.enter("graph", properties, inheritedFrom);
-  } else
-    active = false; 
-}*/
-
 graph::~graph() {
-  /*if(props->active) {
-    dbg.exit(this);
-  }*/
 }
 
 // Given a reference to an object that can be represented as a dot graph,  create an image from it and add it to the output.
 // Return the path of the image.
 void graph::genGraph(dottable& obj) {
   graph g(obj.toDOT("graphsight"));
-  //dbg.tag(&g);
-  /*map<string, string> properties;
-  // !!! SHOULD CREATE A graph OBJECT !!!
-  properties["dot"] = obj.toDOT("graphsight");
-  dbg.tag("graph", properties, false);*/
-  //assert(0);
 }
 
 // Given a representation of a graph in dot format, create an image from it and add it to the output.
 // Return the path of the image.
 void graph::genGraph(std::string dotText) {
   graph g(dotText);
-  //dbg.tag(&g);
-  /*map<string, string> properties;
-  // !!! SHOULD CREATE A graph OBJECT !!!
-  properties["dot"] = dot;
-  dbg.tag("graph", properties, false);*/
-  //assert(0);
 }
 
 // Sets the structure of the current graph by specifying its dot encoding
@@ -130,6 +105,12 @@ void graph::setGraphEncoding(string dotText) {
 
 // Add a directed edge from the location of the from anchor to the location of the to anchor
 void graph::addDirEdge(anchor from, anchor to) {
+  // If the from or two node of this edge have not yet been emitted, do so now
+  if(unEmittedNodes.find(from.getID()) != unEmittedNodes.end())
+    emitNodeTag(from.getID(), unEmittedNodes[from.getID()].first, unEmittedNodes[from.getID()].second);
+  if(unEmittedNodes.find(to.getID()) != unEmittedNodes.end())
+    emitNodeTag(to.getID(), unEmittedNodes[to.getID()].first, unEmittedNodes[to.getID()].second);
+  
   properties p;
   map<string, string> pMap;
   pMap["from"] = txt()<<from.getID();
@@ -143,6 +124,12 @@ void graph::addDirEdge(anchor from, anchor to) {
 
 // Add an undirected edge between the location of the a anchor and the location of the b anchor
 void graph::addUndirEdge(anchor a, anchor b) {
+  // If the either node of this edge have not yet been emitted, do so now
+  if(unEmittedNodes.find(a.getID()) != unEmittedNodes.end())
+    emitNodeTag(a.getID(), unEmittedNodes[a.getID()].first, unEmittedNodes[a.getID()].second);
+  if(unEmittedNodes.find(b.getID()) != unEmittedNodes.end())
+    emitNodeTag(b.getID(), unEmittedNodes[b.getID()].first, unEmittedNodes[b.getID()].second);
+  
   properties p;
   map<string, string> pMap;
   pMap["a"] = txt()<<a.getID();
@@ -159,37 +146,31 @@ void graph::addUndirEdge(anchor a, anchor b) {
 // Returns true of this notification should be propagated to the blocks 
 // that contain this block and false otherwise.
 bool graph::subBlockEnterNotify(block* subBlock) {
-  //cout << "graph::subBlockEnterNotify() graphID="<<graphID<<", subBlock="<<subBlock->getLabel()<<")\n";
-  // If this block is immediately contained inside this graph
-//  location common = dbgStream::commonSubLocation(getLocation(), subBlock->getLocation());
+  // If we should include nodes for all sub-blocks inside this graph block
+  if(includeAllSubBlocks)
+    // Emit a node tag for this block immediately
+    emitNodeTag(subBlock->getAnchor().getID(), subBlock->getLabel(), maxNodeID);
+  else
+    // Otherwise, save its info in unEmittedNodes[] so that we can emit it when we observe an edge that touches it
+    unEmittedNodes[subBlock->getAnchor().getID()] = make_pair(subBlock->getLabel(), maxNodeID);
   
-  /*cout << "subBlock->getLocation().back().second.size()="<<subBlock->getLocation().back().second.size()<<" common.back().second.size()="<<common.back().second.size()<<endl;
-  cout << "subBlock->getLocation="<<dbg.blockGlobalStr(subBlock->getLocation())<<endl;*/
-  // If subBlock is nested immediately inside the graph's block 
-//???  // (the nesting gap is 2 blocks rather than 1 since each block is chopped up into sub-blocks that
-//???  //  span the text between adjacent attribute definitions and major block terminal points)
-//  assert(subBlock->getLocation().size()>0);
-/*  if(common == getLocation() &&
-     subBlock->getLocation().size() == common.size()/ * &&
-     subBlock->getLocation().back().second.size()-1 == common.back().second.size() * /)*/
+  maxNodeID++;
   
-  // This does two things:
-  // - All the blocks that appear within this graph are assigned a node
-  // - This provides a mapping between the anchors used for graph edges and their labels.
+  return false;
+}
+
+// Emits a tag for the given node
+void graph::emitNodeTag(int anchorID, std::string label, int nodeID) {
   properties p;
   map<string, string> pMap;
-  pMap["nodeID"]   = txt()<<maxNodeID;
-  pMap["anchorID"] = txt()<<subBlock->getAnchor().getID();
-  pMap["label"]    = txt()<<subBlock->getLabel();
+  pMap["nodeID"]   = txt()<<nodeID;
+  pMap["anchorID"] = txt()<<anchorID;
+  pMap["label"]    = label;
   pMap["graphID"]  = txt()<<graphID;
   //pMap["callPath"] = cp2str(CPRuntime.doStackwalk());
   p.add("node", pMap);
 
   dbg.tag(p);
- //nodes[subBlock->getLocation()] = node(maxNodeID, subBlock->getLabel(), subBlock->getAnchor());
-  maxNodeID++;
-  
-  return false;
 }
 
 GraphMerger::GraphMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,

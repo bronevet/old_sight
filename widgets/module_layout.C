@@ -116,7 +116,7 @@ module::~module() {
 
   // Create the explicit DOT file that details the graph's layout
   ostringstream cmd; cmd << ROOT_PATH << "/widgets/graphviz/bin/dot "<<origDotFName.str()<<" -Txdot -o"<<placedDotFName.str()<<"&"; 
-  cout << "Command \""<<cmd.str()<<"\"\n";
+  //cout << "Command \""<<cmd.str()<<"\"\n";
   system(cmd.str().c_str());
   
   dbg.widgetScriptCommand(txt() << 
