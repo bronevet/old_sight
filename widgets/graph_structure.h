@@ -88,12 +88,26 @@ class graph: public structure::block
   virtual bool subBlockExitNotify (block* subBlock) { return false; }
 }; // graph
 
+class GraphMergeHandlerInstantiator: public MergeHandlerInstantiator {
+  public:
+  GraphMergeHandlerInstantiator();
+};
+extern GraphMergeHandlerInstantiator GraphMergeHandlerInstance;
+
+std::map<std::string, streamRecord*> GraphGetMergeStreamRecord(int streamID);
+
 class GraphMerger : public BlockMerger {
   public:
   GraphMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
               std::map<std::string, streamRecord*>& outStreamRecords,
               std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
               properties* props=NULL);
+              
+  static Merger* create(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
+                        std::map<std::string, streamRecord*>& outStreamRecords,
+                        std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                        properties* props)
+  { return new GraphMerger(tags, outStreamRecords, inStreamRecords, props); }
               
   // Sets the properties of the merged object
   static properties* setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
@@ -197,12 +211,20 @@ class DirEdgeMerger : public Merger {
                 std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
                 properties* props=NULL);
 
+  static Merger* create(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
+                        std::map<std::string, streamRecord*>& outStreamRecords,
+                        std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                        properties* props)
+  { return new DirEdgeMerger(tags, outStreamRecords, inStreamRecords, props); }
+
   // Sets a list of strings that denotes a unique ID according to which instances of this merger's 
   // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {}
+                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
+    Merger::mergeKey(type, tag.next(), inStreamRecords, key);
+  }
 }; // class DirEdgeMerger
 
 class UndirEdgeMerger : public Merger {
@@ -212,12 +234,20 @@ class UndirEdgeMerger : public Merger {
                   std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
                   properties* props=NULL);
 
+  static Merger* create(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
+                        std::map<std::string, streamRecord*>& outStreamRecords,
+                        std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                        properties* props)
+  { return new UndirEdgeMerger(tags, outStreamRecords, inStreamRecords, props); }
+
   // Sets a list of strings that denotes a unique ID according to which instances of this merger's 
   // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {}
+                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
+    Merger::mergeKey(type, tag.next(), inStreamRecords, key);
+  }
 }; // class UndirEdgeMerger
 
 class NodeMerger : public Merger {
@@ -227,42 +257,33 @@ class NodeMerger : public Merger {
              std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
              properties* props=NULL);
 
+  static Merger* create(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
+                        std::map<std::string, streamRecord*>& outStreamRecords,
+                        std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                        properties* props)
+  { return new NodeMerger(tags, outStreamRecords, inStreamRecords, props); }
+  
   // Sets a list of strings that denotes a unique ID according to which instances of this merger's 
   // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {}
+                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
+    Merger::mergeKey(type, tag.next(), inStreamRecords, key);
+  }
 }; // class NodeMerger
 
 class NodeStreamRecord: public streamRecord {
   friend class NodeMerger;
-  // Records the maximum NodeID ever generated on a given outgoing stream
-  int maxNodeID;
-  
-  // Maps the NodeIDs within an incoming stream to the NodeIDs on its corresponding outgoing stream
-  std::map<streamID, streamID> in2outNodeIDs;
-  
   public:
-  NodeStreamRecord(int vID)              : streamRecord(vID, "node") { maxNodeID=0; }
-  NodeStreamRecord(const variantID& vID) : streamRecord(vID, "node") { maxNodeID=0; }
+  NodeStreamRecord(int vID)              : streamRecord(vID, "node") { }
+  NodeStreamRecord(const variantID& vID) : streamRecord(vID, "node") { }
   NodeStreamRecord(const NodeStreamRecord& that, int vSuffixID);
   
   // Returns a dynamically-allocated copy of this streamRecord, specialized to the given variant ID,
   // which is appended to the new stream's variant list.
   streamRecord* copy(int vSuffixID);
   
-  // Given multiple streamRecords from several variants of the same outgoing stream, update this streamRecord object
-  // to contain the state that succeeds them all, making it possible to resume processing
-  //void resumeFrom(std::vector<std::map<std::string, streamRecord*> >& streams);
-  
-  // Marge the IDs of the next Node (stored in tags) along all the incoming streams into a single ID in the outgoing stream,
-  // updating each incoming stream's mappings from its IDs to the outgoing stream's IDs
-  /*static void mergeIDs(std::map<std::string, std::string>& pMap, 
-                       const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
-                       std::map<std::string, streamRecord*>& outStreamRecords,
-                       std::vector<std::map<std::string, streamRecord*> >& inStreamRecords);*/
-
   std::string str(std::string indent="") const;
 }; // class NodeStreamRecord
 

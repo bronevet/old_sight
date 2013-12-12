@@ -180,7 +180,7 @@ void SightInit_internal(int argc, char** argv, string title, string workDir)
 void SightInit_internal(properties* props, bool storeProps)
 {
   properties::iterator sightIt = props->find("sight");
-  assert(sightIt != props->end());
+  assert(!sightIt.isEnd());
   
   // Create the directory structure for the structural information
   // Main output directory
@@ -294,12 +294,26 @@ std::string location::str(std::string indent) const {
  ***** sightObj *****
  ********************/
 
+// The of clocks currently being used, mapping the name of each clock class to the set of active 
+// clock objects of this class.
+std::map<std::string, std::set<sightClock*> > sightObj::clocks;
+
 sightObj::sightObj() : props(NULL), emitExitTag(false) {}
 
 // isTag - if true, we emit a single enter/exit tag combo in the constructor and nothing in the destructor
 sightObj::sightObj(properties* props, bool isTag) : props(props) {
   //cout << "sightObj::sightObj isTag="<<isTag<<" props="<<props->str()<<endl;
   if(props && props->active && props->emitTag) {
+    if(props==NULL) props = new properties();
+    
+    // Add the properties of any clocks associated with this sightObj
+    for(map<string, set<sightClock*> >::iterator i=clocks.begin(); i!=clocks.end(); i++) {
+      for(set<sightClock*>::iterator j=i->second.begin(); j!=i->second.end(); j++)
+        // If the value of the current clock was modified since the last time we observed it
+        //if((*j)->modified())
+        (*j)->setProperties(props);
+    }
+    
     if(isTag) {
       dbg.tag(this);
       emitExitTag = false;
@@ -320,6 +334,117 @@ sightObj::~sightObj() {
     delete(props);
     props = NULL;
   }
+}
+
+// Registers a new clock with sightObj
+void sightObj::addClock(std::string clockName, sightClock* c) { 
+  // This clockName/clock object combination does not currently exist in clocks
+  assert(clocks.find(clockName) == clocks.end() ||
+         (clocks.find(clockName) != clocks.end() && clocks[clockName].find(c) == clocks[clockName].end()));
+  clocks[clockName].insert(c);
+}
+
+// Updates the registration of the given clock to refer to the given sightClock object
+void sightObj::updClock(std::string clockName, sightClock* c) { 
+  // This clockName/clock object combination must currently exist in clocks
+  assert(clocks.find(clockName) != clocks.end());
+  assert(clocks[clockName].find(c) != clocks[clockName].end());
+  clocks[clockName].insert(c);
+}
+
+// Unregisters the clock with the given name
+void sightObj::remClock(std::string clockName) { 
+  // This clockName/clock object combination must currently exist in clocks
+  assert(clocks.find(clockName) != clocks.end());
+  clocks.erase(clockName);
+}
+
+// Returns whether the given clock object is currently registered
+bool sightObj::isActiveClock(std::string clockName, sightClock* c) {
+  return clocks.find(clockName) != clocks.end() &&
+         clocks[clockName].find(c) != clocks[clockName].end();
+}
+
+/************************************
+ ***** MergeHandlerInstantiator *****
+ ************************************/
+
+std::map<std::string, MergeHandler>*    MergeHandlerInstantiator::MergeHandlers;
+std::map<std::string, MergeKeyHandler>* MergeHandlerInstantiator::MergeKeyHandlers;
+std::set<GetMergeStreamRecord>*         MergeHandlerInstantiator::MergeGetStreamRecords;
+
+MergeHandlerInstantiator::MergeHandlerInstantiator() {
+  // Initialize the handlers mappings, using environment variables to make sure that
+  // only the first instance of this MergeHandlerInstantiator creates these objects.
+  if(!getenv("SIGHT_MERGE_HANDLERS_INSTANTIATED")) {
+    MergeHandlers          = new std::map<std::string, MergeHandler>();
+    MergeKeyHandlers       = new std::map<std::string, MergeKeyHandler>();
+    MergeGetStreamRecords  = new std::set<GetMergeStreamRecord>();
+    setenv("SIGHT_MERGE_HANDLERS_INSTANTIATED", "1", 1);
+  }
+}
+
+// Returns a mapping from the names of objects for which records are kept within this MergeHandlerInstantiator
+// object to the freshly-allocated streamRecord objects that keep their records. The records are specialized 
+// with the given stream ID.
+std::map<std::string, streamRecord*> MergeHandlerInstantiator::GetAllMergeStreamRecords(int streamID) {
+  std::map<std::string, streamRecord*> mergeMap;
+  for(std::set<GetMergeStreamRecord>::iterator i=MergeGetStreamRecords->begin(); i!=MergeGetStreamRecords->end(); i++) {
+    std::map<std::string, streamRecord*> subMergeMap = (*i)(streamID);
+    // Copy over the mappings from subMergeMap to mergeMap;
+    for(std::map<std::string, streamRecord*>::iterator j=subMergeMap.begin(); j!=subMergeMap.end(); j++) {
+      // No two mergeMaps may contain overlapping keys
+      assert(mergeMap.find(j->first) == mergeMap.end());
+      
+      mergeMap[j->first] = j->second;
+    }
+  }
+  
+  return mergeMap;
+}
+
+std::string MergeHandlerInstantiator::str() {
+  std::ostringstream s;
+  s << "[MergeHandlerInstantiator:"<<endl;
+  s << "    MergeHandlers=(#"<<MergeHandlers->size()<<"): ";
+  for(std::map<std::string, MergeHandler>::const_iterator i=MergeHandlers->begin(); i!=MergeHandlers->end(); i++) {
+    if(i!=MergeHandlers->begin()) s << ", ";
+    s << i->first;
+  }
+  s << endl;
+  s << "    MergeKeyHandlers=(#"<<MergeKeyHandlers->size()<<"): ";
+  for(std::map<std::string, MergeKeyHandler>::const_iterator i=MergeKeyHandlers->begin(); i!=MergeKeyHandlers->end(); i++) {
+    if(i!=MergeKeyHandlers->begin()) s << ", ";
+    s << i->first;
+  }
+  s << "]"<<endl;
+  s << "    MergeGetStreamRecords(#"<<MergeGetStreamRecords->size()<<")]"<<endl;
+  return s.str();
+}
+
+/*****************************************
+ ***** SightMergeHandlerInstantiator *****
+ *****************************************/
+
+SightMergeHandlerInstantiator::SightMergeHandlerInstantiator() { 
+  (*MergeHandlers   )["sight"]  = dbgStreamMerger::create;
+  (*MergeKeyHandlers)["sight"]  = dbgStreamMerger::mergeKey;
+  (*MergeHandlers   )["indent"] = IndentMerger::create;
+  (*MergeKeyHandlers)["indent"] = IndentMerger::mergeKey;
+  (*MergeHandlers   )["text"]   = TextMerger::create;
+  (*MergeKeyHandlers)["text"]   = TextMerger::mergeKey;
+  (*MergeHandlers   )["link"]   = LinkMerger::create;
+  (*MergeKeyHandlers)["link"]   = LinkMerger::mergeKey;
+    
+  MergeGetStreamRecords->insert(&SightGetMergeStreamRecord);
+}
+SightMergeHandlerInstantiator sightMergeHandlerInstantance;
+
+std::map<std::string, streamRecord*> SightGetMergeStreamRecord(int streamID) {
+  std::map<std::string, streamRecord*> mergeMap;
+  mergeMap["sight"] = new dbgStreamStreamRecord(streamID);
+  mergeMap["block"] = new BlockStreamRecord(streamID);
+  return mergeMap;
 }
 
 /************************
@@ -488,6 +613,56 @@ std::string streamRecord::str(std::string indent) const {
  ***** Merger *****
  ******************/
 
+Merger::Merger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+               std::map<std::string, streamRecord*>& outStreamRecords,
+               std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+               properties* props): props(props) {
+  emitTagFlag = true;
+  
+  if(props==NULL) props = new properties();
+  
+  // Iterate through the properties of any clocks associated with this object
+  while(!isIterEnd(tags)) {
+    properties::tagType type = streamRecord::getTagType(tags);
+    if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging!"<<endl; exit(-1); }
+    if(type==properties::enterTag) {
+      vector<string> names = getNames(tags); assert(allSame<string>(names));
+      //assert(*names.begin() == "text");
+      
+      // Create a Merger object for the current clock, using it to update props with the clock's merged properties
+      Merger* m = (*MergeHandlerInstantiator::MergeHandlers)[*names.begin()](tags, outStreamRecords, inStreamRecords, props);
+      // Reset this Merger's properties pointer to NULL so that props doesn't get deallocated when we deallocate m
+      m->resetProps();
+      // Deallocate m since we no longer need it
+      delete m;
+    } else { }
+    
+    tags = advance(tags);
+  }
+}
+
+Merger::~Merger() {
+  if(props) delete props;
+}
+
+// Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+// tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
+// Each level of the inheritance hierarchy may add zero or more elements to the given list and 
+// call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
+void Merger::mergeKey(properties::tagType type, properties::iterator tag, 
+                      std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
+  // Iterate through the properties of any clocks associated with this object
+  while(!tag.isEnd()) {
+    if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging keys!"<<endl; exit(-1); }
+    if(type==properties::enterTag) {
+      // Call the current clock's mergeKey method
+      (*MergeHandlerInstantiator::MergeKeyHandlers)[tag.name()](type, tag, inStreamRecords, key);
+    } else { }
+    
+    tag++;
+  }
+}
+
 // Given a vector of tag properties, returns the set of values assigned to the given key within the given tag
 std::vector<std::string> Merger::getValues(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags, 
                                            std::string key) {
@@ -521,7 +696,7 @@ bool Merger::allSame(const std::vector<T>& s) {
 std::vector<std::string> Merger::getNames(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags) {
   vector<string> names;
   for(vector<pair<properties::tagType, properties::iterator> >::const_iterator t=tags.begin(); t!=tags.end(); t++) {
-    names.push_back(properties::name(t->second));
+    names.push_back(t->second.name());
   }
   return names;
 }
@@ -605,6 +780,20 @@ std::vector<std::pair<properties::tagType, properties::iterator> >
   
   return advancedTags;
 }
+
+// Returns true if any of the iterators in tags have reached their end. This must be the same for all iterators.
+// Either all have reached their end or none have.
+bool Merger::isIterEnd(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags) {
+  bool ended=false;
+  for(vector<pair<properties::tagType, properties::iterator> >::const_iterator t=tags.begin();
+      t!=tags.end(); t++) {
+    if(t==tags.begin()) ended = t->second.isEnd();
+    else                assert(ended == t->second.isEnd());
+  }
+  
+  return ended;
+}
+
 
 /**********************
  ***** TextMerger *****
@@ -1270,6 +1459,8 @@ BlockMerger::BlockMerger(std::vector<std::pair<properties::tagType, properties::
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
 void BlockMerger::mergeKey(properties::tagType type, properties::iterator tag, 
                        std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
+  Merger::mergeKey(type, tag.next(), inStreamRecords, key);
+  
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; assert(0); }
   if(type==properties::enterTag) {
     key.push_back(properties::get(tag, "callPath"));
@@ -1576,13 +1767,14 @@ void dbgStream::enter(const properties& props) {
 string dbgStream::enterStr(const properties& props) {
   ostringstream oss;
   
-  for(list<pair<string, map<string, string> > >::const_iterator i=props.begin(); i!=props.end(); i++) {
-    list<pair<string, map<string, string> > >::const_iterator iNext=i; iNext++;
-    oss << "["<<(iNext!=props.end()? "|": "")<<i->first<<" ";
-    oss << "numProperties=\""<<i->second.size()<<"\"";
+  //for(list<pair<string, map<string, string> > >::const_iterator i=props.begin(); i!=props.end(); i++) {
+  for(properties::iterator i(props); !i.isEnd(); i++) {
+    properties::iterator iNext=i; iNext++;
+    oss << "["<<(!iNext.isEnd()? "|": "")<<i.name()<<" ";
+    oss << "numProperties=\""<<i.getNumKeys()<<"\"";
     
     int j=0;
-    for(std::map<std::string, std::string>::const_iterator p=i->second.begin(); p!=i->second.end(); p++, j++) {
+    for(std::map<std::string, std::string>::const_iterator p=i.getMap().begin(); p!=i.getMap().end(); p++, j++) {
       oss << " name"<<j<<"=\""<<escape(p->first)<<"\" val"<<j<<"=\""<<escape(p->second)<<"\"";
     }
     
@@ -1633,7 +1825,16 @@ std::string dbgStream::tagStr(const properties& props) {
   return enterStr(props) + exitStr(props);
 }
 
-dbgStreamMerger::dbgStreamMerger(std::string workDir, 
+
+/***************************
+ ***** dbgStreamMerger *****
+ ***************************/
+
+// The directory into which the merged will be written. This directory must be explicitly set before
+// an instance of the dbgStreamMerger class is created
+std::string dbgStreamMerger::workDir;
+
+dbgStreamMerger::dbgStreamMerger(//std::string workDir, 
                                  std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                                  map<string, streamRecord*>& outStreamRecords,
                                  vector<map<string, streamRecord*> >& inStreamRecords,
@@ -1792,7 +1993,7 @@ properties* indent::setProperties(std::string prefix, int repeatCnt, const attrO
     map<string, string> newProps;
     newProps["prefix"] = prefix;
     newProps["repeatCnt"] = txt()<<repeatCnt;
-    newProps["callPath"] = cp2str(CPRuntime.doStackwalk());
+    //newProps["callPath"] = cp2str(CPRuntime.doStackwalk());
     props->add("indent", newProps);
   } else
     props->active = false;
@@ -1827,9 +2028,9 @@ IndentMerger::IndentMerger(std::vector<std::pair<properties::tagType, properties
     pMap["prefix"] = getMergedValue(tags, "prefix");
     pMap["repeatCnt"] = txt()<<vAvg(str2int(getValues(tags, "repeatCnt")));
     
-    vector<string> cpValues = getValues(tags, "callPath");
+    /*vector<string> cpValues = getValues(tags, "callPath");
     assert(allSame<string>(cpValues));
-    pMap["callPath"] = *cpValues.begin();
+    pMap["callPath"] = *cpValues.begin();*/
   }
   
   props->add("indent", pMap);

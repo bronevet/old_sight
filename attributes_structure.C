@@ -221,18 +221,19 @@ bool attributesC::query() {
 // ***** Attribute Interface *****
 // *******************************
 
-attr::attr(std::string key, std::string val, properties* props) : key(key), val(val) { init<std::string>(key, val, props); }
-attr::attr(std::string key, char*       val, properties* props) : key(key), val(val) { init<char*      >(key, val, props); }
-attr::attr(std::string key, const char* val, properties* props) : key(key), val(val) { init<char*      >(key, (char*)val, props); }
-attr::attr(std::string key, void*       val, properties* props) : key(key), val(val) { init<void*      >(key, val, props); }
-attr::attr(std::string key, int         val, properties* props) : key(key), val(val) { init<long       >(key, val, props); }
-attr::attr(std::string key, long        val, properties* props) : key(key), val(val) { init<long       >(key, val, props); }
-attr::attr(std::string key, float       val, properties* props) : key(key), val(val) { init<double     >(key, val, props); }
-attr::attr(std::string key, double      val, properties* props) : key(key), val(val) { init<double     >(key, val, props); }
+attr::attr(std::string key, std::string val, properties* props) : sightObj(setProperties<std::string>(key, val, props)),        key(key), val(val) { init<std::string>(key, val, props); }       
+attr::attr(std::string key, char*       val, properties* props) : sightObj(setProperties<char*      >(key, val, props)),        key(key), val(val) { init<char*      >(key, val, props); }       
+attr::attr(std::string key, const char* val, properties* props) : sightObj(setProperties<char*      >(key, (char*)val, props)), key(key), val(val) { init<char*      >(key, (char*)val, props); }
+attr::attr(std::string key, void*       val, properties* props) : sightObj(setProperties<void*      >(key, val, props)),        key(key), val(val) { init<void*      >(key, val, props); }       
+attr::attr(std::string key, int         val, properties* props) : sightObj(setProperties<long       >(key, val, props)),        key(key), val(val) { init<long       >(key, val, props); }       
+attr::attr(std::string key, long        val, properties* props) : sightObj(setProperties<long       >(key, val, props)),        key(key), val(val) { init<long       >(key, val, props); }       
+attr::attr(std::string key, float       val, properties* props) : sightObj(setProperties<double     >(key, val, props)),        key(key), val(val) { init<double     >(key, val, props); }       
+attr::attr(std::string key, double      val, properties* props) : sightObj(setProperties<double     >(key, val, props)),        key(key), val(val) { init<double     >(key, val, props); }       
 
 template<typename T>
 void attr::init(std::string key, T val, properties* props) {
 //cout << "attr::init("<<key<<", "<<val<<"), attributes.exists(key)="<<attributes.exists(key)<<"\n"; cout.flush();
+  // Register the new value for the given key
   if(attributes.exists(key)) {
     keyPreviouslySet = true;
     const std::set<attrValue>& curValues = attributes.get(key);
@@ -244,18 +245,22 @@ void attr::init(std::string key, T val, properties* props) {
     keyPreviouslySet = false;
     attributes.add(key, this->val); 
   }
+}
+
+template<typename T>
+properties* attr::setProperties(std::string key, T val, properties* props) {
+//cout << "attr::init("<<key<<", "<<val<<"), attributes.exists(key)="<<attributes.exists(key)<<"\n"; cout.flush();
+  if(props==NULL) props = new properties();
   
-  if(props==NULL) this->props = new properties();
-  else            this->props = props;
-  
-  map<string, string> newProps;
+  map<string, string> pMap;
   attrValue v(val);
-  newProps["key"] = key;
-  newProps["val"] = v.getAsStr();
-  newProps["type"] = txt()<<v.getType();
-  this->props->add("attr", newProps);
+  pMap["key"] = key;
+  pMap["val"] = v.getAsStr();
+  pMap["type"] = txt()<<v.getType();
+  props->add("attr", pMap);
   
-  dbg.enter(this);
+  //dbg.enter(this);
+  return props;
 }
 
 attr::~attr() {
@@ -267,7 +272,7 @@ attr::~attr() {
   else
     attributes.remove(key);
     
-  dbg.exit(this);
+  //dbg.exit(this);
 }
 // Returns the key of this attribute
 string attr::getKey() const
@@ -364,6 +369,23 @@ void* attrFalse_enter() { return new attrFalse(); }
 void attrFalse_exit(void* subQ) { delete (attrFalse*)subQ; }
 }
 
+/*********************************************
+ ***** AttributeMergeHandlerInstantiator *****
+ *********************************************/
+
+AttributeMergeHandlerInstantiator::AttributeMergeHandlerInstantiator() { 
+  (*MergeHandlers   )["attr"]  = AttributeMerger::create;
+  (*MergeKeyHandlers)["attr"]  = AttributeMerger::mergeKey;
+  MergeGetStreamRecords->insert(&AttributeGetMergeStreamRecord);
+}
+AttributeMergeHandlerInstantiator AttributeMergeHandlerInstance;
+
+std::map<std::string, streamRecord*> AttributeGetMergeStreamRecord(int streamID) {
+  std::map<std::string, streamRecord*> mergeMap;
+  mergeMap["anchor"] = new AnchorStreamRecord(streamID);
+  return mergeMap;
+}
+
 /***************************
  ***** AttributeMerger *****
  ***************************/
@@ -409,6 +431,8 @@ AttributeMerger::AttributeMerger(std::vector<std::pair<properties::tagType, prop
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
 void AttributeMerger::mergeKey(properties::tagType type, properties::iterator tag, 
                                std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
+  Merger::mergeKey(type, tag.next(), inStreamRecords, key);
+  
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
     key.push_back(properties::get(tag, "key"));

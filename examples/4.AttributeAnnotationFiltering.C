@@ -6,18 +6,29 @@ using namespace sight;
 
 int main(int argc, char** argv) {
   int selectedClientID=-1;
-  if(argc==2)
-    selectedClientID = atoi(argv[1]);
-  
+  if(argc>=2) selectedClientID = atoi(argv[1]);
+    
+  int selNumIters=-1;
+  int numIters;
+  if(argc>=3) { 
+    selNumIters = atoi(argv[2]);
+    numIters = selNumIters;
+  } else
+    numIters = 100;
+    
   int numServers=3;
   int numClients=10;
   string requests[] = {"read", "write", "status"};
   
-  srand(time(NULL));
+  srand(time(NULL)+getpid());
   
   SightInit(argc, argv, "4.AttributeAnnotationFiltering", 
-                        "dbg.4.AttributeAnnotationFiltering"+(selectedClientID==-1 ? string(""):
-                                                                   txt()<<".client_"<<selectedClientID));
+                        "dbg.4.AttributeAnnotationFiltering"+
+                            (selectedClientID==-1 ? string(""):
+                                                    txt()<<".client_"<<selectedClientID)+
+                            (selNumIters==-1 ? string(""):
+                                                    txt()<<".numIters_"<<selNumIters));
+  stepClock c(1);
   
   dbg << "<h1>Example 4: Attribute-Based Filtering</h1>" << endl;
   
@@ -40,12 +51,14 @@ int main(int argc, char** argv) {
   // Version of selector that always looks at the current value of the request attribute
   colorSelector requestColor("request", 0,.3,0,0,1,0); // Blue gradient
   colorSelector serverColor(0,0,.3,0,0,1); // Green gradient
-    
-  for(int i=0; i<100; i++) {
+  
+  int clientID;
+  if(selectedClientID>=0) clientID = selectedClientID;
+  else                    clientID = rand()%numClients;
+  
+  for(int i=0; i<numIters; i++) {
+    //cout << "clock="<<c.str()<<endl;
     int serverID = rand()%numServers;
-    int clientID;
-    if(selectedClientID>=0) clientID = selectedClientID;
-    else                    clientID = rand()%numClients;
     string request = requests[rand()%3];
     
     // Create attributes that identify the server, client and request type for sight
@@ -54,9 +67,9 @@ int main(int argc, char** argv) {
     attr r("request", request);
     
     if(i==0) dbg << "We use attrIf to emit debug output only for write and read requests, but not status requests."<<endl;
-    attrIf aif(new attrNEQ("request", string("status")));
-    
-    if(i==0) 
+    //attrIf aif(new attrNEQ("request", string("status")));
+
+    if(i==0)
       dbg << "Each line uses conditional formatting that depends on current application state. The indentation is controlled "<<
              "by the server ID. Further, the text color of the Client ID, background color of the request text and the border "<<
              "color of the Server ID depend on the values of these variables. Color selection is done in two steps. First, "<<
@@ -67,10 +80,15 @@ int main(int argc, char** argv) {
              "that controls the color choice and the selector that will record all the values that will form the given color "<<
              "gradient. Once the application is done executing the colorSelector will consider all the values it ever observed "<<
              "and only then choose the actual color along the gradient that will be assigned to each value."<<endl;
+
+    if(i==0) for(int j=0; j<clientID; j++) c.step(0);
     
     indent ind(sid.getVInt());
     dbg << textColor::start(clientColor, cid.getVal()) << "Client "<<clientID<<textColor::end()<<" "<<"sending "<<
            bgColor::start(requestColor) << request << bgColor::end()<< " request to "<<
            borderColor::start(serverColor, sid.getVal()) << "Server "<<serverID<<borderColor::end()<<endl;
+    
+    
+    for(int j=0; j<10; j++) c.step(0);
   }
 }

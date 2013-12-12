@@ -92,7 +92,80 @@ class properties
     
   void add(std::string className, const std::map<std::string, std::string>& props);
   
-  typedef std::list<std::pair<std::string, std::map<std::string, std::string> > >::const_iterator iterator;
+  //typedef std::list<std::pair<std::string, std::map<std::string, std::string> > >::const_iterator iterator;
+  
+  // Wrapper for iterators to property lists that includes its own end iterator to make it possible to 
+  // tell whether the iterator has reached the end of the list without having a reference to the list itself.
+  class iterator {
+    std::list<std::pair<std::string, std::map<std::string, std::string> > >::const_iterator cur;
+    std::list<std::pair<std::string, std::map<std::string, std::string> > >::const_iterator end;
+    
+    public:  
+    iterator(const std::list<std::pair<std::string, std::map<std::string, std::string> > >::const_iterator& cur,
+             const std::list<std::pair<std::string, std::map<std::string, std::string> > >::const_iterator& end) :
+        cur(cur), end(end)
+    {}
+    
+    iterator(const std::list<std::pair<std::string, std::map<std::string, std::string> > >& l) :
+      cur(l.begin()), end(l.end())
+    {}
+    
+    iterator(const properties& props) :
+      cur(props.p.begin()), end(props.p.end())
+    {}
+    
+    iterator& operator++() {
+      cur++;
+      return *this;
+    }
+    
+    iterator& operator++(int) {
+      cur++;
+      return *this;
+    }
+    
+    // Returns the iterator that follows this one without modifying this one
+    iterator next() const {
+      std::list<std::pair<std::string, std::map<std::string, std::string> > >::const_iterator next = cur;
+      next++;
+      return iterator(next, end);
+    }
+    
+    // Returns the iterator that precedes this one without modifying this one
+    iterator prev() const {
+      std::list<std::pair<std::string, std::map<std::string, std::string> > >::const_iterator prev = cur;
+      prev--;
+      return iterator(prev, end);
+    }
+    
+    const std::pair<std::string, std::map<std::string, std::string> >& operator*() {
+      assert(!isEnd());
+      return *cur;
+    }
+    
+    // Returns whether this iterator has reached the end of its list
+    bool isEnd() const
+    { return cur == end; }
+    
+    // Given an iterator to a particular key->value mapping, returns the number of keys in the map
+    int getNumKeys() const
+    { return cur->second.size(); }
+      
+    // Given an iterator to a particular key->value mapping, returns a const reference to the key/value mapping
+    const std::map<std::string, std::string>& getMap() const
+    { return cur->second; }
+    
+    // Returns whether the given key is mapped to a value in the key/value map at this iterator
+    bool exists(std::string key) const
+    { return cur->second.find(key) != cur->second.end(); }
+    
+    // Returns the name of the object type referred to by the given iterator
+    std::string name() const
+    { return cur->first; }
+    
+    // Returns the string representation of the given properties iterator  
+    std::string str() const;
+  };
   
   // Returns the start of the list to iterate from the most derived class of an object to the most base
   iterator begin() const;
@@ -112,17 +185,26 @@ class properties
   // Given an iterator to a particular key->value mapping, returns the integer interpretation of the value mapped to the given key
   static long getInt(iterator cur, std::string key);
   
+  // Returns the integer interpretation of the given string
+  static long asInt(std::string val);
+  
   // Given an iterator to a particular key->value mapping, returns the floating-point interpretation of the value mapped to the given key
   static double getFloat(iterator cur, std::string key);
   
-  // Given an iterator to a particular key->value mapping, returns whether the given key is mapped to some value
+  // Returns the floating-point interpretation of the given string
+  static long asFloat(std::string val);
+  
+  /* // Given an iterator to a particular key->value mapping, returns whether the given key is mapped to some value
   static bool exists(iterator cur, std::string key);
   
   // Given an iterator to a particular key->value mapping, returns the number of keys in the map
   static int getNumKeys(iterator cur);
     
+  // Given an iterator to a particular key->value mapping, returns a const reference to the key/value mapping
+  static const std::map<std::string, std::string>& getMap(iterator cur);
+    
   // Returns the name of the object type referred to by the given iterator
-  static std::string name(iterator cur);
+  static std::string name(iterator cur);*/
   
   // Returns the name of the most-derived class 
   std::string name() const;

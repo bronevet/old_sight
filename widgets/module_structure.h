@@ -142,12 +142,26 @@ class moduleNodeTraceStream: public traceStream
   static properties* setProperties(int nodeID, std::string name, int numInputs, int numOutputs, vizT viz, mergeT merge, properties* props);
 };
 
+class ModuleMergeHandlerInstantiator: public MergeHandlerInstantiator {
+  public:
+  ModuleMergeHandlerInstantiator();
+};
+extern ModuleMergeHandlerInstantiator ModuleMergeHandlerInstance;
+
+std::map<std::string, streamRecord*> ModuleGetMergeStreamRecord(int streamID);
+
 class ModuleMerger : public BlockMerger {
   public:
   ModuleMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
               std::map<std::string, streamRecord*>& outStreamRecords,
               std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
               properties* props=NULL);
+  
+  static Merger* create(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
+                        std::map<std::string, streamRecord*>& outStreamRecords,
+                        std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                        properties* props)
+  { return new ModuleMerger(tags, outStreamRecords, inStreamRecords, props); }
   
   // Sets the properties of the merged object
   static properties* setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
@@ -170,6 +184,12 @@ class ModuleNodeMerger : public Merger {
               std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
               properties* props=NULL);
   
+  static Merger* create(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
+                        std::map<std::string, streamRecord*>& outStreamRecords,
+                        std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                        properties* props)
+  { return new ModuleNodeMerger(tags, outStreamRecords, inStreamRecords, props); }
+  
   // Sets the properties of the merged object
   static properties* setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                                    std::map<std::string, streamRecord*>& outStreamRecords,
@@ -191,6 +211,12 @@ class ModuleEdgeMerger : public Merger {
               std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
               properties* props=NULL);
   
+  static Merger* create(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
+                        std::map<std::string, streamRecord*>& outStreamRecords,
+                        std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                        properties* props)
+  { return new ModuleEdgeMerger(tags, outStreamRecords, inStreamRecords, props); }
+  
   // Sets the properties of the merged object
   static properties* setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                                    std::map<std::string, streamRecord*>& outStreamRecords,
@@ -211,6 +237,12 @@ class ModuleNodeTraceStreamMerger : public TraceStreamMerger {
               std::map<std::string, streamRecord*>& outStreamRecords,
               std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
               properties* props=NULL);
+    
+  static Merger* create(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
+                        std::map<std::string, streamRecord*>& outStreamRecords,
+                        std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                        properties* props)
+  { return new ModuleNodeTraceStreamMerger(tags, outStreamRecords, inStreamRecords, props); }
               
   // Sets the properties of the merged object
   static properties* setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,

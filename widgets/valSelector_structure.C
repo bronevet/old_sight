@@ -13,13 +13,13 @@ namespace structure {
 
 int valSelector::maxSelID=0;
 
-valSelector::valSelector() {
+valSelector::valSelector(properties* props) : sightObj(props) {
   attrKeyKnown = false;
   selID=maxSelID;
   maxSelID++;
 }
 
-valSelector::valSelector(std::string attrKey) : attrKey(attrKey) { 
+valSelector::valSelector(std::string attrKey, properties* props) : sightObj(props), attrKey(attrKey) { 
   attrKeyKnown = true;
   selID=maxSelID;
   maxSelID++;
@@ -32,30 +32,31 @@ int valSelector::getID() const
  ***** colorSelector *****
  *************************/
 
-colorSelector::colorSelector(properties* props) : valSelector()
-{ init(0, 1, 1, .3, 0, .3); }
+colorSelector::colorSelector(properties* props) : valSelector(setProperties(0, 1, 1, .3, 0, .3, props))
+{ }
 
-colorSelector::colorSelector(std::string attrKey, properties* props) : valSelector(attrKey)
-{ init(0, 1, 1, .3, 0, .3); }
+colorSelector::colorSelector(std::string attrKey, properties* props) : valSelector(attrKey, setProperties(0, 1, 1, .3, 0, .3, props))
+{  }
 
 // Color selector with an explicit color gradient
 colorSelector::colorSelector(float startR, float startG, float startB,
-                             float endR,   float endG,   float endB, properties* props) : valSelector()
-{ init(startR, startG, startB, endR, endG, endB); }
+                             float endR,   float endG,   float endB, properties* props) : 
+    valSelector(setProperties(startR, startG, startB, endR, endG, endB, props))
+{ }
 
 colorSelector::colorSelector(std::string attrKey,
                              float startR, float startG, float startB,
-                             float endR,   float endG,   float endB, properties* props) : valSelector(attrKey)
-{ init(startR, startG, startB, endR, endG, endB); }
+                             float endR,   float endG,   float endB, properties* props) : 
+    valSelector(attrKey, setProperties(startR, startG, startB, endR, endG, endB, props))
+{ }
 
-void colorSelector::init(float startR, float startG, float startB,
-                         float endR,   float endG,   float endB,
-                         properties* props) {
-  if(props==NULL) this->props = new properties();
-  else            this->props = props;
+properties* colorSelector::setProperties(float startR, float startG, float startB,
+                                         float endR,   float endG,   float endB,
+                                         properties* props) {
+  if(props==NULL) props = new properties();
   
   map<string, string> pMap;
-  pMap["selID"]  = txt()<<selID;
+  pMap["selID"]  = txt()<<maxSelID;
   pMap["startR"] = txt()<<startR;
   pMap["endR"]   = txt()<<endR;
   pMap["startG"] = txt()<<startG;
@@ -63,15 +64,16 @@ void colorSelector::init(float startR, float startG, float startB,
   pMap["startB"] = txt()<<startB;
   pMap["endB"]   = txt()<<endB;
   
-  this->props->add("colorSelector", pMap);
+  props->add("colorSelector", pMap);
   
   //dbg.enter("colorSelector", properties, false);
-  dbg.enter(this);
+  //dbg.enter(this);
+  return props;
 }
 
 colorSelector::~colorSelector() {
   //dbg.exit("colorSelector");
-  dbg.exit(this);
+  //dbg.exit(this);
 }
 
 // Informs the value selector that we have observed a new value that the selector needs to account for
@@ -96,114 +98,98 @@ string colorSelector::observeSelection() {
  ***** cssColor *****
  ********************/
 
+// Stack of sightObjects that correspond to currently live text formatting annotations
+list<sightObj*> activeFormats;
+
 // instanceID: uniquely identifies the particular formatted region of output that is controlled 
 // by the given value selector
-string start_internal(valSelector& sel, const attrValue* val, string name) { 
+void start_internal(valSelector& sel, const attrValue* val, string name) { 
   // Each text-colored region is given a different uniqueID to make it possible to apply formatting to each one 
   // independently. Region identities are assigned using the instanceID counter, which is continually incremented
   static int instanceID=0;
   
   // Only bother if this text will be emitted
-  if(!attributes.query()) return "";
+  if(!attributes.query()) return;
   
   string valueStr;
   if(val) valueStr = sel.observeSelection(*val);
   else    valueStr = sel.observeSelection();
   
-  properties p;
+  // Create a sightObj for the given formatting annotation and push it onto activeFormats
+  properties* p = new properties();
   map<string, string> pMap;
   pMap["selID"] = txt()<<sel.getID();
   pMap["instanceID"] = txt()<<instanceID++;
   pMap["value"] = valueStr;
-  p.add(name, pMap);
-  
-  //dbg.enter(name, properties, false);
-  return dbg.enterStr(p);
+  p->add(name, pMap);
+  activeFormats.push_back(new sightObj(p));
 }
 
-string end_internal(string name) {
+void end_internal(string name) {
   // Only bother if this text will be emitted
-  if(!attributes.query()) return "";
+  if(!attributes.query()) return;
   
-  properties p;
-  map<string, string> pMap;
-  p.add(name, pMap);
-  
-  //dbg.exit(name);
-  return dbg.exitStr(p);
+  // Pop the most recent formatting annotation from activeFormats
+  assert(activeFormats.size()>0);
+  delete activeFormats.back();
+  activeFormats.pop_back();
 }
 
-/*string textColor::start(valSelector& sel, const attrValue& val)
-{ return start_internal(sel, &val, "textColor"); }
-
-string textColor::start(valSelector& sel) 
-{ return start_internal(sel, NULL, "textColor"); }
-*/
 std::ostream& textColor::operator<<(std::ostream& stream, const textColor::start& s) {
-  dbgStream& ds = dynamic_cast<dbgStream&>(stream);
-  ds.ownerAccessing();
-  ds << start_internal(s.sel, s.val, "textColor");
-  ds.userAccessing();  
-  return ds;
+  start_internal(s.sel, s.val, "textColor");
+  return stream;
 }
 
-/*string textColor::end()
-{ return end_internal("textColor"); }*/
 std::ostream& textColor::operator<<(std::ostream& stream, const textColor::end& e) {
-  dbgStream& ds = dynamic_cast<dbgStream&>(stream);
-  ds.ownerAccessing();
-  ds << end_internal("textColor");
-  ds.userAccessing();  
-  return ds;
+  end_internal("textColor");
+  return stream;
 }
-
-/*string bgColor::start(valSelector& sel, const attrValue& val)
-{ return start_internal(sel, &val, "bgColor"); }
-
-string bgColor::start(valSelector& sel) 
-{ return start_internal(sel, NULL, "bgColor"); }*/
 
 std::ostream& bgColor::operator<<(std::ostream& stream, const bgColor::start& s) {
-  dbgStream& ds = dynamic_cast<dbgStream&>(stream);
-  ds.ownerAccessing();
-  ds << start_internal(s.sel, s.val, "bgColor");
-  ds.userAccessing();  
-  return ds;
+  start_internal(s.sel, s.val, "bgColor");
+  return stream;
 }
 
-/*string bgColor::end()
-{ return end_internal("bgColor"); }*/
 std::ostream& bgColor::operator<<(std::ostream& stream, const bgColor::end& e) {
-  dbgStream& ds = dynamic_cast<dbgStream&>(stream);
-  ds.ownerAccessing();
-  ds << end_internal("bgColor");
-  ds.userAccessing();  
-  return ds;
+  end_internal("bgColor");
+  return stream;
 }
-
-/*string borderColor::start(valSelector& sel, const attrValue& val)
-{ return start_internal(sel, &val, "borderColor"); }
-
-string borderColor::start(valSelector& sel) 
-{ return start_internal(sel, NULL, "borderColor"); }*/
 
 std::ostream& borderColor::operator<<(std::ostream& stream, const borderColor::start& s) {
-  dbgStream& ds = dynamic_cast<dbgStream&>(stream);
-  ds.ownerAccessing();
-  ds << start_internal(s.sel, s.val, "borderColor");
-  ds.userAccessing();  
-  return ds;
+  start_internal(s.sel, s.val, "borderColor");
+  return stream;
 }
 
-/*string borderColor::end()
-{ return end_internal("borderColor"); }*/
 std::ostream& borderColor::operator<<(std::ostream& stream, const borderColor::end& e) {
-  dbgStream& ds = dynamic_cast<dbgStream&>(stream);
-  ds.ownerAccessing();
-  ds << end_internal("borderColor");
-  ds.userAccessing();  
-  return ds;
+  end_internal("borderColor");
+  return stream;
 }
+
+/*************************************************
+ ***** ColorSelectorMergeHandlerInstantiator *****
+ *************************************************/
+
+ColorSelectorMergeHandlerInstantiator::ColorSelectorMergeHandlerInstantiator() { 
+  (*MergeHandlers   )["colorSelector"] = ColorSelectorMerger::create;
+  (*MergeKeyHandlers)["colorSelector"] = ColorSelectorMerger::mergeKey;
+  (*MergeHandlers   )["textColor"]     = ColorMerger::create;
+  (*MergeKeyHandlers)["textColor"]     = ColorMerger::mergeKey;
+  (*MergeHandlers   )["bgColor"]       = ColorMerger::create;
+  (*MergeKeyHandlers)["bgColor"]       = ColorMerger::mergeKey;
+  (*MergeHandlers   )["borderColor"]   = ColorMerger::create;
+  (*MergeKeyHandlers)["borderColor"]   = ColorMerger::mergeKey;
+  
+  MergeGetStreamRecords->insert(&ColorSelectorGetMergeStreamRecord);
+}
+ColorSelectorMergeHandlerInstantiator ColorSelectorMergeHandlerInstance;
+
+std::map<std::string, streamRecord*> ColorSelectorGetMergeStreamRecord(int streamID) {
+  std::map<std::string, streamRecord*> mergeMap;
+  mergeMap["colorSelector"] = new ColorSelectorStreamRecord(streamID);
+  mergeMap["color"]         = new ColorStreamRecord(streamID);
+  return mergeMap;
+}
+
 
 /*******************************
  ***** ColorSelectorMerger *****
@@ -247,8 +233,8 @@ ColorSelectorMerger::ColorSelectorMerger(std::vector<std::pair<properties::tagTy
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
 void ColorSelectorMerger::mergeKey(properties::tagType type, properties::iterator tag, 
                            std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
-  properties::iterator blockTag = tag;
-    
+  Merger::mergeKey(type, tag.next(), inStreamRecords, key);
+  
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
   }
@@ -300,8 +286,8 @@ ColorMerger::ColorMerger(std::vector<std::pair<properties::tagType, properties::
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
 void ColorMerger::mergeKey(properties::tagType type, properties::iterator tag, 
                            std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
-  properties::iterator blockTag = tag;
-    
+  Merger::mergeKey(type, tag.next(), inStreamRecords, key);
+  
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
     // We only merge color annotations that correspond to the same colorSelector in the outgoing stream. 

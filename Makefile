@@ -68,12 +68,12 @@ slayout.o: slayout.C process.C process.h
 	g++ ${SIGHT_CFLAGS} slayout.C -I. -c -o slayout.o
 
 slayout${EXE}: mfem libsight_layout.a 
-	g++ -Wl,--whole-archive libsight_layout.a apps/mfem/mfem_layout.o  -Wl,-no-whole-archive -o slayout${EXE}
+	g++ -Wl,--whole-archive libsight_layout.a apps/mfem/mfem_layout.o -Wl,-no-whole-archive -o slayout${EXE}
 #	ld --whole-archive slayout.o libsight_layout.a apps/mfem/mfem_layout.o -o slayout${EXE}
 #	g++ ${SIGHT_CFLAGS} slayout.C -Wl,--whole-archive libsight_layout.a -DMFEM -I. -Iapps/mfem apps/mfem/mfem_layout.o -Wl,-no-whole-archive -o slayout${EXE}
 
 hier_merge${EXE}: hier_merge.C process.C process.h libsight_structure.a 
-	g++ ${SIGHT_CFLAGS} hier_merge.C libsight_structure.a tools/callpath/src/src/libcallpath.so -DMFEM -I. ${SIGHT_LINKFLAGS} -o hier_merge${EXE}
+	g++ ${SIGHT_CFLAGS} hier_merge.C -Wl,--whole-archive libsight_structure.a -Wl,-no-whole-archive tools/callpath/src/src/libcallpath.so -DMFEM -I. ${SIGHT_LINKFLAGS} -o hier_merge${EXE}
 
 
 #	g++ -c slayout.C -o slayout.o
@@ -89,12 +89,12 @@ hier_merge${EXE}: hier_merge.C process.C process.h libsight_structure.a
 #	ar -r libsight_common.a ${SIGHT_COMMON_O} widgets/*_common.o
 
 libsight_structure.a: ${SIGHT_STRUCTURE_O} ${SIGHT_STRUCTURE_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre
-	ar -r libsight_structure.a ${SIGHT_STRUCTURE_O} ${SIGHT_COMMON_O} widgets/*_structure.o widgets/*_common.o
+	ar -r libsight_structure.a ${SIGHT_STRUCTURE_O} ${SIGHT_COMMON_O} widgets/*_structure.o widgets/*_common.o widgets/*/*_structure.o
 
 libsight_layout.a: ${SIGHT_LAYOUT_O} ${SIGHT_LAYOUT_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre widgets/gsl/lib/libgsl.a widgets/gsl/lib/libgslcblas.a
 	mkdir -p tmp
 	cd tmp; ar -x ../widgets/gsl/lib/libgsl.a; ar -x ../widgets/gsl/lib/libgslcblas.a
-	ar -r libsight_layout.a    ${SIGHT_LAYOUT_O}    ${SIGHT_COMMON_O} widgets/*_layout.o  widgets/*_common.o tmp/*.o
+	ar -r libsight_layout.a    ${SIGHT_LAYOUT_O}    ${SIGHT_COMMON_O} widgets/*_layout.o widgets/*_common.o widgets/*/*_layout.o tmp/*.o
 	rm -fr tmp
 	
 #libaz.a: libabc.a(*.o) libxyz.a(*.o)

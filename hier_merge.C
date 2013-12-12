@@ -40,17 +40,35 @@ class tagGroup {
   
   bool operator<(const tagGroup& that) const
   { return type< that.type ||
-           (type==that.type && objName< that.objName) ||
-           //(type==that.type && objName==that.objName && cp< that.cp) ||
-           (type==that.type && objName==that.objName /*&& cp==that.cp*/ && key<that.key); }
+          (type==that.type && objName< that.objName) ||
+          (type==that.type && objName==that.objName  && key<that.key); }
 }; // class tagGroup
 
 // The different types of merging 
 typedef enum {commonMerge, // merge the common parts of the logs
-              zipper,      // gather data from all the logs without merging any common parts
-              diffMerge    // merge the common log parts, while highlighting their differences
+              zipper, // gather data from all the logs without merging any common parts
+              diff    // merge the common log parts, while highlighting their differences
              } mergeType;
 
+// Returns the string representation of the given mergeType
+string mergeType2Str(mergeType mt) {
+  switch(mt) {
+    case commonMerge: return "common";
+    case zipper: return "zipper";
+    case diff:   return "diff";
+  }
+  assert(0);
+  return "";
+}
+
+// Given a string repreesntation of the given mergeType, returns the corresponding enum
+mergeType str2MergeType(string mtStr) {
+  if(mtStr == "common") return commonMerge;
+  if(mtStr == "zipper") return zipper;
+  if(mtStr == "diff")   return diff;
+  cerr << "ERROR: Unknown merge type \""<<mtStr<<"\"!"<<endl;
+  assert(0);
+}
 // parsers - Vector of parsers from which information will be read
 // nextTag - If merge() is called recursively after a given tag is entered on some but not all the parsers,
 //    contains the information of this entered tag.
@@ -102,117 +120,33 @@ void printTags(ostream& out,
                string indent);
 //#define VERBOSE
 
-class MergeFunctorBase {
-  public:
-  virtual sight::structure::Merger* merge(
-                       const vector<pair<properties::tagType, properties::iterator> >& tags,
-                       std::map<std::string, streamRecord*>& outStreamRecords,
-                       std::vector<std::map<std::string, streamRecord*> >& inStreamRecords)=0;
-
-  virtual std::list<std::string> mergeKey(properties::tagType type, properties::iterator tag, std::map<std::string, streamRecord*>& inStreamRecords)=0;
-};
-
-// M - class derived from Merger
-template<class M>
-class MergeFunctor : public MergeFunctorBase {
-  public:
-  virtual sight::structure::Merger* merge(const vector<pair<properties::tagType, properties::iterator> >& tags,
-                                  std::map<std::string, streamRecord*>& outStreamRecords,
-                                  std::vector<std::map<std::string, streamRecord*> >& inStreamRecords) {
-    return new M(tags, outStreamRecords, inStreamRecords);
-  }
-  
-  std::list<std::string> mergeKey(properties::tagType type, properties::iterator tag, std::map<std::string, streamRecord*>& inStreamRecords) {
-    std::list<std::string> key;
-    M::mergeKey(type, tag, inStreamRecords, key);
-    return key;
-  }
-};
-
-class dbgStreamMergeFunctor : public MergeFunctorBase {
-  string workDir;
-  public:
-  dbgStreamMergeFunctor(string workDir) : workDir(workDir) {}
-  
-  sight::structure::Merger* merge(const vector<pair<properties::tagType, properties::iterator> >& tags,
-                                  std::map<std::string, streamRecord*>& outStreamRecords,
-                                  std::vector<std::map<std::string, streamRecord*> >& inStreamRecords) {
-    return new dbgStreamMerger(workDir, tags, outStreamRecords, inStreamRecords);
-  }
-  
-  std::list<std::string> mergeKey(properties::tagType type, properties::iterator tag, std::map<std::string, streamRecord*>& inStreamRecords) {
-    std::list<std::string> key;
-    dbgStreamMerger::mergeKey(type, tag, inStreamRecords, key);
-    return key;
-  }
-};
-
-map<string, MergeFunctorBase*> mergers;
-
 int main(int argc, char** argv) {
-  if(argc<3) { cerr<<"Usage: hier_merge outDir [fNames]"<<endl; exit(-1); }
+  if(argc<3) { cerr<<"Usage: hier_merge outDir mergeType [fNames]"<<endl; exit(-1); }
   vector<FILEStructureParser*> fileParsers;
   const char* outDir = argv[1];
-  for(int i=2; i<argc; i++) {
+  mergeType mt = str2MergeType(string(argv[2]));
+  for(int i=3; i<argc; i++) {
     fileParsers.push_back(new FILEStructureParser(argv[i], 10000));
   }
   #ifdef VERBOSE
   cout << "#fileParserRefs="<<fileParsers.size()<<endl;
   #endif
   
-  mergers["sight"]         = new dbgStreamMergeFunctor(string(outDir));
-  mergers["text"]          = new MergeFunctor<TextMerger>();
-  mergers["block"]         = new MergeFunctor<BlockMerger>();
-  mergers["link"]          = new MergeFunctor<LinkMerger>();
-  mergers["attr"]          = new MergeFunctor<AttributeMerger>();
-  mergers["indent"]        = new MergeFunctor<IndentMerger>();
-  mergers["scope"]         = new MergeFunctor<ScopeMerger>();
-  mergers["graph"]         = new MergeFunctor<GraphMerger>();
-  mergers["dirEdge"]       = new MergeFunctor<DirEdgeMerger>();
-  mergers["undirEdge"]     = new MergeFunctor<UndirEdgeMerger>();
-  mergers["node"]          = new MergeFunctor<NodeMerger>();
-  mergers["trace"]         = new MergeFunctor<TraceMerger>();
-  mergers["traceStream"]   = new MergeFunctor<TraceStreamMerger>();
-  mergers["traceObs"]      = new MergeFunctor<TraceObsMerger>();
-  mergers["module"]        = new MergeFunctor<ModuleMerger>();
-  mergers["moduleNode"]    = new MergeFunctor<ModuleNodeMerger>();
-  mergers["moduleEdge"]    = new MergeFunctor<ModuleEdgeMerger>();
-  mergers["moduleNodeTS"]  = new MergeFunctor<ModuleNodeTraceStreamMerger>();
-  mergers["colorSelector"] = new MergeFunctor<ColorSelectorMerger>();
-  mergers["textColor"]     = new MergeFunctor<ColorMerger>();
-  mergers["bgColor"]       = new MergeFunctor<ColorMerger>();
-  mergers["borderColor"]   = new MergeFunctor<ColorMerger>();
-  
+  // Set the working directory in the dbgStreamMerger class (it is a static variable). This must be done before an instance of this class is created
+  // since the first and only instance of this class will read this working directory and write all output there.
+  dbgStreamMerger::workDir = outDir;
+    
   vector<pair<properties::tagType, const properties*> > emptyNextTag;
     
   // Initialize the streamRecords for the incoming and outgoing stream. The variant
   // ID starts as 0 as will grow deeper as we discover unmergeable differences
   // between or within the input streams.
-  std::map<std::string, streamRecord*> outStreamRecords;
-  outStreamRecords["sight"]         = new dbgStreamStreamRecord(0);
-  outStreamRecords["anchor"]        = new AnchorStreamRecord(0);
-  outStreamRecords["block"]         = new BlockStreamRecord(0);
-  outStreamRecords["graph"]         = new GraphStreamRecord(0);
-  outStreamRecords["node"]          = new NodeStreamRecord(0);
-  outStreamRecords["traceStream"]   = new TraceStreamRecord(0);
-  outStreamRecords["module"]        = new ModuleStreamRecord(0);
-  outStreamRecords["colorSelector"] = new ColorSelectorStreamRecord(0);
-  outStreamRecords["color"]         = new ColorStreamRecord(0);
+  std::map<std::string, streamRecord*> outStreamRecords = MergeHandlerInstantiator::GetAllMergeStreamRecords(0);
   dbgStreamStreamRecord::enterBlock(outStreamRecords);
   
   std::vector<std::map<std::string, streamRecord*> > inStreamRecords;
   for(int i=0; i<fileParsers.size(); i++) {
-    std::map<std::string, streamRecord*> inStreamR;
-    inStreamR["sight"]         = new dbgStreamStreamRecord(i);
-    inStreamR["anchor"]        = new AnchorStreamRecord(i);
-    inStreamR["block"]         = new BlockStreamRecord(i);
-    inStreamR["graph"]         = new GraphStreamRecord(i);
-    inStreamR["node"]          = new NodeStreamRecord(i);
-    inStreamR["traceStream"]   = new TraceStreamRecord(i);
-    inStreamR["module"]        = new ModuleStreamRecord(i);
-    inStreamR["colorSelector"] = new ColorSelectorStreamRecord(i);
-    inStreamR["color"]         = new ColorStreamRecord(i);
-    inStreamRecords.push_back(inStreamR);
+    inStreamRecords.push_back(MergeHandlerInstantiator::GetAllMergeStreamRecords(i));
   }
   dbgStreamStreamRecord::enterBlock(inStreamRecords);
   
@@ -232,7 +166,7 @@ int main(int argc, char** argv) {
   merge(fileParsers, emptyNextTag, outStreamRecords, inStreamRecords, 
         readyForTagFromAll, allParsersActive,
         tag2stream, numTextTags,
-        0, structure::dbg, zipper, "   :");
+        0, structure::dbg, mt, "   :");
   
   // Close all the parsers and their files
   for(vector<FILEStructureParser*>::iterator p=fileParsers.begin(); p!=fileParsers.end(); p++)
@@ -261,7 +195,8 @@ int mergeTags(properties::tagType type, string objName,
                int& stackDepth, structure::dbgStream& out,
                string indent) {
   // Merge the properties of all tags
-  Merger* m = mergers[objName]->merge(beginTags(nextTag), outStreamRecords, inStreamRecords);
+  //Merger* m = mergers[objName]->merge(beginTags(nextTag), outStreamRecords, inStreamRecords);
+  Merger* m = (*MergeHandlerInstantiator::MergeHandlers)[objName](beginTags(nextTag), outStreamRecords, inStreamRecords, NULL);
   #ifdef VERBOSE
   cout << indent << "merged="<<m->getProps().str()<<endl;
   if(objName == "sight")
@@ -340,13 +275,13 @@ void zipperTags(properties::tagType type, string objName,
       t!=nextTag.end(); t++) {
     if(t->first == properties::enterTag) {
       #ifdef VERBOSE
-    	cout << "zipperTags: Entering props="<<m->getProps().str()<<"\n";
+    	cout << "zipperTags: Entering props="<<t->second->str()<<"\n";
       #endif
       stackDepth++;
       out.enter(*t->second);
     } else if(t->first == properties::exitTag) {
       #ifdef VERBOSE
-    	cout << "zipperTags: Exiting props="<<m->getProps().str()<<"\n";
+    	cout << "zipperTags: Exiting props="<<t->second->str()<<"\n";
       #endif
       stackDepth--;
       out.exit(*t->second);
@@ -448,14 +383,22 @@ int merge(vector<FILEStructureParser*>& parsers,
             nextTag[parserIdx] = props;//make_pair(props.first, props.second);
             
           // Group this parser with all the other parsers that just read a tag with the same name and type (enter/exit)
-          /*cout << "props.second="<<props.second->str()<<endl;
-          std::list<std::string> key = mergers[props.second->name()]->mergeKey(props.first, props.second->begin(), inStreamRecords[parserIdx]);
+          cout << "props.second="<<props.second->str()<<endl;
+          //cout << "MergeHandlerInstantiator="<<MergeHandlerInstantiator::str()<<endl;
+          //std::list<std::string> key = mergers[props.second->name()]->mergeKey(props.first, props.second->begin(), inStreamRecords[parserIdx]);
+          assert(MergeHandlerInstantiator::MergeKeyHandlers->find(props.second->name()) != MergeHandlerInstantiator::MergeKeyHandlers->end());
+          std::list<std::string> key;
+          (*MergeHandlerInstantiator::MergeKeyHandlers)[props.second->name()](props.first, props.second->begin(), inStreamRecords[parserIdx], key);
           cout << "key=";
           for(list<string>::iterator k=key.begin(); k!=key.end(); k++) cout << *k << " ";
-          cout << endl;*/
+          cout << endl;
           
-          tag2stream[tagGroup(props.first, props.second, mergers[props.second->name()]->
-                         mergeKey(props.first, props.second->begin(), inStreamRecords[parserIdx]))
+          tag2stream[tagGroup(props.first, props.second, 
+                              //(mt==commonMerge? 
+                                /*mergers[props.second->name()]->
+                                       mergeKey(props.first, props.second->begin(), inStreamRecords[parserIdx])*/
+                                key/*: 
+                                list<string>())*/)
                     ].push_back(parserIdx);
                     
           // Record whether we read a text tag on any parser
@@ -498,17 +441,17 @@ int merge(vector<FILEStructureParser*>& parsers,
         std::vector<std::map<std::string, streamRecord*> > groupInStreamRecords;
         collectGroupVectorIdx<std::map<std::string, streamRecord*> >(inStreamRecords, textParsers, groupInStreamRecords);
         
-        if(mt == commonMerge)
+        ///if(mt == commonMerge)
           numTagsEmitted +=
             mergeTags(properties::enterTag, "text", 
                     groupNextTag, outStreamRecords, groupInStreamRecords,
                     stackDepth, out, indent+"   .");
-        else if(mt == zipper) {
+        /*else if(mt == zipper) {
           zipperTags(properties::enterTag, "text", 
                     groupNextTag, outStreamRecords, groupInStreamRecords,
                     stackDepth, out, indent+"   .");
           numTagsEmitted += groupNextTag.size();
-        }
+        }*/
         for(list<int>::const_iterator j=textParsers.begin(); j!=textParsers.end(); j++)
           // We're ready to read a new tag on this parser
           readyForTag[*j] = true;      
@@ -536,8 +479,9 @@ int merge(vector<FILEStructureParser*>& parsers,
       // If there is just one group, then we merge the properties of the tags (all same type)
       // read from all the parsers, and perform the enter/exit action of this group
       if(tag2stream.size()==1) {
-        if(mergers.find(tag2stream.begin()->first.objName) == mergers.end()) cerr << "ERROR: cannot find a merger for tag \""<<tag2stream.begin()->first.objName<<"\"!"<<endl;
-        assert(mergers.find(tag2stream.begin()->first.objName) != mergers.end());
+        if(MergeHandlerInstantiator::MergeKeyHandlers->find(tag2stream.begin()->first.objName) == MergeHandlerInstantiator::MergeKeyHandlers->end()) 
+          cerr << "ERROR: cannot find a merger for tag \""<<tag2stream.begin()->first.objName<<"\"!"<<endl;
+        assert(MergeHandlerInstantiator::MergeKeyHandlers->find(tag2stream.begin()->first.objName) != MergeHandlerInstantiator::MergeKeyHandlers->end());
         
         // Contains the next read tag of just the active incoming streams
         vector<pair<properties::tagType, const properties*> > groupNextTag;
@@ -548,22 +492,29 @@ int merge(vector<FILEStructureParser*>& parsers,
         collectGroupVectorBool<std::map<std::string, streamRecord*> >(inStreamRecords, activeParser, groupInStreamRecords);
 
         //cout << indent << "calling mergeTags, objName="<<tag2stream.begin()->first.objName<<endl;
-        if(mt == commonMerge)
+        // Merge the tags if we're merging common log components or if we're zippering 
+        // but this is the highest-level sight object that does need to be merged
+        //if(mt == commonMerge || (mt == zipper && tag2stream.begin()->first.objName=="sight"))
           numTagsEmitted +=
             mergeTags(tag2stream.begin()->first.type, tag2stream.begin()->first.objName,
                     groupNextTag, outStreamRecords, groupInStreamRecords,
                     stackDepth, out, indent+"   .");
-        else if(mt == zipper) {
+        /*else if(mt == zipper) {
           zipperTags(tag2stream.begin()->first.type, tag2stream.begin()->first.objName,
                   groupNextTag, outStreamRecords, groupInStreamRecords,
                   stackDepth, out, indent+"   .");
           numTagsEmitted += groupNextTag.size();
-        }
+        }*/
         //cout << indent << "post-mergeTags() stackDepth="<<stackDepth<<endl;
         
         // Record that we're ready for more tags on all the parsers
         for(vector<bool>::iterator i=readyForTag.begin(); i!=readyForTag.end(); i++)
           *i = true;
+        
+        /*// Reset readyForTag and tag2stream to forget this tag on the parsers within the current group
+        // and get ready to read more from them.
+        for(list<int>::const_iterator i=tag2stream.begin()->second.begin(); i!=tag2stream.begin()->second.end(); i++)
+          readyForTag[*i] = true;*/
         
         // Reset tag2stream since we'll be reloading it based on the next tag read from each parser
         tag2stream.clear();
@@ -643,6 +594,26 @@ int merge(vector<FILEStructureParser*>& parsers,
             //       check if the tags that are currently in groupNextTag are text.
             
             // <<< Recursively Call merge()
+            if(mt == zipper) {
+              #ifdef VERBOSE
+              cout << indent << "<<<<<<<<<<<<<<<<<<<<<<"<<endl;
+              #endif
+              //cout << indent << "start outLocation="<<((dbgStreamStreamRecord*)groupOutStreamRecords["sight"])->getLocation().str()<<endl;
+              int numVariantTagsEmitted = 
+                merge(groupParsers, groupNextTag, 
+                      groupOutStreamRecords, groupInStreamRecords, 
+                      groupNotReadyForTag, groupActiveParser,
+                      groupTag2stream,
+                      numTextTags,
+                      variantStackDepth+1, out, 
+                      mt, 
+                      indent+"   :");
+              //cout << indent << "end outLocation="<<((dbgStreamStreamRecord*)groupOutStreamRecords["sight"])->getLocation().str()<<endl;
+              //cout << indent << "end numVariantTagsEmitted="<<numVariantTagsEmitted<<endl;
+              #ifdef VERBOSE
+              cout << indent << ">>>>>>>>>>>>>>>>>>>>>>"<<endl;
+              #endif
+            } else {
               string subDir = txt()<<out.workDir<<"/"<<"var_"<<subDirCount;
               //cout << "subDir="<<subDir<<endl;
               
@@ -689,7 +660,8 @@ int merge(vector<FILEStructureParser*>& parsers,
               } else {
                 rmdir(subDir.c_str());
               }
-
+             
+            }
             // >>>
             
             // We're done with processing the tag that was just entered
@@ -716,7 +688,8 @@ int merge(vector<FILEStructureParser*>& parsers,
             for(list<int>::const_iterator i=ts->second.begin(); i!=ts->second.end(); i++)
               readyForTag[*i] = true;
             tag2stream.erase(ts++);
-          
+            
+            break;
           // Do nothing for exit tags since these parsers wait for the ones that entered tags to complete their
           // processing of these tags
           } else if(ts->first.type == properties::exitTag) {

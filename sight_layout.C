@@ -100,7 +100,7 @@ void layoutStructure(structureParser& parser) {
         // If this tag denotes one or more variants of the log
         if(props.second->name() == "variants") {
           // Iterate through the structure files of all the variants, adding their layout to the log
-          int numVariants = properties::getNumKeys(props.second->begin());
+          int numVariants = props.second->begin().getNumKeys();
           for(int i=0; i<numVariants; i++) {
             string variantDir = properties::get(props.second->begin(), txt()<<"var_"<<i);
             //cout << "variantDir="<<variantDir<<"\n";

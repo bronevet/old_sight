@@ -29,8 +29,8 @@ class valSelector: public sightObj
   
   public:
   
-  valSelector();
-  valSelector(std::string attrKey);
+  valSelector(properties* props=NULL);
+  valSelector(std::string attrKey, properties* props=NULL);
   
   int getID() const;
   
@@ -60,9 +60,9 @@ class colorSelector : public valSelector {
                 float endR,   float endG,   float endB, 
                 properties* props=NULL);
   
-  void init(float startR, float startG, float startB,
-            float endR,   float endG,   float endB, 
-            properties* props=NULL);
+  static properties* setProperties(float startR, float startG, float startB,
+                                   float endR,   float endG,   float endB,
+                                   properties* props=NULL);
 
   ~colorSelector();
   
@@ -138,6 +138,14 @@ namespace borderColor
   std::ostream& operator<< (std::ostream& stream, const end& e);
 };
 
+class ColorSelectorMergeHandlerInstantiator: public MergeHandlerInstantiator {
+  public:
+  ColorSelectorMergeHandlerInstantiator();
+};
+extern ColorSelectorMergeHandlerInstantiator ColorSelectorMergeHandlerInstance;
+
+std::map<std::string, streamRecord*> ColorSelectorGetMergeStreamRecord(int streamID);
+
 // Merger for colorSelector tag
 class ColorSelectorMerger : public Merger {
   public:
@@ -145,6 +153,12 @@ class ColorSelectorMerger : public Merger {
               std::map<std::string, streamRecord*>& outStreamRecords,
               std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
               properties* props=NULL);
+  
+  static Merger* create(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
+                        std::map<std::string, streamRecord*>& outStreamRecords,
+                        std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                        properties* props)
+  { return new ColorSelectorMerger(tags, outStreamRecords, inStreamRecords, props); }
               
   // Sets the properties of the merged object
   static properties* setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
@@ -167,6 +181,12 @@ class ColorMerger : public Merger {
               std::map<std::string, streamRecord*>& outStreamRecords,
               std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
               properties* props=NULL);
+    
+  static Merger* create(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
+                        std::map<std::string, streamRecord*>& outStreamRecords,
+                        std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                        properties* props)
+  { return new ColorMerger(tags, outStreamRecords, inStreamRecords, props); }
               
   // Sets the properties of the merged object
   static properties* setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,

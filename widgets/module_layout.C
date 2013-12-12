@@ -136,7 +136,7 @@ module::~module() {
 }
 
 void *module::enterTraceStream(properties::iterator props) {
-  assert(properties::name(props) == "moduleNodeTS");
+  assert(props.name() == "moduleNodeTS");
   //string moduleName = properties::get(nameProps, "ModuleName");
   
   // Allocate a new moduleNodeTraceStream. The constructor takes care of registering it with the currently active module
@@ -148,7 +148,7 @@ void *module::enterTraceStream(properties::iterator props) {
 moduleNodeTraceStream::moduleNodeTraceStream(properties::iterator props) : 
   traceStream(properties::next(props), txt()<<"CanvizBox_node"<<properties::getInt(props, "nodeID"), false)
 {
-  assert(properties::name(props) == "moduleNodeTS");
+  assert(props.name() == "moduleNodeTS");
     
   int nodeID = properties::getInt(props, "nodeID");
   

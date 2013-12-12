@@ -109,6 +109,22 @@ scope::~scope()
   }*/
 }
 
+
+/*********************************************
+ ***** ScopeMergeHandlerInstantiator *****
+ *********************************************/
+
+ScopeMergeHandlerInstantiator::ScopeMergeHandlerInstantiator() { 
+  (*MergeHandlers   )["scope"]  = ScopeMerger::create;
+  (*MergeKeyHandlers)["scope"]  = ScopeMerger::mergeKey;
+}
+ScopeMergeHandlerInstantiator ScopeMergeHandlerInstance;
+                                                    
+
+/***********************
+ ***** ScopeMerger *****
+ ***********************/
+
 ScopeMerger::ScopeMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                          map<string, streamRecord*>& outStreamRecords,
                          vector<map<string, streamRecord*> >& inStreamRecords,
@@ -152,8 +168,7 @@ properties* ScopeMerger::setProperties(std::vector<std::pair<properties::tagType
 // call their parents so they can add any info,
 void ScopeMerger::mergeKey(properties::tagType type, properties::iterator tag, 
                            std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
-  properties::iterator blockTag = tag;
-  BlockMerger::mergeKey(type, ++blockTag, inStreamRecords, key);
+  BlockMerger::mergeKey(type, tag.next(), inStreamRecords, key);
 }
 
 }; // namespace structure
