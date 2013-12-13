@@ -32,7 +32,7 @@ run: ${TESTERS}
 	../slayout${EXE} dbg.8.Modules/structure;	
 
 demo${EXE}: demo.C ../libsight_structure.a ${sight_H}
-	g++ ${SIGHT_CFLAGS} demo.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o demo${EXE}
+	g++ ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" demo.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o demo${EXE}
 
 1.StructuredFormatting${EXE}: 1.StructuredFormatting.C ../libsight_structure.a ${sight_H}
 	g++ ${SIGHT_CFLAGS} 1.StructuredFormatting.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 1.StructuredFormatting${EXE}

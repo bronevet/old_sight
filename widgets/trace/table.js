@@ -7,7 +7,8 @@ var dataType = {};
 
 function showTable(data, hostDiv, sortAttrName) {
   div2Data[hostDiv] = data;
-  
+
+  dataType[hostDiv] = {};
   var firstObs = true;
   for(d in data) { if(data.hasOwnProperty(d)) {
     for(key in data[d]) { if(data[d].hasOwnProperty(key)) {

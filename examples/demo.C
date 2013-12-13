@@ -24,14 +24,17 @@ int main(int argc, char** argv)
   if(argc<2) { printf("Usage: demo maxDepth\n"); exit(-1); }
   int maxDepth = atoi(argv[1]);
   
+  // The absolute path of this file
+  string thisFile = txt()<<ROOT_PATH<<"/examples/demo.C";
+  
   SightInit(argc, argv, "Demo", txt()<<"dbg.Demo.maxDepth_"<<maxDepth);
    
   dbg << "<h1>Demonstration of Sight</h1>" << endl;
   
   { 
     scope s("No formatting", scope::high);
-    { source src("source", source::regions(source::reg("/g/g15/bronevet/code/tmp/sight/examples/demo.C", "NFStart",      "NFEnd"),
-                                           source::reg("/g/g15/bronevet/code/tmp/sight/examples/demo.C", "fibBaseStart", "fibBaseEnd"))); }
+    { source src("source", source::regions(source::reg(thisFile, "NFStart",      "NFEnd"),
+                                           source::reg(thisFile, "fibBaseStart", "fibBaseEnd"))); }
     
 #pragma sightLoc NFStart
     for(int depth=1; depth<maxDepth; depth++) {
@@ -44,8 +47,8 @@ int main(int argc, char** argv)
   
   { 
     scope s("Indentation", scope::high);
-    { source src("source", source::regions(source::reg("/g/g15/bronevet/code/tmp/sight/examples/demo.C", "IndStart",       "IndEnd"),
-                                           source::reg("/g/g15/bronevet/code/tmp/sight/examples/demo.C", "fibIndentStart", "fibIndentEnd"))); }
+    { source src("source", source::regions(source::reg(thisFile, "IndStart",       "IndEnd"),
+                                           source::reg(thisFile, "fibIndentStart", "fibIndentEnd"))); }
     
 #pragma sightLoc IndStart
     for(int depth=1; depth<maxDepth; depth++) {
@@ -58,8 +61,8 @@ int main(int argc, char** argv)
   
   { 
     scope s("Indentation Mixed with Scoping", scope::high);
-    { source src("source", source::regions(source::reg("/g/g15/bronevet/code/tmp/sight/examples/demo.C", "IndScopeStart",  "IndScopeEnd"),
-                                           source::reg("/g/g15/bronevet/code/tmp/sight/examples/demo.C", "fibIndentStart", "fibIndentEnd"))); }
+    { source src("source", source::regions(source::reg(thisFile, "IndScopeStart",  "IndScopeEnd"),
+                                           source::reg(thisFile, "fibIndentStart", "fibIndentEnd"))); }
     
 #pragma sightLoc IndScopeStart
     for(int depth=1; depth<maxDepth; depth++) {
@@ -71,8 +74,8 @@ int main(int argc, char** argv)
   
   { 
     scope s("Multi-level Scoping", scope::high);
-    { source src("source", source::regions(source::reg("/g/g15/bronevet/code/tmp/sight/examples/demo.C", "MultScopeStart", "MultScopeEnd"),
-                                           source::reg("/g/g15/bronevet/code/tmp/sight/examples/demo.C", "fibScopeStart",  "fibScopeEnd"))); }
+    { source src("source", source::regions(source::reg(thisFile, "MultScopeStart", "MultScopeEnd"),
+                                           source::reg(thisFile, "fibScopeStart",  "fibScopeEnd"))); }
     
 #pragma sightLoc MultScopeStart
     for(int depth=1; depth<maxDepth; depth++) {
@@ -84,8 +87,8 @@ int main(int argc, char** argv)
   
   { 
     scope s("Multi-level Scoping with Links", scope::high);
-    { source src("source", source::regions(source::reg("/g/g15/bronevet/code/tmp/sight/examples/demo.C", "MultScopeLinksStart", "MultScopeLinksEnd"),
-                                           source::reg("/g/g15/bronevet/code/tmp/sight/examples/demo.C", "fibScopeLinksStart",  "fibScopeLinksEnd"))); }
+    { source src("source", source::regions(source::reg(thisFile, "MultScopeLinksStart", "MultScopeLinksEnd"),
+                                           source::reg(thisFile, "fibScopeLinksStart",  "fibScopeLinksEnd"))); }
     
 #pragma sightLoc MultScopeLinksStart
     map<list<int>, anchor> InFW, InBW, OutFW, OutBW;
@@ -103,8 +106,8 @@ int main(int argc, char** argv)
   
   { 
     scope s("Multi-level Scoping with Graphs", scope::high);
-    { source src("source", source::regions(source::reg("/g/g15/bronevet/code/tmp/sight/examples/demo.C", "MultScopeGraphsStart", "MultScopeGraphsEnd"),
-                                           source::reg("/g/g15/bronevet/code/tmp/sight/examples/demo.C", "fibGraphStart",        "fibGraphEnd"))); }
+    { source src("source", source::regions(source::reg(thisFile, "MultScopeGraphsStart", "MultScopeGraphsEnd"),
+                                           source::reg(thisFile, "fibGraphStart",        "fibGraphEnd"))); }
 
 #pragma sightLoc MultScopeGraphsStart
     graph g;
@@ -117,9 +120,9 @@ int main(int argc, char** argv)
 
   { 
     scope s("Performance Analysis", scope::high);
-    { source src("source", source::regions(source::reg("/g/g15/bronevet/code/tmp/sight/examples/demo.C", "PerfAnalysisStart", "PerfAnalysisEnd"),
-                                           source::reg("/g/g15/bronevet/code/tmp/sight/examples/demo.C", "fibStart",          "fibEnd"),
-                                           source::reg("/g/g15/bronevet/code/tmp/sight/examples/demo.C", "fibLinearStart",    "fibLinearEnd"))); }
+    { source src("source", source::regions(source::reg(thisFile, "PerfAnalysisStart", "PerfAnalysisEnd"),
+                                           source::reg(thisFile, "fibStart",          "fibEnd"),
+                                           source::reg(thisFile, "fibLinearStart",    "fibLinearEnd"))); }
     
 #pragma sightLoc PerfAnalysisStart
     trace tTime("Fib Time", "depth", trace::showBegin, trace::lines);
@@ -145,8 +148,8 @@ int main(int argc, char** argv)
 
   { 
     scope s("Modular Analysis", scope::high);
-    { source src("source", source::regions(source::reg("/g/g15/bronevet/code/tmp/sight/examples/demo.C", "ModularStart",        "ModularEnd"),
-                                           source::reg("/g/g15/bronevet/code/tmp/sight/examples/demo.C", "histRecurrenceStart", "histRecurrenceEnd"))); }
+    { source src("source", source::regions(source::reg(thisFile, "ModularStart",        "ModularEnd"),
+                                           source::reg(thisFile, "histRecurrenceStart", "histRecurrenceEnd"))); }
      
  #pragma sightLoc ModularStart
     module rootModule(group("Modular Analysis", 0, 0));
