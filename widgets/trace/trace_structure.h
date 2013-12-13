@@ -12,6 +12,7 @@
 #include "../../sight_common.h"
 #include "../../sight_structure_internal.h"
 #include <sys/time.h>
+#include <papi.h>
 
 namespace sight {
 namespace structure {
@@ -141,23 +142,33 @@ class traceStream: public attrObserver, public common::trace, public sightObj
 }; // class traceStream
 
 // Basic API for measuring the elapsed counts of events.
-// The measure class starts the measurement when instances of this class are constructed and stops when they are deconstructed.
-// When measurement is performed, an attribute named valLabel is added to a trace named traceLabel.
-// Users who wish to get the measurement value back may perform the measurement manually by calling doMeasure().
-// The startMeasure()/endMeasure() API provides this direct access to measurement.
+// After an instance of the measure class is constructed, the measurement may be started by calling start() 
+//    and stopped by calling end(). The measurement can also be paused and resumed. When a measurement is completed, 
+//    an attribute named valLabel is added to a trace named traceLabel. Some measure classes may allow users to get 
+//    the measurement value directly by implementing method endGet().
+// The measured values are added to a user-specified trace. This trace can be specified by providing its string label, 
+//    a pointer to the trace object, or a pointer to the traceStream object inside it (traceStreams may be used inside
+//    traces as well as other widgets). Then, when the measurement completes the measure automatically adds an 
+//    observation to the given trace under the label valLabel, which must also be provided when creating the measure. 
+//    The context for this measurement will be the current values of the context attributes of the trace. If the user 
+//    wishes to specify context manually, they may optionally provide them as a map from their string lavels to their 
+//    attrValues. All of the above may be specified in the measure constructor or afterwards by calling setTrace(),
+//    setValLabel() and setFullMeasureCtxt(), as long as these are called before the call to end().
+// The startMeasure()/endMeasure() API makes it easy to make measurements:
+//    measurement* m = startMeasure(...);
+//    ...
+//    endMeasure(m);
+
 class measure {
+  protected:
   traceStream* ts;
   std::string valLabel;
-  // Counts the total time elapsed so far, accounting for any pauses and resumes
-  double elapsed;
-  // The time when we started or resumed this measure, whichever is most recent
-  struct timeval lastStart;
-
+  
   // Records whether time collection is currently paused
   bool paused;
   
   // Records whether we've already performed the measure
-  bool measureDone;
+  bool ended;
   
   // Records whether the measurement will be a full measure, in the sense that when the measurement by itself
   // represents all the information that will ever be recorded for a given context rather than trickle in 
@@ -167,18 +178,88 @@ class measure {
   std::map<std::string, attrValue> fullMeasureCtxt;
   
   public:
-  // Non-full measure
+  measure();
+
+  // Non-full measure                                                                                            
+  measure(                        std::string valLabel);
   measure(std::string traceLabel, std::string valLabel);
   measure(trace* t,               std::string valLabel);
   measure(traceStream* ts,        std::string valLabel);
-  // Full measure
+  // Full measure                                                                                                
+  measure(                        std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt);
   measure(std::string traceLabel, std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt);
   measure(trace* t,               std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt);
   measure(traceStream* ts,        std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt);
+
   ~measure();
- 
+  
+  // Specify the trace that is associated with this measure object
+  void setTrace(std::string traceLabel);
+  void setTrace(trace* t);
+  void setTrace(traceStream* ts);
+  
+  // Specify the label of the value measured by this measure object
+  void setValLabel(std::string valLabel);
+  
+  // Specify the full context of this object's measurement
+  void setCtxt(const std::map<std::string, attrValue>& fullMeasureCtxt);
+  
+  private:
   // Common initialization code
   void init();
+  
+  public:
+  // Start the measurement
+  virtual void start();
+   
+  // Pauses the measurement so that time elapsed between this call and resume() is not counted.
+  // Returns true if the measure is not currently paused and false if it is (i.e. the pause command has no effect)
+  virtual bool pause();
+
+  // Restarts counting time. Time collection is restarted regardless of how many times pause() was called
+  // before the call to resume().
+  virtual void resume();
+
+  // Complete the measurement
+  virtual void end();
+  
+  // OPTIONAL: Complete the measurement and return the measurement
+  //RetType endGet();
+  
+  virtual std::string str()=0;
+}; // class measure
+
+// Syntactic sugar for specifying measurements
+typedef common::easylist<measure*> measures;
+typedef common::easymap<std::string, measure*> namedMeasures;
+
+class timeMeasure : public measure {
+  // Counts the total time elapsed so far, accounting for any pauses and resumes
+  double elapsed;
+  // The time when we started or resumed this measure, whichever is most recent
+  struct timeval lastStart;
+  
+  public:
+  // Non-full measure
+  timeMeasure(                        std::string valLabel="time");
+  timeMeasure(std::string traceLabel, std::string valLabel="time");
+  timeMeasure(trace* t,               std::string valLabel="time");
+  timeMeasure(traceStream* ts,        std::string valLabel="time");
+  // Full measure
+  timeMeasure(                        std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt);
+  timeMeasure(std::string traceLabel, std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt);
+  timeMeasure(trace* t,               std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt);
+  timeMeasure(traceStream* ts,        std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt);
+  
+  ~timeMeasure();
+ 
+  private:
+  // Common initialization code
+  void init();   
+          
+  public:     
+  // Start the measurement
+  void start();
    
   // Pauses the measurement so that time elapsed between this call and resume() is not counted.
   // Returns true if the measure is not currently paused and false if it is (i.e. the pause command has no effect)
@@ -186,20 +267,126 @@ class measure {
 
   // Restarts counting time. Time collection is restarted regardless of how many times pause() was called
   // before the call to resume().
-  bool resume();
+  void resume();
  
-  double doMeasure();
-}; // class measure
+  // Complete the measurement
+  void end();
+  
+  // Complete the measurement and return the measurement
+  double endGet();
+  
+  std::string str();
+}; // class timeMeasure
+
+
+// Syntactic sugar for specifying measurements
+typedef common::easyvector<int> papiEvents;
+
+class PAPIMeasure : public measure {
+  // Counts the total number of counter events observed so far, accounting for any pauses and resumes
+  std::vector<long_long> values;
+  
+  // The events that will be measured
+  const papiEvents& events;
+  
+  public:
+  PAPIMeasure(const papiEvents& events);
+  
+  // Non-full measure
+  PAPIMeasure(                        std::string valLabel, const papiEvents& events);
+  PAPIMeasure(std::string traceLabel, std::string valLabel, const papiEvents& events);
+  PAPIMeasure(trace* t,               std::string valLabel, const papiEvents& events);
+  PAPIMeasure(traceStream* ts,        std::string valLabel, const papiEvents& events);
+  // Full measure
+  PAPIMeasure(                        std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt, const papiEvents& events);
+  PAPIMeasure(std::string traceLabel, std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt, const papiEvents& events);
+  PAPIMeasure(trace* t,               std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt, const papiEvents& events);
+  PAPIMeasure(traceStream* ts,        std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt, const papiEvents& events);
+  ~PAPIMeasure();
+ 
+  private:
+  // Common initialization code
+  void init();   
+          
+  public:     
+  // Start the measurement
+  void start();
+   
+  // Pauses the measurement so that time elapsed between this call and resume() is not counted.
+  // Returns true if the measure is not currently paused and false if it is (i.e. the pause command has no effect)
+  bool pause();
+
+  // Restarts counting time. Time collection is restarted regardless of how many times pause() was called
+  // before the call to resume().
+  void resume();
+ 
+  // Complete the measurement
+  void end();
+  
+  std::string str();
+}; // class PAPIMeasure
 
 // Non-full measure
-measure* startMeasure(std::string traceLabel, std::string valLabel);
-measure* startMeasure(trace* t,               std::string valLabel);
-measure* startMeasure(traceStream* ts,        std::string valLabel);
-// Full measure
-measure* startMeasure(std::string traceLabel, std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt);
-measure* startMeasure(trace* t,               std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt);
-measure* startMeasure(traceStream* ts,        std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt);
-double endMeasure(measure* m);
+template<class MT>
+MT* startMeasure(std::string traceLabel, std::string valLabel) {
+  MT* m = new MT(traceLabel, valLabel);
+  m->start();
+  return m;
+}
+
+template<class MT>
+MT* startMeasure(trace* t,               std::string valLabel) {
+  MT* m = new MT(t, valLabel);
+  m->start();
+  return m;
+}
+
+template<class MT>
+MT* startMeasure(traceStream* ts,        std::string valLabel) {
+  MT* m = new MT(ts, valLabel);
+  m->start();
+  return m;
+}
+
+template<class MT>
+MT* startMeasure(std::string traceLabel, std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt) {
+  MT* m = new MT(traceLabel, valLabel, fullMeasureCtxt);
+  m->start();
+  return m;
+}
+
+template<class MT>
+MT* startMeasure(trace* t,               std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt) {
+  MT* m = new MT(t, valLabel, fullMeasureCtxt);
+  m->start();
+  return m;
+}
+
+template<class MT>
+MT* startMeasure(traceStream* ts,        std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt) {
+  MT* m = new MT(ts, valLabel, fullMeasureCtxt);
+  m->start();
+  return m;
+}
+
+void endMeasure(measure* m);
+
+template<class MT, class RET>
+RET endGetMeasure(measure* m) {
+  MT* mt = dynamic_cast<MT*>(m);
+  assert(mt);
+  RET result = mt->endGet();
+  delete m;
+  return result;
+}
+
+template<class MT, class RET>
+RET endGetMeasure(MT* m) {
+  RET result = m->endGet();
+  delete m;
+  return result;
+}
+
 
 class TraceMergeHandlerInstantiator: public MergeHandlerInstantiator {
   public:

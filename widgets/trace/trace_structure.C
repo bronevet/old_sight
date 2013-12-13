@@ -286,8 +286,20 @@ void traceStream::emitObservations(const std::map<std::string, attrValue>& conte
 /*******************
  ***** measure *****
  *******************/
+
+measure::measure() {
+  fullMeasure = false;
+  init();
+}
  
 // Non-full measure
+measure::measure(                        std::string valLabel): ts(NULL), valLabel(valLabel)
+{
+  fullMeasure = false;
+  init();
+}
+
+
 measure::measure(std::string traceLabel, std::string valLabel): ts(trace::getTS(traceLabel)), valLabel(valLabel)
 {
   fullMeasure = false;
@@ -308,6 +320,13 @@ measure::measure(traceStream* ts,        std::string valLabel): ts(ts),         
 
 
 // Full measure
+measure::measure(                        std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt) :
+     ts(NULL), valLabel(valLabel), fullMeasureCtxt(fullMeasureCtxt)
+{
+  fullMeasure = true;
+  init();
+}
+
 measure::measure(std::string traceLabel, std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt) :
      ts(trace::getTS(traceLabel)), fullMeasureCtxt(fullMeasureCtxt)
 {
@@ -329,34 +348,38 @@ measure::measure(traceStream* ts,        std::string valLabel, const std::map<st
   init();
 }
 
+measure::~measure()
+{}
 
-measure::~measure() {
-  if(!measureDone) doMeasure();
-  init();
+// Specify the trace that is associated with this measure object
+void measure::setTrace(std::string traceLabel)
+{ ts = trace::getTS(traceLabel); }
+
+void measure::setTrace(trace* t)
+{ ts = t->getTS(); }
+
+void measure::setTrace(traceStream* ts)
+{ this->ts = ts; }
+
+// Specify the label of the value measured by this measure object
+void measure::setValLabel(std::string valLabel)
+{ this->valLabel = valLabel; }
+
+// Specify the full context of this object's measurement
+void measure::setCtxt(const std::map<std::string, attrValue>& fullMeasureCtxt) { 
+  this->fullMeasureCtxt = fullMeasureCtxt;
+  fullMeasure = true;
 }
 
 // Common initialization code
 void measure::init() {
-  elapsed = 0.0;
-  measureDone = false;
-  paused = false;
-  gettimeofday(&lastStart, NULL);
+  ended = false;
+  paused = true;
 }
 
-double measure::doMeasure() {
-  if(measureDone) { cerr << "measure::doMeasure() ERROR: measuring variable \""<<valLabel<<"\" multiple times!"<<endl; exit(-1); }
-  measureDone = true;
- 
-  // Call pause() to update elapsed with the time since the start of the measure or the last call to resume() 
-  pause(); 
-  
-  assert(ts);
-  //cout << "measure::doMeasure() fullMeasure="<<fullMeasure<<endl;
-  if(fullMeasure)
-    ts->traceFullObservation(fullMeasureCtxt, trace::observation(make_pair(valLabel, attrValue((double)elapsed))), anchor::noAnchor);
-  else
-    ts->traceAttrObserved(valLabel, attrValue((double)elapsed), anchor::noAnchor);
-  return elapsed;
+// Start the measurement
+void measure::start() {
+  paused = false;
 }
 
 // Pauses the measurement so that time elapsed between this call and resume() is not counted.
@@ -364,6 +387,74 @@ double measure::doMeasure() {
 bool measure::pause() {
   bool modified = paused==false;
   paused = true;
+  return modified;
+}
+
+// Restarts counting time. Time collection is restarted regardless of how many times pause() was called
+// before the call to resume().
+void measure::resume() {
+  paused = false;
+}
+
+// Complete the measurement
+void measure::end() {
+  if(ended) { cerr << "measure::end() ERROR: measuring variable \""<<valLabel<<"\" multiple times!"<<endl; exit(-1); }
+ 
+  ended = true;
+}
+
+/***********************
+ ***** timeMeasure *****
+ ***********************/
+
+// Non-full measure
+timeMeasure::timeMeasure(                        std::string valLabel): measure(valLabel)
+{ init(); }
+
+timeMeasure::timeMeasure(std::string traceLabel, std::string valLabel): measure(traceLabel, valLabel)
+{ init(); }
+
+timeMeasure::timeMeasure(trace* t,               std::string valLabel): measure(t, valLabel)
+{ init(); }
+
+timeMeasure::timeMeasure(traceStream* ts,        std::string valLabel): measure(ts, valLabel)
+{ init(); }
+
+// Full measure
+timeMeasure::timeMeasure(                        std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt) :
+     measure(valLabel, fullMeasureCtxt)
+{ init(); }
+
+timeMeasure::timeMeasure(std::string traceLabel, std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt) :
+     measure(traceLabel, valLabel, fullMeasureCtxt)
+{ init(); }
+
+timeMeasure::timeMeasure(trace* t,               std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt) :
+     measure(t, valLabel, fullMeasureCtxt)
+{ init(); }
+
+timeMeasure::timeMeasure(traceStream* ts,        std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt) :
+     measure(ts, valLabel, fullMeasureCtxt)
+{ init(); }
+
+timeMeasure::~timeMeasure() {
+}
+
+// Common initialization code
+void timeMeasure::init() {
+  elapsed = 0.0;
+}
+
+// Start the measurement
+void timeMeasure::start() {
+  measure::start();
+  gettimeofday(&lastStart, NULL);  
+}
+
+// Pauses the measurement so that time elapsed between this call and resume() is not counted.
+// Returns true if the measure is not currently paused and false if it is (i.e. the pause command has no effect)
+bool timeMeasure::pause() {
+  bool modified = measure::pause();
 
   struct timeval end;
   gettimeofday(&end, NULL);
@@ -375,41 +466,180 @@ bool measure::pause() {
 
 // Restarts counting time. Time collection is restarted regardless of how many times pause() was called
 // before the call to resume().
-bool measure::resume() {
+void timeMeasure::resume() {
+  measure::resume();
   gettimeofday(&lastStart, NULL);
-  paused = false;
 }
+
+// Complete the measurement
+void timeMeasure::end() {
+  endGet();
+}
+
+// Complete the measurement and return the measurement
+double timeMeasure::endGet() {
+  measure::end();
+  
+  // Call pause() to update elapsed with the time since the start of the measure or the last call to resume() 
+  pause(); 
+  
+  assert(ts);
+  if(fullMeasure)
+    ts->traceFullObservation(fullMeasureCtxt, trace::observation(make_pair(valLabel, attrValue((double)elapsed))), anchor::noAnchor);
+  else
+    ts->traceAttrObserved(valLabel, attrValue((double)elapsed), anchor::noAnchor);
+  return elapsed;
+}
+
+std::string timeMeasure::str() { 
+  struct timeval cur;
+  gettimeofday(&cur, NULL);
+
+  return txt()<<"[timeMeasure: elapsed="<<(elapsed+((cur.tv_sec*1000000 + cur.tv_usec) - (lastStart.tv_sec*1000000 + lastStart.tv_usec)) / 1000000.0)<<"]";
+}
+
+
+/***********************
+ ***** PAPIMeasure *****
+ ***********************/
+
+PAPIMeasure::PAPIMeasure(const papiEvents& events) : measure(), events(events)
+{ init(); }
 
 // Non-full measure
-measure* startMeasure(std::string traceLabel, std::string valLabel) {
-  return new measure(traceLabel, valLabel);
+PAPIMeasure::PAPIMeasure(                        std::string valLabel, const papiEvents& events): measure(valLabel), events(events)
+{ init(); }
+
+PAPIMeasure::PAPIMeasure(std::string traceLabel, std::string valLabel, const papiEvents& events): measure(traceLabel, valLabel), events(events)
+{ init(); }
+
+PAPIMeasure::PAPIMeasure(trace* t,               std::string valLabel, const papiEvents& events): measure(t, valLabel), events(events)
+{ init(); }
+
+PAPIMeasure::PAPIMeasure(traceStream* ts,        std::string valLabel, const papiEvents& events): measure(ts, valLabel), events(events)
+{ init(); }
+
+// Full measure
+PAPIMeasure::PAPIMeasure(                        std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt, const papiEvents& events) :
+     measure(valLabel, fullMeasureCtxt), events(events)
+{ init(); }
+
+PAPIMeasure::PAPIMeasure(std::string traceLabel, std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt, const papiEvents& events) :
+     measure(traceLabel, valLabel, fullMeasureCtxt), events(events)
+{ init(); }
+
+PAPIMeasure::PAPIMeasure(trace* t,               std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt, const papiEvents& events) :
+     measure(t, valLabel, fullMeasureCtxt), events(events)
+{ init(); }
+
+PAPIMeasure::PAPIMeasure(traceStream* ts,        std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt, const papiEvents& events) :
+     measure(ts, valLabel, fullMeasureCtxt), events(events)
+{ init(); }
+
+PAPIMeasure::~PAPIMeasure() {
 }
 
-measure* startMeasure(trace* t,               std::string valLabel) {
-  return new measure(t, valLabel);
+// Common initialization code
+void PAPIMeasure::init() {
+  // Initialize the values array to all 0's
+  values.resize(events.size(), 0);
 }
 
-measure* startMeasure(traceStream* ts,        std::string valLabel) {
-  return new measure(ts, valLabel);
+// Start the measurement
+void PAPIMeasure::start() {
+  measure::start();
+  
+  // Start measurement
+  //cout << "PAPIMeasure::start() "<<str()<<endl;
+  
+  /*float real_time, proc_time,mflips;
+  long long flpins;
+  float ireal_time, iproc_time, imflips;
+  long long iflpins;
+  int retval;
+/*if((retval=PAPI_flips(&ireal_time,&iproc_time,&iflpins,&imflips)) < PAPI_OK)
+  {
+    printf("Could not initialise PAPI_flips \n");
+    printf("Your platform may not support floating point instruction event.\n");    printf("retval: %d\n", retval);
+    exit(1);
+  }* /
+  if((retval = PAPI_library_init(PAPI_VER_CURRENT)) != PAPI_VER_CURRENT )
+   {
+      printf("Library initialization error! \n");
+      exit(1);
+   }
+
+  long long s = PAPI_get_real_cyc();
+  for(int i=0; i<1000000; i++) {}
+  long long e = PAPI_get_real_cyc();
+/cout << "cycles = "<<(e-s)<<endl;
+  int eventsArray[] = {PAPI_TOT_INS};
+  if(PAPI_start_counters(eventsArray, 1) != PAPI_OK) { cerr << "PAPIMeasure::start() ERROR starting PAPI counters!"<<endl; assert(0); }*/
+  if(PAPI_start_counters((int*)&(events[0]), events.size()) != PAPI_OK) { cerr << "PAPIMeasure::start() ERROR starting PAPI counters!"<<endl; assert(0); }
 }
 
-measure* startMeasure(std::string traceLabel, std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt) {
-  return new measure(traceLabel, valLabel, fullMeasureCtxt);
+// Pauses the measurement so that time elapsed between this call and resume() is not counted.
+// Returns true if the measure is not currently paused and false if it is (i.e. the pause command has no effect)
+bool PAPIMeasure::pause() {
+  bool modified = measure::pause();
+
+  // Add the counts since the last call to start or resume to values
+  if(PAPI_accum_counters((long_long*)&(values[0]), values.size()) != PAPI_OK) { cerr << "PAPIMeasure::pause() ERROR accumulating PAPI counters!"<<endl; assert(0); }
+
+  // Stop the counters, placing the current values into the dummy vector
+  vector<long_long> dummy; dummy.resize(events.size());
+  if(PAPI_stop_counters((long_long*)&(dummy[0]), dummy.size()) != PAPI_OK) { cerr << "PAPIMeasure::pause() ERROR stopping PAPI counters!"<<endl; assert(0); }
+
+  return modified;  
 }
 
-measure* startMeasure(trace* t,               std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt) {
-  return new measure(t, valLabel, fullMeasureCtxt);
+// Restarts counting time. Time collection is restarted regardless of how many times pause() was called
+// before the call to resume().
+void PAPIMeasure::resume() {
+  measure::resume();
+  
+  // Restart measurement
+  if(PAPI_start_counters((int*)&events[0], events.size()) != PAPI_OK) { cerr << "PAPIMeasure::resume() ERROR starting PAPI counters!"<<endl; assert(0); }
 }
 
-measure* startMeasure(traceStream* ts,        std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt) {
-  return new measure(ts, valLabel, fullMeasureCtxt);
+// Complete the measurement
+void PAPIMeasure::end() {
+  measure::end();
+  
+  // Call pause() to update elapsed with the time since the start of the measure or the last call to resume() 
+  pause(); 
+  
+  assert(ts);
+  // Iterate over all the PAPI counters being measured
+  for(int i=0; i<events.size(); i++) {
+    char EventCodeStr[PAPI_MAX_STR_LEN];
+    if (PAPI_event_code_to_name(events[i], EventCodeStr) != PAPI_OK) { cerr << "PAPIMeasure::end() ERROR getting name of PAPI counter "<<events[i]<<"!"<<endl; assert(0); }
+    
+    if(fullMeasure)
+      ts->traceFullObservation(fullMeasureCtxt, trace::observation(make_pair((string)(txt()<<valLabel<<":"<<EventCodeStr), attrValue((long)values[i]))), anchor::noAnchor);
+    else
+      ts->traceAttrObserved(txt()<<valLabel<<":"<<EventCodeStr, attrValue((long)values[i]), anchor::noAnchor);
+  }
 }
 
-double endMeasure(measure* m) {
-  double result = m->doMeasure();
-  delete m;
-  return result;
+std::string PAPIMeasure::str() { 
+  ostringstream s;
+  s<<"[PAPIMeasure: ";
+  for(int i=0; i<events.size(); i++) {
+    if(i>0) s << ", ";
+    
+    char EventCodeStr[PAPI_MAX_STR_LEN];
+    if (PAPI_event_code_to_name(events[i], EventCodeStr) != PAPI_OK) { cerr << "PAPIMeasure::end() ERROR getting name of PAPI counter "<<events[i]<<"!"<<endl; assert(0); }
+    s << EventCodeStr;
+  }
+  s<<"]";
+  return s.str();
 }
+
+void endMeasure(measure* m) {
+  m->end();
+}
+
 
 /*****************************************
  ***** TraceMergeHandlerInstantiator *****

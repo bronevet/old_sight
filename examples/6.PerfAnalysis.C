@@ -163,7 +163,7 @@ int main(int argc, char** argv) {
                "startMeasure() returns a pointer to a measure object. To complete the measurement, call endMeasure(), "<<
                "providing this object as an argument. endMeasure() automatically adds the elapsed time to the previously "<<
                "chosen trace and also returns the elapsed time if the user wishes to do something with it."<<endl;
-      measure* mmm = startMeasure("MMM Loop Elapsed", "MMM Elapsed");
+      measure* mmm = startMeasure<timeMeasure>("MMM Loop Elapsed", "MMM Elapsed");
       
            if(mmmLoop==ijk) matmult_ijk(A, B, C, MtxSize);
       else if(mmmLoop==ikj) matmult_ikj(A, B, C, MtxSize);
@@ -172,7 +172,7 @@ int main(int argc, char** argv) {
       else if(mmmLoop==kij) matmult_kij(A, B, C, MtxSize);
       else if(mmmLoop==kji) matmult_kji(A, B, C, MtxSize);
       
-      double elapsed = endMeasure(mmm);
+      double elapsed = endGetMeasure<timeMeasure, double>(mmm);
       
       dbg << textColor::start(loopColor) << "MMM "<<mmmLoopTypeStr(mmmLoop)<<textColor::end()<<", MtxSize="<<MtxSize<<": "<<textColor::start(elapsedColor, attrValue(elapsed))<<"elapsed = "<<elapsed<<textColor::end()<<endl;
     } }
@@ -188,12 +188,12 @@ int main(int argc, char** argv) {
       for(int mvmLoop=0; mvmLoop<MVM_LOOP_TYPES; mvmLoop++, iter++) {
         attr mvmLAttr("mvmLoop", mvmLoopTypeStr(mvmLoop));
       
-        measure* mvm = startMeasure("MVM Loop Elapsed", "MVM Elapsed");
+        measure* mvm = startMeasure<timeMeasure>("MVM Loop Elapsed", "MVM Elapsed");
         
              if(mvmLoop==ij) matvec_ij(A, vecIn, vecOut, MtxSize);
         else if(mvmLoop==ji) matvec_ji(A, vecIn, vecOut, MtxSize);
         
-        double elapsed = endMeasure(mvm);
+        double elapsed = endGetMeasure<timeMeasure, double>(mvm);
         
         dbg << textColor::start(loopColor) << "MMM "<<mmmLoopTypeStr(mmmLoop)<<"/MVM "<<mvmLoopTypeStr(mvmLoop)<<textColor::end()<<", MtxSize="<<MtxSize<<": "<<textColor::start(elapsedColor, attrValue(elapsed))<<"elapsed = "<<elapsed<<textColor::end()<<endl;
       }

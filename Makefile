@@ -6,15 +6,23 @@ SIGHT_LAYOUT_O := sight_layout.o attributes/attributes_layout.o slayout.o varian
 SIGHT_LAYOUT_H := sight.h sight_layout_internal.h attributes/attributes_layout.h variant_layout.h
 sight := ${sight_O} ${sight_H} gdbLineNum.pl sightDefines.pl
 
-SIGHT_CFLAGS = -g -I${ROOT_PATH}/tools/callpath/src -I${ROOT_PATH}/tools/adept-utils/include 
-SIGHT_LINKFLAGS = ${ROOT_PATH}/tools/callpath/src/src/libcallpath.so -Wl,-rpath ${ROOT_PATH}/tools/callpath/src/src
+SIGHT_CFLAGS = -g -I${ROOT_PATH}/tools/callpath/src -I${ROOT_PATH}/tools/adept-utils/include -I${ROOT_PATH}/widgets/papi/include
+SIGHT_LINKFLAGS = ${ROOT_PATH}/tools/adept-utils/lib/libadept_cutils.so \
+                  ${ROOT_PATH}/tools/adept-utils/lib/libadept_timing.so \
+	                ${ROOT_PATH}/tools/adept-utils/lib/libadept_utils.so \
+	                -Wl,-rpath ${ROOT_PATH}/tools/adept-utils/lib \
+	                ${ROOT_PATH}/tools/callpath/src/src/libcallpath.so \
+	                -Wl,-rpath ${ROOT_PATH}/tools/callpath/src/src \
+	                ${ROOT_PATH}/widgets/papi/lib/libpapi.a
+	                
+	                #-Wl,-rpath ${ROOT_PATH}/widgets/papi/lib \
 
 OS := $(shell uname -o)
 ifeq (${OS}, Cygwin)
 EXE := .exe
 endif
 
-all: sightDefines.pl gdbLineNum.pl libsight_structure.a slayout${EXE} hier_merge${EXE} widgets_post allExamples script/taffydb tools/dtl
+all: sightDefines.pl gdbLineNum.pl libsight_structure.a slayout${EXE} hier_merge${EXE} widgets_post allExamples script/taffydb maketools
 	chmod 755 html img script
 	chmod 644 html/* img/* script/*
 	chmod 755 script/taffydb
@@ -76,7 +84,8 @@ slayout${EXE}: mfem libsight_layout.a
 #	g++ ${SIGHT_CFLAGS} slayout.C -Wl,--whole-archive libsight_layout.a -DMFEM -I. -Iapps/mfem apps/mfem/mfem_layout.o -Wl,-no-whole-archive -o slayout${EXE}
 
 hier_merge${EXE}: hier_merge.C process.C process.h libsight_structure.a 
-	g++ ${SIGHT_CFLAGS} hier_merge.C -Wl,--whole-archive libsight_structure.a -Wl,-no-whole-archive tools/callpath/src/src/libcallpath.so -DMFEM -I. ${SIGHT_LINKFLAGS} -o hier_merge${EXE}
+	g++ ${SIGHT_CFLAGS} hier_merge.C -Wl,--whole-archive libsight_structure.a -Wl,-no-whole-archive \
+	                                 -DMFEM -I. ${SIGHT_LINKFLAGS} -o hier_merge${EXE}
 
 libsight_structure.a: ${SIGHT_STRUCTURE_O} ${SIGHT_STRUCTURE_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre
 	ar -r libsight_structure.a ${SIGHT_STRUCTURE_O} ${SIGHT_COMMON_O} widgets/*/*_structure.o widgets/*/*_common.o
@@ -95,7 +104,7 @@ libsight_layout.a: ${SIGHT_LAYOUT_O} ${SIGHT_LAYOUT_H} ${SIGHT_COMMON_O} ${SIGHT
 sight_common.o: sight_common.C sight_common_internal.h attributes/attributes_common.h
 	g++ ${SIGHT_CFLAGS} sight_common.C -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o sight_common.o
 
-sight_structure.o: sight_structure.C sight_structure_internal.h attributes/attributes_structure.h sight_common_internal.h attributes/attributes_common.h tools/dtl tools/callpath
+sight_structure.o: sight_structure.C sight_structure_internal.h attributes/attributes_structure.h sight_common_internal.h attributes/attributes_common.h maketools
 	g++ ${SIGHT_CFLAGS} sight_structure.C -Itools/dtl -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o sight_structure.o
 
 sight_layout.o: sight_layout.C sight_layout_internal.h attributes/attributes_layout.h sight_common_internal.h attributes/attributes_common.h
@@ -124,6 +133,9 @@ widgets_pre:
 widgets_post: libsight_layout.a libsight_structure.a
 	cd widgets; make -f Makefile_post ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}"
 
+maketools: 
+	cd tools; make -f Makefile ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS}
+
 binreloc.o: binreloc.c binreloc.h
 	g++ ${SIGHT_CFLAGS} binreloc.c -c -o binreloc.o
 
@@ -143,11 +155,12 @@ sightDefines.pl:
 clean:
 	cd widgets; make -f Makefile_pre clean
 	cd widgets; make -f Makefile_post clean
+	cd tools make clean
 	cd examples; make clean
 	cd apps/mcbench; ./clean-linux-x86_64.sh
 	cd apps/mfem; make clean
 	rm -rf dbg dbg.* libsight.a *.o widgets/shellinabox* widgets/mongoose* widgets/graphviz* gdbLineNum.pl
-	rm -rf script/taffydb tools sightDefines.pl gdbscript
+	rm -rf script/taffydb sightDefines.pl gdbscript
 
 clean_objects:
 	rm -f *.a *.o widgets/*.o widgets/*/*.o
@@ -159,30 +172,3 @@ script/taffydb:
 	rm script/master*
 	chmod 755 script/taffydb
 	chmod 644 script/taffydb/*
-
-tools/dtl: #tools
-	cd tools; wget --no-check-certificate https://dtl-cpp.googlecode.com/files/dtl-1.17.tar.gz
-	cd tools; tar -xf dtl-1.17.tar.gz 
-	cd tools; mv dtl-1.17 dtl
-	rm tools/dtl-1.17.tar.gz 
-
-tools/callpath:
-	cd tools; rm -f master.zip
-	cd tools; wget --no-check-certificate https://github.com/tgamblin/adept-utils/archive/master.zip
-	rm -fr tools/adept-utils
-	cd tools; mv master master.zip; unzip master.zip
-	mv tools/adept-utils-master tools/adept-utils
-	cp tools/adept-utils-makefiles/CMakeLists.root.txt   tools/adept-utils
-	cp tools/adept-utils-makefiles/CMakeLists.cutils.txt tools/adept-utils/cutils/CMakeLists.txt
-	cp tools/adept-utils-makefiles/CMakeLists.utils.txt  tools/adept-utils/utils/CMakeLists.txt
-	cd tools/adept-utils; cmake -DCMAKE_INSTALL_PREFIX=${ROOT_PATH}/tools/adept-utils .; make; make install
-	cd tools; rm -f master.zip
-	cd tools; wget --no-check-certificate https://github.com/tgamblin/callpath/archive/master.zip
-	rm -fr tools/callpath
-	cd tools; mv master master.zip; unzip master.zip
-	cd tools; mv callpath-master callpath
-	cd tools/callpath/src; cmake -DCMAKE_INSTALL_PREFIX=${ROOT_PATH}/tools/callpath -DCALLPATH_WALKER=backtrace -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_FLAGS=-fpermissive -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCALLPATH_HAVE_MPI=false -Dadept_utils_DIR=${ROOT_PATH}/tools/adept-utils/share/cmake/adept_utils ..; make; make install
-	
-tools:
-	mkdir -p tools
-

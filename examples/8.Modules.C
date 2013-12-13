@@ -42,7 +42,7 @@ int main(int argc, char** argv)
 
   dbg << "<h1>Example 8: Modules, "<<numDims<<" dimensions, "<<numParticles<<" particles</h1>" << endl;
     
-  module rootModule(group("Root", 0, 1)); 
+  module rootModule(group("Root", 0, 1), namedMeasures("time", new timeMeasure())); 
   
   // List of particle positions
   //for(int numDims=1; numDims<=4; numDims++) {
@@ -57,7 +57,7 @@ int main(int argc, char** argv)
   srand(time(NULL));
   
   // Generate the initial particle positions
-  module partInitModule(group("Initialization", 1, 1), inputs(rootModule.outPort(0)));
+  module partInitModule(group("Initialization", 1, 1), inputs(rootModule.outPort(0)), namedMeasures("time", new timeMeasure()));
   for(int p=0; p<numParticles; p++) {
     vector<double> curPos;
     for(int d=0; d<numDims; d++) curPos.push_back(((double)rand()/(double)RAND_MAX));
@@ -79,7 +79,9 @@ int main(int argc, char** argv)
       module neighModule(group("Neighbors", 1, 1), 
                                inputs(// particles
                                       (t==0? partInitModule.outPort(0): forceOutputs[0])),
-                               neighOutputs);
+                               neighOutputs,
+                               namedMeasures("time", new timeMeasure(),
+                                             "PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS))));
       
       // Maps each particles (idx in particle) to the set of its neighbors
       
@@ -113,7 +115,9 @@ int main(int argc, char** argv)
                                 (t==0? partInitModule.outPort(0): forceOutputs[0]),
                                 // neighbors
                                 neighOutputs[0]),
-                         forceOutputs);
+                         forceOutputs,
+                         namedMeasures("time", new timeMeasure(),
+                                       "PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS))));
   
       
       for(map<int, set<int> >::iterator p=neighbors.begin(); p!=neighbors.end(); p++) {

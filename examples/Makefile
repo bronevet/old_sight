@@ -4,10 +4,11 @@ EXE := .exe
 endif
 
 sight_H := ../*.h ../*/*.h ../widgets/*/*.h
-TESTERS = demo${EXE} \
-          1.StructuredFormatting${EXE} 2.ConditionalFormatting${EXE} 3.Navigation${EXE} \
-          4.AttributeAnnotationFiltering${EXE} 5.Tracing${EXE} 6.PerfAnalysis${EXE} \
-          7.Merging${EXE} 8.Modules${EXE}
+TESTERS = 8.Modules${EXE} 
+#demo${EXE} \
+#          1.StructuredFormatting${EXE} 2.ConditionalFormatting${EXE} 3.Navigation${EXE} \
+#          4.AttributeAnnotationFiltering${EXE} 5.Tracing${EXE} 6.PerfAnalysis${EXE} \
+#          7.Merging${EXE} 8.Modules${EXE}
 
 all: ${TESTERS}
 

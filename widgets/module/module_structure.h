@@ -61,10 +61,7 @@ class module: public block, public common::module
   group g;	
   // The context of this module execution, which is a combination of the contexts of all of its inputs
   std::vector<context> ctxt;
-  
-  // Measure object that captures the app's behavior during the module's lifetime
-  measure* moduleMeasure;
-  
+    
   // The  output ports of this module
   std::vector<port> outputs;
   
@@ -72,22 +69,39 @@ class module: public block, public common::module
   // object. This is a pointer to this vector.
   std::vector<port>* externalOutputs;
   
+  // List of all the measurements that should be taken during the execution of this module. This is a list of pointers to
+  // measure objects. When the module instance is deleted, its measure objects are automatically deleted as well.
+  namedMeasures meas;
+  
   public:
   // inputs - ports from other modules that are used as inputs by this module.
   // onoffOp - We emit this scope if the current attribute query evaluates to true (i.e. we're emitting debug output) AND
   //           either onoffOp is not provided or its evaluates to true.
-  module(const group& g,                                                                                             properties* props=NULL);
-  module(const group& g, const port& inputs,                                                                         properties* props=NULL);
-  module(const group& g, const std::vector<port>& inputs,                                                            properties* props=NULL);
-  module(const group& g,                                                                      const attrOp& onoffOp, properties* props=NULL);
-  module(const group& g, const port& inputs,                                                  const attrOp& onoffOp, properties* props=NULL);
-  module(const group& g, const std::vector<port>& inputs,                                     const attrOp& onoffOp, properties* props=NULL);
-  module(const group& g,                                  std::vector<port>& externalOutputs,                        properties* props=NULL);
-  module(const group& g, const port& inputs,              std::vector<port>& externalOutputs,                        properties* props=NULL);
-  module(const group& g, const std::vector<port>& inputs, std::vector<port>& externalOutputs,                        properties* props=NULL);
-  module(const group& g,                                  std::vector<port>& externalOutputs, const attrOp& onoffOp, properties* props=NULL);
-  module(const group& g, const port& inputs,              std::vector<port>& externalOutputs, const attrOp& onoffOp, properties* props=NULL);
-  module(const group& g, const std::vector<port>& inputs, std::vector<port>& externalOutputs, const attrOp& onoffOp, properties* props=NULL);
+  module(const group& g,                                                                                                                        properties* props=NULL);
+  module(const group& g, const port& inputs,                                                                                                    properties* props=NULL);
+  module(const group& g, const std::vector<port>& inputs,                                                                                       properties* props=NULL);
+  module(const group& g,                                                                      const attrOp& onoffOp,                            properties* props=NULL);
+  module(const group& g, const port& inputs,                                                  const attrOp& onoffOp,                            properties* props=NULL);
+  module(const group& g, const std::vector<port>& inputs,                                     const attrOp& onoffOp,                            properties* props=NULL);
+  module(const group& g,                                  std::vector<port>& externalOutputs,                                                   properties* props=NULL);
+  module(const group& g, const port& inputs,              std::vector<port>& externalOutputs,                                                   properties* props=NULL);
+  module(const group& g, const std::vector<port>& inputs, std::vector<port>& externalOutputs,                                                   properties* props=NULL);
+  module(const group& g,                                  std::vector<port>& externalOutputs, const attrOp& onoffOp,                            properties* props=NULL);
+  module(const group& g, const port& inputs,              std::vector<port>& externalOutputs, const attrOp& onoffOp,                            properties* props=NULL);
+  module(const group& g, const std::vector<port>& inputs, std::vector<port>& externalOutputs, const attrOp& onoffOp,                            properties* props=NULL);
+    
+  module(const group& g,                                                                                             const namedMeasures& meas, properties* props=NULL);
+  module(const group& g, const port& inputs,                                                                         const namedMeasures& meas, properties* props=NULL);
+  module(const group& g, const std::vector<port>& inputs,                                                            const namedMeasures& meas, properties* props=NULL);
+  module(const group& g,                                                                      const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
+  module(const group& g, const port& inputs,                                                  const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
+  module(const group& g, const std::vector<port>& inputs,                                     const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
+  module(const group& g,                                  std::vector<port>& externalOutputs,                        const namedMeasures& meas, properties* props=NULL);
+  module(const group& g, const port& inputs,              std::vector<port>& externalOutputs,                        const namedMeasures& meas, properties* props=NULL);
+  module(const group& g, const std::vector<port>& inputs, std::vector<port>& externalOutputs,                        const namedMeasures& meas, properties* props=NULL);
+  module(const group& g,                                  std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
+  module(const group& g, const port& inputs,              std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
+  module(const group& g, const std::vector<port>& inputs, std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
   
   void init(const group& g, const std::vector<port>& in);
   

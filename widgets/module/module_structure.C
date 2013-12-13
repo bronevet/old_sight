@@ -101,6 +101,55 @@ module::module(const group& g, const std::vector<port>& in, std::vector<port>& e
 
 
 
+module::module(const group& g,                                                     const namedMeasures& meas, properties* props) : 
+  block(g.name, setProperties(g, inputs(),   NULL, props)), g(g), externalOutputs(NULL), meas(meas)
+{ init(g, inputs()); }
+
+module::module(const group& g, const port& in,                                     const namedMeasures& meas, properties* props): 
+  block(g.name, setProperties(g, inputs(in), NULL, props)), g(g), externalOutputs(NULL), meas(meas)
+{ init(g, inputs(in)); }
+
+module::module(const group& g, const std::vector<port>& in,                        const namedMeasures& meas, properties* props) :
+  block(g.name, setProperties(g, in,         NULL, props)), g(g), externalOutputs(NULL), meas(meas)
+{ init(g, in); }
+
+module::module(const group& g,                              const attrOp& onoffOp, const namedMeasures& meas, properties* props) : 
+  block(g.name, setProperties(g, inputs(),   &onoffOp, props)), g(g), externalOutputs(NULL), meas(meas)
+{ init(g, inputs()); }
+
+module::module(const group& g, const port& in,              const attrOp& onoffOp, const namedMeasures& meas, properties* props): 
+  block(g.name, setProperties(g, inputs(in), &onoffOp, props)), g(g), externalOutputs(NULL), meas(meas)
+{ init(g, inputs(in)); }
+
+module::module(const group& g, const std::vector<port>& in, const attrOp& onoffOp, const namedMeasures& meas, properties* props) :
+  block(g.name, setProperties(g, in,         &onoffOp, props)), g(g), externalOutputs(NULL), meas(meas)
+{ init(g, in); }
+
+
+module::module(const group& g,                              std::vector<port>& externalOutputs,                        const namedMeasures& meas, properties* props) : 
+  block(g.name, setProperties(g, inputs(),   NULL, props)), g(g), externalOutputs(&externalOutputs), meas(meas)
+{ init(g, inputs()); }
+
+module::module(const group& g, const port& in,              std::vector<port>& externalOutputs,                        const namedMeasures& meas, properties* props): 
+  block(g.name, setProperties(g, inputs(in), NULL, props)), g(g), externalOutputs(&externalOutputs), meas(meas)
+{ init(g, inputs(in)); }
+
+module::module(const group& g, const std::vector<port>& in, std::vector<port>& externalOutputs,                        const namedMeasures& meas, properties* props) :
+  block(g.name, setProperties(g, in,         NULL, props)), g(g), externalOutputs(&externalOutputs), meas(meas)
+{ init(g, in); }
+
+module::module(const group& g,                              std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, properties* props) : 
+  block(g.name, setProperties(g, inputs(),   &onoffOp, props)), g(g), externalOutputs(&externalOutputs), meas(meas)
+{ init(g, inputs()); }
+
+module::module(const group& g, const port& in,              std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, properties* props): 
+  block(g.name, setProperties(g, inputs(in), &onoffOp, props)), g(g), externalOutputs(&externalOutputs), meas(meas)
+{ init(g, inputs(in)); }
+
+module::module(const group& g, const std::vector<port>& in, std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, properties* props) :
+  block(g.name, setProperties(g, in,         &onoffOp, props)), g(g), externalOutputs(&externalOutputs), meas(meas)
+{ init(g, in); }
+
 void module::init(const group& g, const std::vector<port>& in) {
   if(this->props->active) {
     mStack.push_back(this);
@@ -161,13 +210,22 @@ void module::init(const group& g, const std::vector<port>& in) {
       }
     }
     
-    
     // Begin measuring this module instance
     assert(moduleTrace.find(g) != moduleTrace.end());
-    moduleMeasure = startMeasure(moduleTrace[g], "measure", traceCtxt);
-    
+    //moduleMeasure = startMeasure(moduleTrace[g], "measure", traceCtxt);
+    for(namedMeasures::iterator m=meas.begin(); m!=meas.end(); m++) {
+      // Set this measure's traceStream to this module's traceStream
+      m->second->setTrace(moduleTrace[g]);
+      
+      // Initialize its value label and context
+      m->second->setValLabel(m->first);
+      m->second->setCtxt(traceCtxt);
+      
+      // Start the measurement
+      m->second->start();
+    }
   } else {
-    moduleMeasure = NULL;
+    //moduleMeasure = NULL;
   }
 }
 
@@ -208,8 +266,12 @@ module::~module()
   // Complete the measurement of application's behavior during the module's lifetime
   if(props->active) {
     // Complete measuring this instance
-    assert(moduleMeasure);
-    endMeasure(moduleMeasure);
+    /*assert(moduleMeasure);
+    endMeasure(moduleMeasure);*/
+    for(namedMeasures::iterator m=meas.begin(); m!=meas.end(); m++) {
+      m->second->end();
+      delete m->second;
+    }
     
     // Set moduleInCtxtNames based on the context of the outputs or if it already set, verify that
     // the outputs attributes either have the same names as they had last time

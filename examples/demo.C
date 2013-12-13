@@ -130,7 +130,7 @@ int main(int argc, char** argv)
     // Recursive
     for(int depth=1; depth<30; depth++) {
       attr depthAttr("depth", depth);
-      measure* m = startMeasure("Fib Time", "Recursive");
+      measure* m = startMeasure<timeMeasure>("Fib Time", "Recursive");
       int value = fib(depth);
       endMeasure(m);
       traceAttr("Fib Value", "val", attrValue(value));
@@ -139,7 +139,7 @@ int main(int argc, char** argv)
     // Linear
     for(int depth=1; depth<30; depth++) {
       attr depthAttr("depth", depth);
-      measure* m = startMeasure("Fib Time", "Recursive");
+      measure* m = startMeasure<timeMeasure>("Fib Time", "Recursive");
       fibLinear(depth);
       endMeasure(m);
     }
@@ -152,7 +152,7 @@ int main(int argc, char** argv)
                                            source::reg(thisFile, "histRecurrenceStart", "histRecurrenceEnd"))); }
      
  #pragma sightLoc ModularStart
-    module rootModule(group("Modular Analysis", 0, 0));
+    module rootModule(group("Modular Analysis", 0, 0), namedMeasures("time", new timeMeasure()));
     
     // Initialize the linear recurrence coefficients to Fibonacci
     for(int i=0; i<30; i++) {
@@ -161,7 +161,7 @@ int main(int argc, char** argv)
       vector<double> linear;
       vector<port> initOutputs;
       {
-        module initModule(group("Initialization", 0, 2), inputs(), initOutputs);
+        module initModule(group("Initialization", 0, 2), inputs(), initOutputs, namedMeasures("time", new timeMeasure()));
         linear.push_back(1);
         linear.push_back(1);
         initModule.setOutCtxt(0, context(config("history", 2)));
@@ -180,7 +180,8 @@ int main(int argc, char** argv)
           module recurModule(group("Recurrence", 2, 1),
                              inputs(j==0? initOutputs[0]: analysisOutputs[0],
                                     j==0? initOutputs[1]: analysisOutputs[1]),
-                             recurOutputs);
+                             recurOutputs,
+                             namedMeasures("time", new timeMeasure()));
           value = histRecurrence(i, linear);
         }
      
@@ -188,7 +189,8 @@ int main(int argc, char** argv)
         {
           module analysisModule(group("Analysis", 1, 2),
                                 inputs(recurOutputs[0]),
-                                analysisOutputs);
+                                analysisOutputs,
+                                namedMeasures("time", new timeMeasure()));
 
           linear.push_back((int)(value/lastValue + 1));
           analysisModule.setOutCtxt(0, context(config("history", (int)linear.size())));
