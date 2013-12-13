@@ -1,7 +1,24 @@
 // Hash maps divs to the data arrays that are shown in them
 var div2Data = {};
+
+// Hash maps divs and their attribute names to the type of data the associated table contains for each
+// field: "numeric", "categorical".
+var dataType = {};
+
 function showTable(data, hostDiv, sortAttrName) {
   div2Data[hostDiv] = data;
+  
+  var firstObs = true;
+  for(d in data) { if(data.hasOwnProperty(d)) {
+    for(key in data[d]) { if(data[d].hasOwnProperty(key)) {
+      // Default each attribute to numeric until we discover that this is not true
+      if(firstObs) dataType[hostDiv][key] = "numeric";
+
+      if(!isNumber(data[d][key])) dataType[hostDiv][key] = "categorical";
+    } }
+    
+      firstObs = false;
+  } }
   
   d3.select("#"+hostDiv).append("thead");
   d3.select("#"+hostDiv).append("tbody");
@@ -25,7 +42,11 @@ function refreshTable(hostDiv, sortAttrName) {
                .selectAll("tr")
                       .data(div2Data[hostDiv])
                  .enter().append("tr")
-                    .sort(function (a, b) { return a == null || b == null ? 0 : stringCompare(a[sortAttrName], b[sortAttrName]); });
+                    .sort(function (a, b) { 
+                            return a == null || b == null ? 
+                               0 : 
+                               stringCompare(dataType[hostDiv][sortAttrName], a[sortAttrName], b[sortAttrName]); 
+                          });
 
 // Cells
     var td = tr.selectAll("td")
@@ -35,10 +56,15 @@ function refreshTable(hostDiv, sortAttrName) {
             .text(function(d) { return d[1]; });
 }
 
-function stringCompare(a, b) {
+function stringCompare(type, a, b) {
+  if(type=="categorical") {
     a = a.toLowerCase();
     b = b.toLowerCase();
-    return a > b ? 1 : a == b ? 0 : -1;
+  } else {
+    a = parseFloat(a);
+    b = parseFloat(b);
+  }
+  return a > b ? 1 : a == b ? 0 : -1;
 }
 
 function jsonKeyValueToArray(k, v) {return [k, v];}
