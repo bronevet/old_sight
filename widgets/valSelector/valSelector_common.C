@@ -3,7 +3,7 @@
 #include <sstream>
 #include <ostream>
 #include <fstream>
-#include "graph_common.h"
+#include "../graph/graph_common.h"
 
 using namespace std;
 

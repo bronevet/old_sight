@@ -35,7 +35,9 @@ source::source(properties::iterator props) : scope(properties::next(props))
   // Keeps track of whether we've included the syntax highlighting scripts required by source
   static bool scriptsIncluded=false;
   if(!scriptsIncluded) {
-    dbg.includeFile("source");
+    // Create the directory that holds the source-specific scripts
+    dbg.createWidgetDir("source");
+    
     dbg.includeWidgetScript("source/sh_main.js",   "text/javascript");  dbg.includeFile("source/sh_main.js");
     dbg.includeWidgetScript("source/sh_cpp.js",    "text/javascript");  dbg.includeFile("source/sh_cpp.js");
     dbg.includeWidgetScript("source/sh_style.css", "text/css");         dbg.includeFile("source/sh_style.css");

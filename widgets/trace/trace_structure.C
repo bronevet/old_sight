@@ -1,5 +1,5 @@
-#include "../sight_common.h"
-#include "../sight_structure.h"
+#include "../../sight_common.h"
+#include "../../sight_structure.h"
 using namespace std;
 using namespace sight::common;
   
@@ -411,6 +411,27 @@ double endMeasure(measure* m) {
   return result;
 }
 
+/*****************************************
+ ***** TraceMergeHandlerInstantiator *****
+ *****************************************/
+
+TraceMergeHandlerInstantiator::TraceMergeHandlerInstantiator() { 
+  (*MergeHandlers   )["trace"]       = TraceMerger::create;
+  (*MergeKeyHandlers)["trace"]       = TraceMerger::mergeKey;
+  (*MergeHandlers   )["traceStream"] = TraceStreamMerger::create;
+  (*MergeKeyHandlers)["traceStream"] = TraceStreamMerger::mergeKey;
+  (*MergeHandlers   )["traceObs"]    = TraceObsMerger::create;
+  (*MergeKeyHandlers)["traceObs"]    = TraceObsMerger::mergeKey;
+  MergeGetStreamRecords->insert(&TraceGetMergeStreamRecord);
+}
+TraceMergeHandlerInstantiator TraceMergeHandlerInstance;
+
+std::map<std::string, streamRecord*> TraceGetMergeStreamRecord(int streamID) {
+  std::map<std::string, streamRecord*> mergeMap;
+  mergeMap["traceStream"] = new TraceStreamRecord(streamID);
+  return mergeMap;
+}
+
 /***********************
  ***** TraceMerger *****
  ***********************/
@@ -459,9 +480,8 @@ properties* TraceMerger::setProperties(std::vector<std::pair<properties::tagType
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
 void TraceMerger::mergeKey(properties::tagType type, properties::iterator tag, 
                            std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
-  properties::iterator blockTag = tag;
-  BlockMerger::mergeKey(type, ++blockTag, inStreamRecords, key);
-    
+  BlockMerger::mergeKey(type, tag.next(), inStreamRecords, key);
+  
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
     // We don't specify a key for traces since they're mostly shells for traceStreams and there isn't much to differentiate them
@@ -536,7 +556,7 @@ TraceStreamMerger::TraceStreamMerger(std::vector<std::pair<properties::tagType, 
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
 void TraceStreamMerger::mergeKey(properties::tagType type, properties::iterator tag, 
                            std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
-  properties::iterator blockTag = tag;
+  Merger::mergeKey(type, tag.next(), inStreamRecords, key);
     
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
@@ -699,6 +719,8 @@ TraceObsMerger::TraceObsMerger(std::vector<std::pair<properties::tagType, proper
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
 void TraceObsMerger::mergeKey(properties::tagType type, properties::iterator tag, 
                               std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
+  Merger::mergeKey(type, tag.next(), inStreamRecords, key);
+  
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
     // Observations may only be merged if they correspond to traces that were merged in the outgoing stream

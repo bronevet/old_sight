@@ -9,8 +9,8 @@
 #include <sstream>
 #include <fstream>
 #include <assert.h>
-#include "../sight_common.h"
-#include "../sight_layout.h"
+#include "../../sight_common.h"
+#include "../../sight_layout.h"
 #include <sys/time.h>
 
 namespace sight {

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../sight_common_internal.h"
+#include "../../sight_common_internal.h"
 
 namespace sight {
   

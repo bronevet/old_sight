@@ -10,7 +10,7 @@
 #include <fstream>
 #include <stdlib.h>
 #include <stdio.h>
-#include "sight_common_internal.h"
+#include "../sight_common_internal.h"
 //#include "sight_structure_internal.h"
 #include "attributes_common.h"
 
@@ -492,6 +492,9 @@ class attr : public sightObj
   
   template<typename T>
   void init(std::string key, T val, properties* props);
+    
+  template<typename T>
+  properties* setProperties(std::string key, T val, properties* props);
   
   ~attr();
   
@@ -618,13 +621,27 @@ void* attrFalse_enter();
 void attrFalse_exit(void* subQ);
 }
 
+class AttributeMergeHandlerInstantiator: public MergeHandlerInstantiator {
+  public:
+  AttributeMergeHandlerInstantiator();
+};
+extern AttributeMergeHandlerInstantiator AttributeMergeHandlerInstance;
+
+std::map<std::string, streamRecord*> AttributeGetMergeStreamRecord(int streamID);
+
 class AttributeMerger : public Merger {
   public:
   AttributeMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
               std::map<std::string, streamRecord*>& outStreamRecords,
               std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
               properties* props=NULL);
-              
+  
+  static Merger* create(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
+                        std::map<std::string, streamRecord*>& outStreamRecords,
+                        std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                        properties* props)
+  { return new AttributeMerger(tags, outStreamRecords, inStreamRecords, props); }
+  
   // Sets a list of strings that denotes a unique ID according to which instances of this merger's 
   // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 

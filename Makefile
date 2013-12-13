@@ -1,9 +1,9 @@
-SIGHT_COMMON_O := sight_common.o attributes_common.o binreloc.o getAllHostnames.o utils.o
-SIGHT_COMMON_H := sight.h sight_common_internal.h attributes_common.h binreloc.h getAllHostnames.h utils.h
-SIGHT_STRUCTURE_O := sight_structure.o attributes_structure.o
-SIGHT_STRUCTURE_H := sight.h sight_structure_internal.h attributes_structure.h
-SIGHT_LAYOUT_O := sight_layout.o attributes_layout.o slayout.o variant_layout.o 
-SIGHT_LAYOUT_H := sight.h sight_layout_internal.h attributes_layout.h variant_layout.h
+SIGHT_COMMON_O := sight_common.o attributes/attributes_common.o binreloc.o getAllHostnames.o utils.o
+SIGHT_COMMON_H := sight.h sight_common_internal.h attributes/attributes_common.h binreloc.h getAllHostnames.h utils.h
+SIGHT_STRUCTURE_O := sight_structure.o attributes/attributes_structure.o
+SIGHT_STRUCTURE_H := sight.h sight_structure_internal.h attributes/attributes_structure.h
+SIGHT_LAYOUT_O := sight_layout.o attributes/attributes_layout.o slayout.o variant_layout.o 
+SIGHT_LAYOUT_H := sight.h sight_layout_internal.h attributes/attributes_layout.h variant_layout.h
 sight := ${sight_O} ${sight_H} gdbLineNum.pl sightDefines.pl
 
 SIGHT_CFLAGS = -g -I${ROOT_PATH}/tools/callpath/src -I${ROOT_PATH}/tools/adept-utils/include 
@@ -52,8 +52,12 @@ endif
 allExamples: libsight_structure.a
 	cd examples; make ROOT_PATH=${ROOT_PATH} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}"
 
-runExamples: libsight_structure.a slayout${EXE} hier_merge${EXE} #apps
+run: runExamples runApps
+
+runExamples: libsight_structure.a slayout${EXE} hier_merge${EXE}
 	cd examples; make ROOT_PATH=${ROOT_PATH} OS=${OS}  SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" run
+
+runApps: libsight_structure.a slayout${EXE} hier_merge${EXE} apps
 	apps/mfem/mfem/examples/ex1 apps/mfem/mfem/data/beam-quad.mesh
 	apps/mfem/mfem/examples/ex2 apps/mfem/mfem/data/beam-tet.mesh 2
 	apps/mfem/mfem/examples/ex3 apps/mfem/mfem/data/ball-nurbs.mesh
@@ -62,40 +66,25 @@ ifneq (${OS}, Cygwin)
 	apps/mcbench/src/MCBenchmark.exe --nCores=1 --distributedSource --numParticles=13107 --nZonesX=256 --nZonesY=256 --xDim=16 --yDim=16 --mirrorBoundary --multiSigma --nThreadCore=1
 endif
 
-#pattern${EXE}: pattern.C pattern.h libsight.a ${sight_H}
-#	g++ ${SIGHT_CFLAGS} pattern.C -L. -lsight  -o pattern${EXE}
 
 slayout.o: slayout.C process.C process.h
 	g++ ${SIGHT_CFLAGS} slayout.C -I. -c -o slayout.o
 
 slayout${EXE}: mfem libsight_layout.a 
-	g++ -Wl,--whole-archive libsight_layout.a apps/mfem/mfem_layout.o  -Wl,-no-whole-archive -o slayout${EXE}
+	g++ -Wl,--whole-archive libsight_layout.a apps/mfem/mfem_layout.o -Wl,-no-whole-archive -o slayout${EXE}
 #	ld --whole-archive slayout.o libsight_layout.a apps/mfem/mfem_layout.o -o slayout${EXE}
 #	g++ ${SIGHT_CFLAGS} slayout.C -Wl,--whole-archive libsight_layout.a -DMFEM -I. -Iapps/mfem apps/mfem/mfem_layout.o -Wl,-no-whole-archive -o slayout${EXE}
 
 hier_merge${EXE}: hier_merge.C process.C process.h libsight_structure.a 
-	g++ ${SIGHT_CFLAGS} hier_merge.C libsight_structure.a tools/callpath/src/src/libcallpath.so -DMFEM -I. ${SIGHT_LINKFLAGS} -o hier_merge${EXE}
-
-
-#	g++ -c slayout.C -o slayout.o
-#	g++ slayout.o libsight_layout.a --relocateable -Ur --whole-archive -o slayout${EXE}
-#	g++ slayout.C libsight_layout.a -o slayout${EXE}
-#	g++ -c slayout.C -o slayout.o
-#	ld slayout.o libsight_layout.a --relocateable -Ur --whole-archive -o slayout${EXE}
-
-#process.o: process.C process.h sight_common_internal.h
-#	g++ ${SIGHT_CFLAGS} process.C -c -o process.o
-
-#libsight_common.a: ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre
-#	ar -r libsight_common.a ${SIGHT_COMMON_O} widgets/*_common.o
+	g++ ${SIGHT_CFLAGS} hier_merge.C -Wl,--whole-archive libsight_structure.a -Wl,-no-whole-archive tools/callpath/src/src/libcallpath.so -DMFEM -I. ${SIGHT_LINKFLAGS} -o hier_merge${EXE}
 
 libsight_structure.a: ${SIGHT_STRUCTURE_O} ${SIGHT_STRUCTURE_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre
-	ar -r libsight_structure.a ${SIGHT_STRUCTURE_O} ${SIGHT_COMMON_O} widgets/*_structure.o widgets/*_common.o widgets/*/*_structure.o widgets/*/*_common.o
+	ar -r libsight_structure.a ${SIGHT_STRUCTURE_O} ${SIGHT_COMMON_O} widgets/*/*_structure.o widgets/*/*_common.o
 
 libsight_layout.a: ${SIGHT_LAYOUT_O} ${SIGHT_LAYOUT_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre widgets/gsl/lib/libgsl.a widgets/gsl/lib/libgslcblas.a
 	mkdir -p tmp
 	cd tmp; ar -x ../widgets/gsl/lib/libgsl.a; ar -x ../widgets/gsl/lib/libgslcblas.a
-	ar -r libsight_layout.a    ${SIGHT_LAYOUT_O}    ${SIGHT_COMMON_O} widgets/*_layout.o widgets/*_common.o widgets/*/*_layout.o widgets/*/*_common.o tmp/*.o
+	ar -r libsight_layout.a    ${SIGHT_LAYOUT_O}    ${SIGHT_COMMON_O} widgets/*/*_layout.o widgets/*/*_common.o tmp/*.o
 	rm -fr tmp
 	
 #libaz.a: libabc.a(*.o) libxyz.a(*.o)
@@ -103,27 +92,27 @@ libsight_layout.a: ${SIGHT_LAYOUT_O} ${SIGHT_LAYOUT_H} ${SIGHT_COMMON_O} ${SIGHT
 #	ld libsight_layout.a    ${SIGHT_LAYOUT_O}    ${SIGHT_COMMON_O} widgets/*_layout.o     widgets/*_common.o
 
 
-sight_common.o: sight_common.C sight_common_internal.h attributes_common.h
+sight_common.o: sight_common.C sight_common_internal.h attributes/attributes_common.h
 	g++ ${SIGHT_CFLAGS} sight_common.C -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o sight_common.o
 
-sight_structure.o: sight_structure.C sight_structure_internal.h attributes_structure.h sight_common_internal.h attributes_common.h tools/dtl tools/callpath
+sight_structure.o: sight_structure.C sight_structure_internal.h attributes/attributes_structure.h sight_common_internal.h attributes/attributes_common.h tools/dtl tools/callpath
 	g++ ${SIGHT_CFLAGS} sight_structure.C -Itools/dtl -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o sight_structure.o
 
-sight_layout.o: sight_layout.C sight_layout_internal.h attributes_layout.h sight_common_internal.h attributes_common.h
+sight_layout.o: sight_layout.C sight_layout_internal.h attributes/attributes_layout.h sight_common_internal.h attributes/attributes_common.h
 	g++ ${SIGHT_CFLAGS} sight_layout.C -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o sight_layout.o
 
-variant_layout.o: variant_layout.C variant_layout.h sight_layout_internal.h attributes_layout.h sight_common_internal.h attributes_common.h
+variant_layout.o: variant_layout.C variant_layout.h sight_layout_internal.h attributes/attributes_layout.h sight_common_internal.h attributes/attributes_common.h
 	g++ ${SIGHT_CFLAGS} variant_layout.C -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o variant_layout.o
 
 
-attributes_common.o: attributes_common.C  sight_common_internal.h attributes_common.h
-	g++ ${SIGHT_CFLAGS} attributes_common.C -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o attributes_common.o
+attributes/attributes_common.o: attributes/attributes_common.C  sight_common_internal.h attributes/attributes_common.h
+	g++ ${SIGHT_CFLAGS} attributes/attributes_common.C -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o attributes/attributes_common.o
 
-attributes_structure.o: attributes_structure.C attributes_structure.h sight_common_internal.h attributes_common.h
-	g++ ${SIGHT_CFLAGS} attributes_structure.C -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o attributes_structure.o
+attributes/attributes_structure.o: attributes/attributes_structure.C attributes/attributes_structure.h sight_common_internal.h attributes/attributes_common.h
+	g++ ${SIGHT_CFLAGS} attributes/attributes_structure.C -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o attributes/attributes_structure.o
 
-attributes_layout.o: attributes_layout.C attributes_layout.h sight_common_internal.h attributes_common.h
-	g++ ${SIGHT_CFLAGS} attributes_layout.C -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o attributes_layout.o
+attributes/attributes_layout.o: attributes/attributes_layout.C attributes/attributes_layout.h sight_common_internal.h attributes/attributes_common.h
+	g++ ${SIGHT_CFLAGS} attributes/attributes_layout.C -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o attributes/attributes_layout.o
 
 
 # Rule for compiling the aspects of widgets that libsight.a requires

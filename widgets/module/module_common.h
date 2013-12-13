@@ -8,7 +8,7 @@
 #include <iostream>
 #include <sstream>
 #include <fstream>
-#include "attributes_common.h"
+#include "../../attributes/attributes_common.h"
 #include "sight_common.h"
 
 namespace sight {

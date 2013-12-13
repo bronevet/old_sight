@@ -1,4 +1,4 @@
-#include "../sight_layout.h"
+#include "../../sight_layout.h"
 #include <assert.h>
 
 using namespace std;
@@ -70,11 +70,13 @@ colorSelector::colorSelector(properties::iterator props) : valSelector()
 {
   static bool initialized=false;
   if(!initialized) {
-    dbg.includeFile("valSelector.js");
-    dbg.includeWidgetScript("valSelector.js", "text/javascript");
+    // Create the directory that holds the module-specific scripts
+    pair<string, string> paths = dbg.createWidgetDir("valSelector");
+    
+    dbg.includeWidgetScript("valSelector/valSelector.js", "text/javascript"); dbg.includeFile("valSelector/valSelector.js"); 
     initialized=true;
   }
-  
+
   selID=properties::getInt(props, "selID");
   assert(active.find(selID) == active.end());
   active[selID] = this;

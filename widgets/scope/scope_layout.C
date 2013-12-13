@@ -1,6 +1,6 @@
 // Licence information included in file LICENCE
-#include "../sight_layout.h"
-#include "../sight_common.h"
+#include "../../sight_layout.h"
+#include "../../sight_common.h"
 #include <fstream>
 #include <iostream>
 #include <sstream>

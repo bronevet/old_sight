@@ -1,8 +1,8 @@
 // Licence information included in file LICENCE
 #define MODULE_STRUCTURE_C
-#include "../sight_structure.h"
+#include "../../sight_structure.h"
 #include "module_structure.h"
-#include "../sight_common.h"
+#include "../../sight_common.h"
 #include "module_common.h"
 #include <fstream>
 #include <iostream>
@@ -400,6 +400,30 @@ properties* moduleNodeTraceStream::setProperties(int nodeID, string name, int nu
   return props;
 }
 
+/******************************************
+ ***** ModuleMergeHandlerInstantiator *****
+ ******************************************/
+
+ModuleMergeHandlerInstantiator::ModuleMergeHandlerInstantiator() { 
+  (*MergeHandlers   )["module"]        = ModuleMerger::create;
+  (*MergeKeyHandlers)["module"]        = ModuleMerger::mergeKey;
+  (*MergeHandlers   )["moduleNode"]    = ModuleNodeMerger::create;
+  (*MergeKeyHandlers)["moduleNode"]    = ModuleNodeMerger::mergeKey;    
+  (*MergeHandlers   )["moduleEdge"]    = ModuleEdgeMerger::create;
+  (*MergeKeyHandlers)["moduleEdge"]    = ModuleEdgeMerger::mergeKey;
+  (*MergeHandlers   )["moduleNodeTS"]  = ModuleNodeTraceStreamMerger::create;
+  (*MergeKeyHandlers)["moduleNodeTS"]  = ModuleNodeTraceStreamMerger::mergeKey;
+    
+  MergeGetStreamRecords->insert(&ModuleGetMergeStreamRecord);
+}
+ModuleMergeHandlerInstantiator ModuleMergeHandlerInstance;
+
+std::map<std::string, streamRecord*> ModuleGetMergeStreamRecord(int streamID) {
+  std::map<std::string, streamRecord*> mergeMap;
+  mergeMap["module"] = new ModuleStreamRecord(streamID);
+  return mergeMap;
+}
+
 
 /************************
  ***** ModuleMerger *****
@@ -425,8 +449,8 @@ properties* ModuleMerger::setProperties(std::vector<std::pair<properties::tagTyp
   assert(*names.begin() == "module");
 
   map<string, string> pMap;
-  properties::tagType type = streamRecord::getTagType(tags); 
-  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Scope!"<<endl; exit(-1); }
+  properties::tagType type = streamRecord::getTagType(tags);
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Module!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
     // Merge the module IDs along all the streams
     int mergedTraceID = streamRecord::mergeIDs("module", "moduleID", pMap, tags, outStreamRecords, inStreamRecords);
@@ -452,8 +476,7 @@ properties* ModuleMerger::setProperties(std::vector<std::pair<properties::tagTyp
 // call their parents so they can add any info,
 void ModuleMerger::mergeKey(properties::tagType type, properties::iterator tag, 
                            std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
-  properties::iterator blockTag = tag;
-  BlockMerger::mergeKey(type, ++blockTag, inStreamRecords, key);
+  BlockMerger::mergeKey(type, tag.next(), inStreamRecords, key);
 }
 
 /****************************
@@ -481,7 +504,7 @@ properties* ModuleNodeMerger::setProperties(std::vector<std::pair<properties::ta
 
   map<string, string> pMap;
   properties::tagType type = streamRecord::getTagType(tags); 
-  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Scope!"<<endl; exit(-1); }
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Module Nodes!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
     /*vector<string> cpValues = getValues(tags, "callPath");
     assert(allSame<string>(cpValues));
@@ -521,7 +544,7 @@ properties* ModuleNodeMerger::setProperties(std::vector<std::pair<properties::ta
 // call their parents so they can add any info,
 void ModuleNodeMerger::mergeKey(properties::tagType type, properties::iterator tag, 
                            std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
-  properties::iterator blockTag = tag;
+  Merger::mergeKey(type, tag.next(), inStreamRecords, key);
     
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
@@ -562,7 +585,7 @@ properties* ModuleEdgeMerger::setProperties(std::vector<std::pair<properties::ta
 
   map<string, string> pMap;
   properties::tagType type = streamRecord::getTagType(tags); 
-  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Scope!"<<endl; exit(-1); }
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Module Edges!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
     /*vector<string> cpValues = getValues(tags, "callPath");
     assert(allSame<string>(cpValues));
@@ -611,7 +634,7 @@ properties* ModuleEdgeMerger::setProperties(std::vector<std::pair<properties::ta
 // call their parents so they can add any info,
 void ModuleEdgeMerger::mergeKey(properties::tagType type, properties::iterator tag, 
                                 std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
-  properties::iterator blockTag = tag;
+  Merger::mergeKey(type, tag.next(), inStreamRecords, key);
     
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
@@ -662,7 +685,7 @@ properties* ModuleNodeTraceStreamMerger::setProperties(
     
   map<string, string> pMap;
   properties::tagType type = streamRecord::getTagType(tags); 
-  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Trace!"<<endl; exit(-1); }
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Module Node TraceStreams!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
     int nodeID = ModuleStreamRecord::mergeNodeIDs("nodeID", pMap, tags, outStreamRecords, inStreamRecords);
     pMap["nodeID"] = txt() << nodeID;
@@ -691,7 +714,7 @@ properties* ModuleNodeTraceStreamMerger::setProperties(
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
 void ModuleNodeTraceStreamMerger::mergeKey(properties::tagType type, properties::iterator tag, 
                            std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
-  properties::iterator blockTag = tag;
+  Merger::mergeKey(type, tag.next(), inStreamRecords, key);
    
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
   if(type==properties::enterTag) {

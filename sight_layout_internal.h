@@ -32,6 +32,8 @@ class layoutHandlerInstantiator {
   static std::map<std::string, layoutExitHandler>*  layoutExitHandlers;
 
   layoutHandlerInstantiator() {
+    // Initialize the handlers mappings, using environment variables to make sure that
+    // only the first instance of this layoutHandlerInstantiator creates these objects.
     if(!getenv("SIGHT_LAYOUT_HANDLERS_INSTANTIATED")) {
       layoutEnterHandlers = new std::map<std::string, layoutEnterHandler>();
       layoutExitHandlers  = new std::map<std::string, layoutExitHandler>();
@@ -56,7 +58,7 @@ void layoutStructure(common::structureParser& parser);
 }
 }
 
-#include "attributes_layout.h"
+#include "attributes/attributes_layout.h"
 
 namespace sight {
 namespace layout {

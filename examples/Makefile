@@ -3,9 +3,9 @@ ifeq (${OS}, Cygwin)
 EXE := .exe
 endif
 
-sight_H := ../*.h ../widgets/*.h
-TESTERS = demo${EXE}
-#1.StructuredFormatting${EXE} 2.ConditionalFormatting${EXE} 3.Navigation${EXE} \
+sight_H := ../*.h ../*/*.h ../widgets/*/*.h
+TESTERS = demo${EXE} \
+          1.StructuredFormatting${EXE} 2.ConditionalFormatting${EXE} 3.Navigation${EXE} \
           4.AttributeAnnotationFiltering${EXE} 5.Tracing${EXE} 6.PerfAnalysis${EXE} \
           7.Merging${EXE} 8.Modules${EXE}
 
@@ -16,14 +16,18 @@ run: ${TESTERS}
 	./2.ConditionalFormatting${EXE};        
 	./3.Navigation${EXE};                   
 	./4.AttributeAnnotationFiltering${EXE}; 
-	./5.Tracing${EXE};                      
+	export SIGHT_FILE_OUT=1; ./4.AttributeAnnotationFiltering${EXE} 0 20; ./4.AttributeAnnotationFiltering${EXE} 1 20; ./4.AttributeAnnotationFiltering${EXE} 2 20; ./4.AttributeAnnotationFiltering${EXE} 3 20
+	export SIGHT_FILE_OUT=1; rm -rf dbg.4.AttributeAnnotationFiltering; ../hier_merge dbg.4.AttributeAnnotationFiltering zipper dbg.4.AttributeAnnotationFiltering.client_0.numIters_20/structure dbg.4.AttributeAnnotationFiltering.client_1.numIters_20/structure dbg.4.AttributeAnnotationFiltering.client_2.numIters_20/structure dbg.4.AttributeAnnotationFiltering.client_3.numIters_20/structure
+	rm -rf dbg.4.AttributeAnnotationFiltering.*;
+	../slayout${EXE} dbg.4.AttributeAnnotationFiltering/structure;	
+	./5.Tracing${EXE};
 	./6.PerfAnalysis${EXE};
 	export SIGHT_FILE_OUT=1; ./7.Merging${EXE} 1; ./7.Merging${EXE} 2; ./7.Merging${EXE} 3; ./7.Merging${EXE} 4; ./7.Merging${EXE} 5; ./7.Merging${EXE} 6; 
-	export SIGHT_FILE_OUT=1; rm -rf dbg.7.Merging; ../hier_merge${EXE} dbg.7.Merging dbg.7.Merging.numIters_1/structure dbg.7.Merging.numIters_2/structure dbg.7.Merging.numIters_3/structure dbg.7.Merging.numIters_4/structure dbg.7.Merging.numIters_5/structure dbg.7.Merging.numIters_6/structure; 
+	export SIGHT_FILE_OUT=1; rm -rf dbg.7.Merging; ../hier_merge${EXE} dbg.7.Merging common dbg.7.Merging.numIters_1/structure dbg.7.Merging.numIters_2/structure dbg.7.Merging.numIters_3/structure dbg.7.Merging.numIters_4/structure dbg.7.Merging.numIters_5/structure dbg.7.Merging.numIters_6/structure; 
 	rm -rf dbg.7.Merging.numIters*;
 	../slayout${EXE} dbg.7.Merging/structure;	
 	export SIGHT_FILE_OUT=1; ./8.Modules${EXE} 1 10; ./8.Modules${EXE} 1 30; ./8.Modules${EXE} 1 100; ./8.Modules${EXE} 2 10; ./8.Modules${EXE} 2 30; ./8.Modules${EXE} 2 100; ./8.Modules${EXE} 3 10; ./8.Modules${EXE} 3 30; ./8.Modules${EXE} 3 100;
-	export SIGHT_FILE_OUT=1; rm -rf dbg.8.Modules; ../hier_merge dbg.8.Modules dbg.8.Modules.1_dims.10_particles/structure dbg.8.Modules.1_dims.30_particles/structure dbg.8.Modules.1_dims.100_particles/structure dbg.8.Modules.2_dims.10_particles/structure dbg.8.Modules.2_dims.30_particles/structure dbg.8.Modules.2_dims.100_particles/structure dbg.8.Modules.3_dims.10_particles/structure dbg.8.Modules.3_dims.30_particles/structure dbg.8.Modules.3_dims.100_particles/structure
+	export SIGHT_FILE_OUT=1; rm -rf dbg.8.Modules; ../hier_merge dbg.8.Modules common dbg.8.Modules.1_dims.10_particles/structure dbg.8.Modules.1_dims.30_particles/structure dbg.8.Modules.1_dims.100_particles/structure dbg.8.Modules.2_dims.10_particles/structure dbg.8.Modules.2_dims.30_particles/structure dbg.8.Modules.2_dims.100_particles/structure dbg.8.Modules.3_dims.10_particles/structure dbg.8.Modules.3_dims.30_particles/structure dbg.8.Modules.3_dims.100_particles/structure
 	rm -rf dbg.8.Modules.*;
 	../slayout${EXE} dbg.8.Modules/structure;	
 

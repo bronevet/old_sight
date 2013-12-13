@@ -9,8 +9,8 @@
 #include <sstream>
 #include <fstream>
 #include <assert.h>
-#include "../sight_common.h"
-#include "../sight_structure_internal.h"
+#include "../../sight_common.h"
+#include "../../sight_structure_internal.h"
 #include <sys/time.h>
 
 namespace sight {
@@ -201,12 +201,27 @@ measure* startMeasure(trace* t,               std::string valLabel, const std::m
 measure* startMeasure(traceStream* ts,        std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt);
 double endMeasure(measure* m);
 
+class TraceMergeHandlerInstantiator: public MergeHandlerInstantiator {
+  public:
+  TraceMergeHandlerInstantiator();
+};
+extern TraceMergeHandlerInstantiator TraceMergeHandlerInstance;
+
+std::map<std::string, streamRecord*> TraceGetMergeStreamRecord(int streamID);
+
+
 class TraceMerger : public BlockMerger {
   public:
   TraceMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
               std::map<std::string, streamRecord*>& outStreamRecords,
               std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
               properties* props=NULL);
+            
+  static Merger* create(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
+                        std::map<std::string, streamRecord*>& outStreamRecords,
+                        std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                        properties* props)
+  { return new TraceMerger(tags, outStreamRecords, inStreamRecords, props); }
               
   // Sets the properties of the merged object
   static properties* setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
@@ -228,6 +243,12 @@ class TraceStreamMerger : public Merger {
               std::map<std::string, streamRecord*>& outStreamRecords,
               std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
               properties* props=NULL);
+       
+  static Merger* create(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
+                        std::map<std::string, streamRecord*>& outStreamRecords,
+                        std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                        properties* props)
+  { return new TraceStreamMerger(tags, outStreamRecords, inStreamRecords, props); }
               
   // Sets the properties of the merged object
   static properties* setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
@@ -249,6 +270,12 @@ class TraceObsMerger : public Merger {
               std::map<std::string, streamRecord*>& outStreamRecords,
               std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
               properties* props=NULL);
+
+  static Merger* create(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
+                        std::map<std::string, streamRecord*>& outStreamRecords,
+                        std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                        properties* props)
+  { return new TraceObsMerger(tags, outStreamRecords, inStreamRecords, props); }
 
   // Sets a list of strings that denotes a unique ID according to which instances of this merger's 
   // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.

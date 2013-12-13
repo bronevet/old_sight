@@ -10,7 +10,7 @@
 #include <fstream>
 #include <stdlib.h>
 #include <stdio.h>
-#include "../sight_layout.h"
+#include "../../sight_layout.h"
 
 namespace sight {
 namespace layout {

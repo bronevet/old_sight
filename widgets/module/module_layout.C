@@ -1,6 +1,6 @@
 // Licence information included in file LICENCE
 #define MODULE_LAYOUT_C
-#include "../sight_layout.h"
+#include "../../sight_layout.h"
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -84,6 +84,7 @@ void module::initEnvironment() {
   if(initialized) return;
   initialized = true;
   
+  // Create the directory that holds the module-specific scripts
   pair<string, string> paths = dbg.createWidgetDir("module");
   outDir = paths.first;
   htmlOutDir = paths.second;
@@ -101,7 +102,7 @@ void module::initEnvironment() {
   //dbg.includeWidgetScript("canviz-0.1/graphs/graphlist.js",  "text/javascript");
   //dbg.includeWidgetScript("canviz-0.1/graphs/layoutlist.js", "text/javascript");
   
-  dbg.includeFile("module.js"); dbg.includeWidgetScript("module.js", "text/javascript"); 
+  dbg.includeFile("module/module.js"); dbg.includeWidgetScript("module/module.js", "text/javascript"); 
 }
 
 module::~module() {
@@ -136,7 +137,7 @@ module::~module() {
 }
 
 void *module::enterTraceStream(properties::iterator props) {
-  assert(properties::name(props) == "moduleNodeTS");
+  assert(props.name() == "moduleNodeTS");
   //string moduleName = properties::get(nameProps, "ModuleName");
   
   // Allocate a new moduleNodeTraceStream. The constructor takes care of registering it with the currently active module
@@ -148,7 +149,7 @@ void *module::enterTraceStream(properties::iterator props) {
 moduleNodeTraceStream::moduleNodeTraceStream(properties::iterator props) : 
   traceStream(properties::next(props), txt()<<"CanvizBox_node"<<properties::getInt(props, "nodeID"), false)
 {
-  assert(properties::name(props) == "moduleNodeTS");
+  assert(props.name() == "moduleNodeTS");
     
   int nodeID = properties::getInt(props, "nodeID");
   

@@ -34,24 +34,43 @@ bool isEnabled() {
   return ofs;
 }*/
 
+/********************************
+ ***** properties::iterator *****
+ ********************************/
+ 
+// Returns the string representation of the given properties iterator  
+std::string properties::iterator::str() const {
+  std::ostringstream oss;
+  if(isEnd())
+    oss << "[properties::iterator End]";
+  else {
+    oss << "["<<name()<<":"<<endl;
+    for(std::map<std::string, std::string>::const_iterator i=cur->second.begin(); i!=cur->second.end(); i++)
+      oss << "    "<<i->first<<" =&gt "<<i->second<<endl;
+    oss << "]";
+  }
+  return oss.str();
+}
+
 /**********************
  ***** properties *****
  **********************/
+
 void properties::add(std::string className, const std::map<std::string, std::string>& props)
 { p.push_back(make_pair(className, props)); }
 
 // Returns the start of the list to iterate from the most derived class of an object to the most base
 properties::iterator properties::begin() const
-{ return p.begin(); }
+{ return iterator(p.begin(), p.end()); }
 
 // The corresponding end iterator
 properties::iterator properties::end() const
-{ return p.end(); }
+{ return iterator(p.end(), p.end()); }
 
 // Returns the iterator to the given objectName
 properties::iterator properties::find(string name) const { 
-  for(list<pair<string, map<string, string> > >::const_iterator i=p.begin(); i!=p.end(); i++)
-    if(i->first == name) return i;
+  for(iterator i(p.begin(), p.end()); !i.isEnd(); i++)
+    if(i.name() == name) return i;
   return end();
 }
 
@@ -63,32 +82,33 @@ properties::iterator properties::next(iterator i) {
 
 // Given an iterator to a particular key->value mapping, returns the value mapped to the given key
 std::string properties::get(properties::iterator cur, std::string key) {
-  //assert(cur!=end());
-  std::map<std::string, std::string>::const_iterator val = cur->second.find(key);
-  if(val == cur->second.end()) { cerr << "properties::get() ERROR: cannot find key \""<<key<<"\"! properties="<<str(cur)<<endl; }
-  assert(val != cur->second.end());
+  assert(!cur.isEnd());
+  const map<string, string>& keyvalMap = cur.getMap();
+  std::map<std::string, std::string>::const_iterator val = keyvalMap.find(key);
+  if(val == keyvalMap.end()) { cerr << "properties::get() ERROR: cannot find key \""<<key<<"\"! properties="<<cur.str()<<endl; }
+  assert(val != keyvalMap.end());
   return val->second;
 }
 
 // Given an iterator to a particular key->value mapping, returns the integer interpretation of the value mapped to the given key
 long properties::getInt(properties::iterator cur, std::string key) {
-  //assert(cur!=end());
-  std::map<std::string, std::string>::const_iterator val = cur->second.find(key);
-  if(val == cur->second.end()) { cerr << "properties::getInt() ERROR: cannot find key \""<<key<<"\"! properties="<<str(cur)<<endl; }
-  assert(val != cur->second.end());
-  return strtol(val->second.c_str(), NULL, 10);
+  return strtol(get(cur, key).c_str(), NULL, 10);
 }
+
+// Returns the integer interpretation of the given string
+long properties::asInt(std::string val)
+{ return strtol(val.c_str(), NULL, 10); }
 
 // Given an iterator to a particular key->value mapping, returns the floating-point interpretation of the value mapped to the given key
 double properties::getFloat(properties::iterator cur, std::string key) {
-  //assert(cur!=end());
-  std::map<std::string, std::string>::const_iterator val = cur->second.find(key);
-  if(val == cur->second.end()) { cerr << "properties::getFloat() ERROR: cannot find key \""<<key<<"\"! properties="<<str(cur)<<endl; }
-  assert(val != cur->second.end());
-  return strtod(val->second.c_str(), NULL);
+  return strtod(get(cur, key).c_str(), NULL);
 }
 
-// Given an iterator to a particular key->value mapping, returns whether the given key is mapped to some value
+// Returns the floating-point interpretation of the given string
+long properties::asFloat(std::string val)
+{ return strtod(val.c_str(), NULL); }
+
+/* // Given an iterator to a particular key->value mapping, returns whether the given key is mapped to some value
 bool properties::exists(properties::iterator cur, std::string key) {
   //assert(cur!=end());
   return cur->second.find(key) != cur->second.end();
@@ -99,9 +119,14 @@ int properties::getNumKeys(iterator cur) {
   return cur->second.size();
 }
 
+// Given an iterator to a particular key->value mapping, returns a const reference to the key/value mapping
+const std::map<std::string, std::string>& properties::getMap(iterator cur) {
+  return cur->second;
+}
+
 // Returns the name of the object type referred to by the given iterator
 string properties::name(iterator cur)
-{ return cur->first; }
+{ return cur->first; }*/
 
 // Returns the name of the most-derived class 
 string properties::name() const {
@@ -117,21 +142,11 @@ int properties::size() const
 void properties::clear()
 { p.clear(); }
 
-// Returns the string representation of the given properties iterator  
-std::string properties::str(iterator props){
-  ostringstream oss;
-  oss << "["<<props->first<<":"<<endl;
-  for(std::map<std::string, std::string>::const_iterator i=props->second.begin(); i!=props->second.end(); i++)
-    oss << "    "<<i->first<<" =&gt "<<i->second<<endl;
-  oss << "]";
-  return oss.str();
-}
-
 std::string properties::str(string indent) const {
   ostringstream oss;
   oss << "[properties:"<<endl;
-  for(iterator i=begin(); i!=end(); i++)
-    oss << indent <<"    "<<properties::str(i)<<endl;
+  for(iterator i=begin(); !i.isEnd(); i++)
+    oss << indent <<"    "<<i.str()<<endl;
   oss << indent << "]";
   return oss.str();
 }

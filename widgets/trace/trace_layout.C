@@ -1,4 +1,4 @@
-#include "../sight_layout_internal.h"
+#include "../../sight_layout_internal.h"
 #include "trace_layout.h"
 
 using namespace std;
@@ -78,6 +78,9 @@ traceStream::traceStream(properties::iterator props, std::string hostDiv, bool s
   static bool initialized = false;
   
   if(!initialized) {
+    // Create the directory that holds the trace-specific scripts
+    dbg.createWidgetDir("trace");
+    
     // Table/Lines visualization
     //dbg.includeScript("https://www.google.com/jsapi", "text/javascript");
     //dbg.includeScript("http://yui.yahooapis.com/3.11.0/build/yui/yui-min.js", "text/javascript");
@@ -99,12 +102,12 @@ traceStream::traceStream(properties::iterator props, std::string hostDiv, bool s
     // D3 Widgets
     dbg.includeWidgetScript("d3.v3.min.js", "text/javascript"); dbg.includeFile("d3.v3.min.js");
     //dbg.includeWidgetScript("d3.v3.js", "text/javascript"); dbg.includeFile("d3.v3.js");
-    dbg.includeWidgetScript("table.js",     "text/javascript"); dbg.includeFile("table.js");
-    dbg.includeWidgetScript("boxplot.js",   "text/javascript"); dbg.includeFile("boxplot.js");
-    dbg.includeWidgetScript("gradient.js",  "text/javascript"); dbg.includeFile("gradient.js");
-    dbg.includeWidgetScript("scatter.js",   "text/javascript"); dbg.includeFile("scatter.js");
+    dbg.includeWidgetScript("trace/table.js",     "text/javascript"); dbg.includeFile("trace/table.js");
+    dbg.includeWidgetScript("trace/boxplot.js",   "text/javascript"); dbg.includeFile("trace/boxplot.js");
+    dbg.includeWidgetScript("trace/gradient.js",  "text/javascript"); dbg.includeFile("trace/gradient.js");
+    dbg.includeWidgetScript("trace/scatter.js",   "text/javascript"); dbg.includeFile("trace/scatter.js");
 
-    dbg.includeFile("trace.js"); dbg.includeWidgetScript("trace.js", "text/javascript");
+    dbg.includeWidgetScript("trace/trace.js", "text/javascript"); dbg.includeFile("trace/trace.js"); 
     
     initialized = true;
   }

@@ -1,7 +1,7 @@
 #include "attributes_common.h"
-#include "sight_layout_internal.h"
+#include "../sight_layout_internal.h"
 #include <assert.h>
-#include "utils.h"
+#include "../utils.h"
 
 using namespace std;
 using namespace sight;

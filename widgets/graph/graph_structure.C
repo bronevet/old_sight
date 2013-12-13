@@ -1,5 +1,4 @@
 // Licence information included in file LICENCE
-#include "../sight_structure_internal.h"
 #include "graph_structure.h"
 #include <fstream>
 #include <iostream>
@@ -173,6 +172,35 @@ void graph::emitNodeTag(int anchorID, std::string label, int nodeID) {
   dbg.tag(p);
 }
 
+/*****************************************
+ ***** GraphMergeHandlerInstantiator *****
+ *****************************************/
+
+GraphMergeHandlerInstantiator::GraphMergeHandlerInstantiator() { 
+  (*MergeHandlers   )["graph"]     = GraphMerger::create;
+  (*MergeKeyHandlers)["graph"]     = GraphMerger::mergeKey;
+  (*MergeHandlers   )["node"]      = NodeMerger::create;
+  (*MergeKeyHandlers)["node"]      = NodeMerger::mergeKey;
+  (*MergeHandlers   )["dirEdge"]   = DirEdgeMerger::create;
+  (*MergeKeyHandlers)["dirEdge"]   = DirEdgeMerger::mergeKey;
+  (*MergeHandlers   )["undirEdge"] = UndirEdgeMerger::create;
+  (*MergeKeyHandlers)["undirEdge"] = UndirEdgeMerger::mergeKey;
+  
+  MergeGetStreamRecords->insert(&GraphGetMergeStreamRecord);
+}
+GraphMergeHandlerInstantiator GraphMergeHandlerInstance;
+
+std::map<std::string, streamRecord*> GraphGetMergeStreamRecord(int streamID) {
+  std::map<std::string, streamRecord*> mergeMap;
+  mergeMap["graph"] = new GraphStreamRecord(streamID);
+  mergeMap["node"]  = new NodeStreamRecord(streamID);
+  return mergeMap;
+}
+
+/***********************
+ ***** GraphMerger *****
+ ***********************/
+
 GraphMerger::GraphMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                          std::map<std::string, streamRecord*>& outStreamRecords,
                          std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
@@ -273,7 +301,7 @@ properties* GraphMerger::setProperties(std::vector<std::pair<properties::tagType
      
     pMap["dotText"] = "";
     for(std::vector<std::pair<properties::tagType, properties::iterator> >::iterator t=tags.begin(); t!=tags.end(); t++) {
-      if(properties::exists(t->second, "dotText"))
+      if(t->second.exists("dotText"))
         pMap["dotText"] += properties::get(t->second, "dotText");
     }
     // If the dotText field was not set on any of the incoming streams, remove it from pMap
@@ -556,7 +584,7 @@ NodeMerger::NodeMerger(std::vector<std::pair<properties::tagType, properties::it
 }
 
 NodeStreamRecord::NodeStreamRecord(const NodeStreamRecord& that, int vSuffixID) : 
-  streamRecord(that, vSuffixID), maxNodeID(that.maxNodeID), in2outNodeIDs(that.in2outNodeIDs)
+  streamRecord(that, vSuffixID)
 { }
 
 // Returns a dynamically-allocated copy of this streamRecord, specialized to the given variant ID,
@@ -565,63 +593,10 @@ streamRecord* NodeStreamRecord::copy(int vSuffixID) {
   return new NodeStreamRecord(*this, vSuffixID);
 }
 
-// Given multiple streamRecords from several variants of the same outgoing stream, update this streamRecord object
-// to contain the state that succeeds them all, making it possible to resume processing
-/*void NodeStreamRecord::resumeFrom(std::vector<std::map<string, streamRecord*> >& streams) {
-  // Compute the maximum maxNodeID among all the streams
-  maxNodeID = -1;
-  for(vector<map<string, streamRecord*> >::iterator s=streams.begin(); s!=streams.end(); s++)
-    maxNodeID = (((NodeStreamRecord*)(*s)["node"])->maxNodeID > maxNodeID? 
-                   ((NodeStreamRecord*)(*s)["node"])->maxNodeID: 
-                   maxNodeID);
-  
-  // Set edges and in2outNodeIDs to be the union of its counterparts in streams
-  in2outNodeIDs.clear();
-  for(vector<map<string, streamRecord*> >::iterator s=streams.begin(); s!=streams.end(); s++) {
-    NodeStreamRecord* ns = (NodeStreamRecord*)(*s)["node"];
-    for(map<streamID, streamID>::const_iterator i=ns->in2outNodeIDs.begin(); i!=ns->in2outNodeIDs.end(); i++)
-      in2outNodeIDs.insert(*i);
-  }
-}*/
-
-// Marge the IDs of the next Node (stored in tags) along all the incoming streams into a single ID in the outgoing stream,
-// updating each incoming stream's mappings from its IDs to the outgoing stream's IDs
-/*void NodeStreamRecord::mergeIDs(std::map<std::string, std::string>& pMap, 
-                                const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
-                                std::map<std::string, streamRecord*>& outStreamRecords,
-                                std::vector<std::map<std::string, streamRecord*> >& inStreamRecords) {
-  // Assign to the merged Node the next ID for this output stream
-  pMap["nodeID"] = txt()<<((NodeStreamRecord*)outStreamRecords["node"])->maxNodeID;
- 
-  // The graph's ID within the outgoing stream    
-  streamID outSID(((NodeStreamRecord*)outStreamRecords["node"])->maxNodeID,
-                  outStreamRecords["node"]->getVariantID()); 
-  
-  // Update inStreamRecords to map the Node's ID within each incoming stream to the assigned ID in the outgoing stream
-  for(int i=0; i<tags.size(); i++) {
-    // The graph's ID within the current incoming stream
-    streamID inSID(properties::getInt(tags[i].second, "nodeID"), 
-                   inStreamRecords[i]["node"]->getVariantID());
-    
-    ((NodeStreamRecord*)inStreamRecords[i]["node"])->in2outNodeIDs[inSID] = outSID;
-  }
-  
-  // Advance maxBlockID
-  ((NodeStreamRecord*)outStreamRecords["node"])->maxNodeID++;
-}*/
-
 std::string NodeStreamRecord::str(std::string indent) const {
   ostringstream s;
   s << "[NodeStreamRecord: ";
   s << streamRecord::str(indent+"    ") << "]";
-  /*maxNodeID="<<maxNodeID<<endl;
-  
-  s << indent << "in2outNodeIDs="<<endl;
-  for(map<streamID, streamID>::const_iterator i=in2outNodeIDs.begin(); i!=in2outNodeIDs.end(); i++)
-    s << indent << "    "<<i->first.str()<<" =&gt; "<<i->second.str()<<endl;
-  
-  s << indent << "]";*/
-  
   return s.str();
 }
 

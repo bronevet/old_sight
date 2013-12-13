@@ -13,8 +13,8 @@
 #include <assert.h>
 #include "sight_common.h"
 #include "utils.h"
-#include "Callpath.h"
-#include "CallpathRuntime.h"
+#include "tools/callpath/include/Callpath.h"
+#include "tools/callpath/include/CallpathRuntime.h"
 
 namespace sight {
 namespace structure{
@@ -158,6 +158,66 @@ class streamLocation {
   std::string str() const 
   { return txt()<<"[streamLocation: vID="<<vID.serialize()<<", loc="<<loc.str()<<"]"; }
 }; // class streamLocation
+  
+/* #################### DESIGN NOTES ####################
+Clocks are a mechanism to associate a timestamps with each emitted tag. These timestamps must 
+increase monotonically within a single process' log (they may be equal but never decrease) and
+must be comparable across different logs, establishing a partial order between events between 
+them. A simple example of a clock is real system time, allowing us to display tags in their
+chronological order when we merge multiple logs. Another example is MPI where a clock is a vector
+mapping each FIFO channel to the number of messages sent/received on it.
+
+As a log is created users may create one or more clocks. Each clock calls sightObj::addClock()
+to register itself with Sight. Whenever a new tag's entry is written out within sightObj::sightObj()
+it calls the setProperties methods of all the currently registered clocks, which add descriptions
+of themselves to the provided properties object. Clocks unregister themselves using 
+sightObj::remClock().
+
+When reading logs Sight need to decode the tags that encode the different clocks. Each clock creates
+a mapping between the names of clocks and functions that map their encodings to clock objects. This
+is done by creating class that inherits from clockHandlerInstantiator. Each clock widget must create
+a static instance of this class and in the constructor of this class must map the name of its clock
+to a function called when a sightObj is entered and one called when it is exited. The entry function
+takes as input a properties::iterator and returns a reference to a newly-allocated clock object denoted
+by the encoding. The exit function deallocated the created object.
+Examples:
+  (*clockExitHandlers )["clockName"] = &clockExitHandler;
+  (*clockEnterHandlers)["clockName"] = &clockTraceStream;
+
+############################################################ */
+
+// Maps the names of various clocks that may be read to the functions
+// that instantiate the objects they encode.
+// An clock entry handler is called when we read a sightObject's clocks within its tag. It 
+//   takes as input the properties of the object to be laid out and returns a pointer 
+//   to a sightClock object the tag encodes. NULL may not be returned.
+// An clock exit handler is called when the object's exit tag is encountered and takes as 
+//   input a pointer to the object so that it can be deallocated.
+typedef void* (*clockEnterHandler)(properties::iterator props);
+typedef void (*clockExitHandler)(void*);
+class clockHandlerInstantiator {
+  public:
+  static std::map<std::string, clockEnterHandler>* clockEnterHandlers;
+  static std::map<std::string, clockExitHandler>*  clockExitHandlers;
+
+  clockHandlerInstantiator() {
+    // Initialize the handlers mappings, using environment variables to make sure that
+    // only the first instance of this clockHandlerInstantiator creates these objects.
+    if(!getenv("SIGHT_CLOCK_HANDLERS_INSTANTIATED")) {
+      clockEnterHandlers = new std::map<std::string, clockEnterHandler>();
+      clockExitHandlers  = new std::map<std::string, clockExitHandler>();
+      setenv("SIGHT_CLOCK_HANDLERS_INSTANTIATED", "1", 1);
+    }
+  }
+};
+
+class sightClock
+{
+  public:
+  virtual properties* setProperties(properties* props)=0;
+  // Returns true if the clock has been modified since the time of its registration or the last time modified() was called.
+  virtual bool modified()=0;
+};
 
 // Base class of all sight objects that provides some common functionality
 class sightObj {
@@ -172,7 +232,83 @@ class sightObj {
   // isTag - if true, we emit a single enter/exit tag combo in the constructor and nothing in the destructor
   sightObj(properties* props, bool isTag=false);
   ~sightObj();
+  
+  private:
+  // The of clocks currently being used, mapping the name of each clock class to the set of active 
+  // clock objects of this class.
+  static std::map<std::string, std::set<sightClock*> > clocks;
+  
+  public:
+  // Registers a new clock with sightObj
+  static void addClock(std::string clockName, sightClock* c);
+  
+  // Updates the registration of the given clock to refer to the given sightClock object
+  static void updClock(std::string clockName, sightClock* c);
+  
+  // Unregisters the clock with the given name
+  static void remClock(std::string clockName);
+  
+  // Returns whether the given clock object is currently registered
+  static bool isActiveClock(std::string clockName, sightClock* c);
+}; // class sightObj
+
+/*
+When merging logs Sight uses Merger objects that take tags of a given type and either merge them into a 
+single tag that combines the properties of the individuals or decide that they cannot be merged and provide
+a key that orders them in the outgoing stream. When the merging infrastructure reaches a tag it needs to
+find the Merger object responsible for this tag. Sine the set of tags that may appear in the log will grow
+over time, Sight does not explicitly encode the mappping of tag names to Mergers in any one location.
+Instead, we create a central repository where widgets can register the mapping between their own tags
+and the Mergers associated with them. This is done by creating class that inherits from MergerHandlerInstantiator. 
+Each widget must create a static instance of this class and in the constructor of this class must map the names
+of any tags it may emit to 
+  - A function called when a tag is entered or exited, and 
+  - A function called to get the unique key of a given tag to make it possible to check if tags on different
+    streams are mergeable (they are if their keys are equal) or if not, the order in which they should be
+    emitted to the outgoing stream (the order among the keys)
+Examples:
+  (*MergeEnterHandlers)["widgetName"] = &MergerEnterFunction;
+  (*MergeKeyHandler   )["widgetName"] = &MergerKeyFunction;
+*/
+
+class streamRecord;
+class Merger;
+
+typedef sight::structure::Merger* (*MergeHandler)(
+                                       const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
+                                       std::map<std::string, streamRecord*>& outStreamRecords,
+                                       std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                                       properties* props);
+typedef void (*MergeKeyHandler)(properties::tagType type,
+                                properties::iterator tag, 
+                                std::map<std::string, streamRecord*>& inStreamRecords,
+                                std::list<std::string>& key);
+// Returns a mapping from the names of objects for which records are kept by a given code module to the freshly-allocated 
+// streamRecord objects that keep their records. The records are specialized with the given stream ID.
+typedef std::map<std::string, streamRecord*> (*GetMergeStreamRecord)(int streamID);
+
+class MergeHandlerInstantiator {
+  public:
+  static std::map<std::string, MergeHandler>*    MergeHandlers;
+  static std::map<std::string, MergeKeyHandler>* MergeKeyHandlers;
+  static std::set<GetMergeStreamRecord>*         MergeGetStreamRecords;
+
+  MergeHandlerInstantiator();
+  
+  // Returns a mapping from the names of objects for which records are kept within this MergeHandlerInstantiator
+  // object to the freshly-allocated streamRecord objects that keep their records. The records are specialized 
+  // with the given stream ID.
+  static std::map<std::string, streamRecord*> GetAllMergeStreamRecords(int streamID);
+  
+  static std::string str();
 };
+
+class SightMergeHandlerInstantiator: public MergeHandlerInstantiator {
+  public:
+  SightMergeHandlerInstantiator();
+};
+extern SightMergeHandlerInstantiator SightMergeHandlerInstance;
+std::map<std::string, streamRecord*> SightGetMergeStreamRecord(int streamID);
 
 // Base class for objects that maintain information for each incoming or outgoing stream during merging
 class streamRecord : public printable {
@@ -276,10 +412,8 @@ class Merger {
   Merger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
          std::map<std::string, streamRecord*>& outStreamRecords,
          std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
-         properties* props): props(props) {
-    emitTagFlag = true;
-  }
-   
+         properties* props);
+  
   const properties& getProps() const { return *props; }
   
   protected:
@@ -290,10 +424,30 @@ class Merger {
   public:
   bool emitTag() const { return emitTagFlag; }
   
-  ~Merger() {
-    delete props;
+  // Called to reset the properties pointer to NULL. The typical way in which Mergers are created is by inheritance
+  // where each Merger's constructor sets its properties and then calls its base class constructor, all the way
+  // up to Merger. However, in some cases such as clocks, a given object may have multiple additional sets of 
+  // clock properties that are not reflected in its inheritance hierarchy and may vary from run to run. To merge
+  // such object we need to use Mergers for each clock but the properties object given to these clock mergers comes
+  // from their host Merger object, meaning that they can add properties to it in their constructor but may not 
+  // deallocate it in their destructor. This method allows the host Merger to create Mergers for any clocks 
+  // associated with the object, pass them a properties object and then prevent the clocks' Mergers from deallocating 
+  // it by reseting their reference to this object.
+  // Returns true if the value of the props pointer was changed as a result and false otherwise.
+  bool resetProps() {
+    bool modified = props!=NULL;
+    props=NULL;
+    return modified;
   }
-    
+  
+  ~Merger();
+  
+  // Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+  // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
+  // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
+  // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
+  static void mergeKey(properties::tagType type, properties::iterator tag, 
+                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key);
     
   // Given a vector of tag properties, returns the vector of values assigned to the given key within the given tag
   static std::vector<std::string> getValues(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags, 
@@ -346,12 +500,16 @@ class Merger {
   // Advance the iterators in the given tags vector, returning a reference to the vector
   static std::vector<std::pair<properties::tagType, properties::iterator> >
               advance(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags);
+                
+  // Returns true if any of the iterators in tags have reached their end. This must be the same for all iterators.
+  // Either all have reached their end or none have.
+  static bool isIterEnd(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags);
 }; // class Merger
 
 }; // namespace structure
 }; // namespace sight
 
-#include "attributes_structure.h"
+#include "attributes/attributes_structure.h"
 
 namespace sight {
 namespace structure {
@@ -363,12 +521,20 @@ class TextMerger : public Merger {
              std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
              properties* props=NULL);
 
+  static Merger* create(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
+                        std::map<std::string, streamRecord*>& outStreamRecords,
+                        std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                        properties* props)
+  { return new TextMerger(tags, outStreamRecords, inStreamRecords, props); }
+
   // Sets a list of strings that denotes a unique ID according to which instances of this merger's 
   // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {}
+                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
+    Merger::mergeKey(type, tag.next(), inStreamRecords, key);
+  }
 }; // class TextMerger
 
 // Uniquely identifies a location with the debug information, including the file and region hierarchy
@@ -498,12 +664,20 @@ class LinkMerger : public Merger {
                std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
                properties* props=NULL);
   
+  static Merger* create(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
+                        std::map<std::string, streamRecord*>& outStreamRecords,
+                        std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                        properties* props)
+  { return new LinkMerger(tags, outStreamRecords, inStreamRecords, props); }
+  
   // Sets a list of strings that denotes a unique ID according to which instances of this merger's 
   // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) { }
+                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) { 
+    Merger::mergeKey(type, tag.next(), inStreamRecords, key);
+  }
 }; // class LinkMerger
 
 class dbgStreamStreamRecord;
@@ -817,18 +991,30 @@ extern dbgStream dbg;
 
 class dbgStreamMerger : public Merger {
   public:
-  dbgStreamMerger(std::string workDir, 
+  // The directory into which the merged will be written. This directory must be explicitly set before
+  // an instance of the dbgStreamMerger class is created
+  static std::string workDir;
+  
+  dbgStreamMerger(//std::string workDir, 
                   std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                   std::map<std::string, streamRecord*>& outStreamRecords,
                   std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
                   properties* props=NULL);
+        
+  static Merger* create(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
+                        std::map<std::string, streamRecord*>& outStreamRecords,
+                        std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                        properties* props)
+  { return new dbgStreamMerger(tags, outStreamRecords, inStreamRecords, props); }
                   
   // Sets a list of strings that denotes a unique ID according to which instances of this merger's 
   // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) { }
+                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) { 
+    Merger::mergeKey(type, tag.next(), inStreamRecords, key);
+  }
 };
 
 class dbgStreamStreamRecord: public streamRecord {
@@ -889,13 +1075,21 @@ class IndentMerger : public Merger {
                std::map<std::string, streamRecord*>& outStreamRecords,
                std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
                properties* props=NULL);
-               
+  
+  static Merger* create(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
+                        std::map<std::string, streamRecord*>& outStreamRecords,
+                        std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                        properties* props)
+  { return new IndentMerger(tags, outStreamRecords, inStreamRecords, props); }
+  
   // Sets a list of strings that denotes a unique ID according to which instances of this merger's 
   // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) { }
+                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
+    Merger::mergeKey(type, tag.next(), inStreamRecords, key);
+  }
 }; // class IndentMerger
 
 

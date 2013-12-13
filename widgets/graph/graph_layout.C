@@ -1,5 +1,5 @@
 // Licence information included in file LICENCE
-#include "../sight_layout.h"
+#include "../../sight_layout.h"
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -60,7 +60,7 @@ graph::graph(properties::iterator props) : block(properties::next(props)) {
   dbg.userAccessing();
   
   // If the dot encoding of the graph is already provided, emit it immediately
-  if(properties::exists(props, "dotText")) {
+  if(props.exists("dotText")) {
     outputCanvizDotGraph(properties::get(props, "dotText"));
     graphOutput = true;
   // Otherwise, wait to observe the nodes and edges of the graph before emitting it in the destructor

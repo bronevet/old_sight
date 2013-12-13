@@ -8,8 +8,8 @@
 #include <iostream>
 #include <sstream>
 #include <fstream>
-#include "../sight_common.h"
-#include "../sight_layout.h"
+#include "../../sight_common.h"
+#include "../../sight_layout.h"
 
 namespace sight {
 namespace layout {

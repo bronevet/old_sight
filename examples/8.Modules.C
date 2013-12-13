@@ -1,5 +1,4 @@
 #include "sight.h"
-#include "widgets/module_structure.h"
 #include <math.h>
 #include <map>
 #include <assert.h>

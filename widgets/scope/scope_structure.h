@@ -8,9 +8,9 @@
 #include <iostream>
 #include <sstream>
 #include <fstream>
-#include "../attributes_structure.h"
+#include "../../attributes/attributes_structure.h"
 #include "scope_common.h"
-#include "../sight_structure_internal.h"
+#include "../../sight_structure_internal.h"
 #include "Callpath.h"
 
 namespace sight {
@@ -61,12 +61,24 @@ class scope: public block, public common::scope
   bool subBlockExitNotify (block* subBlock) { return true; }
 }; // scope
 
+class ScopeMergeHandlerInstantiator: public MergeHandlerInstantiator {
+  public:
+  ScopeMergeHandlerInstantiator();
+};
+extern ScopeMergeHandlerInstantiator ScopeMergeHandlerInstance;
+
 class ScopeMerger : public BlockMerger {
   public:
   ScopeMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
               std::map<std::string, streamRecord*>& outStreamRecords,
               std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
               properties* props=NULL);
+  
+  static Merger* create(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
+                        std::map<std::string, streamRecord*>& outStreamRecords,
+                        std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                        properties* props)
+  { return new ScopeMerger(tags, outStreamRecords, inStreamRecords, props); }
   
   // Sets the properties of the merged object
   static properties* setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,

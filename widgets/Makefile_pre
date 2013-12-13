@@ -1,9 +1,9 @@
-WIDGETS_COMMON_O := scope_common.o graph_common.o valSelector_common.o trace_common.o module_common.o source/source_common.o
-WIDGETS_COMMON_H := scope_common.h graph_common.h valSelector_common.h trace_common.h module_common.h source/source_common.h
-WIDGETS_STRUCTURE_O := scope_structure.o graph_structure.o valSelector_structure.o trace_structure.o module_structure.o source/source_structure.o
-WIDGETS_STRUCTURE_H := scope_structure.h graph_structure.h valSelector_structure.h trace_structure.h module_structure.h source/source_structure.h
-WIDGETS_LAYOUT_O := scope_layout.o graph_layout.o valSelector_layout.o trace_layout.o module_layout.o source/source_layout.o
-WIDGETS_LAYOUT_H := scope_layout.h graph_layout.h valSelector_layout.h trace_layout.h module_layout.h source/source_layout.o
+WIDGETS_COMMON_O := scope/scope_common.o graph/graph_common.o valSelector/valSelector_common.o trace/trace_common.o module/module_common.o source/source_common.o
+WIDGETS_COMMON_H := scope/scope_common.h graph/graph_common.h valSelector/valSelector_common.h trace/trace_common.h module/module_common.h source/source_common.h
+WIDGETS_STRUCTURE_O := scope/scope_structure.o graph/graph_structure.o valSelector/valSelector_structure.o trace/trace_structure.o module/module_structure.o source/source_structure.o clock/clock_structure.o
+WIDGETS_STRUCTURE_H := scope/scope_structure.h graph/graph_structure.h valSelector/valSelector_structure.h trace/trace_structure.h module/module_structure.h source/source_structure.h clock/clock_structure.h
+WIDGETS_LAYOUT_O := scope/scope_layout.o graph/graph_layout.o valSelector/valSelector_layout.o trace/trace_layout.o module/module_layout.o source/source_layout.o clock/clock_layout.o
+WIDGETS_LAYOUT_H := scope/scope_layout.h graph/graph_layout.h valSelector/valSelector_layout.h trace/trace_layout.h module/module_layout.h source/source_layout.o clock/clock_layout.h
 WIDGETS := ${WIDGETS_O} ${WIDGETS_H}
 
 all: ${WIDGETS_COMMON_O} ${WIDGETS_COMMON_H} ${WIDGETS_STRUCTURE_O} ${WIDGETS_STRUCTURE_H} ${WIDGETS_LAYOUT_O} ${WIDGETS_LAYOUT_H}  \
@@ -19,65 +19,69 @@ all: ${WIDGETS_COMMON_O} ${WIDGETS_COMMON_H} ${WIDGETS_STRUCTURE_O} ${WIDGETS_ST
 	chmod 755 canviz-0.1/excanvas canviz-0.1/lib canviz-0.1/path canviz-0.1/prototype
 	chmod 644 canviz-0.1/*/*
 
-scope_common.o: scope_common.C scope_common.h ../attributes_common.h ../sight_common.h
-	g++ ${SIGHT_CFLAGS} scope_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o scope_common.o
+scope/scope_common.o: scope/scope_common.C scope/scope_common.h ../attributes/attributes_common.h ../sight_common.h
+	g++ ${SIGHT_CFLAGS} scope/scope_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o scope/scope_common.o
 
-scope_structure.o: scope_structure.C scope_structure.h ../attributes_structure.h ../sight_structure.h
-	g++ ${SIGHT_CFLAGS} scope_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o scope_structure.o
+scope/scope_structure.o: scope/scope_structure.C scope/scope_structure.h ../attributes/attributes_structure.h ../sight_structure.h
+	g++ ${SIGHT_CFLAGS} scope/scope_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o scope/scope_structure.o
 
-scope_layout.o: scope_layout.C scope_layout.h ../attributes_layout.h ../sight_layout.h
-	g++ ${SIGHT_CFLAGS} scope_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o scope_layout.o
-
-
-graph_common.o: graph_common.C graph_common.h ../attributes_common.h ../sight_common.h
-	g++ ${SIGHT_CFLAGS} graph_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o graph_common.o
-
-graph_structure.o: graph_structure.C graph_structure.h ../attributes_structure.h ../sight_structure.h
-	g++ ${SIGHT_CFLAGS} graph_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o graph_structure.o
-
-graph_layout.o: graph_layout.C graph_layout.h ../attributes_layout.h ../sight_layout.h
-	g++ ${SIGHT_CFLAGS} graph_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o graph_layout.o
+scope/scope_layout.o: scope/scope_layout.C scope/scope_layout.h ../attributes/attributes_layout.h ../sight_layout.h
+	g++ ${SIGHT_CFLAGS} scope/scope_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o scope/scope_layout.o
 
 
-valSelector_common.o: valSelector_common.C valSelector_common.h ../sight_common.h
-	g++ ${SIGHT_CFLAGS} valSelector_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o valSelector_common.o
+graph/graph_common.o: graph/graph_common.C graph/graph_common.h ../attributes/attributes_common.h ../sight_common.h
+	g++ ${SIGHT_CFLAGS} graph/graph_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o graph/graph_common.o
 
-valSelector_structure.o: valSelector_structure.C valSelector_structure.h ../sight_structure.h
-	g++ ${SIGHT_CFLAGS} valSelector_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o valSelector_structure.o
+graph/graph_structure.o: graph/graph_structure.C graph/graph_structure.h ../attributes/attributes_structure.h ../sight_structure.h
+	g++ ${SIGHT_CFLAGS} graph/graph_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o graph/graph_structure.o
 
-valSelector_layout.o: valSelector_layout.C valSelector_layout.h ../sight_layout.h
-	g++ ${SIGHT_CFLAGS} valSelector_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o valSelector_layout.o
-
-
-trace_common.o: trace_common.C trace_common.h ../sight_common.h
-	g++ ${SIGHT_CFLAGS} trace_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o trace_common.o
-
-trace_structure.o: trace_structure.C trace_structure.h ../sight_structure.h
-	g++ ${SIGHT_CFLAGS} trace_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o trace_structure.o
-
-trace_layout.o: trace_layout.C trace_layout.h ../sight_layout.h
-	g++ ${SIGHT_CFLAGS} trace_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o trace_layout.o
+graph/graph_layout.o: graph/graph_layout.C graph/graph_layout.h ../attributes/attributes_layout.h ../sight_layout.h
+	g++ ${SIGHT_CFLAGS} graph/graph_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o graph/graph_layout.o
 
 
-module_common.o: module_common.C module_common.h ../attributes_common.h ../sight_common.h
-	g++ ${SIGHT_CFLAGS} module_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o module_common.o
+valSelector/valSelector_common.o: valSelector/valSelector_common.C valSelector/valSelector_common.h ../sight_common.h
+	g++ ${SIGHT_CFLAGS} valSelector/valSelector_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o valSelector/valSelector_common.o
 
-module_structure.o: module_structure.C module_structure.h ../attributes_structure.h ../sight_structure.h
-	g++ ${SIGHT_CFLAGS} module_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o module_structure.o
+valSelector/valSelector_structure.o: valSelector/valSelector_structure.C valSelector/valSelector_structure.h ../sight_structure.h
+	g++ ${SIGHT_CFLAGS} valSelector/valSelector_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o valSelector/valSelector_structure.o
 
-module_layout.o: module_layout.C module_layout.h ../attributes_layout.h ../sight_layout.h
-	g++ ${SIGHT_CFLAGS} module_layout.C -I.. -Igsl/include -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o module_layout.o
+valSelector/valSelector_layout.o: valSelector/valSelector_layout.C valSelector/valSelector_layout.h ../sight_layout.h
+	g++ ${SIGHT_CFLAGS} valSelector/valSelector_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o valSelector/valSelector_layout.o
 
 
-source/source_common.o: source/source_common.C source/source_common.h ../attributes_common.h ../sight_common.h
+trace/trace_common.o: trace/trace_common.C trace/trace_common.h ../sight_common.h
+	g++ ${SIGHT_CFLAGS} trace/trace_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o trace/trace_common.o
+
+trace/trace_structure.o: trace/trace_structure.C trace/trace_structure.h ../sight_structure.h
+	g++ ${SIGHT_CFLAGS} trace/trace_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o trace/trace_structure.o
+
+trace/trace_layout.o: trace/trace_layout.C trace/trace_layout.h ../sight_layout.h
+	g++ ${SIGHT_CFLAGS} trace/trace_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o trace/trace_layout.o
+
+
+module/module_common.o: module/module_common.C module/module_common.h ../attributes/attributes_common.h ../sight_common.h
+	g++ ${SIGHT_CFLAGS} module/module_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o module/module_common.o
+
+module/module_structure.o: module/module_structure.C module/module_structure.h ../attributes/attributes_structure.h ../sight_structure.h
+	g++ ${SIGHT_CFLAGS} module/module_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o module/module_structure.o
+
+module/module_layout.o: module/module_layout.C module/module_layout.h ../attributes/attributes_layout.h ../sight_layout.h
+	g++ ${SIGHT_CFLAGS} module/module_layout.C -I.. -Igsl/include -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o module/module_layout.o
+
+source/source_common.o: source/source_common.C source/source_common.h ../attributes/attributes_common.h ../sight_common.h
 	g++ ${SIGHT_CFLAGS} source/source_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o source/source_common.o
 
-source/source_structure.o: source/source_structure.C source/source_structure.h ../attributes_structure.h ../sight_structure.h
+source/source_structure.o: source/source_structure.C source/source_structure.h ../attributes/attributes_structure.h ../sight_structure.h
 	g++ ${SIGHT_CFLAGS} source/source_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o source/source_structure.o
 
-source/source_layout.o: source/source_layout.C source/source_layout.h ../attributes_layout.h ../sight_layout.h
+source/source_layout.o: source/source_layout.C source/source_layout.h ../attributes/attributes_layout.h ../sight_layout.h
 	g++ ${SIGHT_CFLAGS} source/source_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o source/source_layout.o
 
+clock/clock_structure.o: clock/clock_structure.C clock/clock_structure.h
+	g++ ${SIGHT_CFLAGS} clock/clock_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o clock/clock_structure.o
+
+clock/clock_layout.o: clock/clock_layout.C clock/clock_layout.h
+	g++ ${SIGHT_CFLAGS} clock/clock_layout.C -I.. -Igsl/include -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o clock/clock_layout.o
 
 
 ifneq (${OS}, Cygwin)
