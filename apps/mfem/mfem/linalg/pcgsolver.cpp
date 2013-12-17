@@ -81,7 +81,7 @@ void PCG ( const Operator &A, const Operator &B,
       B.Mult(r, z);                         //  z = B r
       betanom = r * z;
 
-      traceAttr("PCG Trace", "betanom", attrValue(-log(betanom)/log(10)));
+      traceAttr("PCG Trace", "betanom", attrValue(betanom));
       if (print_iter >= 1)
          dbg << "   Iteration : " << setw(3) << i << "  (B r, r) = "
               << betanom << endl;

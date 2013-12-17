@@ -46,16 +46,16 @@ GDB_PORT := 17501
 endif
 
 .PHONY: apps
-apps: mfem mcbench
+apps: mfem #mcbench
 
 mfem:
 	cd apps/mfem; make ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}"
 	cd apps/mfem; make ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS}
 
-mcbench:
-ifneq (${OS}, Cygwin)
-	cd apps/mcbench; ./build-linux-x86_64.sh ${ROOT_PATH}
-endif
+#mcbench:
+#ifneq (${OS}, Cygwin)
+#	cd apps/mcbench; ./build-linux-x86_64.sh ${ROOT_PATH}
+#endif
 
 allExamples: libsight_structure.a
 	cd examples; make ROOT_PATH=${ROOT_PATH} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}"
@@ -66,13 +66,13 @@ runExamples: libsight_structure.a slayout${EXE} hier_merge${EXE}
 	cd examples; make ROOT_PATH=${ROOT_PATH} OS=${OS}  SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" run
 
 runApps: libsight_structure.a slayout${EXE} hier_merge${EXE} apps
-	apps/mfem/mfem/examples/ex1 apps/mfem/mfem/data/beam-quad.mesh
-	apps/mfem/mfem/examples/ex2 apps/mfem/mfem/data/beam-tet.mesh 2
-	apps/mfem/mfem/examples/ex3 apps/mfem/mfem/data/ball-nurbs.mesh
-	apps/mfem/mfem/examples/ex4 apps/mfem/mfem/data/fichera-q3.mesh
-ifneq (${OS}, Cygwin)
-	apps/mcbench/src/MCBenchmark.exe --nCores=1 --distributedSource --numParticles=13107 --nZonesX=256 --nZonesY=256 --xDim=16 --yDim=16 --mirrorBoundary --multiSigma --nThreadCore=1
-endif
+	cd examples; ../apps/mfem/mfem/examples/ex1 ../apps/mfem/mfem/data/beam-quad.mesh
+	cd examples; ../apps/mfem/mfem/examples/ex2 ../apps/mfem/mfem/data/beam-tet.mesh 2
+	cd examples; ../apps/mfem/mfem/examples/ex3 ../apps/mfem/mfem/data/ball-nurbs.mesh
+	cd examples; ../apps/mfem/mfem/examples/ex4 ../apps/mfem/mfem/data/fichera-q3.mesh
+#ifneq (${OS}, Cygwin)
+#	apps/mcbench/src/MCBenchmark.exe --nCores=1 --distributedSource --numParticles=13107 --nZonesX=256 --nZonesY=256 --xDim=16 --yDim=16 --mirrorBoundary --multiSigma --nThreadCore=1
+#endif
 
 
 slayout.o: slayout.C process.C process.h
@@ -155,9 +155,10 @@ sightDefines.pl:
 clean:
 	cd widgets; make -f Makefile_pre clean
 	cd widgets; make -f Makefile_post clean
+	cd tools; make -f Makefile clean
 	cd tools make clean
 	cd examples; make clean
-	cd apps/mcbench; ./clean-linux-x86_64.sh
+#	cd apps/mcbench; ./clean-linux-x86_64.sh
 	cd apps/mfem; make clean
 	rm -rf dbg dbg.* libsight.a *.o widgets/shellinabox* widgets/mongoose* widgets/graphviz* gdbLineNum.pl
 	rm -rf script/taffydb sightDefines.pl gdbscript

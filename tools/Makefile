@@ -3,27 +3,37 @@ all: dtl callpath
 dtl-1.17.tar.gz:
 	wget --no-check-certificate https://dtl-cpp.googlecode.com/files/dtl-1.17.tar.gz
 
-dtl: dtl-1.17.tar.gz
+dtl: #dtl-1.17.tar.gz
+	wget --no-check-certificate https://dtl-cpp.googlecode.com/files/dtl-1.17.tar.gz
 	rm -fr dtl-1.17
 	tar -xf dtl-1.17.tar.gz 
 	mv dtl-1.17 dtl
+	rm dtl-1.17.tar.gz
 
 boost_1_55_0.tar:
 	wget http://downloads.sourceforge.net/project/boost/boost/1.55.0/boost_1_55_0.tar.bz2
 	rm -f boost_1_55_0.tar
 	bunzip2 boost_1_55_0.tar.bz2
 
-boost_1_55_0: boost_1_55_0.tar
+boost_1_55_0: #boost_1_55_0.tar
+	wget http://downloads.sourceforge.net/project/boost/boost/1.55.0/boost_1_55_0.tar.bz2
+	rm -f boost_1_55_0.tar
+	bunzip2 boost_1_55_0.tar.bz2
 	tar -xf boost_1_55_0.tar
+	rm -r boost_1_55_0.tar
 
 adept-utils.zip:
 	wget --no-check-certificate https://github.com/tgamblin/adept-utils/archive/master.zip
-	rm -fr adept-utils
-	mv master.zip adept-utils.zip; unzip master.zip
+	mv master master.zip
+	mv master.zip adept-utils.zip
 
-adept-utils: boost_1_55_0 adept-utils.zip
-	rm -fr adept-utils-master
+adept-utils: boost_1_55_0 # adept-utils.zip
+	wget --no-check-certificate https://github.com/tgamblin/adept-utils/archive/master.zip
+	mv master master.zip
+	mv master.zip adept-utils.zip
+	rm -fr adept-utils adept-utils-master
 	unzip adept-utils.zip
+	rm adept-utils.zip
 	mv adept-utils-master adept-utils
 #	cp adept-utils-makefiles/CMakeLists.root.txt   adept-utils
 #	cp adept-utils-makefiles/CMakeLists.cutils.txt adept-utils/cutils/CMakeLists.txt
@@ -35,12 +45,18 @@ adept-utils: boost_1_55_0 adept-utils.zip
 	
 callpath.zip:
 	wget --no-check-certificate https://github.com/tgamblin/callpath/archive/master.zip
+	mv master master.zip
 	mv master.zip callpath.zip
 	
-callpath: callpath.zip
-	rm -rf callpath-master
+callpath: adept-utils # callpath.zip 
+	wget --no-check-certificate https://github.com/tgamblin/callpath/archive/master.zip
+	mv master master.zip
+	mv master.zip callpath.zip
+	rm -rf callpath-master callpath
 	unzip callpath.zip
+	rm callpath.zip
 	mv callpath-master callpath
+	cp CMakeLists.callpath.txt callpath/CMakeLists.txt
 	cd callpath/src; cmake -DCMAKE_INSTALL_PREFIX=${ROOT_PATH}/tools/callpath \
 	                       -DCALLPATH_WALKER=backtrace -DCMAKE_BUILD_TYPE=RelWithDebInfo \
 	                       -DCMAKE_CXX_FLAGS=-fpermissive \
@@ -51,4 +67,4 @@ callpath: callpath.zip
 #-DCALLPATH_HAVE_MPI=false 
 
 clean:
-	rm -r *.tar *.tar.gz *.tar.bz2 dtl adept-utils callpath boost_1_55_0
+	rm -fr *.tar *.tar.gz *.tar.bz2 dtl adept-utils callpath boost_1_55_0

@@ -1,4 +1,4 @@
-    // Licence information included in file LICENCE
+// Licence information included in file LICENCE
 #include "sight_common_internal.h"
 #include "sight_structure_internal.h"
 #include <fstream>

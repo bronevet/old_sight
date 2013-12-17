@@ -141,7 +141,7 @@ else
 	cd graphviz-2.32.0; ${MAKE}
 	cd graphviz-2.32.0; ${MAKE} install
 	mv graphviz/bin/dot_static graphviz/bin/dot
-#	rm -r graphviz-2.32.0 graphviz-2.32.0.tar.gz
+	rm -r graphviz-2.32.0 graphviz-2.32.0.tar.gz
 endif
 
 expat:
@@ -177,13 +177,14 @@ gsl:
 	tar -xf gsl-1.9.tar.gz 
 	cd gsl-1.9; CC=gcc; ./configure --prefix=${ROOT_PATH}/widgets/gsl
 	cd gsl-1.9; make; make install
+	rm -r gsl-1.9
 
 papi:
 	rm -f papi-5.3.0.tar.gz
 	wget http://icl.cs.utk.edu/projects/papi/downloads/papi-5.3.0.tar.gz
 	tar -xf papi-5.3.0.tar.gz 
 	cd papi-5.3.0/src; export CC=gcc; export F77=gfortran; ./configure -prefix=${ROOT_PATH}/widgets/papi; make; make install
-
+	rm -r papi-5.3.0
 
 # JavaScript files from standard JS libraries that we wish to keep local copies of
 
@@ -213,5 +214,5 @@ clean:
 	rm -rf ID3-Decision-Tree
 	../killP mongoose/mongoose
 	../killP shellinabox/bin/shellinaboxd
-	rm -rf *.o shellinabox* mongoose* noVNC graphviz
+	rm -rf *.o shellinabox* mongoose* noVNC graphviz papi
 	rm -f yui-min.js jquery-1.8.1.min.js underscore-min.js d3.v3.min.js
