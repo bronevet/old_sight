@@ -36,7 +36,10 @@ ROOT_PATH = ${CURDIR}
 ifeq (${OS}, Cygwin)
 REMOTE_ENABLED := 0
 else
-REMOTE_ENABLED := 1
+# Default distribution disables remote access since this capability requires us to run a web server
+# and many compute centers disallow this
+#REMOTE_ENABLED := 1
+REMOTE_ENABLED := 0
 endif
 
 ifneq (${OS}, Cygwin)
@@ -60,7 +63,7 @@ mfem:
 allExamples: libsight_structure.a
 	cd examples; make ROOT_PATH=${ROOT_PATH} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}"
 
-run: runExamples runApps
+run: all runExamples runApps
 
 runExamples: libsight_structure.a slayout${EXE} hier_merge${EXE}
 	cd examples; make ROOT_PATH=${ROOT_PATH} OS=${OS}  SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" run

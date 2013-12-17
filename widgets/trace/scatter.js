@@ -8,9 +8,9 @@ function createNumericScale(data, idx, minVisCoord, maxVisCoord) {
   var Max = d3.max(data, function(d) { return parseFloat(d[idx]); });
 
   // If there is a huge range in the x coordinates, use a log scale
-  if(Max / Avg > 1e3) 
+  if(Min>0 && Max / Min > 1e3) 
     return d3.scale.log()
-            .domain([0, Max])
+            .domain([Min, Max])
             .range([ minVisCoord, maxVisCoord ]);
   // Otherwise, use a linear scale
   else 
