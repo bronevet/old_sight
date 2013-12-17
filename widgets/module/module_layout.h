@@ -101,8 +101,17 @@ class module: public block, public common::module, public traceObserver
   // The number of observations made for each node
   std::map<int, int> numObs;
     
-  // The number of observations for which we've allocated space in polyfitCtxt and polyfitObs
+  // The number of observations for which we've allocated space in polyfitCtxt and polyfitObs (the rows)
   std::map<int, int> numAllocObs;
+  
+  // The number of trace attributes for which we've allocated space in newObs (the columns)
+  std::map<int, int> numAllocTraceAttrs;
+  
+  // Maps the names of trace attributes to their columns in polyfitCtxt
+  std::map<int, std::map<std::string, int > > traceAttrName2Col;
+  
+  // Records the number of observations we've made of each trace attribute (indexed according to the column numbers in traceAttrName2Col)
+  std::map<int, std::vector<int> > traceAttrName2Count;
   
   // The number of numeric context attributes of each node. Should be the same for all observations for the node
   std::map<int, int> numNumericCtxt;
@@ -112,7 +121,7 @@ class module: public block, public common::module, public traceObserver
   std::map<int, std::map<int, std::list<std::string> > > ctxtNames;
     
   // The names of the observation trace attributes
-  std::map<int, std::vector<std::string> > traceAttrNames;
+  std::map<int, std::set<std::string> > traceAttrNames;
   
   public:
   // Interface implemented by objects that listen for observations a traceStream reads. Such objects

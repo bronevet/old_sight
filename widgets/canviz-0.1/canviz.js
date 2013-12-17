@@ -176,7 +176,8 @@ var CanvizEntity = Class.create({
 							
                 // Create a div to surround the polygon
             		var newDiv = new Element('div');
-            		newDiv.setAttribute("id", "CanvizBox_"+this.name); //CanvizBoxID++;
+            		//newDiv.setAttribute("id", "CanvizBox_"+this.name+"_"+CanvizBoxID); CanvizBoxID++;
+            		newDiv.setAttribute("id", "CanvizBox_"+this.name);
             		newDiv.style.position = "absolute";
             		//newDiv.style.backgroundColor = "#0000ff";
             		newDiv.style.backgroundColor = "#dddddd";

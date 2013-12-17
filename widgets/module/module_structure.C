@@ -159,7 +159,7 @@ void module::init(const group& g, const std::vector<port>& in) {
     maxModuleID++;
     
     // Compute the context of this module based on the contexts of its inputs
-    map<string, attrValue> traceCtxt; // The context in a format that traces can understand
+    //map<string, attrValue> traceCtxt; // The context in a format that traces can understand
     { int idx=0;
     for(vector<port>::const_iterator i=in.begin(); i!=in.end(); i++, idx++) {
       ctxt.push_back(i->ctxt);
@@ -214,12 +214,12 @@ void module::init(const group& g, const std::vector<port>& in) {
     assert(moduleTrace.find(g) != moduleTrace.end());
     //moduleMeasure = startMeasure(moduleTrace[g], "measure", traceCtxt);
     for(namedMeasures::iterator m=meas.begin(); m!=meas.end(); m++) {
-      // Set this measure's traceStream to this module's traceStream
+      /* // Set this measure's traceStream to this module's traceStream
       m->second->setTrace(moduleTrace[g]);
       
       // Initialize its value label and context
       m->second->setValLabel(m->first);
-      m->second->setCtxt(traceCtxt);
+      m->second->setCtxt(traceCtxt);*/
       
       // Start the measurement
       m->second->start();
@@ -265,14 +265,18 @@ module::~module()
   
   // Complete the measurement of application's behavior during the module's lifetime
   if(props->active) {
-    // Complete measuring this instance
-    /*assert(moduleMeasure);
-    endMeasure(moduleMeasure);*/
+    // Complete measuring this instance and collect the observations into props
+    list<pair<string, attrValue> > obs;
     for(namedMeasures::iterator m=meas.begin(); m!=meas.end(); m++) {
-      m->second->end();
+      list<pair<string, attrValue> > curObs = m->second->endGet();
+      for(list<pair<string, attrValue> >::iterator o=curObs.begin(); o!=curObs.end(); o++)
+        obs.push_back(*o);
       delete m->second;
     }
     
+    // Record the observation into the trace
+    moduleTrace[g]->traceFullObservation(traceCtxt, obs, anchor::noAnchor);
+        
     // Set moduleInCtxtNames based on the context of the outputs or if it already set, verify that
     // the outputs attributes either have the same names as they had last time
     /*{

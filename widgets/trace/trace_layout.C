@@ -130,7 +130,7 @@ traceStream::traceStream(properties::iterator props, std::string hostDiv, bool s
   } else
     contextAttrsInitialized = false;
   
-  traceAttrsInitialized = false;
+  //traceAttrsInitialized = false;
 
   active[traceID] = this;
   //cout << "New Trace "<<traceID<<", this="<<this<<endl;
@@ -271,19 +271,25 @@ void* traceStream::observe(properties::iterator props)
   
   // Read all the trace attributes. If traceAttrs is empty, it is filled with the trace attributes of 
   // this observation. Otherwise, we verify that this observation's trace is identical to prior observations.
-  if(ts->traceAttrsInitialized) assert(ts->traceAttrs.size() == numTraceAttrs);
+  //if(ts->traceAttrsInitialized) assert(ts->traceAttrs.size() == numTraceAttrs);
   for(long i=0; i<numTraceAttrs; i++) {
     string traceName = properties::get(props, txt()<<"tKey_"<<i);
-    if(!ts->traceAttrsInitialized) {
+    /*if(!ts->traceAttrsInitialized) {
       ts->traceAttrs.push_back(traceName);
       // Trace attributes cannot be repeated
       assert(ts->traceAttrsSet.find(traceName) == ts->traceAttrsSet.end());
       ts->traceAttrsSet.insert(traceName);
     } else
-      assert(ts->traceAttrsSet.find(traceName) != ts->traceAttrsSet.end());
+      assert(ts->traceAttrsSet.find(traceName) != ts->traceAttrsSet.end());*/
+    
+    // If this trace attribute has not yet been observed, record it
+    if(ts->traceAttrsSet.find(traceName) == ts->traceAttrsSet.end()) {
+      ts->traceAttrs.push_back(traceName);
+      ts->traceAttrsSet.insert(traceName);
+    }
   }
   // The trace attributes of this trace are now definitely initialized
-  ts->traceAttrsInitialized = true;
+  //ts->traceAttrsInitialized = true;
   
   ostringstream cmd;
   cmd << "traceRecord(\""<<ts->traceID<<"\", ";

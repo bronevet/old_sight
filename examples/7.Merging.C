@@ -30,7 +30,7 @@ int main(int argc, char** argv)
            "so on. Importantly, the forward and backward links, as well as the links from graph nodes to the scopes "<<
            "they refer to, are valid after merging and can be used to navigate within the merged output."<<endl;
     
-    graph g;
+    graph g(true);
     
     // Maps each iteration number to the link anchors that will point to this iteration's scope
     map<int, set<anchor> > pointsTo;

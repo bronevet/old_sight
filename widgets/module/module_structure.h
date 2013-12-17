@@ -61,7 +61,10 @@ class module: public block, public common::module
   group g;	
   // The context of this module execution, which is a combination of the contexts of all of its inputs
   std::vector<context> ctxt;
-    
+  
+  // The context in a format that traces can understand, set in init() and used in ~module()
+  std::map<std::string, attrValue> traceCtxt;
+  
   // The  output ports of this module
   std::vector<port> outputs;
   

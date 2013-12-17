@@ -21,13 +21,14 @@ double histRecurrence(int a, const vector<double>& hist);
 
 int main(int argc, char** argv)
 {
-  if(argc<2) { printf("Usage: demo maxDepth\n"); exit(-1); }
+  if(argc<2) { printf("Usage: 0.Demo maxDepth\n"); exit(-1); }
   int maxDepth = atoi(argv[1]);
   
-  // The absolute path of this file
-  string thisFile = txt()<<ROOT_PATH<<"/examples/demo.C";
+  // The absolute path of this file. This is necessary to have Sight include the relevant regions of 
+  // source code in the output.
+  string thisFile = txt()<<ROOT_PATH<<"/examples/0.Demo.C";
   
-  SightInit(argc, argv, "Demo", txt()<<"dbg.Demo.maxDepth_"<<maxDepth);
+  SightInit(argc, argv, "Demo", txt()<<"dbg.0.Demo.maxDepth_"<<maxDepth);
    
   dbg << "<h1>Demonstration of Sight</h1>" << endl;
   

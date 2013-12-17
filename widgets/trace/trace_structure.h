@@ -143,17 +143,24 @@ class traceStream: public attrObserver, public common::trace, public sightObj
 
 // Basic API for measuring the elapsed counts of events.
 // After an instance of the measure class is constructed, the measurement may be started by calling start() 
-//    and stopped by calling end(). The measurement can also be paused and resumed. When a measurement is completed, 
-//    an attribute named valLabel is added to a trace named traceLabel. Some measure classes may allow users to get 
-//    the measurement value directly by implementing method endGet().
-// The measured values are added to a user-specified trace. This trace can be specified by providing its string label, 
-//    a pointer to the trace object, or a pointer to the traceStream object inside it (traceStreams may be used inside
-//    traces as well as other widgets). Then, when the measurement completes the measure automatically adds an 
-//    observation to the given trace under the label valLabel, which must also be provided when creating the measure. 
-//    The context for this measurement will be the current values of the context attributes of the trace. If the user 
-//    wishes to specify context manually, they may optionally provide them as a map from their string lavels to their 
-//    attrValues. All of the above may be specified in the measure constructor or afterwards by calling setTrace(),
-//    setValLabel() and setFullMeasureCtxt(), as long as these are called before the call to end().
+//    and completed by calling end() or endGet(). The measurement can also be paused and resumed. When a measurement is 
+//    completed via end(), the observation is added to the trace associated with the measurement using the specified
+//    context, and associated with the label(s) specified for the measurement (each class derived from measure may use
+//    a separate labeling scheme since a single measurement may produce multiple observations). Alternately, the 
+//    measurement can also be completed using endGet(), which returns the measurement as a map from value names 
+//    to the attrValues that hold the measured values, and optionally adds the observations to the trace if the caller
+//    specifically asks for this. If the caller does not wish the measure to add the observations to its trace, it does 
+//    not need to specify the trace and context in the measurement's constructor (the value label is needed) and the 
+//    caller is responsible for adding the measurement to a trace if it needs to.
+// More specifics for cases where the measurement automatically adds the observation to its trace:
+//    This trace can be specified by providing its string label, a pointer to the trace object, or a pointer to the 
+//    traceStream object inside it (traceStreams may be used inside traces as well as other widgets). Then, when the 
+//    measurement completes the measure automatically adds an observation to the given trace under the label valLabel, 
+//    which must also be provided when creating the measure. The context for this measurement will be the current 
+//    values of the context attributes of the trace. If the user wishes to specify context manually, they may optionally 
+//    provide them as a map from their string lavels to their attrValues. All of the above may be specified in the 
+//    measure constructor or afterwards by calling setTrace(), setValLabel() and setFullMeasureCtxt(), as long as 
+//    these are called before the call to end().
 // The startMeasure()/endMeasure() API makes it easy to make measurements:
 //    measurement* m = startMeasure(...);
 //    ...
@@ -162,7 +169,6 @@ class traceStream: public attrObserver, public common::trace, public sightObj
 class measure {
   protected:
   traceStream* ts;
-  std::string valLabel;
   
   // Records whether time collection is currently paused
   bool paused;
@@ -181,15 +187,15 @@ class measure {
   measure();
 
   // Non-full measure                                                                                            
-  measure(                        std::string valLabel);
-  measure(std::string traceLabel, std::string valLabel);
-  measure(trace* t,               std::string valLabel);
-  measure(traceStream* ts,        std::string valLabel);
+  //measure(                      );
+  measure(std::string traceLabel);
+  measure(trace* t);
+  measure(traceStream* ts);
   // Full measure                                                                                                
-  measure(                        std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt);
-  measure(std::string traceLabel, std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt);
-  measure(trace* t,               std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt);
-  measure(traceStream* ts,        std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt);
+  measure(                        const std::map<std::string, attrValue>& fullMeasureCtxt);
+  measure(std::string traceLabel, const std::map<std::string, attrValue>& fullMeasureCtxt);
+  measure(trace* t,               const std::map<std::string, attrValue>& fullMeasureCtxt);
+  measure(traceStream* ts,        const std::map<std::string, attrValue>& fullMeasureCtxt);
 
   ~measure();
   
@@ -199,7 +205,7 @@ class measure {
   void setTrace(traceStream* ts);
   
   // Specify the label of the value measured by this measure object
-  void setValLabel(std::string valLabel);
+  //void setValLabel(std::string valLabel);
   
   // Specify the full context of this object's measurement
   void setCtxt(const std::map<std::string, attrValue>& fullMeasureCtxt);
@@ -220,11 +226,12 @@ class measure {
   // before the call to resume().
   virtual void resume();
 
-  // Complete the measurement
+  // Complete the measurement and add the observation to the trace associated with this measurement
   virtual void end();
   
-  // OPTIONAL: Complete the measurement and return the measurement
-  //RetType endGet();
+  // Complete the measurement and return the observation.
+  // If addToTrace is true, the observation is addes to this measurement's trace and not, otherwise
+  virtual std::list<std::pair<std::string, attrValue> > endGet(bool addToTrace=false);
   
   virtual std::string str()=0;
 }; // class measure
@@ -238,6 +245,9 @@ class timeMeasure : public measure {
   double elapsed;
   // The time when we started or resumed this measure, whichever is most recent
   struct timeval lastStart;
+  
+  // The label associated with this measurement
+  std::string valLabel;
   
   public:
   // Non-full measure
@@ -269,11 +279,12 @@ class timeMeasure : public measure {
   // before the call to resume().
   void resume();
  
-  // Complete the measurement
+  // Complete the measurement and add the observation to the trace associated with this measurement
   void end();
   
-  // Complete the measurement and return the measurement
-  double endGet();
+  // Complete the measurement and return the observation.
+  // If addToTrace is true, the observation is addes to this measurement's trace and not, otherwise
+  std::list<std::pair<std::string, attrValue> > endGet(bool addToTrace=false);
   
   std::string str();
 }; // class timeMeasure
@@ -287,7 +298,10 @@ class PAPIMeasure : public measure {
   std::vector<long_long> values;
   
   // The events that will be measured
-  const papiEvents& events;
+  papiEvents events;
+
+  // The label associated with this measurement
+  std::string valLabel;
   
   public:
   PAPIMeasure(const papiEvents& events);
@@ -320,8 +334,12 @@ class PAPIMeasure : public measure {
   // before the call to resume().
   void resume();
  
-  // Complete the measurement
+  // Complete the measurement and add the observation to the trace associated with this measurement
   void end();
+  
+  // Complete the measurement and return the observation.
+  // If addToTrace is true, the observation is addes to this measurement's trace and not, otherwise
+  std::list<std::pair<std::string, attrValue> > endGet(bool addToTrace=false);
   
   std::string str();
 }; // class PAPIMeasure
@@ -371,8 +389,10 @@ MT* startMeasure(traceStream* ts,        std::string valLabel, const std::map<st
 
 void endMeasure(measure* m);
 
-template<class MT, class RET>
-RET endGetMeasure(measure* m) {
+//template<class MT, class RET>
+// Complete the measurement and return the observation.
+// If addToTrace is true, the observation is addes to this measurement's trace and not, otherwise
+std::list<std::pair<std::string, attrValue> > endGetMeasure(measure* m, bool addToTrace=false);/* {
   MT* mt = dynamic_cast<MT*>(m);
   assert(mt);
   RET result = mt->endGet();
@@ -385,7 +405,7 @@ RET endGetMeasure(MT* m) {
   RET result = m->endGet();
   delete m;
   return result;
-}
+}*/
 
 
 class TraceMergeHandlerInstantiator: public MergeHandlerInstantiator {

@@ -490,7 +490,8 @@ int block::blockCount=0;
 block::block(properties::iterator props) : startA(/*false,*/ -1) /*=noAnchor, except that noAnchor may not yet be initialized)*/ {
   assert(initializedDebug);
   label = properties::get(props, "label");
-  //blockID = properties::getInt(props, "blockID");
+  // Record the ID assigned to this block in the structure layer
+  blockIDFromStructure = properties::getInt(props, "ID");
   long numAnchors = properties::getInt(props, "numAnchors");
   for(long i=0; i<numAnchors; i++) {
     pointsToAnchors.insert(anchor(/*false,*/ properties::getInt(props, txt()<<"anchor_"<<i)));

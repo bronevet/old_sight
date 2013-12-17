@@ -96,7 +96,7 @@ int main(int argc, char** argv)
     dbg << "Note: click on the title link of this scope to minimize it when done viewing."<<endl;
     
     // The graph that will summarize structure and will be shown at this point in the log output
-    graph g;
+    graph g(true);
     
     int totalNums=30;
     // Holds the prime status of each number. Initially all numbers are considered to be prime.

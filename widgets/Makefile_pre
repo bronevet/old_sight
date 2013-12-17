@@ -179,9 +179,10 @@ gsl:
 	cd gsl-1.9; make; make install
 
 papi:
+	rm -f papi-5.3.0.tar.gz
 	wget http://icl.cs.utk.edu/projects/papi/downloads/papi-5.3.0.tar.gz
 	tar -xf papi-5.3.0.tar.gz 
-	cd papi-5.3.0; ./configure -prefix=${ROOT_PATH}/papi; make; make install
+	cd papi-5.3.0/src; export CC=gcc; export F77=gfortran; ./configure -prefix=${ROOT_PATH}/widgets/papi; make; make install
 
 
 # JavaScript files from standard JS libraries that we wish to keep local copies of

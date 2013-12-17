@@ -142,7 +142,7 @@ binreloc.o: binreloc.c binreloc.h
 utils.o: utils.C utils.h
 	g++ ${SIGHT_CFLAGS} utils.C -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o utils.o
 
-HOSTNAME_ARG=$(shell getHostnameArg.pl)
+HOSTNAME_ARG=$(shell ./getHostnameArg.pl)
 getAllHostnames.o: getAllHostnames.C getAllHostnames.h
 	g++ ${SIGHT_CFLAGS} getAllHostnames.C -DHOSTNAME_ARG="\"${HOSTNAME_ARG}\"" -c -o getAllHostnames.o
 

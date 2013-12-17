@@ -78,6 +78,18 @@ properties* graph::setProperties(int graphID, std::string dotText, const attrOp*
 }
 
 graph::~graph() {
+  // Refresh nodesConnected based on all the location information collected for the graph node anchors during execution
+  // by filling a new set. Anchor IDs are only updated to become consistent with their final location when they're copied
+  // to make sure that updated information about anchor locations doesn't invalidate data structures. Thus, we get
+  // the freshest info we have to create a new set from the anchors in nodesConnected
+  set<anchor> freshNC;
+  for(std::set<anchor>::iterator i=nodesConnected.begin(); i!=nodesConnected.end(); i++)
+    freshNC.insert(*i);
+  
+  // Identify the nodes that were connected but not emitted and emit them
+  for(set<anchor>::iterator i=freshNC.begin(); i!=freshNC.end(); i++)
+    if(nodesObservedNotEmitted.find(i->getID()) != nodesObservedNotEmitted.end())
+      emitNodeTag(i->getID(), nodesObservedNotEmitted[i->getID()].first, nodesObservedNotEmitted[i->getID()].second);
 }
 
 // Given a reference to an object that can be represented as a dot graph,  create an image from it and add it to the output.
@@ -104,11 +116,20 @@ void graph::setGraphEncoding(string dotText) {
 
 // Add a directed edge from the location of the from anchor to the location of the to anchor
 void graph::addDirEdge(anchor from, anchor to) {
-  // If the from or two node of this edge have not yet been emitted, do so now
-  if(unEmittedNodes.find(from.getID()) != unEmittedNodes.end())
-    emitNodeTag(from.getID(), unEmittedNodes[from.getID()].first, unEmittedNodes[from.getID()].second);
-  if(unEmittedNodes.find(to.getID()) != unEmittedNodes.end())
-    emitNodeTag(to.getID(), unEmittedNodes[to.getID()].first, unEmittedNodes[to.getID()].second);
+  // If we only emit nodes that are connected by edges
+  if(!includeAllSubBlocks) {
+    //cout << "graph::addDirEdge "<<from.getID()<<"=>"<<to.getID()<<", from observed="<<(nodesObservedNotEmitted.find(from.getID()) != nodesObservedNotEmitted.end())<<", from connected="<<(nodesConnected.find(from.getID()) != nodesConnected.end())<<", to observed="<<(nodesObservedNotEmitted.find(to.getID()) != nodesObservedNotEmitted.end())<<", to connected="<<(nodesConnected.find(to.getID()) != nodesConnected.end())<<endl;
+    
+    // If the node of either side of this edge has been observed but not yet connected, emit its tag now
+    if(nodesObservedNotEmitted.find(from.getID()) != nodesObservedNotEmitted.end()/* && nodesConnected.find(from) == nodesConnected.end()*/)
+      emitNodeTag(from.getID(), nodesObservedNotEmitted[from.getID()].first, nodesObservedNotEmitted[from.getID()].second);
+    if(nodesObservedNotEmitted.find(to.getID()) != nodesObservedNotEmitted.end()/* && nodesConnected.find(to) == nodesConnected.end()*/)
+      emitNodeTag(to.getID(), nodesObservedNotEmitted[to.getID()].first, nodesObservedNotEmitted[to.getID()].second);
+
+    // Record that both nodes have been connected
+    nodesConnected.insert(from);
+    nodesConnected.insert(to);
+  }
   
   properties p;
   map<string, string> pMap;
@@ -123,11 +144,18 @@ void graph::addDirEdge(anchor from, anchor to) {
 
 // Add an undirected edge between the location of the a anchor and the location of the b anchor
 void graph::addUndirEdge(anchor a, anchor b) {
-  // If the either node of this edge have not yet been emitted, do so now
-  if(unEmittedNodes.find(a.getID()) != unEmittedNodes.end())
-    emitNodeTag(a.getID(), unEmittedNodes[a.getID()].first, unEmittedNodes[a.getID()].second);
-  if(unEmittedNodes.find(b.getID()) != unEmittedNodes.end())
-    emitNodeTag(b.getID(), unEmittedNodes[b.getID()].first, unEmittedNodes[b.getID()].second);
+  // If we only emit nodes that are connected by edges
+  if(!includeAllSubBlocks) {
+    // If the node of either side of this edge has been observed but not yet connected, emit its tag now
+    if(nodesObservedNotEmitted.find(a.getID()) != nodesObservedNotEmitted.end()/* && nodesConnected.find(a) == nodesConnected.end()*/)
+      emitNodeTag(a.getID(), nodesObservedNotEmitted[a.getID()].first, nodesObservedNotEmitted[a.getID()].second);
+    if(nodesObservedNotEmitted.find(b.getID()) != nodesObservedNotEmitted.end()/* && nodesConnected.find(b) == nodesConnected.end()*/)
+      emitNodeTag(b.getID(), nodesObservedNotEmitted[b.getID()].first, nodesObservedNotEmitted[b.getID()].second);
+  
+    // Record that both nodes have been connected
+    nodesConnected.insert(a);
+    nodesConnected.insert(b);
+  }
   
   properties p;
   map<string, string> pMap;
@@ -145,13 +173,17 @@ void graph::addUndirEdge(anchor a, anchor b) {
 // Returns true of this notification should be propagated to the blocks 
 // that contain this block and false otherwise.
 bool graph::subBlockEnterNotify(block* subBlock) {
-  // If we should include nodes for all sub-blocks inside this graph block
-  if(includeAllSubBlocks)
+  //cout << "graph::subBlockEnterNotify() subBlock="<<subBlock->getLabel()<<"/"<<subBlock->getAnchor().getID()<<" includeAllSubBlocks="<<includeAllSubBlocks<<", connected="<<(nodesConnected.find(subBlock->getAnchor().getID()) != nodesConnected.end())<<endl;
+  // If we should include nodes for all sub-blocks inside this graph block or this block has already been connected by an edge
+  if(includeAllSubBlocks/* || nodesConnected.find(subBlock->getAnchor()) != nodesConnected.end()*/)
     // Emit a node tag for this block immediately
     emitNodeTag(subBlock->getAnchor().getID(), subBlock->getLabel(), maxNodeID);
+  
+  // If we only emit nodes that are connected by edges
+  //if(!includeAllSubBlocks)
   else
-    // Otherwise, save its info in unEmittedNodes[] so that we can emit it when we observe an edge that touches it
-    unEmittedNodes[subBlock->getAnchor().getID()] = make_pair(subBlock->getLabel(), maxNodeID);
+    // Record that this node has been observed
+    nodesObservedNotEmitted[subBlock->getAnchor().getID()] = make_pair(subBlock->getLabel(), maxNodeID);
   
   maxNodeID++;
   
@@ -160,6 +192,8 @@ bool graph::subBlockEnterNotify(block* subBlock) {
 
 // Emits a tag for the given node
 void graph::emitNodeTag(int anchorID, std::string label, int nodeID) {
+  //cout << "graph::emitNodeTag("<<label<<"/"<<anchorID<<")"<<endl;
+  
   properties p;
   map<string, string> pMap;
   pMap["nodeID"]   = txt()<<nodeID;
@@ -168,6 +202,9 @@ void graph::emitNodeTag(int anchorID, std::string label, int nodeID) {
   pMap["graphID"]  = txt()<<graphID;
   //pMap["callPath"] = cp2str(CPRuntime.doStackwalk());
   p.add("node", pMap);
+  
+  // This node has now been emitted
+  nodesObservedNotEmitted.erase(anchorID);
 
   dbg.tag(p);
 }

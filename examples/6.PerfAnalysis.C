@@ -172,7 +172,8 @@ int main(int argc, char** argv) {
       else if(mmmLoop==kij) matmult_kij(A, B, C, MtxSize);
       else if(mmmLoop==kji) matmult_kji(A, B, C, MtxSize);
       
-      double elapsed = endGetMeasure<timeMeasure, double>(mmm);
+      list<pair<string, attrValue> > elapsedL = endGetMeasure(mmm, true);
+      double elapsed = elapsedL.begin()->second.getFloat();
       
       dbg << textColor::start(loopColor) << "MMM "<<mmmLoopTypeStr(mmmLoop)<<textColor::end()<<", MtxSize="<<MtxSize<<": "<<textColor::start(elapsedColor, attrValue(elapsed))<<"elapsed = "<<elapsed<<textColor::end()<<endl;
     } }
@@ -193,7 +194,8 @@ int main(int argc, char** argv) {
              if(mvmLoop==ij) matvec_ij(A, vecIn, vecOut, MtxSize);
         else if(mvmLoop==ji) matvec_ji(A, vecIn, vecOut, MtxSize);
         
-        double elapsed = endGetMeasure<timeMeasure, double>(mvm);
+        list<pair<string, attrValue> > elapsedL = endGetMeasure(mvm, true);
+        double elapsed = elapsedL.begin()->second.getFloat();
         
         dbg << textColor::start(loopColor) << "MMM "<<mmmLoopTypeStr(mmmLoop)<<"/MVM "<<mvmLoopTypeStr(mvmLoop)<<textColor::end()<<", MtxSize="<<MtxSize<<": "<<textColor::start(elapsedColor, attrValue(elapsed))<<"elapsed = "<<elapsed<<textColor::end()<<endl;
       }

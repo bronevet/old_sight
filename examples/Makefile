@@ -4,11 +4,10 @@ EXE := .exe
 endif
 
 sight_H := ../*.h ../*/*.h ../widgets/*/*.h
-TESTERS = 8.Modules${EXE} 
-#demo${EXE} \
-#          1.StructuredFormatting${EXE} 2.ConditionalFormatting${EXE} 3.Navigation${EXE} \
-#          4.AttributeAnnotationFiltering${EXE} 5.Tracing${EXE} 6.PerfAnalysis${EXE} \
-#          7.Merging${EXE} 8.Modules${EXE}
+TESTERS = 0.Demo${EXE} \
+          1.StructuredFormatting${EXE} 2.ConditionalFormatting${EXE} 3.Navigation${EXE} \
+          4.AttributeAnnotationFiltering${EXE} 5.Tracing${EXE} 6.PerfAnalysis${EXE} \
+          7.Merging${EXE} 8.Modules${EXE}
 
 all: ${TESTERS}
 
@@ -30,10 +29,14 @@ run: ${TESTERS}
 	export SIGHT_FILE_OUT=1; ./8.Modules${EXE} 1 10; ./8.Modules${EXE} 1 30; ./8.Modules${EXE} 1 100; ./8.Modules${EXE} 2 10; ./8.Modules${EXE} 2 30; ./8.Modules${EXE} 2 100; ./8.Modules${EXE} 3 10; ./8.Modules${EXE} 3 30; ./8.Modules${EXE} 3 100;
 	export SIGHT_FILE_OUT=1; rm -rf dbg.8.Modules; ../hier_merge dbg.8.Modules common dbg.8.Modules.1_dims.10_particles/structure dbg.8.Modules.1_dims.30_particles/structure dbg.8.Modules.1_dims.100_particles/structure dbg.8.Modules.2_dims.10_particles/structure dbg.8.Modules.2_dims.30_particles/structure dbg.8.Modules.2_dims.100_particles/structure dbg.8.Modules.3_dims.10_particles/structure dbg.8.Modules.3_dims.30_particles/structure dbg.8.Modules.3_dims.100_particles/structure
 	rm -rf dbg.8.Modules.*;
-	../slayout${EXE} dbg.8.Modules/structure;	
+	../slayout${EXE} dbg.8.Modules/structure;
+	export SIGHT_FILE_OUT=1; ./0.Demo${EXE} 5; ./0.Demo${EXE} 6; ./0.Demo${EXE} 7
+	export SIGHT_FILE_OUT=1; rm -rf dbg.0.Demo; ../hier_merge dbg.0.Demo common dbg.0.Demo.maxDepth_5/structure dbg.0.Demo.maxDepth_6/structure dbg.0.Demo.maxDepth_7/structure
+	rm -rf dbg.0.Demo.*;
+	../slayout${EXE} dbg.0.Demo/structure;
 
-demo${EXE}: demo.C ../libsight_structure.a ${sight_H}
-	g++ ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" demo.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o demo${EXE}
+0.Demo${EXE}: 0.Demo.C ../libsight_structure.a ${sight_H}
+	g++ ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" 0.Demo.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 0.Demo${EXE}
 
 1.StructuredFormatting${EXE}: 1.StructuredFormatting.C ../libsight_structure.a ${sight_H}
 	g++ ${SIGHT_CFLAGS} 1.StructuredFormatting.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 1.StructuredFormatting${EXE}

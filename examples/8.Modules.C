@@ -41,14 +41,39 @@ int main(int argc, char** argv)
                         txt()<<"dbg.8.Modules."<<numDims<<"_dims."<<numParticles<<"_particles");
 
   dbg << "<h1>Example 8: Modules, "<<numDims<<" dimensions, "<<numParticles<<" particles</h1>" << endl;
-    
+
+  dbg << "This example illustrates the use of modules, which are a way to identify and document the modular structure "<<
+         "of application components and their inter-dependencies. Given such information about the application Sight "<<
+         "presents a graphical representation of the application's modular structure, as well as a set of measurements "<<
+         "taken during each module's execution (e.g. execution time, performance counters or values of module outputs. "<<
+         "The Sight module visualization shows a graph with one node for each module. For each module Sight shows its "<<
+         "inputs and outputs and how the outputs of one module connect to the inputs of another. Users may optionally "<<
+         "provide more detailed information about the properties of each output of a module, such as the sparsity of a "<<
+         "matrix or the height of a tree. Sight shows the properties provided for each input of a module and further, "<<
+         "presents a polynomial (inferred using regression techniques) that predicts the value of each measurement value "<<
+         "(e.g. time or outputs) as a function of the properties of the inputs. Finally, to make this relationship more "<<
+         "visual Sight allows users to click on each input property/measurement pair to see the plot of the measurement "<<
+         "as a function of the values taken by this property of this input."<<endl<<endl;
+
+  dbg << "Modules are used by declaring a variable of type module for each application code module. All code executed "<<
+         "while this variable is in-scope is considered to be part of the module. The module's name "<<
+         "and number of inputs and outputs is provided as the first argument (ex: group(\"Initialization\", 1, 1)). The "<<
+         "next argument identifies the module's inputs, which should be the outputs of other modules "<<
+         "(ex: inputs(rootModule.outPort(0))). The next argument provides space where information about the the module's "<<
+         "outputs will be stored. It is a reference to a vector<port>, which is filled by the module with information detailing the outputs. This is "<<
+         "useful because modules that use a given module's outputs often start after the module completes and its variable "<<
+         "goes out of scope. Placing information about its outputs in a separate vector that outlives the module makes it easier "<<
+         "for other modules to identify the way its outputs connect to their inputs. The final argument is a list of "<<
+         "measurements that should be taken during the module's execution and displayed in the graphical view "<<
+         "(ex: namedMeasures(\"time\", new timeMeasure(), \"PAPI\", new PAPIMeasure(papiEvents(PAPI_TOT_INS))."<<endl<<endl;
+
+  dbg << "This example code is a mock-up of a molecular dynamics simulation, with modules for initialization, force computation "<<
+         "and computation of nearest-neighbor lists. This output corresponds to 9 runs of this code with 1, 30 or 100 particles, "<<
+         "each containing 1, 2 or 3 dimensional positions. The outputs of these runs are merged, including their input/output "<<
+         "relations and module measurements."<<endl;    
   module rootModule(group("Root", 0, 1), namedMeasures("time", new timeMeasure())); 
   
   // List of particle positions
-  //for(int numDims=1; numDims<=4; numDims++) {
-  //int numDims=3;
-  //for(int numParticles=10; numParticles<=1000; numParticles*=10) {
-  //int numParticles=10;
   double neighRadius = .2;
   int neghRefreshPeriod=10;
   int numTS=100;

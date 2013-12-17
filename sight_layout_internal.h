@@ -183,7 +183,7 @@ class block
   location    loc;
   std::string fileID;
   std::string blockID;
-    
+
   // The anchor that denotes the starting point of this scope
   anchor startA;
   
@@ -198,6 +198,11 @@ class block
   std::ofstream* scriptEpilogFile;
 
   protected:
+  // The ID assigned to this block by the structure layer. This can be used to relate locations in output
+  // to discrete points in the original application's execution, such as for launching GDB to run upto a 
+  // particular point in the app's execution
+  int blockIDFromStructure;
+    
   // Counts the number of times the block constructor has been called
   static int blockCount;
   

@@ -287,32 +287,27 @@ void traceStream::emitObservations(const std::map<std::string, attrValue>& conte
  ***** measure *****
  *******************/
 
-measure::measure() {
-  fullMeasure = false;
-  init();
-}
- 
 // Non-full measure
-measure::measure(                        std::string valLabel): ts(NULL), valLabel(valLabel)
+measure::measure(): ts(NULL)
 {
   fullMeasure = false;
   init();
 }
 
 
-measure::measure(std::string traceLabel, std::string valLabel): ts(trace::getTS(traceLabel)), valLabel(valLabel)
+measure::measure(std::string traceLabel): ts(trace::getTS(traceLabel))
 {
   fullMeasure = false;
   init();
 }
 
-measure::measure(trace* t,               std::string valLabel): ts(t->getTS()),               valLabel(valLabel)
+measure::measure(trace* t): ts(t->getTS())
 {
   fullMeasure = false;
   init();
 }
 
-measure::measure(traceStream* ts,        std::string valLabel): ts(ts),                       valLabel(valLabel)
+measure::measure(traceStream* ts): ts(ts)
 {
   fullMeasure = false;
   init();
@@ -320,29 +315,29 @@ measure::measure(traceStream* ts,        std::string valLabel): ts(ts),         
 
 
 // Full measure
-measure::measure(                        std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt) :
-     ts(NULL), valLabel(valLabel), fullMeasureCtxt(fullMeasureCtxt)
+measure::measure(                        const std::map<std::string, attrValue>& fullMeasureCtxt) :
+     ts(NULL), fullMeasureCtxt(fullMeasureCtxt)
 {
   fullMeasure = true;
   init();
 }
 
-measure::measure(std::string traceLabel, std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt) :
+measure::measure(std::string traceLabel, const std::map<std::string, attrValue>& fullMeasureCtxt) :
      ts(trace::getTS(traceLabel)), fullMeasureCtxt(fullMeasureCtxt)
 {
   fullMeasure = true;
   init();
 }
 
-measure::measure(trace* t,               std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt) :
-     ts(t->getTS()), valLabel(valLabel), fullMeasureCtxt(fullMeasureCtxt)
+measure::measure(trace* t,               const std::map<std::string, attrValue>& fullMeasureCtxt) :
+     ts(t->getTS()), fullMeasureCtxt(fullMeasureCtxt)
 {
   fullMeasure = true;
   init();
 }
 
-measure::measure(traceStream* ts,        std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt) :
-     ts(ts), valLabel(valLabel), fullMeasureCtxt(fullMeasureCtxt)
+measure::measure(traceStream* ts,        const std::map<std::string, attrValue>& fullMeasureCtxt) :
+     ts(ts), fullMeasureCtxt(fullMeasureCtxt)
 {
   fullMeasure = true;
   init();
@@ -362,8 +357,8 @@ void measure::setTrace(traceStream* ts)
 { this->ts = ts; }
 
 // Specify the label of the value measured by this measure object
-void measure::setValLabel(std::string valLabel)
-{ this->valLabel = valLabel; }
+//void measure::setValLabel(std::string valLabel)
+//{ this->valLabel = valLabel; }
 
 // Specify the full context of this object's measurement
 void measure::setCtxt(const std::map<std::string, attrValue>& fullMeasureCtxt) { 
@@ -396,9 +391,17 @@ void measure::resume() {
   paused = false;
 }
 
-// Complete the measurement
+// Complete the measurement and add the observation to the trace associated with this measurement
 void measure::end() {
-  if(ended) { cerr << "measure::end() ERROR: measuring variable \""<<valLabel<<"\" multiple times!"<<endl; exit(-1); }
+  if(ended) { cerr << "measure::end() ERROR: measuring multiple times!"<<endl; exit(-1); }
+ 
+  ended = true;
+}
+
+// Complete the measurement and return the observation.
+// If addToTrace is true, the observation is addes to this measurement's trace and not, otherwise
+std::list<std::pair<std::string, attrValue> > measure::endGet(bool addToTrace)  {
+  if(ended) { cerr << "measure::endGet() ERROR: measuring multiple times!"<<endl; exit(-1); }
  
   ended = true;
 }
@@ -408,33 +411,33 @@ void measure::end() {
  ***********************/
 
 // Non-full measure
-timeMeasure::timeMeasure(                        std::string valLabel): measure(valLabel)
+timeMeasure::timeMeasure(                        std::string valLabel): measure(), valLabel(valLabel)
 { init(); }
 
-timeMeasure::timeMeasure(std::string traceLabel, std::string valLabel): measure(traceLabel, valLabel)
+timeMeasure::timeMeasure(std::string traceLabel, std::string valLabel): measure(traceLabel), valLabel(valLabel)
 { init(); }
 
-timeMeasure::timeMeasure(trace* t,               std::string valLabel): measure(t, valLabel)
+timeMeasure::timeMeasure(trace* t,               std::string valLabel): measure(t), valLabel(valLabel)
 { init(); }
 
-timeMeasure::timeMeasure(traceStream* ts,        std::string valLabel): measure(ts, valLabel)
+timeMeasure::timeMeasure(traceStream* ts,        std::string valLabel): measure(ts), valLabel(valLabel)
 { init(); }
 
 // Full measure
 timeMeasure::timeMeasure(                        std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt) :
-     measure(valLabel, fullMeasureCtxt)
+     measure(fullMeasureCtxt), valLabel(valLabel)
 { init(); }
 
 timeMeasure::timeMeasure(std::string traceLabel, std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt) :
-     measure(traceLabel, valLabel, fullMeasureCtxt)
+     measure(traceLabel, fullMeasureCtxt), valLabel(valLabel)
 { init(); }
 
 timeMeasure::timeMeasure(trace* t,               std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt) :
-     measure(t, valLabel, fullMeasureCtxt)
+     measure(t, fullMeasureCtxt), valLabel(valLabel)
 { init(); }
 
 timeMeasure::timeMeasure(traceStream* ts,        std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt) :
-     measure(ts, valLabel, fullMeasureCtxt)
+     measure(ts, fullMeasureCtxt), valLabel(valLabel)
 { init(); }
 
 timeMeasure::~timeMeasure() {
@@ -473,11 +476,6 @@ void timeMeasure::resume() {
 
 // Complete the measurement
 void timeMeasure::end() {
-  endGet();
-}
-
-// Complete the measurement and return the measurement
-double timeMeasure::endGet() {
   measure::end();
   
   // Call pause() to update elapsed with the time since the start of the measure or the last call to resume() 
@@ -488,7 +486,27 @@ double timeMeasure::endGet() {
     ts->traceFullObservation(fullMeasureCtxt, trace::observation(make_pair(valLabel, attrValue((double)elapsed))), anchor::noAnchor);
   else
     ts->traceAttrObserved(valLabel, attrValue((double)elapsed), anchor::noAnchor);
-  return elapsed;
+}
+
+// Complete the measurement and return the observation.
+// If addToTrace is true, the observation is addes to this measurement's trace and not, otherwise
+std::list<std::pair<std::string, attrValue> > timeMeasure::endGet(bool addToTrace) {
+  measure::end();
+  
+  // Call pause() to update elapsed with the time since the start of the measure or the last call to resume() 
+  pause(); 
+  
+  if(addToTrace) {
+    assert(ts);
+    if(fullMeasure)
+      ts->traceFullObservation(fullMeasureCtxt, trace::observation(make_pair(valLabel, attrValue((double)elapsed))), anchor::noAnchor);
+    else
+      ts->traceAttrObserved(valLabel, attrValue((double)elapsed), anchor::noAnchor);
+  }
+  
+  std::list<std::pair<std::string, attrValue> > ret;
+  ret.push_back(make_pair(valLabel, attrValue((double)elapsed)));
+  return ret;
 }
 
 std::string timeMeasure::str() { 
@@ -507,33 +525,33 @@ PAPIMeasure::PAPIMeasure(const papiEvents& events) : measure(), events(events)
 { init(); }
 
 // Non-full measure
-PAPIMeasure::PAPIMeasure(                        std::string valLabel, const papiEvents& events): measure(valLabel), events(events)
+PAPIMeasure::PAPIMeasure(                        std::string valLabel, const papiEvents& events): measure(), events(events), valLabel(valLabel)
 { init(); }
 
-PAPIMeasure::PAPIMeasure(std::string traceLabel, std::string valLabel, const papiEvents& events): measure(traceLabel, valLabel), events(events)
+PAPIMeasure::PAPIMeasure(std::string traceLabel, std::string valLabel, const papiEvents& events): measure(traceLabel), events(events), valLabel(valLabel)
 { init(); }
 
-PAPIMeasure::PAPIMeasure(trace* t,               std::string valLabel, const papiEvents& events): measure(t, valLabel), events(events)
+PAPIMeasure::PAPIMeasure(trace* t,               std::string valLabel, const papiEvents& events): measure(t), events(events), valLabel(valLabel)
 { init(); }
 
-PAPIMeasure::PAPIMeasure(traceStream* ts,        std::string valLabel, const papiEvents& events): measure(ts, valLabel), events(events)
+PAPIMeasure::PAPIMeasure(traceStream* ts,        std::string valLabel, const papiEvents& events): measure(ts), events(events), valLabel(valLabel)
 { init(); }
 
 // Full measure
 PAPIMeasure::PAPIMeasure(                        std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt, const papiEvents& events) :
-     measure(valLabel, fullMeasureCtxt), events(events)
+     measure(fullMeasureCtxt), events(events), valLabel(valLabel)
 { init(); }
 
 PAPIMeasure::PAPIMeasure(std::string traceLabel, std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt, const papiEvents& events) :
-     measure(traceLabel, valLabel, fullMeasureCtxt), events(events)
+     measure(traceLabel, fullMeasureCtxt), events(events), valLabel(valLabel)
 { init(); }
 
 PAPIMeasure::PAPIMeasure(trace* t,               std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt, const papiEvents& events) :
-     measure(t, valLabel, fullMeasureCtxt), events(events)
+     measure(t, fullMeasureCtxt), events(events), valLabel(valLabel)
 { init(); }
 
 PAPIMeasure::PAPIMeasure(traceStream* ts,        std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt, const papiEvents& events) :
-     measure(ts, valLabel, fullMeasureCtxt), events(events)
+     measure(ts, fullMeasureCtxt), events(events), valLabel(valLabel)
 { init(); }
 
 PAPIMeasure::~PAPIMeasure() {
@@ -541,6 +559,11 @@ PAPIMeasure::~PAPIMeasure() {
 
 // Common initialization code
 void PAPIMeasure::init() {
+  /*cout << "PAPIMeasure::init() events=";
+  for(int i=0; i<events.size(); i++)
+    cout << events[i] << " ";
+  cout << endl;*/
+  
   // Initialize the values array to all 0's
   values.resize(events.size(), 0);
 }
@@ -622,6 +645,42 @@ void PAPIMeasure::end() {
   }
 }
 
+// Complete the measurement and return the observation.
+// If addToTrace is true, the observation is addes to this measurement's trace and not, otherwise
+std::list<std::pair<std::string, attrValue> > PAPIMeasure::endGet(bool addToTrace) {
+  measure::end();
+  
+  // Call pause() to update elapsed with the time since the start of the measure or the last call to resume() 
+  pause(); 
+  
+  if(addToTrace)
+    assert(ts);
+  
+  // Iterate over all the PAPI counters being measured
+  std::list<std::pair<std::string, attrValue> > ret;
+  
+  for(int i=0; i<events.size(); i++) {
+    char EventCodeStr[PAPI_MAX_STR_LEN];
+    if (PAPI_event_code_to_name(events[i], EventCodeStr) != PAPI_OK) { cerr << "PAPIMeasure::end() ERROR getting name of PAPI counter "<<events[i]<<"!"<<endl; assert(0); }
+    
+    // If a value label was not provided, the label of the observation is just the name of the PAPI counter
+    if(valLabel == "")
+      ret.push_back(make_pair(string(EventCodeStr), attrValue((long)values[i])));
+    // If a value label was provided, the label of the observation combines it and the name of the PAPI counter
+    else 
+      ret.push_back(make_pair((string)(txt()<<valLabel<<":"<<string(EventCodeStr)), attrValue((long)values[i])));
+    
+    if(addToTrace) {
+      if(fullMeasure)
+        ts->traceFullObservation(fullMeasureCtxt, trace::observation(make_pair((string)(txt()<<valLabel<<":"<<EventCodeStr), attrValue((long)values[i]))), anchor::noAnchor);
+      else
+        ts->traceAttrObserved(txt()<<valLabel<<":"<<EventCodeStr, attrValue((long)values[i]), anchor::noAnchor);
+    }
+  }
+  
+  return ret;
+}
+
 std::string PAPIMeasure::str() { 
   ostringstream s;
   s<<"[PAPIMeasure: ";
@@ -638,6 +697,15 @@ std::string PAPIMeasure::str() {
 
 void endMeasure(measure* m) {
   m->end();
+}
+
+// Complete the measurement and return the observation.
+// If addToTrace is true, the observation is addes to this measurement's trace and not, otherwise
+std::list<std::pair<std::string, attrValue> > endGetMeasure(measure* m, bool addToTrace) {
+  assert(m);
+  std::list<std::pair<std::string, attrValue> > result = m->endGet(addToTrace);
+  delete m;
+  return result;
 }
 
 
@@ -853,7 +921,7 @@ TraceObsMerger::TraceObsMerger(std::vector<std::pair<properties::tagType, proper
           
           // If the anchorID is noAnchor, leave it as it is
           int tAnchorID = properties::getInt(tags[t].second, txt()<<"tAnchorID_"<<i);
-          if(tAnchorID==-1) curMap[txt()<<"tAnchorID_"<<i] = -1;
+          if(tAnchorID==-1) curMap[txt()<<"tAnchorID_"<<i] = "-1";
           // Otherwise, convert it from its ID in the incoming stream to its ID in the outgoing stream
           else {
             streamID inSID(properties::getInt(tags[t].second, txt()<<"tAnchorID_"<<i), 

@@ -65,6 +65,21 @@ source::~source()
 { 
 }
 
+/*****************************************
+ ***** SourceMergeHandlerInstantiator *****
+ *****************************************/
+
+SourceMergeHandlerInstantiator::SourceMergeHandlerInstantiator() { 
+  (*MergeHandlers   )["source"]       = SourceMerger::create;
+  (*MergeKeyHandlers)["source"]       = SourceMerger::mergeKey;
+}
+SourceMergeHandlerInstantiator SourceMergeHandlerInstance;
+
+
+/***********************
+ ***** SourceMerger ****
+ ***********************/
+
 SourceMerger::SourceMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                          map<string, streamRecord*>& outStreamRecords,
                          vector<map<string, streamRecord*> >& inStreamRecords,
@@ -79,7 +94,7 @@ properties* SourceMerger::setProperties(std::vector<std::pair<properties::tagTyp
                                        properties* props) {
   if(props==NULL) props = new properties();
   
- map<string, string> pMap;
+  map<string, string> pMap;
   properties::tagType type = streamRecord::getTagType(tags); 
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Scope!"<<endl; exit(-1); }
   if(type==properties::enterTag) {

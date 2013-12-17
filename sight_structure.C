@@ -1231,7 +1231,7 @@ properties* block::setProperties(string label, properties* props) {
     map<string, string> newProps;
     newProps["label"] = label;
     newProps["callPath"] = cp2str(CPRuntime.doStackwalk());
-    newProps["ID"] = txt()<<maxBlockID;
+    newProps["ID"] = txt()<<(maxBlockID+1);
     newProps["anchorID"] = txt()<<startA.getID();
     newProps["numAnchors"] = "0";
     props->add("block", newProps);
@@ -1272,7 +1272,7 @@ properties* block::setProperties(string label, anchor& pointsTo, properties* pro
     map<string, string> newProps;
     newProps["label"] = label;
     newProps["callPath"] = cp2str(CPRuntime.doStackwalk());
-    newProps["ID"] = txt()<<maxBlockID;
+    newProps["ID"] = txt()<<(maxBlockID+1);
     newProps["anchorID"] = txt()<<startA.getID();
     if(pointsTo != anchor::noAnchor) {
       newProps["numAnchors"] = "1";
@@ -1323,7 +1323,7 @@ properties* block::setProperties(string label, set<anchor>& pointsTo, properties
     map<string, string> newProps;
     newProps["label"] = label;
     newProps["callPath"] = cp2str(CPRuntime.doStackwalk());
-    newProps["ID"] = txt()<<maxBlockID;
+    newProps["ID"] = txt()<<(maxBlockID+1);
     newProps["anchorID"] = txt()<<startA.getID();
     
     int i=0;

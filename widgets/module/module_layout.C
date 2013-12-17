@@ -137,6 +137,7 @@ module::~module() {
 }
 
 void *module::enterTraceStream(properties::iterator props) {
+  //cout << "module::enterTraceStream"<<endl;
   assert(props.name() == "moduleNodeTS");
   //string moduleName = properties::get(nameProps, "ModuleName");
   
@@ -252,7 +253,10 @@ std::vector<std::string> module::polyFit(int nodeID)
   gsl_matrix *polyfitCov = gsl_matrix_alloc(numTerms, numTerms);
 
   //for(int i=0; i<polyfitObs[nodeID].size(); i++) {
-  for(int i=0; i<traceAttrNames[nodeID].size(); i++) {
+  int i=0; 
+  for(set<std::string>::iterator t=traceAttrNames[nodeID].begin(); t!=traceAttrNames[nodeID].end(); t++, i++) {
+    //cout << i << ":  attr "<<*t<<endl;
+    
     gsl_vector* polyfitCoeff = gsl_vector_alloc(numTerms);
     gsl_multifit_linear_workspace *polyfitWS = gsl_multifit_linear_alloc(numObs[nodeID], numTerms);
     double chisq;
@@ -454,7 +458,7 @@ void module::addNode(string node, int numInputs, int numOutputs, int ID, int cou
       for(int i=0; i<numInputs; i++) 
         dotFile << "<TD PORT=\""<<portName(input, i)<<"\" "<<
                        "COLSPAN=\""<<(ctxtNames[ID].find(i)!=ctxtNames[ID].end()? ctxtNames[ID][i].size(): 1)<<"\">"<<
-                        "<FONT POINT-SIZE=\"14\">:In "<<i<<"</FONT>"<<
+                        "<FONT POINT-SIZE=\"20\">:In "<<i<<"</FONT>"<<
                    "</TD>";
       dotFile << "</TR>"<<endl;
       
@@ -463,20 +467,34 @@ void module::addNode(string node, int numInputs, int numOutputs, int ID, int cou
       for(int i=0; i<numInputs; i++) {
         if(ctxtNames[ID].find(i)!=ctxtNames[ID].end()) {
           for(list<string>::iterator c=ctxtNames[ID][i].begin(); c!=ctxtNames[ID][i].end(); c++) {
-            int buttonID = maxButtonID; maxButtonID++;
-            dotFile << dotFile << "<TD BGCOLOR=\"#B0CDFF\"><FONT POINT-SIZE=\"14\">"<<buttonID<<":"<<*c<<"</FONT></TD>";
-          
-            // Register the command to be executed when this button is clicked
-            ostringstream cmd; 
-            cmd << "registerModuleButtonCmd("<<buttonID<<", \""<<
-                                 moduleTraces[ID]->getDisplayJSCmd(traceStream::attrNames(txt()<<i<<":"<<*c), traceStream::attrNames())<<
-                               "\");"<<endl;
-            dbg.widgetScriptCommand(cmd.str());
+            dotFile << dotFile << "<TD BGCOLOR=\"#000066\"><FONT COLOR=\"#ffffff\" POINT-SIZE=\"18\">:"<<*c<<"</FONT></TD>";
           }
         } else
           dotFile << dotFile << "<TD></TD>";
       }
       dotFile << "\t\t\t</TR>"<<endl;
+      
+      // Buttons for showing the observation trace plots
+      for(set<string>::iterator t=traceAttrNames[ID].begin(); t!=traceAttrNames[ID].end(); t++) {
+        dotFile << "\t\t\t<TR>";
+        for(int i=0; i<numInputs; i++) {
+          if(ctxtNames[ID].find(i)!=ctxtNames[ID].end()) {
+            for(list<string>::iterator c=ctxtNames[ID][i].begin(); c!=ctxtNames[ID][i].end(); c++) {
+              int buttonID = maxButtonID; maxButtonID++;
+              dotFile << dotFile << "<TD BGCOLOR=\"#B0CDFF\"><FONT POINT-SIZE=\"14\">"<<buttonID<<":"<<*t<<"</FONT></TD>";
+
+              // Register the command to be executed when this button is clicked
+              ostringstream cmd; 
+              cmd << "registerModuleButtonCmd("<<buttonID<<", \""<<
+                                   moduleTraces[ID]->getDisplayJSCmd(traceStream::attrNames(txt()<<i<<":"<<*c), traceStream::attrNames(*t))<<
+                                 "\");"<<endl;
+              dbg.widgetScriptCommand(cmd.str());
+            } // ctxt attrs
+          } else
+            dotFile << dotFile << "<TD></TD>";
+        } // inputs
+        dotFile << "\t\t\t</TR>"<<endl;
+      } // trace attrs
       dotFile << "</TABLE></TD></TR>"<<endl;
     }
   
@@ -490,14 +508,16 @@ void module::addNode(string node, int numInputs, int numOutputs, int ID, int cou
       // Polynomial fit of the observations
       vector<string> polynomials = polyFit(ID);
       assert(polynomials.size() == traceAttrNames[ID].size());
-      for(int i=0; i<polynomials.size(); i++) {
+      int i=0; 
+      for(set<std::string>::iterator t=traceAttrNames[ID].begin(); t!=traceAttrNames[ID].end(); t++, i++) {
         // If we were able to train a model for the current trace attribute, emit it
-        if(polynomials[i] != "") printPolyFitStr(dotFile, traceAttrNames[ID][i], polynomials[i], 80);
+        if(polynomials[i] != "") printPolyFitStr(dotFile, *t, polynomials[i], 80);
       }
         //dotFile << "\t\t<TR><TD>:"<<traceAttrNames[ID][i]<< ": "<<wrapStr(polynomials[i], 50)<<"</TD></TR>"<<endl;
     }
     
     if(traceAttrNames[ID].size()>0) {
+    //for(int i=0; i<traceAttrNames[ID].size(); i++) {
       dotFile << "\t\t<TR><TD><TABLE><TR><TD BGCOLOR=\"#FF00FF\" COLOR=\"#FF00FF\" WIDTH=\"300\" HEIGHT=\"200\"></TD></TR></TABLE></TD></TR>"<<endl;
     }
     
@@ -545,9 +565,17 @@ void* module::addEdge(properties::iterator props) {
 void module::observe(int traceID,
                      const map<string, string>& ctxt, 
                      const map<string, string>& obs,
-                     const map<string, anchor>&      obsAnchor) {
+                     const map<string, anchor>& obsAnchor) {
   assert(trace2nodeID.find(traceID) != trace2nodeID.end());
   int nodeID = trace2nodeID[traceID];
+  
+  /*cout << "module::observe("<<traceID<<")"<<endl;
+  cout << "    ctxt=";
+  for(map<string, string>::const_iterator c=ctxt.begin(); c!=ctxt.end(); c++) { cout << c->first << ":"<<c->second<<" "; }
+  cout << endl;
+  cout << "    obs=";
+  for(map<string, string>::const_iterator o=obs.begin(); o!=obs.end(); o++) { cout << o->first << ":"<<o->second<<" "; }
+  cout << endl;*/
   
   // Extract the input ports with which all the context attributes are associated and record this in 
   std::map<int, std::list<std::string> > curCtxtNames;
@@ -583,9 +611,21 @@ void module::observe(int traceID,
   if(numericCtxt.size()==0) return;
     
   // Read out the names of the observation's trace attributes
-  if(traceAttrNames.find(nodeID) == traceAttrNames.end()) {
+  /*if(traceAttrNames.find(nodeID) == traceAttrNames.end()) {
     for(map<string, string>::const_iterator o=obs.begin(); o!=obs.end(); o++)
       traceAttrNames[nodeID].push_back(o->first);
+  }*/
+  for(map<string, string>::const_iterator o=obs.begin(); o!=obs.end(); o++) {
+    traceAttrNames[nodeID].insert(o->first);
+    // If this is the first time we've encountered this trace attribute, map it to a fresh column number
+    if(traceAttrName2Col[nodeID].find(o->first) == traceAttrName2Col[nodeID].end()) {
+      assert(traceAttrName2Count[nodeID].size() == traceAttrName2Col[nodeID].size());
+      int newCol = traceAttrName2Col[nodeID].size();
+      traceAttrName2Col[nodeID][o->first] = newCol;
+      
+      // We have not yet recorded any observations for this trace attribute (we will later in this function)
+      traceAttrName2Count[nodeID].push_back(0);
+    }
   }
   
   int maxDegree = 2;
@@ -605,29 +645,54 @@ void module::observe(int traceID,
     //for(map<string, string>::const_iterator o=obs.begin(); o!=obs.end(); o++) {
     //  polyfitObs[nodeID].push_back(gsl_vector_alloc(1000));
     //}
-    polyfitObs[nodeID] = gsl_matrix_alloc(1000, obs.size());
+    polyfitObs[nodeID] = gsl_matrix_alloc(1000, traceAttrName2Col[nodeID].size());
     
     numObs[nodeID] = 0;
     numAllocObs[nodeID] = 1000;
+    numAllocTraceAttrs[nodeID] = traceAttrName2Col[nodeID].size();
+    
+    //cout << "    Allocated "<<numAllocObs[nodeID]<<" rows, "<<numAllocTraceAttrs[nodeID]<<" columns"<<endl;
   }
   
-  // If we're out of space in polyfitCtxt[nodeID] and polyfitObs[nodeID] to store another observation, grow them
-  if(numObs[nodeID] == numAllocObs[nodeID]) {
-    gsl_matrix* newCtxt = gsl_matrix_alloc(numAllocObs[nodeID]*2, numTerms);
-    gsl_matrix_view newCtxtView = gsl_matrix_submatrix (newCtxt, 0, 0, numObs[nodeID], numTerms);
+  //cout << "traceAttrName2Col[nodeID].size()="<<traceAttrName2Col[nodeID].size()<<" numAllocTraceAttrs[nodeID]="<<numAllocTraceAttrs[nodeID]<<endl;
+  // If we're out of space in polyfitCtxt[nodeID] and polyfitObs[nodeID] to store another observation or store more columns, grow them
+  if(numObs[nodeID] == numAllocObs[nodeID] || 
+     traceAttrName2Col[nodeID].size() > numAllocTraceAttrs[nodeID]) {
+    // If we're out of space for rows, double it
+    int newNumAllocObs = numAllocObs[nodeID];
+    if(numObs[nodeID] == numAllocObs[nodeID]) newNumAllocObs *= 2;
+    
+    // If we need new columns, adjust accordingly
+    int newNumAllocTraceAttrs = numAllocTraceAttrs[nodeID];
+    if(traceAttrName2Col[nodeID].size() > numAllocTraceAttrs[nodeID])
+      newNumAllocTraceAttrs = traceAttrName2Col[nodeID].size();
+    
+    // Expand polyfitCtxt[nodeID]
+    gsl_matrix* newCtxt = gsl_matrix_alloc(newNumAllocObs, numTerms);
+    gsl_matrix_view newCtxtView = gsl_matrix_submatrix (newCtxt, 0, 0, numAllocObs[nodeID], numTerms);
     gsl_matrix_memcpy (&(newCtxtView.matrix), polyfitCtxt[nodeID]);
     gsl_matrix_free(polyfitCtxt[nodeID]);
     polyfitCtxt[nodeID] = newCtxt;
     
-    gsl_matrix* newObs = gsl_matrix_alloc(numAllocObs[nodeID]*2, numTerms);
-    gsl_matrix_view newObsView = gsl_matrix_submatrix (newObs, 0, 0, numObs[nodeID], obs.size());
+    // Expand polyfitObs[nodeID]
+    gsl_matrix* newObs = gsl_matrix_alloc(newNumAllocObs, newNumAllocTraceAttrs);
+    gsl_matrix_view newObsView = gsl_matrix_submatrix (newObs, 0, 0, numAllocObs[nodeID], numAllocTraceAttrs[nodeID]);
     gsl_matrix_memcpy (&(newObsView.matrix), polyfitObs[nodeID]);
     gsl_matrix_free(polyfitObs[nodeID]);
     polyfitObs[nodeID] = newObs;
+    
+    // Update our allocated space records
+    numAllocObs[nodeID] = newNumAllocObs;
+    numAllocTraceAttrs[nodeID] = newNumAllocTraceAttrs;
+    cout << "    Reallocated "<<numAllocObs[nodeID]<<" rows, "<<numAllocTraceAttrs[nodeID]<<" columns"<<endl;
   }
   
   // Add this observation to polyfitObs
   int obsIdx=0;
+  // Records whether this observation corresponds to a new context row
+  bool newContext = false;
+  
+  //cout << "    Adding Observations:"<<endl;
   for(map<string, string>::const_iterator o=obs.begin(); o!=obs.end(); o++, obsIdx++) {
     // For now we assert that all observed values must be numeric
     const char *valStr = o->second.c_str();
@@ -635,8 +700,24 @@ void module::observe(int traceID,
     double v = strtod(valStr, &nextValStr);
     assert(nextValStr != valStr);
     
-    //gsl_vector_set(polyfitObs[nodeID][obsIdx], numObs[nodeID], v);
-    gsl_matrix_set(polyfitObs[nodeID], numObs[nodeID], obsIdx, v);
+    int traceAttrCol = traceAttrName2Col[nodeID][o->first];
+    //cout << "        "<<o->first<<"  traceAttrCol="<<traceAttrCol<<" numAllocTraceAttrs[nodeID]="<<numAllocTraceAttrs[nodeID]<<endl;
+    
+    assert(traceAttrCol < numAllocTraceAttrs[nodeID]);
+    gsl_matrix_set(polyfitObs[nodeID], traceAttrName2Count[nodeID][traceAttrCol], traceAttrCol, v);
+    
+    // Increment the number of values written into the current column
+    traceAttrName2Count[nodeID][traceAttrCol]++;
+    
+    // If this observation has started a new row in the observations matrix
+    if(traceAttrName2Count[nodeID][traceAttrCol] > numObs[nodeID]) {
+      assert(traceAttrName2Count[nodeID][traceAttrCol] == numObs[nodeID]+1);
+      // Update numObs[nodeID] to correspond to the maximum number of values written to any column
+      numObs[nodeID] = traceAttrName2Count[nodeID][traceAttrCol];
+      
+      // Record that this is a new context, which should be written into polyfitCtxt
+      newContext = true;
+    }
   }
 
   // Add the context of the observation to polyfitCtxt
@@ -650,7 +731,7 @@ void module::observe(int traceID,
     addPolyTerms(numericCtxt, 0, degree, numObs[nodeID], col, 1, polyfitCtxt[nodeID]);
 
   // Advance the observation counter to the next row in polyfitObs and polyfitCtxt
-  numObs[nodeID]++;  
+  //numObs[nodeID]++;  
 }
 
 }; // namespace layout

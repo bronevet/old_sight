@@ -42,10 +42,13 @@ class graph: public structure::block
   // Records whether we should include a graph node for each sub-block inside the graph
   bool includeAllSubBlocks;
   
-  // Maps the anchor IDs of nodes that have been observed but not yet emitted to their labels and node IDs.
+  // Maps the anchor IDs of nodes that have been observed.
   // This is useful for cases where includeAllSubBlocks and thus, we only emit a node if we observe an edge that 
   // involves it.
-  std::map<int, std::pair<std::string, int> > unEmittedNodes;
+  std::map<int, std::pair<std::string, int> > nodesObservedNotEmitted;
+  
+  // Set of the anchorIDs of the nodes that have been connected by edges.
+  std::set<anchor> nodesConnected;
   
   public:
   
