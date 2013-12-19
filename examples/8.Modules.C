@@ -25,6 +25,30 @@ class state {
   }
 };
 
+// Each recursive call to fibScope() generates a new scope at the desired level. 
+// The scope level that is passed in controls the types of scopes that are recursively created
+std::pair<int, std::vector<port> > fibModule(int a, const std::vector<port>& in) {
+  std::vector<port> fibOutputs;
+  module m(instance(txt()<<"fib("<<a<<")", 1, 1), 
+           in, fibOutputs, namedMeasures("time", new timeMeasure()));
+  
+  if(a==0 || a==1) { 
+    dbg << "=1."<<endl;
+    
+    m.setOutCtxt(0, context(config("val", 1)));
+    
+    return make_pair(1, fibOutputs);
+  } else {
+    std::pair<int, std::vector<port> > ret1 = fibModule(a-1, in);
+    std::pair<int, std::vector<port> > ret2 = fibModule(a-2, in);
+    dbg << "="<<(ret1.first + ret2.first)<<endl;
+    return make_pair(ret1.first + ret2.first, fibOutputs);
+  }
+}
+
+
+
+
 // Calculates the average standard deviation of each dimension of particle positions
 double posDev(const vector<state>& particles, int numDims);
 double vecDist(vector<double>& p1, vector<double>& p2);
@@ -57,7 +81,7 @@ int main(int argc, char** argv)
 
   dbg << "Modules are used by declaring a variable of type module for each application code module. All code executed "<<
          "while this variable is in-scope is considered to be part of the module. The module's name "<<
-         "and number of inputs and outputs is provided as the first argument (ex: group(\"Initialization\", 1, 1)). The "<<
+         "and number of inputs and outputs is provided as the first argument (ex: instance(\"Initialization\", 1, 1)). The "<<
          "next argument identifies the module's inputs, which should be the outputs of other modules "<<
          "(ex: inputs(rootModule.outPort(0))). The next argument provides space where information about the the module's "<<
          "outputs will be stored. It is a reference to a vector<port>, which is filled by the module with information detailing the outputs. This is "<<
@@ -71,7 +95,19 @@ int main(int argc, char** argv)
          "and computation of nearest-neighbor lists. This output corresponds to 9 runs of this code with 1, 30 or 100 particles, "<<
          "each containing 1, 2 or 3 dimensional positions. The outputs of these runs are merged, including their input/output "<<
          "relations and module measurements."<<endl;    
-  module rootModule(group("Root", 0, 1), namedMeasures("time", new timeMeasure())); 
+  
+  modularApp rootModule("Fibonacci"); 
+  
+  std::vector<port> initOutputs;
+  { module fibInit(instance("Init", 0, 1), initOutputs);
+    fibInit.setOutCtxt(0, context(config("a", 5)));
+   }
+  
+  fibModule(5, initOutputs);
+  
+  
+  /*
+  modularApp rootModule("Molecular Dynamics"); 
   
   // List of particle positions
   double neighRadius = .2;
@@ -82,7 +118,8 @@ int main(int argc, char** argv)
   srand(time(NULL));
   
   // Generate the initial particle positions
-  module partInitModule(group("Initialization", 1, 1), inputs(rootModule.outPort(0)), namedMeasures("time", new timeMeasure()));
+  std::vector<port> initOutputs;
+  { module partInitModule(instance("Initialization", 0, 1), initOutputs, namedMeasures("time", new timeMeasure()));
   for(int p=0; p<numParticles; p++) {
     vector<double> curPos;
     for(int d=0; d<numDims; d++) curPos.push_back(((double)rand()/(double)RAND_MAX));
@@ -91,6 +128,7 @@ int main(int argc, char** argv)
   partInitModule.setOutCtxt(0, context(config("deviation", posDev(particles, numDims),
                                               "numParticles", numParticles,
                                               "numDims", numDims)));
+  }
   
   std::vector<port> forceOutputs;
   std::vector<port> neighOutputs;
@@ -101,9 +139,9 @@ int main(int argc, char** argv)
       //scope s("Computing neighbors");
       // Find each particle's nearest neighbors
       
-      module neighModule(group("Neighbors", 1, 1), 
+      module neighModule(instance("Neighbors", 1, 1), 
                                inputs(// particles
-                                      (t==0? partInitModule.outPort(0): forceOutputs[0])),
+                                      (t==0? initOutputs[0]: forceOutputs[0])),
                                neighOutputs,
                                namedMeasures("time", new timeMeasure(),
                                              "PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS))));
@@ -129,15 +167,15 @@ int main(int argc, char** argv)
         for(set<int>::iterator n=p->second.begin(); n!=p->second.end(); n++)
           dbg << " "<<*n;
         dbg << endl;
-      }*/
+      }* /
     }
     
     // Compute the forces on all particles from their neighbors and update their positions
     {
       //scope s("Computing forces");
-      module forceModule(group("Forces", 2, 1), 
+      module forceModule(instance("Forces", 2, 1), 
                          inputs(// particles
-                                (t==0? partInitModule.outPort(0): forceOutputs[0]),
+                                (t==0? initOutputs[0]: forceOutputs[0]),
                                 // neighbors
                                 neighOutputs[0]),
                          forceOutputs,
@@ -156,7 +194,7 @@ int main(int argc, char** argv)
         /*dbg << p->first << ": "<<particles[p->first].str()<<", force=";
         for(int i=0; i<force.size();i++)
           dbg << " " << force[i];
-        dbg << endl;*/
+        dbg << endl;* /
         
         // Update the particle's positions
         for(int d=0; d<numDims; d++)
@@ -164,13 +202,14 @@ int main(int argc, char** argv)
       }
       
       /*for(int p=0; p<particles.size(); p++)
-        dbg << p << ": "<<particles[p].str()<<endl;*/
+        dbg << p << ": "<<particles[p].str()<<endl;* /
       
       forceModule.setOutCtxt(0, context(config("deviation", posDev(particles, numDims),
                                                "numParticles", numParticles,
                                                "numDims", numDims)));
     }
   } //} }
+ */
 }
 
 // Calculates the average standard deviation of each dimension of particle positions
@@ -215,3 +254,7 @@ void updateForce(state& p1, state& p2, vector<double>& force) {
     force[i] += p1.mass * p2.mass / dist;
   }
 }
+
+
+
+

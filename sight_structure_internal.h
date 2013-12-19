@@ -239,6 +239,9 @@ class sightObj {
   static std::map<std::string, std::set<sightClock*> > clocks;
   
   public:
+  // Returns whether this object is active or not
+  bool isActive() const;
+    
   // Registers a new clock with sightObj
   static void addClock(std::string clockName, sightClock* c);
   

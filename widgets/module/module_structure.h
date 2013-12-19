@@ -16,33 +16,203 @@
 namespace sight {
 namespace structure {
 
-// Syntactic sugar for specifying inputs
-typedef common::easyvector<common::module::port> inputs;
-
 //#ifndef MODULE_STRUCTURE_C
 // Rename for contexts, groups and ports that enables users to refer to them without prepending common::module
-typedef common::module::group group;
+//typedef common::module::group group;
 typedef common::module::context context;
-typedef common::module::port port;
 typedef common::module::context::config config;
+//typedef common::module::port port;
 //#endif
 
-class module: public block, public common::module
+class instance {
+  public:
+  std::string name;
+
+  int numInputs;
+  int numOutputs;
+
+  instance() {}
+  instance(std::string name, int numInputs, int numOutputs) : name(name), numInputs(numInputs), numOutputs(numOutputs) {}
+  instance(const instance& that) : name(that.name), numInputs(that.numInputs), numOutputs(that.numOutputs) {}
+
+  instance(properties::iterator props);
+
+  // Returns the properties map that describes this instance object;
+  std::map<std::string, std::string> getProperties() const;
+
+  bool operator==(const instance& that) const
+  { return name==that.name; }
+
+  bool operator<(const instance& that) const
+  { return name<that.name; }
+
+  // Returns a human-readable string that describes this instance
+  std::string str() const;
+}; // class instance
+
+class module;
+
+// A group represents the granularity at which we differentiate instances of modules.
+// Currently this is done by considering the name and count of inputs and outputs of a given module instance
+// as well as the nesting hierarchy of instances within which a given instance is executed.
+class group {
+  public:
+  // Stack of module instances that uniquely identifies this module grouping
+  std::list<instance> stack;
+
+  group() { }
+  group(const std::list<instance>& stack): stack(stack) {}
+
+  // Creates a group given the current stack of modules and a new module instance
+  group(const std::list<module*>& mStack, const instance& inst);
+  
+  group& operator=(const group& that) { 
+    stack = that.stack;
+    return *this;
+  }
+  
+  // Add the given instance to this group's instance stack
+  void push(const instance& inst) { stack.push_back(inst); }
+  
+  // Remove the last instance from this group's instance stack
+  void pop() { assert(stack.size()>0); stack.pop_back(); }
+  
+  // Returns the name of the most deeply nested instance within this group
+  std::string name() const;
+
+  // Returns the number of inputs of the most deeply nested instance within this group
+  int numInputs() const;
+  
+  // Returns the number of outnputs of the most deeply nested instance within this group
+  int numOutputs() const;
+  
+  // Returns the most deeply nested instance within this group
+  const instance& getInst() const;
+  
+  // Returns the depth of the callstack
+  int depth() const;
+  
+  bool operator==(const group& that) const
+  { return stack == that.stack; }
+  
+  bool operator<(const group& that) const
+  { return stack < that.stack; }
+  
+  // Returns a human-readable string that describes this group
+  std::string str() const;
+}; // class group
+
+class port {
+  public:
+  group g;
+  context ctxt;
+  sight::common::module::ioT type;
+  int index;
+
+  port() {}
+  port(const group& g, const context& ctxt, sight::common::module::ioT type, int index) : g(g), ctxt(ctxt), type(type), index(index) {}
+
+  bool operator==(const port& that) const
+  { return g==that.g && ctxt==that.ctxt && type==that.type && index==that.index; }
+
+  bool operator<(const port& that) const
+  { return (g< that.g) ||
+           (g==that.g && ctxt< that.ctxt) ||
+           (g==that.g && ctxt==that.ctxt && type< that.type) ||
+           (g==that.g && ctxt==that.ctxt && type==that.type && index<that.index); }
+
+  // Erase the context within this port. This is important for data-structures that ignore context details
+  void clearContext() { ctxt.configuration.clear(); }
+
+  // Returns a human-readable string that describes this context
+  std::string str() const;
+}; // class port
+
+// Syntactic sugar for specifying inputs
+typedef common::easyvector<port> inputs;
+
+class inport : public port {
+  public:
+  inport() {}
+  inport(const group& g, const context& c, int index) : port(g, c, sight::common::module::input, index) {}
+};
+
+class outport : public port {
+  public:
+  outport() {}
+  outport(const group& g, const context& c, int index) : port(g, c, sight::common::module::output, index) {}
+};
+
+// Records the hierarchy of nesting observed for module instances
+class instanceTree {
+  std::map<instance, instanceTree*> m;
+  
+  public:
+  instanceTree() {}
+  
+  void add(const group& g);
+  
+  // Types for callback functions to be executed on entry to / exit from an instance during the call to iterate
+  typedef void (*instanceEnterFunc)(const group& g);
+  typedef void (*instanceExitFunc) (const group& g);
+  
+  // Iterate through all the groups encoded by this tree, where each group corresponds to a stack of instances
+  // from the tree's root to one of its leaves.
+  void iterate(instanceEnterFunc entry, instanceExitFunc exit) const;
+  
+  // Recursive version of iterate that takes as an argument the fragment of the current group that corresponds to
+  // the stack of instances between the tree's root and the current sub-tree
+  void iterate(instanceEnterFunc entry, instanceExitFunc exit, group& g) const;
+  
+  // Empties out this instanceTree
+  void clear();
+  
+  // The entry and exit functions used in instanceTree::str()
+  static void strEnterFunc(const group& g);
+  static void strExitFunc(const group& g);
+  
+  // Returns a human-readable string representation of this object
+  std::string str() const;
+  
+  // The depth of the recursion in instanceTree::str()
+  static int instanceTreeStrDepth;
+
+  // The ostringstream into which the output of instanceTree::str() is accumulated
+  static std::ostringstream oss;
+}; // class instanceTree
+
+class module;
+
+// Represents a modular application, which may contain one or more modules. Only one modular application may be
+// in-scope at any given point in time.
+class modularApp: public block
 {
+  friend class group;
+  friend class module;
+  
   protected:
-  // Records all the known contexts, mapping each context to its count of input and output ports
-  //std::map<context, std::pair<int, int> > group2ID;
+  // Points to the currently active instance of modularApp. There can be only one.
+  static modularApp* activeMA;
+    
+  // The maximum ID ever assigned to any modular application
+  static int maxModularAppID;
+  
+  // The maximum ID ever assigned to any module group
+  static int maxModuleGroupID;
+
   // Records all the known contexts, mapping each context to its unique ID
   static std::map<group, int> group2ID;
   	
   // Maps each context to the number of times it was ever observed
   static std::map<group, int> group2Count;
   
-  // Maps each context to the trace that records its performance properties
-  //static std::map<context, trace*> ctxtTrace;
-  
   // The trace that records performance observations of different modules and contexts
   static std::map<group, traceStream*> moduleTrace;
+  
+  // Tree that records the hierarchy of module instances that were observed during the execution of this
+  // modular application. Each path from the tree's root to a leaf is a stack of module instances that
+  // corresponds to some observed module group.
+  static instanceTree tree;
   
   // Maps each module to the list of the names of its input and output context attributes. 
   // This enables us to verify that all the modules are used consistently.
@@ -52,13 +222,82 @@ class module: public block, public common::module
   // Records all the edges ever observed, mapping them to the number of times each edge was observed
   static std::map<std::pair<port, port>, int> edges;
   
-  // The maximum ID assigned to any module
-  static int maxModuleID;
-  
   // Stack of the modules that are currently in scope
   static std::list<module*> mStack;
   
-  group g;	
+  // The unique ID of this application
+  int appID;
+  
+  // The name of this application
+  std::string appName;
+  
+  // The set of measurements that will be collected for all the modules within this modular app
+  namedMeasures meas;
+
+  public:
+  modularApp(const std::string& appName,                                                   properties* props=NULL);
+  modularApp(const std::string& appName, const attrOp& onoffOp,                            properties* props=NULL);
+  modularApp(const std::string& appName,                        const namedMeasures& meas, properties* props=NULL);
+  modularApp(const std::string& appName, const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
+  
+  // Stack used while we're emitting the nesting hierarchy of module groups to keep each module group's 
+  // sightObject between the time the group is entered and exited
+  static std::list<sightObj*> moduleEmitStack;
+
+  // Emits the entry tag for a module group during the execution of ~modularApp()
+  static void enterModuleGroup(const group& g);
+  // Emits the exit tag for a module group during the execution of ~modularApp()
+  static void exitModuleGroup(const group& g);
+  
+  ~modularApp();
+  
+  private:
+  // Common initialization logic
+  void init();
+    
+  // Sets the properties of this object
+  static properties* setProperties(const std::string& appName, const attrOp* onoffOp, properties* props);
+  
+  public:
+  // Returns whether the current instance of modularApp is active
+  static bool isInstanceActive();
+  
+  // Assigns a unique ID to the given module group, as needed and returns this ID
+  static int addModuleGroup(const group& g);
+  
+  // Registers the names of the contexts of the given module's inputs or outputs and if this is not the first time this module is called, 
+  // verifies that these context names are consistent across different calls.
+  // g - the module group for which we're registering inputs/outputs
+  // inouts - the vector of input or output ports
+  // toT - identifies whether inouts is the vector of inputs or outputs
+  static void registerInOutContexts(const group& g, const std::vector<port> inouts, sight::common::module::ioT io);
+  
+  // Add an edge between one module's output port and another module's input port
+  static void addEdge(port from, port to);
+
+  // Add an edge between one module's output port and another module's input port
+  static void addEdge(group fromG, sight::common::module::ioT fromT, int fromP, 
+                      group toG,   sight::common::module::ioT toT,   int toP);
+
+  // Returns the current module on the stack and NULL if the stack is empty
+  static module* getCurModule();
+  
+  // Adds the given module object to the modules stack
+  static void enterModule(module* m);
+  
+  // Removes the given module object from the modules stack
+  static void exitModule(module* m);
+}; // class modularApp
+
+class module: /*public sightObj, */public common::module
+{
+  friend class group;
+  friend class modularApp;
+  
+  protected:
+  
+  group g;
+  
   // The context of this module execution, which is a combination of the contexts of all of its inputs
   std::vector<context> ctxt;
   
@@ -80,44 +319,44 @@ class module: public block, public common::module
   // inputs - ports from other modules that are used as inputs by this module.
   // onoffOp - We emit this scope if the current attribute query evaluates to true (i.e. we're emitting debug output) AND
   //           either onoffOp is not provided or its evaluates to true.
-  module(const group& g,                                                                                                                        properties* props=NULL);
-  module(const group& g, const port& inputs,                                                                                                    properties* props=NULL);
-  module(const group& g, const std::vector<port>& inputs,                                                                                       properties* props=NULL);
-  module(const group& g,                                                                      const attrOp& onoffOp,                            properties* props=NULL);
-  module(const group& g, const port& inputs,                                                  const attrOp& onoffOp,                            properties* props=NULL);
-  module(const group& g, const std::vector<port>& inputs,                                     const attrOp& onoffOp,                            properties* props=NULL);
-  module(const group& g,                                  std::vector<port>& externalOutputs,                                                   properties* props=NULL);
-  module(const group& g, const port& inputs,              std::vector<port>& externalOutputs,                                                   properties* props=NULL);
-  module(const group& g, const std::vector<port>& inputs, std::vector<port>& externalOutputs,                                                   properties* props=NULL);
-  module(const group& g,                                  std::vector<port>& externalOutputs, const attrOp& onoffOp,                            properties* props=NULL);
-  module(const group& g, const port& inputs,              std::vector<port>& externalOutputs, const attrOp& onoffOp,                            properties* props=NULL);
-  module(const group& g, const std::vector<port>& inputs, std::vector<port>& externalOutputs, const attrOp& onoffOp,                            properties* props=NULL);
+  module(const instance& inst,                                                                                                                        properties* props=NULL);
+  module(const instance& inst, const port& inputs,                                                                                                    properties* props=NULL);
+  module(const instance& inst, const std::vector<port>& inputs,                                                                                       properties* props=NULL);
+  module(const instance& inst,                                                                      const attrOp& onoffOp,                            properties* props=NULL);
+  module(const instance& inst, const port& inputs,                                                  const attrOp& onoffOp,                            properties* props=NULL);
+  module(const instance& inst, const std::vector<port>& inputs,                                     const attrOp& onoffOp,                            properties* props=NULL);
+  module(const instance& inst,                                  std::vector<port>& externalOutputs,                                                   properties* props=NULL);
+  module(const instance& inst, const port& inputs,              std::vector<port>& externalOutputs,                                                   properties* props=NULL);
+  module(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs,                                                   properties* props=NULL);
+  module(const instance& inst,                                  std::vector<port>& externalOutputs, const attrOp& onoffOp,                            properties* props=NULL);
+  module(const instance& inst, const port& inputs,              std::vector<port>& externalOutputs, const attrOp& onoffOp,                            properties* props=NULL);
+  module(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, const attrOp& onoffOp,                            properties* props=NULL);
     
-  module(const group& g,                                                                                             const namedMeasures& meas, properties* props=NULL);
-  module(const group& g, const port& inputs,                                                                         const namedMeasures& meas, properties* props=NULL);
-  module(const group& g, const std::vector<port>& inputs,                                                            const namedMeasures& meas, properties* props=NULL);
-  module(const group& g,                                                                      const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
-  module(const group& g, const port& inputs,                                                  const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
-  module(const group& g, const std::vector<port>& inputs,                                     const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
-  module(const group& g,                                  std::vector<port>& externalOutputs,                        const namedMeasures& meas, properties* props=NULL);
-  module(const group& g, const port& inputs,              std::vector<port>& externalOutputs,                        const namedMeasures& meas, properties* props=NULL);
-  module(const group& g, const std::vector<port>& inputs, std::vector<port>& externalOutputs,                        const namedMeasures& meas, properties* props=NULL);
-  module(const group& g,                                  std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
-  module(const group& g, const port& inputs,              std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
-  module(const group& g, const std::vector<port>& inputs, std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
+  module(const instance& inst,                                                                                             const namedMeasures& meas, properties* props=NULL);
+  module(const instance& inst, const port& inputs,                                                                         const namedMeasures& meas, properties* props=NULL);
+  module(const instance& inst, const std::vector<port>& inputs,                                                            const namedMeasures& meas, properties* props=NULL);
+  module(const instance& inst,                                                                      const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
+  module(const instance& inst, const port& inputs,                                                  const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
+  module(const instance& inst, const std::vector<port>& inputs,                                     const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
+  module(const instance& inst,                                  std::vector<port>& externalOutputs,                        const namedMeasures& meas, properties* props=NULL);
+  module(const instance& inst, const port& inputs,              std::vector<port>& externalOutputs,                        const namedMeasures& meas, properties* props=NULL);
+  module(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs,                        const namedMeasures& meas, properties* props=NULL);
+  module(const instance& inst,                                  std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
+  module(const instance& inst, const port& inputs,              std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
+  module(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
   
-  void init(const group& g, const std::vector<port>& in);
+  void init(const std::vector<port>& in);
   
   private:
   // Sets the properties of this object
-  static properties* setProperties(const group& g, const std::vector<port>& inputs, const attrOp* onoffOp, properties* props);
+  //static properties* setProperties(const instance& inst, const std::vector<port>& inputs, const attrOp* onoffOp, properties* props);
   
   public:
   ~module();
   
   const std::vector<context>& getContext() const { return ctxt; }
-  int numInputs()  const { return g.numInputs; }
-  int numOutputs() const { return g.numOutputs; }
+  int numInputs()  const { return g.numInputs(); }
+  int numOutputs() const { return g.numOutputs(); }
   
   // Sets the context of the given output port
   void setOutCtxt(int idx, const context& c);
@@ -128,19 +367,6 @@ class module: public block, public common::module
   // Returns a list of the module's output ports
   std::vector<port> outPorts() const;
   port outPort(int idx) const;
-    
-  // Returns the current moduleGraph on the stack and NULL if the stack is empty
-  static module* getCurrent();
-    
-  // Records the mapping from a module's context to its unique ID
-	static void addNode(const group& g, int nodeID);
-		
-	// Removes a module node from consideration
-	//static void removeNode(const context& c);
-    
-  static void addEdge(port from, port to);
-  static void addEdge(group fromG, common::module::ioT fromT, int fromP, 
-                      group toG,   common::module::ioT toT,   int toP);
   
   // Called to notify this block that a sub-block was started/completed inside of it. 
   // Returns true of this notification should be propagated to the blocks 
@@ -154,9 +380,9 @@ class module: public block, public common::module
 class moduleNodeTraceStream: public traceStream
 {
   public:
-  moduleNodeTraceStream(int nodeID, std::string name, int numInputs, int numOutputs, vizT viz, mergeT merge, properties* props=NULL);
+  moduleNodeTraceStream(int moduleID, std::string name, int numInputs, int numOutputs, vizT viz, mergeT merge, properties* props=NULL);
   
-  static properties* setProperties(int nodeID, std::string name, int numInputs, int numOutputs, vizT viz, mergeT merge, properties* props);
+  static properties* setProperties(int moduleID, std::string name, int numInputs, int numOutputs, vizT viz, mergeT merge, properties* props);
 };
 
 class ModuleMergeHandlerInstantiator: public MergeHandlerInstantiator {
@@ -167,9 +393,9 @@ extern ModuleMergeHandlerInstantiator ModuleMergeHandlerInstance;
 
 std::map<std::string, streamRecord*> ModuleGetMergeStreamRecord(int streamID);
 
-class ModuleMerger : public BlockMerger {
+class ModularAppMerger : public BlockMerger {
   public:
-  ModuleMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+  ModularAppMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
               std::map<std::string, streamRecord*>& outStreamRecords,
               std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
               properties* props=NULL);
@@ -178,7 +404,7 @@ class ModuleMerger : public BlockMerger {
                         std::map<std::string, streamRecord*>& outStreamRecords,
                         std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
                         properties* props)
-  { return new ModuleMerger(tags, outStreamRecords, inStreamRecords, props); }
+  { return new ModularAppMerger(tags, outStreamRecords, inStreamRecords, props); }
   
   // Sets the properties of the merged object
   static properties* setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
@@ -192,7 +418,7 @@ class ModuleMerger : public BlockMerger {
   // call their parents so they can add any info,
   static void mergeKey(properties::tagType type, properties::iterator tag, 
                        std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key);
-}; // class ModuleMerger
+}; // class ModularAppMerger
 
 class ModuleNodeMerger : public Merger {
   public:
@@ -276,34 +502,38 @@ class ModuleNodeTraceStreamMerger : public TraceStreamMerger {
 }; // class ModuleNodeTraceStreamMerger
 
 class ModuleStreamRecord: public streamRecord {
-  friend class ModuleMerger;
+  friend class ModularAppMerger;
   friend class ModuleNodeMerger;
   friend class ModuleEdgeMerger;
   friend class ModuleNodeTraceStreamMerger;
   
-  // The stack of streamRecords that record for each currently active module group 
+  /*
+  // We allow modules within different modularApps to use independent ID schemes (i.e. the module IDs within
+  // different apps may independently start from 0) because we anticipate that in the future this may make it easier
+  // to match up instances of the same module within the same modularApp.
+  // The stack of streamRecords that record for each currently active moduluarApp
   // (they are nested hierarchically), the mappings of nodes IDs from incoming to 
   // outgoing streams.
-  std::list<streamRecord*> mStack;
-    
+  std::list<streamRecord*> mStack;*/
+  
   public:
   ModuleStreamRecord(int vID)              : streamRecord(vID, "module") { }
   ModuleStreamRecord(const variantID& vID) : streamRecord(vID, "module") { }
   ModuleStreamRecord(const ModuleStreamRecord& that, int vSuffixID);
   
   // Called to record that we've entered/exited a module
-  void enterModule();
-  static void enterModule(std::map<std::string, streamRecord*>& outStreamRecords,
+  /*void enterModularApp();
+  static void enterModularApp(std::map<std::string, streamRecord*>& outStreamRecords,
                      std::vector<std::map<std::string, streamRecord*> >& incomingStreamRecords);
-  void exitModule();
-  static void exitModule(std::map<std::string, streamRecord*>& outStreamRecords,
+  void exitModularApp();
+  static void exitModularApp(std::map<std::string, streamRecord*>& outStreamRecords,
                     std::vector<std::map<std::string, streamRecord*> >& incomingStreamRecords);
-  
+  */
   // Returns a dynamically-allocated copy of this streamRecord, specialized to the given variant ID,
   // which is appended to the new stream's variant list.
   streamRecord* copy(int vSuffixID);
   
-  // Given a vector of streamRecord maps, collects the streamRecords associated with the currently active module (top of the gStack)
+  /* // Given a vector of streamRecord maps, collects the streamRecords associated with the currently active module (top of the gStack)
   // within each stream into nodeStreamRecords and returns the height of the gStacks on all the streams (must be the same number)
   static int collectNodeStreamRecords(std::vector<std::map<std::string, streamRecord*> >& streams,
                                       std::vector<std::map<std::string, streamRecord*> >& nodeStreamRecords);
@@ -314,9 +544,7 @@ class ModuleStreamRecord: public streamRecord {
                           const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
                           std::map<std::string, streamRecord*>& outStreamRecords,
                           std::vector<std::map<std::string, streamRecord*> >& inStreamRecords);
-  
-  // Given a streamID in the current incoming stream return its streamID in the outgoing stream, yelling if it is missing.
-  streamID in2outNodeID(streamID inSID) const;
+  */
   
   // Given multiple streamRecords from several variants of the same stream, update this streamRecord object
   // to contain the state that succeeds them all, making it possible to resume processing

@@ -336,6 +336,12 @@ sightObj::~sightObj() {
   }
 }
 
+// Returns whether this object is active or not
+bool sightObj::isActive() const {
+  assert(props);
+  return props->active;
+}
+
 // Registers a new clock with sightObj
 void sightObj::addClock(std::string clockName, sightClock* c) { 
   // This clockName/clock object combination does not currently exist in clocks

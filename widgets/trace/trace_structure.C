@@ -343,6 +343,9 @@ measure::measure(traceStream* ts,        const std::map<std::string, attrValue>&
   init();
 }
 
+measure::measure(const measure& that) : ts(ts), paused(paused), ended(ended), fullMeasure(fullMeasure), fullMeasureCtxt(fullMeasureCtxt)
+{}
+
 measure::~measure()
 {}
 
@@ -440,6 +443,9 @@ timeMeasure::timeMeasure(traceStream* ts,        std::string valLabel, const std
      measure(ts, fullMeasureCtxt), valLabel(valLabel)
 { init(); }
 
+timeMeasure::timeMeasure(const timeMeasure& that) : measure(that), elapsed(that.elapsed), lastStart(lastStart), valLabel(valLabel)
+{ }
+
 timeMeasure::~timeMeasure() {
 }
 
@@ -447,6 +453,11 @@ timeMeasure::~timeMeasure() {
 void timeMeasure::init() {
   elapsed = 0.0;
 }
+
+// Returns a copy of this measure object, including its current measurement state, if any. The returned
+// object is connected to the same traceStream, if any, as the original object.
+measure* timeMeasure::copy() const
+{ return new timeMeasure(*this); }
 
 // Start the measurement
 void timeMeasure::start() {
@@ -567,6 +578,11 @@ void PAPIMeasure::init() {
   // Initialize the values array to all 0's
   values.resize(events.size(), 0);
 }
+
+// Returns a copy of this measure object, including its current measurement state, if any. The returned
+// object is connected to the same traceStream, if any, as the original object.
+measure* PAPIMeasure::copy() const
+{ return new PAPIMeasure(*this); }
 
 // Start the measurement
 void PAPIMeasure::start() {

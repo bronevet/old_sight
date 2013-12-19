@@ -10,30 +10,6 @@ using namespace std;
 namespace sight {
 namespace common {
 
-/*****************
- ***** group *****
- *****************/
- 
-module::group::group(properties::iterator props) {
-  name       = properties::get(props, "name");
-  numInputs  = properties::getInt(props, "numInputs");
-  numOutputs = properties::getInt(props, "numOutputs");
-}
-
-// Returns the properties map that describes this group object;
-std::map<std::string, std::string> module::group::getProperties() const {
-  map<string, string> pMap;
-  pMap["name"]       = name;
-  pMap["numInputs"]  = txt()<<numInputs;
-  pMap["numOutputs"] = txt()<<numOutputs;  
-  return pMap;
-}
-
-// Returns a human-readable string that describes this context
-std::string module::group::str() const {
-  return txt()<<"[group "<<name<<", #inputs="<<numInputs<<", #outputs="<<numOutputs<<"]";
-}
-
 /*******************
  ***** context *****
  *******************/
@@ -68,15 +44,6 @@ std::string module::context::str() const {
     s << "("<<c->first<<": "<<c->second.getAsStr()<<")";
   }
   return s.str();
-}
-
-/****************
- ***** port *****
- ****************/
-
-// Returns a human-readable string that describes this context
-std::string module::port::str() const {
-  return txt() << "[port: g="<<g.str()<<", ctxt="<<ctxt.str() << " : "<<(type==input?"In":"Out")<<" : "<<index<<"]";
 }
 
 }; // namespace common

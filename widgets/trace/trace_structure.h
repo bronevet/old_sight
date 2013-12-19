@@ -197,7 +197,13 @@ class measure {
   measure(trace* t,               const std::map<std::string, attrValue>& fullMeasureCtxt);
   measure(traceStream* ts,        const std::map<std::string, attrValue>& fullMeasureCtxt);
 
+  measure(const measure& that);
+  
   ~measure();
+  
+  // Returns a copy of this measure object, including its current measurement state, if any. The returned
+  // object is connected to the same traceStream, if any, as the original object.
+  virtual measure* copy() const=0;
   
   // Specify the trace that is associated with this measure object
   void setTrace(std::string traceLabel);
@@ -261,13 +267,20 @@ class timeMeasure : public measure {
   timeMeasure(trace* t,               std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt);
   timeMeasure(traceStream* ts,        std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt);
   
+  timeMeasure(const timeMeasure& that);
+  
   ~timeMeasure();
  
   private:
   // Common initialization code
   void init();   
           
-  public:     
+  public:
+  
+  // Returns a copy of this measure object, including its current measurement state, if any. The returned
+  // object is connected to the same traceStream, if any, as the original object.
+  measure* copy() const;
+  
   // Start the measurement
   void start();
    
@@ -322,7 +335,10 @@ class PAPIMeasure : public measure {
   // Common initialization code
   void init();   
           
-  public:     
+  public:
+  // Returns a copy of this measure object, including its current measurement state, if any
+  measure* copy() const;
+    
   // Start the measurement
   void start();
    

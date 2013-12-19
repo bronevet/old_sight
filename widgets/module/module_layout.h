@@ -24,39 +24,57 @@ extern moduleLayoutHandlerInstantiator moduleLayoutHandlerInstance;
 
 class moduleNodeTraceStream;
 
-class module: public block, public common::module, public traceObserver
+// Records the information of a given module when the module is entered so that we have it available 
+// when the module is exited
+class module {
+  public:
+  std::string moduleName;
+  int moduleID;
+  int numInputs;
+  int numOutputs;
+  int count;
+  
+  module(const std::string& moduleName, int moduleID, int numInputs, int numOutputs, int count) :
+    moduleName(moduleName), moduleID(moduleID), numInputs(numInputs), numOutputs(numOutputs), count(count)
+  {}
+};
+
+class modularApp: public block, public common::module, public traceObserver
 {
   friend class moduleNodeTraceStream;
   protected:
-  
+ 
+  // Points to the currently active instance of modularApp. There can be only one.
+  static modularApp* activeMA;
+    
   // The path the directory where output files of the graph widget are stored
   // Relative to current path
   static std::string outDir;
   // Relative to root of HTML document
   static std::string htmlOutDir;
     
-  // Unique ID of this module object
-  int moduleID;
+  // Name of this modular app
+  std::string appName;
   
-  // The names of all the modules
-  std::set<std::string> moduleNames;
+  // Unique ID of this modular app
+  int appID;
   
-  // Stack of the modules that are currently in scope
-  static std::list<module*> mStack;
+  // Stack of the modules that are currently in scope within this modularApp
+  std::list<sight::layout::module> mStack;
   
   // Maps each module group's ID to the trace that holds the observations performed within it
   std::map<int, traceStream*> moduleTraces;
     
   // Maps each traceStream's ID to the ID of its corresponding module graph node
-  std::map<int, int> trace2nodeID;
+  std::map<int, int> trace2moduleID;
   
   // The dot file that will hold the representation of the module interaction graph
   std::ofstream dotFile;
   
   public:
   
-  module(properties::iterator props);
-  ~module();
+  modularApp(properties::iterator props);
+  ~modularApp();
   
   // Initialize the environment within which generated graphs will operate, including
   // the JavaScript files that are included as well as the directories that are available.
@@ -70,15 +88,37 @@ class module: public block, public common::module, public traceObserver
   
   // Do a multi-variate polynomial fit of the data observed for the given nodeID and return for each trace attribute 
   // a string that describes the function that best fits its values
-  std::vector<std::string> polyFit(int nodeID);
+  std::vector<std::string> polyFit(int moduleID);
   
-  // Add a node to the modules graph
-  void addNode(std::string node, int numInputs, int numOutputs, int ID, int count/*, const std::set<std::string>& nodeContexts*/);
-  static void* addNode(properties::iterator props);
+  // Emits to the dot file the buttons used to select the combination of input property and trace attribute
+  // that should be shown in the data panel of a given module node.
+  // numInputs/numOutputs - the number of inputs/outputs of this module node
+  // ID - the unique ID of this module node
+  // prefix - We measure both the observations of measurements during the execution of modules and the 
+  //    properties of module outputs. Both are included in the trace of the module but the names of measurements
+  //    are prefixed with "measure:" and the names of outputs are prefixed with "output:#:", where the # is the
+  //    index of the output. The prefix argument identifies the types of attributs we'll be making buttons for and
+  //    it should be either "module" or "output".
+  // bgColor - The background color of the buttons
+  void showButtons(int numInputs, int numOutputs, int ID, std::string prefix, std::string bgColor);
+  
+  // Enter a new module within the current modularApp
+  // numInputs/numOutputs - the number of inputs/outputs of this module node
+  // ID - the unique ID of this module node
+  void enterModule(std::string node, int moduleID, int numInputs, int numOutputs, int count);
+  // Static version of enterModule() that pulls the from/to anchor IDs from the properties iterator and calls 
+  // enterModule() in the currently active modularApp
+  static void* enterModule(properties::iterator props);
+  
+  // Exit a module within the current modularApp
+  void exitModule();
+  // Static version of enterModule() that calls exitModule() in the currently active modularApp
+  static void exitModule(void* obj);
   
   // Add a directed edge from the location of the from anchor to the location of the to anchor
   void addEdge(int fromC, common::module::ioT fromT, int fromP, 
-               int toC,   common::module::ioT toT,   int toP);
+               int toC,   common::module::ioT toT,   int toP,
+               double prob);
   static void* addEdge(properties::iterator props);
   
   // Called to notify this block that a sub-block was started/completed inside of it. 
