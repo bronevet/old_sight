@@ -39,15 +39,29 @@ int main (int argc, char *argv[])
 
    SightInit(argc, argv, "ex1", "dbg.MFEM.ex1");
 
-   if (argc == 1)
+   if (argc <= 3)
    {
-      cerr << "\nUsage: ex1 <mesh_file>\n" << endl;
+      cerr << "\nUsage: ex1 <mesh_file> ref_levels finElement\n" << endl;
       return 1;
    }
-
+   char* meshFile = argv[1];
+   int ref_levels = atoi(argv[2]);
+   char* finElement = argv[3];
+   
+   modularApp mfemApp("MFEM App", namedMeasures("time", new timeMeasure())); 
+   std::vector<port> externalOutputs;
+   compModule mod(instance("Ex1", 1, 1), inputs(port(context(config("meshFile", meshFile)))),
+                  externalOutputs,
+                  ref_levels=0,
+                  context(config("ref_levels", ref_levels,
+                                 "finElement", finElement)));
+   mod.setOutCtxt(0, context(config("result", ref_levels)));
+   
+   return 0;
+   /*
    // 1. Read the mesh from the given mesh file. We can handle triangular,
    //    quadrilateral, tetrahedral or hexahedral elements with the same code.
-   ifstream imesh(argv[1]);
+   ifstream imesh(meshFile);
    if (!imesh)
    {
       cerr << "\nCan not open mesh file: " << argv[1] << '\n' << endl;
@@ -61,8 +75,8 @@ int main (int argc, char *argv[])
    //    largest number that gives a final mesh with no more than 50,000
    //    elements.
    {
-      int ref_levels =
-         (int)floor(log(50000./mesh->GetNE())/log(2.)/mesh->Dimension());
+      /*int ref_levels =
+         (int)floor(log(50000./mesh->GetNE())/log(2.)/mesh->Dimension());* /
       for (int l = 0; l < ref_levels; l++)
          mesh->UniformRefinement();
    }
@@ -70,10 +84,13 @@ int main (int argc, char *argv[])
    // 3. Define a finite element space on the mesh. Here we use isoparametric
    //    finite elements coming from the mesh nodes (linear by default).
    FiniteElementCollection *fec;
-   if (mesh->GetNodes())
+   /*if (mesh->GetNodes())
       fec = mesh->GetNodes()->OwnFEC();
-   else
+   else* /
+   if(strcmp(finElement, "linear")==0)
       fec = new LinearFECollection;
+   else if(strcmp(finElement, "h1")
+      fec = new H1_FECollection(p, dim);
    FiniteElementSpace *fespace = new FiniteElementSpace(mesh, fec);
    dbg << "Number of unknowns: " << fespace->GetVSize() << endl;
 
@@ -130,8 +147,12 @@ int main (int argc, char *argv[])
    sol_sock.precision(8);
    mesh->Print(sol_sock);
    x.Save(sol_sock);
-   sol_sock.send();*/
+   sol_sock.send();* /
    mfem::emitMesh(mesh, &x);
+   
+   mod.setOutCtxt(0, context(config("error", posDev(particles, numDims),
+                                               "numParticles", numParticles,
+                                               "numDims", numDims)));
 
    // 10. Free the used memory.
    delete a;
@@ -141,5 +162,5 @@ int main (int argc, char *argv[])
       delete fec;
    delete mesh;
 
-   return 0;
+   return 0;*/
 }

@@ -14,9 +14,11 @@ namespace common {
  ***** context *****
  *******************/
 
-module::context::context(properties::iterator props) {
+// Loads this context from the given properties map. The names of all the fields are assumed to be prefixed
+// with the given string.
+module::context::context(properties::iterator props, std::string prefix) {
   
-  int numCfgKeys = properties::getInt(props, "numCfgKeys");
+  int numCfgKeys = properties::getInt(props, txt()<<prefix<<"numCfgKeys");
   for(int i=0; i<numCfgKeys; i++) {
     configuration[properties::get(props, txt()<<"key_"<<i)] = 
                               attrValue(properties::get(props, txt()<<"val_"<<i),
@@ -24,14 +26,16 @@ module::context::context(properties::iterator props) {
   }
 }
 
-// Returns the properties map that describes this context object;
-map<string, string> module::context::getProperties() const {
+// Returns the properties map that describes this context object.
+// The names of all the fields in the map are prefixed with the given string.
+map<string, string> module::context::getProperties(std::string prefix) const {
   map<string, string> pMap;
   int i=0;
+  pMap[txt()<<prefix<<"numCfgKeys"] = txt()<<configuration.size();
   for(std::map<std::string, attrValue>::const_iterator cfg=configuration.begin(); cfg!=configuration.end(); cfg++, i++) {
-    pMap[txt()<<"key_"<<i]  = cfg->first;
-    pMap[txt()<<"val_"<<i]  = cfg->second.getAsStr();
-    pMap[txt()<<"type_"<<i] = txt()<<cfg->second.getType();
+    pMap[txt()<<prefix<<"key_"<<i]  = cfg->first;
+    pMap[txt()<<prefix<<"val_"<<i]  = cfg->second.getAsStr();
+    pMap[txt()<<prefix<<"type_"<<i] = txt()<<cfg->second.getType();
   }
   return pMap;
 }

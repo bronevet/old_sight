@@ -40,12 +40,12 @@ void  modularAppExitHandler(void* obj) { modularApp* ma = static_cast<modularApp
 moduleLayoutHandlerInstantiator::moduleLayoutHandlerInstantiator() { 
   (*layoutEnterHandlers)["modularApp"]   = &modularAppEnterHandler;
   (*layoutExitHandlers )["modularApp"]   = &modularAppExitHandler;
-  (*layoutEnterHandlers)["moduleNodeTS"] = &modularApp::enterTraceStream;
-  (*layoutExitHandlers )["moduleNodeTS"] = &defaultExitHandler;
+  (*layoutEnterHandlers)["moduleTS"] = &modularApp::enterTraceStream;
+  (*layoutExitHandlers )["moduleTS"] = &defaultExitHandler;
   (*layoutEnterHandlers)["module"]       = &modularApp::enterModule;
   (*layoutExitHandlers )["module"]       = &modularApp::exitModule;
-  (*layoutEnterHandlers)["moduleEdge"]   = &modularApp::addEdge;
-  (*layoutExitHandlers )["moduleEdge"]   = &defaultExitHandler;
+  (*layoutEnterHandlers)["compModuleEdge"] = &modularApp::addEdge;
+  (*layoutExitHandlers )["compModuleEdge"] = &defaultExitHandler;
 }
 moduleLayoutHandlerInstantiator moduleLayoutHandlerInstance;
 
@@ -58,8 +58,8 @@ string modularApp::outDir="";
 // Relative to root of HTML document
 string modularApp::htmlOutDir="";
 
-// Stack of the modules that are currently in scope
-//list<module*> modularApp::mStack;
+// Stack of the modules that are currently in scope within this modularApp
+list<sight::layout::module> modularApp::mStack;
 
 modularApp::modularApp(properties::iterator props) : block(properties::next(props)) {
   // Register this modularApp instance (there can be only one)
@@ -79,6 +79,7 @@ modularApp::modularApp(properties::iterator props) : block(properties::next(prop
   ostringstream origDotFName;   origDotFName   << outDir << "/orig."   << appID << ".dot";
   dotFile.open(origDotFName.str().c_str());
   dotFile << "digraph G {"<<endl;
+  dotFile << "\tcompound=true;"<<endl;
   
   // Add the current module to the stack
   //mStack.push_back(this);
@@ -150,19 +151,23 @@ modularApp::~modularApp() {
 
 void *modularApp::enterTraceStream(properties::iterator props) {
   //cout << "modularApp::enterTraceStream"<<endl;
-  assert(props.name() == "moduleNodeTS");
+  assert(props.name() == "moduleTS");
   //string moduleName = properties::get(nameProps, "ModuleName");
   
-  // Allocate a new moduleNodeTraceStream. The constructor takes care of registering it with the currently active module
-  new moduleNodeTraceStream(props);
+  // Allocate a new moduleTraceStream. The constructor takes care of registering it with the currently active module
+  new moduleTraceStream(props);
   
   return NULL;
 }
 
-moduleNodeTraceStream::moduleNodeTraceStream(properties::iterator props) : 
+/*****************************
+ ***** moduleTraceStream *****
+ *****************************/
+
+moduleTraceStream::moduleTraceStream(properties::iterator props, traceObserver* observer) : 
   traceStream(properties::next(props), txt()<<"CanvizBox_node"<<properties::getInt(props, "moduleID"), false)
 {
-  assert(props.name() == "moduleNodeTS");
+  assert(props.name() == "moduleTS");
     
   int moduleID = properties::getInt(props, "moduleID");
   
@@ -173,13 +178,83 @@ moduleNodeTraceStream::moduleNodeTraceStream(properties::iterator props) :
   
   // Create a new traceStream object to collect the observations for this module group
   modularApp::activeMA->moduleTraces[moduleID] = this;
-    
-  // Register this module group to listen in on observations recorded by this traceStream
-  modularApp::activeMA->moduleTraces[moduleID]->registerObserver(modularApp::activeMA);
+  
+  // If no observer is specified, register this module group to listen in on observations recorded by this traceStream
+  if(observer==NULL)
+    registerObserver(this);
+  // If an observer is specified, then that observer (a class that derives from will first 
   
   // Record the mapping between traceStream IDs and the IDs of the module group they're associated with
   modularApp::activeMA->trace2moduleID[getID()] = moduleID;
   ///cout << "moduleID="<<moduleID<<", traceID="<<m->moduleTraces[moduleID]->getID()<<endl;
+}
+
+// Interface implemented by objects that listen for observations a traceStream reads. Such objects
+// call traceStream::registerObserver() to inform a given traceStream that it should observations.
+void moduleTraceStream::observe(int traceID,
+                                const map<string, string>& ctxt, 
+                                const map<string, string>& obs,
+                                const map<string, anchor>& obsAnchor) {
+  // Forward the observation to the active modularApp instance
+  modularApp::activeMA->observe(traceID, ctxt, obs, obsAnchor);
+}
+
+/*********************************
+ ***** compModuleTraceStream *****
+ *********************************/
+
+compModuleTraceStream::compModuleTraceStream(properties::iterator props, traceObserver* observer) :
+  // Call the parent class constructor, informing it that this derived class (or one derived from it) will serve as listener
+  moduleTraceStream(props.next(), this),
+  options(props, "op")
+{
+  // If no observer is specified, register this module group to listen in on observations recorded by this traceStream
+  if(observer==NULL)
+    // Register this object group to listen in on observations recorded by this traceStream
+    registerObserver(this);
+  
+  isReference = properties::getInt(props, "isReference");
+}
+
+// Interface implemented by objects that listen for observations a traceStream reads. Such objects
+// call traceStream::registerObserver() to inform a given traceStream that it should observations.
+void compModuleTraceStream::observe(int traceID,
+                                    const map<string, string>& ctxt, 
+                                    const map<string, string>& obs,
+                                    const map<string, anchor>& obsAnchor) {
+  map<string, string> inputCtxt;
+  for(map<string, string>::iterator c=ctxt.begin(); c!=ctxt.end(); c++)
+    // If the current context key is not an option, it is an input
+    if(!options.isKey(c->first))
+      inputCtxt[c->first] = c->second;
+  
+  // If this is the reference observation for the given input context
+  if(ctxt.find["isReference"] != ctxt.end()) {
+    // There can only be one such observation for a given input context
+    assert(referenceObs.find(inputCtxt) == referenceObs.end());
+    
+    // Record the reference observation
+    referenceObs[inputCtxt] = obs;
+    
+    // If we've observed any observations that we need to compare to the reference
+    if(comparisonObs.find(inputCtxt) != comparisonObs.end()) {
+      list<map<string, string> >& comp = comparisonObs[inputCtxt];
+      for(list<map<string, string> >::iterator i=comp.begin(); i!=comp.end(); i++) {
+        // Call the observe method of the parent class 
+        module::observe(traceID, inputCtxt, *i, map<string, anchor>());
+      }
+    }
+  // If this is a non-reference observation
+  } else {
+    // If we've already observed the reference observation for the current input context
+    if(referenceObs.find(inputCtxt) != referenceObs.end()) {
+      // Compare this observation to the reference and emit the result to the observe method of the parent class
+      module::observe(traceID, inputCtxt, obs, obsAnchor);
+    // If we have not yet observed the reference, record this non-reference observation in comparisonObs
+    } else {
+      comparisonObs[inputCtxt].push_back(obs);
+    }
+  }
 }
 
 string portName(common::module::ioT type, int index) 
@@ -458,14 +533,15 @@ void modularApp::showButtons(int numInputs, int numOutputs, int ID, std::string 
 void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int numOutputs, int count) {
   //cout << "modularApp::enterModule("<<moduleName<<")"<<endl;
   
-  // Add a module object that records this module to the modularApp's stack
-  //mStack.push_back(sight::layout::module(moduleName, moduleID, numInputs, numOutputs, count));
+  // Get the ID of the module that contains this one, if any.
+  int containerModuleID=-1;
+  if(mStack.size()>0) containerModuleID = mStack.back().moduleID;
   
   // Start a subgraph for the current module
   dotFile << "subgraph cluster"<<moduleID<<" {"<<endl;
   //dotFile << "\tstyle=filled;"<<endl;
   dotFile << "\tcolor=black;"<<endl;
-  dotFile << "\tlabel=\""<<moduleName<<"\";"<<endl;
+  //dotFile << "\tlabel=\""<<moduleName<<"\";"<<endl;
   
   /*for(int i=0; i<numInputs; i++) {
     dotFile << "\t\t"<<portName(node, input, i)<<" [shape=box, label=\"In "<<i<<"\"];\n";//, href=\"javascript:"<<b->first.getLinkJS()<<"\"];\n";
@@ -497,50 +573,50 @@ void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int
   // piece of text is empty, then no link is placed around it. If some piece of text is mis-formatted (if missing the ":", 
   // Canviz provides an alert). 
   
+  int databoxWidth = 300;
+  int databoxHeight = 200;
   
   //dotFile << "\t\""<<portNamePrefix(moduleName)<<"\" [shape=none, fill=lightgrey, label=<<TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\">"<<endl;
+  // Input ports and body
   dotFile << "\tnode"<<moduleID<<" [shape=none, fill=lightgrey, href=\"#\", onclick=\"return ClickOnModuleNode('node"<<moduleID<<"', this, ID);\", label=";
+  dotFile << "<<TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\">"<<endl;
   
-  if(numInputs==0 && numOutputs==0) {
-    dotFile << "\"\"";
-  } else {
-    dotFile << "<<TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\">"<<endl;
-  
-    // Input ports
-    if(numInputs>0) {
-      dotFile << "\t\t<TR><TD><TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\">"<<endl;
-      dotFile << "\t\t\t<TR>";
-      for(int i=0; i<numInputs; i++) 
-        dotFile << "<TD PORT=\""<<portName(input, i)<<"\" "<<
-                       "COLSPAN=\""<<(ctxtNames[moduleID].find(i)!=ctxtNames[moduleID].end()? ctxtNames[moduleID][i].size(): 1)<<"\">"<<
-                        "<FONT POINT-SIZE=\"20\">:In "<<i<<"</FONT>"<<
-                   "</TD>";
-      dotFile << "</TR>"<<endl;
-      
-      // The names of the context attributes for each output
-      dotFile << "\t\t\t<TR>";
-      for(int i=0; i<numInputs; i++) {
-        if(ctxtNames[moduleID].find(i)!=ctxtNames[moduleID].end()) {
-          for(list<string>::iterator c=ctxtNames[moduleID][i].begin(); c!=ctxtNames[moduleID][i].end(); c++) {
-            dotFile << dotFile << "<TD BGCOLOR=\"#000066\"><FONT COLOR=\"#ffffff\" POINT-SIZE=\"18\">:"<<*c<<"</FONT></TD>";
-          }
-        } else
-          dotFile << dotFile << "<TD></TD>";
-      }
-      dotFile << "\t\t\t</TR>"<<endl;
-      
-      // Buttons for showing the observation trace plots
-      showButtons(numInputs, numOutputs, moduleID, "measure", "B0CDFF");
-      showButtons(numInputs, numOutputs, moduleID, "output",  "F78181");
+  if(numInputs>0) {
+    dotFile << "\t\t<TR><TD PORT=\"ENTRY\"><TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\">"<<endl;
+    dotFile << "\t\t\t<TR>";
+    for(int i=0; i<numInputs; i++) 
+      dotFile << "<TD PORT=\""<<portName(input, i)<<"\" "<<
+                     "COLSPAN=\""<<(ctxtNames[moduleID].find(i)!=ctxtNames[moduleID].end()? ctxtNames[moduleID][i].size(): 1)<<"\">"<<
+                      "<FONT POINT-SIZE=\"20\">:In "<<i<<"</FONT>"<<
+                 "</TD>";
+    dotFile << "</TR>"<<endl;
 
-      dotFile << "</TABLE></TD></TR>"<<endl;
+    // The names of the context attributes for each output
+    dotFile << "\t\t\t<TR>";
+    for(int i=0; i<numInputs; i++) {
+      if(ctxtNames[moduleID].find(i)!=ctxtNames[moduleID].end()) {
+        for(list<string>::iterator c=ctxtNames[moduleID][i].begin(); c!=ctxtNames[moduleID][i].end(); c++) {
+          dotFile << dotFile << "<TD BGCOLOR=\"#000066\"><FONT COLOR=\"#ffffff\" POINT-SIZE=\"18\">:"<<*c<<"</FONT></TD>";
+        }
+      } else
+        dotFile << dotFile << "<TD></TD>";
     }
+    dotFile << "\t\t\t</TR>"<<endl;
+
+    // Buttons for showing the observation trace plots
+    showButtons(numInputs, numOutputs, moduleID, "measure", "B0CDFF");
+    showButtons(numInputs, numOutputs, moduleID, "output",  "F78181");
+
+    dotFile << "</TABLE></TD></TR>"<<endl;
+  }
   
-    // Node Info
-    dotFile << "\t\t<TR><TD";
-    //if(numInputs + numOutputs > 0) dotFile << " COLSPAN=\""<<(numInputs>numOutputs? numInputs: numOutputs)<<"\"";
-    dotFile << "><FONT POINT-SIZE=\"26\">:"<<moduleName<<"</FONT></TD></TR>"<<endl;
+  // Node Info
+  dotFile << "\t\t<TR><TD";
+  if(numInputs==0) dotFile << " PORT=\"EXIT\"";
+  //if(numInputs + numOutputs > 0) dotFile << " COLSPAN=\""<<(numInputs>numOutputs? numInputs: numOutputs)<<"\"";
+  dotFile << "><FONT POINT-SIZE=\"26\">:"<<moduleName<<"</FONT></TD></TR>"<<endl;
   
+  if(numInputs>0) {
     // If we observed values during the execution of this module group  
     if(traceAttrNames[moduleID].size()>0) {
       // Polynomial fit of the observations
@@ -556,19 +632,52 @@ void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int
     
     if(traceAttrNames[moduleID].size()>0) {
     //for(int i=0; i<traceAttrNames[moduleID].size(); i++) {
-      dotFile << "\t\t<TR><TD><TABLE><TR><TD BGCOLOR=\"#FF00FF\" COLOR=\"#FF00FF\" WIDTH=\"300\" HEIGHT=\"200\"></TD></TR></TABLE></TD></TR>"<<endl;
+      dotFile << "\t\t<TR><TD PORT=\"EXIT\"><TABLE><TR><TD BGCOLOR=\"#FF00FF\" COLOR=\"#FF00FF\" WIDTH=\""<<databoxWidth<<"\" HEIGHT=\""<<databoxHeight<<"\"></TD></TR></TABLE></TD></TR>"<<endl;
     }
-    
-    // Output ports
-    if(numOutputs>0) {
-      dotFile << "\t\t<TR><TD><TABLE CELLBORDER=\"1\" CELLSPACING=\"0\"><TR>";
-      for(int o=0; o<numOutputs; o++) 
-        dotFile << "<TD PORT=\""<<portName(output, o)<<"\"><FONT POINT-SIZE=\"14\">:Out "<<o<<"</FONT></TD>";
-      dotFile << "</TR></TABLE></TD></TR>"<<endl;
-    }  
+  }
+  
+  dotFile << "</TABLE>>";
+  
+  dotFile << "];" << endl;
+
+  // Output ports
+  dotFile << "\tnode"<<moduleID<<"_Out [shape=none, fill=lightgrey, href=\"#\", onclick=\"return ClickOnModuleNode('node"<<moduleID<<"', this, ID);\", label=";
+  if(numOutputs==0)
+    dotFile << "\"\"";
+  else {
+    dotFile << "<<TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\">"<<endl;
+    //dotFile << "\t<TR><TD PORT=\"ENTRY\" HEIGHT=\"0\">:</TD></TR>"<<endl;
+    dotFile << "\t<TR>"<<endl;
+    for(int o=0; o<numOutputs; o++) 
+      dotFile << "\t\t<TD WIDTH=\""<<databoxWidth<<"\" PORT=\""<<portName(output, o)<<"\"><FONT POINT-SIZE=\"14\">:Out "<<o<<"</FONT></TD>"<<endl;
+    dotFile << "\t</TR>"<<endl;
+    //dotFile << "\t<TR><TD PORT=\"EXIT\" HEIGHT=\"0\">:</TD></TR>"<<endl;
     dotFile << "</TABLE>>";
   }
   dotFile << "];" <<endl;
+  
+  
+  // Add a high-weight invisible edge between the input and the output nodes to vertically align them
+  dotFile << "\tnode"<<moduleID<<":EXIT:s "
+             " -> "<<
+               "node"<<moduleID<<"_Out "<<
+             "[weight=100, style=invis];\n";
+  
+  // If this module is contained inside another, add invisible edges between the input portion of container module and 
+  // this one and the output portion of this module and the container to vertically align them
+  if(containerModuleID>=0) {
+    dotFile << "\tnode"<<containerModuleID<<":EXIT:s -> node"<<moduleID<<":ENTRY:n              [weight=150, style=invis];"<<endl;
+    //dotFile << "\tnode"<<moduleID<<"_Out:EXIT:s      -> node"<<containerModuleID<<"_Out:ENTRY:n [weight=300];"<<endl;
+    dotFile << "\tnode"<<moduleID<<"_Out      -> node"<<containerModuleID<<"_Out [weight=150, style=invis];"<<endl;
+    //dotFile << "\tnode"<<containerModuleID<<" -> node"<<moduleID<<"         [ltail=cluster"<<containerModuleID<<", lhead=cluster"<<moduleID<<", weight=5];"<<endl;
+    //dotFile << "\tnode"<<moduleID<<"_Out -> node"<<containerModuleID<<"_Out [ltail=cluster"<<moduleID<<", lhead=cluster"<<containerModuleID<<", weight=5];"<<endl;
+  }
+  
+  dotFile << "{rank=source;node"<<moduleID<<";}"<<endl;
+  dotFile << "{rank=sink;node"<<moduleID<<"_Out;}"<<endl;
+  
+  // Add a module object that records this module to the modularApp's stack
+  mStack.push_back(sight::layout::module(moduleName, moduleID, numInputs, numOutputs, count));
 }
 
 // Static version of enterModule() that pulls the from/to anchor IDs from the properties iterator and calls 
@@ -585,17 +694,17 @@ void* modularApp::enterModule(properties::iterator props) {
 
 // Exit a module within the current modularApp
 void modularApp::exitModule() {
-  /* // Grab the information about the module we're exiting from this modularApp's mStack and pop it off
+  // Grab the information about the module we're exiting from this modularApp's mStack and pop it off
   assert(mStack.size()>0);
   sight::layout::module m = mStack.back();
-  mStack.pop_back();*/
+  mStack.pop_back();
   
   //cout << "modularApp::exitModule("<<m.moduleName<<")"<<endl;
   // Close the current module's sub-graph
   dotFile << "}" << endl;
 }
 
-// Static version of enterModule() that calls exitModule() in the currently active modularApp
+// Static version of exitModule() that calls exitModule() in the currently active modularApp
 void modularApp::exitModule(void* obj) {
   assert(modularApp::activeMA);
   modularApp::activeMA->exitModule();
@@ -605,9 +714,9 @@ void modularApp::exitModule(void* obj) {
 void modularApp::addEdge(int fromCID, common::module::ioT fromT, int fromP, 
                          int toCID,   common::module::ioT toT,   int toP,
                          double prob) {
-  dotFile << "\tnode"<<fromCID<<":"<<portName(fromT, fromP)<<""<<
+  dotFile << "\tnode"<<fromCID<<"_Out:"<<portName(fromT, fromP)<<":s"<<
              " -> "<<
-               "node"<<toCID  <<":"<<portName(toT,   toP  )<<" "<<
+               "node"<<toCID  <<":"<<portName(toT,   toP  )<<":n "<<
              "[penwidth="<<(1+prob*3)<<"];\n";
 }
 

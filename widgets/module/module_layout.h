@@ -22,7 +22,7 @@ class moduleLayoutHandlerInstantiator : layoutHandlerInstantiator {
 };
 extern moduleLayoutHandlerInstantiator moduleLayoutHandlerInstance;
 
-class moduleNodeTraceStream;
+class moduleTraceStream;
 
 // Records the information of a given module when the module is entered so that we have it available 
 // when the module is exited
@@ -41,7 +41,7 @@ class module {
 
 class modularApp: public block, public common::module, public traceObserver
 {
-  friend class moduleNodeTraceStream;
+  friend class moduleTraceStream;
   protected:
  
   // Points to the currently active instance of modularApp. There can be only one.
@@ -60,7 +60,7 @@ class modularApp: public block, public common::module, public traceObserver
   int appID;
   
   // Stack of the modules that are currently in scope within this modularApp
-  std::list<sight::layout::module> mStack;
+  static std::list<sight::layout::module> mStack;
   
   // Maps each module group's ID to the trace that holds the observations performed within it
   std::map<int, traceStream*> moduleTraces;
@@ -172,11 +172,51 @@ class modularApp: public block, public common::module, public traceObserver
                const std::map<std::string, anchor>&      obsAnchor);
 }; // class module
 
-// Specialization of traceStreams for the case where they are hosted by a module node
-class moduleNodeTraceStream: public traceStream
+// Specialization of traceStreams for the case where they are hosted by a module
+class moduleTraceStream: public traceStream
 {
   public:
-  moduleNodeTraceStream(properties::iterator props);
+  moduleTraceStream(properties::iterator props, traceObserver* observer=NULL);
+};
+
+// This class analyzes the observations made by all the traces that belong to the same 
+class compModule {
+  public:
+  // Points to the currently active instance of modularApp. There can be only one.
+  static compModule* activeCM;
+  
+  // The observer to which active CM will send observations after it filters them
+  traceObserver* observer;
+  
+  compModule(traceObserver* observer) : observer(observer) { }
+  
+  void registerTraceStream(traceStream* ts) {
+    
+    ts->registerObserver(this);
+  }
+}; // class compModule
+
+// Specialization of traceStreams for the case where they are hosted by a compModule 
+class compModuleTraceStream: public traceStream
+{
+  // Records whether this is the reference configuration of the moculde
+  bool isReference;
+  
+  // The context that describes the configuration options of this module
+  context options;
+  
+  // Maps each configuration of input context values to the mapping of trace attributes to their values 
+  // within the reference configuration of the compModule.
+  std::map<std::map<std::string, std::string>, std::map<std::string, std::string> > referenceObs;
+  
+  // Records for each configuration of input context values all the the mappings of trace attributes to
+  // their values within non-reference configurations of the compModule. We keep these around until we 
+  // find the reference configuration for the given configuration of input context values and once we find 
+  // it, we relate these to the reference, emit them to this compModuleTraceStream's observer and empty them out.
+  std::map<std::map<std::string, std::string>, std::list<std::map<std::string, std::string> > > referenceObs;
+  
+  public:
+  compModuleTraceStream(properties::iterator props, traceObserver* observer=NULL);
 };
 
 

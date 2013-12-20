@@ -147,7 +147,7 @@ int main(int argc, char** argv)
 #pragma sightLoc PerfAnalysisEnd
   }
 
-  { 
+/*  { 
     scope s("Modular Analysis", scope::high);
     { source src("source", source::regions(source::reg(thisFile, "ModularStart",        "ModularEnd"),
                                            source::reg(thisFile, "histRecurrenceStart", "histRecurrenceEnd"))); }
@@ -201,7 +201,7 @@ int main(int argc, char** argv)
       }
  #pragma sightLoc ModularEnd
     }
-  }
+  }*/
   
   return 0;
 }

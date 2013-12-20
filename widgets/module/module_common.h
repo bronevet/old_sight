@@ -39,7 +39,9 @@ class module {
     
     context(const std::map<std::string, attrValue>& configuration) : configuration(configuration) {}
     
-    context(properties::iterator props);
+    // Loads this context from the given properties map. The names of all the fields are assumed to be prefixed
+    // with the given string.
+    context(properties::iterator props, std::string prefix="");
     
     bool operator==(const context& that) const
     { return configuration==that.configuration; }
@@ -52,8 +54,13 @@ class module {
     
     const std::map<std::string, attrValue>& getCfg() const { return configuration; }
     
-    // Returns the properties map that describes this context object;
-    std::map<std::string, std::string> getProperties() const;
+    // Returns whether the given key is mapped within this context
+    bool isKey(std::string key) const
+    { return config.find(key) != config.end(); }
+    
+    // Returns the properties map that describes this context object.
+    // The names of all the fields in the map are prefixed with the given string.
+    std::map<std::string, std::string> getProperties(std::string prefix="") const;
     
     // Returns a human-readable string that describes this context
     std::string str() const;

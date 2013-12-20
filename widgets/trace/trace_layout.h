@@ -123,8 +123,8 @@ class traceStream: public attrObserver, public common::trace
   //      to them (false)
   // showLabels: boolean that indicates whether we should show a label that annotates a data plot (true) or whether
   //      we should just show the plot (false)
-  std::string getDisplayJSCmd(const std::list<std::string>& contextAttrs, const std::list<std::string>& traceAttrs,
-                              std::string hostDiv="", vizT viz=unknown, bool showFresh=true, bool showLabels=false);
+  static std::string getDisplayJSCmd(const std::list<std::string>& contextAttrs, const std::list<std::string>& traceAttrs,
+                                     std::string hostDiv="", vizT viz=unknown, bool showFresh=true, bool showLabels=false);
   
   int getID() const { return traceID; }
   private:

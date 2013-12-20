@@ -27,10 +27,10 @@ class state {
 
 // Each recursive call to fibScope() generates a new scope at the desired level. 
 // The scope level that is passed in controls the types of scopes that are recursively created
-std::pair<int, std::vector<port> > fibModule(int a, const std::vector<port>& in) {
+std::pair<int, std::vector<port> > fibModule(int a, int depth) {
   std::vector<port> fibOutputs;
-  module m(instance(txt()<<"fib("<<a<<")", 1, 1), 
-           in, fibOutputs, namedMeasures("time", new timeMeasure()));
+  module m(instance(txt()<<"fib() depth="<<depth, 1, 1), 
+           inputs(port(context(config("a", a)))), fibOutputs, namedMeasures("time", new timeMeasure()));
   
   if(a==0 || a==1) { 
     dbg << "=1."<<endl;
@@ -39,9 +39,12 @@ std::pair<int, std::vector<port> > fibModule(int a, const std::vector<port>& in)
     
     return make_pair(1, fibOutputs);
   } else {
-    std::pair<int, std::vector<port> > ret1 = fibModule(a-1, in);
-    std::pair<int, std::vector<port> > ret2 = fibModule(a-2, in);
+    std::pair<int, std::vector<port> > ret1 = fibModule(a-1, depth+1);
+    std::pair<int, std::vector<port> > ret2 = fibModule(a-2, depth+1);
     dbg << "="<<(ret1.first + ret2.first)<<endl;
+    
+    m.setOutCtxt(0, context(config("val", ret1.first + ret2.first)));
+    
     return make_pair(ret1.first + ret2.first, fibOutputs);
   }
 }
@@ -83,7 +86,7 @@ int main(int argc, char** argv)
          "while this variable is in-scope is considered to be part of the module. The module's name "<<
          "and number of inputs and outputs is provided as the first argument (ex: instance(\"Initialization\", 1, 1)). The "<<
          "next argument identifies the module's inputs, which should be the outputs of other modules "<<
-         "(ex: inputs(rootModule.outPort(0))). The next argument provides space where information about the the module's "<<
+         "(ex: inputs(initModule.outPort(0))). The next argument provides space where information about the the module's "<<
          "outputs will be stored. It is a reference to a vector<port>, which is filled by the module with information detailing the outputs. This is "<<
          "useful because modules that use a given module's outputs often start after the module completes and its variable "<<
          "goes out of scope. Placing information about its outputs in a separate vector that outlives the module makes it easier "<<
@@ -96,18 +99,11 @@ int main(int argc, char** argv)
          "each containing 1, 2 or 3 dimensional positions. The outputs of these runs are merged, including their input/output "<<
          "relations and module measurements."<<endl;    
   
-  modularApp rootModule("Fibonacci"); 
-  
-  std::vector<port> initOutputs;
-  { module fibInit(instance("Init", 0, 1), initOutputs);
-    fibInit.setOutCtxt(0, context(config("a", 5)));
-   }
-  
-  fibModule(5, initOutputs);
+/*  modularApp rootModule("Fibonacci"); 
+  fibModule(10, 0);*/
   
   
-  /*
-  modularApp rootModule("Molecular Dynamics"); 
+  modularApp mdApp("Molecular Dynamics", namedMeasures("time", new timeMeasure())); 
   
   // List of particle positions
   double neighRadius = .2;
@@ -119,21 +115,24 @@ int main(int argc, char** argv)
   
   // Generate the initial particle positions
   std::vector<port> initOutputs;
-  { module partInitModule(instance("Initialization", 0, 1), initOutputs, namedMeasures("time", new timeMeasure()));
-  for(int p=0; p<numParticles; p++) {
-    vector<double> curPos;
-    for(int d=0; d<numDims; d++) curPos.push_back(((double)rand()/(double)RAND_MAX));
-    particles.push_back(state((double)rand()/(double)RAND_MAX, curPos));
-  }
-  partInitModule.setOutCtxt(0, context(config("deviation", posDev(particles, numDims),
-                                              "numParticles", numParticles,
-                                              "numDims", numDims)));
+  { module initModule(instance("Initialization", 0, 1), initOutputs, namedMeasures("time", new timeMeasure()));
+    for(int p=0; p<numParticles; p++) {
+      vector<double> curPos;
+      for(int d=0; d<numDims; d++) curPos.push_back(((double)rand()/(double)RAND_MAX));
+      particles.push_back(state((double)rand()/(double)RAND_MAX, curPos));
+    }
+    initModule.setOutCtxt(0, context(config("deviation", posDev(particles, numDims),
+                                                "numParticles", numParticles,
+                                                "numDims", numDims)));
   }
   
   std::vector<port> forceOutputs;
   std::vector<port> neighOutputs;
   map<int, set<int> > neighbors;
   for(int t=0; t<numTS; t++) {
+    module timeStepModule(instance("TimeStep", 1, 0), inputs(port(context(config("t", t)))), 
+                          namedMeasures("PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS))));
+
     //scope s(txt()<<"Iteration "<<t);
     if(t%neghRefreshPeriod==0) {
       //scope s("Computing neighbors");
@@ -143,8 +142,7 @@ int main(int argc, char** argv)
                                inputs(// particles
                                       (t==0? initOutputs[0]: forceOutputs[0])),
                                neighOutputs,
-                               namedMeasures("time", new timeMeasure(),
-                                             "PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS))));
+                               namedMeasures("PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS))));
       
       // Maps each particles (idx in particle) to the set of its neighbors
       
@@ -167,7 +165,7 @@ int main(int argc, char** argv)
         for(set<int>::iterator n=p->second.begin(); n!=p->second.end(); n++)
           dbg << " "<<*n;
         dbg << endl;
-      }* /
+      }*/
     }
     
     // Compute the forces on all particles from their neighbors and update their positions
@@ -179,8 +177,7 @@ int main(int argc, char** argv)
                                 // neighbors
                                 neighOutputs[0]),
                          forceOutputs,
-                         namedMeasures("time", new timeMeasure(),
-                                       "PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS))));
+                         namedMeasures("PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS))));
   
       
       for(map<int, set<int> >::iterator p=neighbors.begin(); p!=neighbors.end(); p++) {
@@ -194,7 +191,7 @@ int main(int argc, char** argv)
         /*dbg << p->first << ": "<<particles[p->first].str()<<", force=";
         for(int i=0; i<force.size();i++)
           dbg << " " << force[i];
-        dbg << endl;* /
+        dbg << endl;*/
         
         // Update the particle's positions
         for(int d=0; d<numDims; d++)
@@ -202,14 +199,13 @@ int main(int argc, char** argv)
       }
       
       /*for(int p=0; p<particles.size(); p++)
-        dbg << p << ": "<<particles[p].str()<<endl;* /
+        dbg << p << ": "<<particles[p].str()<<endl;*/
       
       forceModule.setOutCtxt(0, context(config("deviation", posDev(particles, numDims),
                                                "numParticles", numParticles,
                                                "numDims", numDims)));
     }
   } //} }
- */
 }
 
 // Calculates the average standard deviation of each dimension of particle positions

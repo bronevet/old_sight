@@ -239,7 +239,7 @@ class measure {
   // If addToTrace is true, the observation is addes to this measurement's trace and not, otherwise
   virtual std::list<std::pair<std::string, attrValue> > endGet(bool addToTrace=false);
   
-  virtual std::string str()=0;
+  virtual std::string str() const;
 }; // class measure
 
 // Syntactic sugar for specifying measurements
@@ -299,7 +299,7 @@ class timeMeasure : public measure {
   // If addToTrace is true, the observation is addes to this measurement's trace and not, otherwise
   std::list<std::pair<std::string, attrValue> > endGet(bool addToTrace=false);
   
-  std::string str();
+  std::string str() const;
 }; // class timeMeasure
 
 
@@ -308,13 +308,25 @@ typedef common::easyvector<int> papiEvents;
 
 class PAPIMeasure : public measure {
   // Counts the total number of counter events observed so far, accounting for any pauses and resumes
-  std::vector<long_long> values;
+  std::vector<long_long> accumValues;
+  
+  // The values of the counters recorded when measurement last started or restarted
+  std::vector<long_long> lastValues;
+  
+  // Buffer into which we'll read counters
+  std::vector<long_long> readValues;
   
   // The events that will be measured
   papiEvents events;
 
   // The label associated with this measurement
   std::string valLabel;
+  
+  // Indicates the number of PAPIMeasure objects that are currently measuring the counters
+  static int numMeasurers;
+  
+  // Records the set of PAPI counters currently being measured (non-empty iff numMeasurers>0)
+  static papiEvents curEvents;
   
   public:
   PAPIMeasure(const papiEvents& events);
@@ -329,6 +341,9 @@ class PAPIMeasure : public measure {
   PAPIMeasure(std::string traceLabel, std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt, const papiEvents& events);
   PAPIMeasure(trace* t,               std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt, const papiEvents& events);
   PAPIMeasure(traceStream* ts,        std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt, const papiEvents& events);
+  
+  PAPIMeasure(const PAPIMeasure& that);
+  
   ~PAPIMeasure();
  
   private:
@@ -357,7 +372,7 @@ class PAPIMeasure : public measure {
   // If addToTrace is true, the observation is addes to this measurement's trace and not, otherwise
   std::list<std::pair<std::string, attrValue> > endGet(bool addToTrace=false);
   
-  std::string str();
+  std::string str() const;
 }; // class PAPIMeasure
 
 // Non-full measure

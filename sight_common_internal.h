@@ -92,6 +92,14 @@ class properties
     
   void add(std::string className, const std::map<std::string, std::string>& props);
   
+  bool operator==(const properties& that) const
+  { return p==that.p && active==that.active && emitTag==that.emitTag; }
+  
+  bool operator<(const properties& that) const
+  { return (p< that.p) ||
+           (p==that.p && active< that.active) ||
+           (p==that.p && active==that.active && emitTag< that.emitTag); }
+  
   //typedef std::list<std::pair<std::string, std::map<std::string, std::string> > >::const_iterator iterator;
   
   // Wrapper for iterators to property lists that includes its own end iterator to make it possible to 
