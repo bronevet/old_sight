@@ -56,7 +56,7 @@ class module {
     
     // Returns whether the given key is mapped within this context
     bool isKey(std::string key) const
-    { return config.find(key) != config.end(); }
+    { return configuration.find(key) != configuration.end(); }
     
     // Returns the properties map that describes this context object.
     // The names of all the fields in the map are prefixed with the given string.

@@ -90,6 +90,21 @@ std::string properties::get(properties::iterator cur, std::string key) {
   return val->second;
 }
 
+// Given the label of a particular key->value mapping, adds the given mapping to it
+void properties::set(std::string name, std::string key, std::string value) {
+  // Find the given label in the properties map
+  for(list<pair<string, map<string, string> > >::iterator i=p.begin();
+      i!=p.end(); i++) {
+    if(i->first == name) {
+      // Add the new key->value mapping under the given label
+      (i->second)[key] = value;
+      return;
+    }
+  }
+  // The given label must currently exist in the properties map
+  assert(0);
+}
+
 // Given an iterator to a particular key->value mapping, returns the integer interpretation of the value mapped to the given key
 long properties::getInt(properties::iterator cur, std::string key) {
   return strtol(get(cur, key).c_str(), NULL, 10);
@@ -144,7 +159,7 @@ void properties::clear()
 
 std::string properties::str(string indent) const {
   ostringstream oss;
-  oss << "[properties:"<<endl;
+  oss << "[properties: active="<<active<<", emitTag="<<emitTag<<endl;
   for(iterator i=begin(); !i.isEnd(); i++)
     oss << indent <<"    "<<i.str()<<endl;
   oss << indent << "]";

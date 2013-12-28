@@ -40,12 +40,16 @@ void  modularAppExitHandler(void* obj) { modularApp* ma = static_cast<modularApp
 moduleLayoutHandlerInstantiator::moduleLayoutHandlerInstantiator() { 
   (*layoutEnterHandlers)["modularApp"]   = &modularAppEnterHandler;
   (*layoutExitHandlers )["modularApp"]   = &modularAppExitHandler;
-  (*layoutEnterHandlers)["moduleTS"] = &modularApp::enterTraceStream;
-  (*layoutExitHandlers )["moduleTS"] = &defaultExitHandler;
+  (*layoutEnterHandlers)["moduleTS"]     = &moduleTraceStream::enterTraceStream;
+  (*layoutExitHandlers )["moduleTS"]     = &defaultExitHandler;
   (*layoutEnterHandlers)["module"]       = &modularApp::enterModule;
   (*layoutExitHandlers )["module"]       = &modularApp::exitModule;
-  (*layoutEnterHandlers)["compModuleEdge"] = &modularApp::addEdge;
-  (*layoutExitHandlers )["compModuleEdge"] = &defaultExitHandler;
+  (*layoutEnterHandlers)["moduleEdge"]   = &modularApp::addEdge;
+  (*layoutExitHandlers )["moduleEdge"]   = &defaultExitHandler;
+  (*layoutEnterHandlers)["compModuleTS"] = &compModuleTraceStream::enterTraceStream;
+  (*layoutExitHandlers )["compModuleTS"] = &defaultExitHandler;
+  
+  
 }
 moduleLayoutHandlerInstantiator moduleLayoutHandlerInstance;
 
@@ -147,114 +151,6 @@ modularApp::~modularApp() {
   /*assert(mStack.size()>0);
   assert(mStack.back()==this);
   mStack.pop_back();*/
-}
-
-void *modularApp::enterTraceStream(properties::iterator props) {
-  //cout << "modularApp::enterTraceStream"<<endl;
-  assert(props.name() == "moduleTS");
-  //string moduleName = properties::get(nameProps, "ModuleName");
-  
-  // Allocate a new moduleTraceStream. The constructor takes care of registering it with the currently active module
-  new moduleTraceStream(props);
-  
-  return NULL;
-}
-
-/*****************************
- ***** moduleTraceStream *****
- *****************************/
-
-moduleTraceStream::moduleTraceStream(properties::iterator props, traceObserver* observer) : 
-  traceStream(properties::next(props), txt()<<"CanvizBox_node"<<properties::getInt(props, "moduleID"), false)
-{
-  assert(props.name() == "moduleTS");
-    
-  int moduleID = properties::getInt(props, "moduleID");
-  
-  // Get the currently active module that this traceStream belongs to
-  /*assert(modularApp::mStack.size()>0);
-  module* m = modularApp::activeMA->mStack.back();*/
-  assert(modularApp::activeMA->moduleTraces.find(moduleID) == modularApp::activeMA->moduleTraces.end());
-  
-  // Create a new traceStream object to collect the observations for this module group
-  modularApp::activeMA->moduleTraces[moduleID] = this;
-  
-  // If no observer is specified, register this module group to listen in on observations recorded by this traceStream
-  if(observer==NULL)
-    registerObserver(this);
-  // If an observer is specified, then that observer (a class that derives from will first 
-  
-  // Record the mapping between traceStream IDs and the IDs of the module group they're associated with
-  modularApp::activeMA->trace2moduleID[getID()] = moduleID;
-  ///cout << "moduleID="<<moduleID<<", traceID="<<m->moduleTraces[moduleID]->getID()<<endl;
-}
-
-// Interface implemented by objects that listen for observations a traceStream reads. Such objects
-// call traceStream::registerObserver() to inform a given traceStream that it should observations.
-void moduleTraceStream::observe(int traceID,
-                                const map<string, string>& ctxt, 
-                                const map<string, string>& obs,
-                                const map<string, anchor>& obsAnchor) {
-  // Forward the observation to the active modularApp instance
-  modularApp::activeMA->observe(traceID, ctxt, obs, obsAnchor);
-}
-
-/*********************************
- ***** compModuleTraceStream *****
- *********************************/
-
-compModuleTraceStream::compModuleTraceStream(properties::iterator props, traceObserver* observer) :
-  // Call the parent class constructor, informing it that this derived class (or one derived from it) will serve as listener
-  moduleTraceStream(props.next(), this),
-  options(props, "op")
-{
-  // If no observer is specified, register this module group to listen in on observations recorded by this traceStream
-  if(observer==NULL)
-    // Register this object group to listen in on observations recorded by this traceStream
-    registerObserver(this);
-  
-  isReference = properties::getInt(props, "isReference");
-}
-
-// Interface implemented by objects that listen for observations a traceStream reads. Such objects
-// call traceStream::registerObserver() to inform a given traceStream that it should observations.
-void compModuleTraceStream::observe(int traceID,
-                                    const map<string, string>& ctxt, 
-                                    const map<string, string>& obs,
-                                    const map<string, anchor>& obsAnchor) {
-  map<string, string> inputCtxt;
-  for(map<string, string>::iterator c=ctxt.begin(); c!=ctxt.end(); c++)
-    // If the current context key is not an option, it is an input
-    if(!options.isKey(c->first))
-      inputCtxt[c->first] = c->second;
-  
-  // If this is the reference observation for the given input context
-  if(ctxt.find["isReference"] != ctxt.end()) {
-    // There can only be one such observation for a given input context
-    assert(referenceObs.find(inputCtxt) == referenceObs.end());
-    
-    // Record the reference observation
-    referenceObs[inputCtxt] = obs;
-    
-    // If we've observed any observations that we need to compare to the reference
-    if(comparisonObs.find(inputCtxt) != comparisonObs.end()) {
-      list<map<string, string> >& comp = comparisonObs[inputCtxt];
-      for(list<map<string, string> >::iterator i=comp.begin(); i!=comp.end(); i++) {
-        // Call the observe method of the parent class 
-        module::observe(traceID, inputCtxt, *i, map<string, anchor>());
-      }
-    }
-  // If this is a non-reference observation
-  } else {
-    // If we've already observed the reference observation for the current input context
-    if(referenceObs.find(inputCtxt) != referenceObs.end()) {
-      // Compare this observation to the reference and emit the result to the observe method of the parent class
-      module::observe(traceID, inputCtxt, obs, obsAnchor);
-    // If we have not yet observed the reference, record this non-reference observation in comparisonObs
-    } else {
-      comparisonObs[inputCtxt].push_back(obs);
-    }
-  }
 }
 
 string portName(common::module::ioT type, int index) 
@@ -511,7 +407,7 @@ void modularApp::showButtons(int numInputs, int numOutputs, int ID, std::string 
       if(ctxtNames[ID].find(i)!=ctxtNames[ID].end()) {
         for(list<string>::iterator c=ctxtNames[ID][i].begin(); c!=ctxtNames[ID][i].end(); c++) {
           int buttonID = maxButtonID; maxButtonID++;
-          dotFile << dotFile << "<TD BGCOLOR=\"#"<<bgColor<<"\"><FONT POINT-SIZE=\"14\">"<<buttonID<<":"<<*t<<"</FONT></TD>";
+          dotFile << "<TD BGCOLOR=\"#"<<bgColor<<"\"><FONT POINT-SIZE=\"14\">"<<buttonID<<":"<<*t<<"</FONT></TD>";
 
           // Register the command to be executed when this button is clicked
           ostringstream cmd; 
@@ -521,7 +417,7 @@ void modularApp::showButtons(int numInputs, int numOutputs, int ID, std::string 
           dbg.widgetScriptCommand(cmd.str());
         } // ctxt attrs
       } else
-        dotFile << dotFile << "<TD></TD>";
+        dotFile << "<TD></TD>";
     } // inputs
     dotFile << "\t\t\t</TR>"<<endl;
   } // trace attrs
@@ -596,10 +492,10 @@ void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int
     for(int i=0; i<numInputs; i++) {
       if(ctxtNames[moduleID].find(i)!=ctxtNames[moduleID].end()) {
         for(list<string>::iterator c=ctxtNames[moduleID][i].begin(); c!=ctxtNames[moduleID][i].end(); c++) {
-          dotFile << dotFile << "<TD BGCOLOR=\"#000066\"><FONT COLOR=\"#ffffff\" POINT-SIZE=\"18\">:"<<*c<<"</FONT></TD>";
+          dotFile << "<TD BGCOLOR=\"#000066\"><FONT COLOR=\"#ffffff\" POINT-SIZE=\"18\">:"<<*c<<"</FONT></TD>";
         }
       } else
-        dotFile << dotFile << "<TD></TD>";
+        dotFile << "<TD></TD>";
     }
     dotFile << "\t\t\t</TR>"<<endl;
 
@@ -738,13 +634,15 @@ void modularApp::observe(int traceID,
   assert(trace2moduleID.find(traceID) != trace2moduleID.end());
   int moduleID = trace2moduleID[traceID];
   
-  /*cout << "module::observe(this="<<this<<")(traceID="<<traceID<<", moduleID="<<moduleID<<"), #ctxtNames="<<ctxtNames.size()<<endl;
+  cout << "modularApp::observe("<<traceID<<")"<<endl;
+  
+  /*cout << "module::observe(this="<<this<<")(traceID="<<traceID<<", moduleID="<<moduleID<<"), #ctxtNames="<<ctxtNames.size()<<endl;*/
   cout << "    ctxt=";
   for(map<string, string>::const_iterator c=ctxt.begin(); c!=ctxt.end(); c++) { cout << c->first << ":"<<c->second<<" "; }
   cout << endl;
   cout << "    obs=";
   for(map<string, string>::const_iterator o=obs.begin(); o!=obs.end(); o++) { cout << o->first << ":"<<o->second<<" "; }
-  cout << endl;*/
+  cout << endl;
   
   // Extract the input ports with which all the context attributes are associated and record this in 
   std::map<int, std::list<std::string> > curCtxtNames;
@@ -776,132 +674,297 @@ void modularApp::observe(int traceID,
   else if(numericCtxtNames[moduleID] != curNumericCtxtNames)
   { cerr << "ERROR: Inconsistent numeric context attributes in different observations for the same module node "<<moduleID<<"! Before observed "<<numericCtxtNames[moduleID].size()<<" numeric context attributed but this observation has "<<curNumericCtxtNames.size()<<"."<<endl; assert(false); }
   
-  // Do nothing if none of the context attributes are numeric
-  if(numericCtxt.size()==0) return;
+  // Only bother computing the polynomial fit if any of the context attributes are numeric
+  if(numericCtxt.size()>0) {
+    // Read out the names of the observation's trace attributes
+    /*if(traceAttrNames.find(moduleID) == traceAttrNames.end()) {
+      for(map<string, string>::const_iterator o=obs.begin(); o!=obs.end(); o++)
+        traceAttrNames[moduleID].push_back(o->first);
+    }*/
+    for(map<string, string>::const_iterator o=obs.begin(); o!=obs.end(); o++) {
+      traceAttrNames[moduleID].insert(o->first);
+      // If this is the first time we've encountered this trace attribute, map it to a fresh column number
+      if(traceAttrName2Col[moduleID].find(o->first) == traceAttrName2Col[moduleID].end()) {
+        assert(traceAttrName2Count[moduleID].size() == traceAttrName2Col[moduleID].size());
+        int newCol = traceAttrName2Col[moduleID].size();
+        traceAttrName2Col[moduleID][o->first] = newCol;
+
+        // We have not yet recorded any observations for this trace attribute (we will later in this function)
+        traceAttrName2Count[moduleID].push_back(0);
+      }
+    }
+
+    int maxDegree = 2;
+    // The total number of polynomial terms to maxDegree: 
+
+    long numTerms = (numericCtxt.size()==1 ? maxDegree+1:
+                         // #numericCtxt^0 + #numericCtxt^1 + #numericCtxt^2 + ... + #numericCtxt^maxDegree = #numericCtxt^(maxDegree+1) - 1
+                         pow(numericCtxt.size(), maxDegree+1));
+
+    //cout << "module::observe() moduleID="<<moduleID<<", #numericCtxt="<<numericCtxt.size()<<", #polyfitCtxt="<<polyfitCtxt.size()<<", found="<<(polyfitCtxt.find(moduleID) != polyfitCtxt.end())<<", numTerms="<<numTerms<<endl;
+
+    // If this is the first observation we have from the given traceStream, allocate the
+    // polynomial fit datastructures
+    if(polyfitCtxt.find(moduleID) == polyfitCtxt.end()) {
+      polyfitCtxt[moduleID] = gsl_matrix_alloc(1000, numTerms);
+
+      //for(map<string, string>::const_iterator o=obs.begin(); o!=obs.end(); o++) {
+      //  polyfitObs[moduleID].push_back(gsl_vector_alloc(1000));
+      //}
+      polyfitObs[moduleID] = gsl_matrix_alloc(1000, traceAttrName2Col[moduleID].size());
+
+      numObs[moduleID] = 0;
+      numAllocObs[moduleID] = 1000;
+      numAllocTraceAttrs[moduleID] = traceAttrName2Col[moduleID].size();
+
+      //cout << "    Allocated "<<numAllocObs[moduleID]<<" rows, "<<numAllocTraceAttrs[moduleID]<<" columns"<<endl;
+    }
+    //cout << "module::observe() #polyfitCtxt="<<polyfitCtxt.size()<<", found="<<(polyfitCtxt.find(moduleID) != polyfitCtxt.end())<<endl;
+
+    //cout << "traceAttrName2Col[moduleID].size()="<<traceAttrName2Col[moduleID].size()<<" numAllocTraceAttrs[moduleID]="<<numAllocTraceAttrs[moduleID]<<endl;
+    // If we're out of space in polyfitCtxt[moduleID] and polyfitObs[moduleID] to store another observation or store more columns, grow them
+    if(numObs[moduleID] == numAllocObs[moduleID] || 
+       traceAttrName2Col[moduleID].size() > numAllocTraceAttrs[moduleID]) {
+      // If we're out of space for rows, double it
+      int newNumAllocObs = numAllocObs[moduleID];
+      if(numObs[moduleID] == numAllocObs[moduleID]) newNumAllocObs *= 2;
+
+      // If we need new columns, adjust accordingly
+      int newNumAllocTraceAttrs = numAllocTraceAttrs[moduleID];
+      if(traceAttrName2Col[moduleID].size() > numAllocTraceAttrs[moduleID])
+        newNumAllocTraceAttrs = traceAttrName2Col[moduleID].size();
+
+      // Expand polyfitCtxt[moduleID]
+      gsl_matrix* newCtxt = gsl_matrix_alloc(newNumAllocObs, numTerms);
+      gsl_matrix_view newCtxtView = gsl_matrix_submatrix (newCtxt, 0, 0, numAllocObs[moduleID], numTerms);
+      gsl_matrix_memcpy (&(newCtxtView.matrix), polyfitCtxt[moduleID]);
+      gsl_matrix_free(polyfitCtxt[moduleID]);
+      polyfitCtxt[moduleID] = newCtxt;
+
+      // Expand polyfitObs[moduleID]
+      gsl_matrix* newObs = gsl_matrix_alloc(newNumAllocObs, newNumAllocTraceAttrs);
+      gsl_matrix_view newObsView = gsl_matrix_submatrix (newObs, 0, 0, numAllocObs[moduleID], numAllocTraceAttrs[moduleID]);
+      gsl_matrix_memcpy (&(newObsView.matrix), polyfitObs[moduleID]);
+      gsl_matrix_free(polyfitObs[moduleID]);
+      polyfitObs[moduleID] = newObs;
+
+      // Update our allocated space records
+      numAllocObs[moduleID] = newNumAllocObs;
+      numAllocTraceAttrs[moduleID] = newNumAllocTraceAttrs;
+      //cout << "    Reallocated "<<numAllocObs[moduleID]<<" rows, "<<numAllocTraceAttrs[moduleID]<<" columns"<<endl;
+    }
+
+    // Add this observation to polyfitObs
+    int obsIdx=0;
+    // Records whether this observation corresponds to a new context row
+    bool newContext = false;
+
+    //cout << "    Adding Observations:"<<endl;
+    for(map<string, string>::const_iterator o=obs.begin(); o!=obs.end(); o++, obsIdx++) {
+      // For now we assert that all observed values must be numeric
+      const char *valStr = o->second.c_str();
+      char *nextValStr;
+      double v = strtod(valStr, &nextValStr);
+      assert(nextValStr != valStr);
+
+      int traceAttrCol = traceAttrName2Col[moduleID][o->first];
+      /*cout << "        "<<o->first<<"  traceAttrCol="<<traceAttrCol<<
+                 ", numAllocTraceAttrs[moduleID]="<<numAllocTraceAttrs[moduleID]<<
+                 ", traceAttrName2Count[moduleID][traceAttrCol]="<<traceAttrName2Count[moduleID][traceAttrCol]<<
+                 ", numObs[moduleID]="<<numObs[moduleID]<<endl;*/
+
+      assert(traceAttrCol < numAllocTraceAttrs[moduleID]);
+      gsl_matrix_set(polyfitObs[moduleID], traceAttrName2Count[moduleID][traceAttrCol], traceAttrCol, v);
+
+      // Increment the number of values written into the current column
+      traceAttrName2Count[moduleID][traceAttrCol]++;
+
+      // If this observation has started a new row in the observations matrix
+      if(traceAttrName2Count[moduleID][traceAttrCol] > numObs[moduleID]) {
+        assert(traceAttrName2Count[moduleID][traceAttrCol] == numObs[moduleID]+1);
+        // Update numObs[moduleID] to correspond to the maximum number of values written to any column
+        numObs[moduleID] = traceAttrName2Count[moduleID][traceAttrCol];
+
+        // Record that this is a new context, which should be written into polyfitCtxt
+        newContext = true;
+      }
+    }
+
+    // Add the context of the observation to polyfitCtxt
+
+    // The first entry corresponds to the degree-0 constant term
+    gsl_matrix_set(polyfitCtxt[moduleID], numObs[moduleID], 0, 1);
+
+    // Add all the polynomial terms of degrees upto and including maxDegree
+    int col=1;
+    for(int degree=1; degree<=maxDegree; degree++)
+      addPolyTerms(numericCtxt, 0, degree, numObs[moduleID], col, 1, polyfitCtxt[moduleID]);
+  }
+  
+  // Forward the observation to observers of this object
+  emitObservation(traceID, ctxt, obs, obsAnchor);
+}
+
+/*****************************
+ ***** moduleTraceStream *****
+ *****************************/
+
+moduleTraceStream::moduleTraceStream(properties::iterator props, traceObserver* observer) : 
+  traceStream(properties::next(props), txt()<<"CanvizBox_node"<<properties::getInt(props, "moduleID"), false)
+{
+  assert(props.name() == "moduleTS");
     
-  // Read out the names of the observation's trace attributes
-  /*if(traceAttrNames.find(moduleID) == traceAttrNames.end()) {
-    for(map<string, string>::const_iterator o=obs.begin(); o!=obs.end(); o++)
-      traceAttrNames[moduleID].push_back(o->first);
-  }*/
-  for(map<string, string>::const_iterator o=obs.begin(); o!=obs.end(); o++) {
-    traceAttrNames[moduleID].insert(o->first);
-    // If this is the first time we've encountered this trace attribute, map it to a fresh column number
-    if(traceAttrName2Col[moduleID].find(o->first) == traceAttrName2Col[moduleID].end()) {
-      assert(traceAttrName2Count[moduleID].size() == traceAttrName2Col[moduleID].size());
-      int newCol = traceAttrName2Col[moduleID].size();
-      traceAttrName2Col[moduleID][o->first] = newCol;
-      
-      // We have not yet recorded any observations for this trace attribute (we will later in this function)
-      traceAttrName2Count[moduleID].push_back(0);
+  int moduleID = properties::getInt(props, "moduleID");
+  
+  // Get the currently active module that this traceStream belongs to
+  /*assert(modularApp::mStack.size()>0);
+  module* m = modularApp::activeMA->mStack.back();*/
+  assert(modularApp::activeMA->moduleTraces.find(moduleID) == modularApp::activeMA->moduleTraces.end());
+  
+  // Create a new traceStream object to collect the observations for this module group
+  modularApp::activeMA->moduleTraces[moduleID] = this;
+  
+  // If no observer is specified, register the current instance of modularApp to listen in on observations recorded by this traceStream
+  if(observer==NULL)
+    registerObserver(modularApp::getInstance());
+  // If an observer is specified, then that observer (a class that derives from will first 
+  
+  // Record the mapping between traceStream IDs and the IDs of the module group they're associated with
+  modularApp::activeMA->trace2moduleID[getID()] = moduleID;
+  ///cout << "moduleID="<<moduleID<<", traceID="<<m->moduleTraces[moduleID]->getID()<<endl;
+}
+
+// Called when we observe the entry tag of a moduleTraceStream
+void *moduleTraceStream::enterTraceStream(properties::iterator props) {
+  //cout << "modularApp::enterTraceStream"<<endl;
+  assert(props.name() == "moduleTS");
+  //string moduleName = properties::get(nameProps, "ModuleName");
+  
+  // Allocate a new moduleTraceStream. The constructor takes care of registering it with the currently active module
+  new moduleTraceStream(props);
+  
+  return NULL;
+}
+
+/*********************************
+ ***** compModuleTraceStream *****
+ *********************************/
+
+compModuleTraceStream::compModuleTraceStream(properties::iterator props, traceObserver* observer) :
+  moduleTraceStream(props.next(), this)
+{
+  // If no observer is specified, register a filtering queue containing a compModule, followed by the the current instance of 
+  // modularApp to listen in on observations recorded by this traceStream.
+  if(observer==NULL) {
+    cmFilter = new compModule(/*properties::getInt(props, "isReference"), */common::module::context(props, "op"));
+    // The queue of observation filters
+    queue = new traceObserverQueue(traceObservers(
+                    // - filters the decoded data to replace the raw observations with comparisons between 
+                    //   reference configurations and non-reference configurations
+                    cmFilter, 
+                    // - these observations pass through the modular app instance to enable it to build polynomial 
+                    // fits of this data
+                    modularApp::getInstance(), 
+                    // - finally it ends up at the original traceStream to be included in the generated visualization
+                    this));
+    registerObserver(queue);
+  }
+  cout << "cmFilter="<<cmFilter<<", modularApp::getInstance()="<<modularApp::getInstance()<<", queue="<<queue<<endl;
+}
+
+compModuleTraceStream::~compModuleTraceStream() {
+  // Deallocate the observation filter objects
+  delete cmFilter;
+  delete queue;
+}
+
+// Called when we observe the entry tag of a compModuleTraceStream
+void *compModuleTraceStream::enterTraceStream(properties::iterator props) {
+  //cout << "modularApp::enterTraceStream"<<endl;
+  assert(props.name() == "compModuleTS");
+  //string moduleName = properties::get(nameProps, "ModuleName");
+  
+  // Allocate a new compModuleTraceStream. The constructor takes care of registering it with the currently active module
+  new compModuleTraceStream(props);
+  
+  return NULL;
+}
+
+/**********************
+ ***** compModule *****
+ **********************/
+
+// Interface implemented by objects that listen for observations a traceStream reads. Such objects
+// call traceStream::registerObserver() to inform a given traceStream that it should observations.
+void compModule::observe(int traceID,
+                         const map<string, string>& ctxt, 
+                         const map<string, string>& obs,
+                         const map<string, anchor>& obsAnchor) {
+  cout << "compModule::observe("<<traceID<<")"<<endl;
+  cout << "    ctxt=";
+  for(map<string, string>::const_iterator c=ctxt.begin(); c!=ctxt.end(); c++) { cout << c->first << ":"<<c->second<<" "; }
+  cout << endl;
+  cout << "    obs=";
+  for(map<string, string>::const_iterator o=obs.begin(); o!=obs.end(); o++) { cout << o->first << ":"<<o->second<<" "; }
+  cout << endl;
+  cout << "    options=";
+  for(std::map<std::string, attrValue>::iterator o=options.configuration.begin(); o!=options.configuration.end(); o++) { cout << o->first << ":"<<o->second.getAsStr()<<" "; }
+  cout << endl;
+  
+  // The portion of the context that identifies the inputs to the modules rather than the module's options
+  map<string, string> inputCtxt;
+  // The portion of the context that includes both the module's inputs and options but not control attributes such as isReference.
+  map<string, string> strippedCtxt;
+  for(map<string, string>::const_iterator c=ctxt.begin(); c!=ctxt.end(); c++) {
+    string strippedKey;
+    size_t colonLoc = c->first.find(":");
+    if(colonLoc != string::npos) strippedKey = c->first.substr(colonLoc+1);
+    else                         strippedKey = c->first;
+
+    // If the current key is not a control attribute
+    if(strippedKey != "isReference") {
+      // If the current context key is not an option, it is an input
+      if(!options.isKey(strippedKey)) inputCtxt[c->first] = c->second;
+      strippedCtxt[c->first] = c->second;
     }
   }
   
-  int maxDegree = 2;
-  // The total number of polynomial terms to maxDegree: 
+  cout << "    inputCtxt=";
+  for(map<string, string>::const_iterator o=inputCtxt.begin(); o!=inputCtxt.end(); o++) { cout << o->first << ":"<<o->second<<" "; }
+  cout << endl;
+  cout << "    referenceObs[inputCtxt] (#"<<referenceObs.size()<<") : "<<(referenceObs.find(inputCtxt) != referenceObs.end())<<endl;
+  cout << "    comparisonObs[inputCtxt] (#"<<comparisonObs.size()<<") : "<<(comparisonObs.find(inputCtxt) != comparisonObs.end())<<endl;
   
-  long numTerms = (numericCtxt.size()==1 ? maxDegree+1:
-                       // #numericCtxt^0 + #numericCtxt^1 + #numericCtxt^2 + ... + #numericCtxt^maxDegree = #numericCtxt^(maxDegree+1) - 1
-                       pow(numericCtxt.size(), maxDegree+1));
-  
-  //cout << "module::observe() moduleID="<<moduleID<<", #numericCtxt="<<numericCtxt.size()<<", #polyfitCtxt="<<polyfitCtxt.size()<<", found="<<(polyfitCtxt.find(moduleID) != polyfitCtxt.end())<<", numTerms="<<numTerms<<endl;
-     
-  // If this is the first observation we have from the given traceStream, allocate the
-  // polynomial fit datastructures
-  if(polyfitCtxt.find(moduleID) == polyfitCtxt.end()) {
-    polyfitCtxt[moduleID] = gsl_matrix_alloc(1000, numTerms);
+  // If this is the reference observation for the given input context
+  //if(ctxt.find("compModule:isReference") != ctxt.end() && ctxt[]) {
+  map<string, string>::const_iterator isReference = ctxt.find("compModule:isReference");
+  assert(isReference != ctxt.end());
+  if(isReference->second == "1") {
+    // There can only be one such observation for a given input context
+    assert(referenceObs.find(inputCtxt) == referenceObs.end());
     
-    //for(map<string, string>::const_iterator o=obs.begin(); o!=obs.end(); o++) {
-    //  polyfitObs[moduleID].push_back(gsl_vector_alloc(1000));
-    //}
-    polyfitObs[moduleID] = gsl_matrix_alloc(1000, traceAttrName2Col[moduleID].size());
+    // Record the reference observation
+    referenceObs[inputCtxt] = obs;
     
-    numObs[moduleID] = 0;
-    numAllocObs[moduleID] = 1000;
-    numAllocTraceAttrs[moduleID] = traceAttrName2Col[moduleID].size();
-    
-    //cout << "    Allocated "<<numAllocObs[moduleID]<<" rows, "<<numAllocTraceAttrs[moduleID]<<" columns"<<endl;
-  }
-  //cout << "module::observe() #polyfitCtxt="<<polyfitCtxt.size()<<", found="<<(polyfitCtxt.find(moduleID) != polyfitCtxt.end())<<endl;
-  
-  //cout << "traceAttrName2Col[moduleID].size()="<<traceAttrName2Col[moduleID].size()<<" numAllocTraceAttrs[moduleID]="<<numAllocTraceAttrs[moduleID]<<endl;
-  // If we're out of space in polyfitCtxt[moduleID] and polyfitObs[moduleID] to store another observation or store more columns, grow them
-  if(numObs[moduleID] == numAllocObs[moduleID] || 
-     traceAttrName2Col[moduleID].size() > numAllocTraceAttrs[moduleID]) {
-    // If we're out of space for rows, double it
-    int newNumAllocObs = numAllocObs[moduleID];
-    if(numObs[moduleID] == numAllocObs[moduleID]) newNumAllocObs *= 2;
-    
-    // If we need new columns, adjust accordingly
-    int newNumAllocTraceAttrs = numAllocTraceAttrs[moduleID];
-    if(traceAttrName2Col[moduleID].size() > numAllocTraceAttrs[moduleID])
-      newNumAllocTraceAttrs = traceAttrName2Col[moduleID].size();
-    
-    // Expand polyfitCtxt[moduleID]
-    gsl_matrix* newCtxt = gsl_matrix_alloc(newNumAllocObs, numTerms);
-    gsl_matrix_view newCtxtView = gsl_matrix_submatrix (newCtxt, 0, 0, numAllocObs[moduleID], numTerms);
-    gsl_matrix_memcpy (&(newCtxtView.matrix), polyfitCtxt[moduleID]);
-    gsl_matrix_free(polyfitCtxt[moduleID]);
-    polyfitCtxt[moduleID] = newCtxt;
-    
-    // Expand polyfitObs[moduleID]
-    gsl_matrix* newObs = gsl_matrix_alloc(newNumAllocObs, newNumAllocTraceAttrs);
-    gsl_matrix_view newObsView = gsl_matrix_submatrix (newObs, 0, 0, numAllocObs[moduleID], numAllocTraceAttrs[moduleID]);
-    gsl_matrix_memcpy (&(newObsView.matrix), polyfitObs[moduleID]);
-    gsl_matrix_free(polyfitObs[moduleID]);
-    polyfitObs[moduleID] = newObs;
-    
-    // Update our allocated space records
-    numAllocObs[moduleID] = newNumAllocObs;
-    numAllocTraceAttrs[moduleID] = newNumAllocTraceAttrs;
-    //cout << "    Reallocated "<<numAllocObs[moduleID]<<" rows, "<<numAllocTraceAttrs[moduleID]<<" columns"<<endl;
-  }
-  
-  // Add this observation to polyfitObs
-  int obsIdx=0;
-  // Records whether this observation corresponds to a new context row
-  bool newContext = false;
-  
-  //cout << "    Adding Observations:"<<endl;
-  for(map<string, string>::const_iterator o=obs.begin(); o!=obs.end(); o++, obsIdx++) {
-    // For now we assert that all observed values must be numeric
-    const char *valStr = o->second.c_str();
-    char *nextValStr;
-    double v = strtod(valStr, &nextValStr);
-    assert(nextValStr != valStr);
-    
-    int traceAttrCol = traceAttrName2Col[moduleID][o->first];
-    /*cout << "        "<<o->first<<"  traceAttrCol="<<traceAttrCol<<
-               ", numAllocTraceAttrs[moduleID]="<<numAllocTraceAttrs[moduleID]<<
-               ", traceAttrName2Count[moduleID][traceAttrCol]="<<traceAttrName2Count[moduleID][traceAttrCol]<<
-               ", numObs[moduleID]="<<numObs[moduleID]<<endl;*/
-    
-    assert(traceAttrCol < numAllocTraceAttrs[moduleID]);
-    gsl_matrix_set(polyfitObs[moduleID], traceAttrName2Count[moduleID][traceAttrCol], traceAttrCol, v);
-    
-    // Increment the number of values written into the current column
-    traceAttrName2Count[moduleID][traceAttrCol]++;
-    
-    // If this observation has started a new row in the observations matrix
-    if(traceAttrName2Count[moduleID][traceAttrCol] > numObs[moduleID]) {
-      assert(traceAttrName2Count[moduleID][traceAttrCol] == numObs[moduleID]+1);
-      // Update numObs[moduleID] to correspond to the maximum number of values written to any column
-      numObs[moduleID] = traceAttrName2Count[moduleID][traceAttrCol];
-      
-      // Record that this is a new context, which should be written into polyfitCtxt
-      newContext = true;
+    // If we've observed any observations that we need to compare to the reference
+    if(comparisonObs.find(inputCtxt) != comparisonObs.end()) {
+      list<map<string, string> >& comp = comparisonObs[inputCtxt];
+      for(list<map<string, string> >::iterator i=comp.begin(); i!=comp.end(); i++) {
+        // Call the observe method of the parent class 
+        emitObservation(traceID, strippedCtxt, *i, map<string, anchor>());
+      }
+    }
+  // If this is a non-reference observation
+  } else {
+    // If we've already observed the reference observation for the current input context
+    if(referenceObs.find(inputCtxt) != referenceObs.end()) {
+      // Compare this observation to the reference and emit the result to the observe method of the parent class
+      emitObservation(traceID, strippedCtxt, obs, obsAnchor);
+    // If we have not yet observed the reference, record this non-reference observation in comparisonObs
+    } else {
+      comparisonObs[inputCtxt].push_back(obs);
     }
   }
-
-  // Add the context of the observation to polyfitCtxt
-      
-  // The first entry corresponds to the degree-0 constant term
-  gsl_matrix_set(polyfitCtxt[moduleID], numObs[moduleID], 0, 1);
-
-  // Add all the polynomial terms of degrees upto and including maxDegree
-  int col=1;
-  for(int degree=1; degree<=maxDegree; degree++)
-    addPolyTerms(numericCtxt, 0, degree, numObs[moduleID], col, 1, polyfitCtxt[moduleID]);
 }
 
 }; // namespace layout

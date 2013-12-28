@@ -386,6 +386,7 @@ int merge(vector<FILEStructureParser*>& parsers,
 //          cout << "props.second="<<props.second->str()<<endl;
           //cout << "MergeHandlerInstantiator="<<MergeHandlerInstantiator::str()<<endl;
           //std::list<std::string> key = mergers[props.second->name()]->mergeKey(props.first, props.second->begin(), inStreamRecords[parserIdx]);
+          if(MergeHandlerInstantiator::MergeKeyHandlers->find(props.second->name()) == MergeHandlerInstantiator::MergeKeyHandlers->end()) { cerr << "ERROR: no merge handler for tag \""<<props.second->name()<<"\"!"<<endl; }
           assert(MergeHandlerInstantiator::MergeKeyHandlers->find(props.second->name()) != MergeHandlerInstantiator::MergeKeyHandlers->end());
           std::list<std::string> key;
           (*MergeHandlerInstantiator::MergeKeyHandlers)[props.second->name()](props.first, props.second->begin(), inStreamRecords[parserIdx], key);

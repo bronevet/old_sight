@@ -20,9 +20,9 @@ module::context::context(properties::iterator props, std::string prefix) {
   
   int numCfgKeys = properties::getInt(props, txt()<<prefix<<"numCfgKeys");
   for(int i=0; i<numCfgKeys; i++) {
-    configuration[properties::get(props, txt()<<"key_"<<i)] = 
-                              attrValue(properties::get(props, txt()<<"val_"<<i),
-                                        (attrValue::valueType)properties::getInt(props, txt()<<"type_"<<i));
+    configuration[properties::get(props, txt()<<prefix<<"key_"<<i)] = 
+                              attrValue(properties::get(props, txt()<<prefix<<"val_"<<i),
+                                        (attrValue::valueType)properties::getInt(props, txt()<<prefix<<"type_"<<i));
   }
 }
 

@@ -58,6 +58,14 @@ group::group(const std::list<module*>& mStack, const instance& inst) {
   stack.push_back(inst);
 }
 
+
+void group::init(const std::list<module*>& mStack, const instance& inst) {
+  stack.clear();
+  for(std::list<module*>::const_iterator m=mStack.begin(); m!=mStack.end(); m++)
+    stack.push_back((*m)->g.getInst());
+  stack.push_back(inst);
+}
+
 // Returns the name of the most deeply nested instance within this group
 std::string group::name() const {
   assert(stack.size()>0);
@@ -292,6 +300,10 @@ void modularApp::enterModuleGroup(const group& g) {
   pMap["count"] = txt()<<modularApp::group2Count[g];
   props->add("module", pMap);*/
   
+  // Add the count property to the map of "module".
+  /*properties::iterator moduleIter = moduleProps[g]->find("module");
+  properties::set(moduleIter, "count", txt()<<modularApp::group2Count[g]);*/
+  moduleProps[g]->set("module", "count", txt()<<modularApp::group2Count[g]);
   moduleEmitStack.push_back(new sightObj(moduleProps[g]));
 }
 
@@ -428,8 +440,6 @@ int modularApp::genModuleID(const group& g) {
     maxModuleGroupID++;
     group2Count[g] = 1;
     
-    moduleTrace[g] = new moduleTraceStream(group2ID[g], g.name(), g.numInputs(), g.numOutputs(), trace::lines, trace::disjMerge);
-    
     // Add this group to the instance tree
     tree.add(g);
   } else
@@ -526,7 +536,7 @@ module* modularApp::getCurModule() {
 }
 
 // Adds the given module object to the modules stack
-void modularApp::enterModule(module* m, int moduleID, properties* props) {
+void modularApp::enterModule(module* m, int moduleID, properties* props, generateTraceStream& tsGenerator) {
   // Exactly one modularAppInstance must be active
   assert(isInstanceActive());
   
@@ -537,9 +547,16 @@ void modularApp::enterModule(module* m, int moduleID, properties* props) {
     moduleProps[m->g] = props;
   // Otherwise, make sure that every module within the same group has the same properties
   else {
+    /*cout << "props="<<props->str()<<endl;
+    cout << "moduleProps["<<m->g.str()<<"]="<<moduleProps[m->g]->str()<<endl;*/
     assert(*(moduleProps[m->g]) == *props);
     // Delete props since it is no longer useful
     delete props;
+  }
+  
+  // If we have not yet create a traceStream for this module group, do so now
+  if(moduleTrace.find(m->g) == moduleTrace.end()) {
+    moduleTrace[m->g] = tsGenerator(moduleID);
   }
 }
 
@@ -555,113 +572,113 @@ void modularApp::exitModule(module* m) {
  ***** module *****
  ******************/
 
-module::module(const instance& inst,                                                     std::pair<properties*, std::map<std::string, attrValue> >* derivInfo) : 
+module::module(const instance& inst,                                                     derivInfo* deriv) : 
   /*sightObj(setProperties(inst, inputs(),   NULL, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(NULL)
-{ init(inputs(), derivInfo; }
+{ init(inputs(), deriv); }
 
-module::module(const instance& inst, const port& in,                                     std::pair<properties*, std::map<std::string, attrValue> >* derivInfo): 
+module::module(const instance& inst, const port& in,                                     derivInfo* deriv): 
   /*sightObj(setProperties(inst, inputs(in), NULL, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(NULL)
-{ init(inputs(in), derivInfo; }
+{ init(inputs(in), deriv); }
 
-module::module(const instance& inst, const std::vector<port>& in,                        std::pair<properties*, std::map<std::string, attrValue> >* derivInfo) :
+module::module(const instance& inst, const std::vector<port>& in,                        derivInfo* deriv) :
   /*sightObj(setProperties(inst, in,         NULL, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(NULL)
-{ init(in, derivInfo; }
+{ init(in, deriv); }
 
-module::module(const instance& inst,                              const attrOp& onoffOp, std::pair<properties*, std::map<std::string, attrValue> >* derivInfo) : 
+module::module(const instance& inst,                              const attrOp& onoffOp, derivInfo* deriv) : 
   /*sightObj(setProperties(inst, inputs(),   &onoffOp, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(NULL)
-{ init(inputs(), derivInfo; }
+{ init(inputs(), deriv); }
 
-module::module(const instance& inst, const port& in,              const attrOp& onoffOp, std::pair<properties*, std::map<std::string, attrValue> >* derivInfo): 
+module::module(const instance& inst, const port& in,              const attrOp& onoffOp, derivInfo* deriv): 
   /*sightObj(setProperties(inst, inputs(in), &onoffOp, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(NULL)
-{ init(inputs(in), derivInfo; }
+{ init(inputs(in), deriv); }
 
-module::module(const instance& inst, const std::vector<port>& in, const attrOp& onoffOp, std::pair<properties*, std::map<std::string, attrValue> >* derivInfo) :
+module::module(const instance& inst, const std::vector<port>& in, const attrOp& onoffOp, derivInfo* deriv) :
   /*sightObj(setProperties(inst, in,         &onoffOp, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(NULL)
-{ init(in, derivInfo; }
+{ init(in, deriv); }
 
 
-module::module(const instance& inst,                              std::vector<port>& externalOutputs,                        std::pair<properties*, std::map<std::string, attrValue> >* derivInfo) : 
+module::module(const instance& inst,                              std::vector<port>& externalOutputs,                        derivInfo* deriv) : 
   /*sightObj(setProperties(inst, inputs(),   NULL, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(&externalOutputs)
-{ init(inputs(), derivInfo; }
+{ init(inputs(), deriv); }
 
-module::module(const instance& inst, const port& in,              std::vector<port>& externalOutputs,                        std::pair<properties*, std::map<std::string, attrValue> >* derivInfo): 
+module::module(const instance& inst, const port& in,              std::vector<port>& externalOutputs,                        derivInfo* deriv): 
   /*sightObj(setProperties(inst, inputs(in), NULL, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(&externalOutputs)
-{ init(inputs(in), derivInfo; }
+{ init(inputs(in), deriv); }
 
-module::module(const instance& inst, const std::vector<port>& in, std::vector<port>& externalOutputs,                        std::pair<properties*, std::map<std::string, attrValue> >* derivInfo) :
+module::module(const instance& inst, const std::vector<port>& in, std::vector<port>& externalOutputs,                        derivInfo* deriv) :
   /*sightObj(setProperties(inst, in,         NULL, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(&externalOutputs)
-{ init(in, derivInfo; }
+{ init(in, deriv); }
 
-module::module(const instance& inst,                              std::vector<port>& externalOutputs, const attrOp& onoffOp, std::pair<properties*, std::map<std::string, attrValue> >* derivInfo) : 
+module::module(const instance& inst,                              std::vector<port>& externalOutputs, const attrOp& onoffOp, derivInfo* deriv) : 
   /*sightObj(setProperties(inst, inputs(),   &onoffOp, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(&externalOutputs)
-{ init(inputs(), derivInfo; }
+{ init(inputs(), deriv); }
 
-module::module(const instance& inst, const port& in,              std::vector<port>& externalOutputs, const attrOp& onoffOp, std::pair<properties*, std::map<std::string, attrValue> >* derivInfo): 
+module::module(const instance& inst, const port& in,              std::vector<port>& externalOutputs, const attrOp& onoffOp, derivInfo* deriv): 
   /*sightObj(setProperties(inst, inputs(in), &onoffOp, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(&externalOutputs)
-{ init(inputs(in), derivInfo; }
+{ init(inputs(in), deriv); }
 
-module::module(const instance& inst, const std::vector<port>& in, std::vector<port>& externalOutputs, const attrOp& onoffOp, std::pair<properties*, std::map<std::string, attrValue> >* derivInfo) :
+module::module(const instance& inst, const std::vector<port>& in, std::vector<port>& externalOutputs, const attrOp& onoffOp, derivInfo* deriv) :
   /*sightObj(setProperties(inst, in,         &onoffOp, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(&externalOutputs)
-{ init(in, derivInfo; }
+{ init(in, deriv); }
 
 
 
-module::module(const instance& inst,                                                     const namedMeasures& meas, std::pair<properties*, std::map<std::string, attrValue> >* derivInfo) : 
+module::module(const instance& inst,                                                     const namedMeasures& meas, derivInfo* deriv) : 
   /*sightObj(setProperties(inst, inputs(),   NULL, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(NULL), meas(meas)
-{ init(inputs(), derivInfo; }
+{ init(inputs(), deriv); }
 
-module::module(const instance& inst, const port& in,                                     const namedMeasures& meas, std::pair<properties*, std::map<std::string, attrValue> >* derivInfo): 
+module::module(const instance& inst, const port& in,                                     const namedMeasures& meas, derivInfo* deriv): 
   /*sightObj(setProperties(inst, inputs(in), NULL, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(NULL), meas(meas)
-{ init(inputs(in), derivInfo; }
+{ init(inputs(in), deriv); }
 
-module::module(const instance& inst, const std::vector<port>& in,                        const namedMeasures& meas, std::pair<properties*, std::map<std::string, attrValue> >* derivInfo) :
+module::module(const instance& inst, const std::vector<port>& in,                        const namedMeasures& meas, derivInfo* deriv) :
   /*sightObj(setProperties(inst, in,         NULL, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(NULL), meas(meas)
-{ init(in, derivInfo; }
+{ init(in, deriv); }
 
-module::module(const instance& inst,                              const attrOp& onoffOp, const namedMeasures& meas, std::pair<properties*, std::map<std::string, attrValue> >* derivInfo) : 
+module::module(const instance& inst,                              const attrOp& onoffOp, const namedMeasures& meas, derivInfo* deriv) : 
   /*sightObj(setProperties(inst, inputs(),   &onoffOp, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(NULL), meas(meas)
-{ init(inputs(), derivInfo; }
+{ init(inputs(), deriv); }
 
-module::module(const instance& inst, const port& in,              const attrOp& onoffOp, const namedMeasures& meas, std::pair<properties*, std::map<std::string, attrValue> >* derivInfo): 
+module::module(const instance& inst, const port& in,              const attrOp& onoffOp, const namedMeasures& meas, derivInfo* deriv): 
   /*sightObj(setProperties(inst, inputs(in), &onoffOp, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(NULL), meas(meas)
-{ init(inputs(in), derivInfo; }
+{ init(inputs(in), deriv); }
 
-module::module(const instance& inst, const std::vector<port>& in, const attrOp& onoffOp, const namedMeasures& meas, std::pair<properties*, std::map<std::string, attrValue> >* derivInfo) :
+module::module(const instance& inst, const std::vector<port>& in, const attrOp& onoffOp, const namedMeasures& meas, derivInfo* deriv) :
   /*sightObj(setProperties(inst, in,         &onoffOp, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(NULL), meas(meas)
-{ init(in, derivInfo; }
+{ init(in, deriv); }
 
 
-module::module(const instance& inst,                              std::vector<port>& externalOutputs,                        const namedMeasures& meas, std::pair<properties*, std::map<std::string, attrValue> >* derivInfo) : 
+module::module(const instance& inst,                              std::vector<port>& externalOutputs,                        const namedMeasures& meas, derivInfo* deriv) : 
   /*sightObj(setProperties(inst, inputs(),   NULL, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(&externalOutputs), meas(meas)
-{ init(inputs(), derivInfo; }
+{ init(inputs(), deriv); }
 
-module::module(const instance& inst, const port& in,              std::vector<port>& externalOutputs,                        const namedMeasures& meas, std::pair<properties*, std::map<std::string, attrValue> >* derivInfo): 
+module::module(const instance& inst, const port& in,              std::vector<port>& externalOutputs,                        const namedMeasures& meas, derivInfo* deriv): 
   /*sightObj(setProperties(inst, inputs(in), NULL, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(&externalOutputs), meas(meas)
-{ init(inputs(in), derivInfo; }
+{ init(inputs(in), deriv); }
 
-module::module(const instance& inst, const std::vector<port>& in, std::vector<port>& externalOutputs,                        const namedMeasures& meas, std::pair<properties*, std::map<std::string, attrValue> >* derivInfo) :
+module::module(const instance& inst, const std::vector<port>& in, std::vector<port>& externalOutputs,                        const namedMeasures& meas, derivInfo* deriv) :
   /*sightObj(setProperties(inst, in,         NULL, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(&externalOutputs), meas(meas)
-{ init(in, derivInfo; }
+{ init(in, deriv); }
 
-module::module(const instance& inst,                              std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, std::pair<properties*, std::map<std::string, attrValue> >* derivInfo) : 
+module::module(const instance& inst,                              std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, derivInfo* deriv) : 
   /*sightObj(setProperties(inst, inputs(),   &onoffOp, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(&externalOutputs), meas(meas)
-{ init(inputs(), derivInfo; }
+{ init(inputs(), deriv); }
 
-module::module(const instance& inst, const port& in,              std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, std::pair<properties*, std::map<std::string, attrValue> >* derivInfo): 
+module::module(const instance& inst, const port& in,              std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, derivInfo* deriv): 
   /*sightObj(setProperties(inst, inputs(in), &onoffOp, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(&externalOutputs), meas(meas)
-{ init(inputs(in), derivInfo; }
+{ init(inputs(in), deriv); }
 
-module::module(const instance& inst, const std::vector<port>& in, std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, std::pair<properties*, std::map<std::string, attrValue> >* derivInfo) :
+module::module(const instance& inst, const std::vector<port>& in, std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, derivInfo* deriv) :
   /*sightObj(setProperties(inst, in,         &onoffOp, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(&externalOutputs), meas(meas)
-{ init(in, derivInfo; }
+{ init(in, deriv); }
 
-void module::init(const std::vector<port>& in, std::pair<properties*, std::map<std::string, attrValue> >* derivInfo) {
-  if(derivInfo==NULL) {
-    derivInfo = new pair<properties*, std::map<std::string, attrValue> >();
-    derivInfo->first = new properties();
+void module::init(const std::vector<port>& in, derivInfo* deriv) {
+  generateModuleTraceStream gmts(g);
+  if(deriv==NULL) {
+    deriv = new derivInfo(gmts);
   }
   
-  if(modularApp::isInstanceActive() && props->active) {
+  if(modularApp::isInstanceActive() && deriv->props->active) {
     int moduleID = modularApp::genModuleID(g);
     
     // Add the properties of this module to props
@@ -670,24 +687,22 @@ void module::init(const std::vector<port>& in, std::pair<properties*, std::map<s
     pMap["name"]       = g.name();
     pMap["numInputs"]  = txt()<<g.numInputs();
     pMap["numOutputs"] = txt()<<g.numOutputs();
-
-    derivInfo->first->add("module", pMap);
+    deriv->props->add("module", pMap);
     
     // Add this module instance to the current stack of modules
-    modularApp::enterModule(this, moduleID, derivInfo->first);
+    modularApp::enterModule(this, moduleID, deriv->props, deriv->tsGenerator);
     
     // Set the context attributes to be used in this module's measurements by combining the context provided by any
     // class that may derive from this one as well as the contexts of its inputs
     
     // Start with the derived context
-    traceCtxt = derivInfo->second;
+    traceCtxt = deriv->ctxt;
     
     // Add to it the context of this module based on the contexts of its inputs
     for(int i=0; i<in.size(); i++) {
       for(std::map<std::string, attrValue>::const_iterator c=in[i].ctxt.configuration.begin(); c!=in[i].ctxt.configuration.end(); c++)
         traceCtxt[txt()<<"module:"<<i<<":"<<c->first] = c->second;
     }
-    
     
     // Make sure that the input contexts have the same names across all the invocations of this module group
     modularApp::registerInOutContexts(g, in, sight::common::module::input);
@@ -791,6 +806,10 @@ module::~module()
   }
 }
 
+traceStream* module::generateModuleTraceStream::operator()(int moduleID) {
+  return new moduleTraceStream(moduleID, g->name(), g->numInputs(), g->numOutputs(), trace::lines, trace::disjMerge);
+}
+
 // Sets the context of the given output port
 void module::setOutCtxt(int idx, const context& c) { 
   assert(idx<g.numOutputs());
@@ -824,54 +843,64 @@ port module::outPort(int idx) const {
 
 compModule::compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
                        bool isReference, const context& options,
-                                                                         std::pair<properties*, std::map<std::string, attrValue> >* derivInfo) :
-          module(inst, inputs, externalOutputs, setProperties(isReference, options, NULL, derivInfo)
+                                                                         derivInfo* deriv) :
+          module(inst, inputs, externalOutputs, setProperties(inst, isReference, options, NULL, deriv))
 {}
 
 compModule::compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
                        bool isReference, const context& options, 
-                       const attrOp& onoffOp,                            std::pair<properties*, std::map<std::string, attrValue> >* derivInfo) :
-          module(inst, inputs, externalOutputs, setProperties(isReference, options, &onoffOp, derivInfo)
+                       const attrOp& onoffOp,                            derivInfo* deriv) :
+          module(inst, inputs, externalOutputs, setProperties(inst, isReference, options, &onoffOp, deriv))
 {}
 
 compModule::compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
                        bool isReference, const context& options, 
-                                              const namedMeasures& meas, std::pair<properties*, std::map<std::string, attrValue> >* derivInfo) :
-          module(inst, inputs, externalOutputs, meas, setProperties(isReference, options, NULL, derivInfo)
+                                              const namedMeasures& meas, derivInfo* deriv) :
+          module(inst, inputs, externalOutputs, meas, setProperties(inst, isReference, options, NULL, deriv))
 {}
 
 compModule::compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
                        bool isReference, const context& options, 
-                       const attrOp& onoffOp, const namedMeasures& meas, std::pair<properties*, std::map<std::string, attrValue> >* derivInfo) : 
-          module(inst, inputs, externalOutputs, meas, setProperties(isReference, options, &onoffOp, derivInfo)
+                       const attrOp& onoffOp, const namedMeasures& meas, derivInfo* deriv) : 
+          module(inst, inputs, externalOutputs, meas, setProperties(inst, isReference, options, &onoffOp, deriv))
 {}
 
 // Sets the properties of this object
-properties* compModule::setProperties(bool isReference, const context& options, const attrOp* onoffOp, std::pair<properties*, std::map<std::string, attrValue> >* derivInfo) {
-  if(derivInfo==NULL) {
-    derivInfo = new pair<properties*, std::map<std::string, attrValue> >();
-    derivInfo->first = new properties();
+module::derivInfo* compModule::setProperties(const instance& inst, bool isReference, const context& options, const attrOp* onoffOp, derivInfo* deriv) {
+  // Set gcmts to refer to the properties of this instance of compModule
+  gcmts.init(inst, isReference, options);
+  if(deriv==NULL) {
+    deriv = new derivInfo(gcmts);
   }
   
   // If the current attribute query evaluates to true (we're emitting debug output) AND
   // either onoffOp is not provided or its evaluates to true
   if(attributes.query() && (onoffOp? onoffOp->apply(): true)) {
-    // Initialize pMap to contain the properties of options
-    map<string, string> pMap = options.getProperties("op");
-    pMap["isReference"]   = txt()<<isReference;
+    /* // Initialize pMap to contain the properties of options
+    map<string, string> pMap;// = options.getProperties("op");
+    //pMap["isReference"]   = txt()<<isReference;
 
-    derivInfo.first->add("compModule", pMap);
+    deriv->props->add("compModule", pMap);*/
     
     // Add isReference and the options to the trace context attributes in derivInfo
-    derivInfo.second["compModule:isReference"] = attrValue((long)isReference);
-    for(map<std::string, attrValue>::iterator o=options.getCfg().begin(); o!=options.getCfg().end(); o++)
-      derivInfo.second["compModule:"+o->first] = o->second;
+    deriv->ctxt["compModule:isReference"] = attrValue((long)isReference);
+    for(map<std::string, attrValue>::const_iterator o=options.getCfg().begin(); o!=options.getCfg().end(); o++)
+      deriv->ctxt["compModule:"+o->first] = o->second;
   }
   else
-    derivInfo.first->active = false;
+    deriv->props->active = false;
   
-  return derivInfo;
+  return deriv;
 }
+
+traceStream* compModule::generateCompModuleTraceStream::operator()(int moduleID) {
+  return new compModuleTraceStream(moduleID, g->name(), g->numInputs(), g->numOutputs(), isReference, *options, trace::lines, trace::disjMerge);
+}
+
+// Static instance of generateModuleTraceStream. It is initialized inside calls to setProperties() and utilized inside
+// the module() constructor in its call to modularApp::enterModule(). As such, its state needs to remain valid during
+// the course of construction but is irrelevant other than that.
+compModule::generateCompModuleTraceStream compModule::gcmts;
 
 /*****************************
  ***** moduleTraceStream *****
@@ -900,19 +929,25 @@ properties* moduleTraceStream::setProperties(int moduleID, string name, int numI
  ***** compModuleTraceStream *****
  *********************************/
 
-compModuleTraceStream::compModuleTraceStream(int moduleID, string name, int numInputs, int numOutputs, vizT viz, mergeT merge, properties* props) : 
-  traceStream(viz, merge, setProperties(moduleID, name, numInputs, numOutputs, viz, merge, props))
+compModuleTraceStream::compModuleTraceStream(int moduleID, string name, int numInputs, int numOutputs, 
+                                             bool isReference, const context& options,
+                                             vizT viz, mergeT merge, properties* props) : 
+  moduleTraceStream(moduleID, name, numInputs, numOutputs, viz, merge, 
+                    setProperties(moduleID, name, numInputs, numOutputs, isReference, options, viz, merge, props))
 { }
 
-properties* compModuleTraceStream::setProperties(int moduleID, string name, int numInputs, int numOutputs, vizT viz, mergeT merge, properties* props) {
+properties* compModuleTraceStream::setProperties(int moduleID, string name, int numInputs, int numOutputs, 
+                                                 bool isReference, const context& options,
+                                                 vizT viz, mergeT merge, properties* props) {
   if(props==NULL) props = new properties();
   
   if(props->active && props->emitTag) {
-    map<string, string> pMap;
-    pMap["moduleID"]   = txt()<<moduleID;
-    pMap["name"]       = name;
-    pMap["numInputs"]  = txt()<<numInputs;
-    pMap["numOutputs"] = txt()<<numOutputs;
+    map<string, string> pMap = options.getProperties("op");
+    pMap["isReference"] = txt()<<isReference;
+    pMap["moduleID"]    = txt()<<moduleID;
+    pMap["name"]        = name;
+    pMap["numInputs"]   = txt()<<numInputs;
+    pMap["numOutputs"]  = txt()<<numOutputs;
     props->add("compModuleTS", pMap);
   }
   

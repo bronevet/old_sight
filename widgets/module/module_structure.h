@@ -66,6 +66,8 @@ class group {
   // Creates a group given the current stack of modules and a new module instance
   group(const std::list<module*>& mStack, const instance& inst);
   
+  void init(const std::list<module*>& mStack, const instance& inst);
+  
   group& operator=(const group& that) { 
     stack = that.stack;
     return *this;
@@ -187,6 +189,16 @@ class instanceTree {
 
 class module;
 
+// Base class for functors that generate traceStreams that are specific to different sub-types of module.
+// We need this so that we can pass a reference to the correct genTS() method to modularApp::enterModule(). Since this
+// call is made inside the constructor of module, we can't use virtual methods to ensure that the correct version
+// of genTS will be called by just passing a reference to the current module-derived object
+//typedef traceStream* (*generateTraceStream)(int moduleID, const group& g);
+class generateTraceStream {
+  public:
+  virtual traceStream* operator()(int moduleID)=0;
+}; // class generateTraceStream
+
 // Represents a modular application, which may contain one or more modules. Only one modular application may be
 // in-scope at any given point in time.
 class modularApp: public block
@@ -232,6 +244,9 @@ class modularApp: public block
   
   // Stack of the modules that are currently in scope
   static std::list<module*> mStack;
+  
+  public:
+  static const std::list<module*>& getMStack() { return mStack; }
   
   // The unique ID of this application
   int appID;
@@ -294,7 +309,7 @@ class modularApp: public block
   static module* getCurModule();
   
   // Adds the given module object to the modules stack
-  static void enterModule(module* m, int moduleID, properties* props);
+  static void enterModule(module* m, int moduleID, properties* props, generateTraceStream& tsGenerator);
   
   // Removes the given module object from the modules stack
   static void exitModule(module* m);
@@ -326,56 +341,83 @@ class module: /*public sightObj, */public common::module
   // measure objects. When the module instance is deleted, its measure objects are automatically deleted as well.
   namedMeasures meas;
   
+  // Information that describes the class that derives from this on. 
+  class derivInfo {
+    public:
+    
+    // A pointer to a properties object that can be used to create a tag for the derived object that 
+    // includes info about its parents.
+    properties* props;
+    
+    // Fields that must be included within the context of any trace observations made during the execution of this module.
+    std::map<std::string, attrValue> ctxt;
+    
+    // Points to a function that generates the trace stream instance specific to the given derivation of module
+    generateTraceStream& tsGenerator;
+    
+    derivInfo(generateTraceStream& tsGenerator) : tsGenerator(tsGenerator) {
+      props = new properties;
+    }
+    
+    derivInfo(properties* props, const std::map<std::string, attrValue>& ctxt, generateTraceStream& tsGenerator) :
+                  props(props), ctxt(ctxt), tsGenerator(tsGenerator) { }
+  }; // class derivInfo
+  
   public:
   // inputs - ports from other modules that are used as inputs by this module.
   // onoffOp - We emit this scope if the current attribute query evaluates to true (i.e. we're emitting debug output) AND
   //           either onoffOp is not provided or its evaluates to true.
-  // derivInfo: Information that describes the class that derives from this on. It includes a pointer to a properties
-  //    object that can be used to create a tag for the derived object that includes info about its parents. Further,
-  //    it includes fields that must be included within the context of any trace observations made during the execution
-  //    of this module.
-  module(const instance& inst,                                                                                                                        std::pair<properties*, std::map<std::string, attrValue> >* derivInfo=NULL);
-  module(const instance& inst, const port& inputs,                                                                                                    std::pair<properties*, std::map<std::string, attrValue> >* derivInfo=NULL);
-  module(const instance& inst, const std::vector<port>& inputs,                                                                                       std::pair<properties*, std::map<std::string, attrValue> >* derivInfo=NULL);
-  module(const instance& inst,                                                                      const attrOp& onoffOp,                            std::pair<properties*, std::map<std::string, attrValue> >* derivInfo=NULL);
-  module(const instance& inst, const port& inputs,                                                  const attrOp& onoffOp,                            std::pair<properties*, std::map<std::string, attrValue> >* derivInfo=NULL);
-  module(const instance& inst, const std::vector<port>& inputs,                                     const attrOp& onoffOp,                            std::pair<properties*, std::map<std::string, attrValue> >* derivInfo=NULL);
-  module(const instance& inst,                                  std::vector<port>& externalOutputs,                                                   std::pair<properties*, std::map<std::string, attrValue> >* derivInfo=NULL);
-  module(const instance& inst, const port& inputs,              std::vector<port>& externalOutputs,                                                   std::pair<properties*, std::map<std::string, attrValue> >* derivInfo=NULL);
-  module(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs,                                                   std::pair<properties*, std::map<std::string, attrValue> >* derivInfo=NULL);
-  module(const instance& inst,                                  std::vector<port>& externalOutputs, const attrOp& onoffOp,                            std::pair<properties*, std::map<std::string, attrValue> >* derivInfo=NULL);
-  module(const instance& inst, const port& inputs,              std::vector<port>& externalOutputs, const attrOp& onoffOp,                            std::pair<properties*, std::map<std::string, attrValue> >* derivInfo=NULL);
-  module(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, const attrOp& onoffOp,                            std::pair<properties*, std::map<std::string, attrValue> >* derivInfo=NULL);
+  // derivInfo: Information that describes the class that derives from this on.
+  module(const instance& inst,                                                                                                                        derivInfo* deriv=NULL);
+  module(const instance& inst, const port& inputs,                                                                                                    derivInfo* deriv=NULL);
+  module(const instance& inst, const std::vector<port>& inputs,                                                                                       derivInfo* deriv=NULL);
+  module(const instance& inst,                                                                      const attrOp& onoffOp,                            derivInfo* deriv=NULL);
+  module(const instance& inst, const port& inputs,                                                  const attrOp& onoffOp,                            derivInfo* deriv=NULL);
+  module(const instance& inst, const std::vector<port>& inputs,                                     const attrOp& onoffOp,                            derivInfo* deriv=NULL);
+  module(const instance& inst,                                  std::vector<port>& externalOutputs,                                                   derivInfo* deriv=NULL);
+  module(const instance& inst, const port& inputs,              std::vector<port>& externalOutputs,                                                   derivInfo* deriv=NULL);
+  module(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs,                                                   derivInfo* deriv=NULL);
+  module(const instance& inst,                                  std::vector<port>& externalOutputs, const attrOp& onoffOp,                            derivInfo* deriv=NULL);
+  module(const instance& inst, const port& inputs,              std::vector<port>& externalOutputs, const attrOp& onoffOp,                            derivInfo* deriv=NULL);
+  module(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, const attrOp& onoffOp,                            derivInfo* deriv=NULL);
     
-  module(const instance& inst,                                                                                             const namedMeasures& meas, std::pair<properties*, std::map<std::string, attrValue> >* derivInfo=NULL);
-  module(const instance& inst, const port& inputs,                                                                         const namedMeasures& meas, std::pair<properties*, std::map<std::string, attrValue> >* derivInfo=NULL);
-  module(const instance& inst, const std::vector<port>& inputs,                                                            const namedMeasures& meas, std::pair<properties*, std::map<std::string, attrValue> >* derivInfo=NULL);
-  module(const instance& inst,                                                                      const attrOp& onoffOp, const namedMeasures& meas, std::pair<properties*, std::map<std::string, attrValue> >* derivInfo=NULL);
-  module(const instance& inst, const port& inputs,                                                  const attrOp& onoffOp, const namedMeasures& meas, std::pair<properties*, std::map<std::string, attrValue> >* derivInfo=NULL);
-  module(const instance& inst, const std::vector<port>& inputs,                                     const attrOp& onoffOp, const namedMeasures& meas, std::pair<properties*, std::map<std::string, attrValue> >* derivInfo=NULL);
-  module(const instance& inst,                                  std::vector<port>& externalOutputs,                        const namedMeasures& meas, std::pair<properties*, std::map<std::string, attrValue> >* derivInfo=NULL);
-  module(const instance& inst, const port& inputs,              std::vector<port>& externalOutputs,                        const namedMeasures& meas, std::pair<properties*, std::map<std::string, attrValue> >* derivInfo=NULL);
-  module(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs,                        const namedMeasures& meas, std::pair<properties*, std::map<std::string, attrValue> >* derivInfo=NULL);
-  module(const instance& inst,                                  std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, std::pair<properties*, std::map<std::string, attrValue> >* derivInfo=NULL);
-  module(const instance& inst, const port& inputs,              std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, std::pair<properties*, std::map<std::string, attrValue> >* derivInfo=NULL);
-  module(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, std::pair<properties*, std::map<std::string, attrValue> >* derivInfo=NULL);
+  module(const instance& inst,                                                                                             const namedMeasures& meas, derivInfo* deriv=NULL);
+  module(const instance& inst, const port& inputs,                                                                         const namedMeasures& meas, derivInfo* deriv=NULL);
+  module(const instance& inst, const std::vector<port>& inputs,                                                            const namedMeasures& meas, derivInfo* deriv=NULL);
+  module(const instance& inst,                                                                      const attrOp& onoffOp, const namedMeasures& meas, derivInfo* deriv=NULL);
+  module(const instance& inst, const port& inputs,                                                  const attrOp& onoffOp, const namedMeasures& meas, derivInfo* deriv=NULL);
+  module(const instance& inst, const std::vector<port>& inputs,                                     const attrOp& onoffOp, const namedMeasures& meas, derivInfo* deriv=NULL);
+  module(const instance& inst,                                  std::vector<port>& externalOutputs,                        const namedMeasures& meas, derivInfo* deriv=NULL);
+  module(const instance& inst, const port& inputs,              std::vector<port>& externalOutputs,                        const namedMeasures& meas, derivInfo* deriv=NULL);
+  module(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs,                        const namedMeasures& meas, derivInfo* deriv=NULL);
+  module(const instance& inst,                                  std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, derivInfo* deriv=NULL);
+  module(const instance& inst, const port& inputs,              std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, derivInfo* deriv=NULL);
+  module(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, derivInfo* deriv=NULL);
   
-  void init(const std::vector<port>& in, std::pair<properties*, std::map<std::string, attrValue> >* derivInfo);
+  void init(const std::vector<port>& in, derivInfo* deriv);
   
   private:
   // Sets the properties of this object
-  //static properties* setProperties(const instance& inst, const std::vector<port>& inputs, const attrOp* onoffOp, std::pair<properties*, std::map<std::string, attrValue> >* derivInfo);
+  //static properties* setProperties(const instance& inst, const std::vector<port>& inputs, const attrOp* onoffOp, derivInfo* deriv);
   
   public:
   ~module();
   
-  // Returns a newly-generated traceStream that 
-  virtual traceStream* genTS(int moduleID, const group& g) {
-   return new moduleTraceStream(moduleID, g.name(), g.numInputs(), g.numOutputs(), trace::lines, trace::disjMerge);
-  }
-  
+  // The variant of the generateTraceStream functor specialized to generating moduleTraceStreams
+  class generateModuleTraceStream : public generateTraceStream {
+    protected:
+    const group* g;
+    public:
+    generateModuleTraceStream() {}
+    generateModuleTraceStream(const group& g): g(&g) { }
+    
+    void init(const group& g) { this->g = &g; }
+    
+    traceStream* operator()(int moduleID);
+  }; // class generateModuleTraceStream
+
   // Returns the properties of this object
-  //properties* setProperties(int moduleID, std::pair<properties*, std::map<std::string, attrValue> >* derivInfo=NULL);
+  //properties* setProperties(int moduleID, derivInfo* deriv=NULL);
   
   const std::vector<context>& getContext() const { return ctxt; }
   int numInputs()  const { return g.numInputs(); }
@@ -417,19 +459,42 @@ class compModule: public structure::module
   //    of this module.
   compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
              bool isReference, const context& options,
-                                                               std::pair<properties*, std::map<std::string, attrValue> >* derivInfo=NULL);
+                                                               derivInfo* deriv=NULL);
   compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
              bool isReference, const context& options, 
-             const attrOp& onoffOp,                            std::pair<properties*, std::map<std::string, attrValue> >* derivInfo=NULL);
+             const attrOp& onoffOp,                            derivInfo* deriv=NULL);
   compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
              bool isReference, const context& options,
-                                    const namedMeasures& meas, std::pair<properties*, std::map<std::string, attrValue> >* derivInfo=NULL);
+                                    const namedMeasures& meas, derivInfo* deriv=NULL);
   compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
              bool isReference, const context& options, 
-             const attrOp& onoffOp, const namedMeasures& meas, std::pair<properties*, std::map<std::string, attrValue> >* derivInfo=NULL);
+             const attrOp& onoffOp, const namedMeasures& meas, derivInfo* deriv=NULL);
   
   // Sets the properties of this object
-  properties* setProperties(bool isReference, const context& options, const attrOp* onoffOp, std::pair<properties*, std::map<std::string, attrValue> >* derivInfo=NULL);
+  derivInfo* setProperties(const instance& inst, bool isReference, const context& options, const attrOp* onoffOp, derivInfo* deriv=NULL);
+  
+  // The variant of the generateTraceStream functor specialized to generating moduleTraceStreams
+  class generateCompModuleTraceStream : public generateModuleTraceStream {
+    bool isReference;
+    const context* options;
+    public:
+    generateCompModuleTraceStream() {}
+    
+    void init(const instance& inst, bool isReference, const context& options) {
+      static group g;
+      g.init(modularApp::getMStack(), inst);
+      generateModuleTraceStream::init(g);
+      this->isReference = isReference;
+      this->options = &options;
+    }
+    
+    traceStream* operator()(int moduleID);
+  }; // class generateModuleTraceStream
+  
+  // Static instance of generateModuleTraceStream. It is initialized inside calls to setProperties() and utilized inside
+  // the module() constructor in its call to modularApp::enterModule(). As such, its state needs to remain valid during
+  // the course of construction but is irrelevant other than that.
+  static generateCompModuleTraceStream gcmts;
 }; // class compModule
 
 // Specialization of traceStreams for the case where they are hosted by a module node
@@ -442,12 +507,12 @@ class moduleTraceStream: public traceStream
 };
 
 // Specialization of moduleTraceStream for the case where they are hosted by a compModule node
-class compModuleNodeTraceStream: public moduleTraceStream
+class compModuleTraceStream: public moduleTraceStream
 {
   public:
-  compModuleNodeTraceStream(int moduleID, std::string name, int numInputs, int numOutputs, vizT viz, mergeT merge, properties* props=NULL);
+  compModuleTraceStream(int moduleID, std::string name, int numInputs, int numOutputs, bool isReference, const context& options, vizT viz, mergeT merge, properties* props=NULL);
   
-  static properties* setProperties(int moduleID, std::string name, int numInputs, int numOutputs, vizT viz, mergeT merge, properties* props);
+  static properties* setProperties(int moduleID, std::string name, int numInputs, int numOutputs, bool isReference, const context& options, vizT viz, mergeT merge, properties* props);
 };
 
 class ModuleMergeHandlerInstantiator: public MergeHandlerInstantiator {

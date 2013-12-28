@@ -93,7 +93,18 @@ class properties
   void add(std::string className, const std::map<std::string, std::string>& props);
   
   bool operator==(const properties& that) const
-  { return p==that.p && active==that.active && emitTag==that.emitTag; }
+  { 
+    /*std::cout << "p==that.p = "<<(p==that.p)<<std::endl;
+      std::cout << "p.size()="<<p.size()<<", that.p.size()="<<that.p.size()<<std::endl;
+      std::list<std::pair<std::string, std::map<std::string, std::string> > >::const_iterator itThis = p.begin();
+      std::list<std::pair<std::string, std::map<std::string, std::string> > >::const_iterator itThat = that.p.begin();
+      for(; itThis!=p.end(); itThis++, itThat++) {
+        std::cout << "    itThis->first = "<<itThis->first<<" itThat->first="<<itThat->first<<std::endl;
+        std::cout << "    itThis->first==itThat->first = "<<(itThis->first==itThat->first)<<", itThis->second==itThat->second = "<<(itThis->second==itThat->second)<<std::endl;
+      }
+    std::cout << "active==that.active = "<<(active==that.active)<<std::endl;
+    std::cout << "emitTag==that.emitTag = "<<(emitTag==that.emitTag)<<std::endl;*/
+    return p==that.p && active==that.active && emitTag==that.emitTag; }
   
   bool operator<(const properties& that) const
   { return (p< that.p) ||
@@ -105,6 +116,7 @@ class properties
   // Wrapper for iterators to property lists that includes its own end iterator to make it possible to 
   // tell whether the iterator has reached the end of the list without having a reference to the list itself.
   class iterator {
+    friend class properties;
     std::list<std::pair<std::string, std::map<std::string, std::string> > >::const_iterator cur;
     std::list<std::pair<std::string, std::map<std::string, std::string> > >::const_iterator end;
     
@@ -163,6 +175,8 @@ class properties
     const std::map<std::string, std::string>& getMap() const
     { return cur->second; }
     
+    public:
+    
     // Returns whether the given key is mapped to a value in the key/value map at this iterator
     bool exists(std::string key) const
     { return cur->second.find(key) != cur->second.end(); }
@@ -189,6 +203,9 @@ class properties
   
   // Given an iterator to a particular key->value mapping, returns the value mapped to the given key
   static std::string get(iterator cur, std::string key);
+  
+  // Given the label of a particular key->value mapping, adds the given mapping to it
+  void set(std::string name, std::string key, std::string value);
   
   // Given an iterator to a particular key->value mapping, returns the integer interpretation of the value mapped to the given key
   static long getInt(iterator cur, std::string key);

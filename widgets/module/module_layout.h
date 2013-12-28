@@ -76,12 +76,13 @@ class modularApp: public block, public common::module, public traceObserver
   modularApp(properties::iterator props);
   ~modularApp();
   
+  // Returns the unique instance of modularApp currently active
+  static modularApp* getInstance() { assert(activeMA); return activeMA; }
+  
   // Initialize the environment within which generated graphs will operate, including
   // the JavaScript files that are included as well as the directories that are available.
   static void initEnvironment();
-  
-  static void *enterTraceStream(properties::iterator props);
-  
+    
   // Registers the ID of the trace that is associated with the current module
   //void registerTraceID(int traceID);
   //static void* registerTraceID(properties::iterator props);
@@ -177,30 +178,18 @@ class moduleTraceStream: public traceStream
 {
   public:
   moduleTraceStream(properties::iterator props, traceObserver* observer=NULL);
+  
+  // Called when we observe the entry tag of a moduleTraceStream
+  static void *enterTraceStream(properties::iterator props);
 };
 
-// This class analyzes the observations made by all the traces that belong to the same 
-class compModule {
-  public:
-  // Points to the currently active instance of modularApp. There can be only one.
-  static compModule* activeCM;
-  
-  // The observer to which active CM will send observations after it filters them
-  traceObserver* observer;
-  
-  compModule(traceObserver* observer) : observer(observer) { }
-  
-  void registerTraceStream(traceStream* ts) {
-    
-    ts->registerObserver(this);
-  }
-}; // class compModule
-
-// Specialization of traceStreams for the case where they are hosted by a compModule 
-class compModuleTraceStream: public traceStream
-{
-  // Records whether this is the reference configuration of the moculde
-  bool isReference;
+// This class analyzes the observations from a compModuleTraceStream. It relates all observations that share
+// the same values for the subset of context attributes that are not in the set options to a single one reference 
+// observation (one reference for each value of non-option attributes) and emits these comparisons to the 
+// traceObservers that listen to it.
+class compModule : public common::module, public traceObserver {
+  // Records whether this is the reference configuration of the module
+  //bool isReference;
   
   // The context that describes the configuration options of this module
   context options;
@@ -213,11 +202,34 @@ class compModuleTraceStream: public traceStream
   // their values within non-reference configurations of the compModule. We keep these around until we 
   // find the reference configuration for the given configuration of input context values and once we find 
   // it, we relate these to the reference, emit them to this compModuleTraceStream's observer and empty them out.
-  std::map<std::map<std::string, std::string>, std::list<std::map<std::string, std::string> > > referenceObs;
+  std::map<std::map<std::string, std::string>, std::list<std::map<std::string, std::string> > > comparisonObs;
+
+  public:  
+  compModule(/*bool isReference, */const context& options) : /*isReference(isReference), */options(options) { }
+  
+  // Interface implemented by objects that listen for observations a traceStream reads. Such objects
+  // call traceStream::registerObserver() to inform a given traceStream that it should observations.
+  void observe(int traceID,
+               const std::map<std::string, std::string>& ctxt, 
+               const std::map<std::string, std::string>& obs,
+               const std::map<std::string, anchor>&      obsAnchor);
+}; // class compModule
+
+// Specialization of traceStreams for the case where they are hosted by a compModule 
+class compModuleTraceStream: public moduleTraceStream
+{
+  // The object that filters observations to compare non-reference observations to their reference values
+  compModule* cmFilter;
+  // The queue that passes all incoming observations through cmFilter and then forwards them to modularApp.
+  traceObserverQueue* queue;
   
   public:
   compModuleTraceStream(properties::iterator props, traceObserver* observer=NULL);
-};
+  ~compModuleTraceStream();
+  
+  // Called when we observe the entry tag of a compModuleTraceStream
+  static void *enterTraceStream(properties::iterator props);
+}; // class compModuleTraceStream
 
 
 }; // namespace layout
