@@ -21,9 +21,9 @@ bool isEnabled();
 } // namespace common
 
 // Class that makes it possible to generate string labels by using the << syntax.
-// Examples: Label() << "a=" << (5+2) << "!"
-//           Label("a=") << (5+2) << "!"
-// Since this class is meant to be used by client code, it is placed inside the easier-to-use sight namespace
+// Examples: txt() << "a=" << (5+2) << "!"
+//           txt("a=") << (5+2) << "!"
+// Since this class is meant to be used by client code, it is placed inside the easier-to-access sight namespace
 struct txt : std::string {
   txt() {}
   txt(const std::string& initTxt) {
@@ -133,6 +133,15 @@ class properties
     iterator(const properties& props) :
       cur(props.p.begin()), end(props.p.end())
     {}
+    
+    // Returns the value mapped to the given key
+    std::string get(std::string key) const;
+    
+    // Returns the integer interpretation of the value mapped to the given key
+    long getInt(std::string key) const;
+
+    // Returns the floating-point interpretation of the value mapped to the given key
+    double getFloat(std::string key) const;
     
     iterator& operator++() {
       cur++;
@@ -278,6 +287,62 @@ class dbgStream : public std::ostream
 std::string escape(std::string s);
 std::string unescape(std::string s);
 
+// Wrapper for strings in which some characters have been escaped. This is useful for serializing multi-level 
+// collection objects, while using the same separator for each level of the encoding.
+class escapedStr {
+  std::string s;
+  std::string control;
+  
+  public:
+  typedef enum {escaped, unescaped} sourceT;
+
+  escapedStr() {}
+  
+  // source==unescaped: Creates an escaped string given a regular UNESCAPED string and an explicit list of control characters
+  // source==escaped:   Creates an ESCAPED string given an escaped string and an explicit list of control characters
+  escapedStr(std::string s_, std::string control, sourceT source);
+
+  // Copy constructor
+  escapedStr(const escapedStr& that) : s(that.s) {}
+  
+  // Searches the string for the first occurrence of the sequence specified by its arguments, starting at pos and returns 
+  // the location. The search ignores any matches that cross escaped characters in this string.
+  size_t find(std::string sub, size_t pos = 0) const;
+
+  // Searches the string for the first occurrence of any of the characters in string chars, starting at pos and returns 
+  // the location. The search ignores any matches that cross escaped characters in this string.
+  size_t findAny(std::string chars, size_t pos) const;
+
+  // Returns a newly constructed escaped string object with its value initialized to a copy of a substring of this object.
+  // The substring is the portion of the object that starts at character position pos and spans len characters (or until 
+  // the end of the string, whichever comes first).
+  std::string substr(size_t pos = 0, size_t len = std::string::npos) const;
+  
+  // Returns the fully unescaped version of this string, with the escaped characters replaced with the originals.
+  std::string unescape() const;
+
+  // Split the string into sub-strings separated by any character in the separator string and emit a list of the individual
+  // substrings, which have been unescaped. The separator characters must be a subset of this escapedStr's control characters.
+  std::vector<std::string> unescapeSplit(std::string separator);
+
+  // Returns the escaped read-only version of the string
+  const std::string& escape() const { return s; }
+  
+  // Assignment 
+  escapedStr& operator=(const escapedStr& that);
+
+  // Relations
+  bool operator==(const escapedStr& that) { return s == that.s; }
+  bool operator< (const escapedStr& that) { return s <  that.s; }  
+  
+  // Casting 
+  // Casting to a string is the same as returning the escaped string
+  operator std::string() { return escape(); }
+  
+  // Self-testing code for the escapedStr class.
+  static void selfTest();
+}; // class escapedStr
+
 class structureParser {
   public:
  
@@ -385,16 +450,16 @@ class easymap: public std::map<KeyT, ValT> {
   easymap(const KeyT& key0, const ValT& val0, const KeyT& key1, const ValT& val1, const KeyT& key2, const ValT& val2, const KeyT& key3, const ValT& val3, const KeyT& key4, const ValT& val4, const KeyT& key5, const ValT& val5)
   { (*this)[key0] = val0; (*this)[key1] = val1; (*this)[key2] = val2; (*this)[key3] = val3; (*this)[key4] = val4; (*this)[key5] = val5; }
   
-  easymap(const KeyT& key0, const ValT& val0, const KeyT& key1, const ValT& val1, const KeyT& key2, const ValT& val2, const KeyT& key3, const ValT& val3, const KeyT& key5, const KeyT& key4, const ValT& val4, const ValT& val5, const KeyT& key6, const ValT& val6)
+  easymap(const KeyT& key0, const ValT& val0, const KeyT& key1, const ValT& val1, const KeyT& key2, const ValT& val2, const KeyT& key3, const ValT& val3, const KeyT& key4, const ValT& val4, const KeyT& key5, const ValT& val5, const KeyT& key6, const ValT& val6)
   { (*this)[key0] = val0; (*this)[key1] = val1; (*this)[key2] = val2; (*this)[key3] = val3; (*this)[key4] = val4; (*this)[key5] = val5; (*this)[key6] = val6; }
   
-  easymap(const KeyT& key0, const ValT& val0, const KeyT& key1, const ValT& val1, const KeyT& key2, const ValT& val2, const KeyT& key3, const ValT& val3, const KeyT& key5, const KeyT& key4, const ValT& val4, const ValT& val5, const KeyT& key6, const ValT& val6, const KeyT& key7, const ValT& val7)
+  easymap(const KeyT& key0, const ValT& val0, const KeyT& key1, const ValT& val1, const KeyT& key2, const ValT& val2, const KeyT& key3, const ValT& val3, const KeyT& key4, const ValT& val4, const KeyT& key5, const ValT& val5, const KeyT& key6, const ValT& val6, const KeyT& key7, const ValT& val7)
   { (*this)[key0] = val0; (*this)[key1] = val1; (*this)[key2] = val2; (*this)[key3] = val3; (*this)[key4] = val4; (*this)[key5] = val5; (*this)[key6] = val6; (*this)[key7] = val7; }
   
-  easymap(const KeyT& key0, const ValT& val0, const KeyT& key1, const ValT& val1, const KeyT& key2, const ValT& val2, const KeyT& key3, const ValT& val3, const KeyT& key5, const KeyT& key4, const ValT& val4, const ValT& val5, const KeyT& key6, const ValT& val6, const KeyT& key7, const ValT& val7, const KeyT& key8, const ValT& val8)
+  easymap(const KeyT& key0, const ValT& val0, const KeyT& key1, const ValT& val1, const KeyT& key2, const ValT& val2, const KeyT& key3, const ValT& val3, const KeyT& key4, const ValT& val4, const KeyT& key5, const ValT& val5, const KeyT& key6, const ValT& val6, const KeyT& key7, const ValT& val7, const KeyT& key8, const ValT& val8)
   { (*this)[key0] = val0; (*this)[key1] = val1; (*this)[key2] = val2; (*this)[key3] = val3; (*this)[key4] = val4; (*this)[key5] = val5; (*this)[key6] = val6; (*this)[key7] = val7; (*this)[key8] = val8; }
   
-  easymap(const KeyT& key0, const ValT& val0, const KeyT& key1, const ValT& val1, const KeyT& key2, const ValT& val2, const KeyT& key3, const ValT& val3, const KeyT& key5, const KeyT& key4, const ValT& val4, const ValT& val5, const KeyT& key6, const ValT& val6, const KeyT& key7, const ValT& val7, const KeyT& key8, const ValT& val8, const KeyT& key9, const ValT& val9)
+  easymap(const KeyT& key0, const ValT& val0, const KeyT& key1, const ValT& val1, const KeyT& key2, const ValT& val2, const KeyT& key3, const ValT& val3, const KeyT& key4, const ValT& val4, const KeyT& key5, const ValT& val5, const KeyT& key6, const ValT& val6, const KeyT& key7, const ValT& val7, const KeyT& key8, const ValT& val8, const KeyT& key9, const ValT& val9)
   { (*this)[key0] = val0; (*this)[key1] = val1; (*this)[key2] = val2; (*this)[key3] = val3; (*this)[key4] = val4; (*this)[key5] = val5; (*this)[key6] = val6; (*this)[key7] = val7; (*this)[key8] = val8; (*this)[key9] = val9; }
 }; // easymap
 

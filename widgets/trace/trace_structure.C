@@ -238,7 +238,7 @@ void traceStream::emitObservations(const std::list<std::string>& contextAttrs,
     const std::set<attrValue>& vals = attributes.get(*a);
     assert(vals.size()>0);
     if(vals.size()>1) { cerr << "traceStream::traceAttr() ERROR: context attribute "<<*a<<" has multiple values!"; }
-    contextAttrsMap[*a] = vals.begin()->getAsStr();
+    contextAttrsMap[*a] = vals.begin()->serialize();
   }
   
   emitObservations(contextAttrsMap, obs);
@@ -263,7 +263,7 @@ void traceStream::emitObservations(const std::map<std::string, attrValue>& conte
   int i=0;
   for(map<string, pair<attrValue, anchor> >::const_iterator o=obs.begin(); o!=obs.end(); o++, i++) {
     pMap[txt()<<"tKey_"<<i] = o->first;
-    pMap[txt()<<"tVal_"<<i] = o->second.first.getAsStr();
+    pMap[txt()<<"tVal_"<<i] = o->second.first.serialize();
     pMap[txt()<<"tAnchorID_"<<i] = txt()<<o->second.second.getID();
   }
   
@@ -272,7 +272,7 @@ void traceStream::emitObservations(const std::map<std::string, attrValue>& conte
   i=0;
   for(std::map<std::string, attrValue>::const_iterator a=contextAttrsMap.begin(); a!=contextAttrsMap.end(); a++, i++) {
     pMap[txt()<<"cKey_"<<i] = a->first;
-    pMap[txt()<<"cVal_"<<i] = a->second.getAsStr();
+    pMap[txt()<<"cVal_"<<i] = a->second.serialize();
   }
   
   props.add("traceObs", pMap);

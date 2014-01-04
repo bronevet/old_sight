@@ -158,8 +158,10 @@ class modularApp: public block, public common::module, public traceObserver
   std::map<int, int> numNumericCtxt;
   std::map<int, std::list<std::string> > numericCtxtNames;
     
-  // For each node, for each input, the names of its context attributes
-  std::map<int, std::map<int, std::list<std::string> > > ctxtNames;
+  /* // For each node, for each input, the names of its context attributes
+  std::map<int, std::map<int, std::list<std::string> > > ctxtNames;*/
+  // For each node, for each grouping of context attributes, the names of all the attributes within the grouping
+  std::map<int, std::map<std::string, std::list<std::string> > > ctxtNames;
     
   // The names of the observation trace attributes
   std::map<int, std::set<std::string> > traceAttrNames;
@@ -176,6 +178,13 @@ class modularApp: public block, public common::module, public traceObserver
 // Specialization of traceStreams for the case where they are hosted by a module
 class moduleTraceStream: public traceStream
 {
+  friend class modularApp;
+  protected:
+  int moduleID;
+  std::string name;
+  int numInputs;
+  int numOutputs;
+  
   public:
   moduleTraceStream(properties::iterator props, traceObserver* observer=NULL);
   
@@ -188,6 +197,7 @@ class moduleTraceStream: public traceStream
 // observation (one reference for each value of non-option attributes) and emits these comparisons to the 
 // traceObservers that listen to it.
 class compModule : public common::module, public traceObserver {
+  friend class compModuleTraceStream;
   // Records whether this is the reference configuration of the module
   //bool isReference;
   
@@ -196,16 +206,34 @@ class compModule : public common::module, public traceObserver {
   
   // Maps each configuration of input context values to the mapping of trace attributes to their values 
   // within the reference configuration of the compModule.
-  std::map<std::map<std::string, std::string>, std::map<std::string, std::string> > referenceObs;
+  std::map<std::map<std::string, std::string>, std::map<std::string, attrValue> > referenceObs;
   
   // Records for each configuration of input context values all the the mappings of trace attributes to
   // their values within non-reference configurations of the compModule. We keep these around until we 
   // find the reference configuration for the given configuration of input context values and once we find 
   // it, we relate these to the reference, emit them to this compModuleTraceStream's observer and empty them out.
-  std::map<std::map<std::string, std::string>, std::list<std::map<std::string, std::string> > > comparisonObs;
+  std::map<std::map<std::string, std::string>, std::list<std::map<std::string, attrValue> > > comparisonObs;
+  
+  // For each output and name of a context of the output, records a pointer to the comparator to be used
+  // for this output context.
+  std::vector<std::map<std::string, comparator*> > outComparators;
+  
+  // Maps the name of each measurement to the pointer to the comparator to be used for this measurement
+  std::map<std::string, comparator*> measComparators;
 
   public:  
   compModule(/*bool isReference, */const context& options) : /*isReference(isReference), */options(options) { }
+  
+  // Compare the value of each trace attribute value obs1 to the corresponding value in obs2 and return a mapping of 
+  // each trace attribute to the serialized representation of their relationship.
+  // obs1 and obs2 must have the same trace attributes (map keys).
+  std::map<std::string, std::string> compareObservations(
+                                           const std::map<std::string, attrValue>& obs1,
+                                           const std::map<std::string, attrValue>& obs2);
+  
+  // Given a mapping of trace attribute names to the serialized representations of their attrValues, returns
+  // the same mapping but with the attrValues deserialized as attrValues
+  static std::map<std::string, attrValue> deserializeObs(const std::map<std::string, std::string>& obs);
   
   // Interface implemented by objects that listen for observations a traceStream reads. Such objects
   // call traceStream::registerObserver() to inform a given traceStream that it should observations.

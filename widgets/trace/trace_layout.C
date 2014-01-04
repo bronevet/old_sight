@@ -454,22 +454,22 @@ void traceStream::observe(int traceID,
 {
   // Read all the context attributes. If contextAttrs is empty, it is filled with the context attributes of 
   // this observation. Otherwise, we verify that this observation's context is identical to prior observations.
-  if(/*ts->*/contextAttrsInitialized) assert(/*ts->*/contextAttrs.size() == /*numCtxtAttrs*/ctxt.size());
+  if(contextAttrsInitialized) assert(contextAttrs.size() == /*numCtxtAttrs*/ctxt.size());
   //for(long i=0; i<numCtxtAttrs; i++) {
   for(map<string, string>::const_iterator c=ctxt.begin(); c!=ctxt.end(); c++) {
     //string ctxtName = properties::get(props, txt()<<"cKey_"<<i);
     string ctxtName = c->first;
     //cout << traceID<<": "<<ctxtName<<", ts->contextAttrsInitialized="<<ts->contextAttrsInitialized<<endl;
-    if(!/*ts->*/contextAttrsInitialized) {
-      /*ts->*/contextAttrs.push_back(ctxtName);
+    if(!contextAttrsInitialized) {
+      contextAttrs.push_back(ctxtName);
       // Context attributes cannot be repeated
-      assert(/*ts->*/contextAttrsSet.find(ctxtName) == /*ts->*/contextAttrsSet.end());
-      /*ts->*/contextAttrsSet.insert(ctxtName);
+      assert(contextAttrsSet.find(ctxtName) == contextAttrsSet.end());
+      contextAttrsSet.insert(ctxtName);
     } else
-      assert(/*ts->*/contextAttrsSet.find(ctxtName) != /*ts->*/contextAttrsSet.end());
+      assert(contextAttrsSet.find(ctxtName) != contextAttrsSet.end());
   }
   // The context attributes of this trace are now definitely initialized
-  /*ts->*/contextAttrsInitialized = true;
+  contextAttrsInitialized = true;
   
   // Read all the trace attributes. If traceAttrs is empty, it is filled with the trace attributes of 
   // this observation. Otherwise, we verify that this observation's trace is identical to prior observations.
@@ -487,16 +487,16 @@ void traceStream::observe(int traceID,
       assert(ts->traceAttrsSet.find(traceName) != ts->traceAttrsSet.end());*/
     
     // If this trace attribute has not yet been observed, record it
-    if(/*ts->*/traceAttrsSet.find(traceName) == /*ts->*/traceAttrsSet.end()) {
-      /*ts->*/traceAttrs.push_back(traceName);
-      /*ts->*/traceAttrsSet.insert(traceName);
+    if(traceAttrsSet.find(traceName) == traceAttrsSet.end()) {
+      traceAttrs.push_back(traceName);
+      traceAttrsSet.insert(traceName);
     }
   }
   // The trace attributes of this trace are now definitely initialized
-  ///*ts->*/traceAttrsInitialized = true;
+  //traceAttrsInitialized = true;
   
   ostringstream cmd;
-  cmd << "traceRecord(\""<</*ts->*/traceID<<"\", ";
+  cmd << "traceRecord(\""<<traceID<<"\", ";
   
   // Emit the observed values of tracer attributes
   cmd << "{";
@@ -507,7 +507,8 @@ void traceStream::observe(int traceID,
     //string tKey = properties::get(props, txt()<<"tKey_"<<i);
     //string tVal = properties::get(props, txt()<<"tVal_"<<i);
     //cmd << "\""<< tKey << "\": \"" << tVal <<"\"";
-    cmd << "\""<< o->first << "\": \"" << o->second <<"\"";
+    attrValue val(o->second, attrValue::unknownT);
+    cmd << "\""<< o->first << "\": \"" << val.getAsStr() <<"\"";
     
     // If some observers are listening on this traceStream, record the current observation so they can look at it
     //if(ts->numObservers()>0) obs[tKey] = tVal;
@@ -537,12 +538,13 @@ void traceStream::observe(int traceID,
     /*string cKey = properties::get(props, txt()<<"cKey_"<<i);
     string cVal = properties::get(props, txt()<<"cVal_"<<i);
     cmd << "\"" << cKey << "\": \"" << cVal << "\"";*/
-    cmd << "\"" << c->first << "\": \"" << c->second << "\"";
+    attrValue val(c->second, attrValue::unknownT);
+    cmd << "\"" << c->first << "\": \"" << val.getAsStr() << "\"";
     
     // If some observers are listening on this traceStream, record the current observation so they can look at it
     //if(ts->numObservers()>0) ctxt[cKey] = cVal;
   }}
-  cmd << "}, \""<<viz2Str(/*ts->*/viz)<<"\");";
+  cmd << "}, \""<<viz2Str(viz)<<"\");";
   
   dbg.widgetScriptCommand(cmd.str());
 }

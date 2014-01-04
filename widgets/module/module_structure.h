@@ -20,7 +20,7 @@ namespace structure {
 // Rename for contexts, groups and ports that enables users to refer to them without prepending common::module
 //typedef common::module::group group;
 typedef common::module::context context;
-typedef common::module::context::config config;
+//typedef common::module::context::config config;
 //typedef common::module::port port;
 //#endif
 
@@ -32,7 +32,7 @@ class instance {
   int numOutputs;
 
   instance() {}
-  instance(std::string name, int numInputs, int numOutputs) : name(name), numInputs(numInputs), numOutputs(numOutputs) {}
+  instance(const std::string& name, int numInputs, int numOutputs) : name(name), numInputs(numInputs), numOutputs(numOutputs) {}
   instance(const instance& that) : name(that.name), numInputs(that.numInputs), numOutputs(that.numOutputs) {}
 
   instance(properties::iterator props);
@@ -110,25 +110,36 @@ class group {
 class port {
   public:
   group g;
-  context ctxt;
+  // Points to a dynamically-allocated instance of a context object, which may be any class that derives from 
+  // context for use by different types of modules with their own notion of context. This object is deallocated
+  // in this port's destructor.
+  context* ctxt;
   sight::common::module::ioT type;
   int index;
 
-  port() {}
-  port(const context& ctxt) : ctxt(ctxt), type(sight::common::module::output), index(-1) {}
-  port(const group& g, const context& ctxt, sight::common::module::ioT type, int index) : g(g), ctxt(ctxt), type(type), index(index) {}
-
+  port() : ctxt(NULL) {}
+  port(const port& that) : ctxt(that.ctxt->copy()), type(that.type), index(that.index) {}
+  port(const context& ctxt) : ctxt(ctxt.copy()), type(sight::common::module::output), index(-1) {}
+  port(const group& g, const context& ctxt, sight::common::module::ioT type, int index) : g(g), ctxt(ctxt.copy()), type(type), index(index) {}
+  ~port() { if(ctxt) delete ctxt; }
+  
   bool operator==(const port& that) const
-  { return g==that.g && ctxt==that.ctxt && type==that.type && index==that.index; }
+  { return g==that.g && *ctxt==*that.ctxt && type==that.type && index==that.index; }
 
   bool operator<(const port& that) const
   { return (g< that.g) ||
-           (g==that.g && ctxt< that.ctxt) ||
-           (g==that.g && ctxt==that.ctxt && type< that.type) ||
-           (g==that.g && ctxt==that.ctxt && type==that.type && index<that.index); }
+           (g==that.g && *ctxt< *that.ctxt) ||
+           (g==that.g && *ctxt==*that.ctxt && type< that.type) ||
+           (g==that.g && *ctxt==*that.ctxt && type==that.type && index<that.index); }
 
+  // Sets the context field
+  void setCtxt(const context& newCtxt) {
+    if(ctxt) delete ctxt;
+    ctxt = newCtxt.copy();
+  }
+  
   // Erase the context within this port. This is important for data-structures that ignore context details
-  void clearContext() { ctxt.configuration.clear(); }
+  void clearContext() { ctxt->configuration.clear(); }
 
   // Returns a human-readable string that describes this context
   std::string str() const;
@@ -296,7 +307,7 @@ class modularApp: public block
   // g - the module group for which we're registering inputs/outputs
   // inouts - the vector of input or output ports
   // toT - identifies whether inouts is the vector of inputs or outputs
-  static void registerInOutContexts(const group& g, const std::vector<port> inouts, sight::common::module::ioT io);
+  static void registerInOutContexts(const group& g, const std::vector<port>& inouts, sight::common::module::ioT io);
   
   // Add an edge between one module's output port and another module's input port
   static void addEdge(port from, port to);
@@ -309,19 +320,26 @@ class modularApp: public block
   static module* getCurModule();
   
   // Adds the given module object to the modules stack
-  static void enterModule(module* m, int moduleID, properties* props, generateTraceStream& tsGenerator);
+  static void enterModule(module* m, int moduleID, properties* props/*, generateTraceStream& tsGenerator*/);
   
+    // Returns whether a traceStream has been registered for the given module group
+  static bool isTraceStreamRegistered(const group& g);
+
+  // Registers the given traceStream for the given module group
+  static void registerTraceStream(const group& g, traceStream* ts);
+
   // Removes the given module object from the modules stack
   static void exitModule(module* m);
 }; // class modularApp
 
-class module: /*public sightObj, */public common::module
+class module: public common::module
 {
   friend class group;
   friend class modularApp;
   
   protected:
   
+  int moduleID;
   group g;
   
   // The context of this module execution, which is a combination of the contexts of all of its inputs
@@ -353,15 +371,19 @@ class module: /*public sightObj, */public common::module
     std::map<std::string, attrValue> ctxt;
     
     // Points to a function that generates the trace stream instance specific to the given derivation of module
-    generateTraceStream& tsGenerator;
+    //generateTraceStream& tsGenerator;
     
-    derivInfo(generateTraceStream& tsGenerator) : tsGenerator(tsGenerator) {
+    derivInfo(/*generateTraceStream& tsGenerator*/)/* : tsGenerator(tsGenerator)*/ {
       props = new properties;
     }
     
-    derivInfo(properties* props, const std::map<std::string, attrValue>& ctxt, generateTraceStream& tsGenerator) :
-                  props(props), ctxt(ctxt), tsGenerator(tsGenerator) { }
+    derivInfo(properties* props, const std::map<std::string, attrValue>& ctxt/*, generateTraceStream& tsGenerator*/) :
+                  props(props), ctxt(ctxt)/*, tsGenerator(tsGenerator)*/ { }
   }; // class derivInfo
+  
+  // Records whether this class has been derived by another. In this case ~module() relies on the destructor of
+  // that class to create an appropriate traceStream.
+  bool isDerived;
   
   public:
   // inputs - ports from other modules that are used as inputs by this module.
@@ -404,7 +426,7 @@ class module: /*public sightObj, */public common::module
   ~module();
   
   // The variant of the generateTraceStream functor specialized to generating moduleTraceStreams
-  class generateModuleTraceStream : public generateTraceStream {
+  /*class generateModuleTraceStream : public generateTraceStream {
     protected:
     const group* g;
     public:
@@ -415,16 +437,18 @@ class module: /*public sightObj, */public common::module
     
     traceStream* operator()(int moduleID);
   }; // class generateModuleTraceStream
-
+*/
+  
   // Returns the properties of this object
   //properties* setProperties(int moduleID, derivInfo* deriv=NULL);
   
   const std::vector<context>& getContext() const { return ctxt; }
+  std::string name() const { return g.name(); }
   int numInputs()  const { return g.numInputs(); }
   int numOutputs() const { return g.numOutputs(); }
   
   // Sets the context of the given output port
-  void setOutCtxt(int idx, const context& c);
+  virtual void setOutCtxt(int idx, const context& c);
   
   // Returns a list of the module's input ports
   //std::vector<port> inputPorts() const;
@@ -440,19 +464,184 @@ class module: /*public sightObj, */public common::module
   bool subBlockExitNotify (block* subBlock) { return true; }
 }; // moduleGraph
 
+// Extends the normal context by allowing the caller to specify a description of the comparator to be used
+// for each key
+class compContext: public context {
+  public:
+  // Maps each context key to the pair <comparator name, comparator description>
+  std::map<std::string, std::pair<std::string, std::string> > comparators;
+
+  compContext() {}
+
+  compContext(const compContext& that) : context((const context&) that), comparators(that.comparators) {}
+  
+  compContext(const std::string& name0, const attrValue& val0, const comparatorDesc& cdesc0) : 
+    context(name0, val0)
+  { comparators[name0] = std::make_pair(cdesc0.name(), cdesc0.description()); }
+  
+  compContext(const std::string& name0, const attrValue& val0, const comparatorDesc& cdesc0, const std::string& name1, const attrValue& val1, const comparatorDesc& cdesc1) : 
+    context(name0, val0, name1, val1)
+  { comparators[name0] = std::make_pair(cdesc0.name(), cdesc0.description()); comparators[name1] = std::make_pair(cdesc1.name(), cdesc1.description()); }
+  
+  compContext(const std::string& name0, const attrValue& val0, const comparatorDesc& cdesc0, const std::string& name1, const attrValue& val1, const comparatorDesc& cdesc1, const std::string& name2, const attrValue& val2, const comparatorDesc& cdesc2) :
+    context(name0, val0, name1, val1, name2, val2)
+  { comparators[name0] = std::make_pair(cdesc0.name(), cdesc0.description()); comparators[name1] = std::make_pair(cdesc1.name(), cdesc1.description()); comparators[name2] = std::make_pair(cdesc2.name(), cdesc2.description()); }
+  
+  compContext(const std::string& name0, const attrValue& val0, const comparatorDesc& cdesc0, const std::string& name1, const attrValue& val1, const comparatorDesc& cdesc1, const std::string& name2, const attrValue& val2, const comparatorDesc& cdesc2, const std::string& name3, const attrValue& val3, const comparatorDesc& cdesc3) :
+    context(name0, val0, name1, val1, name2, val2, name3, val3)
+  { comparators[name0] = std::make_pair(cdesc0.name(), cdesc0.description()); comparators[name1] = std::make_pair(cdesc1.name(), cdesc1.description()); comparators[name2] = std::make_pair(cdesc2.name(), cdesc2.description()); comparators[name3] = std::make_pair(cdesc3.name(), cdesc3.description()); }
+  
+  compContext(const std::string& name0, const attrValue& val0, const comparatorDesc& cdesc0, const std::string& name1, const attrValue& val1, const comparatorDesc& cdesc1, const std::string& name2, const attrValue& val2, const comparatorDesc& cdesc2, const std::string& name3, const attrValue& val3, const comparatorDesc& cdesc3, const std::string& name4, const attrValue& val4, const comparatorDesc& cdesc4) :
+    context(name0, val0, name1, val1, name2, val2, name3, val3, name4, val4)
+  { comparators[name0] = std::make_pair(cdesc0.name(), cdesc0.description()); comparators[name1] = std::make_pair(cdesc1.name(), cdesc1.description()); comparators[name2] = std::make_pair(cdesc2.name(), cdesc2.description()); comparators[name3] = std::make_pair(cdesc3.name(), cdesc3.description()); comparators[name4] = std::make_pair(cdesc4.name(), cdesc4.description()); }
+  
+  compContext(const std::string& name0, const attrValue& val0, const comparatorDesc& cdesc0, const std::string& name1, const attrValue& val1, const comparatorDesc& cdesc1, const std::string& name2, const attrValue& val2, const comparatorDesc& cdesc2, const std::string& name3, const attrValue& val3, const comparatorDesc& cdesc3, const std::string& name4, const attrValue& val4, const comparatorDesc& cdesc4, const std::string& name5, const attrValue& val5, const comparatorDesc& cdesc5) :
+    context(name0, val0, name1, val1, name2, val2, name3, val3, name4, val4, name5, val5)
+  { comparators[name0] = std::make_pair(cdesc0.name(), cdesc0.description()); comparators[name1] = std::make_pair(cdesc1.name(), cdesc1.description()); comparators[name2] = std::make_pair(cdesc2.name(), cdesc2.description()); comparators[name3] = std::make_pair(cdesc3.name(), cdesc3.description()); comparators[name4] = std::make_pair(cdesc4.name(), cdesc4.description()); comparators[name5] = std::make_pair(cdesc5.name(), cdesc5.description()); }
+  
+  compContext(const std::string& name0, const attrValue& val0, const comparatorDesc& cdesc0, const std::string& name1, const attrValue& val1, const comparatorDesc& cdesc1, const std::string& name2, const attrValue& val2, const comparatorDesc& cdesc2, const std::string& name3, const attrValue& val3, const comparatorDesc& cdesc3, const std::string& name5, const std::string& name4, const attrValue& val4, const comparatorDesc& cdesc4, const attrValue& val5, const comparatorDesc& cdesc5, const std::string& name6, const attrValue& val6, const comparatorDesc& cdesc6) :
+    context(name0, val0, name1, val1, name2, val2, name3, val3, name4, val4, name5, val5, name6, val6)
+  { comparators[name0] = std::make_pair(cdesc0.name(), cdesc0.description()); comparators[name1] = std::make_pair(cdesc1.name(), cdesc1.description()); comparators[name2] = std::make_pair(cdesc2.name(), cdesc2.description()); comparators[name3] = std::make_pair(cdesc3.name(), cdesc3.description()); comparators[name4] = std::make_pair(cdesc4.name(), cdesc4.description()); comparators[name5] = std::make_pair(cdesc5.name(), cdesc5.description()); comparators[name6] = std::make_pair(cdesc6.name(), cdesc6.description()); }
+  
+  compContext(const std::string& name0, const attrValue& val0, const comparatorDesc& cdesc0, const std::string& name1, const attrValue& val1, const comparatorDesc& cdesc1, const std::string& name2, const attrValue& val2, const comparatorDesc& cdesc2, const std::string& name3, const attrValue& val3, const comparatorDesc& cdesc3, const std::string& name5, const std::string& name4, const attrValue& val4, const comparatorDesc& cdesc4, const attrValue& val5, const comparatorDesc& cdesc5, const std::string& name6, const attrValue& val6, const comparatorDesc& cdesc6, const std::string& name7, const attrValue& val7, const comparatorDesc& cdesc7) :
+    context(name0, val0, name1, val1, name2, val2, name3, val3, name4, val4, name5, val5, name6, val6, name7, val7)
+  { comparators[name0] = std::make_pair(cdesc0.name(), cdesc0.description()); comparators[name1] = std::make_pair(cdesc1.name(), cdesc1.description()); comparators[name2] = std::make_pair(cdesc2.name(), cdesc2.description()); comparators[name3] = std::make_pair(cdesc3.name(), cdesc3.description()); comparators[name4] = std::make_pair(cdesc4.name(), cdesc4.description()); comparators[name5] = std::make_pair(cdesc5.name(), cdesc5.description()); comparators[name6] = std::make_pair(cdesc6.name(), cdesc6.description()); comparators[name7] = std::make_pair(cdesc7.name(), cdesc7.description()); }
+  
+  compContext(const std::string& name0, const attrValue& val0, const comparatorDesc& cdesc0, const std::string& name1, const attrValue& val1, const comparatorDesc& cdesc1, const std::string& name2, const attrValue& val2, const comparatorDesc& cdesc2, const std::string& name3, const attrValue& val3, const comparatorDesc& cdesc3, const std::string& name5, const std::string& name4, const attrValue& val4, const comparatorDesc& cdesc4, const attrValue& val5, const comparatorDesc& cdesc5, const std::string& name6, const attrValue& val6, const comparatorDesc& cdesc6, const std::string& name7, const attrValue& val7, const comparatorDesc& cdesc7, const std::string& name8, const attrValue& val8, const comparatorDesc& cdesc8) :
+    context(name0, val0, name1, val1, name2, val2, name3, val3, name4, val4, name5, val5, name6, val6, name7, val7, name8, val8)
+  { comparators[name0] = std::make_pair(cdesc0.name(), cdesc0.description()); comparators[name1] = std::make_pair(cdesc1.name(), cdesc1.description()); comparators[name2] = std::make_pair(cdesc2.name(), cdesc2.description()); comparators[name3] = std::make_pair(cdesc3.name(), cdesc3.description()); comparators[name4] = std::make_pair(cdesc4.name(), cdesc4.description()); comparators[name5] = std::make_pair(cdesc5.name(), cdesc5.description()); comparators[name6] = std::make_pair(cdesc6.name(), cdesc6.description()); comparators[name7] = std::make_pair(cdesc7.name(), cdesc7.description()); comparators[name8] = std::make_pair(cdesc8.name(), cdesc8.description()); }
+  
+  compContext(const std::string& name0, const attrValue& val0, const comparatorDesc& cdesc0, const std::string& name1, const attrValue& val1, const comparatorDesc& cdesc1, const std::string& name2, const attrValue& val2, const comparatorDesc& cdesc2, const std::string& name3, const attrValue& val3, const comparatorDesc& cdesc3, const std::string& name5, const std::string& name4, const attrValue& val4, const comparatorDesc& cdesc4, const attrValue& val5, const comparatorDesc& cdesc5, const std::string& name6, const attrValue& val6, const comparatorDesc& cdesc6, const std::string& name7, const attrValue& val7, const comparatorDesc& cdesc7, const std::string& name8, const attrValue& val8, const comparatorDesc& cdesc8, const std::string& name9, const attrValue& val9, const comparatorDesc& cdesc9) :
+    context(name0, val0, name1, val1, name2, val2, name3, val3, name4, val4, name5, val5, name6, val6, name7, val7, name8, val8, name9, val9)
+  { comparators[name0] = std::make_pair(cdesc0.name(), cdesc0.description()); comparators[name1] = std::make_pair(cdesc1.name(), cdesc1.description()); comparators[name2] = std::make_pair(cdesc2.name(), cdesc2.description()); comparators[name3] = std::make_pair(cdesc3.name(), cdesc3.description()); comparators[name4] = std::make_pair(cdesc4.name(), cdesc4.description()); comparators[name5] = std::make_pair(cdesc5.name(), cdesc5.description()); comparators[name6] = std::make_pair(cdesc6.name(), cdesc6.description()); comparators[name7] = std::make_pair(cdesc7.name(), cdesc7.description()); comparators[name8] = std::make_pair(cdesc8.name(), cdesc8.description()); comparators[name9] = std::make_pair(cdesc9.name(), cdesc9.description()); }
+  
+  compContext(const std::map<std::string, attrValue>& configuration, const std::map<std::string, std::pair<std::string, std::string> >& comparators) : 
+    context(configuration), comparators(comparators) {}
+
+  // Loads this context from the given properties map. The names of all the fields are assumed to be prefixed
+  // with the given string.
+  compContext(properties::iterator props, std::string prefix="");
+  
+  // Returns a dynamically-allocated copy of this object. This method must be implemented by all classes
+  // that inherit from context to make sure that appropriate copies of them can be created.
+  virtual context* copy() const { return new compContext(*this); }
+  
+  // These comparator routines must be implemented by all classes that inherit from context to make sure that
+  // their additional details are reflected in the results of the comparison. Implementors may assume that 
+  // the type of that is their special derivation of context rather than a generic context and should dynamically
+  // cast from const context& to their sub-type.
+  virtual bool operator==(const context& that) const;
+
+  virtual bool operator<(const context& that) const;
+
+  // Returns the properties map that describes this context object.
+  // The names of all the fields in the map are prefixed with the given string.
+  std::map<std::string, std::string> getProperties(std::string prefix="") const;
+  
+  // Returns a human-readable string that describes this context
+  virtual std::string str() const;
+}; // class compContext
+
+class compModuleTraceStream;
+
+class compNamedMeasures {
+  public:
+  
+  // Records all the information about a named measures and their comparators
+  class info {
+    public:
+    measure* meas; // Points to the measure object
+    std::string compName; // The name of the comparator to be used with this measure
+    std::string compDesc; // The description of the comparator to be used with this measure
+  
+    info() {}
+    info(measure* meas, std::string compName, std::string compDesc) : meas(meas), compName(compName), compDesc(compDesc) {}
+  };
+    
+  // Maps the name of each measure to its info
+  std::map<std::string, info> measures;
+
+  compNamedMeasures() {}
+  
+  compNamedMeasures(const compNamedMeasures& that) : measures(that.measures) {}
+  
+  compNamedMeasures(const std::string& name0, measure* meas0, const comparatorDesc& cdesc0)
+  { measures[name0] = info(meas0, cdesc0.name(), cdesc0.description()); }
+  
+  compNamedMeasures(const std::string& name0, measure* meas0, const attrValue& val0, const comparatorDesc& cdesc0, const std::string& name1, measure* meas1, const comparatorDesc& cdesc1)
+  { measures[name0] = info(meas0, cdesc0.name(), cdesc0.description()); measures[name1] = info(meas1, cdesc1.name(), cdesc1.description()); }
+  
+  compNamedMeasures(const std::string& name0, measure* meas0, const comparatorDesc& cdesc0, const std::string& name1, measure* meas1, const comparatorDesc& cdesc1, const std::string& name2, measure* meas2, const comparatorDesc& cdesc2)
+  { measures[name0] = info(meas0, cdesc0.name(), cdesc0.description()); measures[name1] = info(meas1, cdesc1.name(), cdesc1.description()); measures[name2] = info(meas2, cdesc2.name(), cdesc2.description()); }
+  
+  compNamedMeasures(const std::string& name0, measure* meas0, const comparatorDesc& cdesc0, const std::string& name1, measure* meas1, const comparatorDesc& cdesc1, const std::string& name2, measure* meas2, const comparatorDesc& cdesc2, const std::string& name3, measure* meas3, const comparatorDesc& cdesc3)
+  { measures[name0] = info(meas0, cdesc0.name(), cdesc0.description()); measures[name1] = info(meas1, cdesc1.name(), cdesc1.description()); measures[name2] = info(meas2, cdesc2.name(), cdesc2.description()); measures[name3] = info(meas3, cdesc3.name(), cdesc3.description()); }
+  
+  compNamedMeasures(const std::string& name0, measure* meas0, const comparatorDesc& cdesc0, const std::string& name1, measure* meas1, const comparatorDesc& cdesc1, const std::string& name2, measure* meas2, const comparatorDesc& cdesc2, const std::string& name3, measure* meas3, const comparatorDesc& cdesc3, const std::string& name4, measure* meas4, const comparatorDesc& cdesc4)
+  { measures[name0] = info(meas0, cdesc0.name(), cdesc0.description()); measures[name1] = info(meas1, cdesc1.name(), cdesc1.description()); measures[name2] = info(meas2, cdesc2.name(), cdesc2.description()); measures[name3] = info(meas3, cdesc3.name(), cdesc3.description()); measures[name4] = info(meas4, cdesc4.name(), cdesc4.description()); }
+  
+  compNamedMeasures(const std::string& name0, measure* meas0, const comparatorDesc& cdesc0, const std::string& name1, measure* meas1, const comparatorDesc& cdesc1, const std::string& name2, measure* meas2, const comparatorDesc& cdesc2, const std::string& name3, measure* meas3, const comparatorDesc& cdesc3, const std::string& name4, measure* meas4, const comparatorDesc& cdesc4, const std::string& name5, measure* meas5, const comparatorDesc& cdesc5)
+  { measures[name0] = info(meas0, cdesc0.name(), cdesc0.description()); measures[name1] = info(meas1, cdesc1.name(), cdesc1.description()); measures[name2] = info(meas2, cdesc2.name(), cdesc2.description()); measures[name3] = info(meas3, cdesc3.name(), cdesc3.description()); measures[name4] = info(meas4, cdesc4.name(), cdesc4.description()); measures[name5] = info(meas5, cdesc5.name(), cdesc5.description()); }
+  
+  compNamedMeasures(const std::string& name0, measure* meas0, const comparatorDesc& cdesc0, const std::string& name1, measure* meas1, const comparatorDesc& cdesc1, const std::string& name2, measure* meas2, const comparatorDesc& cdesc2, const std::string& name3, measure* meas3, const comparatorDesc& cdesc3, const std::string& name5, const std::string& name4, measure* meas4, const comparatorDesc& cdesc4, measure* meas5, const comparatorDesc& cdesc5, const std::string& name6, measure* meas6, const comparatorDesc& cdesc6)
+  { measures[name0] = info(meas0, cdesc0.name(), cdesc0.description()); measures[name1] = info(meas1, cdesc1.name(), cdesc1.description()); measures[name2] = info(meas2, cdesc2.name(), cdesc2.description()); measures[name3] = info(meas3, cdesc3.name(), cdesc3.description()); measures[name4] = info(meas4, cdesc4.name(), cdesc4.description()); measures[name5] = info(meas5, cdesc5.name(), cdesc5.description()); measures[name6] = info(meas6, cdesc6.name(), cdesc6.description()); }
+  
+  compNamedMeasures(const std::string& name0, measure* meas0, const comparatorDesc& cdesc0, const std::string& name1, measure* meas1, const comparatorDesc& cdesc1, const std::string& name2, measure* meas2, const comparatorDesc& cdesc2, const std::string& name3, measure* meas3, const comparatorDesc& cdesc3, const std::string& name5, const std::string& name4, measure* meas4, const comparatorDesc& cdesc4, measure* meas5, const comparatorDesc& cdesc5, const std::string& name6, measure* meas6, const comparatorDesc& cdesc6, const std::string& name7, measure* meas7, const comparatorDesc& cdesc7)
+  { measures[name0] = info(meas0, cdesc0.name(), cdesc0.description()); measures[name1] = info(meas1, cdesc1.name(), cdesc1.description()); measures[name2] = info(meas2, cdesc2.name(), cdesc2.description()); measures[name3] = info(meas3, cdesc3.name(), cdesc3.description()); measures[name4] = info(meas4, cdesc4.name(), cdesc4.description()); measures[name5] = info(meas5, cdesc5.name(), cdesc5.description()); measures[name6] = info(meas6, cdesc6.name(), cdesc6.description()); measures[name7] = info(meas7, cdesc7.name(), cdesc7.description()); }
+  
+  compNamedMeasures(const std::string& name0, measure* meas0, const comparatorDesc& cdesc0, const std::string& name1, measure* meas1, const comparatorDesc& cdesc1, const std::string& name2, measure* meas2, const comparatorDesc& cdesc2, const std::string& name3, measure* meas3, const comparatorDesc& cdesc3, const std::string& name5, const std::string& name4, measure* meas4, const comparatorDesc& cdesc4, measure* meas5, const comparatorDesc& cdesc5, const std::string& name6, measure* meas6, const comparatorDesc& cdesc6, const std::string& name7, measure* meas7, const comparatorDesc& cdesc7, const std::string& name8, measure* meas8, const comparatorDesc& cdesc8)
+  { measures[name0] = info(meas0, cdesc0.name(), cdesc0.description()); measures[name1] = info(meas1, cdesc1.name(), cdesc1.description()); measures[name2] = info(meas2, cdesc2.name(), cdesc2.description()); measures[name3] = info(meas3, cdesc3.name(), cdesc3.description()); measures[name4] = info(meas4, cdesc4.name(), cdesc4.description()); measures[name5] = info(meas5, cdesc5.name(), cdesc5.description()); measures[name6] = info(meas6, cdesc6.name(), cdesc6.description()); measures[name7] = info(meas7, cdesc7.name(), cdesc7.description()); measures[name8] = info(meas8, cdesc8.name(), cdesc8.description()); }
+  
+  compNamedMeasures(const std::string& name0, measure* meas0, const comparatorDesc& cdesc0, const std::string& name1, measure* meas1, const comparatorDesc& cdesc1, const std::string& name2, measure* meas2, const comparatorDesc& cdesc2, const std::string& name3, measure* meas3, const comparatorDesc& cdesc3, const std::string& name5, const std::string& name4, measure* meas4, const comparatorDesc& cdesc4, measure* meas5, const comparatorDesc& cdesc5, const std::string& name6, measure* meas6, const comparatorDesc& cdesc6, const std::string& name7, measure* meas7, const comparatorDesc& cdesc7, const std::string& name8, measure* meas8, const comparatorDesc& cdesc8, const std::string& name9, measure* meas9, const comparatorDesc& cdesc9)
+  { measures[name0] = info(meas0, cdesc0.name(), cdesc0.description()); measures[name1] = info(meas1, cdesc1.name(), cdesc1.description()); measures[name2] = info(meas2, cdesc2.name(), cdesc2.description()); measures[name3] = info(meas3, cdesc3.name(), cdesc3.description()); measures[name4] = info(meas4, cdesc4.name(), cdesc4.description()); measures[name5] = info(meas5, cdesc5.name(), cdesc5.description()); measures[name6] = info(meas6, cdesc6.name(), cdesc6.description()); measures[name7] = info(meas7, cdesc7.name(), cdesc7.description()); measures[name8] = info(meas8, cdesc8.name(), cdesc8.description()); measures[name9] = info(meas9, cdesc9.name(), cdesc9.description()); }
+  
+  // Returns the properties map that describes this context object.
+  // The names of all the fields in the map are prefixed with the given string.
+  //std::map<std::string, std::string> getProperties(std::string prefix="") const;
+  
+  // Returns a map that maps the names of all the named measurements to the pair of strings that records the 
+  // name and description of the comparison to be used with each measurement
+  std::map<std::string, std::pair<std::string, std::string> > getComparators() const {
+    std::map<std::string, std::pair<std::string, std::string> > name2comp;
+    for(std::map<std::string, info>::const_iterator m=measures.begin(); m!=measures.end(); m++)
+      name2comp[m->first] = make_pair(m->second.compName, m->second.compDesc);
+    return name2comp;
+  }
+  
+  // Returns a mapping from the names of all the named measurements to pointers of their corresponding measure objects
+  namedMeasures getNamedMeasures() const {
+    namedMeasures nm;
+    for(std::map<std::string, info>::const_iterator m=measures.begin(); m!=measures.end(); m++)
+      nm[m->first] = m->second.meas;
+    return nm;
+  }
+}; // class compNamedMeasures
+
 class compModule: public structure::module
 {
+  friend class compModuleTraceStream;
+  public:
+  
   protected:
   // Records whether this is the reference configuration of the moculde
-  //bool isReference;
+  bool isReference;
     
   // The context that describes the configuration options of this module
-  //context options;
+  context options;
+    
+  // Records whether this class has been derived by another. In this case ~module() relies on the destructor of
+  // that class to create an appropriate traceStream.
+  bool isDerived;
+  
+  // Maps the names of of all the measurements that should be taken during the execution of this module to the 
+  // names and descriptors of the comparisons that should be performed for them.
+  std::map<std::string, std::pair<std::string, std::string> > measComp;
   
   public:
   
   // isReference: Records whether this is the reference configuration of the moculde
   // options: The context that describes the configuration options of this module
+  // meas: The measurements that should be performed during the execution of this compModule
   // derivInfo: Information that describes the class that derives from this on. It includes a pointer to a properties
   //    object that can be used to create a tag for the derived object that includes info about its parents. Further,
   //    it includes fields that must be included within the context of any trace observations made during the execution
@@ -465,16 +654,24 @@ class compModule: public structure::module
              const attrOp& onoffOp,                            derivInfo* deriv=NULL);
   compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
              bool isReference, const context& options,
-                                    const namedMeasures& meas, derivInfo* deriv=NULL);
+                                    const compNamedMeasures& meas, derivInfo* deriv=NULL);
   compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
              bool isReference, const context& options, 
-             const attrOp& onoffOp, const namedMeasures& meas, derivInfo* deriv=NULL);
-  
+             const attrOp& onoffOp, const compNamedMeasures& meas, derivInfo* deriv=NULL);
   // Sets the properties of this object
   derivInfo* setProperties(const instance& inst, bool isReference, const context& options, const attrOp* onoffOp, derivInfo* deriv=NULL);
   
+  void init(derivInfo* deriv);
+  
+  ~compModule();
+  
+  // Sets the context of the given output port. This variant ensures that the outputs of compModules can only
+  // be set with compContexts.
+  void setOutCtxt(int idx, const context& c) { std::cerr << "ERROR: compModule::setOutCtxt() can only be called with a compContext argument!"<<std::endl; assert(0); }
+  void setOutCtxt(int idx, const compContext& c);
+  
   // The variant of the generateTraceStream functor specialized to generating moduleTraceStreams
-  class generateCompModuleTraceStream : public generateModuleTraceStream {
+  /*class generateCompModuleTraceStream : public generateModuleTraceStream {
     bool isReference;
     const context* options;
     public:
@@ -489,30 +686,30 @@ class compModule: public structure::module
     }
     
     traceStream* operator()(int moduleID);
-  }; // class generateModuleTraceStream
+  }; // class generateModuleTraceStream */
   
   // Static instance of generateModuleTraceStream. It is initialized inside calls to setProperties() and utilized inside
   // the module() constructor in its call to modularApp::enterModule(). As such, its state needs to remain valid during
   // the course of construction but is irrelevant other than that.
-  static generateCompModuleTraceStream gcmts;
+  //static generateCompModuleTraceStream gcmts;
 }; // class compModule
 
 // Specialization of traceStreams for the case where they are hosted by a module node
 class moduleTraceStream: public traceStream
 {
   public:
-  moduleTraceStream(int moduleID, std::string name, int numInputs, int numOutputs, vizT viz, mergeT merge, properties* props=NULL);
+  moduleTraceStream(int moduleID, module* m/*const std::string& name, int numInputs, int numOutputs*/, vizT viz, mergeT merge, properties* props=NULL);
   
-  static properties* setProperties(int moduleID, std::string name, int numInputs, int numOutputs, vizT viz, mergeT merge, properties* props);
+  static properties* setProperties(int moduleID, module* m/*const std::string& name, int numInputs, int numOutputs*/, vizT viz, mergeT merge, properties* props);
 };
 
 // Specialization of moduleTraceStream for the case where they are hosted by a compModule node
 class compModuleTraceStream: public moduleTraceStream
 {
   public:
-  compModuleTraceStream(int moduleID, std::string name, int numInputs, int numOutputs, bool isReference, const context& options, vizT viz, mergeT merge, properties* props=NULL);
+  compModuleTraceStream(int moduleID, compModule* cm/*const std::string& name, int numInputs, int numOutputs, bool isReference, const context& options*/, vizT viz, mergeT merge, properties* props=NULL);
   
-  static properties* setProperties(int moduleID, std::string name, int numInputs, int numOutputs, bool isReference, const context& options, vizT viz, mergeT merge, properties* props);
+  static properties* setProperties(int moduleID, compModule* cm/*const std::string& name, int numInputs, int numOutputs, bool isReference, const context& options*/, vizT viz, mergeT merge, properties* props);
 };
 
 class ModuleMergeHandlerInstantiator: public MergeHandlerInstantiator {

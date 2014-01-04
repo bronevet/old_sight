@@ -279,7 +279,7 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, viz, showFre
   } else if(viz == 'lines') {
     if(numContextAttrs!=1) { alert("Line visualizations require requre exactly one context variable for each chart"); return; }
     
-    var cStr=ctxtAttrs[0].replace(":", "-");
+    var cStr=ctxtAttrs[0].replace(/:/g, "-");
     var newDiv="";
     if(showLabels) newDiv += ctxtAttrs[0] + "\n";
     newDiv += "<div id=\""+hostDivID+"_"+cStr+"\" style=\"height:300\"></div>\n";
@@ -356,14 +356,14 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, viz, showFre
       for(t in traceAttrs) {   if(traceAttrs.hasOwnProperty(t)) {
         if(showLabels) divsForBoxplot += "Context=" + ctxtAttrs[c] + ", Trace=" + traceAttrs[t] + "\n";
         // Escape problematic characters
-        var cStr=ctxtAttrs[c].replace(":", "-");
-        var tStr=traceAttrs[t].replace(":", "-");
+        var cStr=ctxtAttrs[c].replace(/:/g, "-");
+        var tStr=traceAttrs[t].replace(/:/g, "-");
         divsForBoxplot += "<div id=\"" + hostDivID + "_" + cStr + "_" + tStr + "\"></div>\n";
       } } } }
     } else {
       for(t in traceAttrs) {   if(traceAttrs.hasOwnProperty(t)) {
         // Escape problematic characters
-        var tStr=traceAttrs[t].replace(":", "-");
+        var tStr=traceAttrs[t].replace(/:/g, "-");
         if(showLabels) divsForBoxplot += "Trace=" + traceAttrs[t] + "\n";
         divsForBoxplot += "<div id=\"" + hostDivID + "_" + tStr + "\"></div>\n";
       } }
@@ -382,14 +382,14 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, viz, showFre
         for(t in traceAttrs) { if(traceAttrs.hasOwnProperty(t)) {
           //showBoxPlot(traceDataList[traceID], hostDivID+"_"+ctxtAttrs[0]+"_"+traceAttrs[0], ctxtAttrs[0], traceAttrs[0], width, height, margin);
           // Escape problematic characters
-          var cStr=ctxtAttrs[c].replace(":", "-");
-          var tStr=traceAttrs[t].replace(":", "-");
+          var cStr=ctxtAttrs[c].replace(/:/g, "-");
+          var tStr=traceAttrs[t].replace(/:/g, "-");
           showBoxPlot(traceDataList[traceLabel], hostDivID + "_" + cStr + "_" + tStr, ctxtAttrs[c], traceAttrs[t], width, height, margin);
         } } } }
       } else {
         for(t in traceAttrs) {   if(traceAttrs.hasOwnProperty(t)) {
           // Escape problematic characters
-          var tStr=traceAttrs[t].replace(":", "-");
+          var tStr=traceAttrs[t].replace(/:/g, "-");
           showBoxPlot(traceDataList[traceLabel], hostDivID+"_"+tStr, "", traceAttrs[t], width, height, margin);
         } }
       }
