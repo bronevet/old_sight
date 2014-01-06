@@ -459,7 +459,11 @@ class Merger {
   // Given a vector of tag properties, merges their values and returns the merged string
   static std::string getMergedValue(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags, 
                                     std::string key);
-  	
+  
+  // Given a vector of tag properties that must be the same, returns their common value
+  static std::string getSameValue(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags, 
+                                    std::string key);
+  
   // Returns whether all the elements in the given set are equal to each others
   template<class T>
   static bool allSame(const std::vector<T>& s) {

@@ -690,6 +690,17 @@ std::string Merger::getMergedValue(const std::vector<std::pair<properties::tagTy
   return merged;
 }
 
+// Given a vector of tag properties that must be the same, returns their common value
+std::string Merger::getSameValue(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags, 
+                                 std::string key) {
+  string ret;
+  for(vector<pair<properties::tagType, properties::iterator> >::const_iterator t=tags.begin(); t!=tags.end(); t++) {
+    if(t==tags.begin()) ret = t->second.get(key);
+    else assert(ret == t->second.get(key));
+  }
+  return ret;
+}
+
 // Returns whether all the elements in the given set are equal to each others
 /*template<class T>
 bool Merger::allSame(const std::vector<T>& s) {
@@ -1558,7 +1569,7 @@ streamsize dbgBuf::xsputn(const char * s, streamsize n)
     int ret;
     int i=0;
     char open[]="&#91;";
-    char close[]="&#91;";
+    char close[]="&#93;";
     while(i<n) {
       if(s[i]=='[') {
         ret = baseBuf->sputn(open, sizeof(open)-1);

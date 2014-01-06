@@ -462,6 +462,20 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, viz, showFre
     var tileHeight=20;
     var titleHeight=20;
     var titleGap=5;
+
+    var tooltip = d3.select("body").append("div")   
+                      //.attr("class", "tooltip")    
+                      .style("position",       "absolute")
+                      .style("text-align",     "center")
+                      .style("width",          "60px")
+                      .style("height",         "14px")
+                      .style("padding",        "2px")
+                      .style("font",           "12px sans-serif")
+                      .style("background",     "lightsteelblue")
+                      .style("border",         "0px")
+                      .style("border-radius",  "8px")
+                      .style("pointer-events", "none")
+                      .style("opacity", 0);
     
     var container = 
            d3.select("#"+hostDivID+"-Heatmap").selectAll("svg")
@@ -502,8 +516,20 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, viz, showFre
         .on("click", function(d) {
           eval(d["traceLinks"][traceAttrs[d["traceAttrIdx"]]]);
           return true;
-          });
-         
+          })
+        .on("mouseover", function(d) {
+            tooltip.transition()        
+                .duration(200)      
+                .style("opacity", .9);      
+            tooltip.html(d["traceVals"][traceAttrs[d["traceAttrIdx"]]])  
+                .style("left", (d3.event.pageX) + "px")     
+                .style("top", (d3.event.pageY - 28) + "px");    
+            })                  
+        .on("mouseout", function(d) {       
+            tooltip.transition()        
+                .duration(500)      
+                .style("opacity", 0);   
+        });
   }
   
   displayTraceCalled = true;

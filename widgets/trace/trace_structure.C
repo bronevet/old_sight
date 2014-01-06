@@ -45,7 +45,7 @@ void traceAttr(trace* t,
 std::map<std::string, trace*> trace::active;  
 
 trace::trace(std::string label, const std::list<std::string>& contextAttrs, showLocT showLoc, vizT viz, mergeT merge, properties* props) : 
-  block(label, setProperties(showLoc, props))
+  block(label, setProperties(NULL, showLoc, props))
 {
   if(contextAttrs.size()==0) { cerr << "trace::trace() ERROR: contextAttrs must be non-empty!"; assert(0);; }
   
@@ -53,24 +53,51 @@ trace::trace(std::string label, const std::list<std::string>& contextAttrs, show
 }
 
 trace::trace(std::string label, std::string contextAttr, showLocT showLoc, vizT viz, mergeT merge, properties* props) : 
-  block(label, setProperties(showLoc, props))
+  block(label, setProperties(NULL, showLoc, props))
 {
   init(label, context(contextAttr), showLoc, viz, merge);
 }
 
 trace::trace(std::string label, showLocT showLoc, vizT viz, mergeT merge, properties* props) : 
-  block(label, setProperties(showLoc, props))
+  block(label, setProperties(NULL, showLoc, props))
+{
+  init(label, context(), showLoc, viz, merge);
+}
+
+trace::trace(std::string label, const std::list<std::string>& contextAttrs, const attrOp& onoffOp, showLocT showLoc, vizT viz, mergeT merge, properties* props) : 
+  block(label, setProperties(&onoffOp, showLoc, props))
+{
+  if(contextAttrs.size()==0) { cerr << "trace::trace() ERROR: contextAttrs must be non-empty!"; assert(0);; }
+  
+  init(label, contextAttrs, showLoc, viz, merge);
+}
+
+trace::trace(std::string label, std::string contextAttr, const attrOp& onoffOp, showLocT showLoc, vizT viz, mergeT merge, properties* props) : 
+  block(label, setProperties(&onoffOp, showLoc, props))
+{
+  init(label, context(contextAttr), showLoc, viz, merge);
+}
+
+trace::trace(std::string label, const attrOp& onoffOp, showLocT showLoc, vizT viz, mergeT merge, properties* props) : 
+  block(label, setProperties(&onoffOp, showLoc, props))
 {
   init(label, context(), showLoc, viz, merge);
 }
 
 // Sets the properties of this object
-properties* trace::setProperties(showLocT showLoc, properties* props) {
+properties* trace::setProperties(const attrOp* onoffOp, showLocT showLoc, properties* props) {
   if(props==NULL) props = new properties();
   
-  map<string, string> newProps;
-  newProps["showLoc"] = txt()<<showLoc;
-  props->add("trace", newProps);
+  // If the current attribute query evaluates to true (we're emitting debug output) AND
+  // either onoffOp is not provided or its evaluates to true
+  if(attributes.query() && (onoffOp? onoffOp->apply(): true)) {
+    props->active = true;
+    map<string, string> newProps;
+    newProps["showLoc"] = txt()<<showLoc;
+    props->add("trace", newProps);
+  } else
+    props->active = false;
+  
   return props;
 }
 
@@ -238,7 +265,7 @@ void traceStream::emitObservations(const std::list<std::string>& contextAttrs,
     const std::set<attrValue>& vals = attributes.get(*a);
     assert(vals.size()>0);
     if(vals.size()>1) { cerr << "traceStream::traceAttr() ERROR: context attribute "<<*a<<" has multiple values!"; }
-    contextAttrsMap[*a] = vals.begin()->serialize();
+    contextAttrsMap[*a] = *vals.begin();
   }
   
   emitObservations(contextAttrsMap, obs);
@@ -1105,7 +1132,8 @@ TraceObsMerger::TraceObsMerger(std::vector<std::pair<properties::tagType, proper
           default: assert(0);
         }
         
-        pMap[txt()<<"tVal_"<<t] = txt()<<aggr;
+        attrValue aggrVal(aggr);
+        pMap[txt()<<"tVal_"<<t] = txt()<<aggrVal.serialize();
       }
     }
   }

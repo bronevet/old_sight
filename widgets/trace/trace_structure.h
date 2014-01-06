@@ -62,13 +62,17 @@ class trace: public block, public common::trace
   static std::map<std::string, trace*> active;
   
   public:
-  trace(std::string label, const std::list<std::string>& contextAttrs, showLocT showLoc=showBegin, vizT viz=table, mergeT merge=disjMerge, properties* props=NULL);
-  trace(std::string label, std::string contextAttr,                    showLocT showLoc=showBegin, vizT viz=table, mergeT merge=disjMerge, properties* props=NULL);
-  trace(std::string label,                                             showLocT showLoc=showBegin, vizT viz=table, mergeT merge=disjMerge, properties* props=NULL);
+  trace(std::string label, const std::list<std::string>& contextAttrs,                        showLocT showLoc=showBegin, vizT viz=table, mergeT merge=disjMerge, properties* props=NULL);
+  trace(std::string label, std::string contextAttr,                                           showLocT showLoc=showBegin, vizT viz=table, mergeT merge=disjMerge, properties* props=NULL);
+  trace(std::string label,                                                                    showLocT showLoc=showBegin, vizT viz=table, mergeT merge=disjMerge, properties* props=NULL);
+  trace(std::string label, const std::list<std::string>& contextAttrs, const attrOp& onoffOp, showLocT showLoc=showBegin, vizT viz=table, mergeT merge=disjMerge, properties* props=NULL);
+  trace(std::string label, std::string contextAttr,                    const attrOp& onoffOp, showLocT showLoc=showBegin, vizT viz=table, mergeT merge=disjMerge, properties* props=NULL);
+  trace(std::string label,                                             const attrOp& onoffOp, showLocT showLoc=showBegin, vizT viz=table, mergeT merge=disjMerge, properties* props=NULL);
+  
   ~trace();
   
   // Sets the properties of this object
-  static properties* setProperties(showLocT showLoc, properties* props);
+  static properties* setProperties(const attrOp* onoffOp, showLocT showLoc, properties* props);
   
   void init(std::string label, const std::list<std::string>& contextAttrs, showLocT showLoc, vizT viz, mergeT merge);
   

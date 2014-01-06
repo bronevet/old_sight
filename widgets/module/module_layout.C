@@ -481,43 +481,46 @@ void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int
   dotFile << "<<TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\">"<<endl;
   
   if(numInputs>0) {
-    dotFile << "\t\t<TR><TD PORT=\"ENTRY\"><TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\">"<<endl;
-    dotFile << "\t\t\t<TR>";
-    /*for(int i=0; i<numInputs; i++) 
-    dotFile << "<TD PORT=\""<<portName(input, i)<<"\" "<<
-                     "COLSPAN=\""<<(ctxtNames[moduleID].find(i)!=ctxtNames[moduleID].end()? ctxtNames[moduleID][i].size(): 1)<<"\">"<<
-                      "<FONT POINT-SIZE=\"20\">:In "<<i<<"</FONT>"<<
-                 "</TD>";*/
-    for(map<string, list<string> >::iterator ctxtGrouping=ctxtNames[moduleID].begin(); ctxtGrouping!=ctxtNames[moduleID].end(); ctxtGrouping++) {
-      dotFile << "<TD PORT=\""<<escape(ctxtGrouping->first)<<"\" "<<
-                     "COLSPAN=\""<<ctxtGrouping->second.size()<<"\">"<<
-                      "<FONT POINT-SIZE=\"20\">:"<<ctxtGrouping->first<<"</FONT>"<<
-                 "</TD>";
-    }
-    dotFile << "</TR>"<<endl;
+    if(ctxtNames[moduleID].size()>0) {
+      dotFile << "\t\t<TR><TD PORT=\"ENTRY\"><TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\">"<<endl;
+      dotFile << "\t\t\t<TR>";
+      /*for(int i=0; i<numInputs; i++) 
+      dotFile << "<TD PORT=\""<<portName(input, i)<<"\" "<<
+                       "COLSPAN=\""<<(ctxtNames[moduleID].find(i)!=ctxtNames[moduleID].end()? ctxtNames[moduleID][i].size(): 1)<<"\">"<<
+                        "<FONT POINT-SIZE=\"20\">:In "<<i<<"</FONT>"<<
+                   "</TD>";*/
+      for(map<string, list<string> >::iterator ctxtGrouping=ctxtNames[moduleID].begin(); ctxtGrouping!=ctxtNames[moduleID].end(); ctxtGrouping++) {
+        dotFile << "<TD PORT=\""<<escape(ctxtGrouping->first)<<"\" "<<
+                       "COLSPAN=\""<<ctxtGrouping->second.size()<<"\">"<<
+                        "<FONT POINT-SIZE=\"20\">:"<<ctxtGrouping->first<<"</FONT>"<<
+                   "</TD>";
+      }
+      dotFile << "</TR>"<<endl;
 
-    // The names of the context attributes for each output
-    dotFile << "\t\t\t<TR>";
-    /*for(int i=0; i<numInputs; i++) {
-      if(ctxtNames[moduleID].find(i)!=ctxtNames[moduleID].end()) {
-        for(list<string>::iterator c=ctxtNames[moduleID][i].begin(); c!=ctxtNames[moduleID][i].end(); c++) {
+      // The names of the context attributes for each output
+      dotFile << "\t\t\t<TR>";
+      /*for(int i=0; i<numInputs; i++) {
+        if(ctxtNames[moduleID].find(i)!=ctxtNames[moduleID].end()) {
+          for(list<string>::iterator c=ctxtNames[moduleID][i].begin(); c!=ctxtNames[moduleID][i].end(); c++) {
+            dotFile << "<TD BGCOLOR=\"#000066\"><FONT COLOR=\"#ffffff\" POINT-SIZE=\"18\">:"<<*c<<"</FONT></TD>";
+          }
+        } else
+          dotFile << "<TD></TD>";
+      }*/
+      for(map<string, list<string> >::iterator ctxtGrouping=ctxtNames[moduleID].begin(); ctxtGrouping!=ctxtNames[moduleID].end(); ctxtGrouping++) {
+        for(list<string>::iterator c=ctxtGrouping->second.begin(); c!=ctxtGrouping->second.end(); c++) {
           dotFile << "<TD BGCOLOR=\"#000066\"><FONT COLOR=\"#ffffff\" POINT-SIZE=\"18\">:"<<*c<<"</FONT></TD>";
         }
-      } else
-        dotFile << "<TD></TD>";
-    }*/
-    for(map<string, list<string> >::iterator ctxtGrouping=ctxtNames[moduleID].begin(); ctxtGrouping!=ctxtNames[moduleID].end(); ctxtGrouping++) {
-      for(list<string>::iterator c=ctxtGrouping->second.begin(); c!=ctxtGrouping->second.end(); c++) {
-        dotFile << "<TD BGCOLOR=\"#000066\"><FONT COLOR=\"#ffffff\" POINT-SIZE=\"18\">:"<<*c<<"</FONT></TD>";
       }
+      dotFile << "\t\t\t</TR>"<<endl;
+      
+
+      // Buttons for showing the observation trace plots
+      showButtons(numInputs, numOutputs, moduleID, "measure", "B0CDFF");
+      showButtons(numInputs, numOutputs, moduleID, "output",  "F78181");
+
+      dotFile << "</TABLE></TD></TR>"<<endl;
     }
-    dotFile << "\t\t\t</TR>"<<endl;
-
-    // Buttons for showing the observation trace plots
-    showButtons(numInputs, numOutputs, moduleID, "measure", "B0CDFF");
-    showButtons(numInputs, numOutputs, moduleID, "output",  "F78181");
-
-    dotFile << "</TABLE></TD></TR>"<<endl;
   }
   
   // Node Info
@@ -543,6 +546,8 @@ void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int
     if(traceAttrNames[moduleID].size()>0) {
     //for(int i=0; i<traceAttrNames[moduleID].size(); i++) {
       dotFile << "\t\t<TR><TD PORT=\"EXIT\"><TABLE><TR><TD BGCOLOR=\"#FF00FF\" COLOR=\"#FF00FF\" WIDTH=\""<<databoxWidth<<"\" HEIGHT=\""<<databoxHeight<<"\"></TD></TR></TABLE></TD></TR>"<<endl;
+    } else {
+      dotFile << "\t\t<TR><TD PORT=\"EXIT\"></TD></TR>"<<endl;
     }
   }
   
@@ -884,7 +889,7 @@ compModuleTraceStream::compModuleTraceStream(properties::iterator props, traceOb
   // modularApp to listen in on observations recorded by this traceStream.
   if(observer==NULL) {
     cout << "props="<<props.str()<<endl;
-    cmFilter = new compModule(/*properties::getInt(props, "isReference"), */common::module::context(props, "op"));
+    cmFilter = new compModule(/*properties::getInt(props, "isReference"), common::module::context(props, "op")*/);
 
     // Load the comparators to be used with each output
     for(int i=0; i<numOutputs; i++) {
@@ -1019,7 +1024,7 @@ std::map<std::string, attrValue> compModule::deserializeObs(const std::map<std::
   map<string, attrValue> valObs;
   for(map<string, string>::const_iterator o=obs.begin(); o!=obs.end(); o++) {
     valObs[o->first] = attrValue(o->second, attrValue::unknownT);
-    cout << "    deserializeObs() "<<o->first<<" => "<<valObs[o->first].serialize()<<endl;
+    //cout << "    deserializeObs() "<<o->first<<" => "<<valObs[o->first].serialize()<<endl;
   }
   return valObs;
 }
@@ -1037,9 +1042,9 @@ void compModule::observe(int traceID,
   cout << "    obs=";
   for(map<string, string>::const_iterator o=obs.begin(); o!=obs.end(); o++) { cout << o->first << "=>"<<o->second<<" "; }
   cout << endl;
-  cout << "    options=";
+  /*cout << "    options=";
   for(std::map<std::string, attrValue>::iterator o=options.configuration.begin(); o!=options.configuration.end(); o++) { cout << o->first << ":"<<o->second.getAsStr()<<" "; }
-  cout << endl;
+  cout << endl;*/
   
   // The portion of the context that identifies the inputs to the modules rather than the module's options
   map<string, string> inputCtxt;
@@ -1082,17 +1087,23 @@ void compModule::observe(int traceID,
     if(comparisonObs.find(inputCtxt) != comparisonObs.end()) {
       // Iterate through all the observations in comparisonObs for this input context and relate them to the 
       // observation in referenceObs for the same context
-      list<map<string, attrValue> >& comp = comparisonObs[inputCtxt];
+      list<map<string, attrValue> >& allObs = comparisonObs[inputCtxt];
+      list<map<string, string> >& allCtxt = comparisonCtxt[inputCtxt];
+      assert(allObs.size() == allCtxt.size());
       map<string, attrValue>& ref = referenceObs[inputCtxt];
-      for(list<map<string, attrValue> >::iterator i=comp.begin(); i!=comp.end(); i++) {
-        assert(i->size() == ref.size());
+      
+      // Iterate over the contexts and observed trace values of all the prior observations for this input context
+      list<map<string, attrValue> >::iterator o=allObs.begin();
+      list<map<string, string> >::iterator    c=allCtxt.begin();
+      for(; o!=allObs.end(); o++, c++) {
+        assert(o->size() == ref.size());
         
         // Compare each value in the current observation in comparisonObs to the corresponding
         // value in referenceObs and add the result to relation
-        map<string, string> relation = compareObservations(*i, ref);
+        map<string, string> relation = compareObservations(*o, ref);
                 
         // Call the observe method of the parent class 
-        emitObservation(traceID, strippedCtxt, relation, map<string, anchor>());
+        emitObservation(traceID, *c, relation, map<string, anchor>());
       }
     }
   // If this is a non-reference observation
@@ -1107,6 +1118,7 @@ void compModule::observe(int traceID,
     } else {
       // Store the observation in comparisonObs, converting the observed values from strings to attrValues
       comparisonObs[inputCtxt].push_back(deserializeObs(obs));
+      comparisonCtxt[inputCtxt].push_back(strippedCtxt);
     }
   }
 }

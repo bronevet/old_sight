@@ -747,9 +747,9 @@ class ModularAppMerger : public BlockMerger {
                        std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key);
 }; // class ModularAppMerger
 
-class ModuleNodeMerger : public Merger {
+class ModuleMerger : public Merger {
   public:
-  ModuleNodeMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+  ModuleMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
               std::map<std::string, streamRecord*>& outStreamRecords,
               std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
               properties* props=NULL);
@@ -758,7 +758,7 @@ class ModuleNodeMerger : public Merger {
                         std::map<std::string, streamRecord*>& outStreamRecords,
                         std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
                         properties* props)
-  { return new ModuleNodeMerger(tags, outStreamRecords, inStreamRecords, props); }
+  { return new ModuleMerger(tags, outStreamRecords, inStreamRecords, props); }
   
   // Sets the properties of the merged object
   static properties* setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
@@ -772,7 +772,7 @@ class ModuleNodeMerger : public Merger {
   // call their parents so they can add any info,
   static void mergeKey(properties::tagType type, properties::iterator tag, 
                        std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key);
-}; // class ModuleNodeMerger
+}; // class ModuleMerger
 
 class ModuleEdgeMerger : public Merger {
   public:
@@ -801,9 +801,9 @@ class ModuleEdgeMerger : public Merger {
                        std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key);
 }; // class ModuleEdgeMerger
 
-class ModuleNodeTraceStreamMerger : public TraceStreamMerger {
+class ModuleTraceStreamMerger : public TraceStreamMerger {
   public:
-  ModuleNodeTraceStreamMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+  ModuleTraceStreamMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
               std::map<std::string, streamRecord*>& outStreamRecords,
               std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
               properties* props=NULL);
@@ -812,7 +812,7 @@ class ModuleNodeTraceStreamMerger : public TraceStreamMerger {
                         std::map<std::string, streamRecord*>& outStreamRecords,
                         std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
                         properties* props)
-  { return new ModuleNodeTraceStreamMerger(tags, outStreamRecords, inStreamRecords, props); }
+  { return new ModuleTraceStreamMerger(tags, outStreamRecords, inStreamRecords, props); }
               
   // Sets the properties of the merged object
   static properties* setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
@@ -826,13 +826,68 @@ class ModuleNodeTraceStreamMerger : public TraceStreamMerger {
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
                        std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key);
-}; // class ModuleNodeTraceStreamMerger
+}; // class ModuleTraceStreamMerger
+
+class CompModuleMerger : public ModuleMerger {
+  public:
+  CompModuleMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+              std::map<std::string, streamRecord*>& outStreamRecords,
+              std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+              properties* props=NULL);
+  
+  static Merger* create(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
+                        std::map<std::string, streamRecord*>& outStreamRecords,
+                        std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                        properties* props)
+  { return new CompModuleMerger(tags, outStreamRecords, inStreamRecords, props); }
+  
+  // Sets the properties of the merged object
+  static properties* setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+                                   std::map<std::string, streamRecord*>& outStreamRecords,
+                                   std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                                   properties* props);
+                                   
+  // Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+  // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
+  // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
+  // call their parents so they can add any info,
+  static void mergeKey(properties::tagType type, properties::iterator tag, 
+                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key);
+}; // class CompModuleMerger
+
+class CompModuleTraceStreamMerger : public ModuleTraceStreamMerger {
+  public:
+  CompModuleTraceStreamMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+              std::map<std::string, streamRecord*>& outStreamRecords,
+              std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+              properties* props=NULL);
+    
+  static Merger* create(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
+                        std::map<std::string, streamRecord*>& outStreamRecords,
+                        std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                        properties* props)
+  { return new CompModuleTraceStreamMerger(tags, outStreamRecords, inStreamRecords, props); }
+              
+  // Sets the properties of the merged object
+  static properties* setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+                                   std::map<std::string, streamRecord*>& outStreamRecords,
+                                   std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                                   properties* props);
+
+  // Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+  // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
+  // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
+  // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
+  static void mergeKey(properties::tagType type, properties::iterator tag, 
+                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key);
+}; // class CompModuleTraceStreamMerger
 
 class ModuleStreamRecord: public streamRecord {
   friend class ModularAppMerger;
-  friend class ModuleNodeMerger;
+  friend class ModuleMerger;
   friend class ModuleEdgeMerger;
-  friend class ModuleNodeTraceStreamMerger;
+  friend class ModuleTraceStreamMerger;
+  friend class CompModuleTraceStreamMerger;
   
   /*
   // We allow modules within different modularApps to use independent ID schemes (i.e. the module IDs within

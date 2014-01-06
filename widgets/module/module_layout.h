@@ -202,17 +202,18 @@ class compModule : public common::module, public traceObserver {
   //bool isReference;
   
   // The context that describes the configuration options of this module
-  context options;
+  //context options;
   
   // Maps each configuration of input context values to the mapping of trace attributes to their values 
   // within the reference configuration of the compModule.
   std::map<std::map<std::string, std::string>, std::map<std::string, attrValue> > referenceObs;
   
-  // Records for each configuration of input context values all the the mappings of trace attributes to
+  // Records for each configuration of input context values all the the mappings of trace and context attributes to
   // their values within non-reference configurations of the compModule. We keep these around until we 
   // find the reference configuration for the given configuration of input context values and once we find 
   // it, we relate these to the reference, emit them to this compModuleTraceStream's observer and empty them out.
   std::map<std::map<std::string, std::string>, std::list<std::map<std::string, attrValue> > > comparisonObs;
+  std::map<std::map<std::string, std::string>, std::list<std::map<std::string, std::string> > > comparisonCtxt;
   
   // For each output and name of a context of the output, records a pointer to the comparator to be used
   // for this output context.
@@ -222,7 +223,7 @@ class compModule : public common::module, public traceObserver {
   std::map<std::string, comparator*> measComparators;
 
   public:  
-  compModule(/*bool isReference, */const context& options) : /*isReference(isReference), */options(options) { }
+  compModule(/*bool isReference, const context& options*/) /*: isReference(isReference), options(options)*/ { }
   
   // Compare the value of each trace attribute value obs1 to the corresponding value in obs2 and return a mapping of 
   // each trace attribute to the serialized representation of their relationship.

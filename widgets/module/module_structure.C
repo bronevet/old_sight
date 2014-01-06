@@ -972,7 +972,6 @@ module::derivInfo* compModule::setProperties(const instance& inst, bool isRefere
     // Add isReference and the options to the trace context attributes in derivInfo
     deriv->ctxt["compModule:isReference"] = attrValue((long)isReference);
     for(map<std::string, attrValue>::const_iterator o=options.getCfg().begin(); o!=options.getCfg().end(); o++)
-      
       deriv->ctxt[encodeCtxtName("compModule", "options", o->first)] = o->second;
   }
   else
@@ -1050,17 +1049,22 @@ properties* compModuleTraceStream::setProperties(int moduleID, /*const std::stri
   if(props==NULL) props = new properties();
   
   if(props->active && props->emitTag) {
-    map<string, string> pMap = cm->options.getProperties("op");
+    map<string, string> pMap;// = cm->options.getProperties("op");
+    
+    // Record the number of outputs of this compMduole. This repeats the same attribute in moduleTS but it is easier
+    // let both moduleTS and compModuleTS to have their own than to allow functions of compModuleTS access to properties of moduleTS.
+    pMap["numOutputs"] = txt()<<cm->numOutputs(); 
     
     // Add the comparators to be used for each output attribute
     int outIdx=0;
     for(std::vector<port>::iterator o=cm->outputs.begin(); o!=cm->outputs.end(); o++, outIdx++) {
+      if(o->ctxt==NULL) { cerr << "ERROR in module "<<moduleID<<"! Contet of output "<<outIdx<<" not provided!"<<endl; assert(0); }
       compContext* ctxt = dynamic_cast<compContext*>(o->ctxt);
       assert(ctxt);
       pMap[txt()<<"out"<<outIdx<<":numAttrs"] = txt()<<ctxt->comparators.size();
       int compIdx=0;
       for(map<string, pair<string, string> >::iterator comp=ctxt->comparators.begin(); comp!=ctxt->comparators.end(); comp++, compIdx++) {
-        pMap[txt()<<"out"<<compIdx<<":compare"<<compIdx] = 
+        pMap[txt()<<"out"<<outIdx<<":compare"<<compIdx] = 
                     txt()<<escapedStr(comp->first, ":", escapedStr::unescaped).escape()<<":"<<
                            escapedStr(comp->second.first, ":", escapedStr::unescaped).escape()<<":"<<
                            escapedStr(comp->second.second, ":", escapedStr::unescaped).escape();
@@ -1077,7 +1081,7 @@ properties* compModuleTraceStream::setProperties(int moduleID, /*const std::stri
                      escapedStr(mc->second.second, ":", escapedStr::unescaped).escape();
     }
     
-    pMap["isReference"] = txt()<<cm->isReference;
+    //pMap["isReference"] = txt()<<cm->isReference;
     /*pMap["moduleID"]    = txt()<<moduleID;
     pMap["name"]        = name;
     pMap["numInputs"]   = txt()<<numInputs;
@@ -1095,12 +1099,17 @@ properties* compModuleTraceStream::setProperties(int moduleID, /*const std::stri
 ModuleMergeHandlerInstantiator::ModuleMergeHandlerInstantiator() { 
   (*MergeHandlers   )["modularApp"]   = ModularAppMerger::create;
   (*MergeKeyHandlers)["modularApp"]   = ModularAppMerger::mergeKey;
-  (*MergeHandlers   )["module"]       = ModuleNodeMerger::create;
-  (*MergeKeyHandlers)["module"]       = ModuleNodeMerger::mergeKey;    
+  (*MergeHandlers   )["module"]       = ModuleMerger::create;
+  (*MergeKeyHandlers)["module"]       = ModuleMerger::mergeKey;    
   (*MergeHandlers   )["moduleEdge"]   = ModuleEdgeMerger::create;
   (*MergeKeyHandlers)["moduleEdge"]   = ModuleEdgeMerger::mergeKey;
-  (*MergeHandlers   )["moduleTS"] = ModuleNodeTraceStreamMerger::create;
-  (*MergeKeyHandlers)["moduleTS"] = ModuleNodeTraceStreamMerger::mergeKey;
+  (*MergeHandlers   )["moduleTS"]     = ModuleTraceStreamMerger::create;
+  (*MergeKeyHandlers)["moduleTS"]     = ModuleTraceStreamMerger::mergeKey;
+  
+  (*MergeHandlers   )["compModule"]   = CompModuleMerger::create;
+  (*MergeKeyHandlers)["compModule"]   = CompModuleMerger::mergeKey;    
+  (*MergeHandlers   )["compModuleTS"] = CompModuleTraceStreamMerger::create;
+  (*MergeKeyHandlers)["compModuleTS"] = CompModuleTraceStreamMerger::mergeKey;
     
   MergeGetStreamRecords->insert(&ModuleGetMergeStreamRecord);
 }
@@ -1134,13 +1143,13 @@ properties* ModularAppMerger::setProperties(std::vector<std::pair<properties::ta
   
   assert(tags.size()>0);
 
-  vector<string> names = getNames(tags); assert(allSame<string>(names));
-  assert(*names.begin() == "modularApp");
-
   map<string, string> pMap;
   properties::tagType type = streamRecord::getTagType(tags);
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging modularApps!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
+    vector<string> names = getNames(tags); assert(allSame<string>(names));
+    assert(*names.begin() == "modularApp");
+
     // All the merged apps must have the same name
     vector<string> cpValues = getValues(tags, "appName");
     assert(allSame<string>(cpValues));
@@ -1174,15 +1183,15 @@ void ModularAppMerger::mergeKey(properties::tagType type, properties::iterator t
   
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; assert(0); }
   if(type==properties::enterTag) {
-    key.push_back(properties::get(tag, "appName"));
+    key.push_back(tag.get("appName"));
   }
 }
 
-/****************************
- ***** ModuleNodeMerger *****
- ****************************/
+/************************
+ ***** ModuleMerger *****
+ ************************/
 
-ModuleNodeMerger::ModuleNodeMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+ModuleMerger::ModuleMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                          map<string, streamRecord*>& outStreamRecords,
                          vector<map<string, streamRecord*> >& inStreamRecords,
                          properties* props) : 
@@ -1190,7 +1199,7 @@ ModuleNodeMerger::ModuleNodeMerger(std::vector<std::pair<properties::tagType, pr
                     setProperties(tags, outStreamRecords, inStreamRecords, props)) { }
 
 // Sets the properties of the merged object
-properties* ModuleNodeMerger::setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+properties* ModuleMerger::setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                                        map<string, streamRecord*>& outStreamRecords,
                                        vector<map<string, streamRecord*> >& inStreamRecords,
                                        properties* props) {
@@ -1198,13 +1207,13 @@ properties* ModuleNodeMerger::setProperties(std::vector<std::pair<properties::ta
   
   assert(tags.size()>0);
 
-  vector<string> names = getNames(tags); assert(allSame<string>(names));
-  assert(*names.begin() == "module");
-
   map<string, string> pMap;
   properties::tagType type = streamRecord::getTagType(tags); 
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Modules!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
+    vector<string> names = getNames(tags); assert(allSame<string>(names));
+    assert(*names.begin() == "module");
+    
     /*vector<string> cpValues = getValues(tags, "callPath");
     assert(allSame<string>(cpValues));
     pMap["callPath"] = *cpValues.begin();*/
@@ -1215,7 +1224,7 @@ properties* ModuleNodeMerger::setProperties(std::vector<std::pair<properties::ta
     pMap["moduleID"] = txt() << nodeID;
     
     // The variants must have the same name and numbers of inputs and outputs
-    vector<string> name = getValues(tags, "name");
+/*    vector<string> name = getValues(tags, "name");
     assert(allSame<string>(name));
     pMap["name"] = *name.begin();
     
@@ -1225,7 +1234,7 @@ properties* ModuleNodeMerger::setProperties(std::vector<std::pair<properties::ta
     
     vector<string> numOutputs = getValues(tags, "numOutputs");
     assert(allSame<string>(numOutputs));
-    pMap["numOutputs"] = *numOutputs.begin();
+    pMap["numOutputs"] = *numOutputs.begin();*/
 
     // Collect
     pMap["count"] = txt()<<vSum(str2int(getValues(tags, "count")));
@@ -1242,7 +1251,7 @@ properties* ModuleNodeMerger::setProperties(std::vector<std::pair<properties::ta
 // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info,
-void ModuleNodeMerger::mergeKey(properties::tagType type, properties::iterator tag, 
+void ModuleMerger::mergeKey(properties::tagType type, properties::iterator tag, 
                            std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
   Merger::mergeKey(type, tag.next(), inStreamRecords, key);
     
@@ -1281,13 +1290,13 @@ properties* ModuleEdgeMerger::setProperties(std::vector<std::pair<properties::ta
   
   assert(tags.size()>0);
 
-  vector<string> names = getNames(tags); assert(allSame<string>(names));
-  assert(*names.begin() == "moduleEdge");
-
   map<string, string> pMap;
   properties::tagType type = streamRecord::getTagType(tags); 
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Module Edges!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
+    vector<string> names = getNames(tags); assert(allSame<string>(names));
+    assert(*names.begin() == "moduleEdge");
+
     /*vector<string> cpValues = getValues(tags, "callPath");
     assert(allSame<string>(cpValues));
     pMap["callPath"] = *cpValues.begin();*/
@@ -1355,29 +1364,29 @@ void ModuleEdgeMerger::mergeKey(properties::tagType type, properties::iterator t
     /*assert(((ModuleStreamRecord*)inStreamRecords["module"])->mStack.size()>0);
     assert(((ModuleStreamRecord*)inStreamRecords["module"])->mStack.back());*/
     
-    streamID inFromSID(properties::getInt(tag, "fromCID"), inStreamRecords["module"]->getVariantID());
+    streamID inFromSID(tag.getInt("fromCID"), inStreamRecords["module"]->getVariantID());
     //streamID outFromSID = ((ModuleStreamRecord*)inStreamRecords["module"])->mStack.back()->in2outID(inFromSID);
     streamID outFromSID = inStreamRecords["module"]->in2outID(inFromSID);
     key.push_back(txt()<<outFromSID.ID);
     
-    streamID inToSID(properties::getInt(tag, "toCID"), inStreamRecords["module"]->getVariantID());
+    streamID inToSID(tag.getInt("toCID"), inStreamRecords["module"]->getVariantID());
     //streamID outToSID = ((ModuleStreamRecord*)inStreamRecords["module"])->mStack.back()->in2outID(inToSID);
     streamID outToSID = inStreamRecords["module"]->in2outID(inToSID);
     key.push_back(txt()<<outToSID.ID);
     
     // Edges between different port numbers/types are separated
-    key.push_back(properties::get(tag, "fromT"));
-    key.push_back(properties::get(tag, "fromP"));
-    key.push_back(properties::get(tag, "toT"));
-    key.push_back(properties::get(tag, "toP"));
+    key.push_back(tag.get("fromT"));
+    key.push_back(tag.get("fromP"));
+    key.push_back(tag.get("toT"));
+    key.push_back(tag.get("toP"));
   }
 }
 
-/***************************************
- ***** ModuleNodeTraceStreamMerger *****
- ***************************************/
+/***********************************
+ ***** ModuleTraceStreamMerger *****
+ ***********************************/
 
-ModuleNodeTraceStreamMerger::ModuleNodeTraceStreamMerger(
+ModuleTraceStreamMerger::ModuleTraceStreamMerger(
                          std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                          std::map<std::string, streamRecord*>& outStreamRecords,
                          std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
@@ -1387,7 +1396,7 @@ ModuleNodeTraceStreamMerger::ModuleNodeTraceStreamMerger(
 { }
 
 // Sets the properties of this object
-properties* ModuleNodeTraceStreamMerger::setProperties(
+properties* ModuleTraceStreamMerger::setProperties(
                          std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                          std::map<std::string, streamRecord*>& outStreamRecords,
                          std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
@@ -1395,13 +1404,14 @@ properties* ModuleNodeTraceStreamMerger::setProperties(
   if(props==NULL) props = new properties();
   
   assert(tags.size()>0);
-  vector<string> names = getNames(tags); assert(allSame<string>(names));
-  assert(*names.begin() == "moduleTS");
-    
+  
   map<string, string> pMap;
   properties::tagType type = streamRecord::getTagType(tags); 
-  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Module Node TraceStreams!"<<endl; exit(-1); }
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Module TraceStreams!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
+    vector<string> names = getNames(tags); assert(allSame<string>(names));
+    assert(*names.begin() == "moduleTS");
+    
     //int nodeID = ModuleStreamRecord::mergeNodeIDs("nodeID", pMap, tags, outStreamRecords, inStreamRecords);
     int nodeID = streamRecord::mergeIDs("module", "moduleID", pMap, tags, outStreamRecords, inStreamRecords);
     pMap["moduleID"] = txt() << nodeID;
@@ -1428,7 +1438,7 @@ properties* ModuleNodeTraceStreamMerger::setProperties(
 // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
-void ModuleNodeTraceStreamMerger::mergeKey(properties::tagType type, properties::iterator tag, 
+void ModuleTraceStreamMerger::mergeKey(properties::tagType type, properties::iterator tag, 
                            std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
   Merger::mergeKey(type, tag.next(), inStreamRecords, key);
    
@@ -1438,9 +1448,179 @@ void ModuleNodeTraceStreamMerger::mergeKey(properties::tagType type, properties:
     // The same rule is used for their associated module but since those tags appear later in the stream
     // they're split according to the ID in the outgoing stream that was assigned to them while processing
     // their moduleNodeTraceStreams.
-    key.push_back(properties::get(tag, "name"));
-    key.push_back(properties::get(tag, "numInputs"));
-    key.push_back(properties::get(tag, "numOutputs"));
+    key.push_back(tag.get("name"));
+    key.push_back(tag.get("numInputs"));
+    key.push_back(tag.get("numOutputs"));
+  }
+}
+
+/****************************
+ ***** CompModuleMerger *****
+ ****************************/
+
+CompModuleMerger::CompModuleMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+                         map<string, streamRecord*>& outStreamRecords,
+                         vector<map<string, streamRecord*> >& inStreamRecords,
+                         properties* props) : 
+        ModuleMerger(advance(tags), outStreamRecords, inStreamRecords, 
+                    setProperties(tags, outStreamRecords, inStreamRecords, props)) { }
+
+// Sets the properties of the merged object
+properties* CompModuleMerger::setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+                                       map<string, streamRecord*>& outStreamRecords,
+                                       vector<map<string, streamRecord*> >& inStreamRecords,
+                                       properties* props) {
+  if(props==NULL) props = new properties();
+  
+  assert(tags.size()>0);
+
+  map<string, string> pMap;
+  properties::tagType type = streamRecord::getTagType(tags); 
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Modules!"<<endl; exit(-1); }
+  if(type==properties::enterTag) {
+    vector<string> names = getNames(tags); assert(allSame<string>(names));
+    assert(*names.begin() == "compModule");
+    
+    /*vector<string> cpValues = getValues(tags, "callPath");
+    assert(allSame<string>(cpValues));
+    pMap["callPath"] = *cpValues.begin();*/
+    
+    // Merge the module IDs along all the streams
+    //int nodeID = ModuleStreamRecord::mergeNodeIDs("moduleID", pMap, tags, outStreamRecords, inStreamRecords);
+    int nodeID = streamRecord::mergeIDs("module", "moduleID", pMap, tags, outStreamRecords, inStreamRecords);
+    pMap["moduleID"] = txt() << nodeID;
+    
+    // The variants must have the same name and numbers of inputs and outputs
+    pMap["compModule:isReference"] = getSameValue(tags, "compModule:isReference");
+    
+    props->add("compModule", pMap);
+  } else {
+    props->add("compModule", pMap);
+  }
+  
+  return props;
+}
+
+// Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+// tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
+// Each level of the inheritance hierarchy may add zero or more elements to the given list and 
+// call their parents so they can add any info,
+void CompModuleMerger::mergeKey(properties::tagType type, properties::iterator tag, 
+                           std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
+  ModuleMerger::mergeKey(type, tag.next(), inStreamRecords, key);
+    
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
+  if(type==properties::enterTag) {
+    key.push_back(tag.get("compModule:isReference"));
+  }
+}
+
+/***************************************
+ ***** CompModuleTraceStreamMerger *****
+ ***************************************/
+
+CompModuleTraceStreamMerger::CompModuleTraceStreamMerger(
+                         std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+                         std::map<std::string, streamRecord*>& outStreamRecords,
+                         std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                         properties* props) :
+                    ModuleTraceStreamMerger(advance(tags), outStreamRecords, inStreamRecords, 
+                                            setProperties(tags, outStreamRecords, inStreamRecords, props))
+{ }
+
+// Sets the properties of this object
+properties* CompModuleTraceStreamMerger::setProperties(
+                         std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+                         std::map<std::string, streamRecord*>& outStreamRecords,
+                         std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                         properties* props) {
+  if(props==NULL) props = new properties();
+  
+  assert(tags.size()>0);
+  
+  map<string, string> pMap;
+  properties::tagType type = streamRecord::getTagType(tags); 
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Comparison Module TraceStreams!"<<endl; exit(-1); }
+  if(type==properties::enterTag) {
+    vector<string> names = getNames(tags); assert(allSame<string>(names));
+    assert(*names.begin() == "compModuleTS");
+
+    //int nodeID = ModuleStreamRecord::mergeNodeIDs("nodeID", pMap, tags, outStreamRecords, inStreamRecords);
+    
+    // We know that all the tags have the same valuues for isReference, options, output comparators and measurements.
+    // Thus, we only consider this information from the first tag.
+    
+    /*common::module::context options = common::module::context(tags[0].second, "op");
+    pMap = options.getProperties("op");*/
+    
+    //pMap["isReference"] = tags[0].second.get("isReference");
+
+    pMap["numOutputs"] = tags[0].second.get("numOutputs");
+    int numOutputs = attrValue::parseInt(pMap["numOutputs"]);
+    for(int outIdx=0; outIdx<numOutputs; outIdx++) {
+      pMap[txt()<<"out"<<outIdx<<":numAttrs"] = tags[0].second.get(txt()<<"out"<<outIdx<<":numAttrs");
+      int numAttrs = attrValue::parseInt(pMap[txt()<<"out"<<outIdx<<":numAttrs"]);
+      for(int compIdx=0; compIdx<numAttrs; compIdx++) {
+        pMap[txt()<<"out"<<outIdx<<":compare"<<compIdx] = tags[0].second.get(txt()<<"out"<<outIdx<<":compare"<<compIdx);
+      }
+    }
+    
+    pMap["numMeasurements"] = tags[0].second.get("numMeasurements");
+    int numMeasurements = attrValue::parseInt(pMap["numMeasurements"]);
+    for(int m=0; m<numMeasurements; m++)
+      pMap[txt()<<"measure"<<m] = tags[0].second.get(txt()<<"measure"<<m);
+  }
+  props->add("compModuleTS", pMap);
+  
+  return props;
+}
+
+
+// Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+// tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
+// Each level of the inheritance hierarchy may add zero or more elements to the given list and 
+// call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
+void CompModuleTraceStreamMerger::mergeKey(properties::tagType type, properties::iterator tag, 
+                                           std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
+  Merger::mergeKey(type, tag.next(), inStreamRecords, key);
+   
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
+  if(type==properties::enterTag) {
+    // We only merge moduleNodeTraceStreams that have the same values for isReference, (they either are both 
+    // examples of the reference configuration or they're bith not), same configuration, same output comparators and 
+    // same measurements. 
+    // The same rule is used for their associated module but since those tags appear later in the stream
+    // they're split according to the ID in the outgoing stream that was assigned to them while processing
+    // their moduleNodeTraceStreams.
+    //key.push_back(tag.get("isReference"));
+    
+    // Same options
+    /*common::module::context options(tag, "op");
+    key.push_back(txt()<<options.configuration.size());
+    int cIdx=0;
+    for(map<string, attrValue>::iterator c=options.configuration.begin(); c!=options.configuration.end(); c++, cIdx++) {
+      key.push_back(c->first);
+      key.push_back(c->second.serialize());
+    }*/
+    
+    // Same comparators on outputs
+    key.push_back(tag.get("numOutputs"));
+    int numOutputs = tag.getInt("numOutputs");
+    for(int outIdx=0; outIdx<numOutputs; outIdx++) {
+      key.push_back(tag.get(txt()<<"out"<<outIdx<<":numAttrs"));
+      int numAttrs = tag.getInt(txt()<<"out"<<outIdx<<":numAttrs");
+      for(int compIdx=0; compIdx<numAttrs; compIdx++) {
+        key.push_back(tag.get(txt()<<"out"<<outIdx<<":compare"<<compIdx));
+      }
+    }
+    
+    // Same measurements
+    key.push_back(tag.get("numMeasurements"));
+    // Concatenate the descriptions of the measurements
+    int numMeasurements = tag.getInt("numMeasurements");
+    ostringstream measurements;
+    for(int m=0; m<numMeasurements; m++)
+      key.push_back(tag.get(txt()<<"measure"<<m));
   }
 }
 

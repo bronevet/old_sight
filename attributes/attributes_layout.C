@@ -53,25 +53,13 @@ std::string attributesC::strJS() const {
 // ***** Attribute Interface *****
 // *******************************
 
-attr::attr(properties::iterator props) { 
-  key = properties::get(props, "key");
-  // Assign the value to the key using the appropriate type of this value
-  switch((attrValue::valueType)properties::getInt(props, "type")) {
-    case attrValue::strT:   init<string>(key, properties::get(props, "val"));           break;
-    case attrValue::ptrT:   init<void*> (key, (void*)properties::getInt(props, "val")); break;
-    case attrValue::intT:   init<long>  (key, properties::getInt(props, "val"));        break;
-    case attrValue::floatT: init<double>(key, properties::getFloat(props, "val"));      break;
-    default: cerr << "layout::attr::attr() ERROR: unknown value type!"; exit(-1);
-  }
+attr::attr(properties::iterator props) : 
+  key (properties::get(props, "key")),      
+  val(properties::get(props, "val"), attrValue::unknownT) { 
   
-  dbg.enterAttrSubBlock();
-}
-
-template<typename T>
-void attr::init(std::string key, T val) {
-//cout << "attr::init("<<key<<", "<<val<<")\n";
-  this->val = val;
   if(!common::isEnabled()) return;
+  
+  // Update the current attributes map with the new key => value mapping
   if(attributes.exists(key)) {
     keyPreviouslySet = true;
     const std::set<attrValue>& curValues = attributes.get(key);
@@ -83,6 +71,8 @@ void attr::init(std::string key, T val) {
     keyPreviouslySet = false;
     attributes.add(key, this->val); 
   }
+  
+  dbg.enterAttrSubBlock();
 }
 
 attr::~attr() {

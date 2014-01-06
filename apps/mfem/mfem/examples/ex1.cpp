@@ -35,8 +35,6 @@ using namespace sight;
 
 int main (int argc, char *argv[])
 {
-   Mesh *mesh;
-
    SightInit(argc, argv, "ex1", "dbg.MFEM.ex1");
 
    if (argc <= 3)
@@ -49,16 +47,17 @@ int main (int argc, char *argv[])
    char* finElement = argv[3];
    
    modularApp mfemApp("MFEM App", namedMeasures("time", new timeMeasure())); 
-   std::vector<port> externalOutputs;
-   compModule mod(instance("Ex1", 1, 1), inputs(port(context(config("meshFile", meshFile)))),
-                  externalOutputs,
-                  ref_levels=0,
-                  context(config("ref_levels", ref_levels,
-                                 "finElement", finElement)));
-   mod.setOutCtxt(0, context(config("result", ref_levels)));
    
-   return 0;
-   /*
+   for(int ref_levels=1; ref_levels<5; ref_levels++) {
+   Mesh *mesh;
+   std::vector<port> externalOutputs;
+   compModule mod(instance("Ex1", 1, 1), inputs(port(context("meshFile", meshFile))),
+                  externalOutputs,
+                  ref_levels==1,
+                  context("ref_levels", ref_levels,
+                          "finElement", finElement),
+                  compNamedMeasures("time", new timeMeasure(), LkComp(2, attrValue::floatT, true)));
+
    // 1. Read the mesh from the given mesh file. We can handle triangular,
    //    quadrilateral, tetrahedral or hexahedral elements with the same code.
    ifstream imesh(meshFile);
@@ -76,7 +75,7 @@ int main (int argc, char *argv[])
    //    elements.
    {
       /*int ref_levels =
-         (int)floor(log(50000./mesh->GetNE())/log(2.)/mesh->Dimension());* /
+         (int)floor(log(50000./mesh->GetNE())/log(2.)/mesh->Dimension());*/
       for (int l = 0; l < ref_levels; l++)
          mesh->UniformRefinement();
    }
@@ -86,11 +85,21 @@ int main (int argc, char *argv[])
    FiniteElementCollection *fec;
    /*if (mesh->GetNodes())
       fec = mesh->GetNodes()->OwnFEC();
-   else* /
+   else*/
    if(strcmp(finElement, "linear")==0)
       fec = new LinearFECollection;
-   else if(strcmp(finElement, "h1")
-      fec = new H1_FECollection(p, dim);
+   else {
+     char* feType = strtok(finElement, ":");
+     assert(feType);
+     if(strcmp(feType, "h1")==0) {
+        char* feOrderStr = strtok(NULL, ":");
+        assert(feOrderStr);
+        int feOrder = atoi(feOrderStr);
+       
+        fec = new H1_FECollection(feOrder, mesh->Dimension());
+     } else
+       assert(0);
+   }
    FiniteElementSpace *fespace = new FiniteElementSpace(mesh, fec);
    dbg << "Number of unknowns: " << fespace->GetVSize() << endl;
 
@@ -137,8 +146,10 @@ int main (int argc, char *argv[])
       ofstream sol_ofs("sol.gf");
       sol_ofs.precision(8);
       x.Save(sol_ofs);
+      
+      mod.setOutCtxt(0, compContext("result", sightArray(sightArray::dims(x.Size()), x.GetData()), LkComp(2, attrValue::intT, true)));
    }
-
+   }
    // 9. (Optional) Send the solution by socket to a GLVis server.
    /*char vishost[] = "localhost";
    int  visport   = 19916;

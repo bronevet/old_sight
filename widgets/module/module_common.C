@@ -66,7 +66,7 @@ std::string module::encodeCtxtName(const std::string& moduleClass, const std::st
 void module::decodeCtxtName(const std::string& encoded, std::string& moduleClass, std::string& ctxtGrouping, std::string& attrName) {
   escapedStr e(encoded, ":", escapedStr::escaped);
   vector<string> fields = e.unescapeSplit(":");
-  cout << "encoded="<<encoded<<" #fields="<<fields.size()<<endl;
+  //cout << "encoded="<<encoded<<" #fields="<<fields.size()<<endl;
   assert(fields.size()>=2);
   moduleClass  = fields[0];
   ctxtGrouping = fields[1];
