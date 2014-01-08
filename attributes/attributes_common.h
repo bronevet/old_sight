@@ -172,7 +172,8 @@ a unique name that identifies the comparator type and a description of the type 
 to do. This widget outputs the serialized encoding of the comparableCustomAttrValue and the comparator to the log.
         
 When this information is read back and the widget must perform the comparison, it loads the relevant 
-comparableCustomAttrValues into memory, uses the comparator's name to get an instance of the comparator object from 
+comparableCustomAt
+ * trValues into memory, uses the comparator's name to get an instance of the comparator object from 
 the attrValueComparatorInstantiator class (described below). It then calls the compare method of the relevant 
 comparableCustomAttrValues, passing to them a reference of the comparator object.
 */
@@ -241,7 +242,7 @@ class scalarComparator : public comparator {
 
 // Class that manages the registration of comparator factory objects. Each type of comparator creates an instance of a
 // factory object and records the mapping from a unique string label to a reference to the factor object in a map.
-class attrValueComparatorInstantiator {
+class attrValueComparatorInstantiator : public sight::common::LoadTimeRegistry {
   // Type of the functions that create comparators.
   // They returns the comparator that can be used to perform the comparison encoded in the description string.
   typedef comparator* (*genAttrComparator)(std::string description);
@@ -250,7 +251,13 @@ class attrValueComparatorInstantiator {
   static std::map<std::string, genAttrComparator>* compGenerators;
   
   attrValueComparatorInstantiator();
-  
+
+  // Unique string name of the class that derives from LoadTimeRegistry
+  //virtual std::string name() const { return "attrValueComparatorInstantiator"; }
+ 
+  // Called exactly once for each class that derives from LoadTimeRegistry to initialize its static data structures.
+  static void init();
+ 
   // Returns a comparator of the type identified by name that performs the comparison type identified by description
   static comparator* genComparator(std::string name, std::string description);
   
@@ -307,11 +314,14 @@ typedef customAttrValue* (*customAttrDeserialize)(std::string serialized);
 // needs to create a class that derives from this one and in that class's constructor create an instance of this class
 // to map the unique labels of their custom attrValues to their corresponding deserialization functions. Then widgets
 // must create a static instance of this class to make sure that the registration occurs before main() is executed.
-class customAttrValueInstantiator {
+class customAttrValueInstantiator : public sight::common::LoadTimeRegistry {
   public:
   static std::map<std::string, customAttrDeserialize>* deserializers;
 
   customAttrValueInstantiator();
+  
+  // Called exactly once for each class that derives from LoadTimeInstantiator to initialize its static data structures.
+  static void init();
   
   // Deserializes the given serialized customAttrValue and returns a freshly-allocated reference to it
   static customAttrValue* deserialize(std::string serialized);
@@ -463,6 +473,67 @@ class LkComp : public comparatorDesc {
 }; // class LkComp
 
 
+// A specific instance of elementwise comparison: the average relative difference sigma_i (x_i-x_i')/(max(x_i, x_i'). 
+// This is a numeric comparator and therefore can only compare integral and floating point values. 
+template<typename EltType> // The type of elements this comparator operates on
+class RelativeComparator: public scalarComparator {
+  protected:
+    
+  // The total number of comparison observations
+  int count;
+    
+  // The running sum of the Lk differences between them
+  double sum;
+  
+  public:
+  RelativeComparator(): count(0), sum(0) {}
+  
+  // Absolute value of v
+  EltType abs(EltType v) {
+    return (v<0? -v: v);
+  }
+  
+   // Called on each pair of elements from a container object, one from each object
+  void compare(EltType elt1, EltType elt2) {
+    sum += ((double)elt1 - elt2) / (abs(elt1) > abs(elt2)? abs(elt1): abs(elt2));
+    count++;
+    std::cout << "Rel:compare("<<elt1<<", "<<elt2<<") sum="<<sum<<", count="<<count<<std::endl;
+  }
+  
+  // Called to get the overall relationship between the two objects given all the individual elements
+  // observed so far
+  attrValue relation() {
+    std::cout << "Rel:relation: sum="<<sum<<", count="<<count<<", rel="<<attrValue(sum/count).serialize()<<std::endl;
+    if(count>0) return attrValue((double)sum/count);
+    else        return attrValue(0);
+  }
+  
+  // Resets the state of this comparator, making it ready for another comparison.
+  void reset() {
+    count = 0;
+    sum = 0;
+  }
+}; // RelativeCompatator
+
+// Returns a comparator that can be used to compare objects of the given valueType
+comparator* genRelComparator(std::string description);
+
+// Describes the Relative Comparator object that will be employed during subsequent analysis phases
+class RelComp : public comparatorDesc {
+  attrValue::valueType type;
+  
+  public:
+  RelComp(attrValue::valueType type) : type(type) {}
+  
+  // Returns the unique name of the given comparator type
+  std::string name() const { return "RelativeComparator"; }
+  
+  // Returns the description of the type of comparison needs to be performed (e.g. the value of k)
+  std::string description() const {
+    return txt()<<type;
+  }
+}; // class RelComp
+
 // Registers generation functions for each type of comparator we've defined here
 class baseAttrValueComparatorInstantiator : public attrValueComparatorInstantiator {
   public:
@@ -471,7 +542,7 @@ class baseAttrValueComparatorInstantiator : public attrValueComparatorInstantiat
 
 // static instance of baseAttrValueComparatorInstantiator to ensure that its constructor is called 
 // before main().
-static baseAttrValueComparatorInstantiator baseAttrValueComparatorInstance;
+extern baseAttrValueComparatorInstantiator baseAttrValueComparatorInstance;
 
 // We now use the above infrastructure to define a few standard customAttrValues. We define them here rather as part
 // of the base attrValue class both to illustrate the mechanism and also to leave attrValue to encode scalars, while

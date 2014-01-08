@@ -379,7 +379,18 @@ std::map<std::string, MergeHandler>*    MergeHandlerInstantiator::MergeHandlers;
 std::map<std::string, MergeKeyHandler>* MergeHandlerInstantiator::MergeKeyHandlers;
 std::set<GetMergeStreamRecord>*         MergeHandlerInstantiator::MergeGetStreamRecords;
 
-MergeHandlerInstantiator::MergeHandlerInstantiator() {
+MergeHandlerInstantiator::MergeHandlerInstantiator() :
+  sight::common::LoadTimeRegistry("MergeHandlerInstantiator", 
+                                  MergeHandlerInstantiator::init)
+{ }
+
+void MergeHandlerInstantiator::init() {
+  MergeHandlers          = new std::map<std::string, MergeHandler>();
+  MergeKeyHandlers       = new std::map<std::string, MergeKeyHandler>();
+  MergeGetStreamRecords  = new std::set<GetMergeStreamRecord>();
+}
+
+/*MergeHandlerInstantiator::MergeHandlerInstantiator() {
   // Initialize the handlers mappings, using environment variables to make sure that
   // only the first instance of this MergeHandlerInstantiator creates these objects.
   if(!getenv("SIGHT_MERGE_HANDLERS_INSTANTIATED")) {
@@ -388,7 +399,7 @@ MergeHandlerInstantiator::MergeHandlerInstantiator() {
     MergeGetStreamRecords  = new std::set<GetMergeStreamRecord>();
     setenv("SIGHT_MERGE_HANDLERS_INSTANTIATED", "1", 1);
   }
-}
+}*/
 
 // Returns a mapping from the names of objects for which records are kept within this MergeHandlerInstantiator
 // object to the freshly-allocated streamRecord objects that keep their records. The records are specialized 
@@ -1658,9 +1669,12 @@ void dbgStream::init(properties* props, string title, string workDir, string img
     buf = new dbgBuf(new fdoutbuf(outFD));
   // Version 3 (default): write output to a pipe for the default slayout to use immediately
   } else {
-//cout << "slayout"<<endl;
+cout << ROOT_PATH<<"/slayout"<<endl;
     dbgFile = NULL;
+    LoadTimeRegistry::liftMutexes();
     FILE *out = popen((txt()<<ROOT_PATH<<"/slayout").c_str(), "w");
+    LoadTimeRegistry::restoreMutexes();
+//FILE *out = popen((txt()<<ROOT_PATH<<"/repeater.pl").c_str(), "w");
     int outFD = fileno(out);
     buf = new dbgBuf(new fdoutbuf(outFD));
   }

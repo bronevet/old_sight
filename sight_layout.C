@@ -36,7 +36,17 @@ namespace layout {
 //   ensures that the appropriate object pointers are passed to exit handlers.
 std::map<std::string, layoutEnterHandler>* layoutHandlerInstantiator::layoutEnterHandlers;
 std::map<std::string, layoutExitHandler>* layoutHandlerInstantiator::layoutExitHandlers;
-  
+
+layoutHandlerInstantiator::layoutHandlerInstantiator() : 
+  sight::common::LoadTimeRegistry("layoutHandlerInstantiator", 
+                                   layoutHandlerInstantiator::init) 
+{}
+
+void layoutHandlerInstantiator::init() {
+  layoutEnterHandlers = new std::map<std::string, layoutEnterHandler>();
+  layoutExitHandlers  = new std::map<std::string, layoutExitHandler>();
+}
+
 // Default entry/exit handlers to use when no special handling is needed
 void* defaultEntryHandler(properties::iterator props) { return NULL; }
 void  defaultExitHandler(void* obj) { }

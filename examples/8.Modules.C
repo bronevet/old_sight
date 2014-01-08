@@ -25,33 +25,6 @@ class state {
   }
 };
 
-// Each recursive call to fibScope() generates a new scope at the desired level. 
-// The scope level that is passed in controls the types of scopes that are recursively created
-std::pair<int, std::vector<port> > fibModule(int a, int depth) {
-  std::vector<port> fibOutputs;
-  module m(instance(txt()<<"fib() depth="<<depth, 1, 1), 
-           inputs(port(context(config("a", a)))), fibOutputs, namedMeasures("time", new timeMeasure()));
-  
-  if(a==0 || a==1) { 
-    dbg << "=1."<<endl;
-    
-    m.setOutCtxt(0, context(config("val", 1)));
-    
-    return make_pair(1, fibOutputs);
-  } else {
-    std::pair<int, std::vector<port> > ret1 = fibModule(a-1, depth+1);
-    std::pair<int, std::vector<port> > ret2 = fibModule(a-2, depth+1);
-    dbg << "="<<(ret1.first + ret2.first)<<endl;
-    
-    m.setOutCtxt(0, context(config("val", ret1.first + ret2.first)));
-    
-    return make_pair(ret1.first + ret2.first, fibOutputs);
-  }
-}
-
-
-
-
 // Calculates the average standard deviation of each dimension of particle positions
 double posDev(const vector<state>& particles, int numDims);
 double vecDist(vector<double>& p1, vector<double>& p2);
@@ -99,10 +72,6 @@ int main(int argc, char** argv)
          "each containing 1, 2 or 3 dimensional positions. The outputs of these runs are merged, including their input/output "<<
          "relations and module measurements."<<endl;    
   
-/*  modularApp rootModule("Fibonacci"); 
-  fibModule(10, 0);*/
-  
-  
   modularApp mdApp("Molecular Dynamics", namedMeasures("time", new timeMeasure())); 
   
   // List of particle positions
@@ -121,16 +90,16 @@ int main(int argc, char** argv)
       for(int d=0; d<numDims; d++) curPos.push_back(((double)rand()/(double)RAND_MAX));
       particles.push_back(state((double)rand()/(double)RAND_MAX, curPos));
     }
-    initModule.setOutCtxt(0, context(config("deviation", posDev(particles, numDims),
-                                                "numParticles", numParticles,
-                                                "numDims", numDims)));
+    initModule.setOutCtxt(0, context("deviation", posDev(particles, numDims),
+                                     "numParticles", numParticles,
+                                     "numDims", numDims));
   }
   
   std::vector<port> forceOutputs;
   std::vector<port> neighOutputs;
   map<int, set<int> > neighbors;
   for(int t=0; t<numTS; t++) {
-    module timeStepModule(instance("TimeStep", 1, 0), inputs(port(context(config("t", t)))), 
+    module timeStepModule(instance("TimeStep", 1, 0), inputs(port(context("t", t))), 
                           namedMeasures("PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS))));
 
     //scope s(txt()<<"Iteration "<<t);
@@ -158,7 +127,7 @@ int main(int argc, char** argv)
         }
       } }
       
-      neighModule.setOutCtxt(0, context(config("totalNeighbors", totalNeighbors)));
+      neighModule.setOutCtxt(0, context("totalNeighbors", totalNeighbors));
       
       /*for(map<int, set<int> >::iterator p=neighbors.begin(); p!=neighbors.end(); p++) {
         dbg << p->first << ":";
@@ -201,9 +170,9 @@ int main(int argc, char** argv)
       /*for(int p=0; p<particles.size(); p++)
         dbg << p << ": "<<particles[p].str()<<endl;*/
       
-      forceModule.setOutCtxt(0, context(config("deviation", posDev(particles, numDims),
-                                               "numParticles", numParticles,
-                                               "numDims", numDims)));
+      forceModule.setOutCtxt(0, context("deviation", posDev(particles, numDims),
+                                        "numParticles", numParticles,
+                                        "numDims", numDims));
     }
   } //} }
 }

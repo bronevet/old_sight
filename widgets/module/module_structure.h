@@ -12,6 +12,7 @@
 #include "module_common.h"
 #include "../../sight_structure_internal.h"
 #include "Callpath.h"
+#include <pthread.h>
 
 namespace sight {
 namespace structure {
@@ -298,6 +299,9 @@ class modularApp: public block
     
   // Returns whether the current instance of modularApp is active
   static bool isInstanceActive();
+
+  // Returns a pointer to the current instance of modularApp
+  static modularApp* getInstance() { assert(activeMA); return activeMA; }
   
   // Assigns a unique ID to the given module group, as needed and returns this ID
   static int addModuleGroup(const group& g);
@@ -568,7 +572,7 @@ class compNamedMeasures {
   compNamedMeasures(const std::string& name0, measure* meas0, const comparatorDesc& cdesc0)
   { measures[name0] = info(meas0, cdesc0.name(), cdesc0.description()); }
   
-  compNamedMeasures(const std::string& name0, measure* meas0, const attrValue& val0, const comparatorDesc& cdesc0, const std::string& name1, measure* meas1, const comparatorDesc& cdesc1)
+  compNamedMeasures(const std::string& name0, measure* meas0, const comparatorDesc& cdesc0, const std::string& name1, measure* meas1, const comparatorDesc& cdesc1)
   { measures[name0] = info(meas0, cdesc0.name(), cdesc0.description()); measures[name1] = info(meas1, cdesc1.name(), cdesc1.description()); }
   
   compNamedMeasures(const std::string& name0, measure* meas0, const comparatorDesc& cdesc0, const std::string& name1, measure* meas1, const comparatorDesc& cdesc1, const std::string& name2, measure* meas2, const comparatorDesc& cdesc2)
@@ -617,6 +621,21 @@ class compNamedMeasures {
   }
 }; // class compNamedMeasures
 
+// Represents a modular application, which may contain one or more modules. Only one modular application may be
+// in-scope at any given point in time.
+class compModularApp : public modularApp
+{
+  // Maps the names of of all the measurements that should be taken during the execution of compModules within
+  // this modular app to the names and descriptors of the comparisons that should be performed for them.
+  std::map<std::string, std::pair<std::string, std::string> > measComp;
+  
+  public:
+  compModularApp(const std::string& appName,                                                        properties* props=NULL);
+  compModularApp(const std::string& appName, const attrOp& onoffOp,                                 properties* props=NULL);
+  compModularApp(const std::string& appName,                        const compNamedMeasures& cMeas, properties* props=NULL);
+  compModularApp(const std::string& appName, const attrOp& onoffOp, const compNamedMeasures& cMeas, properties* props=NULL);
+}; // class compModularApp
+
 class compModule: public structure::module
 {
   friend class compModuleTraceStream;
@@ -639,6 +658,20 @@ class compModule: public structure::module
   
   public:
   
+  // Information that describes the class that derives from this on. 
+  /*class compDerivInfo : public derivInfo {
+    public:
+    // The options that the derived class wishes to pass to this compModule. The issue is that because we pass
+    // options by reference if a derived class wishes to extend them, it cannot do so from within a constructor.
+    // Adding options to derivInfo make this possible;
+    context options;
+    
+    compDerivInfo() : derivInfo() {}
+    
+    compDerivInfo(properties* props, const std::map<std::string, attrValue>& ctxt, const context& options) : 
+      derivInfo(props, ctxt), options(options) {}
+  };*/
+  
   // isReference: Records whether this is the reference configuration of the moculde
   // options: The context that describes the configuration options of this module
   // meas: The measurements that should be performed during the execution of this compModule
@@ -647,19 +680,20 @@ class compModule: public structure::module
   //    it includes fields that must be included within the context of any trace observations made during the execution
   //    of this module.
   compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
-             bool isReference, const context& options,
+             bool isReference, context options,
                                                                derivInfo* deriv=NULL);
   compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
-             bool isReference, const context& options, 
+             bool isReference, context options, 
              const attrOp& onoffOp,                            derivInfo* deriv=NULL);
   compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
-             bool isReference, const context& options,
+             bool isReference, context options,
                                     const compNamedMeasures& meas, derivInfo* deriv=NULL);
   compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
-             bool isReference, const context& options, 
+             bool isReference, context options, 
              const attrOp& onoffOp, const compNamedMeasures& meas, derivInfo* deriv=NULL);
+
   // Sets the properties of this object
-  derivInfo* setProperties(const instance& inst, bool isReference, const context& options, const attrOp* onoffOp, derivInfo* deriv=NULL);
+  derivInfo* setProperties(const instance& inst, bool isReference, context options, const attrOp* onoffOp, derivInfo* deriv=NULL);
   
   void init(derivInfo* deriv);
   
@@ -668,31 +702,70 @@ class compModule: public structure::module
   // Sets the context of the given output port. This variant ensures that the outputs of compModules can only
   // be set with compContexts.
   void setOutCtxt(int idx, const context& c) { std::cerr << "ERROR: compModule::setOutCtxt() can only be called with a compContext argument!"<<std::endl; assert(0); }
-  void setOutCtxt(int idx, const compContext& c);
-  
-  // The variant of the generateTraceStream functor specialized to generating moduleTraceStreams
-  /*class generateCompModuleTraceStream : public generateModuleTraceStream {
-    bool isReference;
-    const context* options;
-    public:
-    generateCompModuleTraceStream() {}
-    
-    void init(const instance& inst, bool isReference, const context& options) {
-      static group g;
-      g.init(modularApp::getMStack(), inst);
-      generateModuleTraceStream::init(g);
-      this->isReference = isReference;
-      this->options = &options;
-    }
-    
-    traceStream* operator()(int moduleID);
-  }; // class generateModuleTraceStream */
-  
-  // Static instance of generateModuleTraceStream. It is initialized inside calls to setProperties() and utilized inside
-  // the module() constructor in its call to modularApp::enterModule(). As such, its state needs to remain valid during
-  // the course of construction but is irrelevant other than that.
-  //static generateCompModuleTraceStream gcmts;
+  virtual void setOutCtxt(int idx, const compContext& c);
 }; // class compModule
+
+class springModule;
+
+// Represents a modular application, which may contain one or more modules. Only one modular application may be
+// in-scope at any given point in time.
+class springModularApp : public compModularApp
+{
+  friend class springModule;
+  long bufSize;
+  char* data;
+  pthread_t interfThread;
+  
+  public:
+  springModularApp(const std::string& appName,                                                        properties* props=NULL);
+  springModularApp(const std::string& appName, const attrOp& onoffOp,                                 properties* props=NULL);
+  springModularApp(const std::string& appName,                        const compNamedMeasures& cMeas, properties* props=NULL);
+  springModularApp(const std::string& appName, const attrOp& onoffOp, const compNamedMeasures& cMeas, properties* props=NULL);
+  
+  void init();
+  
+  ~springModularApp();
+
+  static void *Interference(void *arg);
+
+  // Returns a pointer to the current instance of modularApp
+  static springModularApp* getInstance() { 
+    springModularApp* springActiveMA = dynamic_cast<springModularApp*>(modularApp::getInstance());
+    assert(springActiveMA);
+    return springActiveMA;
+  }
+}; // class springModularApp
+
+class springModule: public compModule {
+  // The options passed into the constructor, extended with the configuration options from Spring.
+  // extendedOptions is cleared at the end of the constructor sincee it is only used to communicate
+  // the full set of options to the compModule constructor.
+  context extendedOptions;
+
+  public:
+  
+  // options: The context that describes the configuration options of this module
+  // meas: The measurements that should be performed during the execution of this springModule
+  // derivInfo: Information that describes the class that derives from this on. It includes a pointer to a properties
+  //    object that can be used to create a tag for the derived object that includes info about its parents. Further,
+  //    it includes fields that must be included within the context of any trace observations made during the execution
+  //    of this module.
+  springModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+               const context& options,
+                                                               derivInfo* deriv=NULL);
+  springModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+             const context& options, 
+             const attrOp& onoffOp,                            derivInfo* deriv=NULL);
+  springModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+             const context& options,
+                                    const compNamedMeasures& meas, derivInfo* deriv=NULL);
+  springModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+             const context& options, 
+             const attrOp& onoffOp, const compNamedMeasures& meas, derivInfo* deriv=NULL);
+  
+  static bool isSpringReference();
+  static context extendOptions(const context& options);
+}; // class springModule
 
 // Specialization of traceStreams for the case where they are hosted by a module node
 class moduleTraceStream: public traceStream

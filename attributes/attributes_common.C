@@ -571,14 +571,25 @@ std::string customAttrValue::serialize() const {
 
 std::map<std::string, customAttrDeserialize>* customAttrValueInstantiator::deserializers;
 
-customAttrValueInstantiator::customAttrValueInstantiator() {
+customAttrValueInstantiator::customAttrValueInstantiator(): 
+   sight::common::LoadTimeRegistry("customAttrValueInstantiator", 
+                                   customAttrValueInstantiator::init) 
+{
+}
+
+// Called exactly once for each class that derives from LoadTimeInstantiator to initialize its static data structures.
+void customAttrValueInstantiator::init() {
+  deserializers = new std::map<std::string, customAttrDeserialize>();
+}
+
+/*customAttrValueInstantiator::customAttrValueInstantiator() {
   // Initialize the handlers mappings, using environment variables to make sure that
   // only the first instance of this customAttrValueInstantiator creates these objects.
   if(!getenv("SIGHT_CUSTOM_ATTRVALUE_INSTANTIATED")) {
     deserializers          = new std::map<std::string, customAttrDeserialize>();
     setenv("SIGHT_CUSTOM_ATTRVALUE_INSTANTIATED", "1", 1);
   }
-}
+}*/
 
 // Deserializes the given serialized customAttrValue and returns a freshly-allocated reference to it
 customAttrValue* customAttrValueInstantiator::deserialize(std::string serialized) {
@@ -613,13 +624,24 @@ std::string customAttrValueInstantiator::str() {
 
 std::map<std::string, attrValueComparatorInstantiator::genAttrComparator>* attrValueComparatorInstantiator::compGenerators;
 
-attrValueComparatorInstantiator::attrValueComparatorInstantiator() {
+attrValueComparatorInstantiator::attrValueComparatorInstantiator(): 
+   sight::common::LoadTimeRegistry("attrValueComparatorInstantiator", 
+                                   attrValueComparatorInstantiator::init) 
+{
+}
+
+/*attrValueComparatorInstantiator::attrValueComparatorInstantiator() {
   // Initialize the handlers mappings, using environment variables to make sure that
   // only the first instance of this attrValueComparatorInstantiator creates these objects.
   if(!getenv("SIGHT_ATTRVALUE_COMPARATOR_INSTANTIATED")) {
     compGenerators = new std::map<std::string, genAttrComparator>();
     setenv("SIGHT_ATTRVALUE_COMPARATOR_INSTANTIATED", "1", 1);
   }
+}*/
+
+// Called exactly once for each class that derives from LoadTimeInstantiator to initialize its static data structures.
+void attrValueComparatorInstantiator::init() {
+  compGenerators = new std::map<std::string, genAttrComparator>();
 }
 
 // Returns a comparator of the type identified by name that performs the comparison type identified by description
@@ -646,7 +668,8 @@ std::string attrValueComparatorInstantiator::str() {
 
 // Registers generation functions for each type of comparator we've defined here
 baseAttrValueComparatorInstantiator::baseAttrValueComparatorInstantiator() {
-  (*compGenerators)["LkComparator"] = &genLkComparator;
+  (*compGenerators)["LkComparator"]       = &genLkComparator;
+  (*compGenerators)["RelativeComparator"] = &genRelComparator;
 }
 
 /************************
@@ -713,6 +736,22 @@ comparator* genLkComparator(std::string description) {
     default: assert(0);
   }
 } // genLkComparator()
+
+// Returns a comparator that can be used to compare objects of the given valueType
+comparator* genRelComparator(std::string description) {
+  attrValue::valueType type = (attrValue::valueType)attrValue::parseInt(description);
+  switch(type) {
+    // Create an RelativeComparator of the appropriate type
+    case attrValue::intT:   return new RelativeComparator<long>();
+    case attrValue::floatT: return new RelativeComparator<double>();
+    default: assert(0);
+  }
+}
+
+// static instance of baseAttrValueComparatorInstantiator to ensure that its constructor is called
+// before main().
+baseAttrValueComparatorInstantiator baseAttrValueComparatorInstance;
+
 
 /**********************
  ***** sightArray *****

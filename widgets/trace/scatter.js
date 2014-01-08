@@ -15,7 +15,7 @@ function createNumericScale(data, idx, minVisCoord, maxVisCoord) {
   // Otherwise, use a linear scale
   else 
     return d3.scale.linear()
-            .domain([0, Max])
+            .domain([Math.min(0, Min), Max])
             .range([ minVisCoord, maxVisCoord ]);  
 }
 

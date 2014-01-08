@@ -232,7 +232,7 @@ std::vector<std::string> modularApp::polyFit(int moduleID)
   // Fit a polynomial to the observed data
   int maxDegree = 2;
   long numTerms = polyfitCtxt[moduleID]->size2;
-  cout << "polyFit() numObs["<<moduleID<<"]="<<numObs[moduleID]<<", numTerms="<<numTerms<<endl; 
+  //cout << "polyFit() numObs["<<moduleID<<"]="<<numObs[moduleID]<<", numTerms="<<numTerms<<endl; 
   // Covariance matrix
   gsl_matrix *polyfitCov = gsl_matrix_alloc(numTerms, numTerms);
 
@@ -656,13 +656,13 @@ void* modularApp::addEdge(properties::iterator props) {
 void modularApp::observe(int traceID,
                          const map<string, string>& ctxt, 
                          const map<string, string>& obs,
-                         const map<string, anchor>& obsAnchor) {
+                         const map<string, anchor>& obsAnchor,
+                         const set<traceObserver*>& observers) {
   assert(trace2moduleID.find(traceID) != trace2moduleID.end());
   int moduleID = trace2moduleID[traceID];
   
   cout << "modularApp::observe("<<traceID<<")"<<endl;
   
-  /*cout << "module::observe(this="<<this<<")(traceID="<<traceID<<", moduleID="<<moduleID<<"), #ctxtNames="<<ctxtNames.size()<<endl;*/
   cout << "    ctxt=";
   for(map<string, string>::const_iterator c=ctxt.begin(); c!=ctxt.end(); c++) { cout << c->first << "=>"<<c->second<<" "; }
   cout << endl;
@@ -731,7 +731,7 @@ void modularApp::observe(int traceID,
                          // #numericCtxt^0 + #numericCtxt^1 + #numericCtxt^2 + ... + #numericCtxt^maxDegree = #numericCtxt^(maxDegree+1) - 1
                          pow(numericCtxt.size(), maxDegree+1));
 
-    //cout << "module::observe() moduleID="<<moduleID<<", #numericCtxt="<<numericCtxt.size()<<", #polyfitCtxt="<<polyfitCtxt.size()<<", found="<<(polyfitCtxt.find(moduleID) != polyfitCtxt.end())<<", numTerms="<<numTerms<<endl;
+    cout << "module::observe() moduleID="<<moduleID<<", #numericCtxt="<<numericCtxt.size()<<", #polyfitCtxt="<<polyfitCtxt.size()<<", found="<<(polyfitCtxt.find(moduleID) != polyfitCtxt.end())<<", numTerms="<<numTerms<<endl;
 
     // If this is the first observation we have from the given traceStream, allocate the
     // polynomial fit datastructures
@@ -747,17 +747,17 @@ void modularApp::observe(int traceID,
       numAllocObs[moduleID] = 1000;
       numAllocTraceAttrs[moduleID] = traceAttrName2Col[moduleID].size();
 
-      //cout << "    Allocated "<<numAllocObs[moduleID]<<" rows, "<<numAllocTraceAttrs[moduleID]<<" columns"<<endl;
+      cout << "    Allocated "<<numAllocObs[moduleID]<<" rows, "<<numAllocTraceAttrs[moduleID]<<" columns"<<endl;
     }
-    cout << "    #polyfitCtxt="<<polyfitCtxt.size()<<", found="<<(polyfitCtxt.find(moduleID) != polyfitCtxt.end())<<", numObs[moduleID]="<<numObs[moduleID]<<endl;
+    cout << "    #polyfitCtxt="<<polyfitCtxt.size()<<", found="<<(polyfitCtxt.find(moduleID) != polyfitCtxt.end())<<", numObs[moduleID]="<<numObs[moduleID]<<", numAllocObs[moduleID]="<<numAllocObs[moduleID]<<endl;
 
-    //cout << "traceAttrName2Col[moduleID].size()="<<traceAttrName2Col[moduleID].size()<<" numAllocTraceAttrs[moduleID]="<<numAllocTraceAttrs[moduleID]<<endl;
+    cout << "traceAttrName2Col[moduleID].size()="<<traceAttrName2Col[moduleID].size()<<" numAllocTraceAttrs[moduleID]="<<numAllocTraceAttrs[moduleID]<<endl;
     // If we're out of space in polyfitCtxt[moduleID] and polyfitObs[moduleID] to store another observation or store more columns, grow them
-    if(numObs[moduleID] == numAllocObs[moduleID] || 
+    if(numObs[moduleID] == numAllocObs[moduleID]-1 || 
        traceAttrName2Col[moduleID].size() > numAllocTraceAttrs[moduleID]) {
       // If we're out of space for rows, double it
       int newNumAllocObs = numAllocObs[moduleID];
-      if(numObs[moduleID] == numAllocObs[moduleID]) newNumAllocObs *= 2;
+      if(numObs[moduleID] == numAllocObs[moduleID]-1) newNumAllocObs *= 2;
 
       // If we need new columns, adjust accordingly
       int newNumAllocTraceAttrs = numAllocTraceAttrs[moduleID];
@@ -781,7 +781,7 @@ void modularApp::observe(int traceID,
       // Update our allocated space records
       numAllocObs[moduleID] = newNumAllocObs;
       numAllocTraceAttrs[moduleID] = newNumAllocTraceAttrs;
-      //cout << "    Reallocated "<<numAllocObs[moduleID]<<" rows, "<<numAllocTraceAttrs[moduleID]<<" columns"<<endl;
+      cout << "    Reallocated "<<numAllocObs[moduleID]<<" rows, "<<numAllocTraceAttrs[moduleID]<<" columns, numObs[moduleID]="<<numObs[moduleID]<<endl;
     }
 
     // Add this observation to polyfitObs
@@ -831,7 +831,7 @@ void modularApp::observe(int traceID,
   }
   
   // Forward the observation to observers of this object
-  emitObservation(traceID, ctxt, obs, obsAnchor);
+  emitObservation(traceID, ctxt, obs, obsAnchor, observers);
 }
 
 /*****************************
@@ -856,14 +856,29 @@ moduleTraceStream::moduleTraceStream(properties::iterator props, traceObserver* 
   // Create a new traceStream object to collect the observations for this module group
   modularApp::activeMA->moduleTraces[moduleID] = this;
   
+  cout << "moduleTraceStream::moduleTraceStream() this="<<this<<", traceID="<<getID()<<", moduleID="<<moduleID<<endl;
+  
   // If no observer is specified, register the current instance of modularApp to listen in on observations recorded by this traceStream
-  if(observer==NULL)
-    registerObserver(modularApp::getInstance());
+  if(observer==NULL) {
+    // The queue of observation filters
+    queue = new traceObserverQueue(traceObservers(
+                    // - Observations pass through the modular app instance to enable it to build polynomial 
+                    // fits of this data
+                    modularApp::getInstance(), 
+                    // - They then end up at the original traceStream to be included in the generated visualization
+                    this));
+    registerObserver(queue);
+  }
   // If an observer is specified, then that observer (a class that derives from will first 
   
   // Record the mapping between traceStream IDs and the IDs of the module group they're associated with
   modularApp::activeMA->trace2moduleID[getID()] = moduleID;
   ///cout << "moduleID="<<moduleID<<", traceID="<<m->moduleTraces[moduleID]->getID()<<endl;
+}
+
+moduleTraceStream::~moduleTraceStream() {
+  assert(queue);
+  delete queue;
 }
 
 // Called when we observe the entry tag of a moduleTraceStream
@@ -874,7 +889,7 @@ void *moduleTraceStream::enterTraceStream(properties::iterator props) {
   
   // Allocate a new moduleTraceStream. The constructor takes care of registering it with the currently active module
   new moduleTraceStream(props);
-  
+    
   return NULL;
 }
 
@@ -947,7 +962,6 @@ compModuleTraceStream::compModuleTraceStream(properties::iterator props, traceOb
 compModuleTraceStream::~compModuleTraceStream() {
   // Deallocate the observation filter objects
   delete cmFilter;
-  delete queue;
 }
 
 // Called when we observe the entry tag of a compModuleTraceStream
@@ -1007,9 +1021,9 @@ std::map<std::string, std::string> compModule::compareObservations(
     }
     assert(comp);
     
-    cout << "i->second="<<i->second.serialize()<<", i2->second="<<i2->second.serialize()<<endl;
-    
     attrValue rel = i->second.compare(i2->second, *comp);
+    cout << "i->second="<<i->second.serialize()<<", i2->second="<<i2->second.serialize()<<" rel="<<rel.serialize()<<endl;
+    
     // Serialize the relationship between the two attrValues and record it in relation[]]
     relation[i->first] = rel.serialize();
   }
@@ -1034,7 +1048,8 @@ std::map<std::string, attrValue> compModule::deserializeObs(const std::map<std::
 void compModule::observe(int traceID,
                          const map<string, string>& ctxt, 
                          const map<string, string>& obs,
-                         const map<string, anchor>& obsAnchor) {
+                         const map<string, anchor>& obsAnchor,
+                         const set<traceObserver*>& observers) {
   cout << "compModule::observe("<<traceID<<")"<<endl;
   cout << "    ctxt=";
   for(map<string, string>::const_iterator c=ctxt.begin(); c!=ctxt.end(); c++) { cout << c->first << "=>"<<c->second<<" "; }
@@ -1054,7 +1069,7 @@ void compModule::observe(int traceID,
     string moduleClass, ctxtGrouping, attrName;
     decodeCtxtName(c->first, moduleClass, ctxtGrouping, attrName);
     
-    cout << "        c->first="<<c->first<<", moduleClass="<<moduleClass<<", ctxtGrouping="<<ctxtGrouping<<", attrName="<<attrName<<endl;
+    //cout << "        c->first="<<c->first<<", moduleClass="<<moduleClass<<", ctxtGrouping="<<ctxtGrouping<<", attrName="<<attrName<<endl;
     
     // If the current key is not a control attribute
     if(!(moduleClass=="compModule" && ctxtGrouping=="isReference")) {
@@ -1065,11 +1080,11 @@ void compModule::observe(int traceID,
     }
   }
   
-  cout << "    inputCtxt=";
+  /*cout << "    inputCtxt=";
   for(map<string, string>::const_iterator o=inputCtxt.begin(); o!=inputCtxt.end(); o++) { cout << o->first << "=>"<<o->second<<" "; }
   cout << endl;
   cout << "    referenceObs[inputCtxt] (#"<<referenceObs.size()<<") : "<<(referenceObs.find(inputCtxt) != referenceObs.end())<<endl;
-  cout << "    comparisonObs[inputCtxt] (#"<<comparisonObs.size()<<") : "<<(comparisonObs.find(inputCtxt) != comparisonObs.end())<<endl;
+  cout << "    comparisonObs[inputCtxt] (#"<<comparisonObs.size()<<") : "<<(comparisonObs.find(inputCtxt) != comparisonObs.end())<<endl;*/
   
   // If this is the reference observation for the given input context
   map<string, string>::const_iterator isReferenceIter = ctxt.find("compModule:isReference");
@@ -1103,7 +1118,7 @@ void compModule::observe(int traceID,
         map<string, string> relation = compareObservations(*o, ref);
                 
         // Call the observe method of the parent class 
-        emitObservation(traceID, *c, relation, map<string, anchor>());
+        emitObservation(traceID, *c, relation, map<string, anchor>(), observers);
       }
     }
   // If this is a non-reference observation
@@ -1113,7 +1128,7 @@ void compModule::observe(int traceID,
       map<string, string> relation = compareObservations(deserializeObs(obs), referenceObs[inputCtxt]);
       
       // Compare this observation to the reference and emit the result to the observe method of the parent class
-      emitObservation(traceID, strippedCtxt, relation, obsAnchor);
+      emitObservation(traceID, strippedCtxt, relation, obsAnchor, observers);
     // If we have not yet observed the reference, record this non-reference observation in comparisonObs
     } else {
       // Store the observation in comparisonObs, converting the observed values from strings to attrValues

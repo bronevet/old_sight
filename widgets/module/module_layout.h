@@ -172,7 +172,8 @@ class modularApp: public block, public common::module, public traceObserver
   void observe(int traceID,
                const std::map<std::string, std::string>& ctxt, 
                const std::map<std::string, std::string>& obs,
-               const std::map<std::string, anchor>&      obsAnchor);
+               const std::map<std::string, anchor>&      obsAnchor,
+               const std::set<traceObserver*>&           observers);
 }; // class module
 
 // Specialization of traceStreams for the case where they are hosted by a module
@@ -185,8 +186,12 @@ class moduleTraceStream: public traceStream
   int numInputs;
   int numOutputs;
   
+  // The queue that passes all incoming observations through cmFilter and then forwards them to modularApp.
+  traceObserverQueue* queue;
+  
   public:
   moduleTraceStream(properties::iterator props, traceObserver* observer=NULL);
+  ~moduleTraceStream();
   
   // Called when we observe the entry tag of a moduleTraceStream
   static void *enterTraceStream(properties::iterator props);
@@ -241,7 +246,8 @@ class compModule : public common::module, public traceObserver {
   void observe(int traceID,
                const std::map<std::string, std::string>& ctxt, 
                const std::map<std::string, std::string>& obs,
-               const std::map<std::string, anchor>&      obsAnchor);
+               const std::map<std::string, anchor>&      obsAnchor,
+               const std::set<traceObserver*>&           observers);
 }; // class compModule
 
 // Specialization of traceStreams for the case where they are hosted by a compModule 
@@ -249,8 +255,6 @@ class compModuleTraceStream: public moduleTraceStream
 {
   // The object that filters observations to compare non-reference observations to their reference values
   compModule* cmFilter;
-  // The queue that passes all incoming observations through cmFilter and then forwards them to modularApp.
-  traceObserverQueue* queue;
   
   public:
   compModuleTraceStream(properties::iterator props, traceObserver* observer=NULL);

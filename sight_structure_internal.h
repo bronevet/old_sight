@@ -290,13 +290,16 @@ typedef void (*MergeKeyHandler)(properties::tagType type,
 // streamRecord objects that keep their records. The records are specialized with the given stream ID.
 typedef std::map<std::string, streamRecord*> (*GetMergeStreamRecord)(int streamID);
 
-class MergeHandlerInstantiator {
+class MergeHandlerInstantiator : public sight::common::LoadTimeRegistry {
   public:
   static std::map<std::string, MergeHandler>*    MergeHandlers;
   static std::map<std::string, MergeKeyHandler>* MergeKeyHandlers;
   static std::set<GetMergeStreamRecord>*         MergeGetStreamRecords;
 
   MergeHandlerInstantiator();
+  
+  // Called exactly once for each class that derives from LoadTimeRegistry to initialize its static data structures.
+  static void init();
   
   // Returns a mapping from the names of objects for which records are kept within this MergeHandlerInstantiator
   // object to the freshly-allocated streamRecord objects that keep their records. The records are specialized 

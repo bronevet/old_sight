@@ -351,6 +351,66 @@ class structureParser {
   virtual std::pair<properties::tagType, const properties*> next()=0;
 };
 
+// Base class of classes that manage the registration functionality of different modules that may be linked
+// into a given executable. Since Sight is a framework its exact functionality depends on the set of widgets
+// used with it. The mechanism to select the widgets used in a given scenario is linking. The object files
+// of a given set of widgets are linked together into executables such as a user application, slayout or 
+// hier_merge. It is the choice of object files that are linked that determines the functionality of a given
+// executable. In many cases we need the linked widgets to provide callbacks to perform widget-specific 
+// actions such as merging or laying out a type of tag or performing some type of attrValue comparison.
+// The choice of functionality is specified in a string and we need the widget that implements this functionality
+// to register a callback with this string to make it possible to invoke the functionality. Since the choice
+// of widgets is made at link-time and the order in which the widgets' object files are initialized and loaded
+// is unspecified, this is difficult to manage. 
+//
+// The LoadTimeRegistry class implements support for registering call-back functions for the widgets that
+// are linked within a given executable. For each task-specific class that inherits from it, the LoadTimeRegistry
+// constructor that it initialization code is invoked exactly once, using environment variables as a type of
+// mutex. To make sure this environment-based initialization state does not leak from a process to its children,
+// LoadTimeRegistry provides functionality to temporarily remove its state from the environment.
+// 
+// LoadTimeRegistry is used as follows:
+// - We derive class X from LoadTimeRegistry. There is one such class for every major functionality (e.g. merging, parsing)
+//   - Implement X::name(), which returns a unique string
+//   - Implement X::init(), which initializes any data structures (static to X) needed to register the given functionality 
+//     within loaded widgets. X::init() is guaranteed to be called once within an executable
+// - Derive from X class Y. There is one Y for each widget that implements the given functionality type
+//   - Within the constructor of Y register this widget's functionality with the data structures in X. It can be
+//     assumed that X::init() has already executed.
+//   - Create one static instance of Y within each widget.
+class LoadTimeRegistry {
+  // The names of all the LoadTimeRegistry's derived classes that have already been initialized.
+  static std::set<std::string>* initialized;
+
+  public:
+
+  // Type of the class-specific initialization method that is passed into the base LoadTimeRegistry constructor.
+  // It is called exactly once for each class that derives from LoadTimeRegistry to initialize its static data structures.
+  // We don't use virtual methods for this because they don't work inside constructors.
+  typedef void (*initFunc)();
+
+  // name - Unique string name of the class that derives from LoadTimeRegistry
+  // init - Function that is called to initialize this class
+  LoadTimeRegistry(std::string name, initFunc init);
+
+  /*// Unique string name of the class that derives from LoadTimeRegistry
+  virtual std::string name() const { assert(0); return ""; }
+
+  // Called exactly once for each class that derives from LoadTimeRegistry to initialize its static data structures.
+  virtual void init() { assert(0); }*/
+  static void init() {}
+
+  // Removes all the environment variables that record the current mutexes of LoadTimeRegistry
+  static void liftMutexes();
+
+  // Restores all the environment variables previously removed by liftMutexes
+  static void restoreMutexes();
+}; // class LoadTimeRegistry
+
+// Create an instance of LoadTimeRegistry to ensure that it is initialized even if it is never derived from
+extern LoadTimeRegistry LoadTimeRegInstance;
+
+
 // Syntactic sugar for specifying lists
 template<class T>
 class easylist : public std::list<T> {

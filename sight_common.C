@@ -575,6 +575,50 @@ void escapedStr::selfTest() {
   }
 }
 
+/********************************
+ ***** LoadTimeRegistry *****
+ ********************************/
+// The names of all the LoadTimeRegistry's derived classes that have already been initialized.
+std::set<std::string>* LoadTimeRegistry::initialized;
 
+// name - Unique string name of the class that derives from LoadTimeRegistry
+// init - Function that is called to initialize this class
+LoadTimeRegistry::LoadTimeRegistry(std::string name, initFunc init) {
+  // Initialize the base LoadTimeRegistry class
+  if(!getenv("SIGHT_LOADTIME_INSTANTIATED")) {
+    initialized = new std::set<std::string>();
+    setenv("SIGHT_LOADTIME_INSTANTIATED", "1", 1);
+    initialized->insert("LOADTIME");
+  }
+
+  // Initialize the class that derives from LoadTimeRegistry, using environment variables to make sure that
+  // only the first instance of this class performs the initialization.
+  string envKey = txt()<<"SIGHT_"<<name<<"_INSTANTIATED";
+  if(!getenv(envKey.c_str())) {
+    init();
+    setenv(envKey.c_str(), "1", 1);
+    initialized->insert(name);
+  }
+}
+
+// Removes all the environment variables that record the current mutexes of LoadTimeRegistry
+void LoadTimeRegistry::liftMutexes() {
+  for(std::set<std::string>::iterator i=initialized->begin(); i!=initialized->end(); i++) {
+    string envKey = txt()<<"SIGHT_"<<*i<<"_INSTANTIATED";
+    unsetenv(envKey.c_str());
+  }
+}
+
+// Restores all the environment variables previously removed by liftMutexes
+void LoadTimeRegistry::restoreMutexes() {
+  for(std::set<std::string>::iterator i=initialized->begin(); i!=initialized->end(); i++) {
+    string envKey = txt()<<"SIGHT_"<<*i<<"_INSTANTIATED";
+    setenv(envKey.c_str(), "1", 1);
+  }
+}
+
+// Create an instance of LoadTimeRegistry to ensure that it is initialized even if it is never derived from
+LoadTimeRegistry LoadTimeRegInstance("BASE", LoadTimeRegistry::init);
+ 
 }; // namespace common
 }; // namespace sight

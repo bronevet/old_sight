@@ -13,7 +13,8 @@ SIGHT_LINKFLAGS = ${ROOT_PATH}/tools/adept-utils/lib/libadept_cutils.so \
 	                -Wl,-rpath ${ROOT_PATH}/tools/adept-utils/lib \
 	                ${ROOT_PATH}/tools/callpath/src/src/libcallpath.so \
 	                -Wl,-rpath ${ROOT_PATH}/tools/callpath/src/src \
-	                ${ROOT_PATH}/widgets/papi/lib/libpapi.a
+	                ${ROOT_PATH}/widgets/papi/lib/libpapi.a \
+	          -lpthread
 	                
 	                #-Wl,-rpath ${ROOT_PATH}/widgets/papi/lib \
 

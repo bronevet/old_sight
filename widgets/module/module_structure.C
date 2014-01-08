@@ -17,7 +17,6 @@
 #include <sys/types.h>
 #include <sys/time.h>
 
-
 using namespace std;
 using namespace sight::common;
   
@@ -786,7 +785,6 @@ module::~module()
   //cout << "~module() props->active="<<props->active<<endl;
   
   // Complete the measurement of application's behavior during the module's lifetime
-  ///if(props->active) {
   if(modularApp::isInstanceActive()) {
     // If this is an instance of module rather than a class that derives from module
     if(!isDerived) {
@@ -924,36 +922,57 @@ std::string compContext::str() const {
   return s.str();
 }
 
+/**************************
+ ***** compModularApp *****
+ **************************/
+
+compModularApp::compModularApp(const std::string& appName,                                                       properties* props) : 
+  modularApp(appName,                                   props)
+{}
+
+compModularApp::compModularApp(const std::string& appName, const attrOp& onoffOp,                                properties* props) : 
+  modularApp(appName, onoffOp,                          props)
+{}
+
+compModularApp::compModularApp(const std::string& appName,                        const compNamedMeasures& cMeas, properties* props) :
+  modularApp(appName,          cMeas.getNamedMeasures(), props), measComp(cMeas.getComparators())
+{}
+
+compModularApp::compModularApp(const std::string& appName, const attrOp& onoffOp, const compNamedMeasures& cMeas, properties* props) :
+  modularApp(appName, onoffOp, cMeas.getNamedMeasures(), props), measComp(cMeas.getComparators())
+{}
+
+
 /**********************
  ***** compModule *****
  **********************/
 
 compModule::compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
-                       bool isReference, const context& options,
+                       bool isReference, context options,
                                                                          derivInfo* deriv) :
           module(inst, inputs, externalOutputs, setProperties(inst, isReference, options, NULL, deriv)),           isReference(isReference), options(options)
 { init(deriv); }
 
 compModule::compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
-                       bool isReference, const context& options, 
+                       bool isReference, context options, 
                        const attrOp& onoffOp,                            derivInfo* deriv) :
           module(inst, inputs, externalOutputs, setProperties(inst, isReference, options, &onoffOp, deriv)),       isReference(isReference), options(options)
 { init(deriv); }
 
 compModule::compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
-                       bool isReference, const context& options, 
+                       bool isReference, context options, 
                                               const compNamedMeasures& cMeas, derivInfo* deriv) :
           module(inst, inputs, externalOutputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, options, NULL, deriv)),     isReference(isReference), options(options), measComp(cMeas.getComparators())
 { init(deriv); }
 
 compModule::compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
-                       bool isReference, const context& options, 
+                       bool isReference, context options, 
                        const attrOp& onoffOp, const compNamedMeasures& cMeas, derivInfo* deriv) : 
           module(inst, inputs, externalOutputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, options, &onoffOp, deriv)), isReference(isReference), options(options), measComp(cMeas.getComparators())
 { init(deriv); }
 
 // Sets the properties of this object
-module::derivInfo* compModule::setProperties(const instance& inst, bool isReference, const context& options, const attrOp* onoffOp, derivInfo* deriv) {
+module::derivInfo* compModule::setProperties(const instance& inst, bool isReference, context options, const attrOp* onoffOp, derivInfo* deriv) {
   // Set gcmts to refer to the properties of this instance of compModule
   //gcmts.init(inst, isReference, options);
   if(deriv==NULL) {
@@ -999,14 +1018,172 @@ void compModule::setOutCtxt(int idx, const compContext& c) {
   module::setOutCtxt(idx, (const context&)c);
 }
 
-/*traceStream* compModule::generateCompModuleTraceStream::operator()(int moduleID) {
-  return new compModuleTraceStream(moduleID, g->name(), g->numInputs(), g->numOutputs(), isReference, *options, trace::lines, trace::disjMerge);
-}*/
+/*****************************
+ ***** springModularApp  *****
+ *****************************/
 
-// Static instance of generateModuleTraceStream. It is initialized inside calls to setProperties() and utilized inside
-// the module() constructor in its call to modularApp::enterModule(). As such, its state needs to remain valid during
-// the course of construction but is irrelevant other than that.
-//compModule::generateCompModuleTraceStream compModule::gcmts;
+springModularApp::springModularApp(const std::string& appName,                                                        properties* props) :
+    compModularApp(appName, props)
+{ init(); }
+
+springModularApp::springModularApp(const std::string& appName, const attrOp& onoffOp,                                 properties* props)  :
+    compModularApp(appName, props)
+{ init(); }
+
+springModularApp::springModularApp(const std::string& appName,                        const compNamedMeasures& cMeas, properties* props) :
+    compModularApp(appName, props)
+{ init(); }
+
+springModularApp::springModularApp(const std::string& appName, const attrOp& onoffOp, const compNamedMeasures& cMeas, properties* props)  :
+    compModularApp(appName, props)
+{ init(); }
+
+#include <sched.h>
+
+void *springModularApp::Interference(void *arg) {
+  int oldstate; pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, &oldstate);
+  int oldtype; pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, &oldtype);
+  
+  cout << "Interference CPU: "<<sched_getcpu()<<endl;
+  
+  springModularApp* spring = static_cast<springModularApp*>(arg);
+  assert(spring);
+  char* data = spring->data;
+  long long numLL = spring->bufSize / sizeof(long long);
+  cout << "numLL="<<numLL<<endl;
+  long long i=0;
+  int j=0; 
+  double res=2;
+  while(1) {
+    ((long long*)data)[i] = (((long long*)data)[i]+1) % numLL;
+    i = ((long long*)data)[i];
+    //res = sin(exp(res));
+    j++;
+    //if(j%1000000==0) { cout << "."; cout.flush(); }
+  }
+  //return NULL;
+  
+  return &res;
+  /*double res=2;
+  int j=0;
+  while(1) {
+    res = sin(exp(res));
+    j++;
+    if(j%1000000==0) { cout << "."; cout.flush(); }
+  }
+  return &res;*/
+}
+
+long long randomLL() {
+  long long r = 0;
+  for (int i = 0; i < sizeof(long long)/sizeof(int); i++)
+  {
+      r = r << (sizeof(int) * 8);
+      r |= rand();
+  }
+  return r;
+}
+
+void springModularApp::init() {
+  bufSize=0;
+  if(getenv("SPRING_BUF_SIZE"))
+    bufSize = strtol(getenv("SPRING_BUF_SIZE"), NULL, 10);
+  
+  cout << "SPRING_BUF_SIZE="<<(getenv("SPRING_BUF_SIZE")? getenv("SPRING_BUF_SIZE"): "NULL")<<", bufSize="<<bufSize<<endl;
+  cout << "App CPU: "<<sched_getcpu()<<endl;
+  
+  if(bufSize>sizeof(long long)) {
+    data = new char[bufSize];
+    long long numLL = bufSize / sizeof(long long);
+    // Initialize buf with random indexes withiin buf
+    for(int i=0; i<numLL; i++) {
+      ((long long*)data)[i] = randomLL() % numLL;
+    }
+    
+    int ret = pthread_create(&interfThread, NULL, Interference, (void *) this);
+    
+    cpu_set_t cpuset;
+    CPU_ZERO(&cpuset);
+    //for (j = 0; j < 8; j++) CPU_SET(j, &cpuset);
+    int appCPU = sched_getcpu();
+    int domainSize = 6;
+    CPU_SET((appCPU/domainSize)*domainSize + (appCPU+1)%domainSize, 
+            &cpuset);
+    //CPU_SET(appCPU, &cpuset);
+    pthread_setaffinity_np(interfThread, sizeof(cpu_set_t), &cpuset);
+    
+    pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);
+    
+    assert(ret==0);
+  } else
+    data = NULL;
+}
+
+springModularApp::~springModularApp() {
+  if(bufSize>sizeof(long long)) {
+    int ret = pthread_cancel(interfThread);
+    if(ret!=0) { cerr << "ERROR: return code from pthread_cancel() is "<<ret<<", thread %d\n"; assert(0); }
+    
+    int status;
+    ret = pthread_join(interfThread, (void **)&status); 
+    if(ret!=0) { cerr << "ERROR: return code from pthread_join() is "<<ret<<", thread %d\n"; assert(0); }
+   
+    delete data;
+  }
+}
+
+/************************
+ ***** springModule *****
+ ************************/
+
+springModule::springModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs,
+                       const context& options,
+                                                                         derivInfo* deriv) :
+          compModule(inst, inputs, externalOutputs, isSpringReference(), extendOptions(options), compNamedMeasures(), deriv)
+{ 
+/*springModularApp* app = springModularApp::getInstance();
+if(app->bufSize>0) { cout << "bufSize="<<app->bufSize<<" sleep("<<(log(app->bufSize)/log(10))<<")"<<endl; sleep(log(app->bufSize)/log(10)); }*/
+}
+
+springModule::springModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs,
+                       const context& options,
+                       const attrOp& onoffOp,                            derivInfo* deriv) :
+          compModule(inst, inputs, externalOutputs, isSpringReference(), extendOptions(options), onoffOp, compNamedMeasures(), deriv)
+{ 
+/*springModularApp* app = springModularApp::getInstance();
+if(app->bufSize>0) { cout << "bufSize="<<app->bufSize<<" sleep("<<(log(app->bufSize)/log(10))<<")"<<endl; sleep(log(app->bufSize)/log(10)); }*/
+}
+
+springModule::springModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs,
+                       const context& options,
+                                              const compNamedMeasures& cMeas, derivInfo* deriv) :
+          compModule(inst, inputs, externalOutputs, isSpringReference(), extendOptions(options), cMeas, deriv)
+{ 
+/*springModularApp* app = springModularApp::getInstance();
+if(app->bufSize>0) { cout << "bufSize="<<app->bufSize<<" sleep("<<(log(app->bufSize)/log(10))<<")"<<endl; sleep(log(app->bufSize)/log(10)); }*/
+}
+
+springModule::springModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs,
+                       const context& options,
+                       const attrOp& onoffOp, const compNamedMeasures& cMeas, derivInfo* deriv) :
+          compModule(inst, inputs, externalOutputs, isSpringReference(), extendOptions(options), cMeas, deriv)
+{ 
+/*springModularApp* app = springModularApp::getInstance();
+if(app->bufSize>0) { cout << "bufSize="<<app->bufSize<<" sleep("<<(log(app->bufSize)/log(10))<<")"<<endl; sleep(log(app->bufSize)/log(10)); }*/
+}
+
+bool springModule::isSpringReference() {
+  springModularApp* app = springModularApp::getInstance();
+  return app->bufSize==0;
+}
+
+context springModule::extendOptions(const context& options) {
+  context extendedO = options;
+  springModularApp* app = springModularApp::getInstance();
+  extendedO.configuration["Spring:bufSize"] = attrValue(app->bufSize);
+  return extendedO;
+}
+
 
 /*****************************
  ***** moduleTraceStream *****
