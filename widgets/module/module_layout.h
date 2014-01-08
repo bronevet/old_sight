@@ -26,7 +26,7 @@ class moduleTraceStream;
 
 // Records the information of a given module when the module is entered so that we have it available 
 // when the module is exited
-class module {
+class moduleInfo {
   public:
   std::string moduleName;
   int moduleID;
@@ -34,13 +34,75 @@ class module {
   int numOutputs;
   int count;
   
-  module(const std::string& moduleName, int moduleID, int numInputs, int numOutputs, int count) :
+  moduleInfo(const std::string& moduleName, int moduleID, int numInputs, int numOutputs, int count) :
     moduleName(moduleName), moduleID(moduleID), numInputs(numInputs), numOutputs(numOutputs), count(count)
   {}
 };
 
-class modularApp: public block, public common::module, public traceObserver
+// Records the information of a given module when the module is entered so that we have it available 
+// when the module is exited
+class module : public common::module, public traceObserver {
+  friend class modularApp;
+  // Maps each moduleID to the data needed to compute a polynomial approximation of the relationship
+  // between its input context and its observations
+  
+  // Matrix of polynomial terms composed of context values, 1 row per observation, 1 column for each combination of terms
+  gsl_matrix* polyfitCtxt;
+  
+  // For each value that is observed, a vector of the values actually observed, one entry per observation
+  //std::map<int, std::vector<gsl_vector*> >  polyfitObs;
+  gsl_matrix* polyfitObs;
+    
+  // The number of observations made for each node
+  int numObs;
+    
+  // The number of observations for which we've allocated space in polyfitCtxt and polyfitObs (the rows)
+  int numAllocObs;
+  
+  // The number of trace attributes for which we've allocated space in newObs (the columns)
+  int numAllocTraceAttrs;
+  
+  // Maps the names of trace attributes to their columns in polyfitCtxt
+  std::map<std::string, int > traceAttrName2Col;
+  
+  // Records the number of observations we've made of each trace attribute (indexed according to the column numbers in traceAttrName2Col)
+  std::vector<int> traceAttrName2Count;
+  
+  // The number of numeric context attributes of each node. Should be the same for all observations for the node
+  int numNumericCtxt;
+  std::list<std::string> numericCtxtNames;
+    
+  /* // For each node, for each input, the names of its context attributes
+  std::map<int, std::map<int, std::list<std::string> > > ctxtNames;*/
+  // For each node, for each grouping of context attributes, the names of all the attributes within the grouping
+  std::map<std::string, std::list<std::string> > ctxtNames;
+    
+  // The names of the observation trace attributes
+  std::set<std::string> traceAttrNames;
+
+  int moduleID;
+  
+  public:
+  module(int moduleID);
+  
+  ~module();
+  
+  // Do a multi-variate polynomial fit of the data observed for the given moduleID and return for each trace attribute 
+  // a string that describes the function that best fits its values
+  std::vector<std::string> polyFit();
+  
+  // Interface implemented by objects that listen for observations a traceStream reads. Such objects
+  // call traceStream::registerObserver() to inform a given traceStream that it should observations.
+  void observe(int traceID,
+               const std::map<std::string, std::string>& ctxt, 
+               const std::map<std::string, std::string>& obs,
+               const std::map<std::string, anchor>&      obsAnchor/*,
+               const std::set<traceObserver*>&           observers*/);
+}; // class module
+
+class modularApp: public block, public common::module
 {
+  friend class module;
   friend class moduleTraceStream;
   protected:
  
@@ -60,10 +122,13 @@ class modularApp: public block, public common::module, public traceObserver
   int appID;
   
   // Stack of the modules that are currently in scope within this modularApp
-  static std::list<sight::layout::module> mStack;
+  static std::list<sight::layout::moduleInfo> mStack;
   
   // Maps each module group's ID to the trace that holds the observations performed within it
   std::map<int, traceStream*> moduleTraces;
+  
+  // Maps each module group's ID to the module object that processes its data
+  std::map<int, sight::layout::module*> modules;
     
   // Maps each traceStream's ID to the ID of its corresponding module graph node
   std::map<int, int> trace2moduleID;
@@ -116,6 +181,9 @@ class modularApp: public block, public common::module, public traceObserver
   // Static version of enterModule() that calls exitModule() in the currently active modularApp
   static void exitModule(void* obj);
   
+  // Register the given module object with the currently active modularApp
+  static void registerModule(int moduleID, sight::layout::module* m);
+  
   // Add a directed edge from the location of the from anchor to the location of the to anchor
   void addEdge(int fromC, common::module::ioT fromT, int fromP, 
                int toC,   common::module::ioT toT,   int toP,
@@ -129,7 +197,7 @@ class modularApp: public block, public common::module, public traceObserver
   bool subBlockExitNotify (block* subBlock) { return false; }
   
   protected:
-  // Maps each nodeID to the data needed to compute a polynomial approximation of the relationship
+  /* // Maps each moduleID to the data needed to compute a polynomial approximation of the relationship
   // between its input context and its observations
   
   // Matrix of polynomial terms composed of context values, 1 row per observation, 1 column for each combination of terms
@@ -159,22 +227,13 @@ class modularApp: public block, public common::module, public traceObserver
   std::map<int, std::list<std::string> > numericCtxtNames;
     
   /* // For each node, for each input, the names of its context attributes
-  std::map<int, std::map<int, std::list<std::string> > > ctxtNames;*/
+  std::map<int, std::map<int, std::list<std::string> > > ctxtNames;* /
   // For each node, for each grouping of context attributes, the names of all the attributes within the grouping
   std::map<int, std::map<std::string, std::list<std::string> > > ctxtNames;
     
   // The names of the observation trace attributes
-  std::map<int, std::set<std::string> > traceAttrNames;
-  
-  public:
-  // Interface implemented by objects that listen for observations a traceStream reads. Such objects
-  // call traceStream::registerObserver() to inform a given traceStream that it should observations.
-  void observe(int traceID,
-               const std::map<std::string, std::string>& ctxt, 
-               const std::map<std::string, std::string>& obs,
-               const std::map<std::string, anchor>&      obsAnchor,
-               const std::set<traceObserver*>&           observers);
-}; // class module
+  std::map<int, std::set<std::string> > traceAttrNames;*/
+}; // class modularApp
 
 // Specialization of traceStreams for the case where they are hosted by a module
 class moduleTraceStream: public traceStream
@@ -185,6 +244,9 @@ class moduleTraceStream: public traceStream
   std::string name;
   int numInputs;
   int numOutputs;
+  
+  // The instance of module that processes observations of this object
+  module* m;
   
   // The queue that passes all incoming observations through cmFilter and then forwards them to modularApp.
   traceObserverQueue* queue;
@@ -246,8 +308,8 @@ class compModule : public common::module, public traceObserver {
   void observe(int traceID,
                const std::map<std::string, std::string>& ctxt, 
                const std::map<std::string, std::string>& obs,
-               const std::map<std::string, anchor>&      obsAnchor,
-               const std::set<traceObserver*>&           observers);
+               const std::map<std::string, anchor>&      obsAnchor/*,
+               const std::set<traceObserver*>&           observers*/);
 }; // class compModule
 
 // Specialization of traceStreams for the case where they are hosted by a compModule 
@@ -255,6 +317,9 @@ class compModuleTraceStream: public moduleTraceStream
 {
   // The object that filters observations to compare non-reference observations to their reference values
   compModule* cmFilter;
+  
+  // The object that filters comparison observations that come out of cmFilter
+  module* mFilter;
   
   public:
   compModuleTraceStream(properties::iterator props, traceObserver* observer=NULL);

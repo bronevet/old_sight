@@ -497,13 +497,13 @@ class RelativeComparator: public scalarComparator {
   void compare(EltType elt1, EltType elt2) {
     sum += ((double)elt1 - elt2) / (abs(elt1) > abs(elt2)? abs(elt1): abs(elt2));
     count++;
-    std::cout << "Rel:compare("<<elt1<<", "<<elt2<<") sum="<<sum<<", count="<<count<<std::endl;
+    //std::cout << "Rel:compare("<<elt1<<", "<<elt2<<") sum="<<sum<<", count="<<count<<std::endl;
   }
   
   // Called to get the overall relationship between the two objects given all the individual elements
   // observed so far
   attrValue relation() {
-    std::cout << "Rel:relation: sum="<<sum<<", count="<<count<<", rel="<<attrValue(sum/count).serialize()<<std::endl;
+    //std::cout << "Rel:relation: sum="<<sum<<", count="<<count<<", rel="<<attrValue(sum/count).serialize()<<std::endl;
     if(count>0) return attrValue((double)sum/count);
     else        return attrValue(0);
   }

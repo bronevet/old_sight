@@ -53,8 +53,8 @@ class traceObserver {
   protected:
   // Set of objects this traceObserver informs of any observations it reads. We map each traceObserver to the number
   // of times it was registered to allow a given observer to get registered multiple times.
-  std::map<traceObserver*, int> observersM;
-  std::set<traceObserver*> observersS;
+  std::map<traceObserver*, int> observers;
+  //std::set<traceObserver*> observersS;
   
   public:
   // Called on each observation from the traceObserver this object is observing
@@ -64,23 +64,23 @@ class traceObserver {
   // obsAnchor - maps the names of the trace observation attributes to the anchor that identifies where they were observed
   // follower - if non-NULL points to the traceObserver object to which this observe call should pass on 
   //    the observations it emits.
-  void observe(int traceID, 
+  virtual void observe(int traceID, 
                const std::map<std::string, std::string>& ctxt, 
                const std::map<std::string, std::string>& obs,
-               const std::map<std::string, anchor>&      obsAnchor)
-  { observe(traceID, ctxt, obs, obsAnchor, std::set<traceObserver*>()); }
+               const std::map<std::string, anchor>&      obsAnchor)=0;
+/*  { observe(traceID, ctxt, obs, obsAnchor, std::set<traceObserver*>()); }
 
   virtual void observe(int traceID, 
                        const std::map<std::string, std::string>& ctxt, 
                        const std::map<std::string, std::string>& obs,
                        const std::map<std::string, anchor>&      obsAnchor,
-                       const std::set<traceObserver*>&           observers)=0;
+                       const std::set<traceObserver*>&           observers)=0;*/
   
   // Called from inside observe() to emit an observation that this traceObserver makes.
   void emitObservation(int traceID, 
                        const std::map<std::string, std::string>& ctxt, 
                        const std::map<std::string, std::string>& obs,
-                       const std::map<std::string, anchor>&      obsAnchor) {
+                       const std::map<std::string, anchor>&      obsAnchor);/* {
     emitObservation(traceID, ctxt, obs, obsAnchor, observersS);
   }
   
@@ -92,20 +92,20 @@ class traceObserver {
                     std::map<std::string, std::string>(), 
                     std::map<std::string, anchor>(), 
                     observersS);
-  }*/
+  }* /
   
   void emitObservation(int traceID, 
                        const std::map<std::string, std::string>& ctxt, 
                        const std::map<std::string, std::string>& obs,
                        const std::map<std::string, anchor>&      obsAnchor,
-                       const std::set<traceObserver*>&           observers);
+                       const std::set<traceObserver*>&           observers);*/
   
   // Registers/unregisters a given object as an observer of this traceStream
   virtual void registerObserver(traceObserver* obs);
   virtual void unregisterObserver(traceObserver* obs);
   
   // Returns the total number of observers for this object
-  int numObservers() const { return observersM.size(); }
+  int numObservers() const { return observers.size(); }
 }; // traceObserver
 
 typedef common::easylist<traceObserver*> traceObservers;
@@ -115,12 +115,12 @@ typedef common::easylist<traceObserver*> traceObservers;
 // and may send out multiple observations in a single observe() call.
 class traceObserverQueue: public traceObserver {
   protected:
-  /*// The first traceObserver in the observers queue
+  // The first traceObserver in the observers queue
   traceObserver* firstO;
   
   // The last traceObserver in the observers queue
-  traceObserver* lastO;*/
-  std::list<traceObserver*> queue;
+  traceObserver* lastO;
+  //std::list<traceObserver*> queue;
   
   public:
   traceObserverQueue();
@@ -144,8 +144,8 @@ class traceObserverQueue: public traceObserver {
   void observe(int traceID, 
                const std::map<std::string, std::string>& ctxt, 
                const std::map<std::string, std::string>& obs,
-               const std::map<std::string, anchor>&      obsAnchor,
-               const std::set<traceObserver*>&           observers);
+               const std::map<std::string, anchor>&      obsAnchor/*,
+               const std::set<traceObserver*>&           observers*/);
 }; // traceObserverQueue
 
 class traceStream: public attrObserver, public common::trace, public traceObserver
@@ -245,8 +245,8 @@ class traceStream: public attrObserver, public common::trace, public traceObserv
   void observe(int traceID, 
                const std::map<std::string, std::string>& ctxt, 
                const std::map<std::string, std::string>& obs,
-               const std::map<std::string, anchor>&      obsAnchor,
-               const std::set<traceObserver*>&           observers);
+               const std::map<std::string, anchor>&      obsAnchor/*,
+               const std::set<traceObserver*>&           observers*/);
     
   // Given a traceID returns a pointer to the corresponding trace object
   static traceStream* get(int traceID);

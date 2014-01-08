@@ -75,31 +75,31 @@ void *trace::enterTraceStream(properties::iterator props) {
 void traceObserver::emitObservation(int traceID, 
                                     const std::map<std::string, std::string>& ctxt, 
                                     const std::map<std::string, std::string>& obs,
-                                    const std::map<std::string, anchor>&      obsAnchor,
-                                    const std::set<traceObserver*>&           observers) {
-  //for(std::map<traceObserver*, int>::iterator o=observers.begin(); o!=observers.end(); o++)
-  for(std::set<traceObserver*>::iterator o=observers.begin(); o!=observers.end(); o++)
-    (*o)->observe(traceID, ctxt, obs, obsAnchor);
+                                    const std::map<std::string, anchor>&      obsAnchor/*,
+                                    const std::set<traceObserver*>&           observers*/) {
+  for(std::map<traceObserver*, int>::iterator o=observers.begin(); o!=observers.end(); o++)
+  //for(std::set<traceObserver*>::iterator o=observers.begin(); o!=observers.end(); o++)
+    o->first->observe(traceID, ctxt, obs, obsAnchor);
 }
 
 // Registers/unregisters a given object as an observer of this traceStream
 void traceObserver::registerObserver(traceObserver* obs) { 
   // If this observer has not been registered until now, initialize it to a count of 1
-  if(observersM.find(obs) == observersM.end()) {
-    observersM[obs] = 1;
-    observersS.insert(obs);
+  if(observers.find(obs) == observers.end()) {
+    observers[obs] = 1;
+    //observersS.insert(obs);
   // Otherwise, increment its count
   } else
-    observersM[obs]++;
+    observers[obs]++;
 }
 
 void traceObserver::unregisterObserver(traceObserver* obs) {
-  assert(observersM.find(obs) != observersM.end());
-  observersM[obs]--;
+  assert(observers.find(obs) != observers.end());
+  observers[obs]--;
   // If this observer's counter has dropped to 0, erase it
-  if(observersM[obs] == 0) {
-    observersM.erase(obs);
-    observersS.erase(obs);
+  if(observers[obs] == 0) {
+    observers.erase(obs);
+    //observersS.erase(obs);
   }
 } 
 
@@ -108,12 +108,12 @@ void traceObserver::unregisterObserver(traceObserver* obs) {
  ******************************/
 
 traceObserverQueue::traceObserverQueue() {
-  /*firstO = NULL;
-  lastO = NULL;*/
+  firstO = NULL;
+  lastO = NULL;
 }
 
-traceObserverQueue::traceObserverQueue(const std::list<traceObserver*>& observersL) : queue(observersL) {
-  /*// If observersL is non-empty
+traceObserverQueue::traceObserverQueue(const std::list<traceObserver*>& observersL)/* : queue(observersL)*/ {
+  // If observersL is non-empty
   if(observersL.size()>0) {
     firstO = observersL.front();
     lastO  = observersL.back();
@@ -134,14 +134,14 @@ traceObserverQueue::traceObserverQueue(const std::list<traceObserver*>& observer
   } else {
     firstO = NULL;
     lastO = NULL;
-  }*/
+  }
 }
 
 // Push a new observer to the back of the observers queue
 void traceObserverQueue::push_back(traceObserver* obs)
 {
-  queue.push_back(obs);
-  /*// If this is the first element in the observers queue
+  //queue.push_back(obs);
+  // If this is the first element in the observers queue
   if(firstO == NULL) {
     firstO = obs;
     lastO  = obs;
@@ -162,24 +162,13 @@ void traceObserverQueue::push_back(traceObserver* obs)
     lastO->registerObserver(obs);
     
     lastO = obs;
-  }*/
+  }
 }
 
 // Push a new observer to the front of the observers queue
 void traceObserverQueue::push_front(traceObserver* obs)
 {
-  queue.push_front(obs);
-  /* / * // If this is the first element in observers
-  if(lastO==NULL) {
-    firstO = obs;
-    lastO  = obs;
-  // If observers already has elements
-  } else {
-    // Place obs immediately before firstO
-    observers[obs] = firstO;
-    
-    firstO = obs;
-  }* /
+  //queue.push_front(obs);
   // If this is the first element in observers
   if(lastO==NULL) {
     firstO = obs;
@@ -194,7 +183,7 @@ void traceObserverQueue::push_front(traceObserver* obs)
     obs->registerObserver(firstO);
     
     firstO = obs;
-  }*/
+  }
 }
 
 // Override the registration methods from traceObserver to add the observers to the back of the queue
@@ -204,12 +193,12 @@ void traceObserverQueue::registerObserver(traceObserver* obs) {
   // traceObservers are registered and we'll make sure that they're registered with the last element in the queue.
   traceObserver::registerObserver(obs);
   
-  /* // If there are currently elements in the observers queue
+  // If there are currently elements in the observers queue
   if(lastO!=NULL) {
     // Also register this observer within the last element. It must be that the set of observers registered with
     // this traceObserverQueue is identical to the set of observers registered with the queue's last element.
     lastO->registerObserver(obs);
-  }*/
+  }
 }
 
 void traceObserverQueue::unregisterObserver(traceObserver* obs) {
@@ -217,12 +206,12 @@ void traceObserverQueue::unregisterObserver(traceObserver* obs) {
   // traceObservers are registered and we'll make sure that they're registered with the last element in the queue.
   traceObserver::unregisterObserver(obs);
   
-  /* // If there are currently elements in the observers queue
+  // If there are currently elements in the observers queue
   if(lastO!=NULL) {
     // Also unregister this observer within the last element. It must be that the set of observers registered with
     // this traceObserverQueue is identical to the set of observers registered with the queue's last element.
     lastO->unregisterObserver(obs);
-  }*/
+  }
 }
 
 // traceID - unique ID of the trace from which the observation came
@@ -232,13 +221,14 @@ void traceObserverQueue::unregisterObserver(traceObserver* obs) {
 void traceObserverQueue::observe(int traceID, 
                                  const std::map<std::string, std::string>& ctxt, 
                                  const std::map<std::string, std::string>& obs,
-                                 const std::map<std::string, anchor>&      obsAnchor,
-                                 const std::set<traceObserver*>&           observers) {
-  /*if(firstO!=NULL)
+                                 const std::map<std::string, anchor>&      obsAnchor/*,
+                                 const std::set<traceObserver*>&           observers*/) {
+  if(firstO!=NULL)
     // Forward the observation to the first traceObserver in the queue and let it forward it to its
     // successors in the queue as it needs to.
-    firstO->observe(traceID, ctxt, obs, obsAnchor);*/
+    firstO->observe(traceID, ctxt, obs, obsAnchor);
   
+  /*
   static bool observing=false;
   static list<traceObserver*>::iterator curObserver;
   static int obsIdx;
@@ -271,7 +261,7 @@ void traceObserverQueue::observe(int traceID,
     
   std::set<traceObserver*> nextObs; nextObs.insert(this);
   o->observe(traceID, ctxt, obs, obsAnchor, nextObs);
-  //emitObservation(traceID, ctxt, obs, obsAnchor, observers);
+  //emitObservation(traceID, ctxt, obs, obsAnchor, observers);*/
 }
 
 /***********************
@@ -492,10 +482,10 @@ void* traceStream::observe(properties::iterator props)
 void traceStream::observe(int traceID,
                           const map<string, string>& ctxt, 
                           const map<string, string>& obs,
-                          const map<string, anchor>& obsAnchor,
-                          const set<traceObserver*>& observers)
+                          const map<string, anchor>& obsAnchor/*,
+                          const set<traceObserver*>& observers*/)
 {
-  cout << "traceStream::observe("<<traceID<<") this="<<this<<", this->traceID="<<this->traceID<<", #contextAttrs="<<contextAttrs.size()<<" #ctxt="<<ctxt.size()<<endl;
+  //cout << "traceStream::observe("<<traceID<<") this="<<this<<", this->traceID="<<this->traceID<<", #contextAttrs="<<contextAttrs.size()<<" #ctxt="<<ctxt.size()<<endl;
   // Read all the context attributes. If contextAttrs is empty, it is filled with the context attributes of 
   // this observation. Otherwise, we verify that this observation's context is identical to prior observations.
   if(contextAttrsInitialized) assert(contextAttrs.size() == ctxt.size());

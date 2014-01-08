@@ -64,7 +64,7 @@ string modularApp::outDir="";
 string modularApp::htmlOutDir="";
 
 // Stack of the modules that are currently in scope within this modularApp
-list<sight::layout::module> modularApp::mStack;
+list<sight::layout::moduleInfo> modularApp::mStack;
 
 modularApp::modularApp(properties::iterator props) : block(properties::next(props)) {
   // Register this modularApp instance (there can be only one)
@@ -85,9 +85,6 @@ modularApp::modularApp(properties::iterator props) : block(properties::next(prop
   dotFile.open(origDotFName.str().c_str());
   dotFile << "digraph G {"<<endl;
   dotFile << "\tcompound=true;"<<endl;
-  
-  // Add the current module to the stack
-  //mStack.push_back(this);
 }
 
 // Initialize the environment within which generated graphs will operate, including
@@ -147,209 +144,10 @@ modularApp::~modularApp() {
   // Delete all the traceStreams associated with the given trace, which emits their output
   for(map<int, traceStream*>::iterator m=moduleTraces.begin(); m!=moduleTraces.end(); m++)
     delete m->second;
-  
-  // Remove the current module from the stack
-  /*assert(mStack.size()>0);
-  assert(mStack.back()==this);
-  mStack.pop_back();*/
 }
 
 string portName(common::module::ioT type, int index) 
 { return txt()<<(type==common::module::input?"In":"Out")<<index; }
-
-
-// Iterates over all combinations of keys in numericCtxt upto maxDegree in size and computes the products of
-// their values. Adds each such product to the given row of polyfitCtxt at different columns.
-void addPolyTerms(const map<string, double>& numericCtxt, int termCnt, int maxDegree, 
-                  int row, int& col, double product, gsl_matrix *polyfitCtxt) {
-  // If product contains maxDegree terms, add it to the given column of polyfitObs and increment the column counter
-  if(termCnt==maxDegree) {
-    gsl_matrix_set(polyfitCtxt, row, col, product);
-    col++;
-  } else {
-    // Iterate through all the possible choices of the next factor in the current polynomial term
-    for(map<string, double>::const_iterator c=numericCtxt.begin(); c!=numericCtxt.end(); c++) {
-      addPolyTerms(numericCtxt, termCnt+1, maxDegree, row, col, product * c->second, polyfitCtxt);
-    }
-  }
-}
-
-
-// Iterates over all combinations of keys in numericCtxt upto maxDegree in size. Given ctxtNames, which maintains the list
-// of names for each attribute and selTerms, which identifies the attribute combinations that should be selected, matches
-// the selections to the names and inserts the matched pairs to selCtxt. 
-// termCnt - counts the number of terms that have been added to the current polynomial product
-// maxDegree - the maximum such terms that can go into a single product
-// idx - The current count of the terms from the overall space of terms. May not be 0 at the root recursive calls since
-//       we may iterate over multiple choices of maxDegree
-// subName - the name string that has been computed so far for the current prefix of terms in the polynomial product
-void selTerms2Names(const list<string>& ctxtNames, const set<int>& selTerms, 
-                    list<pair<int, string> >& selCtxt, 
-                    int termCnt, int maxDegree, int& idx, map<string, int>& subNames) {
-  // If product contains maxDegree terms, add it to the given column of polyfitObs and increment the column counter
-  if(termCnt==maxDegree) {
-    // If the current product index exists in selTerms
-    if(selTerms.find(idx) != selTerms.end()) {
-      // Match it to its name and add it to selCtx.
-      //selCtxt.push_back(make_pair(idx, subName));
-      ostringstream name;
-      for(map<string, int>::iterator n=subNames.begin(); n!=subNames.end(); n++) {
-        assert(n->second>0);
-        if(n!=subNames.begin()) name << "*";
-        name << n->first;
-        if(n->second>1) name << "^"<<n->second;
-      }
-      selCtxt.push_back(make_pair(idx, name.str()));
-    }
-    idx++;
-  } else {
-    // Iterate through all the possible choices of the next factor in the current polynomial term
-    for(list<string>::const_iterator c=ctxtNames.begin(); c!=ctxtNames.end(); c++) {
-      if(subNames.find(*c) == subNames.end()) subNames[*c] = 1;
-      else                                    subNames[*c]++;
-      
-      selTerms2Names(ctxtNames, selTerms, selCtxt, termCnt+1, maxDegree, idx, subNames/*subName+(termCnt>0?"*":"")+*c*/);
-      
-      subNames[*c]--;
-      if(subNames[*c]==0) subNames.erase(*c);
-    }
-  }
-}
-
-// Do a multi-variate polynomial fit of the data observed for the given moduleID and return for each trace attribute 
-// a string that describes the function that best fits its values
-std::vector<std::string> modularApp::polyFit(int moduleID)
-{
-  vector<string> polynomials;
-  
-  // Do nothing if we had no observations with numeric context attributes
-  if(polyfitCtxt.find(moduleID) == polyfitCtxt.end()) return polynomials;
-    
-  assert(numObs.find(moduleID)      != numObs.end());
-  assert(polyfitObs.find(moduleID)  != polyfitObs.end());
-  //assert(polyfitObs[moduleID].size()>0);
-  
-  // Fit a polynomial to the observed data
-  int maxDegree = 2;
-  long numTerms = polyfitCtxt[moduleID]->size2;
-  //cout << "polyFit() numObs["<<moduleID<<"]="<<numObs[moduleID]<<", numTerms="<<numTerms<<endl; 
-  // Covariance matrix
-  gsl_matrix *polyfitCov = gsl_matrix_alloc(numTerms, numTerms);
-
-  //for(int i=0; i<polyfitObs[moduleID].size(); i++) {
-  int i=0; 
-  for(set<std::string>::iterator t=traceAttrNames[moduleID].begin(); t!=traceAttrNames[moduleID].end(); t++, i++) {
-    //cout << i << ":  attr "<<*t<<endl;
-    
-    gsl_vector* polyfitCoeff = gsl_vector_alloc(numTerms);
-    gsl_multifit_linear_workspace *polyfitWS = gsl_multifit_linear_alloc(numObs[moduleID], numTerms);
-    double chisq;
-    gsl_matrix_view ctxtView = gsl_matrix_submatrix (polyfitCtxt[moduleID], 0, 0, numObs[moduleID], numTerms);
-    //gsl_matrix_view ctxtView = gsl_matrix_submatrix (polyfitObs[moduleID][i], 0, 0, numObs[moduleID], numTerms);
-    //gsl_vector_view obsView = gsl_vector_subvector(polyfitObs[moduleID][i], 0, numObs[moduleID]);
-    //gsl_vector_view obsView = gsl_matrix_subcolumn(polyfitObs[moduleID][i], i, 0, numObs[moduleID]);
-    gsl_vector_view obsView1 = gsl_matrix_column(polyfitObs[moduleID], i);
-    gsl_vector_view obsView = gsl_vector_subvector(&(obsView1.vector), 0, numObs[moduleID]);
-    
-    /*for(int j=0; j<numObs[moduleID]; j++) {
-      for(int k=0; k<numTerms; k++)
-        cout << " "<<gsl_matrix_get(&(ctxtView.matrix),j,k);
-      cout << " => "<<gsl_vector_get(&(obsView.vector), j)<<endl;
-    }*/
-    
-    
-    // If we have enough observations to fit a model
-    if(numTerms <= numObs[moduleID]) {
-      // Use a linear solver to fit the coefficients of the polynomial
-      // ******
-      gsl_multifit_linear(&(ctxtView.matrix), &(obsView.vector), polyfitCoeff, polyfitCov, &chisq, polyfitWS);
-      // ******
-      
-      /*cout << "polyfitCoeff=";
-      for(int t=0; t<numTerms; t++) cout << gsl_vector_get(polyfitCoeff, t)<<" ";
-      cout << endl;*/
-      
-      // Identify the pair of coefficients in the sorted order with the largest relative difference between them
-      map<double, int> sortedCoeff;
-      map<int, double> sortedCoeffInv;
-      for(int t=0; t<numTerms; t++) {
-        sortedCoeff[fabs(gsl_vector_get(polyfitCoeff, t))] = t;
-        sortedCoeffInv[t] = fabs(gsl_vector_get(polyfitCoeff, t));
-      }
-      map<double, int>::reverse_iterator splitIter = sortedCoeff.rend();
-      double largestCoeff = sortedCoeff.rbegin()->first;
-      
-      // Iterate sortedCoeff from the largest to smallest coefficient, looking for the largest gap between adjacent coefficients
-      double maxDiff = 0;
-      map<double, int>::reverse_iterator c=sortedCoeff.rbegin();
-      map<double, int>::reverse_iterator next = c; next++;
-      while(next!=sortedCoeff.rend() && next->first!=0) {
-        //cout << c->first<<" / "<<next->first<<endl;
-        double diff = c->first / next->first;
-        if(diff>maxDiff) {
-          maxDiff = diff;
-          splitIter = next;
-        }
-        c++;
-        next = c; next++;
-      }
-      
-      // Create a set of just the indexes of the large coefficients, which are the coefficients larger than the largest 
-      // coefficient drop and are not irrelevantly small compared to the largest coefficient
-      set<int> coeffIdxes;
-      //cout << "sortedCoeff: ";
-      for(map<double, int>::reverse_iterator c=sortedCoeff.rbegin(); c!=splitIter && c->first>=largestCoeff*1e-3; c++) {
-        //cout << c->second<<"/"<<c->first<<" ";
-        coeffIdxes.insert(c->second);
-      }
-      //cout << endl;
-  
-      list<pair<int, string> > selCtxt;
-      
-      // Add the constant term, if it is in coeffIdxes
-      if(coeffIdxes.find(0) != coeffIdxes.end()) selCtxt.push_back(make_pair(0,""));
-        
-      int idx=1;
-      for(int degree=1; degree<=maxDegree; degree++) {
-        map<string, int> subNames;
-        selTerms2Names(numericCtxtNames[moduleID], coeffIdxes, selCtxt, 0, degree, idx, subNames/*""*/);
-      }
-      
-      // Sort the selected names according to the size of their coefficients
-      map<double, pair<int, string> > selCtxtSorted;
-      for(list<pair<int, string> >::iterator c=selCtxt.begin(); c!=selCtxt.end(); c++)
-        selCtxtSorted[sortedCoeffInv[c->first]] = *c;
-      
-      //cout << "selCtxtSorted="<<selCtxtSorted.size()<<" #selCtxt="<<selCtxt.size()<<endl;
-      
-      // Serialize the polynomial fit terms in the order from largest to smallest coefficient
-      ostringstream polyStr;
-      for(map<double, pair<int, string> >::reverse_iterator c=selCtxtSorted.rbegin(); c!=selCtxtSorted.rend(); c++) {
-        if(c!=selCtxtSorted.rbegin()) polyStr << " + ";
-        polyStr << setiosflags(ios::scientific) << setprecision(2) << 
-                   gsl_vector_get(polyfitCoeff, c->second.first) << 
-                   (c->second.second==""?"":"*") << 
-                   c->second.second;
-      }
-      polynomials.push_back(polyStr.str());
-    // If we didn't get enough observations to train a model
-    } else
-      polynomials.push_back("");
-
-    //gsl_vector_free(polyfitObs[moduleID][i]);
-    gsl_vector_free(polyfitCoeff);
-  }
-  
-  gsl_matrix_free(polyfitCov);
-  gsl_matrix_free(polyfitCtxt[moduleID]);
-  gsl_matrix_free(polyfitObs[moduleID]);
-  
-  polyfitCtxt.erase(moduleID);
-  polyfitObs.erase(moduleID);
-  numObs.erase(moduleID);
-  
-  return polynomials;
-}
 
 // Given the name of a trace attribute, the string representation of its polynomial fit and a line width 
 // emits to dotFile HTML where line breaks are inserted at approximately every lineWidth characters.
@@ -399,13 +197,14 @@ void modularApp::showButtons(int numInputs, int numOutputs, int ID, std::string 
   static int maxButtonID=0; // The maximum ID that has ever been assigned to a button
   
   // Buttons for showing the observation trace plots
-  for(set<string>::iterator t=traceAttrNames[ID].begin(); t!=traceAttrNames[ID].end(); t++) {
+  for(set<string>::iterator t=modules[ID]->traceAttrNames.begin(); t!=modules[ID]->traceAttrNames.end(); t++) {
     // If the current trace attribute does not have the selected prefix, skip it
     if(t->find(prefix) == string::npos) continue;
     
     dotFile << "\t\t\t<TR>";
     //for(int i=0; i<numInputs; i++) {
-    for(map<string, list<string> >::iterator ctxtGrouping=ctxtNames[ID].begin(); ctxtGrouping!=ctxtNames[ID].end(); ctxtGrouping++) {
+    for(map<string, list<string> >::iterator ctxtGrouping=modules[ID]->ctxtNames.begin(); 
+        ctxtGrouping!=modules[ID]->ctxtNames.end(); ctxtGrouping++) {
       //if(ctxtNames[ID].find(i)!=ctxtNames[ID].end()) {
         //for(list<string>::iterator c=ctxtNames[ID][i].begin(); c!=ctxtNames[ID][i].end(); c++) {
         for(list<string>::iterator c=ctxtGrouping->second.begin(); c!=ctxtGrouping->second.end(); c++) {
@@ -481,7 +280,7 @@ void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int
   dotFile << "<<TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\">"<<endl;
   
   if(numInputs>0) {
-    if(ctxtNames[moduleID].size()>0) {
+    if(modules[moduleID]->ctxtNames.size()>0) {
       dotFile << "\t\t<TR><TD PORT=\"ENTRY\"><TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\">"<<endl;
       dotFile << "\t\t\t<TR>";
       /*for(int i=0; i<numInputs; i++) 
@@ -489,7 +288,8 @@ void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int
                        "COLSPAN=\""<<(ctxtNames[moduleID].find(i)!=ctxtNames[moduleID].end()? ctxtNames[moduleID][i].size(): 1)<<"\">"<<
                         "<FONT POINT-SIZE=\"20\">:In "<<i<<"</FONT>"<<
                    "</TD>";*/
-      for(map<string, list<string> >::iterator ctxtGrouping=ctxtNames[moduleID].begin(); ctxtGrouping!=ctxtNames[moduleID].end(); ctxtGrouping++) {
+      for(map<string, list<string> >::iterator ctxtGrouping=modules[moduleID]->ctxtNames.begin(); 
+          ctxtGrouping!=modules[moduleID]->ctxtNames.end(); ctxtGrouping++) {
         dotFile << "<TD PORT=\""<<escape(ctxtGrouping->first)<<"\" "<<
                        "COLSPAN=\""<<ctxtGrouping->second.size()<<"\">"<<
                         "<FONT POINT-SIZE=\"20\">:"<<ctxtGrouping->first<<"</FONT>"<<
@@ -507,7 +307,8 @@ void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int
         } else
           dotFile << "<TD></TD>";
       }*/
-      for(map<string, list<string> >::iterator ctxtGrouping=ctxtNames[moduleID].begin(); ctxtGrouping!=ctxtNames[moduleID].end(); ctxtGrouping++) {
+      for(map<string, list<string> >::iterator ctxtGrouping=modules[moduleID]->ctxtNames.begin(); 
+          ctxtGrouping!=modules[moduleID]->ctxtNames.end(); ctxtGrouping++) {
         for(list<string>::iterator c=ctxtGrouping->second.begin(); c!=ctxtGrouping->second.end(); c++) {
           dotFile << "<TD BGCOLOR=\"#000066\"><FONT COLOR=\"#ffffff\" POINT-SIZE=\"18\">:"<<*c<<"</FONT></TD>";
         }
@@ -531,20 +332,20 @@ void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int
   
   if(numInputs>0) {
     // If we observed values during the execution of this module group  
-    if(traceAttrNames[moduleID].size()>0) {
+    if(modules[moduleID]->traceAttrNames.size()>0) {
       // Polynomial fit of the observations
-      vector<string> polynomials = polyFit(moduleID);
-      assert(polynomials.size() == traceAttrNames[moduleID].size());
+      vector<string> polynomials = modules[moduleID]->polyFit();
+      assert(polynomials.size() == modules[moduleID]->traceAttrNames.size());
       int i=0; 
-      for(set<std::string>::iterator t=traceAttrNames[moduleID].begin(); t!=traceAttrNames[moduleID].end(); t++, i++) {
+      for(set<std::string>::iterator t=modules[moduleID]->traceAttrNames.begin(); t!=modules[moduleID]->traceAttrNames.end(); t++, i++) {
         // If we were able to train a model for the current trace attribute, emit it
         if(polynomials[i] != "") printPolyFitStr(dotFile, *t, polynomials[i], 80);
       }
-        //dotFile << "\t\t<TR><TD>:"<<traceAttrNames[moduleID][i]<< ": "<<wrapStr(polynomials[i], 50)<<"</TD></TR>"<<endl;
+        //dotFile << "\t\t<TR><TD>:"<<modules[moduleID]->traceAttrNames[i]<< ": "<<wrapStr(polynomials[i], 50)<<"</TD></TR>"<<endl;
     }
     
-    if(traceAttrNames[moduleID].size()>0) {
-    //for(int i=0; i<traceAttrNames[moduleID].size(); i++) {
+    if(modules[moduleID]->traceAttrNames.size()>0) {
+    //for(int i=0; i<modules[moduleID]->traceAttrNames.size(); i++) {
       dotFile << "\t\t<TR><TD PORT=\"EXIT\"><TABLE><TR><TD BGCOLOR=\"#FF00FF\" COLOR=\"#FF00FF\" WIDTH=\""<<databoxWidth<<"\" HEIGHT=\""<<databoxHeight<<"\"></TD></TR></TABLE></TD></TR>"<<endl;
     } else {
       dotFile << "\t\t<TR><TD PORT=\"EXIT\"></TD></TR>"<<endl;
@@ -592,7 +393,7 @@ void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int
   dotFile << "{rank=sink;node"<<moduleID<<"_Out;}"<<endl;
   
   // Add a module object that records this module to the modularApp's stack
-  mStack.push_back(sight::layout::module(moduleName, moduleID, numInputs, numOutputs, count));
+  mStack.push_back(sight::layout::moduleInfo(moduleName, moduleID, numInputs, numOutputs, count));
 }
 
 // Static version of enterModule() that pulls the from/to anchor IDs from the properties iterator and calls 
@@ -618,7 +419,7 @@ void* modularApp::enterModule(properties::iterator props) {
 void modularApp::exitModule() {
   // Grab the information about the module we're exiting from this modularApp's mStack and pop it off
   assert(mStack.size()>0);
-  sight::layout::module m = mStack.back();
+  sight::layout::moduleInfo m = mStack.back();
   mStack.pop_back();
   
   //cout << "modularApp::exitModule("<<m.moduleName<<")"<<endl;
@@ -630,6 +431,12 @@ void modularApp::exitModule() {
 void modularApp::exitModule(void* obj) {
   assert(modularApp::activeMA);
   modularApp::activeMA->exitModule();
+}
+
+// Register the given module object with the currently active modularApp
+void modularApp::registerModule(int moduleID, sight::layout::module* m) {
+  assert(modularApp::activeMA);
+  modularApp::activeMA->modules[moduleID] = m;
 }
 
 // Add a directed edge from one port to another
@@ -651,24 +458,225 @@ void* modularApp::addEdge(properties::iterator props) {
   return NULL;
 }
 
+
+/******************
+ ***** module *****
+ ******************/
+
+module::module(int moduleID) : moduleID(moduleID)
+{
+  polyfitCtxt=NULL;
+  polyfitObs=NULL;
+  numObs=0;
+  numAllocObs=0;
+  numAllocTraceAttrs=0;
+  numNumericCtxt=-1;
+}
+
+module::~module() {
+  if(numObs>0) {
+    gsl_matrix_free(polyfitCtxt);
+    gsl_matrix_free(polyfitObs);
+  }
+}
+
+// Iterates over all combinations of keys in numericCtxt upto maxDegree in size and computes the products of
+// their values. Adds each such product to the given row of polyfitCtxt at different columns.
+void addPolyTerms(const map<string, double>& numericCtxt, int termCnt, int maxDegree, 
+                  int row, int& col, double product, gsl_matrix *polyfitCtxt) {
+  // If product contains maxDegree terms, add it to the given column of polyfitObs and increment the column counter
+  if(termCnt==maxDegree) {
+    gsl_matrix_set(polyfitCtxt, row, col, product);
+    col++;
+  } else {
+    // Iterate through all the possible choices of the next factor in the current polynomial term
+    for(map<string, double>::const_iterator c=numericCtxt.begin(); c!=numericCtxt.end(); c++) {
+      addPolyTerms(numericCtxt, termCnt+1, maxDegree, row, col, product * c->second, polyfitCtxt);
+    }
+  }
+}
+
+
+// Iterates over all combinations of keys in numericCtxt upto maxDegree in size. Given ctxtNames, which maintains the list
+// of names for each attribute and selTerms, which identifies the attribute combinations that should be selected, matches
+// the selections to the names and inserts the matched pairs to selCtxt. 
+// termCnt - counts the number of terms that have been added to the current polynomial product
+// maxDegree - the maximum such terms that can go into a single product
+// idx - The current count of the terms from the overall space of terms. May not be 0 at the root recursive calls since
+//       we may iterate over multiple choices of maxDegree
+// subName - the name string that has been computed so far for the current prefix of terms in the polynomial product
+void selTerms2Names(const list<string>& ctxtNames, const set<int>& selTerms, 
+                    list<pair<int, string> >& selCtxt, 
+                    int termCnt, int maxDegree, int& idx, map<string, int>& subNames) {
+  // If product contains maxDegree terms, add it to the given column of polyfitObs and increment the column counter
+  if(termCnt==maxDegree) {
+    // If the current product index exists in selTerms
+    if(selTerms.find(idx) != selTerms.end()) {
+      // Match it to its name and add it to selCtx.
+      //selCtxt.push_back(make_pair(idx, subName));
+      ostringstream name;
+      for(map<string, int>::iterator n=subNames.begin(); n!=subNames.end(); n++) {
+        assert(n->second>0);
+        if(n!=subNames.begin()) name << "*";
+        name << n->first;
+        if(n->second>1) name << "^"<<n->second;
+      }
+      selCtxt.push_back(make_pair(idx, name.str()));
+    }
+    idx++;
+  } else {
+    // Iterate through all the possible choices of the next factor in the current polynomial term
+    for(list<string>::const_iterator c=ctxtNames.begin(); c!=ctxtNames.end(); c++) {
+      if(subNames.find(*c) == subNames.end()) subNames[*c] = 1;
+      else                                    subNames[*c]++;
+      
+      selTerms2Names(ctxtNames, selTerms, selCtxt, termCnt+1, maxDegree, idx, subNames/*subName+(termCnt>0?"*":"")+*c*/);
+      
+      subNames[*c]--;
+      if(subNames[*c]==0) subNames.erase(*c);
+    }
+  }
+}
+
+// Do a multi-variate polynomial fit of the data observed for the given moduleID and return for each trace attribute 
+// a string that describes the function that best fits its values
+std::vector<std::string> module::polyFit()
+{
+  vector<string> polynomials;
+  
+  // Do nothing if we had no observations with numeric context attributes
+  if(numObs==0) return polynomials;
+    
+  // Fit a polynomial to the observed data
+  int maxDegree = 2;
+  long numTerms = polyfitCtxt->size2;
+  // Covariance matrix
+  gsl_matrix *polyfitCov = gsl_matrix_alloc(numTerms, numTerms);
+
+  //for(int i=0; i<polyfitObs.size(); i++) {
+  int i=0; 
+  for(set<std::string>::iterator t=traceAttrNames.begin(); t!=traceAttrNames.end(); t++, i++) {
+    //cout << i << ":  attr "<<*t<<endl;
+    
+    gsl_vector* polyfitCoeff = gsl_vector_alloc(numTerms);
+    gsl_multifit_linear_workspace *polyfitWS = gsl_multifit_linear_alloc(numObs, numTerms);
+    double chisq;
+    gsl_matrix_view ctxtView = gsl_matrix_submatrix (polyfitCtxt, 0, 0, numObs, numTerms);
+    //gsl_matrix_view ctxtView = gsl_matrix_submatrix (polyfitObs[i], 0, 0, numObs, numTerms);
+    //gsl_vector_view obsView = gsl_vector_subvector(polyfitObs[i], 0, numObs);
+    //gsl_vector_view obsView = gsl_matrix_subcolumn(polyfitObs[i], i, 0, numObs);
+    gsl_vector_view obsView1 = gsl_matrix_column(polyfitObs, i);
+    gsl_vector_view obsView = gsl_vector_subvector(&(obsView1.vector), 0, numObs);
+    
+    /*for(int j=0; j<numObs; j++) {
+      for(int k=0; k<numTerms; k++)
+        cout << " "<<gsl_matrix_get(&(ctxtView.matrix),j,k);
+      cout << " => "<<gsl_vector_get(&(obsView.vector), j)<<endl;
+    }*/
+    
+    
+    // If we have enough observations to fit a model
+    if(numTerms <= numObs) {
+      // Use a linear solver to fit the coefficients of the polynomial
+      // ******
+      gsl_multifit_linear(&(ctxtView.matrix), &(obsView.vector), polyfitCoeff, polyfitCov, &chisq, polyfitWS);
+      // ******
+      
+      /*cout << "polyfitCoeff=";
+      for(int t=0; t<numTerms; t++) cout << gsl_vector_get(polyfitCoeff, t)<<" ";
+      cout << endl;*/
+      
+      // Identify the pair of coefficients in the sorted order with the largest relative difference between them
+      map<double, int> sortedCoeff;
+      map<int, double> sortedCoeffInv;
+      for(int t=0; t<numTerms; t++) {
+        sortedCoeff[fabs(gsl_vector_get(polyfitCoeff, t))] = t;
+        sortedCoeffInv[t] = fabs(gsl_vector_get(polyfitCoeff, t));
+      }
+      map<double, int>::reverse_iterator splitIter = sortedCoeff.rend();
+      double largestCoeff = sortedCoeff.rbegin()->first;
+      
+      // Iterate sortedCoeff from the largest to smallest coefficient, looking for the largest gap between adjacent coefficients
+      double maxDiff = 0;
+      map<double, int>::reverse_iterator c=sortedCoeff.rbegin();
+      map<double, int>::reverse_iterator next = c; next++;
+      while(next!=sortedCoeff.rend() && next->first!=0) {
+        //cout << c->first<<" / "<<next->first<<endl;
+        double diff = c->first / next->first;
+        if(diff>maxDiff) {
+          maxDiff = diff;
+          splitIter = next;
+        }
+        c++;
+        next = c; next++;
+      }
+      
+      // Create a set of just the indexes of the large coefficients, which are the coefficients larger than the largest 
+      // coefficient drop and are not irrelevantly small compared to the largest coefficient
+      set<int> coeffIdxes;
+      //cout << "sortedCoeff: ";
+      for(map<double, int>::reverse_iterator c=sortedCoeff.rbegin(); c!=splitIter && c->first>=largestCoeff*1e-3; c++) {
+        //cout << c->second<<"/"<<c->first<<" ";
+        coeffIdxes.insert(c->second);
+      }
+      //cout << endl;
+  
+      list<pair<int, string> > selCtxt;
+      
+      // Add the constant term, if it is in coeffIdxes
+      if(coeffIdxes.find(0) != coeffIdxes.end()) selCtxt.push_back(make_pair(0,""));
+        
+      int idx=1;
+      for(int degree=1; degree<=maxDegree; degree++) {
+        map<string, int> subNames;
+        selTerms2Names(numericCtxtNames, coeffIdxes, selCtxt, 0, degree, idx, subNames/*""*/);
+      }
+      
+      // Sort the selected names according to the size of their coefficients
+      map<double, pair<int, string> > selCtxtSorted;
+      for(list<pair<int, string> >::iterator c=selCtxt.begin(); c!=selCtxt.end(); c++)
+        selCtxtSorted[sortedCoeffInv[c->first]] = *c;
+      
+      //cout << "selCtxtSorted="<<selCtxtSorted.size()<<" #selCtxt="<<selCtxt.size()<<endl;
+      
+      // Serialize the polynomial fit terms in the order from largest to smallest coefficient
+      ostringstream polyStr;
+      for(map<double, pair<int, string> >::reverse_iterator c=selCtxtSorted.rbegin(); c!=selCtxtSorted.rend(); c++) {
+        if(c!=selCtxtSorted.rbegin()) polyStr << " + ";
+        polyStr << setiosflags(ios::scientific) << setprecision(2) << 
+                   gsl_vector_get(polyfitCoeff, c->second.first) << 
+                   (c->second.second==""?"":"*") << 
+                   c->second.second;
+      }
+      polynomials.push_back(polyStr.str());
+    // If we didn't get enough observations to train a model
+    } else
+      polynomials.push_back("");
+
+    //gsl_vector_free(polyfitObs[i]);
+    gsl_vector_free(polyfitCoeff);
+  }
+  
+  gsl_matrix_free(polyfitCov);
+  
+  return polynomials;
+}
+
 // Interface implemented by objects that listen for observations a traceStream reads. Such objects
 // call traceStream::registerObserver() to inform a given traceStream that it should observations.
-void modularApp::observe(int traceID,
-                         const map<string, string>& ctxt, 
-                         const map<string, string>& obs,
-                         const map<string, anchor>& obsAnchor,
-                         const set<traceObserver*>& observers) {
-  assert(trace2moduleID.find(traceID) != trace2moduleID.end());
-  int moduleID = trace2moduleID[traceID];
-  
-  cout << "modularApp::observe("<<traceID<<")"<<endl;
+void module::observe(int traceID,
+                     const map<string, string>& ctxt, 
+                     const map<string, string>& obs,
+                     const map<string, anchor>& obsAnchor/*,
+                     const set<traceObserver*>& observers*/) {
+  /*cout << "module::observe("<<traceID<<")"<<endl;
   
   cout << "    ctxt=";
   for(map<string, string>::const_iterator c=ctxt.begin(); c!=ctxt.end(); c++) { cout << c->first << "=>"<<c->second<<" "; }
   cout << endl;
   cout << "    obs=";
   for(map<string, string>::const_iterator o=obs.begin(); o!=obs.end(); o++) { cout << o->first << "=>"<<o->second<<" "; }
-  cout << endl;
+  cout << endl;*/
   
   // Extract the context attribute groupings and the names of the attributes within each one
   map<string, list<string> > curCtxtNames;
@@ -683,9 +691,9 @@ void modularApp::observe(int traceID,
     string ctxtName = c->first.substr(colonLoc+1);
     curCtxtNames[portID].push_back(ctxtName);*/
   }
-  if(ctxtNames.find(moduleID) == ctxtNames.end()) ctxtNames[moduleID] = curCtxtNames;
-  else if(ctxtNames[moduleID] != curCtxtNames)
-  { cerr << "ERROR: Inconsistent context attributes in different observations for the same module node "<<moduleID<<"! Before observed "<<ctxtNames[moduleID].size()<<" numeric context attributed but this observation has "<<curCtxtNames.size()<<"."<<endl; assert(false); }
+  if(numObs==0) ctxtNames = curCtxtNames;
+  else if(ctxtNames != curCtxtNames)
+  { cerr << "ERROR: Inconsistent context attributes in different observations for the same module node "<<moduleID<<"! Before observed "<<ctxtNames.size()<<" numeric context attributed but this observation has "<<curCtxtNames.size()<<"."<<endl; assert(false); }
   
   // Maps the names of numeric contexts to their floating point values
   map<string, double> numericCtxt;
@@ -698,29 +706,25 @@ void modularApp::observe(int traceID,
       curNumericCtxtNames.push_back(c->first);
     }
   }
-  if(numericCtxtNames.find(moduleID) == numericCtxtNames.end()) numericCtxtNames[moduleID] = curNumericCtxtNames;
-  else if(numericCtxtNames[moduleID] != curNumericCtxtNames)
-  { cerr << "ERROR: Inconsistent numeric context attributes in different observations for the same module node "<<moduleID<<"! Before observed "<<numericCtxtNames[moduleID].size()<<" numeric context attributed but this observation has "<<curNumericCtxtNames.size()<<"."<<endl; assert(false); }
+  if(numObs==0) numericCtxtNames = curNumericCtxtNames;
+  else if(numericCtxtNames != curNumericCtxtNames)
+  { cerr << "ERROR: Inconsistent numeric context attributes in different observations for the same module node "<<moduleID<<"! Before observed "<<numericCtxtNames.size()<<" numeric context attributed but this observation has "<<curNumericCtxtNames.size()<<"."<<endl; assert(false); }
   
   
-  cout << "    #numericCtxt="<<numericCtxt.size()<<endl;
+  //cout << "    #numericCtxt="<<numericCtxt.size()<<endl;
   // Only bother computing the polynomial fit if any of the context attributes are numeric
   if(numericCtxt.size()>0) {
     // Read out the names of the observation's trace attributes
-    /*if(traceAttrNames.find(moduleID) == traceAttrNames.end()) {
-      for(map<string, string>::const_iterator o=obs.begin(); o!=obs.end(); o++)
-        traceAttrNames[moduleID].push_back(o->first);
-    }*/
     for(map<string, string>::const_iterator o=obs.begin(); o!=obs.end(); o++) {
-      traceAttrNames[moduleID].insert(o->first);
+      traceAttrNames.insert(o->first);
       // If this is the first time we've encountered this trace attribute, map it to a fresh column number
-      if(traceAttrName2Col[moduleID].find(o->first) == traceAttrName2Col[moduleID].end()) {
-        assert(traceAttrName2Count[moduleID].size() == traceAttrName2Col[moduleID].size());
-        int newCol = traceAttrName2Col[moduleID].size();
-        traceAttrName2Col[moduleID][o->first] = newCol;
+      if(traceAttrName2Col.find(o->first) == traceAttrName2Col.end()) {
+        assert(traceAttrName2Count.size() == traceAttrName2Col.size());
+        int newCol = traceAttrName2Col.size();
+        traceAttrName2Col[o->first] = newCol;
 
         // We have not yet recorded any observations for this trace attribute (we will later in this function)
-        traceAttrName2Count[moduleID].push_back(0);
+        traceAttrName2Count.push_back(0);
       }
     }
 
@@ -731,57 +735,57 @@ void modularApp::observe(int traceID,
                          // #numericCtxt^0 + #numericCtxt^1 + #numericCtxt^2 + ... + #numericCtxt^maxDegree = #numericCtxt^(maxDegree+1) - 1
                          pow(numericCtxt.size(), maxDegree+1));
 
-    cout << "module::observe() moduleID="<<moduleID<<", #numericCtxt="<<numericCtxt.size()<<", #polyfitCtxt="<<polyfitCtxt.size()<<", found="<<(polyfitCtxt.find(moduleID) != polyfitCtxt.end())<<", numTerms="<<numTerms<<endl;
+    //cout << "module::observe() moduleID="<<moduleID<<", #numericCtxt="<<numericCtxt.size()<<", #polyfitCtxt="<<polyfitCtxt.size()<<", found="<<(polyfitCtxt.find(moduleID) != polyfitCtxt.end())<<", numTerms="<<numTerms<<endl;
 
     // If this is the first observation we have from the given traceStream, allocate the
     // polynomial fit datastructures
-    if(polyfitCtxt.find(moduleID) == polyfitCtxt.end()) {
-      polyfitCtxt[moduleID] = gsl_matrix_alloc(1000, numTerms);
+    if(numObs==0) {
+      polyfitCtxt = gsl_matrix_alloc(1000, numTerms);
 
       //for(map<string, string>::const_iterator o=obs.begin(); o!=obs.end(); o++) {
-      //  polyfitObs[moduleID].push_back(gsl_vector_alloc(1000));
+      //  polyfitObs.push_back(gsl_vector_alloc(1000));
       //}
-      polyfitObs[moduleID] = gsl_matrix_alloc(1000, traceAttrName2Col[moduleID].size());
+      polyfitObs = gsl_matrix_alloc(1000, traceAttrName2Col.size());
 
-      numObs[moduleID] = 0;
-      numAllocObs[moduleID] = 1000;
-      numAllocTraceAttrs[moduleID] = traceAttrName2Col[moduleID].size();
+      numObs = 0;
+      numAllocObs = 1000;
+      numAllocTraceAttrs = traceAttrName2Col.size();
 
-      cout << "    Allocated "<<numAllocObs[moduleID]<<" rows, "<<numAllocTraceAttrs[moduleID]<<" columns"<<endl;
+      //cout << "    Allocated "<<numAllocObs<<" rows, "<<numAllocTraceAttrs<<" columns"<<endl;
     }
-    cout << "    #polyfitCtxt="<<polyfitCtxt.size()<<", found="<<(polyfitCtxt.find(moduleID) != polyfitCtxt.end())<<", numObs[moduleID]="<<numObs[moduleID]<<", numAllocObs[moduleID]="<<numAllocObs[moduleID]<<endl;
+    //cout << "    #polyfitCtxt="<<polyfitCtxt.size()<<", found="<<(polyfitCtxt.find(moduleID) != polyfitCtxt.end())<<", numObs="<<numObs<<", numAllocObs="<<numAllocObs<<endl;
 
-    cout << "traceAttrName2Col[moduleID].size()="<<traceAttrName2Col[moduleID].size()<<" numAllocTraceAttrs[moduleID]="<<numAllocTraceAttrs[moduleID]<<endl;
-    // If we're out of space in polyfitCtxt[moduleID] and polyfitObs[moduleID] to store another observation or store more columns, grow them
-    if(numObs[moduleID] == numAllocObs[moduleID]-1 || 
-       traceAttrName2Col[moduleID].size() > numAllocTraceAttrs[moduleID]) {
+    //cout << "traceAttrName2Col.size()="<<traceAttrName2Col.size()<<" numAllocTraceAttrs="<<numAllocTraceAttrs<<endl;
+    // If we're out of space in polyfitCtxt and polyfitObs to store another observation or store more columns, grow them
+    if(numObs == numAllocObs-1 || 
+       traceAttrName2Col.size() > numAllocTraceAttrs) {
       // If we're out of space for rows, double it
-      int newNumAllocObs = numAllocObs[moduleID];
-      if(numObs[moduleID] == numAllocObs[moduleID]-1) newNumAllocObs *= 2;
+      int newNumAllocObs = numAllocObs;
+      if(numObs == numAllocObs-1) newNumAllocObs *= 2;
 
       // If we need new columns, adjust accordingly
-      int newNumAllocTraceAttrs = numAllocTraceAttrs[moduleID];
-      if(traceAttrName2Col[moduleID].size() > numAllocTraceAttrs[moduleID])
-        newNumAllocTraceAttrs = traceAttrName2Col[moduleID].size();
+      int newNumAllocTraceAttrs = numAllocTraceAttrs;
+      if(traceAttrName2Col.size() > numAllocTraceAttrs)
+        newNumAllocTraceAttrs = traceAttrName2Col.size();
 
-      // Expand polyfitCtxt[moduleID]
+      // Expand polyfitCtxt
       gsl_matrix* newCtxt = gsl_matrix_alloc(newNumAllocObs, numTerms);
-      gsl_matrix_view newCtxtView = gsl_matrix_submatrix (newCtxt, 0, 0, numAllocObs[moduleID], numTerms);
-      gsl_matrix_memcpy (&(newCtxtView.matrix), polyfitCtxt[moduleID]);
-      gsl_matrix_free(polyfitCtxt[moduleID]);
-      polyfitCtxt[moduleID] = newCtxt;
+      gsl_matrix_view newCtxtView = gsl_matrix_submatrix (newCtxt, 0, 0, numAllocObs, numTerms);
+      gsl_matrix_memcpy (&(newCtxtView.matrix), polyfitCtxt);
+      gsl_matrix_free(polyfitCtxt);
+      polyfitCtxt = newCtxt;
 
-      // Expand polyfitObs[moduleID]
+      // Expand polyfitObs
       gsl_matrix* newObs = gsl_matrix_alloc(newNumAllocObs, newNumAllocTraceAttrs);
-      gsl_matrix_view newObsView = gsl_matrix_submatrix (newObs, 0, 0, numAllocObs[moduleID], numAllocTraceAttrs[moduleID]);
-      gsl_matrix_memcpy (&(newObsView.matrix), polyfitObs[moduleID]);
-      gsl_matrix_free(polyfitObs[moduleID]);
-      polyfitObs[moduleID] = newObs;
+      gsl_matrix_view newObsView = gsl_matrix_submatrix (newObs, 0, 0, numAllocObs, numAllocTraceAttrs);
+      gsl_matrix_memcpy (&(newObsView.matrix), polyfitObs);
+      gsl_matrix_free(polyfitObs);
+      polyfitObs = newObs;
 
       // Update our allocated space records
-      numAllocObs[moduleID] = newNumAllocObs;
-      numAllocTraceAttrs[moduleID] = newNumAllocTraceAttrs;
-      cout << "    Reallocated "<<numAllocObs[moduleID]<<" rows, "<<numAllocTraceAttrs[moduleID]<<" columns, numObs[moduleID]="<<numObs[moduleID]<<endl;
+      numAllocObs = newNumAllocObs;
+      numAllocTraceAttrs = newNumAllocTraceAttrs;
+      //cout << "    Reallocated "<<numAllocObs<<" rows, "<<numAllocTraceAttrs<<" columns, numObs="<<numObs<<endl;
     }
 
     // Add this observation to polyfitObs
@@ -796,23 +800,23 @@ void modularApp::observe(int traceID,
       if(val.getType() != attrValue::intT && val.getType() != attrValue::floatT) continue;
       double v = val.getAsFloat();
       
-      int traceAttrCol = traceAttrName2Col[moduleID][o->first];
+      int traceAttrCol = traceAttrName2Col[o->first];
       /*cout << "        "<<o->first<<"  traceAttrCol="<<traceAttrCol<<
-                 ", numAllocTraceAttrs[moduleID]="<<numAllocTraceAttrs[moduleID]<<
-                 ", traceAttrName2Count[moduleID][traceAttrCol]="<<traceAttrName2Count[moduleID][traceAttrCol]<<
-                 ", numObs[moduleID]="<<numObs[moduleID]<<endl;*/
+                 ", numAllocTraceAttrs="<<numAllocTraceAttrs<<
+                 ", traceAttrName2Count[traceAttrCol]="<<traceAttrName2Count[traceAttrCol]<<
+                 ", numObs="<<numObs<<endl;*/
 
-      assert(traceAttrCol < numAllocTraceAttrs[moduleID]);
-      gsl_matrix_set(polyfitObs[moduleID], traceAttrName2Count[moduleID][traceAttrCol], traceAttrCol, v);
+      assert(traceAttrCol < numAllocTraceAttrs);
+      gsl_matrix_set(polyfitObs, traceAttrName2Count[traceAttrCol], traceAttrCol, v);
 
       // Increment the number of values written into the current column
-      traceAttrName2Count[moduleID][traceAttrCol]++;
+      traceAttrName2Count[traceAttrCol]++;
 
       // If this observation has started a new row in the observations matrix
-      if(traceAttrName2Count[moduleID][traceAttrCol] > numObs[moduleID]) {
-        assert(traceAttrName2Count[moduleID][traceAttrCol] == numObs[moduleID]+1);
-        // Update numObs[moduleID] to correspond to the maximum number of values written to any column
-        numObs[moduleID] = traceAttrName2Count[moduleID][traceAttrCol];
+      if(traceAttrName2Count[traceAttrCol] > numObs) {
+        assert(traceAttrName2Count[traceAttrCol] == numObs+1);
+        // Update numObs to correspond to the maximum number of values written to any column
+        numObs = traceAttrName2Count[traceAttrCol];
 
         // Record that this is a new context, which should be written into polyfitCtxt
         newContext = true;
@@ -822,16 +826,16 @@ void modularApp::observe(int traceID,
     // Add the context of the observation to polyfitCtxt
 
     // The first entry corresponds to the degree-0 constant term
-    gsl_matrix_set(polyfitCtxt[moduleID], numObs[moduleID], 0, 1);
+    gsl_matrix_set(polyfitCtxt, numObs, 0, 1);
 
     // Add all the polynomial terms of degrees upto and including maxDegree
     int col=1;
     for(int degree=1; degree<=maxDegree; degree++)
-      addPolyTerms(numericCtxt, 0, degree, numObs[moduleID], col, 1, polyfitCtxt[moduleID]);
+      addPolyTerms(numericCtxt, 0, degree, numObs, col, 1, polyfitCtxt);
   }
   
   // Forward the observation to observers of this object
-  emitObservation(traceID, ctxt, obs, obsAnchor, observers);
+  emitObservation(traceID, ctxt, obs, obsAnchor/*, observers*/);
 }
 
 /*****************************
@@ -856,18 +860,26 @@ moduleTraceStream::moduleTraceStream(properties::iterator props, traceObserver* 
   // Create a new traceStream object to collect the observations for this module group
   modularApp::activeMA->moduleTraces[moduleID] = this;
   
-  cout << "moduleTraceStream::moduleTraceStream() this="<<this<<", traceID="<<getID()<<", moduleID="<<moduleID<<endl;
+  //cout << "moduleTraceStream::moduleTraceStream() this="<<this<<", traceID="<<getID()<<", moduleID="<<moduleID<<endl;
   
   // If no observer is specified, register the current instance of modularApp to listen in on observations recorded by this traceStream
   if(observer==NULL) {
+    // Create a fresh instance of module to analyze data of this stream
+    m = new module(moduleID);
+    modularApp::registerModule(moduleID, m);
+    
     // The queue of observation filters
     queue = new traceObserverQueue(traceObservers(
-                    // - Observations pass through the modular app instance to enable it to build polynomial 
+                    // - Observations pass through a new instance of module to enable it to build polynomial 
                     // fits of this data
-                    modularApp::getInstance(), 
+                    //modularApp::getInstance(), 
+                    m,
                     // - They then end up at the original traceStream to be included in the generated visualization
                     this));
     registerObserver(queue);
+  } else {
+    m = NULL;
+    queue = NULL;
   }
   // If an observer is specified, then that observer (a class that derives from will first 
   
@@ -877,8 +889,8 @@ moduleTraceStream::moduleTraceStream(properties::iterator props, traceObserver* 
 }
 
 moduleTraceStream::~moduleTraceStream() {
-  assert(queue);
-  delete queue;
+  if(m)     delete m;
+  if(queue) delete queue;
 }
 
 // Called when we observe the entry tag of a moduleTraceStream
@@ -889,7 +901,7 @@ void *moduleTraceStream::enterTraceStream(properties::iterator props) {
   
   // Allocate a new moduleTraceStream. The constructor takes care of registering it with the currently active module
   new moduleTraceStream(props);
-    
+  
   return NULL;
 }
 
@@ -903,7 +915,7 @@ compModuleTraceStream::compModuleTraceStream(properties::iterator props, traceOb
   // If no observer is specified, register a filtering queue containing a compModule, followed by the the current instance of 
   // modularApp to listen in on observations recorded by this traceStream.
   if(observer==NULL) {
-    cout << "props="<<props.str()<<endl;
+    //cout << "props="<<props.str()<<endl;
     cmFilter = new compModule(/*properties::getInt(props, "isReference"), common::module::context(props, "op")*/);
 
     // Load the comparators to be used with each output
@@ -943,25 +955,33 @@ compModuleTraceStream::compModuleTraceStream(properties::iterator props, traceOb
       // Generate a comparator object based on the encoded comparator name and description and store it in the compModule
       cmFilter->measComparators[measName] = attrValueComparatorInstantiator::genComparator(compName, compDesc);
     }
-      
+    
+    mFilter = new module(moduleID);
+    modularApp::registerModule(moduleID, mFilter);
+    
     // The queue of observation filters
     queue = new traceObserverQueue(traceObservers(
                     // - filters the decoded data to replace the raw observations with comparisons between 
                     //   reference configurations and non-reference configurations
                     cmFilter, 
-                    // - these observations pass through the modular app instance to enable it to build polynomial 
-                    // fits of this data
-                    modularApp::getInstance(), 
+                    // - these observations pass through the instance of module that buids a polynomial to fit of this data
+                    //modularApp::getInstance(), 
+                    mFilter,
                     // - finally it ends up at the original traceStream to be included in the generated visualization
                     this));
     registerObserver(queue);
+  } else {
+    cmFilter = NULL;
+    mFilter = NULL;
+    queue = NULL;
   }
-  cout << "cmFilter="<<cmFilter<<", modularApp::getInstance()="<<modularApp::getInstance()<<", queue="<<queue<<endl;
+  //cout << "cmFilter="<<cmFilter<<", modularApp::getInstance()="<<modularApp::getInstance()<<", queue="<<queue<<endl;
 }
 
 compModuleTraceStream::~compModuleTraceStream() {
   // Deallocate the observation filter objects
-  delete cmFilter;
+  if(cmFilter) delete cmFilter;
+  if(mFilter) delete mFilter;
 }
 
 // Called when we observe the entry tag of a compModuleTraceStream
@@ -1010,10 +1030,10 @@ std::map<std::string, std::string> compModule::compareObservations(
     
       // If the current trace attribute is a measurement
     } else if(traceAttrType == "measure") {
-      cout << "traceGrouping="<<traceGrouping<<", measComparators: (#"<<measComparators.size()<<") ";
+      /*cout << "traceGrouping="<<traceGrouping<<", measComparators: (#"<<measComparators.size()<<") ";
       for(std::map<std::string, comparator*>::iterator mc=measComparators.begin(); mc!=measComparators.end(); mc++)
         cout << " "<<mc->first;
-      cout << endl;
+      cout << endl;*/
       
       // Get the comparator for this property of this output and compare the two attrValues
       assert(measComparators.find(traceGrouping) != measComparators.end());
@@ -1022,7 +1042,7 @@ std::map<std::string, std::string> compModule::compareObservations(
     assert(comp);
     
     attrValue rel = i->second.compare(i2->second, *comp);
-    cout << "i->second="<<i->second.serialize()<<", i2->second="<<i2->second.serialize()<<" rel="<<rel.serialize()<<endl;
+    //cout << "i->second="<<i->second.serialize()<<", i2->second="<<i2->second.serialize()<<" rel="<<rel.serialize()<<endl;
     
     // Serialize the relationship between the two attrValues and record it in relation[]]
     relation[i->first] = rel.serialize();
@@ -1043,20 +1063,27 @@ std::map<std::string, attrValue> compModule::deserializeObs(const std::map<std::
   return valObs;
 }
 
+// Given a map, returns the same map with the given key removed
+map<string, string> remKey(const map<string, string>& m, std::string key) {
+  map<string, string> m2 = m;
+  m2.erase(key);
+  return m2;
+}
+
 // Interface implemented by objects that listen for observations a traceStream reads. Such objects
 // call traceStream::registerObserver() to inform a given traceStream that it should observations.
 void compModule::observe(int traceID,
                          const map<string, string>& ctxt, 
                          const map<string, string>& obs,
-                         const map<string, anchor>& obsAnchor,
-                         const set<traceObserver*>& observers) {
-  cout << "compModule::observe("<<traceID<<")"<<endl;
+                         const map<string, anchor>& obsAnchor/*,
+                         const set<traceObserver*>& observers*/) {
+  /*cout << "compModule::observe("<<traceID<<")"<<endl;
   cout << "    ctxt=";
   for(map<string, string>::const_iterator c=ctxt.begin(); c!=ctxt.end(); c++) { cout << c->first << "=>"<<c->second<<" "; }
   cout << endl;
   cout << "    obs=";
   for(map<string, string>::const_iterator o=obs.begin(); o!=obs.end(); o++) { cout << o->first << "=>"<<o->second<<" "; }
-  cout << endl;
+  cout << endl;*/
   /*cout << "    options=";
   for(std::map<std::string, attrValue>::iterator o=options.configuration.begin(); o!=options.configuration.end(); o++) { cout << o->first << ":"<<o->second.getAsStr()<<" "; }
   cout << endl;*/
@@ -1064,7 +1091,7 @@ void compModule::observe(int traceID,
   // The portion of the context that identifies the inputs to the modules rather than the module's options
   map<string, string> inputCtxt;
   // The portion of the context that includes both the module's inputs and options but not control attributes such as isReference.
-  map<string, string> strippedCtxt;
+  //map<string, string> strippedCtxt;
   for(map<string, string>::const_iterator c=ctxt.begin(); c!=ctxt.end(); c++) {
     string moduleClass, ctxtGrouping, attrName;
     decodeCtxtName(c->first, moduleClass, ctxtGrouping, attrName);
@@ -1076,7 +1103,7 @@ void compModule::observe(int traceID,
       // If the current context key is not an option, it is an input
       //if(!options.isKey(strippedKey)) inputCtxt[c->first] = c->second;
       if(ctxtGrouping == "input") inputCtxt[c->first] = c->second;
-      strippedCtxt[/*txt()<<ctxtGrouping<<":"<<attrName*/c->first] = c->second;
+      //strippedCtxt[/*txt()<<ctxtGrouping<<":"<<attrName*/c->first] = c->second;
     }
   }
   
@@ -1118,7 +1145,7 @@ void compModule::observe(int traceID,
         map<string, string> relation = compareObservations(*o, ref);
                 
         // Call the observe method of the parent class 
-        emitObservation(traceID, *c, relation, map<string, anchor>(), observers);
+        emitObservation(traceID, *c, relation, map<string, anchor>()/*, observers*/);
       }
     }
   // If this is a non-reference observation
@@ -1128,12 +1155,12 @@ void compModule::observe(int traceID,
       map<string, string> relation = compareObservations(deserializeObs(obs), referenceObs[inputCtxt]);
       
       // Compare this observation to the reference and emit the result to the observe method of the parent class
-      emitObservation(traceID, strippedCtxt, relation, obsAnchor, observers);
+      emitObservation(traceID, remKey(ctxt, "compModule:isReference"), relation, obsAnchor/*, observers*/);
     // If we have not yet observed the reference, record this non-reference observation in comparisonObs
     } else {
       // Store the observation in comparisonObs, converting the observed values from strings to attrValues
       comparisonObs[inputCtxt].push_back(deserializeObs(obs));
-      comparisonCtxt[inputCtxt].push_back(strippedCtxt);
+      comparisonCtxt[inputCtxt].push_back(remKey(ctxt, "compModule:isReference"));
     }
   }
 }

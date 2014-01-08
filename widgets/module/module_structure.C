@@ -1044,13 +1044,24 @@ void *springModularApp::Interference(void *arg) {
   int oldstate; pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, &oldstate);
   int oldtype; pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, &oldtype);
   
-  cout << "Interference CPU: "<<sched_getcpu()<<endl;
+  //cout << "Interference CPU: "<<sched_getcpu()<<endl;
   
   springModularApp* spring = static_cast<springModularApp*>(arg);
   assert(spring);
   char* data = spring->data;
   long long numLL = spring->bufSize / sizeof(long long);
-  cout << "numLL="<<numLL<<endl;
+  
+  // Cache capacity interference
+  struct random_data* rand_states = (struct random_data*)calloc(1, sizeof(struct random_data));
+  char* rand_statebufs = (char*)calloc(1, 8);
+  initstate_r(random(), rand_statebufs, 8, rand_states);
+  int32_t r1;
+  while(1) {
+    random_r(rand_states, &r1);
+    ((long long*)data)[r1%numLL]=((long long*)data)[r1%numLL]+1;
+  }
+  
+  /*//cout << "numLL="<<numLL<<endl;
   long long i=0;
   int j=0; 
   double res=2;
@@ -1063,7 +1074,7 @@ void *springModularApp::Interference(void *arg) {
   }
   //return NULL;
   
-  return &res;
+  return &res;*/
   /*double res=2;
   int j=0;
   while(1) {
@@ -1089,8 +1100,8 @@ void springModularApp::init() {
   if(getenv("SPRING_BUF_SIZE"))
     bufSize = strtol(getenv("SPRING_BUF_SIZE"), NULL, 10);
   
-  cout << "SPRING_BUF_SIZE="<<(getenv("SPRING_BUF_SIZE")? getenv("SPRING_BUF_SIZE"): "NULL")<<", bufSize="<<bufSize<<endl;
-  cout << "App CPU: "<<sched_getcpu()<<endl;
+  //cout << "SPRING_BUF_SIZE="<<(getenv("SPRING_BUF_SIZE")? getenv("SPRING_BUF_SIZE"): "NULL")<<", bufSize="<<bufSize<<endl;
+  //cout << "App CPU: "<<sched_getcpu()<<endl;
   
   if(bufSize>sizeof(long long)) {
     data = new char[bufSize];
@@ -1106,10 +1117,10 @@ void springModularApp::init() {
     CPU_ZERO(&cpuset);
     //for (j = 0; j < 8; j++) CPU_SET(j, &cpuset);
     int appCPU = sched_getcpu();
-    int domainSize = 6;
-    CPU_SET((appCPU/domainSize)*domainSize + (appCPU+1)%domainSize, 
-            &cpuset);
-    //CPU_SET(appCPU, &cpuset);
+    //int domainSize = 6;
+    //CPU_SET((appCPU/domainSize)*domainSize + (appCPU+1)%domainSize, 
+    //        &cpuset);
+    CPU_SET(appCPU, &cpuset);
     pthread_setaffinity_np(interfThread, sizeof(cpu_set_t), &cpuset);
     
     pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpuset);

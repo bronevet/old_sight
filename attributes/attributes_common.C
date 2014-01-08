@@ -310,7 +310,7 @@ attrValue& attrValue::operator=(const attrValue& that) {
     else if(type == floatT)     { store = new double;           *((double*)store)           = *((double*)that.store);           }
     else if(type == customT)    { store = new customAttrValue*; //*((customAttrValue**)store) = *((customAttrValue**)that.store); }
     *((customAttrValue**)store) = (*((customAttrValue**)that.store))->copy(); 
-    cout << "attrValue::attrValue(that2): ("<<((customAttrValue**)store)<<") "<<(*((customAttrValue**)store))->serialize()<<endl;
+    //cout << "attrValue::attrValue(that2): ("<<((customAttrValue**)store)<<") "<<(*((customAttrValue**)store))->serialize()<<endl;
     }
     else if(type == customSerT) { store = (void*)(new string(*((string*)that.store))); }
     else if(type == unknownT) { }
@@ -419,7 +419,7 @@ std::string attrValue::serialize() const {
   else if(type == ptrT)       oss << type << ":" << *((void**)store);
   else if(type == intT)       oss << type << ":" << *((long*)store);
   else if(type == floatT)     oss << type << ":" << *((double*)store);
-  else if(type == customT)    { cout << "serialize() store="<<((customAttrValue**)store)<<endl; 
+  else if(type == customT)    { //cout << "serialize() store="<<((customAttrValue**)store)<<endl; 
                               oss << type << ":" << (*((customAttrValue**)store))->serialize(); }
   // The serialized type of customSerT is customT, since attrValues of type customSerT actually encode custom values
   else if(type == customSerT) {
@@ -512,7 +512,7 @@ std::string attrValue::str() const {
 // The default implementation can apply only a scalarComparator to strT, ptrT, intT and floatT values
 // and for customT values it forwards the comparison to the customAttrValue's own comparison method.
 attrValue attrValue::compare(const attrValue& that, comparator& comp) const {
-  cout << "attrValue::compare() type="<<type2str(type)<<", that.type="<<type2str(that.type)<<endl;
+  //cout << "attrValue::compare() type="<<type2str(type)<<", that.type="<<type2str(that.type)<<endl;
   
   // The two values must be of the same type
   if(type != that.type) { cerr << "ERROR: can not compare attrValues with different types! type="<<type2str(type)<<", that.type="<<type2str(that.type)<<endl; assert(0); }
