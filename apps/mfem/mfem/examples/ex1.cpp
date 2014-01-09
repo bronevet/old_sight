@@ -33,27 +33,31 @@
 #include "mfem.h"
 using namespace sight;
 
+double exact_sol(Vector &);
+double exact_rhs(Vector &);
+
 int main (int argc, char *argv[])
 {
    SightInit(argc, argv, "ex1", "dbg.MFEM.ex1");
 
-   if (argc <= 3)
+   if (argc <= 4)
    {
-      cerr << "\nUsage: ex1 <mesh_file> ref_levels finElement\n" << endl;
+      cerr << "\nUsage: ex1 <mesh_file> ref_levels finElement exactSoln\n" << endl;
       return 1;
    }
    char* meshFile = argv[1];
    int ref_levels = atoi(argv[2]);
    char* finElement = argv[3];
+   bool exactSoln = atoi(argv[4]);
    
    modularApp mfemApp("MFEM App", namedMeasures("time", new timeMeasure())); 
    
-   for(int ref_levels=1; ref_levels<5; ref_levels++) {
+   //for(int ref_levels=1; ref_levels<5; ref_levels++) {
    Mesh *mesh;
    std::vector<port> externalOutputs;
    compModule mod(instance("Ex1", 1, 1), inputs(port(context("meshFile", meshFile))),
                   externalOutputs,
-                  ref_levels==1,
+                  exactSoln, 
                   context("ref_levels", ref_levels,
                           "finElement", finElement),
                   compNamedMeasures("time", new timeMeasure(), LkComp(2, attrValue::floatT, true)));
@@ -83,10 +87,9 @@ int main (int argc, char *argv[])
    // 3. Define a finite element space on the mesh. Here we use isoparametric
    //    finite elements coming from the mesh nodes (linear by default).
    FiniteElementCollection *fec;
-   /*if (mesh->GetNodes())
+   if (mesh->GetNodes())
       fec = mesh->GetNodes()->OwnFEC();
-   else*/
-   if(strcmp(finElement, "linear")==0)
+   else if(strcmp(finElement, "linear")==0)
       fec = new LinearFECollection;
    else {
      char* feType = strtok(finElement, ":");
@@ -102,13 +105,23 @@ int main (int argc, char *argv[])
    }
    FiniteElementSpace *fespace = new FiniteElementSpace(mesh, fec);
    dbg << "Number of unknowns: " << fespace->GetVSize() << endl;
+   
+   // Exact solution
+   FunctionCoefficient e_sol(&exact_sol);
+   GridFunction xp(fespace);
+   xp.ProjectCoefficient(e_sol);
 
    // 4. Set up the linear form b(.) which corresponds to the right-hand side of
    //    the FEM linear system, which in this case is (1,phi_i) where phi_i are
    //    the basis functions in the finite element fespace.
    LinearForm *b = new LinearForm(fespace);
-   ConstantCoefficient one(1.0);
-   b->AddDomainIntegrator(new DomainLFIntegrator(one));
+   if(exactSoln) {
+     FunctionCoefficient rhs_coeff(&exact_rhs);
+     b->AddDomainIntegrator(new DomainLFIntegrator(rhs_coeff));
+   } else {
+     ConstantCoefficient one(1.0);
+     b->AddDomainIntegrator(new DomainLFIntegrator(one));
+   }
    b->Assemble();
 
    // 5. Define the solution vector x as a finite element grid function
@@ -117,6 +130,16 @@ int main (int argc, char *argv[])
    GridFunction x(fespace);
    x = 0.0;
 
+   Array<int> ess_bdr(mesh->bdr_attributes.Max());
+   ess_bdr = 1;
+   if(exactSoln) {
+      Array<int> dofs;
+      fespace->GetEssentialVDofs(ess_bdr, dofs);
+      for (int i = 0; i < dofs.Size(); i++)
+         if (dofs[i])
+            x(i) = xp(i);
+   }
+   
    // 6. Set up the bilinear form a(.,.) on the finite element space
    //    corresponding to the Laplacian operator -Delta, by adding the Diffusion
    //    domain integrator and imposing homogeneous Dirichlet boundary
@@ -124,10 +147,11 @@ int main (int argc, char *argv[])
    //    boundary attributes from the mesh as essential (Dirichlet). After
    //    assembly and finalizing we extract the corresponding sparse matrix A.
    BilinearForm *a = new BilinearForm(fespace);
+   ConstantCoefficient one(1.0);
    a->AddDomainIntegrator(new DiffusionIntegrator(one));
    a->Assemble();
-   Array<int> ess_bdr(mesh->bdr_attributes.Max());
-   ess_bdr = 1;
+   if(exactSoln)
+      x.ProjectBdrCoefficient(e_sol, ess_bdr);
    a->EliminateEssentialBC(ess_bdr, x, *b);
    a->Finalize();
    const SparseMatrix &A = a->SpMat();
@@ -147,9 +171,10 @@ int main (int argc, char *argv[])
       sol_ofs.precision(8);
       x.Save(sol_ofs);
       
-      mod.setOutCtxt(0, compContext("result", sightArray(sightArray::dims(x.Size()), x.GetData()), LkComp(2, attrValue::intT, true)));
+      mod.setOutCtxt(0, compContext("resultL2", sightArray(sightArray::dims(x.Size()), x.GetData()), 
+                                    LkComp(2, attrValue::intT, true)));
    }
-   }
+//   }
    // 9. (Optional) Send the solution by socket to a GLVis server.
    /*char vishost[] = "localhost";
    int  visport   = 19916;
@@ -174,4 +199,39 @@ int main (int argc, char *argv[])
    delete mesh;
 
    return 0;*/
+}
+
+const double sx = 1./3.;
+const double sy = 11./23.;
+const double sz = 3./7.;
+
+const double kappa = M_PI/5;
+
+double exact_sol(Vector &x)
+{
+   int dim = x.Size();
+   if (dim == 2)
+   {
+      return sin(kappa*(x(0)-sx))*sin(kappa*(x(1)-sy));
+   }
+   else if (dim == 3)
+   {
+      return sin(kappa*(x(0)-sx))*sin(kappa*(x(1)-sy))*sin(kappa*(x(2)-sz));
+   }
+   return 0.;
+}
+
+double exact_rhs(Vector &x)
+{
+   int dim = x.Size();
+   if (dim == 2)
+   {
+      return 2*kappa*kappa*sin(kappa*(x(0)-sx))*sin(kappa*(x(1)-sy));
+   }
+   else if (dim == 3)
+   {
+      return (3*kappa*kappa*
+              sin(kappa*(x(0)-sx))*sin(kappa*(x(1)-sy))*sin(kappa*(x(2)-sz)));
+   }
+   return 0.;
 }

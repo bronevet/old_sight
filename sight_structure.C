@@ -1664,17 +1664,25 @@ void dbgStream::init(properties* props, string title, string workDir, string img
   } else if(getenv("SIGHT_LAYOUT_EXEC")) {
 //cout << "getenv(\"SIGHT_LAYOUT_EXEC\")="<<getenv("SIGHT_LAYOUT_EXEC")<<endl;
     dbgFile = NULL;
+    // Unset the mutex environment variables from LoadTimeRegistry to make sure that they don't leak to the layout process
+    LoadTimeRegistry::liftMutexes();
+    // Execute the layout process
     FILE *out = popen(getenv("SIGHT_LAYOUT_EXEC"), "w");
+    // Restore the LoadTimeRegistry mutexes
+    LoadTimeRegistry::restoreMutexes();
+    
     int outFD = fileno(out);
     buf = new dbgBuf(new fdoutbuf(outFD));
   // Version 3 (default): write output to a pipe for the default slayout to use immediately
   } else {
-cout << ROOT_PATH<<"/slayout"<<endl;
     dbgFile = NULL;
+    // Unset the mutex environment variables from LoadTimeRegistry to make sure that they don't leak to the layout process
     LoadTimeRegistry::liftMutexes();
+    // Execute the layout process
     FILE *out = popen((txt()<<ROOT_PATH<<"/slayout").c_str(), "w");
+    // Restore the LoadTimeRegistry mutexes
     LoadTimeRegistry::restoreMutexes();
-//FILE *out = popen((txt()<<ROOT_PATH<<"/repeater.pl").c_str(), "w");
+    
     int outFD = fileno(out);
     buf = new dbgBuf(new fdoutbuf(outFD));
   }
