@@ -1102,7 +1102,7 @@ void compModule::observe(int traceID,
     if(!(moduleClass=="compModule" && ctxtGrouping=="isReference")) {
       // If the current context key is not an option, it is an input
       //if(!options.isKey(strippedKey)) inputCtxt[c->first] = c->second;
-      if(ctxtGrouping == "input") inputCtxt[c->first] = c->second;
+      if(ctxtGrouping.find("In")==0) inputCtxt[c->first] = c->second;
       //strippedCtxt[/*txt()<<ctxtGrouping<<":"<<attrName*/c->first] = c->second;
     }
   }

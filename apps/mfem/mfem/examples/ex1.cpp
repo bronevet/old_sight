@@ -33,13 +33,15 @@
 #include "mfem.h"
 using namespace sight;
 
+#define _GNU_SOURCE
+#include <string.h>
+
+
 double exact_sol(Vector &);
 double exact_rhs(Vector &);
 
 int main (int argc, char *argv[])
 {
-   SightInit(argc, argv, "ex1", "dbg.MFEM.ex1");
-
    if (argc <= 4)
    {
       cerr << "\nUsage: ex1 <mesh_file> ref_levels finElement exactSoln\n" << endl;
@@ -50,16 +52,19 @@ int main (int argc, char *argv[])
    char* finElement = argv[3];
    bool exactSoln = atoi(argv[4]);
    
+   SightInit(argc, argv, "ex1", txt()<<"dbg.MFEM.ex1.meshFile_"<<basename(meshFile)<<".ref_levels_"<<ref_levels<<".finElement_"<<finElement<<".exactSoln_"<<exactSoln);
    modularApp mfemApp("MFEM App", namedMeasures("time", new timeMeasure())); 
    
    //for(int ref_levels=1; ref_levels<5; ref_levels++) {
    Mesh *mesh;
    std::vector<port> externalOutputs;
-   compModule mod(instance("Ex1", 1, 1), inputs(port(context("meshFile", meshFile))),
+   compModule mod(instance("Ex1", 3, 1), 
+                  inputs(port(context("meshFile",   meshFile)),
+                         port(context("ref_levels", ref_levels)),
+                         port(context("finElement", finElement))),
                   externalOutputs,
                   exactSoln, 
-                  context("ref_levels", ref_levels,
-                          "finElement", finElement),
+                  context(),
                   compNamedMeasures("time", new timeMeasure(), LkComp(2, attrValue::floatT, true)));
 
    // 1. Read the mesh from the given mesh file. We can handle triangular,
@@ -115,11 +120,11 @@ int main (int argc, char *argv[])
    //    the FEM linear system, which in this case is (1,phi_i) where phi_i are
    //    the basis functions in the finite element fespace.
    LinearForm *b = new LinearForm(fespace);
+   FunctionCoefficient rhs_coeff(&exact_rhs);
+   ConstantCoefficient one(1.0);
    if(exactSoln) {
-     FunctionCoefficient rhs_coeff(&exact_rhs);
      b->AddDomainIntegrator(new DomainLFIntegrator(rhs_coeff));
    } else {
-     ConstantCoefficient one(1.0);
      b->AddDomainIntegrator(new DomainLFIntegrator(one));
    }
    b->Assemble();
@@ -147,7 +152,7 @@ int main (int argc, char *argv[])
    //    boundary attributes from the mesh as essential (Dirichlet). After
    //    assembly and finalizing we extract the corresponding sparse matrix A.
    BilinearForm *a = new BilinearForm(fespace);
-   ConstantCoefficient one(1.0);
+//   ConstantCoefficient one(1.0);
    a->AddDomainIntegrator(new DiffusionIntegrator(one));
    a->Assemble();
    if(exactSoln)
@@ -172,7 +177,7 @@ int main (int argc, char *argv[])
       x.Save(sol_ofs);
       
       mod.setOutCtxt(0, compContext("resultL2", sightArray(sightArray::dims(x.Size()), x.GetData()), 
-                                    LkComp(2, attrValue::intT, true)));
+                                    LkComp(2, attrValue::floatT, true)));
    }
 //   }
    // 9. (Optional) Send the solution by socket to a GLVis server.

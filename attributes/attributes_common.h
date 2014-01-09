@@ -5,6 +5,7 @@
 #include <iostream>
 #include <math.h>
 #include "../sight_common_internal.h"
+#include <typeinfo>
 
 namespace sight {
 namespace layout {
@@ -183,6 +184,8 @@ class comparator {
   public:
   // Resets the state of this comparator, making it ready for another comparison.
   virtual void reset()=0;
+  
+  virtual std::string str()=0;
 };
 
 // Describes the comparator object that will be employed during subsequent analysis phases
@@ -425,6 +428,10 @@ class LkComparator: public scalarComparator {
     count = 0;
     sum = 0;
   }
+  
+  std::string str() {
+    return txt()<<"[LkComparator: type=\""<<typeid(EltType).name()<<"\", k="<<(k>=0? k: dynamicK)<<", count="<<count<<", sum="<<sum<<"]";
+  }
 }; // LkCompatator
 
 // Two specializations of LkComparator::relation for the k=0 and k!=0
@@ -512,6 +519,10 @@ class RelativeComparator: public scalarComparator {
   void reset() {
     count = 0;
     sum = 0;
+  }
+  
+  std::string str() {
+    return txt()<<"[RelativeComparator: type=\""<<typeid(EltType).name()<<"\", count="<<count<<", sum="<<sum<<"]";
   }
 }; // RelativeCompatator
 

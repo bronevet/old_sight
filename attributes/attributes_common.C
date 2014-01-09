@@ -134,7 +134,7 @@ attrValue::attrValue(const attrValue& that) {
   else if(type == floatT)     { store = new double;           *((double*)store)           = *((double*)that.store);          }
   else if(type == customT)    { store = new customAttrValue*; 
   *((customAttrValue**)store) = (*((customAttrValue**)that.store))->copy(); 
-  cout << "attrValue::attrValue(that): ("<<((customAttrValue**)store)<<") "<<(*((customAttrValue**)store))->serialize()<<endl;
+  //cout << "attrValue::attrValue(that): ("<<((customAttrValue**)store)<<") "<<(*((customAttrValue**)store))->serialize()<<endl;
   }
   else if(type == customSerT) { store = (void*)(new string(*((string*)that.store))); }
   else if(type == unknownT) { }
@@ -684,6 +684,7 @@ comparator* genLkComparator(std::string description) {
   attrValue::valueType type = (attrValue::valueType)strtol(description.substr(kEnd+1, typeEnd) .c_str(), NULL, 10);
   bool absoluted = (bool)strtol(description.substr(typeEnd+1) .c_str(), NULL, 10);
 
+  
   switch(type) {
     // Create an LkComparator with the appropriate parameters, absoluted is set to true
     // only if the caller requested this and k is odd since for k is even, this has no effect.
@@ -1020,7 +1021,7 @@ attrValue sightArray::compare(const customAttrValue& that_arg, comparator& comp_
   const sightArray& that = castToSightArray(that_arg);
   scalarComparator& comp = castToScalarComparator(comp_arg);
 
-  if(numElements != that.numElements) { cerr << "ERROR: cannot compare two sightArrays with different element counts!" << endl; assert(0); }
+  if(numElements != that.numElements) { cerr << "ERROR: cannot compare two sightArrays with different element counts: "<<numElements<<" and "<<that.numElements<<"!" << endl; assert(0); }
   if(d != that.d) { cerr << "ERROR: comparison of sightArrays with different dimensionality is undefined!" << endl; assert(0); }
   
   // Iterate over all the elements in the two sightArrays, comparing them element-wise
