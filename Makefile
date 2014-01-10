@@ -39,8 +39,8 @@ REMOTE_ENABLED := 0
 else
 # Default distribution disables remote access since this capability requires us to run a web server
 # and many compute centers disallow this
-REMOTE_ENABLED := 1
-#REMOTE_ENABLED := 0
+#REMOTE_ENABLED := 1
+REMOTE_ENABLED := 0
 endif
 
 ifneq (${OS}, Cygwin)
