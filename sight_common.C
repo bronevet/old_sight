@@ -37,7 +37,26 @@ bool isEnabled() {
 /********************************
  ***** properties::iterator *****
  ********************************/
- 
+
+// Returns the value mapped to the given key
+std::string properties::iterator::get(std::string key)  const {
+  assert(!isEnd());
+  std::map<std::string, std::string>::const_iterator val = cur->second.find(key);
+  if(val == cur->second.end()) { cerr << "properties::get() ERROR: cannot find key \""<<key<<"\"! properties="<<str()<<endl; }
+  assert(val != cur->second.end());
+  return val->second;
+}
+
+// Returns the integer interpretation of the value mapped to the given key
+long properties::iterator::getInt(std::string key)  const {
+  return strtol(get(key).c_str(), NULL, 10);
+}
+
+// Returns the floating-point interpretation of the value mapped to the given key
+double properties::iterator::getFloat(std::string key)  const {
+  return strtod(get(key).c_str(), NULL);
+}
+
 // Returns the string representation of the given properties iterator  
 std::string properties::iterator::str() const {
   std::ostringstream oss;
@@ -82,12 +101,28 @@ properties::iterator properties::next(iterator i) {
 
 // Given an iterator to a particular key->value mapping, returns the value mapped to the given key
 std::string properties::get(properties::iterator cur, std::string key) {
-  assert(!cur.isEnd());
+  /*assert(!cur.isEnd());
   const map<string, string>& keyvalMap = cur.getMap();
   std::map<std::string, std::string>::const_iterator val = keyvalMap.find(key);
   if(val == keyvalMap.end()) { cerr << "properties::get() ERROR: cannot find key \""<<key<<"\"! properties="<<cur.str()<<endl; }
   assert(val != keyvalMap.end());
-  return val->second;
+  return val->second;*/
+  return cur.get(key);
+}
+
+// Given the label of a particular key->value mapping, adds the given mapping to it
+void properties::set(std::string name, std::string key, std::string value) {
+  // Find the given label in the properties map
+  for(list<pair<string, map<string, string> > >::iterator i=p.begin();
+      i!=p.end(); i++) {
+    if(i->first == name) {
+      // Add the new key->value mapping under the given label
+      (i->second)[key] = value;
+      return;
+    }
+  }
+  // The given label must currently exist in the properties map
+  assert(0);
 }
 
 // Given an iterator to a particular key->value mapping, returns the integer interpretation of the value mapped to the given key
@@ -144,7 +179,7 @@ void properties::clear()
 
 std::string properties::str(string indent) const {
   ostringstream oss;
-  oss << "[properties:"<<endl;
+  oss << "[properties: active="<<active<<", emitTag="<<emitTag<<endl;
   for(iterator i=begin(); !i.isEnd(); i++)
     oss << indent <<"    "<<i.str()<<endl;
   oss << indent << "]";
@@ -230,7 +265,7 @@ std::string unescape(std::string s) {
       }
       assert(s[i]==';');
       i++;
-    // If this is not an encoded character, add it directly to tou
+    // If this is not an encoded character, add it directly to out
     } else {
       out += s[i];
       i++;
@@ -239,6 +274,351 @@ std::string unescape(std::string s) {
   return out;
 }
 
+/**********************
+ ***** escapedStr *****
+ **********************/
 
+// source==unescaped: Creates an escaped string given a regular UNESCAPED string and an explicit list of control characters
+// source==escaped:   Creates an ESCAPED string given an escaped string and an explicit list of control characters
+escapedStr::escapedStr(std::string s_, std::string control, sourceT source) : control(control) {
+  // If s_ is an unescaped string
+  if(source == unescaped) {
+    for(unsigned int i=0; i<s_.length(); i++) {
+      // If s_[i] is the start of an escaped character
+      if(s_[i]=='\\') {
+        // Add the full text of the escaped character, including all the escape \'s
+        while(s_[i]=='\\') {
+          s += '\\';
+          i++;
+        }
+      }
+    
+      // If s_[i] is a control character 
+      if(control.find(s_[i]) != string::npos) {
+        // Escape it by prepending a \ to it
+        s += '\\';
+        s += s_[i];
+      // Otherwise, add s_[i] as it is
+      } else 
+        s += s_[i];
+
+      //cout << "s_["<<i<<"]=\""<<s_[i]<<"\", s=\""<<s<<"\""<<endl;
+    }
+
+  // Else, if the source is escaped
+  } else {
+    s = s_;
+  }
+}
+
+// Searches the string for the first occurrence of the sequence specified by its arguments, starting at pos and returns 
+// the location. The search ignores any matches that cross escaped characters in this string.
+size_t escapedStr::find(std::string sub, size_t pos) const {
+  //cout << "escapedStr::find("<<sub<<", "<<pos<<")"<<endl;
+  
+  // Iterate through s looking for a substring that is equal to sub, e
+  while(pos<s.size()) {
+    //cout << "    pos="<<pos<<endl;
+    
+    // We haven't found a match to sub starting at smaller pos, so start looking at this pos
+    int i=pos, j=0;
+    while(i<s.size()) {
+      //cout << "        s["<<i<<"]="<<s[i]<<", sub["<<j<<"]="<<sub[j]<<endl;
+      // If s[i] is the start of a control character, there is no match
+      if(s[i]=='\\') break;
+      
+      // If the current non-control character in s does matches the current character in sub
+      if(s[i] == sub[j]) {
+        // Advance to the next character in s
+        i++;
+        j++;
+        
+        // If we've reached the end of sub, we're done
+        if(j==sub.size())
+          return i-sub.size();
+      // If it does NOT match
+      } else
+        break;
+    }
+    
+    // If we've reached here, we must have failed to find a match to sub when starting from pos
+    // so advance pos to the location that follow the current pos, skipping any escaped characters.
+    
+    // Move on to the next character
+    pos++;
+    // If the current character is escaped
+    while(s[pos]=='\\') {
+      // Advance past all the \'s that escape it
+      while(s[pos]=='\\') pos++;
+      // We're now at the character that follows the \'s meaning that it is the character that was escaped.
+      // Advance immediately past this character
+      pos++;
+    }
+  }
+  
+  // If we reached here, we could not find a match
+  return string::npos;
+}
+
+// Searches the string for the first occurrence of any of the characters in string chars, starting at pos and returns 
+// the location. The search ignores any matches that cross escaped characters in this string.
+size_t escapedStr::findAny(std::string chars, size_t pos) const {
+  //cout << "escapedStr::find("<<sub<<", "<<pos<<")"<<endl;
+  
+  // Iterate through s looking for a substring that is equal to sub, e
+  while(pos<s.size()) {
+    //cout << "    s["<<pos<<"]="<<s[pos]<<endl;
+    
+    // If s[pos] is the start of a control character, skip it
+    if(s[pos]=='\\') {
+      // Skip the /'s that precede the encoded character
+      do {
+        pos++;
+      } while(s[pos]=='\\');
+      // Skip the character itself
+      pos++;
+    // If this is a non-control character
+    } else {
+      // If the current chracter matches one in chars, we're done
+      if(chars.find_first_of(s[pos]) != string::npos) return pos;
+      // Otherwise, move on to the next position in s
+      else 
+        pos++;
+    }
+  }
+  
+  // If we reached here, we could not find a match
+  return string::npos;
+}
+
+// Returns a newly constructed escaped string object with its value initialized to a copy of a substring of this object.
+// The substring is the portion of the object that starts at character position pos and spans len characters (or until 
+// the end of the string, whichever comes first).
+std::string escapedStr::substr(size_t pos, size_t len) const {
+  if(len==string::npos) len = s.size();
+  
+  string out;
+  while(pos<len) {
+    // If this is the start of an escaped character's encoding
+    if(s[pos]=='\\') {
+      // At least one additional character must follow this one
+      assert(pos+1 < s.length());
+
+      // Iterate through all the \s that may precede the actual character
+      while(s[pos+1] == '\\') {
+        // Emit the current escape \ since we'll definitely need it
+        out += '\\';
+        pos++;
+      }
+
+      // We're now at the \ that immediately precedes the character that was encoded
+      // If it is a control character 
+      //cout << "substr s["<<(pos+1)<<"]="<<s[pos+1]<<" control=\""<<control<<"\""<<endl; 
+      if(control.find(s[pos+1]) != string::npos) {
+        // Unescape it by emitting it without one of its encoding \'s
+        out += s[pos+1];
+      // If it is not a control character
+      } else {
+        // Emit it as it is, with the same number of encoding \'s
+        out += '\\';
+        out += s[pos+1];
+      }
+      //cout << "       out=\""<<out<<"\""<<endl;
+      
+      // Advance pos to refer to the next character
+      pos+=2;
+    // If this is not an encoded character, add it directly to out
+    } else {
+      out += s[pos];
+      pos++;
+    }
+  }
+  return out;
+}
+
+// Split the string into sub-strings separated by any character in the separator string and emit a list of the individual
+// substrings, which have been unescaped. The separator characters must be a subset of this escapedStr's control characters.
+std::vector<std::string> escapedStr::unescapeSplit(std::string separator) {
+  //cout << "escapedStr::unescapeSplit("<<separator<<")"<<endl;
+  std::vector<std::string> segments;
+  size_t start = 0;
+  size_t end = 0;
+  int v=0;
+  do {
+    end = findAny(separator, start);
+    //cout << "    ["<<start<<"-"<<end<<"]"<<endl;
+    
+    std::string segment = substr(start, end);
+    //cout << "    segment=\""<<segment<<"\""<<endl;
+    segments.push_back(segment);
+
+    start = end+1; 
+  } while(end != string::npos);
+  
+  return segments;
+}
+
+// Returns the fully unescaped version of this string, with the escaped characters replaced with the originals.
+std::string escapedStr::unescape() const {
+   return substr();
+}
+
+// Assignment 
+escapedStr& escapedStr::operator=(const escapedStr& that) {
+  s = that.s;
+  control = that.control;
+  return *this;
+}
+
+// Self-testing code for the escapedStr class.
+void escapedStr::selfTest() {
+  int numIter=100;
+
+  std::string initStr = "ab;c-d:efg"; 
+  escapedStr es;
+  int i=0;
+  for(; i<numIter; i++) {
+    std::string control = (i%2==0? ";:": "-");
+    es = escapedStr((i==0? initStr: es.escape()), control, escapedStr::unescaped);
+    //cout << i << ": Control=\""<<control<<"\", Escaped: \""<<es.escape()<<"\", Unescaped=\""<<es.unescape()<<"\"\n";
+  }
+  
+  //cout << "======="<<endl;
+
+  i--;
+  for(; i>=0; i--) {
+    std::string control = (i%2==0? ";:": "-");
+    es = escapedStr(i==numIter-1? es.escape(): es.unescape(), control, escapedStr::escaped);
+    //cout << i << ": Control=\""<<control<<"\", Escaped: \""<<es.escape()<<"\", Unescaped=\""<<es.unescape()<<"\"\n";
+  }
+  
+  assert(es.unescape() == initStr);
+
+  // Encode the maps/keys/vals
+  int numMaps = 10;
+  int numVals = 3;
+  string vals[] = {"ab:c", "d;;;ef", "g:h:i:"};
+
+  ostringstream mapS;
+  for(int m=0; m<numMaps; m++) {
+    ostringstream keyvalsS;
+    for(int v=0; v<numVals; v++) {
+      if(v>0) keyvalsS << ";";
+      escapedStr val(vals[v], ":;", escapedStr::unescaped);
+      keyvalsS << "map_"<<m<<"key_"<<v<<":"<<val.escape();
+    }
+
+    escapedStr kv(keyvalsS.str(), ":", escapedStr::unescaped);
+    if(m>0) mapS << ":";
+    mapS << kv.escape();
+  }
+
+  //cout << "keys="<<mapS.str()<<endl;
+
+  // Decode the maps/keys/values by directly calling find/substr
+  {
+    // Iterate over all the keys
+    escapedStr allMaps(mapS.str(), ":", escapedStr::escaped);
+    size_t mapStart = 0;
+    size_t keysEnd;
+    int m=0;
+    do {
+      keysEnd = allMaps.find(":", mapStart);
+      escapedStr curMap(allMaps.substr(mapStart, keysEnd), ";:", escapedStr::escaped);
+
+      //cout << "["<<mapStart<<" - "<<keysEnd<<"], curMap="<<curMap.unescape()<<endl;
+
+      size_t keyvalsStart = 0;
+      size_t valsEnd = 0;
+      int v=0;
+      do {
+        valsEnd = curMap.find(";", keyvalsStart);
+        std::string curKV = curMap.substr(keyvalsStart, valsEnd);
+
+        //cout << "    ["<<keyvalsStart<<" - "<<valsEnd<<"], curMap="<<curKV<<endl;
+        size_t colon = curKV.find(":");
+        ostringstream key; key << "map_"<<m<<"key_"<<v;
+        assert(key.str() == curKV.substr(0, colon));
+        assert(vals[v] == curKV.substr(colon+1));
+
+        keyvalsStart = valsEnd+1;
+        v++;
+      } while(valsEnd != string::npos);
+
+      mapStart = keysEnd+1;
+      m++;
+    } while(keysEnd != string::npos);
+  }
+  
+  // Decode the maps/keys/values by calling the split API
+  {
+    //cout << "mapS = "<<mapS.str()<<endl;
+    escapedStr allMaps(mapS.str(), ":", escapedStr::escaped);
+    vector<string> mapSegments = allMaps.unescapeSplit(":");
+    int m=0;
+    for(vector<string>::iterator ms=mapSegments.begin(); ms!=mapSegments.end(); ms++, m++) {
+      //cout << "    ms="<<*ms<<endl;
+      escapedStr curMap(*ms, ";", escapedStr::escaped);
+      vector<string> keyvalSegments = curMap.unescapeSplit(";");
+      int v=0;
+      for(vector<string>::iterator kvs=keyvalSegments.begin(); kvs!=keyvalSegments.end(); kvs++, v++) {
+        //cout << "        "<<*kvs << endl;
+        escapedStr curKeyVal(*kvs, ":", escapedStr::escaped);
+        vector<string> keyval = curKeyVal.unescapeSplit(":");
+        assert(keyval.size()==2);
+        //cout << "            "<<*keyval.begin()<<" => "<<*keyval.rbegin()<<endl;
+        ostringstream key; key << "map_"<<m<<"key_"<<v;
+        assert(key.str() == keyval[0]);
+        assert(vals[v] == keyval[1]);
+      }
+    }
+  }
+}
+
+/********************************
+ ***** LoadTimeRegistry *****
+ ********************************/
+// The names of all the LoadTimeRegistry's derived classes that have already been initialized.
+std::set<std::string>* LoadTimeRegistry::initialized;
+
+// name - Unique string name of the class that derives from LoadTimeRegistry
+// init - Function that is called to initialize this class
+LoadTimeRegistry::LoadTimeRegistry(std::string name, initFunc init) {
+  // Initialize the base LoadTimeRegistry class
+  if(!getenv("SIGHT_LOADTIME_INSTANTIATED")) {
+    initialized = new std::set<std::string>();
+    setenv("SIGHT_LOADTIME_INSTANTIATED", "1", 1);
+    initialized->insert("LOADTIME");
+  }
+
+  // Initialize the class that derives from LoadTimeRegistry, using environment variables to make sure that
+  // only the first instance of this class performs the initialization.
+  string envKey = txt()<<"SIGHT_"<<name<<"_INSTANTIATED";
+  if(!getenv(envKey.c_str())) {
+    init();
+    setenv(envKey.c_str(), "1", 1);
+    initialized->insert(name);
+  }
+}
+
+// Removes all the environment variables that record the current mutexes of LoadTimeRegistry
+void LoadTimeRegistry::liftMutexes() {
+  for(std::set<std::string>::iterator i=initialized->begin(); i!=initialized->end(); i++) {
+    string envKey = txt()<<"SIGHT_"<<*i<<"_INSTANTIATED";
+    unsetenv(envKey.c_str());
+  }
+}
+
+// Restores all the environment variables previously removed by liftMutexes
+void LoadTimeRegistry::restoreMutexes() {
+  for(std::set<std::string>::iterator i=initialized->begin(); i!=initialized->end(); i++) {
+    string envKey = txt()<<"SIGHT_"<<*i<<"_INSTANTIATED";
+    setenv(envKey.c_str(), "1", 1);
+  }
+}
+
+// Create an instance of LoadTimeRegistry to ensure that it is initialized even if it is never derived from
+LoadTimeRegistry LoadTimeRegInstance("BASE", LoadTimeRegistry::init);
+ 
 }; // namespace common
 }; // namespace sight

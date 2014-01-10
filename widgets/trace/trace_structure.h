@@ -62,13 +62,17 @@ class trace: public block, public common::trace
   static std::map<std::string, trace*> active;
   
   public:
-  trace(std::string label, const std::list<std::string>& contextAttrs, showLocT showLoc=showBegin, vizT viz=table, mergeT merge=disjMerge, properties* props=NULL);
-  trace(std::string label, std::string contextAttr,                    showLocT showLoc=showBegin, vizT viz=table, mergeT merge=disjMerge, properties* props=NULL);
-  trace(std::string label,                                             showLocT showLoc=showBegin, vizT viz=table, mergeT merge=disjMerge, properties* props=NULL);
+  trace(std::string label, const std::list<std::string>& contextAttrs,                        showLocT showLoc=showBegin, vizT viz=table, mergeT merge=disjMerge, properties* props=NULL);
+  trace(std::string label, std::string contextAttr,                                           showLocT showLoc=showBegin, vizT viz=table, mergeT merge=disjMerge, properties* props=NULL);
+  trace(std::string label,                                                                    showLocT showLoc=showBegin, vizT viz=table, mergeT merge=disjMerge, properties* props=NULL);
+  trace(std::string label, const std::list<std::string>& contextAttrs, const attrOp& onoffOp, showLocT showLoc=showBegin, vizT viz=table, mergeT merge=disjMerge, properties* props=NULL);
+  trace(std::string label, std::string contextAttr,                    const attrOp& onoffOp, showLocT showLoc=showBegin, vizT viz=table, mergeT merge=disjMerge, properties* props=NULL);
+  trace(std::string label,                                             const attrOp& onoffOp, showLocT showLoc=showBegin, vizT viz=table, mergeT merge=disjMerge, properties* props=NULL);
+  
   ~trace();
   
   // Sets the properties of this object
-  static properties* setProperties(showLocT showLoc, properties* props);
+  static properties* setProperties(const attrOp* onoffOp, showLocT showLoc, properties* props);
   
   void init(std::string label, const std::list<std::string>& contextAttrs, showLocT showLoc, vizT viz, mergeT merge);
   
@@ -197,7 +201,13 @@ class measure {
   measure(trace* t,               const std::map<std::string, attrValue>& fullMeasureCtxt);
   measure(traceStream* ts,        const std::map<std::string, attrValue>& fullMeasureCtxt);
 
+  measure(const measure& that);
+  
   ~measure();
+  
+  // Returns a copy of this measure object, including its current measurement state, if any. The returned
+  // object is connected to the same traceStream, if any, as the original object.
+  virtual measure* copy() const=0;
   
   // Specify the trace that is associated with this measure object
   void setTrace(std::string traceLabel);
@@ -233,7 +243,7 @@ class measure {
   // If addToTrace is true, the observation is addes to this measurement's trace and not, otherwise
   virtual std::list<std::pair<std::string, attrValue> > endGet(bool addToTrace=false);
   
-  virtual std::string str()=0;
+  virtual std::string str() const;
 }; // class measure
 
 // Syntactic sugar for specifying measurements
@@ -261,13 +271,20 @@ class timeMeasure : public measure {
   timeMeasure(trace* t,               std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt);
   timeMeasure(traceStream* ts,        std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt);
   
+  timeMeasure(const timeMeasure& that);
+  
   ~timeMeasure();
  
   private:
   // Common initialization code
   void init();   
           
-  public:     
+  public:
+  
+  // Returns a copy of this measure object, including its current measurement state, if any. The returned
+  // object is connected to the same traceStream, if any, as the original object.
+  measure* copy() const;
+  
   // Start the measurement
   void start();
    
@@ -286,7 +303,7 @@ class timeMeasure : public measure {
   // If addToTrace is true, the observation is addes to this measurement's trace and not, otherwise
   std::list<std::pair<std::string, attrValue> > endGet(bool addToTrace=false);
   
-  std::string str();
+  std::string str() const;
 }; // class timeMeasure
 
 
@@ -295,13 +312,25 @@ typedef common::easyvector<int> papiEvents;
 
 class PAPIMeasure : public measure {
   // Counts the total number of counter events observed so far, accounting for any pauses and resumes
-  std::vector<long_long> values;
+  std::vector<long_long> accumValues;
+  
+  // The values of the counters recorded when measurement last started or restarted
+  std::vector<long_long> lastValues;
+  
+  // Buffer into which we'll read counters
+  std::vector<long_long> readValues;
   
   // The events that will be measured
   papiEvents events;
 
   // The label associated with this measurement
   std::string valLabel;
+  
+  // Indicates the number of PAPIMeasure objects that are currently measuring the counters
+  static int numMeasurers;
+  
+  // Records the set of PAPI counters currently being measured (non-empty iff numMeasurers>0)
+  static papiEvents curEvents;
   
   public:
   PAPIMeasure(const papiEvents& events);
@@ -316,13 +345,19 @@ class PAPIMeasure : public measure {
   PAPIMeasure(std::string traceLabel, std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt, const papiEvents& events);
   PAPIMeasure(trace* t,               std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt, const papiEvents& events);
   PAPIMeasure(traceStream* ts,        std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt, const papiEvents& events);
+  
+  PAPIMeasure(const PAPIMeasure& that);
+  
   ~PAPIMeasure();
  
   private:
   // Common initialization code
   void init();   
           
-  public:     
+  public:
+  // Returns a copy of this measure object, including its current measurement state, if any
+  measure* copy() const;
+    
   // Start the measurement
   void start();
    
@@ -341,7 +376,7 @@ class PAPIMeasure : public measure {
   // If addToTrace is true, the observation is addes to this measurement's trace and not, otherwise
   std::list<std::pair<std::string, attrValue> > endGet(bool addToTrace=false);
   
-  std::string str();
+  std::string str() const;
 }; // class PAPIMeasure
 
 // Non-full measure

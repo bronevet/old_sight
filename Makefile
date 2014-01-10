@@ -13,7 +13,8 @@ SIGHT_LINKFLAGS = ${ROOT_PATH}/tools/adept-utils/lib/libadept_cutils.so \
 	                -Wl,-rpath ${ROOT_PATH}/tools/adept-utils/lib \
 	                ${ROOT_PATH}/tools/callpath/src/src/libcallpath.so \
 	                -Wl,-rpath ${ROOT_PATH}/tools/callpath/src/src \
-	                ${ROOT_PATH}/widgets/papi/lib/libpapi.a
+	                ${ROOT_PATH}/widgets/papi/lib/libpapi.a \
+	          -lpthread
 	                
 	                #-Wl,-rpath ${ROOT_PATH}/widgets/papi/lib \
 
@@ -69,7 +70,8 @@ runExamples: all
 	cd examples; make ROOT_PATH=${ROOT_PATH} OS=${OS}  SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" run
 
 runApps: libsight_structure.a slayout${EXE} hier_merge${EXE} apps
-	cd examples; ../apps/mfem/mfem/examples/ex1 ../apps/mfem/mfem/data/beam-quad.mesh
+	#cd examples; ../apps/mfem/mfem/examples/ex1 ../apps/mfem/mfem/data/beam-quad.mesh
+	cd examples; ../apps/mfem/mfem/examples/mfemComp.pl
 	cd examples; ../apps/mfem/mfem/examples/ex2 ../apps/mfem/mfem/data/beam-tet.mesh 2
 	cd examples; ../apps/mfem/mfem/examples/ex3 ../apps/mfem/mfem/data/ball-nurbs.mesh
 	cd examples; ../apps/mfem/mfem/examples/ex4 ../apps/mfem/mfem/data/fichera-q3.mesh

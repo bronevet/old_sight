@@ -26,20 +26,23 @@ namespace layout {
 //   ensures that the appropriate object pointers are passed to exit handlers.
 typedef void* (*layoutEnterHandler)(properties::iterator props);
 typedef void (*layoutExitHandler)(void*);
-class layoutHandlerInstantiator {
+class layoutHandlerInstantiator : public sight::common::LoadTimeRegistry{
   public:
   static std::map<std::string, layoutEnterHandler>* layoutEnterHandlers;
   static std::map<std::string, layoutExitHandler>*  layoutExitHandlers;
 
-  layoutHandlerInstantiator() {
-    // Initialize the handlers mappings, using environment variables to make sure that
+  layoutHandlerInstantiator();
+  /*  // Initialize the handlers mappings, using environment variables to make sure that
     // only the first instance of this layoutHandlerInstantiator creates these objects.
     if(!getenv("SIGHT_LAYOUT_HANDLERS_INSTANTIATED")) {
       layoutEnterHandlers = new std::map<std::string, layoutEnterHandler>();
       layoutExitHandlers  = new std::map<std::string, layoutExitHandler>();
       setenv("SIGHT_LAYOUT_HANDLERS_INSTANTIATED", "1", 1);
     }
-  }
+  }*/
+
+  // Called exactly once for each class that derives from LoadTimeRegistry to initialize its static data structures.  
+  static void init();
 };
 
 class sightLayoutHandlerInstantiator : layoutHandlerInstantiator {

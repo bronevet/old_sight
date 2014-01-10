@@ -45,32 +45,59 @@ void traceAttr(trace* t,
 std::map<std::string, trace*> trace::active;  
 
 trace::trace(std::string label, const std::list<std::string>& contextAttrs, showLocT showLoc, vizT viz, mergeT merge, properties* props) : 
-  block(label, setProperties(showLoc, props))
+  block(label, setProperties(NULL, showLoc, props))
 {
-  if(contextAttrs.size()==0) { cerr << "trace::trace() ERROR: contextAttrs must be non-empty!"; exit(-1); }
+  if(contextAttrs.size()==0) { cerr << "trace::trace() ERROR: contextAttrs must be non-empty!"; assert(0);; }
   
   init(label, contextAttrs, showLoc, viz, merge);
 }
 
 trace::trace(std::string label, std::string contextAttr, showLocT showLoc, vizT viz, mergeT merge, properties* props) : 
-  block(label, setProperties(showLoc, props))
+  block(label, setProperties(NULL, showLoc, props))
 {
   init(label, context(contextAttr), showLoc, viz, merge);
 }
 
 trace::trace(std::string label, showLocT showLoc, vizT viz, mergeT merge, properties* props) : 
-  block(label, setProperties(showLoc, props))
+  block(label, setProperties(NULL, showLoc, props))
+{
+  init(label, context(), showLoc, viz, merge);
+}
+
+trace::trace(std::string label, const std::list<std::string>& contextAttrs, const attrOp& onoffOp, showLocT showLoc, vizT viz, mergeT merge, properties* props) : 
+  block(label, setProperties(&onoffOp, showLoc, props))
+{
+  if(contextAttrs.size()==0) { cerr << "trace::trace() ERROR: contextAttrs must be non-empty!"; assert(0);; }
+  
+  init(label, contextAttrs, showLoc, viz, merge);
+}
+
+trace::trace(std::string label, std::string contextAttr, const attrOp& onoffOp, showLocT showLoc, vizT viz, mergeT merge, properties* props) : 
+  block(label, setProperties(&onoffOp, showLoc, props))
+{
+  init(label, context(contextAttr), showLoc, viz, merge);
+}
+
+trace::trace(std::string label, const attrOp& onoffOp, showLocT showLoc, vizT viz, mergeT merge, properties* props) : 
+  block(label, setProperties(&onoffOp, showLoc, props))
 {
   init(label, context(), showLoc, viz, merge);
 }
 
 // Sets the properties of this object
-properties* trace::setProperties(showLocT showLoc, properties* props) {
+properties* trace::setProperties(const attrOp* onoffOp, showLocT showLoc, properties* props) {
   if(props==NULL) props = new properties();
   
-  map<string, string> newProps;
-  newProps["showLoc"] = txt()<<showLoc;
-  props->add("trace", newProps);
+  // If the current attribute query evaluates to true (we're emitting debug output) AND
+  // either onoffOp is not provided or its evaluates to true
+  if(attributes.query() && (onoffOp? onoffOp->apply(): true)) {
+    props->active = true;
+    map<string, string> newProps;
+    newProps["showLoc"] = txt()<<showLoc;
+    props->add("trace", newProps);
+  } else
+    props->active = false;
+  
   return props;
 }
 
@@ -238,7 +265,7 @@ void traceStream::emitObservations(const std::list<std::string>& contextAttrs,
     const std::set<attrValue>& vals = attributes.get(*a);
     assert(vals.size()>0);
     if(vals.size()>1) { cerr << "traceStream::traceAttr() ERROR: context attribute "<<*a<<" has multiple values!"; }
-    contextAttrsMap[*a] = vals.begin()->getAsStr();
+    contextAttrsMap[*a] = *vals.begin();
   }
   
   emitObservations(contextAttrsMap, obs);
@@ -263,7 +290,7 @@ void traceStream::emitObservations(const std::map<std::string, attrValue>& conte
   int i=0;
   for(map<string, pair<attrValue, anchor> >::const_iterator o=obs.begin(); o!=obs.end(); o++, i++) {
     pMap[txt()<<"tKey_"<<i] = o->first;
-    pMap[txt()<<"tVal_"<<i] = o->second.first.getAsStr();
+    pMap[txt()<<"tVal_"<<i] = o->second.first.serialize();
     pMap[txt()<<"tAnchorID_"<<i] = txt()<<o->second.second.getID();
   }
   
@@ -272,7 +299,7 @@ void traceStream::emitObservations(const std::map<std::string, attrValue>& conte
   i=0;
   for(std::map<std::string, attrValue>::const_iterator a=contextAttrsMap.begin(); a!=contextAttrsMap.end(); a++, i++) {
     pMap[txt()<<"cKey_"<<i] = a->first;
-    pMap[txt()<<"cVal_"<<i] = a->second.getAsStr();
+    pMap[txt()<<"cVal_"<<i] = a->second.serialize();
   }
   
   props.add("traceObs", pMap);
@@ -343,6 +370,10 @@ measure::measure(traceStream* ts,        const std::map<std::string, attrValue>&
   init();
 }
 
+measure::measure(const measure& that) : 
+  ts(that.ts), paused(that.paused), ended(that.ended), fullMeasure(that.fullMeasure), fullMeasureCtxt(that.fullMeasureCtxt)
+{}
+
 measure::~measure()
 {}
 
@@ -393,7 +424,7 @@ void measure::resume() {
 
 // Complete the measurement and add the observation to the trace associated with this measurement
 void measure::end() {
-  if(ended) { cerr << "measure::end() ERROR: measuring multiple times!"<<endl; exit(-1); }
+  if(ended) { cerr << "measure::end() ERROR: measuring multiple times!"<<endl; assert(0);; }
  
   ended = true;
 }
@@ -401,9 +432,13 @@ void measure::end() {
 // Complete the measurement and return the observation.
 // If addToTrace is true, the observation is addes to this measurement's trace and not, otherwise
 std::list<std::pair<std::string, attrValue> > measure::endGet(bool addToTrace)  {
-  if(ended) { cerr << "measure::endGet() ERROR: measuring multiple times!"<<endl; exit(-1); }
+  if(ended) { cerr << "measure::endGet() ERROR: measuring multiple times!"<<endl; assert(0);; }
  
   ended = true;
+}
+
+std::string measure::str() const {
+  return txt()<<"[measure: paused="<<paused<<", ended="<<ended<<"]";
 }
 
 /***********************
@@ -440,6 +475,9 @@ timeMeasure::timeMeasure(traceStream* ts,        std::string valLabel, const std
      measure(ts, fullMeasureCtxt), valLabel(valLabel)
 { init(); }
 
+timeMeasure::timeMeasure(const timeMeasure& that) : measure(that), elapsed(that.elapsed), lastStart(that.lastStart), valLabel(that.valLabel)
+{ }
+
 timeMeasure::~timeMeasure() {
 }
 
@@ -447,6 +485,11 @@ timeMeasure::~timeMeasure() {
 void timeMeasure::init() {
   elapsed = 0.0;
 }
+
+// Returns a copy of this measure object, including its current measurement state, if any. The returned
+// object is connected to the same traceStream, if any, as the original object.
+measure* timeMeasure::copy() const
+{ return new timeMeasure(*this); }
 
 // Start the measurement
 void timeMeasure::start() {
@@ -509,17 +552,24 @@ std::list<std::pair<std::string, attrValue> > timeMeasure::endGet(bool addToTrac
   return ret;
 }
 
-std::string timeMeasure::str() { 
+std::string timeMeasure::str() const { 
   struct timeval cur;
   gettimeofday(&cur, NULL);
 
-  return txt()<<"[timeMeasure: elapsed="<<(elapsed+((cur.tv_sec*1000000 + cur.tv_usec) - (lastStart.tv_sec*1000000 + lastStart.tv_usec)) / 1000000.0)<<"]";
+  return txt()<<"[timeMeasure: elapsed="<<(elapsed+((cur.tv_sec*1000000 + cur.tv_usec) - (lastStart.tv_sec*1000000 + lastStart.tv_usec)) / 1000000.0)<<" "<<
+                measure::str()<<"]";
 }
 
 
 /***********************
  ***** PAPIMeasure *****
  ***********************/
+
+// Indicates the number of PAPIMeasure objects that are currently measuring the counters
+int PAPIMeasure::numMeasurers=0;
+
+// Records the set of PAPI counters currently being measured (non-empty iff numMeasurers>0)
+papiEvents PAPIMeasure::curEvents;
 
 PAPIMeasure::PAPIMeasure(const papiEvents& events) : measure(), events(events)
 { init(); }
@@ -554,6 +604,10 @@ PAPIMeasure::PAPIMeasure(traceStream* ts,        std::string valLabel, const std
      measure(ts, fullMeasureCtxt), events(events), valLabel(valLabel)
 { init(); }
 
+PAPIMeasure::PAPIMeasure(const PAPIMeasure& that) : 
+  measure(that), accumValues(that.accumValues), lastValues(that.lastValues), events(that.events), valLabel(that.valLabel) 
+{ }
+
 PAPIMeasure::~PAPIMeasure() {
 }
 
@@ -564,13 +618,57 @@ void PAPIMeasure::init() {
     cout << events[i] << " ";
   cout << endl;*/
   
-  // Initialize the values array to all 0's
-  values.resize(events.size(), 0);
+  // Initialize the values arrays to contain one counter for each event, 
+  accumValues.resize(events.size(), 0); // Initialized to all 0's
+  lastValues.resize(events.size());
+  readValues.resize(events.size());
 }
+
+// Returns a copy of this measure object, including its current measurement state, if any. The returned
+// object is connected to the same traceStream, if any, as the original object.
+measure* PAPIMeasure::copy() const
+{ return new PAPIMeasure(*this); }
 
 // Start the measurement
 void PAPIMeasure::start() {
   measure::start();
+  
+  // If no other PAPIMeasure objects are currently trying to measure counters, 
+  if(numMeasurers==0) {
+    // Start measuring them
+    if(PAPI_start_counters((int*)&(events[0]), events.size()) != PAPI_OK) { cerr << "PAPIMeasure::start() ERROR starting PAPI counters!"<<endl; assert(0); }
+    
+    // Record the events that are currently being measured
+    curEvents = events;
+  } else {
+    // If we're currently measuring counters, confirm that the currently measured counter set is the
+    // same as the set we wish to measure
+    if(events != curEvents) {
+      cerr << "ERROR: PAPIMeasure is asked to simultaneously measure different counter sets!"<<endl;
+      cerr << "    Currently measuring: [";
+      for(int i=0; i<curEvents.size(); i++) {
+        if(i>0) cerr << ", ";
+        char EventCodeStr[PAPI_MAX_STR_LEN];
+        if (PAPI_event_code_to_name(curEvents[i], EventCodeStr) != PAPI_OK) { cerr << "PAPIMeasure::start() ERROR getting name of PAPI counter "<<curEvents[i]<<"!"<<endl; assert(0); }
+        cerr << EventCodeStr;
+      }
+      cerr << "]"<<endl;
+
+      cerr << "   New measurement request: [";
+      for(int i=0; i<events.size(); i++) {
+        if(i>0) cerr << ", ";
+        char EventCodeStr[PAPI_MAX_STR_LEN];
+        if (PAPI_event_code_to_name(events[i], EventCodeStr) != PAPI_OK) { cerr << "PAPIMeasure::start() ERROR getting name of PAPI counter "<<events[i]<<"!"<<endl; assert(0); }
+        cerr << EventCodeStr;
+      }
+      cerr << "]"<<endl;
+      assert(0);
+    }
+  }
+  numMeasurers++;
+  
+  // Read in the initial values of the counters
+  if(PAPI_read_counters((long_long*)&(lastValues[0]), lastValues.size()) != PAPI_OK) { cerr << "PAPIMeasure::start() ERROR reading PAPI counters!"<<endl; assert(0); }
   
   // Start measurement
   //cout << "PAPIMeasure::start() "<<str()<<endl;
@@ -598,7 +696,7 @@ void PAPIMeasure::start() {
 /cout << "cycles = "<<(e-s)<<endl;
   int eventsArray[] = {PAPI_TOT_INS};
   if(PAPI_start_counters(eventsArray, 1) != PAPI_OK) { cerr << "PAPIMeasure::start() ERROR starting PAPI counters!"<<endl; assert(0); }*/
-  if(PAPI_start_counters((int*)&(events[0]), events.size()) != PAPI_OK) { cerr << "PAPIMeasure::start() ERROR starting PAPI counters!"<<endl; assert(0); }
+  //if(PAPI_start_counters((int*)&(events[0]), events.size()) != PAPI_OK) { cerr << "PAPIMeasure::start() ERROR starting PAPI counters!"<<endl; assert(0); }
 }
 
 // Pauses the measurement so that time elapsed between this call and resume() is not counted.
@@ -607,11 +705,14 @@ bool PAPIMeasure::pause() {
   bool modified = measure::pause();
 
   // Add the counts since the last call to start or resume to values
-  if(PAPI_accum_counters((long_long*)&(values[0]), values.size()) != PAPI_OK) { cerr << "PAPIMeasure::pause() ERROR accumulating PAPI counters!"<<endl; assert(0); }
+  if(PAPI_read_counters((long_long*)&(readValues[0]), readValues.size()) != PAPI_OK) { cerr << "PAPIMeasure::pause() ERROR accumulating PAPI counters!"<<endl; assert(0); }
 
+  for(int i=0; i<events.size(); i++)
+    accumValues[i] += readValues[i] - lastValues[i];
+  
   // Stop the counters, placing the current values into the dummy vector
-  vector<long_long> dummy; dummy.resize(events.size());
-  if(PAPI_stop_counters((long_long*)&(dummy[0]), dummy.size()) != PAPI_OK) { cerr << "PAPIMeasure::pause() ERROR stopping PAPI counters!"<<endl; assert(0); }
+  //vector<long_long> dummy; dummy.resize(events.size());
+  //if(PAPI_stop_counters((long_long*)&(dummy[0]), dummy.size()) != PAPI_OK) { cerr << "PAPIMeasure::pause() ERROR stopping PAPI counters!"<<endl; assert(0); }
 
   return modified;  
 }
@@ -622,7 +723,10 @@ void PAPIMeasure::resume() {
   measure::resume();
   
   // Restart measurement
-  if(PAPI_start_counters((int*)&events[0], events.size()) != PAPI_OK) { cerr << "PAPIMeasure::resume() ERROR starting PAPI counters!"<<endl; assert(0); }
+  //if(PAPI_start_counters((int*)&events[0], events.size()) != PAPI_OK) { cerr << "PAPIMeasure::resume() ERROR starting PAPI counters!"<<endl; assert(0); }
+
+  // Read in the initial values of the counters
+  if(PAPI_read_counters((long_long*)&(lastValues[0]), lastValues.size()) != PAPI_OK) { cerr << "PAPIMeasure::resume() ERROR reading PAPI counters!"<<endl; assert(0); }
 }
 
 // Complete the measurement
@@ -632,6 +736,18 @@ void PAPIMeasure::end() {
   // Call pause() to update elapsed with the time since the start of the measure or the last call to resume() 
   pause(); 
   
+  // One fewer instance of PAPIMeasure is actively reading the performance counters
+  numMeasurers--;
+  
+  // If no instance of PAPIMeasure needs to read performance counters, 
+  if(numMeasurers==0) {
+    // Stop the counters, placing the current values into the dummy vector
+    vector<long_long> dummy; dummy.resize(events.size());
+    if(PAPI_stop_counters((long_long*)&(dummy[0]), dummy.size()) != PAPI_OK) { cerr << "PAPIMeasure::end() ERROR stopping PAPI counters!"<<endl; assert(0); }
+    
+    curEvents.clear();
+  }
+  
   assert(ts);
   // Iterate over all the PAPI counters being measured
   for(int i=0; i<events.size(); i++) {
@@ -639,9 +755,9 @@ void PAPIMeasure::end() {
     if (PAPI_event_code_to_name(events[i], EventCodeStr) != PAPI_OK) { cerr << "PAPIMeasure::end() ERROR getting name of PAPI counter "<<events[i]<<"!"<<endl; assert(0); }
     
     if(fullMeasure)
-      ts->traceFullObservation(fullMeasureCtxt, trace::observation(make_pair((string)(txt()<<valLabel<<":"<<EventCodeStr), attrValue((long)values[i]))), anchor::noAnchor);
+      ts->traceFullObservation(fullMeasureCtxt, trace::observation(make_pair((string)(txt()<<valLabel<<":"<<EventCodeStr), attrValue((long)accumValues[i]))), anchor::noAnchor);
     else
-      ts->traceAttrObserved(txt()<<valLabel<<":"<<EventCodeStr, attrValue((long)values[i]), anchor::noAnchor);
+      ts->traceAttrObserved(txt()<<valLabel<<":"<<EventCodeStr, attrValue((long)accumValues[i]), anchor::noAnchor);
   }
 }
 
@@ -652,6 +768,18 @@ std::list<std::pair<std::string, attrValue> > PAPIMeasure::endGet(bool addToTrac
   
   // Call pause() to update elapsed with the time since the start of the measure or the last call to resume() 
   pause(); 
+  
+  // One fewer instance of PAPIMeasure is actively reading the performance counters
+  numMeasurers--;
+  
+  // If no instance of PAPIMeasure needs to read performance counters, 
+  if(numMeasurers==0) {
+    // Stop the counters, placing the current values into the dummy vector
+    vector<long_long> dummy; dummy.resize(events.size());
+    if(PAPI_stop_counters((long_long*)&(dummy[0]), dummy.size()) != PAPI_OK) { cerr << "PAPIMeasure::end() ERROR stopping PAPI counters!"<<endl; assert(0); }
+    
+    curEvents.clear();
+  }
   
   if(addToTrace)
     assert(ts);
@@ -665,23 +793,23 @@ std::list<std::pair<std::string, attrValue> > PAPIMeasure::endGet(bool addToTrac
     
     // If a value label was not provided, the label of the observation is just the name of the PAPI counter
     if(valLabel == "")
-      ret.push_back(make_pair(string(EventCodeStr), attrValue((long)values[i])));
+      ret.push_back(make_pair(string(EventCodeStr), attrValue((long)accumValues[i])));
     // If a value label was provided, the label of the observation combines it and the name of the PAPI counter
     else 
-      ret.push_back(make_pair((string)(txt()<<valLabel<<":"<<string(EventCodeStr)), attrValue((long)values[i])));
+      ret.push_back(make_pair((string)(txt()<<valLabel<<":"<<string(EventCodeStr)), attrValue((long)accumValues[i])));
     
     if(addToTrace) {
       if(fullMeasure)
-        ts->traceFullObservation(fullMeasureCtxt, trace::observation(make_pair((string)(txt()<<valLabel<<":"<<EventCodeStr), attrValue((long)values[i]))), anchor::noAnchor);
+        ts->traceFullObservation(fullMeasureCtxt, trace::observation(make_pair((string)(txt()<<valLabel<<":"<<EventCodeStr), attrValue((long)accumValues[i]))), anchor::noAnchor);
       else
-        ts->traceAttrObserved(txt()<<valLabel<<":"<<EventCodeStr, attrValue((long)values[i]), anchor::noAnchor);
+        ts->traceAttrObserved(txt()<<valLabel<<":"<<EventCodeStr, attrValue((long)accumValues[i]), anchor::noAnchor);
     }
   }
   
   return ret;
 }
 
-std::string PAPIMeasure::str() { 
+std::string PAPIMeasure::str() const { 
   ostringstream s;
   s<<"[PAPIMeasure: ";
   for(int i=0; i<events.size(); i++) {
@@ -691,6 +819,7 @@ std::string PAPIMeasure::str() {
     if (PAPI_event_code_to_name(events[i], EventCodeStr) != PAPI_OK) { cerr << "PAPIMeasure::end() ERROR getting name of PAPI counter "<<events[i]<<"!"<<endl; assert(0); }
     s << EventCodeStr;
   }
+  s<<" "<<measure::str();
   s<<"]";
   return s.str();
 }
@@ -756,7 +885,7 @@ properties* TraceMerger::setProperties(std::vector<std::pair<properties::tagType
   
   map<string, string> pMap;
   properties::tagType type = streamRecord::getTagType(tags); 
-  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Trace!"<<endl; exit(-1); }
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Trace!"<<endl; assert(0);; }
   if(type==properties::enterTag) {
     // Default to showing before the trace, unless showLoc==showEnd on all incoming streams
     vector<long> showLocs = str2int(getValues(tags, "showLoc"));
@@ -780,7 +909,7 @@ void TraceMerger::mergeKey(properties::tagType type, properties::iterator tag,
                            std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
   BlockMerger::mergeKey(type, tag.next(), inStreamRecords, key);
   
-  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; assert(0);; }
   if(type==properties::enterTag) {
     // We don't specify a key for traces since they're mostly shells for traceStreams and there isn't much to differentiate them
   }
@@ -801,7 +930,7 @@ TraceStreamMerger::TraceStreamMerger(std::vector<std::pair<properties::tagType, 
   
   map<string, string> pMap;
   properties::tagType type = streamRecord::getTagType(tags); 
-  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Trace!"<<endl; exit(-1); }
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Trace!"<<endl; assert(0);; }
   if(type==properties::enterTag) {
     assert(tags.size()>0);
     vector<string> names = getNames(tags); assert(allSame<string>(names));
@@ -856,7 +985,7 @@ void TraceStreamMerger::mergeKey(properties::tagType type, properties::iterator 
                            std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
   Merger::mergeKey(type, tag.next(), inStreamRecords, key);
     
-  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; assert(0);; }
   if(type==properties::enterTag) {
     key.push_back(properties::get(tag, "viz"));
     key.push_back(properties::get(tag, "merge"));
@@ -885,7 +1014,7 @@ TraceObsMerger::TraceObsMerger(std::vector<std::pair<properties::tagType, proper
   
   map<string, string> pMap;
   properties::tagType type = streamRecord::getTagType(tags); 
-  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging TraceObs!"<<endl; exit(-1); }
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging TraceObs!"<<endl; assert(0);; }
   if(type==properties::enterTag) {
     // Merge the trace IDs along all the streams
     //int mergedTraceID = TraceStreamRecord::mergeIDs(pMap, tags, outStreamRecords, inStreamRecords);
@@ -1003,7 +1132,8 @@ TraceObsMerger::TraceObsMerger(std::vector<std::pair<properties::tagType, proper
           default: assert(0);
         }
         
-        pMap[txt()<<"tVal_"<<t] = txt()<<aggr;
+        attrValue aggrVal(aggr);
+        pMap[txt()<<"tVal_"<<t] = txt()<<aggrVal.serialize();
       }
     }
   }
@@ -1019,7 +1149,7 @@ void TraceObsMerger::mergeKey(properties::tagType type, properties::iterator tag
                               std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
   Merger::mergeKey(type, tag.next(), inStreamRecords, key);
   
-  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; assert(0);; }
   if(type==properties::enterTag) {
     // Observations may only be merged if they correspond to traces that were merged in the outgoing stream
     streamID inSID(properties::getInt(tag, "traceID"), 

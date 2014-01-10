@@ -255,8 +255,8 @@ properties* attr::setProperties(std::string key, T val, properties* props) {
   map<string, string> pMap;
   attrValue v(val);
   pMap["key"] = key;
-  pMap["val"] = v.getAsStr();
-  pMap["type"] = txt()<<v.getType();
+  pMap["val"] = v.serialize();
+  //pMap["type"] = txt()<<v.getType();
   props->add("attr", pMap);
   
   //dbg.enter(this);
@@ -414,12 +414,13 @@ AttributeMerger::AttributeMerger(std::vector<std::pair<properties::tagType, prop
     //vector<string> valVec = getValues(tags, "val");
     //assert(allSame<string>(valVec));
     
-    vector<string> typeVec = getValues(tags, "type");
-    assert(allSame<string>(typeVec));
+    /*vector<string> typeVec = getValues(tags, "type");
+    assert(allSame<string>(typeVec));*/
     
     pMap["key"]  = *keysVec.begin();
+    // !!!! NOTE: We need a smarter way to merge attributes that is sensitive to their internal structure
     pMap["val"]  = getMergedValue(tags, "val");//*valVec.begin();
-    pMap["type"] = *typeVec.begin();
+    //pMap["type"] = *typeVec.begin();
   }
   
   props->add("attr", pMap);
@@ -435,8 +436,10 @@ void AttributeMerger::mergeKey(properties::tagType type, properties::iterator ta
   
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
+    // Attributes must have identical key names and value types to be mergeable
     key.push_back(properties::get(tag, "key"));
-    key.push_back(properties::get(tag, "type"));
+    key.push_back(txt()<<attrValue::getType(properties::get(tag, "val")));
+    //key.push_back(properties::get(tag, "type"));
   }
 }
 

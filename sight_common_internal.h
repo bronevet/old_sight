@@ -21,9 +21,9 @@ bool isEnabled();
 } // namespace common
 
 // Class that makes it possible to generate string labels by using the << syntax.
-// Examples: Label() << "a=" << (5+2) << "!"
-//           Label("a=") << (5+2) << "!"
-// Since this class is meant to be used by client code, it is placed inside the easier-to-use sight namespace
+// Examples: txt() << "a=" << (5+2) << "!"
+//           txt("a=") << (5+2) << "!"
+// Since this class is meant to be used by client code, it is placed inside the easier-to-access sight namespace
 struct txt : std::string {
   txt() {}
   txt(const std::string& initTxt) {
@@ -92,11 +92,31 @@ class properties
     
   void add(std::string className, const std::map<std::string, std::string>& props);
   
+  bool operator==(const properties& that) const
+  { 
+    /*std::cout << "p==that.p = "<<(p==that.p)<<std::endl;
+      std::cout << "p.size()="<<p.size()<<", that.p.size()="<<that.p.size()<<std::endl;
+      std::list<std::pair<std::string, std::map<std::string, std::string> > >::const_iterator itThis = p.begin();
+      std::list<std::pair<std::string, std::map<std::string, std::string> > >::const_iterator itThat = that.p.begin();
+      for(; itThis!=p.end(); itThis++, itThat++) {
+        std::cout << "    itThis->first = "<<itThis->first<<" itThat->first="<<itThat->first<<std::endl;
+        std::cout << "    itThis->first==itThat->first = "<<(itThis->first==itThat->first)<<", itThis->second==itThat->second = "<<(itThis->second==itThat->second)<<std::endl;
+      }
+    std::cout << "active==that.active = "<<(active==that.active)<<std::endl;
+    std::cout << "emitTag==that.emitTag = "<<(emitTag==that.emitTag)<<std::endl;*/
+    return p==that.p && active==that.active && emitTag==that.emitTag; }
+  
+  bool operator<(const properties& that) const
+  { return (p< that.p) ||
+           (p==that.p && active< that.active) ||
+           (p==that.p && active==that.active && emitTag< that.emitTag); }
+  
   //typedef std::list<std::pair<std::string, std::map<std::string, std::string> > >::const_iterator iterator;
   
   // Wrapper for iterators to property lists that includes its own end iterator to make it possible to 
   // tell whether the iterator has reached the end of the list without having a reference to the list itself.
   class iterator {
+    friend class properties;
     std::list<std::pair<std::string, std::map<std::string, std::string> > >::const_iterator cur;
     std::list<std::pair<std::string, std::map<std::string, std::string> > >::const_iterator end;
     
@@ -113,6 +133,15 @@ class properties
     iterator(const properties& props) :
       cur(props.p.begin()), end(props.p.end())
     {}
+    
+    // Returns the value mapped to the given key
+    std::string get(std::string key) const;
+    
+    // Returns the integer interpretation of the value mapped to the given key
+    long getInt(std::string key) const;
+
+    // Returns the floating-point interpretation of the value mapped to the given key
+    double getFloat(std::string key) const;
     
     iterator& operator++() {
       cur++;
@@ -155,6 +184,8 @@ class properties
     const std::map<std::string, std::string>& getMap() const
     { return cur->second; }
     
+    public:
+    
     // Returns whether the given key is mapped to a value in the key/value map at this iterator
     bool exists(std::string key) const
     { return cur->second.find(key) != cur->second.end(); }
@@ -181,6 +212,9 @@ class properties
   
   // Given an iterator to a particular key->value mapping, returns the value mapped to the given key
   static std::string get(iterator cur, std::string key);
+  
+  // Given the label of a particular key->value mapping, adds the given mapping to it
+  void set(std::string name, std::string key, std::string value);
   
   // Given an iterator to a particular key->value mapping, returns the integer interpretation of the value mapped to the given key
   static long getInt(iterator cur, std::string key);
@@ -253,6 +287,62 @@ class dbgStream : public std::ostream
 std::string escape(std::string s);
 std::string unescape(std::string s);
 
+// Wrapper for strings in which some characters have been escaped. This is useful for serializing multi-level 
+// collection objects, while using the same separator for each level of the encoding.
+class escapedStr {
+  std::string s;
+  std::string control;
+  
+  public:
+  typedef enum {escaped, unescaped} sourceT;
+
+  escapedStr() {}
+  
+  // source==unescaped: Creates an escaped string given a regular UNESCAPED string and an explicit list of control characters
+  // source==escaped:   Creates an ESCAPED string given an escaped string and an explicit list of control characters
+  escapedStr(std::string s_, std::string control, sourceT source);
+
+  // Copy constructor
+  escapedStr(const escapedStr& that) : s(that.s) {}
+  
+  // Searches the string for the first occurrence of the sequence specified by its arguments, starting at pos and returns 
+  // the location. The search ignores any matches that cross escaped characters in this string.
+  size_t find(std::string sub, size_t pos = 0) const;
+
+  // Searches the string for the first occurrence of any of the characters in string chars, starting at pos and returns 
+  // the location. The search ignores any matches that cross escaped characters in this string.
+  size_t findAny(std::string chars, size_t pos) const;
+
+  // Returns a newly constructed escaped string object with its value initialized to a copy of a substring of this object.
+  // The substring is the portion of the object that starts at character position pos and spans len characters (or until 
+  // the end of the string, whichever comes first).
+  std::string substr(size_t pos = 0, size_t len = std::string::npos) const;
+  
+  // Returns the fully unescaped version of this string, with the escaped characters replaced with the originals.
+  std::string unescape() const;
+
+  // Split the string into sub-strings separated by any character in the separator string and emit a list of the individual
+  // substrings, which have been unescaped. The separator characters must be a subset of this escapedStr's control characters.
+  std::vector<std::string> unescapeSplit(std::string separator);
+
+  // Returns the escaped read-only version of the string
+  const std::string& escape() const { return s; }
+  
+  // Assignment 
+  escapedStr& operator=(const escapedStr& that);
+
+  // Relations
+  bool operator==(const escapedStr& that) { return s == that.s; }
+  bool operator< (const escapedStr& that) { return s <  that.s; }  
+  
+  // Casting 
+  // Casting to a string is the same as returning the escaped string
+  operator std::string() { return escape(); }
+  
+  // Self-testing code for the escapedStr class.
+  static void selfTest();
+}; // class escapedStr
+
 class structureParser {
   public:
  
@@ -260,6 +350,66 @@ class structureParser {
   // the object it denotes.
   virtual std::pair<properties::tagType, const properties*> next()=0;
 };
+
+// Base class of classes that manage the registration functionality of different modules that may be linked
+// into a given executable. Since Sight is a framework its exact functionality depends on the set of widgets
+// used with it. The mechanism to select the widgets used in a given scenario is linking. The object files
+// of a given set of widgets are linked together into executables such as a user application, slayout or 
+// hier_merge. It is the choice of object files that are linked that determines the functionality of a given
+// executable. In many cases we need the linked widgets to provide callbacks to perform widget-specific 
+// actions such as merging or laying out a type of tag or performing some type of attrValue comparison.
+// The choice of functionality is specified in a string and we need the widget that implements this functionality
+// to register a callback with this string to make it possible to invoke the functionality. Since the choice
+// of widgets is made at link-time and the order in which the widgets' object files are initialized and loaded
+// is unspecified, this is difficult to manage. 
+//
+// The LoadTimeRegistry class implements support for registering call-back functions for the widgets that
+// are linked within a given executable. For each task-specific class that inherits from it, the LoadTimeRegistry
+// constructor that it initialization code is invoked exactly once, using environment variables as a type of
+// mutex. To make sure this environment-based initialization state does not leak from a process to its children,
+// LoadTimeRegistry provides functionality to temporarily remove its state from the environment.
+// 
+// LoadTimeRegistry is used as follows:
+// - We derive class X from LoadTimeRegistry. There is one such class for every major functionality (e.g. merging, parsing)
+//   - Implement X::name(), which returns a unique string
+//   - Implement X::init(), which initializes any data structures (static to X) needed to register the given functionality 
+//     within loaded widgets. X::init() is guaranteed to be called once within an executable
+// - Derive from X class Y. There is one Y for each widget that implements the given functionality type
+//   - Within the constructor of Y register this widget's functionality with the data structures in X. It can be
+//     assumed that X::init() has already executed.
+//   - Create one static instance of Y within each widget.
+class LoadTimeRegistry {
+  // The names of all the LoadTimeRegistry's derived classes that have already been initialized.
+  static std::set<std::string>* initialized;
+
+  public:
+
+  // Type of the class-specific initialization method that is passed into the base LoadTimeRegistry constructor.
+  // It is called exactly once for each class that derives from LoadTimeRegistry to initialize its static data structures.
+  // We don't use virtual methods for this because they don't work inside constructors.
+  typedef void (*initFunc)();
+
+  // name - Unique string name of the class that derives from LoadTimeRegistry
+  // init - Function that is called to initialize this class
+  LoadTimeRegistry(std::string name, initFunc init);
+
+  /*// Unique string name of the class that derives from LoadTimeRegistry
+  virtual std::string name() const { assert(0); return ""; }
+
+  // Called exactly once for each class that derives from LoadTimeRegistry to initialize its static data structures.
+  virtual void init() { assert(0); }*/
+  static void init() {}
+
+  // Removes all the environment variables that record the current mutexes of LoadTimeRegistry
+  static void liftMutexes();
+
+  // Restores all the environment variables previously removed by liftMutexes
+  static void restoreMutexes();
+}; // class LoadTimeRegistry
+
+// Create an instance of LoadTimeRegistry to ensure that it is initialized even if it is never derived from
+extern LoadTimeRegistry LoadTimeRegInstance;
+
 
 // Syntactic sugar for specifying lists
 template<class T>
@@ -360,16 +510,16 @@ class easymap: public std::map<KeyT, ValT> {
   easymap(const KeyT& key0, const ValT& val0, const KeyT& key1, const ValT& val1, const KeyT& key2, const ValT& val2, const KeyT& key3, const ValT& val3, const KeyT& key4, const ValT& val4, const KeyT& key5, const ValT& val5)
   { (*this)[key0] = val0; (*this)[key1] = val1; (*this)[key2] = val2; (*this)[key3] = val3; (*this)[key4] = val4; (*this)[key5] = val5; }
   
-  easymap(const KeyT& key0, const ValT& val0, const KeyT& key1, const ValT& val1, const KeyT& key2, const ValT& val2, const KeyT& key3, const ValT& val3, const KeyT& key5, const KeyT& key4, const ValT& val4, const ValT& val5, const KeyT& key6, const ValT& val6)
+  easymap(const KeyT& key0, const ValT& val0, const KeyT& key1, const ValT& val1, const KeyT& key2, const ValT& val2, const KeyT& key3, const ValT& val3, const KeyT& key4, const ValT& val4, const KeyT& key5, const ValT& val5, const KeyT& key6, const ValT& val6)
   { (*this)[key0] = val0; (*this)[key1] = val1; (*this)[key2] = val2; (*this)[key3] = val3; (*this)[key4] = val4; (*this)[key5] = val5; (*this)[key6] = val6; }
   
-  easymap(const KeyT& key0, const ValT& val0, const KeyT& key1, const ValT& val1, const KeyT& key2, const ValT& val2, const KeyT& key3, const ValT& val3, const KeyT& key5, const KeyT& key4, const ValT& val4, const ValT& val5, const KeyT& key6, const ValT& val6, const KeyT& key7, const ValT& val7)
+  easymap(const KeyT& key0, const ValT& val0, const KeyT& key1, const ValT& val1, const KeyT& key2, const ValT& val2, const KeyT& key3, const ValT& val3, const KeyT& key4, const ValT& val4, const KeyT& key5, const ValT& val5, const KeyT& key6, const ValT& val6, const KeyT& key7, const ValT& val7)
   { (*this)[key0] = val0; (*this)[key1] = val1; (*this)[key2] = val2; (*this)[key3] = val3; (*this)[key4] = val4; (*this)[key5] = val5; (*this)[key6] = val6; (*this)[key7] = val7; }
   
-  easymap(const KeyT& key0, const ValT& val0, const KeyT& key1, const ValT& val1, const KeyT& key2, const ValT& val2, const KeyT& key3, const ValT& val3, const KeyT& key5, const KeyT& key4, const ValT& val4, const ValT& val5, const KeyT& key6, const ValT& val6, const KeyT& key7, const ValT& val7, const KeyT& key8, const ValT& val8)
+  easymap(const KeyT& key0, const ValT& val0, const KeyT& key1, const ValT& val1, const KeyT& key2, const ValT& val2, const KeyT& key3, const ValT& val3, const KeyT& key4, const ValT& val4, const KeyT& key5, const ValT& val5, const KeyT& key6, const ValT& val6, const KeyT& key7, const ValT& val7, const KeyT& key8, const ValT& val8)
   { (*this)[key0] = val0; (*this)[key1] = val1; (*this)[key2] = val2; (*this)[key3] = val3; (*this)[key4] = val4; (*this)[key5] = val5; (*this)[key6] = val6; (*this)[key7] = val7; (*this)[key8] = val8; }
   
-  easymap(const KeyT& key0, const ValT& val0, const KeyT& key1, const ValT& val1, const KeyT& key2, const ValT& val2, const KeyT& key3, const ValT& val3, const KeyT& key5, const KeyT& key4, const ValT& val4, const ValT& val5, const KeyT& key6, const ValT& val6, const KeyT& key7, const ValT& val7, const KeyT& key8, const ValT& val8, const KeyT& key9, const ValT& val9)
+  easymap(const KeyT& key0, const ValT& val0, const KeyT& key1, const ValT& val1, const KeyT& key2, const ValT& val2, const KeyT& key3, const ValT& val3, const KeyT& key4, const ValT& val4, const KeyT& key5, const ValT& val5, const KeyT& key6, const ValT& val6, const KeyT& key7, const ValT& val7, const KeyT& key8, const ValT& val8, const KeyT& key9, const ValT& val9)
   { (*this)[key0] = val0; (*this)[key1] = val1; (*this)[key2] = val2; (*this)[key3] = val3; (*this)[key4] = val4; (*this)[key5] = val5; (*this)[key6] = val6; (*this)[key7] = val7; (*this)[key8] = val8; (*this)[key9] = val9; }
 }; // easymap
 

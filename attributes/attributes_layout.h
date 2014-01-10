@@ -56,9 +56,6 @@ class attr
   public:
   attr(properties::iterator props);
   
-  template<typename T>
-  void init(std::string key, T val);
-  
   ~attr();
   
   // Returns the key of this attribute

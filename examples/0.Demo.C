@@ -18,6 +18,7 @@ int fibScopeLinks(int a, scope::scopeLevel level, list<int>& stack,
                   bool doFWLinks);
 int fibGraph(int a, graph& g, anchor* parent);
 double histRecurrence(int a, const vector<double>& hist);
+std::pair<int, std::vector<port> > fibModule(int a, int depth);
 
 int main(int argc, char** argv)
 {
@@ -147,12 +148,23 @@ int main(int argc, char** argv)
 #pragma sightLoc PerfAnalysisEnd
   }
 
-  { 
+  {
+    scope s("Modular Analysis", scope::high);
+    { source src("source", source::regions(source::reg(thisFile, "ModularStart",    "ModularEnd"),
+                                           source::reg(thisFile, "modularFibStart", "modularFibEnd"))); }
+    
+#pragma sightLoc ModularStart
+    modularApp modularFibonacci("Fibonacci"); 
+    fibModule(10, 0);
+#pragma sightLoc ModularEnd
+  }
+  
+/*  { 
     scope s("Modular Analysis", scope::high);
     { source src("source", source::regions(source::reg(thisFile, "ModularStart",        "ModularEnd"),
                                            source::reg(thisFile, "histRecurrenceStart", "histRecurrenceEnd"))); }
      
- #pragma sightLoc ModularStart
+ # pragma sightLoc ModularStart
     module rootModule(group("Modular Analysis", 0, 0), namedMeasures("time", new timeMeasure()));
     
     // Initialize the linear recurrence coefficients to Fibonacci
@@ -199,9 +211,9 @@ int main(int argc, char** argv)
         }
         lastValue = value;
       }
- #pragma sightLoc ModularEnd
+ # pragma sightLoc ModularEnd
     }
-  }
+  }*/
   
   return 0;
 }
@@ -368,3 +380,28 @@ double histRecurrence(int a, const vector<double>& hist) {
   }
 }
 #pragma sightLoc histRecurrenceEnd
+
+#pragma sightLoc modularFibStart
+// Each recursive call to fibModule() generates a new module at the desired level. 
+std::pair<int, std::vector<port> > fibModule(int a, int depth) {
+  std::vector<port> fibOutputs;
+  module m(instance(txt()<<"fib() depth="<<depth, 1, 1), 
+           inputs(port(context("a", a))), fibOutputs, namedMeasures("time", new timeMeasure()));
+  
+  if(a==0 || a==1) { 
+    dbg << "=1."<<endl;
+    
+    m.setOutCtxt(0, context("val", 1));
+    
+    return make_pair(1, fibOutputs);
+  } else {
+    std::pair<int, std::vector<port> > ret1 = fibModule(a-1, depth+1);
+    std::pair<int, std::vector<port> > ret2 = fibModule(a-2, depth+1);
+    dbg << "="<<(ret1.first + ret2.first)<<endl;
+    
+    m.setOutCtxt(0, context("val", ret1.first + ret2.first));
+    
+    return make_pair(ret1.first + ret2.first, fibOutputs);
+  }
+}
+#pragma sightLoc modularFibEnd

@@ -2,27 +2,41 @@
 
 // Adapted from http://bl.ocks.org/bunkat/2595950   
 
-function createNumericScale(data, idx, minVisCoord, maxVisCoord) {
+function createNumericScale(data, idx, minVisCoord, maxVisCoord, axisType) {
   var Min = d3.min(data, function(d) { return parseFloat(d[idx]); });
   var Avg = d3.sum(data, function(d) { return parseFloat(d[idx]); }) / data.length;
   var Max = d3.max(data, function(d) { return parseFloat(d[idx]); });
-
-  // If there is a huge range in the x coordinates, use a log scale
-  if(Min>0 && Max / Min > 1e3) 
-    return d3.scale.log()
-            .domain([Min, Max])
-            .range([ minVisCoord, maxVisCoord ]);
+  
+  // If this axis is compatible with the log visualization and
+  // If it is selected to be log or it is not specified and there is a huge range in the x coordinates, use a log scale
+  if(Min>0 && (axisType=="log" || (axisType===undefined && Max / Min > 1e2)))
+    return ["log", 
+            d3.scale.log()
+                .domain([Min, Max])
+                .range([ minVisCoord, maxVisCoord ])];
   // Otherwise, use a linear scale
-  else 
-    return d3.scale.linear()
-            .domain([0, Max])
-            .range([ minVisCoord, maxVisCoord ]);  
+  else
+    return ["lin",
+            d3.scale.linear()
+                .domain([Math.min(0, Min), Max])
+                .range([ minVisCoord, maxVisCoord ])];
 }
 
-function showScatterplot(data, hostDiv) {
+// Caches the data arrays of different hostDivs to make it possible to re-visualize the contents of
+// different scatterplots interactively.
+var cachedData = {};
+
+function showScatterplot(data, hostDivID, xAxisType, yAxisType) {
+  // Empty out the hostDiv
+  document.getElementById(hostDivID).innerHTML="";
+  
+  // If data is provided, cache it; If it is not provided (call from an on-click handler, grab it from the cache)
+  if(data === undefined) data = cachedData[hostDivID];
+  else                   cachedData[hostDivID] = data;
+  
   var margin = {top: 20, right: 15, bottom: 60, left: 60},
-      width = document.getElementById(hostDiv).clientWidth - margin.left - margin.right,
-      height = document.getElementById(hostDiv).clientHeight - margin.top - margin.bottom;
+      width = document.getElementById(hostDivID).clientWidth - margin.left - margin.right,
+      height = document.getElementById(hostDivID).clientHeight - margin.top - margin.bottom;
   
   // Determine whether the x and y axes are numeric or categorical
   var isXNumeric=true, isYNumeric=true;
@@ -32,17 +46,30 @@ function showScatterplot(data, hostDiv) {
     if(!isXNumeric && !isYNumeric) break;
   } }
   
+  // Create the gradient to be used to color the tiles
+  /*var colors = gradientFactory.generate({
+      from: "#0000FF",
+      to: "#FF0000",
+      stops: data.length
+  });*/
+  
   var x, y;
   
-  if(isXNumeric) x = createNumericScale(data, 0, 0, width);
-  else           x = d3.scale.ordinal()
-                           .domain(data.map(function (d) {return d[0]; }))
-                           .rangeRoundBands([0, width]);
+  if(isXNumeric && xAxisType != "cat") 
+    x = createNumericScale(data, 0, 0, width, xAxisType);
+  else
+    x = ["cat", d3.scale.ordinal()
+                    .domain(data.map(function (d) {return d[0]; }))
+                    .rangeRoundBands([0, width])];
+  xAxisType = x[0];
   
-  if(isYNumeric) y = createNumericScale(data, 1, height, 0);
-  else           y = d3.scale.ordinal().range([height, 0]);
+  if(isYNumeric && yAxisType != "cat")
+    y = createNumericScale(data, 1, height, 0, yAxisType);
+  else
+    y = ["cat", d3.scale.ordinal().range([height, 0])];
+  yAxisType = y[0];
   
-  var chart = d3.select("#"+hostDiv)
+  var chart = d3.select("#"+hostDivID)
                   .append('svg:svg')
                   .attr('width', width + margin.right + margin.left)
                   .attr('height', height + margin.top + margin.bottom)
@@ -56,24 +83,26 @@ function showScatterplot(data, hostDiv) {
     
   // draw the x axis
   var xAxis = d3.svg.axis()
-                 .scale(x)
+                 .scale(x[1])
                  .orient('bottom')
   
   main.append('g')
           .attr('transform', 'translate(0,' + height + ')')
           .attr('class', 'main axis date')
           .style({ 'stroke': 'black', 'fill': 'none', 'shape-rendering': 'crispEdges', 'font': '10px sans-serif'})
+          .attr("onclick", "showScatterplot(undefined, '"+hostDivID+"', '"+(xAxisType=="lin"? "log": (xAxisType=="log"? "lin": "cat"))+"', '"+yAxisType+"');")
           .call(xAxis);
   
   // draw the y axis
   var yAxis = d3.svg.axis()
-                  .scale(y)
+                  .scale(y[1])
                   .orient('left');
   
   main.append('g')
            .attr('transform', 'translate(0,0)')
            .attr('class', 'main axis date')
            .style({ 'stroke': 'black', 'fill': 'none', 'shape-rendering': 'crispEdges', 'font': '10px sans-serif'})
+           .attr("onclick", "showScatterplot(undefined, '"+hostDivID+"', '"+xAxisType+"', '"+(yAxisType=="lin"? "log": (yAxisType=="log"? "lin": "cat"))+"');")
            .call(yAxis);
   
   var g = main.append("svg:g"); 
@@ -82,8 +111,10 @@ function showScatterplot(data, hostDiv) {
        .data(data)
        .enter().append("svg:circle")
            .attr("cx", function (d,i) { /*alert("d="+d+", i="+i+", x(d[0])="+x(d[0])+", y(d[1])="+y(d[1]));*/ 
-                                         return (isXNumeric? x(parseFloat(d[0])): x(d[0]) + x.rangeBand()/2); } )
-           .attr("cy", function (d) { return y(parseFloat(d[1])); } )
+                                         return (xAxisType=="log" || xAxisType=="lin" ? 
+                                                    x[1](parseFloat(d[0])): 
+                                                    x[1](d[0]) + x[1].rangeBand()/2); } )
+           .attr("cy", function (d) { return y[1](parseFloat(d[1])); } )
            .attr("r", 3)
-           .style("fill", "red");
+           .style("fill", "red"/*function(d,i) { return colors[i]; }*/ );
 }

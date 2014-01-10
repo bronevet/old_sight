@@ -33,21 +33,43 @@
 #include "mfem.h"
 using namespace sight;
 
+#define _GNU_SOURCE
+#include <string.h>
+
+
+double exact_sol(Vector &);
+double exact_rhs(Vector &);
+
 int main (int argc, char *argv[])
 {
-   Mesh *mesh;
-
-   SightInit(argc, argv, "ex1", "dbg.MFEM.ex1");
-
-   if (argc == 1)
+   if (argc <= 4)
    {
-      cerr << "\nUsage: ex1 <mesh_file>\n" << endl;
+      cerr << "\nUsage: ex1 <mesh_file> ref_levels finElement exactSoln\n" << endl;
       return 1;
    }
+   char* meshFile = argv[1];
+   int ref_levels = atoi(argv[2]);
+   char* finElement = argv[3];
+   bool exactSoln = atoi(argv[4]);
+   
+   SightInit(argc, argv, "ex1", txt()<<"dbg.MFEM.ex1.meshFile_"<<basename(meshFile)<<".ref_levels_"<<ref_levels<<".finElement_"<<finElement<<".exactSoln_"<<exactSoln);
+   modularApp mfemApp("MFEM App", namedMeasures("time", new timeMeasure())); 
+   
+   //for(int ref_levels=1; ref_levels<5; ref_levels++) {
+   Mesh *mesh;
+   std::vector<port> externalOutputs;
+   compModule mod(instance("Ex1", 3, 1), 
+                  inputs(port(context("meshFile",   meshFile)),
+                         port(context("ref_levels", ref_levels)),
+                         port(context("finElement", finElement))),
+                  externalOutputs,
+                  exactSoln, 
+                  context(),
+                  compNamedMeasures("time", new timeMeasure(), LkComp(2, attrValue::floatT, true)));
 
    // 1. Read the mesh from the given mesh file. We can handle triangular,
    //    quadrilateral, tetrahedral or hexahedral elements with the same code.
-   ifstream imesh(argv[1]);
+   ifstream imesh(meshFile);
    if (!imesh)
    {
       cerr << "\nCan not open mesh file: " << argv[1] << '\n' << endl;
@@ -61,8 +83,8 @@ int main (int argc, char *argv[])
    //    largest number that gives a final mesh with no more than 50,000
    //    elements.
    {
-      int ref_levels =
-         (int)floor(log(50000./mesh->GetNE())/log(2.)/mesh->Dimension());
+      /*int ref_levels =
+         (int)floor(log(50000./mesh->GetNE())/log(2.)/mesh->Dimension());*/
       for (int l = 0; l < ref_levels; l++)
          mesh->UniformRefinement();
    }
@@ -72,17 +94,39 @@ int main (int argc, char *argv[])
    FiniteElementCollection *fec;
    if (mesh->GetNodes())
       fec = mesh->GetNodes()->OwnFEC();
-   else
+   else if(strcmp(finElement, "linear")==0)
       fec = new LinearFECollection;
+   else {
+     char* feType = strtok(finElement, ":");
+     assert(feType);
+     if(strcmp(feType, "h1")==0) {
+        char* feOrderStr = strtok(NULL, ":");
+        assert(feOrderStr);
+        int feOrder = atoi(feOrderStr);
+       
+        fec = new H1_FECollection(feOrder, mesh->Dimension());
+     } else
+       assert(0);
+   }
    FiniteElementSpace *fespace = new FiniteElementSpace(mesh, fec);
    dbg << "Number of unknowns: " << fespace->GetVSize() << endl;
+   
+   // Exact solution
+   FunctionCoefficient e_sol(&exact_sol);
+   GridFunction xp(fespace);
+   xp.ProjectCoefficient(e_sol);
 
    // 4. Set up the linear form b(.) which corresponds to the right-hand side of
    //    the FEM linear system, which in this case is (1,phi_i) where phi_i are
    //    the basis functions in the finite element fespace.
    LinearForm *b = new LinearForm(fespace);
+   FunctionCoefficient rhs_coeff(&exact_rhs);
    ConstantCoefficient one(1.0);
-   b->AddDomainIntegrator(new DomainLFIntegrator(one));
+   if(exactSoln) {
+     b->AddDomainIntegrator(new DomainLFIntegrator(rhs_coeff));
+   } else {
+     b->AddDomainIntegrator(new DomainLFIntegrator(one));
+   }
    b->Assemble();
 
    // 5. Define the solution vector x as a finite element grid function
@@ -91,6 +135,16 @@ int main (int argc, char *argv[])
    GridFunction x(fespace);
    x = 0.0;
 
+   Array<int> ess_bdr(mesh->bdr_attributes.Max());
+   ess_bdr = 1;
+   if(exactSoln) {
+      Array<int> dofs;
+      fespace->GetEssentialVDofs(ess_bdr, dofs);
+      for (int i = 0; i < dofs.Size(); i++)
+         if (dofs[i])
+            x(i) = xp(i);
+   }
+   
    // 6. Set up the bilinear form a(.,.) on the finite element space
    //    corresponding to the Laplacian operator -Delta, by adding the Diffusion
    //    domain integrator and imposing homogeneous Dirichlet boundary
@@ -98,10 +152,11 @@ int main (int argc, char *argv[])
    //    boundary attributes from the mesh as essential (Dirichlet). After
    //    assembly and finalizing we extract the corresponding sparse matrix A.
    BilinearForm *a = new BilinearForm(fespace);
+//   ConstantCoefficient one(1.0);
    a->AddDomainIntegrator(new DiffusionIntegrator(one));
    a->Assemble();
-   Array<int> ess_bdr(mesh->bdr_attributes.Max());
-   ess_bdr = 1;
+   if(exactSoln)
+      x.ProjectBdrCoefficient(e_sol, ess_bdr);
    a->EliminateEssentialBC(ess_bdr, x, *b);
    a->Finalize();
    const SparseMatrix &A = a->SpMat();
@@ -120,8 +175,11 @@ int main (int argc, char *argv[])
       ofstream sol_ofs("sol.gf");
       sol_ofs.precision(8);
       x.Save(sol_ofs);
+      
+      mod.setOutCtxt(0, compContext("resultL2", sightArray(sightArray::dims(x.Size()), x.GetData()), 
+                                    LkComp(2, attrValue::floatT, true)));
    }
-
+//   }
    // 9. (Optional) Send the solution by socket to a GLVis server.
    /*char vishost[] = "localhost";
    int  visport   = 19916;
@@ -130,8 +188,12 @@ int main (int argc, char *argv[])
    sol_sock.precision(8);
    mesh->Print(sol_sock);
    x.Save(sol_sock);
-   sol_sock.send();*/
+   sol_sock.send();* /
    mfem::emitMesh(mesh, &x);
+   
+   mod.setOutCtxt(0, context(config("error", posDev(particles, numDims),
+                                               "numParticles", numParticles,
+                                               "numDims", numDims)));
 
    // 10. Free the used memory.
    delete a;
@@ -141,5 +203,40 @@ int main (int argc, char *argv[])
       delete fec;
    delete mesh;
 
-   return 0;
+   return 0;*/
+}
+
+const double sx = 1./3.;
+const double sy = 11./23.;
+const double sz = 3./7.;
+
+const double kappa = M_PI/5;
+
+double exact_sol(Vector &x)
+{
+   int dim = x.Size();
+   if (dim == 2)
+   {
+      return sin(kappa*(x(0)-sx))*sin(kappa*(x(1)-sy));
+   }
+   else if (dim == 3)
+   {
+      return sin(kappa*(x(0)-sx))*sin(kappa*(x(1)-sy))*sin(kappa*(x(2)-sz));
+   }
+   return 0.;
+}
+
+double exact_rhs(Vector &x)
+{
+   int dim = x.Size();
+   if (dim == 2)
+   {
+      return 2*kappa*kappa*sin(kappa*(x(0)-sx))*sin(kappa*(x(1)-sy));
+   }
+   else if (dim == 3)
+   {
+      return (3*kappa*kappa*
+              sin(kappa*(x(0)-sx))*sin(kappa*(x(1)-sy))*sin(kappa*(x(2)-sz)));
+   }
+   return 0.;
 }

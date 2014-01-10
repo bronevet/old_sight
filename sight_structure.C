@@ -336,6 +336,12 @@ sightObj::~sightObj() {
   }
 }
 
+// Returns whether this object is active or not
+bool sightObj::isActive() const {
+  assert(props);
+  return props->active;
+}
+
 // Registers a new clock with sightObj
 void sightObj::addClock(std::string clockName, sightClock* c) { 
   // This clockName/clock object combination does not currently exist in clocks
@@ -373,7 +379,18 @@ std::map<std::string, MergeHandler>*    MergeHandlerInstantiator::MergeHandlers;
 std::map<std::string, MergeKeyHandler>* MergeHandlerInstantiator::MergeKeyHandlers;
 std::set<GetMergeStreamRecord>*         MergeHandlerInstantiator::MergeGetStreamRecords;
 
-MergeHandlerInstantiator::MergeHandlerInstantiator() {
+MergeHandlerInstantiator::MergeHandlerInstantiator() :
+  sight::common::LoadTimeRegistry("MergeHandlerInstantiator", 
+                                  MergeHandlerInstantiator::init)
+{ }
+
+void MergeHandlerInstantiator::init() {
+  MergeHandlers          = new std::map<std::string, MergeHandler>();
+  MergeKeyHandlers       = new std::map<std::string, MergeKeyHandler>();
+  MergeGetStreamRecords  = new std::set<GetMergeStreamRecord>();
+}
+
+/*MergeHandlerInstantiator::MergeHandlerInstantiator() {
   // Initialize the handlers mappings, using environment variables to make sure that
   // only the first instance of this MergeHandlerInstantiator creates these objects.
   if(!getenv("SIGHT_MERGE_HANDLERS_INSTANTIATED")) {
@@ -382,7 +399,7 @@ MergeHandlerInstantiator::MergeHandlerInstantiator() {
     MergeGetStreamRecords  = new std::set<GetMergeStreamRecord>();
     setenv("SIGHT_MERGE_HANDLERS_INSTANTIATED", "1", 1);
   }
-}
+}*/
 
 // Returns a mapping from the names of objects for which records are kept within this MergeHandlerInstantiator
 // object to the freshly-allocated streamRecord objects that keep their records. The records are specialized 
@@ -682,6 +699,17 @@ std::string Merger::getMergedValue(const std::vector<std::pair<properties::tagTy
     else                merged = mergeText(properties::get(t->second, key), merged);
   }
   return merged;
+}
+
+// Given a vector of tag properties that must be the same, returns their common value
+std::string Merger::getSameValue(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags, 
+                                 std::string key) {
+  string ret;
+  for(vector<pair<properties::tagType, properties::iterator> >::const_iterator t=tags.begin(); t!=tags.end(); t++) {
+    if(t==tags.begin()) ret = t->second.get(key);
+    else assert(ret == t->second.get(key));
+  }
+  return ret;
 }
 
 // Returns whether all the elements in the given set are equal to each others
@@ -1552,7 +1580,7 @@ streamsize dbgBuf::xsputn(const char * s, streamsize n)
     int ret;
     int i=0;
     char open[]="&#91;";
-    char close[]="&#91;";
+    char close[]="&#93;";
     while(i<n) {
       if(s[i]=='[') {
         ret = baseBuf->sputn(open, sizeof(open)-1);
@@ -1636,14 +1664,25 @@ void dbgStream::init(properties* props, string title, string workDir, string img
   } else if(getenv("SIGHT_LAYOUT_EXEC")) {
 //cout << "getenv(\"SIGHT_LAYOUT_EXEC\")="<<getenv("SIGHT_LAYOUT_EXEC")<<endl;
     dbgFile = NULL;
+    // Unset the mutex environment variables from LoadTimeRegistry to make sure that they don't leak to the layout process
+    LoadTimeRegistry::liftMutexes();
+    // Execute the layout process
     FILE *out = popen(getenv("SIGHT_LAYOUT_EXEC"), "w");
+    // Restore the LoadTimeRegistry mutexes
+    LoadTimeRegistry::restoreMutexes();
+    
     int outFD = fileno(out);
     buf = new dbgBuf(new fdoutbuf(outFD));
   // Version 3 (default): write output to a pipe for the default slayout to use immediately
   } else {
-//cout << "slayout"<<endl;
     dbgFile = NULL;
+    // Unset the mutex environment variables from LoadTimeRegistry to make sure that they don't leak to the layout process
+    LoadTimeRegistry::liftMutexes();
+    // Execute the layout process
     FILE *out = popen((txt()<<ROOT_PATH<<"/slayout").c_str(), "w");
+    // Restore the LoadTimeRegistry mutexes
+    LoadTimeRegistry::restoreMutexes();
+    
     int outFD = fileno(out);
     buf = new dbgBuf(new fdoutbuf(outFD));
   }

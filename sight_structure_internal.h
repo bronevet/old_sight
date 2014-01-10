@@ -239,6 +239,9 @@ class sightObj {
   static std::map<std::string, std::set<sightClock*> > clocks;
   
   public:
+  // Returns whether this object is active or not
+  bool isActive() const;
+    
   // Registers a new clock with sightObj
   static void addClock(std::string clockName, sightClock* c);
   
@@ -287,13 +290,16 @@ typedef void (*MergeKeyHandler)(properties::tagType type,
 // streamRecord objects that keep their records. The records are specialized with the given stream ID.
 typedef std::map<std::string, streamRecord*> (*GetMergeStreamRecord)(int streamID);
 
-class MergeHandlerInstantiator {
+class MergeHandlerInstantiator : public sight::common::LoadTimeRegistry {
   public:
   static std::map<std::string, MergeHandler>*    MergeHandlers;
   static std::map<std::string, MergeKeyHandler>* MergeKeyHandlers;
   static std::set<GetMergeStreamRecord>*         MergeGetStreamRecords;
 
   MergeHandlerInstantiator();
+  
+  // Called exactly once for each class that derives from LoadTimeRegistry to initialize its static data structures.
+  static void init();
   
   // Returns a mapping from the names of objects for which records are kept within this MergeHandlerInstantiator
   // object to the freshly-allocated streamRecord objects that keep their records. The records are specialized 
@@ -456,7 +462,11 @@ class Merger {
   // Given a vector of tag properties, merges their values and returns the merged string
   static std::string getMergedValue(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags, 
                                     std::string key);
-  	
+  
+  // Given a vector of tag properties that must be the same, returns their common value
+  static std::string getSameValue(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags, 
+                                    std::string key);
+  
   // Returns whether all the elements in the given set are equal to each others
   template<class T>
   static bool allSame(const std::vector<T>& s) {
