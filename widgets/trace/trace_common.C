@@ -18,12 +18,13 @@ string trace::showLoc2Str(trace::showLocT showLoc)
 // Returns a string representation of a vizT object
 string trace::viz2Str(trace::vizT viz) {
   switch(viz) {
-    case trace::table:   return "table";
-    case trace::lines:   return "lines";
-    case trace::decTree: return "decTree";
-    case trace::heatmap: return "heatmap";
-    case trace::boxplot: return "boxplot";
-    default:             return "???";
+    case trace::table:     return "table";
+    case trace::lines:     return "lines";
+    case trace::scatter3d: return "scatter3d";
+    case trace::decTree:   return "decTree";
+    case trace::heatmap:   return "heatmap";
+    case trace::boxplot:   return "boxplot";
+    default:               return "???";
   }
 }
 

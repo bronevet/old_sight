@@ -124,6 +124,14 @@ class port {
   port(const group& g, const context& ctxt, sight::common::module::ioT type, int index) : g(g), ctxt(ctxt.copy()), type(type), index(index) {}
   ~port() { if(ctxt) delete ctxt; }
   
+  port& operator=(const port& that) {
+    if(ctxt) delete ctxt;
+    ctxt = that.ctxt->copy();
+    type = that.type;
+    index = that.index;
+    return *this;
+  }
+  
   bool operator==(const port& that) const
   { return g==that.g && *ctxt==*that.ctxt && type==that.type && index==that.index; }
 
@@ -137,6 +145,12 @@ class port {
   void setCtxt(const context& newCtxt) {
     if(ctxt) delete ctxt;
     ctxt = newCtxt.copy();
+  }
+  
+  // Adds the given key/attrValue pair to the port's context
+  void addCtxt(const std::string& key, const attrValue& val) {
+    assert(ctxt);
+    ctxt->configuration[key] = val;
   }
   
   // Erase the context within this port. This is important for data-structures that ignore context details
@@ -352,8 +366,11 @@ class module: public common::module
   // The context in a format that traces can understand, set in init() and used in ~module()
   std::map<std::string, attrValue> traceCtxt;
   
+  // The input ports of this module
+  std::vector<port> ins;
+  
   // The  output ports of this module
-  std::vector<port> outputs;
+  std::vector<port> outs;
   
   // We allow the user to provide a pointer to an output vector, which is populated by the module
   // object. This is a pointer to this vector.
@@ -452,7 +469,17 @@ class module: public common::module
   int numOutputs() const { return g.numOutputs(); }
   
   // Sets the context of the given output port
+  virtual void setInCtxt(int idx, const context& c);
+  
+  // Adds the given key/attrValue pair to the context of the given output port
+  virtual void addInCtxt(int idx, const std::string& key, const attrValue& val);
+  
+  // Adds the given port to this module's inputs
+  virtual void addInCtxt(const port& p);
+  
+  // Sets the context of the given output port
   virtual void setOutCtxt(int idx, const context& c);
+  
   
   // Returns a list of the module's input ports
   //std::vector<port> inputPorts() const;

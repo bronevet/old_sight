@@ -1206,8 +1206,8 @@ string dbgStream::enterFileLevel(block* b, bool topLevel)
   indexFiles.push_back(&indexFile);
   
   indexFile << "<frameset cols=\"20%,80%\">\n";
-  indexFile << "\t<frame src=\""<<sumRelFName.str()<<".html\" name=\"summary\"/>\n";
-  indexFile << "\t<frame src=\""<<detailRelFName.str() <<".html\" name=\"detail\"/>\n";
+  indexFile << "\t<frame src=\""<<sumRelFName.str()<<".html\" name=\"summary\" id=\"summary\"/>\n";
+  indexFile << "\t<frame src=\""<<detailRelFName.str() <<".html\" name=\"detail\" id=\"detail\"/>\n";
   indexFile << "</frameset>\n";
   indexFile.close();
   

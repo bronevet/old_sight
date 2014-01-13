@@ -387,7 +387,7 @@ std::string attrValue::getAsStr() const {
          if(type == ptrT)       oss << *((void**)store);
     else if(type == intT)       oss << *((long*)store);
     else if(type == floatT)     oss << *((double*)store);
-    else if(type == customT)    { cout << "getAsStr() store="<<((customAttrValue**)store)<<endl; oss << (*((customAttrValue**)store))->serialize(); }
+    else if(type == customT)    { /*cout << "getAsStr() store="<<((customAttrValue**)store)<<endl; */oss << (*((customAttrValue**)store))->serialize(); }
     else  {
       cerr << "attrValue::str() ERROR: unknown attribute value type: "<<type2str(type)<<"!"<<endl;
       assert(0);

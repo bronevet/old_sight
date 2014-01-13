@@ -424,7 +424,7 @@ class Merger {
   
   protected:
   // Called by derived objects to indicate that this tag should not be emitted
-  bool dontEmit() { emitTagFlag=false; }
+  void dontEmit() { emitTagFlag=false; }
   
   // Called by merging algorithms to check whether a tag should be emitted
   public:

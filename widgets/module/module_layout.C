@@ -216,6 +216,7 @@ void modularApp::showButtons(int numInputs, int numOutputs, int ID, std::string 
           cmd << "registerModuleButtonCmd("<<buttonID<<", \""<<
                                moduleTraces[ID]->getDisplayJSCmd(traceStream::attrNames(/*txt()<<i<<":"<<*c*/ctxtGrouping->first+":"+*c), traceStream::attrNames(*t))<<
                              "\");"<<endl;
+//cout << "ts="<<moduleTraces[ID]<<" cmd="<<cmd.str()<<endl;
           dbg.widgetScriptCommand(cmd.str());
         } // ctxt attrs
       /*} else
@@ -278,10 +279,14 @@ void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int
   // Input ports and body
   dotFile << "\tnode"<<moduleID<<" [shape=none, fill=lightgrey, href=\"#\", onclick=\"return ClickOnModuleNode('node"<<moduleID<<"', this, ID);\", label=";
   dotFile << "<<TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\">"<<endl;
-  
+ 
+  // Records whether the entry and ports have been emitted
+  bool entryEmitted=false; 
+  bool exitEmitted=false;
   if(numInputs>0) {
     if(modules[moduleID]->ctxtNames.size()>0) {
       dotFile << "\t\t<TR><TD PORT=\"ENTRY\"><TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\">"<<endl;
+      entryEmitted = true;
       dotFile << "\t\t\t<TR>";
       /*for(int i=0; i<numInputs; i++) 
       dotFile << "<TD PORT=\""<<portName(input, i)<<"\" "<<
@@ -326,7 +331,7 @@ void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int
   
   // Node Info
   dotFile << "\t\t<TR><TD";
-  if(numInputs==0) dotFile << " PORT=\"EXIT\"";
+  if(!entryEmitted) dotFile << " PORT=\"ENTRY\"";
   //if(numInputs + numOutputs > 0) dotFile << " COLSPAN=\""<<(numInputs>numOutputs? numInputs: numOutputs)<<"\"";
   dotFile << "><FONT POINT-SIZE=\"26\">:"<<moduleName<<"</FONT></TD></TR>"<<endl;
   
@@ -347,10 +352,11 @@ void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int
     if(modules[moduleID]->traceAttrNames.size()>0) {
     //for(int i=0; i<modules[moduleID]->traceAttrNames.size(); i++) {
       dotFile << "\t\t<TR><TD PORT=\"EXIT\"><TABLE><TR><TD BGCOLOR=\"#FF00FF\" COLOR=\"#FF00FF\" WIDTH=\""<<databoxWidth<<"\" HEIGHT=\""<<databoxHeight<<"\"></TD></TR></TABLE></TD></TR>"<<endl;
-    } else {
-      dotFile << "\t\t<TR><TD PORT=\"EXIT\"></TD></TR>"<<endl;
+      exitEmitted = true;
     }
   }
+  if(!exitEmitted)
+    dotFile << "\t\t<TR><TD PORT=\"EXIT\"></TD></TR>"<<endl;
   
   dotFile << "</TABLE>>";
   
@@ -1043,6 +1049,7 @@ std::map<std::string, std::string> compModule::compareObservations(
     
     attrValue rel = i->second.compare(i2->second, *comp);
     //cout << "i->second="<<i->second.serialize()<<", i2->second="<<i2->second.serialize()<<" rel="<<rel.serialize()<<endl;
+    cout << "    rel="<<rel.serialize()<<endl;
     
     // Serialize the relationship between the two attrValues and record it in relation[]]
     relation[i->first] = rel.serialize();
@@ -1077,11 +1084,11 @@ void compModule::observe(int traceID,
                          const map<string, string>& obs,
                          const map<string, anchor>& obsAnchor/*,
                          const set<traceObserver*>& observers*/) {
-  /*cout << "compModule::observe("<<traceID<<")"<<endl;
+  cout << "compModule::observe("<<traceID<<")"<<endl;
   cout << "    ctxt=";
   for(map<string, string>::const_iterator c=ctxt.begin(); c!=ctxt.end(); c++) { cout << c->first << "=>"<<c->second<<" "; }
   cout << endl;
-  cout << "    obs=";
+  /*cout << "    obs=";
   for(map<string, string>::const_iterator o=obs.begin(); o!=obs.end(); o++) { cout << o->first << "=>"<<o->second<<" "; }
   cout << endl;*/
   /*cout << "    options=";

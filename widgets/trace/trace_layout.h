@@ -56,7 +56,13 @@ class traceObserver {
   std::map<traceObserver*, int> observers;
   //std::set<traceObserver*> observersS;
   
+  // Records whether we've notified observers of this trace that it has finished
+  static bool finishNotified;
+  
   public:
+    
+  traceObserver() {}
+  ~traceObserver();
   // Called on each observation from the traceObserver this object is observing
   // traceID - unique ID of the trace from which the observation came
   // ctxt - maps the names of the observation's context attributes to string representations of their values
@@ -75,6 +81,13 @@ class traceObserver {
                        const std::map<std::string, std::string>& obs,
                        const std::map<std::string, anchor>&      obsAnchor,
                        const std::set<traceObserver*>&           observers)=0;*/
+  
+  // Called when the stream of observations has finished to allow the implementor to perform clean-up tasks.
+  // This method is optional.
+  virtual void obsFinished();
+  
+  // Notifies all observers of this trace that it is finished
+  void notifyObsFinish();
   
   // Called from inside observe() to emit an observation that this traceObserver makes.
   void emitObservation(int traceID, 
@@ -147,6 +160,33 @@ class traceObserverQueue: public traceObserver {
                const std::map<std::string, anchor>&      obsAnchor/*,
                const std::set<traceObserver*>&           observers*/);
 }; // traceObserverQueue
+
+// This is a trace observer that processes incoming observations by writing them into a file, running some
+// application on this file and emitting the observations produced by the application.
+class externalTraceProcessor_File : public traceObserver {
+  // Path of the executable that will be executed on the observations
+  std::string processorFName;
+  
+  // Path name that can be used to store intermediate files.
+  std::string obsFName;
+  
+  // The file stream to which we write observations. The processor application will read this file.
+  std::ofstream traceFile;
+  
+  public:  
+  externalTraceProcessor_File(std::string processorFName, std::string obsFName);
+  
+  // Interface implemented by objects that listen for observations a traceStream reads. Such objects
+  // call traceStream::registerObserver() to inform a given traceStream that it should observations.
+  void observe(int traceID,
+               const std::map<std::string, std::string>& ctxt, 
+               const std::map<std::string, std::string>& obs,
+               const std::map<std::string, anchor>&      obsAnchor);
+  
+  // Called when the stream of observations has finished to allow the implementor to perform clean-up tasks.
+  // This method is optional.
+  void obsFinished();
+}; // class externalTraceProcessor_File
 
 class traceStream: public attrObserver, public common::trace, public traceObserver
 {

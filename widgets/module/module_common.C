@@ -26,6 +26,16 @@ module::context::context(properties::iterator props, std::string prefix) {
   }
 }
 
+// Adds the given key/attrValue pair to this context
+void module::context::add(std::string key, const attrValue& val)
+{ configuration[key] = val; }
+
+// Add all the key/attrValue pairs from the given context to this one, overwriting keys as needed
+void module::context::add(const context& that) {
+  for(std::map<std::string, attrValue>::const_iterator c=that.configuration.begin(); c!=that.configuration.end(); c++)
+    configuration[c->first] = c->second;
+}
+
 // Returns the properties map that describes this context object.
 // The names of all the fields in the map are prefixed with the given string.
 map<string, string> module::context::getProperties(std::string prefix) const {

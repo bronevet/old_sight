@@ -25,16 +25,14 @@ int main(int argc, char** argv) {
   dbg << "In this example the Box Plot, Table and Heatmap will be shown at the trace start point and the Line Graph will be shown at the trace end point."<<endl;
   
   // First select the names of the context attributes that influence the values of the traced variables
-  list<string> contextAttrs;
-  contextAttrs.push_back("i");
-  contextAttrs.push_back("j");
-  trace tableTrace("Table", contextAttrs, trace::showBegin, trace::table);
-  trace heatmapTrace("Heatmap", contextAttrs, trace::showBegin, trace::heatmap);
+  trace tableTrace("Table", trace::context("i", "j"), trace::showBegin, trace::table);
+  trace heatmapTrace("Heatmap", trace::context("i", "j"), trace::showBegin, trace::heatmap);
   
   trace boxplotTrace("Boxplot", "k", trace::showBegin, trace::boxplot);
   
   // For the last trace we'll use k as the context variable
   trace linesTrace("Lines", "k", trace::showEnd, trace::lines);
+  trace scatterTrace("Scatter", trace::context("i", "j", "k"), trace::showBegin, trace::scatter3d);
   
   for(int i=0; i<5; i++) {
     attr iAttr("i", i);
@@ -57,7 +55,8 @@ int main(int argc, char** argv) {
         traceAttr("Lines", "j", attrValue(j));
         
         traceAttr("Boxplot", "j", attrValue(j));
-        traceAttr("Boxplot", "i", attrValue(i));
+        traceAttr("Boxplot", "i", i);
+        traceAttr("Scatter", "func", i*j*k);
       }
     }
   }

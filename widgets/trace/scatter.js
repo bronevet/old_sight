@@ -15,11 +15,29 @@ function createNumericScale(data, idx, minVisCoord, maxVisCoord, axisType) {
                 .domain([Min, Max])
                 .range([ minVisCoord, maxVisCoord ])];
   // Otherwise, use a linear scale
-  else
+  else {
+    var domainMin, domainMax;
+    // If the domain has only one element, widen it out to enable d3 to create a proper scale
+    if(Min==Max) {
+      domainMin = Min-1;
+      domainMax = Min+1;
+    } else {
+      // If the region between Min and Max is far away from 0 or overlaps 0, show exactly this region
+      if((Min<0 && Max>0) || (Min>0 && (Max-Min) < Max/2)) {
+        domainMin = Min;
+        domainMax = Max;
+      // Otherwise, start the plotting region from 0
+      } else {
+        domainMin = 0;
+        domainMax = Max;
+      }
+    }
+  
     return ["lin",
             d3.scale.linear()
-                .domain([Math.min(0, Min), Max])
+                .domain([domainMin, domainMax])
                 .range([ minVisCoord, maxVisCoord ])];
+  }
 }
 
 // Caches the data arrays of different hostDivs to make it possible to re-visualize the contents of

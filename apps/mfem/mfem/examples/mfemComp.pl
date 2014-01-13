@@ -1,8 +1,11 @@
 #!/usr/bin/perl
 
 use warnings;
+use Cwd;
 use Cwd 'abs_path';
 use File::Basename;
+
+my $workDir = getcwd;
 
 my $scriptPath = abs_path($0);
 my ($exFilename, $exDir, $exSuffix) = fileparse($scriptPath);
@@ -23,8 +26,11 @@ foreach my $mesh (@meshes) {
 foreach my $ref_level (@ref_levels) {
 foreach my $finElement (@finElements) {
 foreach my $exactSoln (0, 1) {
+#  chdir $exDir;
   sys("$exDir/ex1 $exDir/../data/${mesh}.mesh $ref_level $finElement $exactSoln", $verbose);
 } } } }
+
+#chdir $workDir;
 
 # Merge the output of the individual runs
 sys("../hier_merge dbg.MFEM.ex1 zipper dbg.MFEM.ex1.meshFile_*.ref_levels_*/structure", $verbose);

@@ -71,6 +71,29 @@ void *trace::enterTraceStream(properties::iterator props) {
  ***** traceObserver *****
  *************************/
 
+// Records whether we've notified observers of this trace that it has finished
+bool traceObserver::finishNotified=false;
+
+traceObserver::~traceObserver() {
+  notifyObsFinish();
+}  
+
+// Called when the stream of observations has finished to allow the implementor to perform clean-up tasks.
+// This method is optional.
+void traceObserver::obsFinished() {
+  notifyObsFinish();
+}
+
+// Notifies all observers of this trace that it is finished
+void traceObserver::notifyObsFinish() {
+  // If we have not yet notified all observers that this trace is finished, do so now
+  if(!finishNotified) {
+    finishNotified=true;
+    for(std::map<traceObserver*, int>::iterator o=observers.begin(); o!=observers.end(); o++)
+      o->first->obsFinished();
+  }
+}
+  
 // Called from inside observe() to emit an observation that this traceObserver makes.
 void traceObserver::emitObservation(int traceID, 
                                     const std::map<std::string, std::string>& ctxt, 
@@ -264,6 +287,90 @@ void traceObserverQueue::observe(int traceID,
   //emitObservation(traceID, ctxt, obs, obsAnchor, observers);*/
 }
 
+/***************************************
+ ***** externalTraceProcessor_File *****
+ ***************************************/
+
+externalTraceProcessor_File::externalTraceProcessor_File(std::string processorFName, std::string obsFName) : 
+  processorFName(processorFName), obsFName(obsFName) 
+{
+  traceFile.open(obsFName.c_str());
+}
+  
+// Interface implemented by objects that listen for observations a traceStream reads. Such objects
+// call traceStream::registerObserver() to inform a given traceStream that it should observations.
+void externalTraceProcessor_File::observe(int traceID,
+             const std::map<std::string, std::string>& ctxt, 
+             const std::map<std::string, std::string>& obs,
+             const std::map<std::string, anchor>&      obsAnchor) {
+
+  // Serialize the current observation into the trace file
+  for(std::map<std::string, std::string>::const_iterator c=ctxt.begin(); c!=ctxt.end(); c++) {
+    sight::common::escapedStr key(c->first,  " :", sight::common::escapedStr::escaped);
+    sight::common::escapedStr val(c->second, " :", sight::common::escapedStr::escaped);
+    traceFile << "ctxt:"<<key.escape()<<":"<<val.escape()<<" ";
+  }
+
+  for(std::map<std::string, std::string>::const_iterator o=obs.begin(); o!=obs.end(); o++) {
+    sight::common::escapedStr key(o->first,  " :", sight::common::escapedStr::escaped);
+    sight::common::escapedStr val(o->second, " :", sight::common::escapedStr::escaped);
+    traceFile << "obs:"<<key.escape()<<":"<<val.escape()<<" ";
+  }
+
+  for(std::map<std::string, anchor>::const_iterator a=obsAnchor.begin(); a!=obsAnchor.end(); a++) {
+    sight::common::escapedStr key(a->first,  " :", sight::common::escapedStr::escaped);
+    traceFile << "anchor:"<<key.escape()<<":"<<a->second.getID()<<" ";
+  }
+
+  traceFile << endl;
+}
+
+// Called when the stream of observations has finished to allow the implementor to perform clean-up tasks.
+// This method is optional.
+void externalTraceProcessor_File::obsFinished() {
+  // We're done writing the trace file, so close the stream
+  traceFile.close();
+  
+  // Execute the processing application
+  ostringstream s; s<< processorFName << " "<<obsFName;
+  FILE* out = popen(s.str().c_str(), "r");
+
+  // Read out the trace produced by the processor
+  char line[10000];
+  while(fgets(line, 10000, out)) {
+    // Split the line into its individual terms
+    sight::common::escapedStr es(string(line), " ", sight::common::escapedStr::escaped);
+    vector<string> terms = es.unescapeSplit(" ");
+
+    map<string, string> ctxt, obs;
+    map<string, anchor> obsAnchor;
+
+    // Iterate over each term of this observation, adding each one into this observation's context, trace observation or anchors
+    for(vector<string>::iterator t=terms.begin(); t!=terms.end(); t++) {
+      // Split the term into the key and the value
+      sight::common::escapedStr es(string(*t), ":", sight::common::escapedStr::escaped);
+      vector<string> kv = es.unescapeSplit(":");
+      assert(kv.size()==2);
+      string key=kv[0];
+      string val=kv[1];
+
+      // Identify the type of this term
+      int colonLoc = key.find(":");
+      string type = key.substr(0, colonLoc);
+      string keyName = key.substr(colonLoc+1);
+      if(type == "ctxt") ctxt[keyName] = val;
+      else if(type=="obs") obs[keyName] = val;
+      else obsAnchor[keyName] = anchor(attrValue::parseInt(val));
+    }
+
+    // Emit the observation
+    emitObservation(-1, ctxt, obs, obsAnchor);
+  }
+  
+  // Inform this trace's observers that it has finished
+  traceObserver::obsFinished();;
+}
+
 /***********************
  ***** traceStream *****
  ***********************/
@@ -277,6 +384,7 @@ std::map<int, traceStream*> traceStream::active;
 traceStream::traceStream(properties::iterator props, std::string hostDiv, bool showTrace) : 
   hostDiv(hostDiv), showTrace(showTrace)
 {
+
   static bool initialized = false;
   
   if(!initialized) {
@@ -300,6 +408,13 @@ traceStream::traceStream(properties::iterator props, std::string hostDiv, bool s
     dbg.includeWidgetScript("ID3-Decision-Tree/js/id3.js", "text/javascript");
     //dbg.includeScript("https://www.google.com/jsapi?autoload={\"modules\":[{\"name\":\"visualization\",\"version\":\"1\",\"packages\":[\"orgchart\"]}]}", "text/javascript");
     dbg.includeFile("ID3-Decision-Tree");
+
+    // Three.js
+    dbg.includeWidgetScript("Three.js",               "text/javascript"); dbg.includeFile("Three.js");
+    dbg.includeWidgetScript("Detector.js",            "text/javascript"); dbg.includeFile("Detector.js");
+    dbg.includeWidgetScript("OrbitControls.js",       "text/javascript"); dbg.includeFile("OrbitControls.js");
+    dbg.includeWidgetScript("THREEx.WindowResize.js", "text/javascript"); dbg.includeFile("THREEx.WindowResize.js");
+    //dbg.includeWidgetScript("Stats.js",   "text/javascript"); dbg.includeFile("Stats.js");
     
     // D3 Widgets
     dbg.includeWidgetScript("d3.v3.min.js", "text/javascript"); dbg.includeFile("d3.v3.min.js");
@@ -308,6 +423,7 @@ traceStream::traceStream(properties::iterator props, std::string hostDiv, bool s
     dbg.includeWidgetScript("trace/boxplot.js",   "text/javascript"); dbg.includeFile("trace/boxplot.js");
     dbg.includeWidgetScript("trace/gradient.js",  "text/javascript"); dbg.includeFile("trace/gradient.js");
     dbg.includeWidgetScript("trace/scatter.js",   "text/javascript"); dbg.includeFile("trace/scatter.js");
+    dbg.includeWidgetScript("trace/scatter3d.js", "text/javascript"); dbg.includeFile("trace/scatter3d.js");
 
     dbg.includeWidgetScript("trace/trace.js", "text/javascript"); dbg.includeFile("trace/trace.js"); 
     
@@ -316,6 +432,8 @@ traceStream::traceStream(properties::iterator props, std::string hostDiv, bool s
   
   traceID = properties::getInt(props, "traceID");
   viz     = (vizT)properties::getInt(props, "viz");
+
+//cout << "ts::ts this="<<this<<" props="<<props.str()<<endl<<"viz="<<viz<<endl;
   
   // Add this trace object as a change listener to all the context variables
   long numCtxtAttrs = properties::getInt(props, "numCtxtAttrs");
@@ -356,18 +474,17 @@ traceStream::~traceStream() {
   if(showTrace) { 
     // String that contains the names of all the context attributes 
     string ctxtAttrsStr;
-    if(viz==table || viz==decTree || viz==heatmap || viz==boxplot)
+    if(viz==table || viz==decTree || viz==scatter3d || viz==heatmap || viz==boxplot)
       ctxtAttrsStr = JSArray<list<string> >(contextAttrs);
     
     // String that contains the names of all the trace attributes
     string tracerAttrsStr;
-    if(viz==table || viz==lines || viz==heatmap || viz==boxplot)
+    if(viz==table || viz==lines || viz==heatmap || viz==scatter3d || viz==boxplot)
       tracerAttrsStr = JSArray<list<string> >(traceAttrs);
     
     assert(hostDiv != "");
-    
     // Now that we know all the trace variables that are included in this trace, emit the trace
-    if(viz==table || viz==heatmap) {
+    if(viz==table || viz==heatmap || viz==scatter3d) {
       //dbg.widgetScriptPrologCommand(txt()<<"loadGoogleAPI();");
       ostringstream cmd; 
       cmd<<"displayTrace('"<<traceID<<"', "<<

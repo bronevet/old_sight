@@ -4,9 +4,9 @@ EXE := .exe
 endif
 
 sight_H := ../*.h ../*/*.h ../widgets/*/*.h
-TESTERS = 10.SpringModules${EXE} 9.CompModules.single${EXE} 9.CompModules.merged${EXE} \
+TESTERS = 5.Tracing${EXE} #10.SpringModules${EXE} 9.CompModules.single${EXE} 9.CompModules.merged${EXE} \
           0.Demo${EXE} 1.StructuredFormatting${EXE} 2.ConditionalFormatting${EXE} 3.Navigation${EXE} \
-          4.AttributeAnnotationFiltering${EXE} 5.Tracing${EXE} 6.PerfAnalysis${EXE} \
+          4.AttributeAnnotationFiltering${EXE} 6.PerfAnalysis${EXE} \
           7.Merging${EXE} 8.Modules${EXE}
 
 all: ${TESTERS}
@@ -38,7 +38,7 @@ run: ${TESTERS}
 	export SIGHT_FILE_OUT=1; ../hier_merge dbg.9.CompModules zipper dbg.9.CompModules.*/structure
 	rm -rf dbg.9.CompModules.*;
 	../slayout${EXE} dbg.9.CompModules/structure;
-	./9.CompModules.single${EXE} 0 .1 .1 .05 .005
+	./9.CompModules.single${EXE} 0 .1 .1 .05 .01
 	rm -rf dbg.10.SpringModules*; 
 	export SIGHT_FILE_OUT=1; export SPRING_BUF_SIZE=0;       ./10.SpringModules${EXE} 0 .1 .1 .01 .05; 
 	export SIGHT_FILE_OUT=1; export SPRING_BUF_SIZE=1024;    ./10.SpringModules${EXE} 0 .1 .1 .01 .05; ./10.SpringModules${EXE} 1 .1 .1 .01 .05; ./10.SpringModules${EXE} 2 .1 .1 .01 .05; ./10.SpringModules${EXE} 3 .1 .1 .01 .05;  ./10.SpringModules${EXE} 4 .1 .1 .01 .05;

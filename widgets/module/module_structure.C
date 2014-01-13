@@ -686,6 +686,8 @@ void module::init(const std::vector<port>& in, derivInfo* deriv) {
     deriv = new derivInfo(/*gmts*/);
   }
   
+  ins = in;
+  
   if(modularApp::isInstanceActive() && deriv->props->active) {
     moduleID = modularApp::genModuleID(g);
     
@@ -722,7 +724,7 @@ void module::init(const std::vector<port>& in, derivInfo* deriv) {
     // Initialize the output ports of this module
     if(externalOutputs) externalOutputs->clear(); 
     for(int i=0; i<g.numOutputs(); i++) {
-      outputs.push_back(port(g, context(), output, i));
+      outs.push_back(port(g, context(), output, i));
       // If the user provided an output vector, initialize it as well
       if(externalOutputs) { 
         externalOutputs->push_back(port(g, context(), output, i));
@@ -783,6 +785,8 @@ void module::init(const std::vector<port>& in, derivInfo* deriv) {
 module::~module()
 { 
   //cout << "~module() props->active="<<props->active<<endl;
+
+  if(ins.size() != g.numInputs()) { cerr << "ERROR: module \""<<g.name()<<"\" specifies "<<g.numInputs()<<" inputs but "<<ins.size()<<" inputs are actually provided!"<<endl; }
   
   // Complete the measurement of application's behavior during the module's lifetime
   if(modularApp::isInstanceActive()) {
@@ -807,9 +811,9 @@ module::~module()
     }
     
     // Add to the trace observation the properties of all of the module's outputs
-    for(int i=0; i<outputs.size(); i++) {
-      for(map<std::string, attrValue>::iterator c=outputs[i].ctxt->configuration.begin();
-          c!=outputs[i].ctxt->configuration.end(); c++) {
+    for(int i=0; i<outs.size(); i++) {
+      for(map<std::string, attrValue>::iterator c=outs[i].ctxt->configuration.begin();
+          c!=outs[i].ctxt->configuration.end(); c++) {
         obs.push_back(make_pair(encodeCtxtName("output", txt()<<i, c->first), c->second));
       }
     }
@@ -818,7 +822,7 @@ module::~module()
     modularApp::moduleTrace[g]->traceFullObservation(traceCtxt, obs, anchor::noAnchor);
 
     // Make sure that the output contexts have the same names across all the invocations of this module group
-    modularApp::registerInOutContexts(g, outputs, sight::common::module::output);
+    modularApp::registerInOutContexts(g, outs, sight::common::module::output);
   
     modularApp::exitModule(this);
   }
@@ -829,9 +833,26 @@ module::~module()
 }*/
 
 // Sets the context of the given output port
+void module::setInCtxt(int idx, const context& c) {
+  assert(idx<g.numInputs());
+  ins[idx].setCtxt(c);
+}
+
+// Adds the given key/attrValue pair to the context of the given output port
+void module::addInCtxt(int idx, const std::string& key, const attrValue& val) {
+  assert(idx<g.numInputs());
+  ins[idx].addCtxt(key, val);
+}
+
+// Adds the given port to this module's inputs
+void module::addInCtxt(const port& p) {
+  ins.push_back(p);
+}
+
+// Sets the context of the given output port
 void module::setOutCtxt(int idx, const context& c) { 
   assert(idx<g.numOutputs());
-  outputs[idx].setCtxt(c);
+  outs[idx].setCtxt(c);
   // If the user provided an output vector, update it as well
   if(externalOutputs)
     (*externalOutputs)[idx].setCtxt(c);
@@ -847,12 +868,12 @@ void module::setOutCtxt(int idx, const context& c) {
 
 // Returns a list of the module's output ports
 std::vector<port> module::outPorts() const {
-	return outputs;
+	return outs;
 }
 
 port module::outPort(int idx) const {
   assert(idx < g.numOutputs());
-  return outputs[idx];  
+  return outs[idx];  
 }
 
 /***********************
@@ -1245,8 +1266,8 @@ properties* compModuleTraceStream::setProperties(int moduleID, /*const std::stri
     
     // Add the comparators to be used for each output attribute
     int outIdx=0;
-    for(std::vector<port>::iterator o=cm->outputs.begin(); o!=cm->outputs.end(); o++, outIdx++) {
-      if(o->ctxt==NULL) { cerr << "ERROR in module "<<moduleID<<"! Contet of output "<<outIdx<<" not provided!"<<endl; assert(0); }
+    for(std::vector<port>::iterator o=cm->outs.begin(); o!=cm->outs.end(); o++, outIdx++) {
+      if(o->ctxt==NULL) { cerr << "ERROR in module "<<moduleID<<"! Context of output "<<outIdx<<" not provided!"<<endl; assert(0); }
       compContext* ctxt = dynamic_cast<compContext*>(o->ctxt);
       assert(ctxt);
       pMap[txt()<<"out"<<outIdx<<":numAttrs"] = txt()<<ctxt->comparators.size();

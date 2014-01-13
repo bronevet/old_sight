@@ -88,8 +88,11 @@ class module {
     virtual bool operator<(const context& that) const
     { return configuration<that.configuration; }
     
-    void add(std::string key, const attrValue& val)
-    { configuration[key] = val; }
+    // Adds the given key/attrValue pair to this context
+    void add(std::string key, const attrValue& val);
+    
+    // Add all the key/attrValue pairs from the given context to this one, overwriting keys as needed
+    void add(const context& that);
     
     const std::map<std::string, attrValue>& getCfg() const { return configuration; }
     

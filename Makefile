@@ -23,7 +23,9 @@ ifeq (${OS}, Cygwin)
 EXE := .exe
 endif
 
-all: sightDefines.pl gdbLineNum.pl libsight_structure.a slayout${EXE} hier_merge${EXE} widgets_post allExamples script/taffydb maketools
+all: core allExamples
+	
+core: sightDefines.pl gdbLineNum.pl libsight_structure.a slayout${EXE} hier_merge${EXE} widgets_post script/taffydb maketools
 	chmod 755 html img script
 	chmod 644 html/* img/* script/*
 	chmod 755 script/taffydb
@@ -52,9 +54,15 @@ endif
 .PHONY: apps
 apps: mfem #mcbench
 
-mfem:
+mfem: core
 	cd apps/mfem; make ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}"
-	cd apps/mfem; make ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS}
+#	cd apps/mfem; make ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS}
+
+CoMD: 
+	cd apps/CoMD/src-mpi; make ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}"
+	
+CoMDmon: 
+	cd apps/CoMD/src-mpi; make ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS} -DDISTILL_MONITOR" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}"
 
 #mcbench:
 #ifneq (${OS}, Cygwin)

@@ -14,6 +14,7 @@ all: ${WIDGETS_COMMON_O} ${WIDGETS_COMMON_H} ${WIDGETS_STRUCTURE_O} ${WIDGETS_ST
      gsl \
      papi \
      source/sh_main.js source/sh_cpp.js \
+     threejs \
      external_scripts
 	chmod 755 canviz-0.1 
 	chmod 644 canviz-0.1/*
@@ -208,6 +209,23 @@ source/sh_main.js:
 
 source/sh_cpp.js:
 	cd source; wget http://shjs.sourceforge.net/lang/sh_cpp.js
+
+threejs: Three.js Detector.js OrbitControls.js THREEx.WindowResize.js Stats.js
+
+Three.js:
+	wget http://stemkoski.github.io/Three.js/js/Three.js
+
+Detector.js:
+	wget http://stemkoski.github.io/Three.js/js/Detector.js
+
+OrbitControls.js:
+	wget http://stemkoski.github.io/Three.js/js/OrbitControls.js
+
+THREEx.WindowResize.js:
+	wget http://stemkoski.github.io/Three.js/js/THREEx.WindowResize.js
+
+Stats.js:
+	wget http://stemkoski.github.io/Three.js/js/Stats.js
 
 clean:
 	rm -fr xdotool
