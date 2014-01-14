@@ -4,7 +4,7 @@ EXE := .exe
 endif
 
 sight_H := ../*.h ../*/*.h ../widgets/*/*.h
-TESTERS = 5.Tracing${EXE} #10.SpringModules${EXE} 9.CompModules.single${EXE} 9.CompModules.merged${EXE} \
+TESTERS = 5.Tracing${EXE} 10.SpringModules${EXE} 9.CompModules.single${EXE} 9.CompModules.merged${EXE} \
           0.Demo${EXE} 1.StructuredFormatting${EXE} 2.ConditionalFormatting${EXE} 3.Navigation${EXE} \
           4.AttributeAnnotationFiltering${EXE} 6.PerfAnalysis${EXE} \
           7.Merging${EXE} 8.Modules${EXE}
