@@ -18,18 +18,6 @@ namespace sight {
 namespace structure {
 
 class trace;
-void traceAttr(std::string label, std::string key, const attrValue& val);
-void traceAttr(std::string label, std::string key, const attrValue& val, anchor target);
-void traceAttr(trace* t,          std::string key, const attrValue& val);
-void traceAttr(trace* t,          std::string key, const attrValue& val, anchor target);
-void traceAttr(std::string label, 
-               const std::map<std::string, attrValue>& ctxt, 
-               const std::list<std::pair<std::string, attrValue> >& obsList, 
-               const anchor& target=anchor::noAnchor);
-void traceAttr(trace* t, 
-               const std::map<std::string, attrValue>& ctxt, 
-               const std::list<std::pair<std::string, attrValue> >& obsList, 
-               const anchor& target=anchor::noAnchor);
 // Syntactic sugar for specifying anchors to observation sites
 //typedef common::easylist<anchor> obsAnchors;
 
@@ -53,9 +41,45 @@ class trace: public block, public common::trace
   typedef common::easymap<std::string, attrValue> ctxtVals;
   
   // Syntactic sugar for specifying observations
-  typedef common::easylist<std::pair<std::string, attrValue> > observation;
+  //typedef common::easylist<std::pair<std::string, attrValue> > observation;
+  
+  // Syntactic sugar for specifying observations
+  class observation : public std::list<std::pair<std::string, attrValue> > {
+    public:
+    observation() {}
+
+    observation(const std::string& key0, const attrValue& val0)
+    { this->push_back(make_pair(key0, val0)); }
+
+    observation(const std::string& key0, const attrValue& val0, const std::string& key1, const attrValue& val1)
+    { this->push_back(make_pair(key0, val0)); this->push_back(make_pair(key1, val1)); }
+
+    observation(const std::string& key0, const attrValue& val0, const std::string& key1, const attrValue& val1, const std::string& key2, const attrValue& val2)
+    { this->push_back(make_pair(key0, val0)); this->push_back(make_pair(key1, val1)); this->push_back(make_pair(key2, val2)); }
+
+    observation(const std::string& key0, const attrValue& val0, const std::string& key1, const attrValue& val1, const std::string& key2, const attrValue& val2, const std::string& key3, const attrValue& val3)
+    { this->push_back(make_pair(key0, val0)); this->push_back(make_pair(key1, val1)); this->push_back(make_pair(key2, val2)); this->push_back(make_pair(key3, val3)); }
+
+    observation(const std::string& key0, const attrValue& val0, const std::string& key1, const attrValue& val1, const std::string& key2, const attrValue& val2, const std::string& key3, const attrValue& val3, const std::string& key4, const attrValue& val4)
+    { this->push_back(make_pair(key0, val0)); this->push_back(make_pair(key1, val1)); this->push_back(make_pair(key2, val2)); this->push_back(make_pair(key3, val3)); this->push_back(make_pair(key4, val4)); }
+
+    observation(const std::string& key0, const attrValue& val0, const std::string& key1, const attrValue& val1, const std::string& key2, const attrValue& val2, const std::string& key3, const attrValue& val3, const std::string& key4, const attrValue& val4, const std::string& key5, const attrValue& val5)
+    { this->push_back(make_pair(key0, val0)); this->push_back(make_pair(key1, val1)); this->push_back(make_pair(key2, val2)); this->push_back(make_pair(key3, val3)); this->push_back(make_pair(key4, val4)); this->push_back(make_pair(key5, val5)); }
+
+    observation(const std::string& key0, const attrValue& val0, const std::string& key1, const attrValue& val1, const std::string& key2, const attrValue& val2, const std::string& key3, const attrValue& val3, const std::string& key4, const attrValue& val4, const std::string& key5, const attrValue& val5, const std::string& key6, const attrValue& val6)
+    { this->push_back(make_pair(key0, val0)); this->push_back(make_pair(key1, val1)); this->push_back(make_pair(key2, val2)); this->push_back(make_pair(key3, val3)); this->push_back(make_pair(key4, val4)); this->push_back(make_pair(key5, val5)); this->push_back(make_pair(key6, val6)); }
+
+    observation(const std::string& key0, const attrValue& val0, const std::string& key1, const attrValue& val1, const std::string& key2, const attrValue& val2, const std::string& key3, const attrValue& val3, const std::string& key4, const attrValue& val4, const std::string& key5, const attrValue& val5, const std::string& key6, const attrValue& val6, const std::string& key7, const attrValue& val7)
+    { this->push_back(make_pair(key0, val0)); this->push_back(make_pair(key1, val1)); this->push_back(make_pair(key2, val2)); this->push_back(make_pair(key3, val3)); this->push_back(make_pair(key4, val4)); this->push_back(make_pair(key5, val5)); this->push_back(make_pair(key6, val6)); this->push_back(make_pair(key7, val7)); }
+
+    observation(const std::string& key0, const attrValue& val0, const std::string& key1, const attrValue& val1, const std::string& key2, const attrValue& val2, const std::string& key3, const attrValue& val3, const std::string& key4, const attrValue& val4, const std::string& key5, const attrValue& val5, const std::string& key6, const attrValue& val6, const std::string& key7, const attrValue& val7, const std::string& key8, const attrValue& val8)
+    { this->push_back(make_pair(key0, val0)); this->push_back(make_pair(key1, val1)); this->push_back(make_pair(key2, val2)); this->push_back(make_pair(key3, val3)); this->push_back(make_pair(key4, val4)); this->push_back(make_pair(key5, val5)); this->push_back(make_pair(key6, val6)); this->push_back(make_pair(key7, val7)); this->push_back(make_pair(key8, val8)); }
+
+    observation(const std::string& key0, const attrValue& val0, const std::string& key1, const attrValue& val1, const std::string& key2, const attrValue& val2, const std::string& key3, const attrValue& val3, const std::string& key4, const attrValue& val4, const std::string& key5, const attrValue& val5, const std::string& key6, const attrValue& val6, const std::string& key7, const attrValue& val7, const std::string& key8, const attrValue& val8, const std::string& key9, const attrValue& val9)
+    { this->push_back(make_pair(key0, val0)); this->push_back(make_pair(key1, val1)); this->push_back(make_pair(key2, val2)); this->push_back(make_pair(key3, val3)); this->push_back(make_pair(key4, val4)); this->push_back(make_pair(key5, val5)); this->push_back(make_pair(key6, val6)); this->push_back(make_pair(key7, val7)); this->push_back(make_pair(key8, val8)); this->push_back(make_pair(key9, val9)); }
+  }; // class observation
     
-  private:
+  protected:
   traceStream* stream;
   
   // Maps the names of all the currently active traces to their trace objects
@@ -74,12 +98,45 @@ class trace: public block, public common::trace
   // Sets the properties of this object
   static properties* setProperties(const attrOp* onoffOp, showLocT showLoc, properties* props);
   
-  void init(std::string label, const std::list<std::string>& contextAttrs, showLocT showLoc, vizT viz, mergeT merge);
+  void init(std::string label, const std::list<std::string>& contextAttrs, showLocT showLoc, vizT viz, mergeT merge, properties* props);
   
   static trace*       getT (std::string label);
   static traceStream* getTS(std::string label);
   traceStream* getTS() const { return stream; }
- }; // class trace
+}; // class trace
+
+void traceAttr(std::string label, std::string key, const attrValue& val);
+void traceAttr(std::string label, std::string key, const attrValue& val, anchor target);
+void traceAttr(trace* t,          std::string key, const attrValue& val);
+void traceAttr(trace* t,          std::string key, const attrValue& val, anchor target);
+void traceAttr(std::string label, 
+               const std::map<std::string, attrValue>& ctxt, 
+               const std::list<std::pair<std::string, attrValue> >& obsList, 
+               const anchor& target=anchor::noAnchor);
+void traceAttr(trace* t, 
+               const std::map<std::string, attrValue>& ctxt, 
+               const std::list<std::pair<std::string, attrValue> >& obsList, 
+               const anchor& target=anchor::noAnchor); 
+
+// Traces where observations are filtered through a sequence of one or more external processing tools,
+// the paths to which are provided by the user
+class processedTrace: public trace
+{
+  public:
+  typedef common::easylist<std::string> commands;
+  
+  processedTrace(std::string label, const std::list<std::string>& contextAttrs, const std::list<std::string>& processorCommands,                        showLocT showLoc=showBegin, vizT viz=table, mergeT merge=disjMerge, properties* props=NULL);
+  processedTrace(std::string label, std::string contextAttr,                    const std::list<std::string>& processorCommands,                        showLocT showLoc=showBegin, vizT viz=table, mergeT merge=disjMerge, properties* props=NULL);
+  processedTrace(std::string label,                                             const std::list<std::string>& processorCommands,                        showLocT showLoc=showBegin, vizT viz=table, mergeT merge=disjMerge, properties* props=NULL);
+  processedTrace(std::string label, const std::list<std::string>& contextAttrs, const std::list<std::string>& processorCommands, const attrOp& onoffOp, showLocT showLoc=showBegin, vizT viz=table, mergeT merge=disjMerge, properties* props=NULL);
+  processedTrace(std::string label, std::string contextAttr,                    const std::list<std::string>& processorCommands, const attrOp& onoffOp, showLocT showLoc=showBegin, vizT viz=table, mergeT merge=disjMerge, properties* props=NULL);
+  processedTrace(std::string label,                                             const std::list<std::string>& processorCommands, const attrOp& onoffOp, showLocT showLoc=showBegin, vizT viz=table, mergeT merge=disjMerge, properties* props=NULL);  
+  
+  properties* setProperties(const attrOp* onoffOp, const std::list<std::string>& processorCommands, properties* props);
+  
+  void init(std::string label, const std::list<std::string>& contextAttrs, const std::list<std::string>& processorCommands, vizT viz, mergeT merge, properties* props);
+}; // class processedTrace
+
 
 class traceStream: public attrObserver, public common::trace, public sightObj
 {    
@@ -99,15 +156,22 @@ class traceStream: public attrObserver, public common::trace, public sightObj
   mergeT merge;
   
   public:
-  traceStream(const std::list<std::string>& contextAttrs, vizT viz=table, mergeT merge=disjMerge, properties* props=NULL);
-  traceStream(std::string contextAttr,                    vizT viz=table, mergeT merge=disjMerge, properties* props=NULL);
-  traceStream(                                            vizT viz=table, mergeT merge=disjMerge, properties* props=NULL);
+  // Callers can optionally provide a traceID that this traceStream will use. This is useful for cases where 
+  // the ID of the trace used within a given host object needs to be known before the traceStream is actually
+  // created. In this case the host calls genTraceID(), and then ultimately passes it into the traceStream constructor.
+  // It can be set to a negative value (or omitted) to indicate that the traceStream should generate an ID on its own.
+  traceStream(const std::list<std::string>& contextAttrs, vizT viz=table, mergeT merge=disjMerge, int traceID=-1, properties* props=NULL);
+  traceStream(std::string contextAttr,                    vizT viz=table, mergeT merge=disjMerge, int traceID=-1, properties* props=NULL);
+  traceStream(                                            vizT viz=table, mergeT merge=disjMerge, int traceID=-1, properties* props=NULL);
   
   // Sets the properties of this object
-  properties* setProperties(const std::list<std::string>& contextAttrs, vizT viz, mergeT merge, properties* props);
+  properties* setProperties(const std::list<std::string>& contextAttrs, vizT viz, mergeT merge, int traceID, properties* props);
 
+  // Generates a fresh traceID and returns it
+  static int genTraceID();
+  
   private:  
-  void init();
+  void init(int traceID);
   
   public:
   ~traceStream();
@@ -144,6 +208,25 @@ class traceStream: public attrObserver, public common::trace, public sightObj
   void emitObservations(const std::map<std::string, attrValue>& contextAttrsMap, 
                         std::map<std::string, std::pair<attrValue, anchor> >& obs);
 }; // class traceStream
+
+class processedTraceStream: public traceStream
+{    
+  private:
+  // The paths of the executables that will be run on the trace observations
+  std::list<std::string> processorCommands;
+  
+  public:
+  // Callers can optionally provide a traceID that this processedTraceStream will use. This is useful for cases where 
+  // the ID of the trace used within a given host object needs to be known before the processedTraceStream is actually
+  // created. In this case the host calls genTraceID(), and then ultimately passes it into the processedTraceStream constructor.
+  // It can be set to a negative value (or omitted) to indicate that the processedTraceStream should generate an ID on its own.
+  processedTraceStream(const std::list<std::string>& contextAttrs, const std::list<std::string>& processorCommands, vizT viz=table, mergeT merge=disjMerge, int traceID=-1, properties* props=NULL);
+  processedTraceStream(std::string contextAttr,                    const std::list<std::string>& processorCommands, vizT viz=table, mergeT merge=disjMerge, int traceID=-1, properties* props=NULL);
+  processedTraceStream(                                            const std::list<std::string>& processorCommands, vizT viz=table, mergeT merge=disjMerge, int traceID=-1, properties* props=NULL);
+  
+  // Sets the properties of this object
+  properties* setProperties(const std::list<std::string>& processorCommands, properties* props);
+}; // class processedTraceStream
 
 // Basic API for measuring the elapsed counts of events.
 // After an instance of the measure class is constructed, the measurement may be started by calling start() 
@@ -505,6 +588,33 @@ class TraceStreamMerger : public Merger {
   static void mergeKey(properties::tagType type, properties::iterator tag, 
                        std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key);
 }; // class TraceStreamMerger
+
+class ProcessedTraceStreamMerger : public TraceMerger {
+  public:
+  ProcessedTraceStreamMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+              std::map<std::string, streamRecord*>& outStreamRecords,
+              std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+              properties* props=NULL);
+            
+  static Merger* create(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
+                        std::map<std::string, streamRecord*>& outStreamRecords,
+                        std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                        properties* props)
+  { return new ProcessedTraceStreamMerger(tags, outStreamRecords, inStreamRecords, props); }
+              
+  // Sets the properties of the merged object
+  static properties* setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+                                   std::map<std::string, streamRecord*>& outStreamRecords,
+                                   std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                                   properties* props);
+
+  // Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+  // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
+  // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
+  // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
+  static void mergeKey(properties::tagType type, properties::iterator tag, 
+                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key);
+}; // class ProcessedTraceStreamMerger
 
 class TraceObsMerger : public Merger {
   public:

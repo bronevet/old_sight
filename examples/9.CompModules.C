@@ -59,7 +59,7 @@ int main (int argc, char *argv[])
   } }
   
   std::vector<port> externalOutputs;
-  compModule mod(instance("Heat Computation", 1, 1), 
+  compModule mod(instance("Heat Computation", 2, 1), 
                  inputs(port(context("k", k)),
                         port(context("initTemp", initTemp))),
                  externalOutputs,

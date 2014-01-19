@@ -84,60 +84,82 @@ static void printThings(SimFlat* s, int iStep, double elapsedTime);
 static void printSimulationDataYaml(FILE* file, SimFlat* s);
 static void sanityChecks(Command cmd, double cutoff, double latticeConst, char latticeType[8]);
 
-
 int main(int argc, char** argv)
 {
    // Prolog
    initParallel(&argc, &argv);
    
-   SightInit(argc, argv, "CoMD", "dbg.CoMD");
-//#if defined(SIGHT_SINGLE)
-   modularApp app("CoMD"/*, namedMeasures("time0", new timeMeasure())*/);
-/*#elif defined(SIGHT_COMP)
-   compModularApp app("CoMD"/*, namedMeasures("time0", new timeMeasure())* /);
-#endif*/
+   Command cmd = parseCommandLine(argc, argv);
+   
+   SightInit(argc, argv, "CoMD", 
+             txt()<<"dbg.CoMD"
+#if defined(MODULES)
+#if defined(MOD_COMP)
+                  << ".CompModules.dt_"<<cmd.dt<<".lat_"<<cmd.lat
+#else
+                  << ".Modules"
+#endif
+#endif
+#if defined(TRACE_POS)
+                  << ".TracePos"
+#endif
+#if defined(TRACE_PATH)
+                  << ".TracePath"
+#endif
+           );
 
    SimFlat* sim;
    Validate* validate;
    
-   {
-     
-   module initModule(instance("Initialization", 0, 0), 
-                     //inputs(port(context("t", t))),
-                     namedMeasures(
-                         "time", new timeMeasure(),
-                         "PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS))));
-
+   trace tsStats("TSStats", trace::showEnd, trace::table);
    
+   profileInit();
    
    profileStart(totalTimer);
    initSubsystems();
    timestampBarrier("Starting Initialization\n");
 
    yamlAppInfo(yamlFile);
-   yamlAppInfo(screenOut);
+   //yamlAppInfo(screenOut);
 
-   Command cmd = parseCommandLine(argc, argv);
    printCmdYaml(yamlFile, &cmd);
-   printCmdYaml(screenOut, &cmd);
+   //printCmdYaml(screenOut, &cmd);
 
    sim = initSimulation(cmd);
-   printSimulationDataYaml(yamlFile, sim);
+   //printSimulationDataYaml(yamlFile, sim);
    printSimulationDataYaml(screenOut, sim);
 
    validate = initValidate(sim); // atom counts, energy
    timestampBarrier("Initialization Finished\n");
-   }
+   
+#if defined(MODULES)
+   {modularApp app("CoMD"/*, namedMeasures("time0", new timeMeasure())*/);
+#endif
+/*#elif defined(SIGHT_COMP)
+   compModularApp app("CoMD"/*, namedMeasures("time0", new timeMeasure())* /);
+#endif*/
    
    timestampBarrier("Starting simulation\n");
 
    {
-   module simModule(instance("Simulation", 0, 0), 
-                     //inputs(port(context("t", t))),
+#if defined(MODULES)
+     std::vector<port> externalOutputs;
+#if defined(MOD_COMP)
+     compModule simModule(instance("Simulation", 1, 0), 
+                         inputs(port(context("a", 1))), externalOutputs,
+                         sim->dt==1 && sim->lat==3.615, // isReference
+                         context("dt",  sim->dt,
+                                 "lat", sim->lat), // options
+                         compNamedMeasures("time", new timeMeasure(), LkComp(2, attrValue::floatT, true),
+                                           "PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS)), LkComp(2, attrValue::intT, true)));
+#else
+     module simModule(instance("Simulation", 1, 0), 
+                     inputs(port(context("a", 1))),
                      namedMeasures(
                          "time", new timeMeasure(),
                          "PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS))));
-
+#endif // MOD_COMP
+#endif // MODULES
 
    // This is the CoMD main loop
    const int nSteps = sim->nSteps;
@@ -146,36 +168,50 @@ int main(int argc, char** argv)
    profileStart(loopTimer);
    int curTime=0;
 
-   particleTraces = new trace*[1];
-/*   for(int i=0; i<1; i++)
-      particleTraces[i] = new trace(txt()<<"Particle "<<i, trace::showBegin, trace::scatter3d);*/
-
+#if defined(TRACE_PATH)
+   int pathTraceCnt=0;
+   for (int iBox=0, i=0; iBox<sim->boxes->nLocalBoxes; ++iBox) {
+   for (int iOff=MAXATOMS*iBox, ii=0; ii<sim->boxes->nAtoms[iBox]; ++ii, ++iOff, ++i) {
+     if(i%10000 == 0) pathTraceCnt++;
+   } }
+   particleTraces = new trace*[pathTraceCnt];
+   for(int i=0; i<pathTraceCnt; i++) {
+      particleTraces[i] = new trace(txt()<<"Particle "<<i, trace::showBegin, trace::scatter3d);
+   }
+#endif // TRACE_PATH
+   
    for (; iStep<nSteps;)
    {
-       {module stepModule(instance("Sum Atoms", 1, 0), 
-                     inputs(port(context("iStep", iStep))),
-                     namedMeasures(
-                         "time", new timeMeasure(),
-                         "PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS))));
+       {
+#if defined(MODULES)
+         module stepModule(instance("Sum Atoms", 1, 0), 
+                           inputs(port(context("iStep", iStep))),
+                           namedMeasures(
+                               "time", new timeMeasure(),
+                               "PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS))));
 
 
-      //startTimer(commReduceTimer);
-      sumAtoms(sim);
-      //stopTimer(commReduceTimer);
+         sumAtoms(sim);
+#endif
       }
 
       printThings(sim, iStep, getElapsedTime(timestepTimer));
 
-      //startTimer(timestepTimer);
+      startTimer(timestepTimer);
       timestep(sim, printRate, curTime, sim->dt, iStep, nSteps);
-      //stopTimer(timestepTimer);
+      stopTimer(timestepTimer);
 
       iStep += printRate;
       curTime += printRate*sim->dt;
    }
 
-/*   for(int i=0; i<1; i++)
-      delete particleTraces[i];*/
+#if defined(TRACE_PATH)
+   // Deallocate the traces in reverse order to make sure that their entries/exits are hierarchically nested
+   for(int i=pathTraceCnt-1; i>=0; i--) {
+      //cout << "deleting particleTraces["<<i<<"]="<<particleTraces[i]<<endl;
+      delete particleTraces[i];
+   }
+#endif
    
    profileStop(loopTimer);
 
@@ -186,11 +222,13 @@ int main(int argc, char** argv)
 
    // Epilog
    {
-   module epiModule(instance("Epilog", 0, 0), 
-                     //inputs(port(context("t", t))),
-                     namedMeasures(
-                         "time", new timeMeasure(),
-                         "PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS))));
+#if defined(MODULES)
+      module epiModule(instance("Epilog", 0, 0), 
+                       //inputs(port(context("t", t))),
+                       namedMeasures(
+                           "time", new timeMeasure(),
+                           "PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS))));
+#endif
 
    validateResult(validate, sim);
    profileStop(totalTimer);
@@ -203,7 +241,12 @@ int main(int argc, char** argv)
    finalizeSubsystems();
 
    }
+#if defined(MODULES)
+   } // modularApp
+#endif
+    
    timestampBarrier("CoMD Ending\n");
+   profileFinalize();
    destroyParallel();
 
    return 0;
@@ -348,11 +391,8 @@ Validate* initValidate(SimFlat* sim)
 
    if (printRank())
    {
-      fprintf(screenOut, "\n");
-      printSeparator(screenOut);
-      fprintf(screenOut, "Initial energy : %14.12f, atom count : %d \n", 
+      dbgprintf("Initial energy : %14.12f, atom count : %d \n", 
             val->eTot0, val->nAtoms0);
-      fprintf(screenOut, "\n");
    }
    return val;
 }
@@ -365,23 +405,26 @@ void validateResult(const Validate* val, SimFlat* sim)
 
       int nAtomsDelta = (sim->atoms->nGlobal - val->nAtoms0);
 
-      fprintf(screenOut, "\n");
-      fprintf(screenOut, "\n");
-      fprintf(screenOut, "Simulation Validation:\n");
+      dbgprintf("\n<table bgcolor=\"#ffffff\" border=1>");
+      dbgprintf("<col style=\"background-color:#99CCFF\"/>");
+      dbgprintf("<col style=\"background-color:#dddddd\"/>");
+      dbgprintf("<tr><tr colspan=\"2\" style=\"background-color:#990000; color:#ffffff\">Simulation Validation:</td></tr>");
 
-      fprintf(screenOut, "  Initial energy  : %14.12f\n", val->eTot0);
-      fprintf(screenOut, "  Final energy    : %14.12f\n", eFinal);
-      fprintf(screenOut, "  eFinal/eInitial : %f\n", eFinal/val->eTot0);
+      dbgprintf("<tr><td>Initial energy</td><td>%14.12f</td></tr>", val->eTot0);
+      dbgprintf("<tr><td>Final energy</td><td>%14.12f</td></tr>", eFinal);
+      dbgprintf("<tr><td>eFinal/eInitial</td><td>%f</td></tr>", eFinal/val->eTot0);
       if ( nAtomsDelta == 0)
       {
-         fprintf(screenOut, "  Final atom count : %d, no atoms lost\n",
+         dbgprintf("<tr><td>Final atom count</td><td>%d, no atoms lost</td></tr>",
                sim->atoms->nGlobal);
+         dbgprintf("</table>");
       }
       else
       {
-         fprintf(screenOut, "#############################\n");
-         fprintf(screenOut, "# WARNING: %6d atoms lost #\n", nAtomsDelta);
-         fprintf(screenOut, "#############################\n");
+         dbgprintf("</table>");
+         dbgprintf("<font color=\"#ff0000\">#############################\n");
+         dbgprintf("# WARNING: %6d atoms lost #\n", nAtomsDelta);
+         dbgprintf("#############################</font>\n");
       }
    }
 }
@@ -416,14 +459,14 @@ void printThings(SimFlat* s, int iStep, double elapsedTime)
    if (! printRank() )
       return;
 
-   if (firstCall)
+   /*if (firstCall)
    {
       firstCall = 0;
       fprintf(screenOut, 
        "#                                                                                         Performance\n" 
        "#  Loop   Time(fs)       Total Energy   Potential Energy     Kinetic Energy  Temperature   (us/atom)     # Atoms\n");
       fflush(screenOut);
-   }
+   }*/
 
    real_t time = iStep*s->dt;
    real_t eTotal = (s->ePotential+s->eKinetic) / s->atoms->nGlobal;
@@ -433,8 +476,17 @@ void printThings(SimFlat* s, int iStep, double elapsedTime)
 
    double timePerAtom = 1.0e6*elapsedTime/(double)(nEval*s->atoms->nLocal);
 
-   fprintf(screenOut, " %6d %10.2f %18.12f %18.12f %18.12f %12.4f %10.4f %12d\n",
-           iStep, time, eTotal, eU, eK, Temp, timePerAtom, s->atoms->nGlobal);
+   /*fprintf(screenOut, " %6d %10.2f %18.12f %18.12f %18.12f %12.4f %10.4f %12d\n",
+           iStep, time, eTotal, eU, eK, Temp, timePerAtom, s->atoms->nGlobal);*/
+   traceAttr("TSStats", 
+             trace::ctxtVals("iStep", iStep),
+             trace::observation("time", time,
+                                "eTotal", eTotal,
+                                "Potential E", eU,
+                                "Kinetic E",   eK,
+                                "Temperature", Temp,
+                                "Time per Atom", timePerAtom,
+                                "# Atoms",       s->atoms->nGlobal));
 }
 
 /// Print information about the simulation in a format that is (mostly)
@@ -448,31 +500,43 @@ void printSimulationDataYaml(FILE* file, SimFlat* s)
    if (! printRank())
       return;
    
-   fprintf(file,"Simulation data: \n");
-   fprintf(file,"  Total atoms        : %d\n", 
+   dbgprintf("\n<table bgcolor=\"#ffffff\" border=1>");
+   dbgprintf("<col style=\"background-color:#99CCFF\"/>");
+   dbgprintf("<col style=\"background-color:#dddddd\"/>");
+   dbgprintf("<tr><td colspan=\"2\" style=\"background-color:#990000; color:#ffffff\">Simulation data: </td></tr>");
+   dbgprintf("<tr><td>  Total atoms</td><td>%d</td></tr>",  
            s->atoms->nGlobal);
-   fprintf(file,"  Min global bounds  : [ %14.10f, %14.10f, %14.10f ]\n",
+   dbgprintf("<tr><td>  Min global bounds</td><td>[ %14.10f, %14.10f, %14.10f ]</td></tr>", 
            s->domain->globalMin[0], s->domain->globalMin[1], s->domain->globalMin[2]);
-   fprintf(file,"  Max global bounds  : [ %14.10f, %14.10f, %14.10f ]\n",
+   dbgprintf("<tr><td>  Max global bounds</td><td>[ %14.10f, %14.10f, %14.10f ]</td></tr>", 
            s->domain->globalMax[0], s->domain->globalMax[1], s->domain->globalMax[2]);
-   printSeparator(file);
-   fprintf(file,"Decomposition data: \n");
-   fprintf(file,"  Processors         : %6d,%6d,%6d\n", 
+   dbgprintf("</table>");
+   
+   dbgprintf("\n<table bgcolor=\"#ffffff\" border=1>");
+   dbgprintf("<col style=\"background-color:#99CCFF\"/>");
+   dbgprintf("<col style=\"background-color:#dddddd\"/>");
+   dbgprintf("<tr><td colspan=\"2\" style=\"background-color:#990000; color:#ffffff\">Decomposition data: </td></tr>");
+   dbgprintf("<tr><td>  Processors</td><td>%6d,%6d,%6d</td></tr>",  
            s->domain->procGrid[0], s->domain->procGrid[1], s->domain->procGrid[2]);
-   fprintf(file,"  Local boxes        : %6d,%6d,%6d = %8d\n", 
+   dbgprintf("<tr><td>  Local boxes</td><td>%6d,%6d,%6d = %8d</td></tr>",  
            s->boxes->gridSize[0], s->boxes->gridSize[1], s->boxes->gridSize[2], 
            s->boxes->gridSize[0]*s->boxes->gridSize[1]*s->boxes->gridSize[2]);
-   fprintf(file,"  Box size           : [ %14.10f, %14.10f, %14.10f ]\n", 
+   dbgprintf("<tr><td>  Box size</td><td>[ %14.10f, %14.10f, %14.10f ]</td></tr>",  
            s->boxes->boxSize[0], s->boxes->boxSize[1], s->boxes->boxSize[2]);
-   fprintf(file,"  Box factor         : [ %14.10f, %14.10f, %14.10f ] \n", 
+   dbgprintf("<tr><td>  Box factor</td><td>[ %14.10f, %14.10f, %14.10f ] </td></tr>",  
            s->boxes->boxSize[0]/s->pot->cutoff,
            s->boxes->boxSize[1]/s->pot->cutoff,
            s->boxes->boxSize[2]/s->pot->cutoff);
-   fprintf(file, "  Max Link Cell Occupancy: %d of %d\n",
+   dbgprintf("<tr><td>Max Link Cell Occupancy</td><td>%d of %d</td></tr>", 
            maxOcc, MAXATOMS);
-   printSeparator(file);
-   fprintf(file,"Potential data: \n");
+   dbgprintf("</table>");
+   
+   dbgprintf("\n<table bgcolor=\"#ffffff\" border=1>");
+   dbgprintf("<col style=\"background-color:#99CCFF\"/>");
+   dbgprintf("<col style=\"background-color:#dddddd\"/>");
+   dbgprintf("<tr><td colspan=\"2\" style=\"background-color:#990000; color:#ffffff\">Potential data</td><td></td></tr>");
    s->pot->print(file, s->pot);
+   dbgprintf("</table>");
    
    // Memory footprint diagnostics
    int perAtomSize = 10*sizeof(real_t)+2*sizeof(int);
@@ -485,14 +549,15 @@ void printSimulationDataYaml(FILE* file, SimFlat* s)
    float paddedMemLocal = (float) nLocalBoxes*(perAtomSize*MAXATOMS)/1024/1024;
    float paddedMemTotal = (float) nTotalBoxes*(perAtomSize*MAXATOMS)/1024/1024;
 
-   printSeparator(file);
-   fprintf(file,"Memory data: \n");
-   fprintf(file, "  Intrinsic atom footprint = %4d B/atom \n", perAtomSize);
-   fprintf(file, "  Total atom footprint     = %7.3f MB (%6.2f MB/node)\n", totalMemGlobal, totalMemLocal);
-   fprintf(file, "  Link cell atom footprint = %7.3f MB/node\n", paddedMemLocal);
-   fprintf(file, "  Link cell atom footprint = %7.3f MB/node (including halo cell data\n", paddedMemTotal);
-
-   fflush(file);      
+   dbgprintf("\n<table bgcolor=\"#ffffff\" border=1>");
+   dbgprintf("<col style=\"background-color:#99CCFF\"/>");
+   dbgprintf("<col style=\"background-color:#dddddd\"/>");
+   dbgprintf("<tr><td colspan=\"2\" style=\"background-color:#990000; color:#ffffff\">Memory data:</td></tr>");
+   dbgprintf("<tr><td>Intrinsic atom footprint</td><td>%4d B/atom </td></tr>",  perAtomSize);
+   dbgprintf("<tr><td>Total atom footprint</td><td>%7.3f MB (%6.2f MB/node)</td></tr>",  totalMemGlobal, totalMemLocal);
+   dbgprintf("<tr><td>Link cell atom footprint</td><td>%7.3f MB/node</td></tr>",  paddedMemLocal);
+   dbgprintf("<tr><td>Link cell atom footprint</td><td>%7.3f MB/node (including halo cell data</td></tr>",  paddedMemTotal);
+   dbgprintf("</table>");
 }
 
 /// Check that the user input meets certain criteria.

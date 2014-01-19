@@ -26,6 +26,7 @@ class traceStream;
 
 class trace: public block, public common::trace
 {
+  friend class processedTrace;
   showLocT showLoc;
   traceStream* stream;
   
@@ -44,6 +45,15 @@ class trace: public block, public common::trace
   static void *enterTraceStream(properties::iterator props);
 }; // class trace
 
+
+class processedTrace: public trace
+{
+  public:
+  static void *enterProcessedTraceStream(properties::iterator props);
+}; // class processedTrace
+
+
+
 // Interface implemented by objects that listen for observations a traceStream reads. traceObservers may be arranged
 // as arbitrary graphs of filters, consuming observations from some traceStreams or traceObservers and forwarding 
 // the same or other observations (e.g. the sum of multiple observations) to other traceObservers. For simplicity
@@ -55,6 +65,9 @@ class traceObserver {
   // of times it was registered to allow a given observer to get registered multiple times.
   std::map<traceObserver*, int> observers;
   //std::set<traceObserver*> observersS;
+  
+  // Set of objects being observed by this observer
+  std::map<traceObserver*, int> observing;
   
   // Records whether we've notified observers of this trace that it has finished
   static bool finishNotified;
@@ -157,8 +170,11 @@ class traceObserverQueue: public traceObserver {
   void observe(int traceID, 
                const std::map<std::string, std::string>& ctxt, 
                const std::map<std::string, std::string>& obs,
-               const std::map<std::string, anchor>&      obsAnchor/*,
-               const std::set<traceObserver*>&           observers*/);
+               const std::map<std::string, anchor>&      obsAnchor);
+  
+  // Called when the stream of observations has finished to allow the implementor to perform clean-up tasks.
+  // This method is optional.
+  void obsFinished();
 }; // traceObserverQueue
 
 // This is a trace observer that processes incoming observations by writing them into a file, running some
@@ -172,6 +188,9 @@ class externalTraceProcessor_File : public traceObserver {
   
   // The file stream to which we write observations. The processor application will read this file.
   std::ofstream traceFile;
+  
+  // Records whether this trace has finished
+  bool finished;
   
   public:  
   externalTraceProcessor_File(std::string processorFName, std::string obsFName);
@@ -290,7 +309,28 @@ class traceStream: public attrObserver, public common::trace, public traceObserv
     
   // Given a traceID returns a pointer to the corresponding trace object
   static traceStream* get(int traceID);
-}; // class streamTrace
+}; // class traceStream
+
+class processedTraceStream: public traceStream
+{
+  // The queue of externalTraceProcessors that filter this traceStream
+  traceObserverQueue* queue;
+  
+  // Pointers to the actual externalTraceProcessors objects in the queue
+  std::list<externalTraceProcessor_File*> commandProcessors;
+  
+  public:
+  // hostDiv - the div where the trace data should be displayed
+  // showTrace - indicates whether the trace should be shown by default (true) or whether the host will control
+  //             when it is shown
+  processedTraceStream(properties::iterator props, std::string hostDiv, bool showTrace=true);
+  
+  private:
+  void init(std::string label);
+  
+  public:
+  ~processedTraceStream();
+}; // class processedTraceStream
 
 }; // namespace layout
 }; // namespace sight

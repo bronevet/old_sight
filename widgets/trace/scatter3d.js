@@ -149,15 +149,19 @@ function showScatter3D(data, axisNames, ctxtMin, ctxtMax, colorAttrMin, colorAtt
     // Add the sphere to the scene
     scene.add(sphere);
 
+    // If there are additional trace dimensions, add a vector represent them
+    if(data[d].length>4) {
+      // Direction vector
+      // direction (normalized), origin, length, color(hex)
 
-    // Direction vector
-    // direction (normalized), origin, length, color(hex)
-    var origin = new THREE.Vector3(pos[0], pos[1], pos[2]);
-    var direction  = new THREE.Vector3(data[d][4], data[d][4], data[d][6]);
-    //var direction = new THREE.Vector3().subVectors(terminus, origin).normalize();
-    var arrow = new THREE.ArrowHelper(direction, origin, 50, 0x884400);
-    scene.add(arrow);
-
+      var origin = new THREE.Vector3(pos[0], pos[1], pos[2]);
+      var direction  = new THREE.Vector3(data[d][4], 
+                                         data[d].length>5? data[d][5]: 0, 
+                                         data[d].length>6? data[d][6]: 0);
+      //var direction = new THREE.Vector3().subVectors(terminus, origin).normalize();
+      var arrow = new THREE.ArrowHelper(direction, origin, 50, 0x884400);
+      scene.add(arrow);
+    }
   } }
   
   // create a set of coordinate axes to help orient user

@@ -9,7 +9,7 @@
 #include "cmdLineParser.h"
 #include "parallel.h"
 #include "mytype.h"
-
+#include "sight.h"
 /// \page pg_running_comd Running CoMD
 ///
 /// \section sec_command_line_options Command Line Options
@@ -25,7 +25,7 @@
 /// Supported options are:
 ///
 /// | Long  Form    | Short Form  | Default Value | Description
-/// | :------------ | :---------: | :-----------: | :----------
+/// | :------------ | :---------</td><td>| :-----------</td><td>| :----------
 /// | \--help       | -h          | N/A           | print this message
 /// | \--potDir     | -d          | pots          | potential directory
 /// | \--potName    | -p          | Cu_u6.eam     | potential name
@@ -44,7 +44,7 @@
 /// | \--temp       | -T          | 600           | initial temperature (K)
 /// | \--delta      | -r          | 0             | initial delta (Angstroms)
 ///
-/// Notes: 
+/// Notes</td><td>
 /// 
 /// The negative value for the lattice parameter (such as the default
 /// value, -1) is interpreted as a flag to indicate that the lattice
@@ -163,7 +163,7 @@
 /// 
 /// ------------------------------
 ///
-/// Run a weak scaling example: the simulation is doubled in each
+/// Run a weak scaling example</td><td>the simulation is doubled in each
 /// dimension from the default 20 x 20 x 20 and the number of subdomains
 /// in each direction is also doubled.
 ///
@@ -253,25 +253,29 @@ void printCmdYaml(FILE* file, Command* cmd)
 {
    if (! printRank())
       return;
-   fprintf(file,
-           "Command Line Parameters:\n"
-           "  doeam: %d\n"
-           "  potDir: %s\n"
-           "  potName: %s\n"
-           "  potType: %s\n"
-           "  nx: %d\n"
-           "  ny: %d\n"
-           "  nz: %d\n"
-           "  xproc: %d\n"
-           "  yproc: %d\n"
-           "  zproc: %d\n"
-           "  Lattice constant: %g Angstroms\n"
-           "  nSteps: %d\n"
-           "  printRate: %d\n"
-           "  Time step: %g fs\n"
-           "  Initial Temperature: %g K\n"
-           "  Initial Delta: %g Angstroms\n"
-           "\n",
+            
+   dbgprintf(
+           "<table bgcolor=\"#ffffff\" border=1>"
+           "<col style=\"background-color:#99CCFF;\"/>"
+           "<col style=\"background-color:#dddddd;\"/>"
+           "<tr><td colspan=\"2\" style=\"background-color:#990000; color:#ffffff\">Command Line Parameters:</td></tr>"
+           "<tr><td>doeam</td><td>%d</td></tr>"
+           "<tr><td>potDir</td><td>%s</td></tr>"
+           "<tr><td>potName</td><td>%s</td></tr>"
+           "<tr><td>potType</td><td>%s</td></tr>"
+           "<tr><td>nx</td><td>%d</td></tr>"
+           "<tr><td>ny</td><td>%d</td></tr>"
+           "<tr><td>nz</td><td>%d</td></tr>"
+           "<tr><td>xproc</td><td>%d</td></tr>"
+           "<tr><td>yproc</td><td>%d</td></tr>"
+           "<tr><td>zproc</td><td>%d</td></tr>"
+           "<tr><td>Lattice constant</td><td>%g Angstroms</td></tr>"
+           "<tr><td>nSteps</td><td>%d</td></tr>"
+           "<tr><td>printRate</td><td>%d</td></tr>"
+           "<tr><td>Time step</td><td>%g fs</td></tr>"
+           "<tr><td>Initial Temperature</td><td>%g K</td></tr>"
+           "<tr><td>Initial Delta</td><td>%g Angstroms</td></tr>"
+           "</table>",
            cmd->doeam,
            cmd->potDir,
            cmd->potName,

@@ -40,6 +40,10 @@
 #include "parallel.h"
 #include "yamlOutput.h"
 
+#include "sight.h"
+using namespace sight;
+using namespace std;
+
 static uint64_t getTime(void);
 static double getTick(void);
 static void timerStats(void);
@@ -50,12 +54,12 @@ const char* timerName[numberOfTimers] = {
    "total",
    "loop",
    "timestep",
-   "  position",
-   "  velocity",
-   "  redistribute",
-   "    atomHalo",
-   "  force",
-   "    eamHalo",
+   "position",
+   "velocity",
+   "redistribute",
+   "atomHalo",
+   "force",
+   "eamHalo",
    "commHalo",
    "commReduce"
 };
@@ -76,6 +80,8 @@ typedef struct TimersSt
    double maxValue;    //!< max over ranks
    double average;     //!< average over ranks
    double stdev;       //!< stdev across ranks
+   
+   measure* m;
 } Timers;
 
 /// Global timing data collected.
@@ -89,17 +95,37 @@ typedef struct TimerGlobalSt
 static Timers perfTimer[numberOfTimers];
 static TimerGlobal perfGlobal;
 
+trace* profileTrace=NULL;
+
+void initProfile() {
+  profileTrace = new trace("Profile Trace", trace::context("time"), trace::showEnd, trace::table);
+  for (int ii=0; ii<numberOfTimers; ++ii)
+    perfTimer[ii].m = NULL;
+}
+
+void finalizeProfile() {
+  if(profileTrace)
+    delete profileTrace;
+}
+
 void profileStart(const enum TimerHandle handle)
 {
-   perfTimer[handle].start = getTime();
+   //perfTimer[handle].start = getTime();
+  //if(perfTimer[handle].m == NULL)
+    perfTimer[handle].m = startMeasure<timeMeasure>(profileTrace, timerName[handle]);
+  /*else  
+    perfTimer[handle].m->resume();*/
 }
 
 void profileStop(const enum TimerHandle handle)
 {
-   perfTimer[handle].count += 1;
+   /*perfTimer[handle].count += 1;
    uint64_t delta = getTime() - perfTimer[handle].start;
    perfTimer[handle].total += delta;
-   perfTimer[handle].elapsed += delta;
+   perfTimer[handle].elapsed += delta;*/
+  perfTimer[handle].m->end();
+  delete perfTimer[handle].m;
+  perfTimer[handle].m = NULL;
 }
 
 /// \details
@@ -120,11 +146,18 @@ double getElapsedTime(const enum TimerHandle handle)
 void printPerformanceResults(int nGlobalAtoms, int printRate)
 {
    // Collect timer statistics overall and across ranks
-   timerStats();
+   //timerStats();
 
    if (!printRank())
       return;
 
+   // Complete measurement
+   /*for (int ii=0; ii<numberOfTimers; ++ii) {
+     if(perfTimer[ii].m != NULL)
+      endMeasure(perfTimer[ii].m);
+   }*/
+/*   
+   
    // only print timers with non-zero values.
    double tick = getTick();
    double loopTime = perfTimer[loopTimer].total*tick;
@@ -132,7 +165,7 @@ void printPerformanceResults(int nGlobalAtoms, int printRate)
    fprintf(screenOut, "\n\nTimings for Rank %d\n", getMyRank());
    fprintf(screenOut, "        Timer        # Calls    Avg/Call (s)   Total (s)    %% Loop\n");
    fprintf(screenOut, "___________________________________________________________________\n");
-   for (int ii=0; ii<numberOfTimers; ++ii)
+   for (int ii=0; ii<numberOfTimers; ++i    i)
    {
       double totalTime = perfTimer[ii].total*tick;
       if (perfTimer[ii].count > 0)
@@ -175,7 +208,7 @@ void printPerformanceResults(int nGlobalAtoms, int printRate)
 
    fprintf(screenOut, "\n---------------------------------------------------\n");
    fprintf(screenOut, " Average atom rate:            %6.2f atoms/us\n", perfGlobal.atomsPerUSec);
-   fprintf(screenOut, "---------------------------------------------------\n\n");
+   fprintf(screenOut, "---------------------------------------------------\n\n");*/
 }
 
 void printPerformanceResultsYaml(FILE* file)

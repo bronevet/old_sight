@@ -71,16 +71,38 @@ CFLAGS  += ${OPTFLAGS} ${INCLUDES} ${OTHER_INCLUDE}
 
 
 SOURCES=$(wildcard *.c)
-OBJECTS=$(SOURCES:.c=.o)
+OBJECTS_MODULES=$(SOURCES:.c=.modules.o)
+OBJECTS_COMPMODULES=$(SOURCES:.c=.compmodules.o)
+OBJECTS_TRACEPOS=$(SOURCES:.c=.tracepos.o)
+OBJECTS_TRACEPATH=$(SOURCES:.c=.tracepath.o)
+	
+DEFAULT: ${CoMD_EXE}.modules ${CoMD_EXE}.compmodules ${CoMD_EXE}.tracepos ${CoMD_EXE}.tracepath
+
+%.modules.o: %.c
+	${CC} ${CFLAGS} -DMODULES -c $< -o $@
+
+%.compmodules.o: %.c
+	${CC} ${CFLAGS} -DMODULES -DMOD_COMP -c $< -o $@
+
+%.tracepos.o: %.c
+	${CC} ${CFLAGS} -DTRACE_POS -c $< -o $@
+
+%.tracepath.o: %.c
+	${CC} ${CFLAGS} -DTRACE_PATH -c $< -o $@
 
 
-DEFAULT: ${CoMD_EXE}
+${CoMD_EXE}.modules: ${BIN_DIR} CoMD_info.h ${OBJECTS_MODULES} 
+	${CC} ${CFLAGS} -o ${CoMD_EXE}.modules ${OBJECTS_MODULES} ${LDFLAGS}
 
-%.o: %.c
-	${CC} ${CFLAGS} -c $< -o $@
+${CoMD_EXE}.compmodules: ${BIN_DIR} CoMD_info.h ${OBJECTS_COMPMODULES} 
+	${CC} ${CFLAGS} -o ${CoMD_EXE}.compmodules ${OBJECTS_COMPMODULES} ${LDFLAGS}
 
-${CoMD_EXE}: ${BIN_DIR} CoMD_info.h ${OBJECTS} 
-	${CC} ${CFLAGS} -o ${CoMD_EXE} ${OBJECTS} ${LDFLAGS}
+${CoMD_EXE}.tracepos: ${BIN_DIR} CoMD_info.h ${OBJECTS_TRACEPOS} 
+	${CC} ${CFLAGS} -o ${CoMD_EXE}.tracepos ${OBJECTS_TRACEPOS} ${LDFLAGS}
+
+${CoMD_EXE}.tracepath: ${BIN_DIR} CoMD_info.h ${OBJECTS_TRACEPATH} 
+	${CC} ${CFLAGS} -o ${CoMD_EXE}.tracepath ${OBJECTS_TRACEPATH} ${LDFLAGS}
+
 
 CoMD_info.h: Makefile
 	./generate_info_header ${CoMD_VARIANT} "$(CC)" "$(CFLAGS)" "$(LDFLAGS)"

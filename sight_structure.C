@@ -152,6 +152,7 @@ void SightInit_internal(int argc, char** argv, string title, string workDir)
     if(fp == NULL) { cerr << "Failed to run command \""<<cmd.str()<<"\"!"<<endl; assert(0); }
     
     if(fgets(username, sizeof(username), fp) == NULL) { cerr << "Failed to read output of \""<<cmd.str()<<"\"!"<<endl; assert(0); }
+    pclose(fp);
   }
   newProps["username"] = string(username);
 
@@ -1666,8 +1667,11 @@ void dbgStream::init(properties* props, string title, string workDir, string img
     dbgFile = NULL;
     // Unset the mutex environment variables from LoadTimeRegistry to make sure that they don't leak to the layout process
     LoadTimeRegistry::liftMutexes();
+    
     // Execute the layout process
     FILE *out = popen(getenv("SIGHT_LAYOUT_EXEC"), "w");
+    if(out == NULL) { cerr << "Failed to run command \""<<getenv("SIGHT_LAYOUT_EXEC")<<"\"!"<<endl; assert(0); }
+    
     // Restore the LoadTimeRegistry mutexes
     LoadTimeRegistry::restoreMutexes();
     
@@ -1678,8 +1682,11 @@ void dbgStream::init(properties* props, string title, string workDir, string img
     dbgFile = NULL;
     // Unset the mutex environment variables from LoadTimeRegistry to make sure that they don't leak to the layout process
     LoadTimeRegistry::liftMutexes();
+    
     // Execute the layout process
     FILE *out = popen((txt()<<ROOT_PATH<<"/slayout").c_str(), "w");
+    if(out == NULL) { cerr << "Failed to run command \""<<ROOT_PATH<<"/slayout\"!"<<endl; assert(0); }
+    
     // Restore the LoadTimeRegistry mutexes
     LoadTimeRegistry::restoreMutexes();
     
@@ -1958,7 +1965,7 @@ dbgStreamMerger::dbgStreamMerger(//std::string workDir,
 
 // vSuffixID: ID that identifies this variant within the next level of variants in the heirarchy
 dbgStreamStreamRecord::dbgStreamStreamRecord(const dbgStreamStreamRecord& that, int vSuffixID) : 
-  streamRecord((const streamRecord&)that, vSuffixID), loc(that.loc)
+  streamRecord((const streamRecord&)that, vSuffixID), loc(that.loc), emitFlags(that.emitFlags)
 { }
 
 // Returns a dynamically-allocated copy of this streamRecord, specialized to the given variant ID,
@@ -1969,10 +1976,21 @@ streamRecord* dbgStreamStreamRecord::copy(int vSuffixID) {
 
 // Given multiple streamRecords from several variants of the same outgoing stream, update this streamRecord object
 // to contain the state that succeeds them all, making it possible to resume processing
-/*void dbgStreamStreamRecord::resumeFrom(std::vector<std::map<std::string, streamRecord*> >& streams) {
-  // We don't do anything since dbgStreamStreamRecord only have a location field, which is updated
-  // within BlockStreamRecord, meaning that it is upto-date.
-}*/
+void dbgStreamStreamRecord::resumeFrom(std::vector<std::map<std::string, streamRecord*> >& streams) {
+  streamRecord::resumeFrom(streams);
+  
+  // Set emitFlags to be the union of its counterparts in streams
+  emitFlags.clear();
+  
+  // Due to the fact that hierarchical merging only recurses from identical tag stacks, the emitFlag lists
+  // must be identical in all the streams
+  for(vector<map<string, streamRecord*> >::iterator s=streams.begin(); s!=streams.end(); s++) {
+    dbgStreamStreamRecord* ds = (dbgStreamStreamRecord*)(*s)["sight"];
+    
+    if(s==streams.begin()) emitFlags = ds->emitFlags;
+    else assert(emitFlags == ds->emitFlags);
+  }
+}
 
 // Called when a block is entered.
 void dbgStreamStreamRecord::enterBlock(vector<map<std::string, streamRecord*> >& streamRecords) {

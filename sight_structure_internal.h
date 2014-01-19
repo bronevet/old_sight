@@ -239,6 +239,8 @@ class sightObj {
   static std::map<std::string, std::set<sightClock*> > clocks;
   
   public:
+  const properties& getProps() const { return *props; }
+    
   // Returns whether this object is active or not
   bool isActive() const;
     
@@ -639,7 +641,7 @@ class AnchorStreamRecord: public streamRecord {
   // independently but then ended up referring to the same location. We'll record the ID of the first one to reach
   // this location on locAnchorIDs and the others will be able to adjust themselves by adopting this ID.
   std::map<streamLocation, streamID> locAnchorIDs;
-    
+  
   public:
   AnchorStreamRecord(variantID vID) : streamRecord(vID, "anchor") { /*maxAnchorID=0;*/ }
   // vSuffixID: ID that identifies this variant within the next level of variants in the heirarchy
@@ -1031,6 +1033,10 @@ class dbgStreamStreamRecord: public streamRecord {
   friend class dbgStreamMerger;
   // The current location within the debug output
   streamLocation loc;
+
+  // Maintains a record for all the tags that have been entered but not yet existed whether they've been emitted.
+  // This is used to ensure that if we choose to not emit the entry of a given tag, we do the same for the exit 
+  std::list<bool> emitFlags;
   
   public:  
   dbgStreamStreamRecord(int vID)              : streamRecord(vID, "sight") { }
@@ -1044,10 +1050,16 @@ class dbgStreamStreamRecord: public streamRecord {
   
   // Given multiple streamRecords from several variants of the same outgoing stream, update this streamRecord object
   // to contain the state that succeeds them all, making it possible to resume processing
-  //void resumeFrom(std::vector<std::map<std::string, streamRecord*> >& streams);
+  void resumeFrom(std::vector<std::map<std::string, streamRecord*> >& streams);
   
   // Returns the stream's current location
   streamLocation getLocation() { return loc; }
+
+  // Pushes the given boolean onto the emitFlags stack
+  void push(bool v) { emitFlags.push_back(v); }
+
+  // Pops the top element from the emitFlags stack and returns it
+  bool pop() { assert(emitFlags.size()>0); bool ret=emitFlags.back(); emitFlags.pop_back(); return ret; }
   
   // Called when a block is entered or exited.
   static void enterBlock(std::vector<std::map<std::string, streamRecord*> >& streamRecords);

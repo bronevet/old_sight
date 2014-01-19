@@ -47,41 +47,41 @@ std::map<std::string, trace*> trace::active;
 trace::trace(std::string label, const std::list<std::string>& contextAttrs, showLocT showLoc, vizT viz, mergeT merge, properties* props) : 
   block(label, setProperties(NULL, showLoc, props))
 {
-  if(contextAttrs.size()==0) { cerr << "trace::trace() ERROR: contextAttrs must be non-empty!"; assert(0);; }
+//  if(contextAttrs.size()==0) { cerr << "trace::trace() ERROR: contextAttrs must be non-empty!"; assert(0);; }
   
-  init(label, contextAttrs, showLoc, viz, merge);
+  init(label, contextAttrs, showLoc, viz, merge, props);
 }
 
 trace::trace(std::string label, std::string contextAttr, showLocT showLoc, vizT viz, mergeT merge, properties* props) : 
   block(label, setProperties(NULL, showLoc, props))
 {
-  init(label, context(contextAttr), showLoc, viz, merge);
+  init(label, context(contextAttr), showLoc, viz, merge, props);
 }
 
 trace::trace(std::string label, showLocT showLoc, vizT viz, mergeT merge, properties* props) : 
   block(label, setProperties(NULL, showLoc, props))
 {
-  init(label, context(), showLoc, viz, merge);
+  init(label, context(), showLoc, viz, merge, props);
 }
 
 trace::trace(std::string label, const std::list<std::string>& contextAttrs, const attrOp& onoffOp, showLocT showLoc, vizT viz, mergeT merge, properties* props) : 
   block(label, setProperties(&onoffOp, showLoc, props))
 {
-  if(contextAttrs.size()==0) { cerr << "trace::trace() ERROR: contextAttrs must be non-empty!"; assert(0);; }
+//  if(contextAttrs.size()==0) { cerr << "trace::trace() ERROR: contextAttrs must be non-empty!"; assert(0);; }
   
-  init(label, contextAttrs, showLoc, viz, merge);
+  init(label, contextAttrs, showLoc, viz, merge, props);
 }
 
 trace::trace(std::string label, std::string contextAttr, const attrOp& onoffOp, showLocT showLoc, vizT viz, mergeT merge, properties* props) : 
   block(label, setProperties(&onoffOp, showLoc, props))
 {
-  init(label, context(contextAttr), showLoc, viz, merge);
+  init(label, context(contextAttr), showLoc, viz, merge, props);
 }
 
 trace::trace(std::string label, const attrOp& onoffOp, showLocT showLoc, vizT viz, mergeT merge, properties* props) : 
   block(label, setProperties(&onoffOp, showLoc, props))
 {
-  init(label, context(), showLoc, viz, merge);
+  init(label, context(), showLoc, viz, merge, props);
 }
 
 // Sets the properties of this object
@@ -92,31 +92,32 @@ properties* trace::setProperties(const attrOp* onoffOp, showLocT showLoc, proper
   // either onoffOp is not provided or its evaluates to true
   if(attributes.query() && (onoffOp? onoffOp->apply(): true)) {
     props->active = true;
-    map<string, string> newProps;
-    newProps["showLoc"] = txt()<<showLoc;
-    props->add("trace", newProps);
+    map<string, string> pMap;
+    pMap["showLoc"] = txt()<<showLoc;
+    props->add("trace", pMap);
   } else
     props->active = false;
   
   return props;
 }
 
-void trace::init(std::string label, const std::list<std::string>& contextAttrs, showLocT showLoc, vizT viz, mergeT merge) {
-  //cout << "trace::init() label="<<label<<", this="<<this<<endl;
-  
-  // Record that this trace is active
-  active[label] = this;
-  
-  // Create a stream for this trace and emit a tag that describes it
-  stream = new traceStream(contextAttrs, viz, merge);
-  /*properties streamProps;
-  streamProps.add("trace_traceStream", stream->setProperties());
-  dbg.tag(streamProps);*/
+void trace::init(std::string label, const std::list<std::string>& contextAttrs, showLocT showLoc, vizT viz, mergeT merge, properties* props) {
+  if(getProps().active) {
+    // Determine whether this object is an instance of a class that derives from trace (props!=NULL) or trace itself (props==NULL)
+    bool isDerived = (props != NULL);
+    
+    // Record that this trace is active
+    active[label] = this;
+
+    // If this object is an instance of trace
+    if(!isDerived)
+      // Create a stream for this trace and emit a tag that describes it
+      stream = new traceStream(contextAttrs, viz, merge);
+    // Otherwise, we expect the object that derives from trace to create its own traceStream
+  }
 }
 
 trace::~trace() {
-  //cout << "trace::~trace() label="<<getLabel()<<", this="<<this<<endl; cout.flush();
-  
   assert(active.find(getLabel()) != active.end());
   active.erase(getLabel());
   
@@ -136,6 +137,59 @@ traceStream* trace::getTS(string label) {
   return getT(label)->stream;
 }
 
+/**************************
+ ***** processedTrace *****
+ **************************/
+
+processedTrace::processedTrace(std::string label, const std::list<std::string>& contextAttrs, const std::list<std::string>& processorCommands,                        showLocT showLoc, vizT viz, mergeT merge, properties* props) :
+    trace(label, contextAttrs,          showLoc, viz, merge, setProperties(NULL, processorCommands, props))
+{ init(label, contextAttrs,         processorCommands, viz, merge, props); }
+processedTrace::processedTrace(std::string label, std::string contextAttr,                    const std::list<std::string>& processorCommands,                        showLocT showLoc, vizT viz, mergeT merge, properties* props) :
+    trace(label, contextAttr,           showLoc, viz, merge, setProperties(NULL, processorCommands, props))
+{ init(label, context(contextAttr), processorCommands, viz, merge, props); }
+processedTrace::processedTrace(std::string label,                                             const std::list<std::string>& processorCommands,                        showLocT showLoc, vizT viz, mergeT merge, properties* props) :
+    trace(label, context(),             showLoc, viz, merge, setProperties(NULL, processorCommands, props))
+{ init(label, context(),            processorCommands, viz, merge, props); }
+processedTrace::processedTrace(std::string label, const std::list<std::string>& contextAttrs, const std::list<std::string>& processorCommands, const attrOp& onoffOp, showLocT showLoc, vizT viz, mergeT merge, properties* props) :
+    trace(label, contextAttrs, onoffOp, showLoc, viz, merge, setProperties(&onoffOp, processorCommands, props))
+{ init(label, contextAttrs,         processorCommands, viz, merge, props); }
+processedTrace::processedTrace(std::string label, std::string contextAttr,                    const std::list<std::string>& processorCommands, const attrOp& onoffOp, showLocT showLoc, vizT viz, mergeT merge, properties* props) :
+    trace(label, context(contextAttr),  onoffOp, showLoc, viz, merge, setProperties(&onoffOp, processorCommands, props))
+{ init(label, context(contextAttr), processorCommands, viz, merge, props); }
+processedTrace::processedTrace(std::string label,                                             const std::list<std::string>& processorCommands, const attrOp& onoffOp, showLocT showLoc, vizT viz, mergeT merge, properties* props) : 
+    trace(label,               onoffOp, showLoc, viz, merge, setProperties(&onoffOp, processorCommands, props))
+{ init(label, context(),            processorCommands, viz, merge, props); }
+
+properties* processedTrace::setProperties(const attrOp* onoffOp, const std::list<std::string>& processorCommands, properties* props) {
+  if(props==NULL) props = new properties();
+  
+  // If the current attribute query evaluates to true (we're emitting debug output) AND
+  // either onoffOp is not provided or its evaluates to true
+  if(attributes.query() && (onoffOp? onoffOp->apply(): true)) {
+    props->active = true;
+    // Don't add anything to the properties. processedTraces behave just like normal traces
+    // but will use processedTraceStreams instead of regular traceStreams
+  } else
+    props->active = false;
+  
+  return props;
+}
+
+void processedTrace::init(std::string label, const std::list<std::string>& contextAttrs, const std::list<std::string>& processorCommands, vizT viz, mergeT merge, properties* props) {
+  if(getProps().active) {
+    // Determine whether this processedTrace object is an instance of a class that derives from 
+    // processedTrace (props!=NULL) or trace itself (props==NULL)
+    bool isDerived = (props != NULL);
+
+    // If this object is an instance of processedTrace
+    if(!isDerived) 
+      // Create a stream for this trace and emit a tag that describes it
+      stream = new processedTraceStream(contextAttrs, processorCommands, viz, merge);
+    // Otherwise, we expect the object that derives from processedTrace to create its own traceStream
+  }
+}
+
+
 /***********************
  ***** traceStream *****
  ***********************/
@@ -143,28 +197,33 @@ traceStream* trace::getTS(string label) {
 // Maximum ID assigned to any trace object
 int traceStream::maxTraceID=0;
   
-traceStream::traceStream(const std::list<std::string>& contextAttrs, vizT viz, mergeT merge, properties* props) : 
-  sightObj(setProperties(contextAttrs, viz, merge, props), true),
+// Callers can optionally provide a traceID that this traceStream will use. This is useful for cases where 
+// the ID of the trace used within a given host object needs to be known before the traceStream is actually
+// created. In this case the host calls genTraceID(), and then ultimately passes it into the traceStream constructor.
+// It can be set to a negative value (or omitted) to indicate that the traceStream should generate an ID on its own.
+
+traceStream::traceStream(const std::list<std::string>& contextAttrs, vizT viz, mergeT merge, int traceID, properties* props) : 
+  sightObj(setProperties(contextAttrs, viz, merge, traceID, props), true),
   contextAttrs(contextAttrs), viz(viz), merge(merge)
-{ init(); }
+{ init(traceID); }
 
-traceStream::traceStream(std::string contextAttr, vizT viz, mergeT merge, properties* props) : 
-  sightObj(setProperties(structure::trace::context(contextAttr), viz, merge, props), true),
+traceStream::traceStream(std::string contextAttr, vizT viz, mergeT merge, int traceID, properties* props) : 
+  sightObj(setProperties(structure::trace::context(contextAttr), viz, merge, traceID, props), true),
   contextAttrs(structure::trace::context(contextAttr)), viz(viz), merge(merge)
-{ init(); }
+{ init(traceID); }
 
-traceStream::traceStream(vizT viz, mergeT merge, properties* props) : 
-  sightObj(setProperties(structure::trace::context(), viz, merge, props), true),
+traceStream::traceStream(vizT viz, mergeT merge, int traceID, properties* props) : 
+  sightObj(setProperties(structure::trace::context(), viz, merge, traceID, props), true),
   viz(viz), merge(merge)
-{ init(); }
+{ init(traceID); }
 
 // Returns the properties of this object
-properties* traceStream::setProperties(const std::list<std::string>& contextAttrs, vizT viz, mergeT merge, properties* props) {
+properties* traceStream::setProperties(const std::list<std::string>& contextAttrs, vizT viz, mergeT merge, int traceID, properties* props) {
   if(props==NULL) props = new properties();
   
   if(props->active && props->emitTag) {
     map<string, string> pMap;
-    pMap["traceID"] = txt()<<maxTraceID;
+    pMap["traceID"] = txt()<<(traceID<0? maxTraceID: traceID);
     pMap["viz"]     = txt()<<viz;
     pMap["merge"]   = txt()<<merge;
     
@@ -182,9 +241,17 @@ properties* traceStream::setProperties(const std::list<std::string>& contextAttr
   return props;
 }
 
-void traceStream::init() {
-  traceID = maxTraceID;
-  maxTraceID++;
+// Generates a fresh traceID and returns it
+int traceStream::genTraceID() {
+  return maxTraceID++;
+}
+
+void traceStream::init(int traceID) {
+  // If we need to generate a traceID on our own
+  if(traceID < 0) {
+    this->traceID = genTraceID();
+  } else
+    this->traceID = traceID;
   
   // Add this trace object as a change listener to all the context variables
   for(list<string>::iterator ca=contextAttrs.begin(); ca!=contextAttrs.end(); ca++)
@@ -309,6 +376,44 @@ void traceStream::emitObservations(const std::map<std::string, attrValue>& conte
   obs.clear();
 }
 
+/********************************
+ ***** processedTraceStream *****
+ ********************************/
+
+// Callers can optionally provide a traceID that this processedTraceStream will use. This is useful for cases where 
+// the ID of the trace used within a given host object needs to be known before the processedTraceStream is actually
+// created. In this case the host calls genTraceID(), and then ultimately passes it into the processedTraceStream constructor.
+// It can be set to a negative value (or omitted) to indicate that the processedTraceStream should generate an ID on its own.
+
+processedTraceStream::processedTraceStream(const std::list<std::string>& contextAttrs, const std::list<std::string>& processorCommands, vizT viz, mergeT merge, int traceID, properties* props) : 
+  traceStream(contextAttrs, viz, merge, traceID, setProperties(processorCommands, props))
+{}
+
+processedTraceStream::processedTraceStream(std::string contextAttr,                    const std::list<std::string>& processorCommands, vizT viz, mergeT merge, int traceID, properties* props) : 
+  traceStream(contextAttr,  viz, merge, traceID, setProperties(processorCommands, props))
+{}
+
+processedTraceStream::processedTraceStream(                                            const std::list<std::string>& processorCommands, vizT viz, mergeT merge, int traceID, properties* props) : 
+  traceStream(              viz, merge, traceID, setProperties(processorCommands, props))
+{}
+
+// Returns the properties of this object
+properties* processedTraceStream::setProperties(const std::list<std::string>& processorCommands, properties* props) {
+  if(props==NULL) props = new properties();
+  
+  if(props->active && props->emitTag) {
+    map<string, string> pMap;
+    pMap["numCmds"] = txt()<<processorCommands.size();
+    int i=0;
+    for(list<string>::const_iterator c=processorCommands.begin(); c!=processorCommands.end(); c++)
+      pMap[txt()<<"cmd"<<i] = *c;
+    
+    props->add("processedTraceStream", pMap);
+  }
+  //cout << "Emitting trace "<<traceID<<endl;
+  
+  return props;
+}
 
 /*******************
  ***** measure *****
@@ -526,7 +631,7 @@ void timeMeasure::end() {
   
   assert(ts);
   if(fullMeasure)
-    ts->traceFullObservation(fullMeasureCtxt, trace::observation(make_pair(valLabel, attrValue((double)elapsed))), anchor::noAnchor);
+    ts->traceFullObservation(fullMeasureCtxt, trace::observation(valLabel, attrValue((double)elapsed)), anchor::noAnchor);
   else
     ts->traceAttrObserved(valLabel, attrValue((double)elapsed), anchor::noAnchor);
 }
@@ -542,7 +647,7 @@ std::list<std::pair<std::string, attrValue> > timeMeasure::endGet(bool addToTrac
   if(addToTrace) {
     assert(ts);
     if(fullMeasure)
-      ts->traceFullObservation(fullMeasureCtxt, trace::observation(make_pair(valLabel, attrValue((double)elapsed))), anchor::noAnchor);
+      ts->traceFullObservation(fullMeasureCtxt, trace::observation(valLabel, attrValue((double)elapsed)), anchor::noAnchor);
     else
       ts->traceAttrObserved(valLabel, attrValue((double)elapsed), anchor::noAnchor);
   }
@@ -755,7 +860,7 @@ void PAPIMeasure::end() {
     if (PAPI_event_code_to_name(events[i], EventCodeStr) != PAPI_OK) { cerr << "PAPIMeasure::end() ERROR getting name of PAPI counter "<<events[i]<<"!"<<endl; assert(0); }
     
     if(fullMeasure)
-      ts->traceFullObservation(fullMeasureCtxt, trace::observation(make_pair((string)(txt()<<valLabel<<":"<<EventCodeStr), attrValue((long)accumValues[i]))), anchor::noAnchor);
+      ts->traceFullObservation(fullMeasureCtxt, trace::observation((string)(txt()<<valLabel<<":"<<EventCodeStr), attrValue((long)accumValues[i])), anchor::noAnchor);
     else
       ts->traceAttrObserved(txt()<<valLabel<<":"<<EventCodeStr, attrValue((long)accumValues[i]), anchor::noAnchor);
   }
@@ -800,7 +905,7 @@ std::list<std::pair<std::string, attrValue> > PAPIMeasure::endGet(bool addToTrac
     
     if(addToTrace) {
       if(fullMeasure)
-        ts->traceFullObservation(fullMeasureCtxt, trace::observation(make_pair((string)(txt()<<valLabel<<":"<<EventCodeStr), attrValue((long)accumValues[i]))), anchor::noAnchor);
+        ts->traceFullObservation(fullMeasureCtxt, trace::observation((string)(txt()<<valLabel<<":"<<EventCodeStr), attrValue((long)accumValues[i])), anchor::noAnchor);
       else
         ts->traceAttrObserved(txt()<<valLabel<<":"<<EventCodeStr, attrValue((long)accumValues[i]), anchor::noAnchor);
     }
@@ -993,6 +1098,65 @@ void TraceStreamMerger::mergeKey(properties::tagType type, properties::iterator 
     key.push_back(properties::get(tag, "numCtxtAttrs"));
     int numCtxtAttrs = properties::getInt(tag, "numCtxtAttrs");
     for(int c=0; c<numCtxtAttrs; c++) key.push_back(properties::get(tag, txt()<<"ctxtAttr_"<<c));
+  }
+}
+
+/**************************************
+ ***** ProcessedTraceStreamMerger *****
+ **************************************/
+
+ProcessedTraceStreamMerger::ProcessedTraceStreamMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+                         std::map<std::string, streamRecord*>& outStreamRecords,
+                         std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                         properties* props) : 
+        TraceMerger(advance(tags), outStreamRecords, inStreamRecords, 
+                    setProperties(tags, outStreamRecords, inStreamRecords, props))
+{ }
+
+
+// Sets the properties of the merged object
+properties* ProcessedTraceStreamMerger::setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+                                       map<string, streamRecord*>& outStreamRecords,
+                                       vector<map<string, streamRecord*> >& inStreamRecords,
+                                       properties* props) {
+  if(props==NULL) props = new properties();
+  
+  assert(tags.size()>0);
+  vector<string> names = getNames(tags); assert(allSame<string>(names));
+  assert(*names.begin() == "processedTS");
+  
+  map<string, string> pMap;
+  properties::tagType type = streamRecord::getTagType(tags); 
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Processed Trace!"<<endl; assert(0);; }
+  if(type==properties::enterTag) {
+    // All the  process commands must be identical
+    pMap["numCmds"] = getSameValue(tags, "numCmds");
+    long numCmds = attrValue::parseInt(pMap["numCmds"]);
+    
+    for(int c=0; c<numCmds; c++)
+      pMap[txt()<<"cmd"<<c] = getSameValue(tags, txt()<<"cmd"<<c);
+  }
+  props->add("processedTrace", pMap);
+  
+  return props;
+}
+
+// Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+// tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
+// Each level of the inheritance hierarchy may add zero or more elements to the given list and 
+// call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
+void ProcessedTraceStreamMerger::mergeKey(properties::tagType type, properties::iterator tag, 
+                           std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
+  BlockMerger::mergeKey(type, tag.next(), inStreamRecords, key);
+  
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; assert(0);; }
+  if(type==properties::enterTag) {
+    // All the  process commands must be identical
+    key.push_back(tag.get("numCmds"));
+    int numCmds = tag.getInt("numCmds");
+    for(int c=0; c<numCmds; c++) {
+      key.push_back(tag.get(txt()<<"cmd"<<c));
+    }
   }
 }
 

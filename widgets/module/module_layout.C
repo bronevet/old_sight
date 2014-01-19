@@ -45,6 +45,8 @@ moduleLayoutHandlerInstantiator::moduleLayoutHandlerInstantiator() {
   (*layoutExitHandlers )["moduleTS"]     = &defaultExitHandler;
   (*layoutEnterHandlers)["module"]       = &modularApp::enterModule;
   (*layoutExitHandlers )["module"]       = &modularApp::exitModule;
+  (*layoutEnterHandlers)["moduleMarker"] = &defaultEntryHandler;
+  (*layoutExitHandlers )["moduleMarker"] = &defaultExitHandler;
   (*layoutEnterHandlers)["moduleEdge"]   = &modularApp::addEdge;
   (*layoutExitHandlers )["moduleEdge"]   = &defaultExitHandler;
   (*layoutEnterHandlers)["compModuleTS"] = &compModuleTraceStream::enterTraceStream;
@@ -275,6 +277,7 @@ void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int
   int databoxWidth = 300;
   int databoxHeight = 200;
   
+  //cout << "module "<<moduleName<<", numInputs="<<numInputs<<", #modules[moduleID]->ctxtNames="<<modules[moduleID]->ctxtNames.size()<<endl;
   //dotFile << "\t\""<<portNamePrefix(moduleName)<<"\" [shape=none, fill=lightgrey, label=<<TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\">"<<endl;
   // Input ports and body
   dotFile << "\tnode"<<moduleID<<" [shape=none, fill=lightgrey, href=\"#\", onclick=\"return ClickOnModuleNode('node"<<moduleID<<"', this, ID);\", label=";
@@ -861,6 +864,12 @@ moduleTraceStream::moduleTraceStream(properties::iterator props, traceObserver* 
   // Get the currently active module that this traceStream belongs to
   /*assert(modularApp::mStack.size()>0);
   module* m = modularApp::activeMA->mStack.back();*/
+
+  /*cout << "modularApp::activeMA->moduleTraces=";
+  for(map<int, traceStream*>::iterator i=modularApp::activeMA->moduleTraces.begin(); i!=modularApp::activeMA->moduleTraces.end(); i++)
+    cout << "    "<<i->first<<" : "<<i->second<<endl;
+  cout << "props="<<props.str()<<endl;*/
+
   assert(modularApp::activeMA->moduleTraces.find(moduleID) == modularApp::activeMA->moduleTraces.end());
   
   // Create a new traceStream object to collect the observations for this module group
@@ -901,7 +910,7 @@ moduleTraceStream::~moduleTraceStream() {
 
 // Called when we observe the entry tag of a moduleTraceStream
 void *moduleTraceStream::enterTraceStream(properties::iterator props) {
-  //cout << "modularApp::enterTraceStream"<<endl;
+  //cout << "modularApp::enterTraceStream props="<<props.str()<<endl;
   assert(props.name() == "moduleTS");
   //string moduleName = properties::get(nameProps, "ModuleName");
   
@@ -996,6 +1005,7 @@ void *compModuleTraceStream::enterTraceStream(properties::iterator props) {
   assert(props.name() == "compModuleTS");
   //string moduleName = properties::get(nameProps, "ModuleName");
   
+  //cout << "compModuleTraceStream::enterTraceStream() props="<<props.str()<<endl;
   // Allocate a new compModuleTraceStream. The constructor takes care of registering it with the currently active module
   new compModuleTraceStream(props);
   
@@ -1049,7 +1059,7 @@ std::map<std::string, std::string> compModule::compareObservations(
     
     attrValue rel = i->second.compare(i2->second, *comp);
     //cout << "i->second="<<i->second.serialize()<<", i2->second="<<i2->second.serialize()<<" rel="<<rel.serialize()<<endl;
-    cout << "    rel="<<rel.serialize()<<endl;
+    //cout << "    rel="<<rel.serialize()<<endl;
     
     // Serialize the relationship between the two attrValues and record it in relation[]]
     relation[i->first] = rel.serialize();
@@ -1084,10 +1094,10 @@ void compModule::observe(int traceID,
                          const map<string, string>& obs,
                          const map<string, anchor>& obsAnchor/*,
                          const set<traceObserver*>& observers*/) {
-  cout << "compModule::observe("<<traceID<<")"<<endl;
+  /*cout << "compModule::observe("<<traceID<<")"<<endl;
   cout << "    ctxt=";
   for(map<string, string>::const_iterator c=ctxt.begin(); c!=ctxt.end(); c++) { cout << c->first << "=>"<<c->second<<" "; }
-  cout << endl;
+  cout << endl;*/
   /*cout << "    obs=";
   for(map<string, string>::const_iterator o=obs.begin(); o!=obs.end(); o++) { cout << o->first << "=>"<<o->second<<" "; }
   cout << endl;*/

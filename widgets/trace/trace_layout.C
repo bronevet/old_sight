@@ -11,12 +11,14 @@ void* traceEnterHandler(properties::iterator props) { return new trace(props); }
 void  traceExitHandler(void* obj) { trace* t = static_cast<trace*>(obj); delete t; }
   
 traceLayoutHandlerInstantiator::traceLayoutHandlerInstantiator() { 
-  (*layoutEnterHandlers)["trace"] = &traceEnterHandler;
-  (*layoutExitHandlers )["trace"] = &traceExitHandler;
-  (*layoutEnterHandlers)["traceStream"] = &trace::enterTraceStream;
-  (*layoutExitHandlers )["traceStream"] = &defaultExitHandler;
-  (*layoutEnterHandlers)["traceObs"] = &traceStream::observe;
-  (*layoutExitHandlers )["traceObs"] = &defaultExitHandler;
+  (*layoutEnterHandlers)["trace"]                = &traceEnterHandler;
+  (*layoutExitHandlers )["trace"]                = &traceExitHandler;
+  (*layoutEnterHandlers)["traceStream"]          = &trace::enterTraceStream;
+  (*layoutExitHandlers )["traceStream"]          = &defaultExitHandler;
+  (*layoutEnterHandlers)["processedTraceStream"] = &processedTrace::enterProcessedTraceStream;
+  (*layoutExitHandlers )["processedTraceStream"] = &defaultExitHandler;
+  (*layoutEnterHandlers)["traceObs"]             = &traceStream::observe;
+  (*layoutExitHandlers )["traceObs"]             = &defaultExitHandler;
 }
 traceLayoutHandlerInstantiator traceLayoutHandlerInstance;
 
@@ -67,6 +69,15 @@ void *trace::enterTraceStream(properties::iterator props) {
   return NULL;
 }
 
+void *processedTrace::enterProcessedTraceStream(properties::iterator props) {
+  // Get the currently active trace that this traceStream belongs to
+  assert(trace::tStack.size()>0);
+  trace* t = trace::tStack.back();
+  t->stream = new processedTraceStream(props, txt()<<"div"<<t->getBlockID()<<"-Trace");
+  
+  return NULL;
+}
+
 /*************************
  ***** traceObserver *****
  *************************/
@@ -75,6 +86,11 @@ void *trace::enterTraceStream(properties::iterator props) {
 bool traceObserver::finishNotified=false;
 
 traceObserver::~traceObserver() {
+  // Unregister this object from all those that it is observing
+  while(observing.size()>0)
+    observing.begin()->first->unregisterObserver(this);
+  
+  // Notify all the objects that are observing this one that its stream is finished
   notifyObsFinish();
 }  
 
@@ -98,11 +114,10 @@ void traceObserver::notifyObsFinish() {
 void traceObserver::emitObservation(int traceID, 
                                     const std::map<std::string, std::string>& ctxt, 
                                     const std::map<std::string, std::string>& obs,
-                                    const std::map<std::string, anchor>&      obsAnchor/*,
-                                    const std::set<traceObserver*>&           observers*/) {
-  for(std::map<traceObserver*, int>::iterator o=observers.begin(); o!=observers.end(); o++)
-  //for(std::set<traceObserver*>::iterator o=observers.begin(); o!=observers.end(); o++)
+                                    const std::map<std::string, anchor>&      obsAnchor) {
+  for(std::map<traceObserver*, int>::iterator o=observers.begin(); o!=observers.end(); o++) {
     o->first->observe(traceID, ctxt, obs, obsAnchor);
+  }
 }
 
 // Registers/unregisters a given object as an observer of this traceStream
@@ -110,18 +125,23 @@ void traceObserver::registerObserver(traceObserver* obs) {
   // If this observer has not been registered until now, initialize it to a count of 1
   if(observers.find(obs) == observers.end()) {
     observers[obs] = 1;
+    obs->observing[this] = 1;
     //observersS.insert(obs);
   // Otherwise, increment its count
-  } else
+  } else {
     observers[obs]++;
+    obs->observing[this]++;
+  }
 }
 
 void traceObserver::unregisterObserver(traceObserver* obs) {
   assert(observers.find(obs) != observers.end());
   observers[obs]--;
+  obs->observing[this]--;
   // If this observer's counter has dropped to 0, erase it
   if(observers[obs] == 0) {
     observers.erase(obs);
+    obs->observing.erase(this);
     //observersS.erase(obs);
   }
 } 
@@ -163,7 +183,7 @@ traceObserverQueue::traceObserverQueue(const std::list<traceObserver*>& observer
 // Push a new observer to the back of the observers queue
 void traceObserverQueue::push_back(traceObserver* obs)
 {
-  //queue.push_back(obs);
+  //cout << "queue::push_back(obs="<<obs<<") firstO="<<firstO<<endl;
   // If this is the first element in the observers queue
   if(firstO == NULL) {
     firstO = obs;
@@ -175,15 +195,17 @@ void traceObserverQueue::push_back(traceObserver* obs)
 
   // If observers already has elements
   } else {
+    //cout << "#observers="<<observers.size()<<endl;
     // Move over any observers currently registered with this queue to be registered with the queue's new last element
     for(map<traceObserver*, int>::iterator o=observers.begin(); o!=observers.end(); o++) {
-      lastO->unregisterObserver(o->first);
-      obs->registerObserver(o->first);
+      o->first->unregisterObserver(lastO);
+      o->first->registerObserver(obs);
     }
     
     // Place obs immediately after lastO
     lastO->registerObserver(obs);
     
+    //cout << "lastO="<<lastO<<", #lastO->observers="<<lastO->observers.size()<<endl;
     lastO = obs;
   }
 }
@@ -244,8 +266,7 @@ void traceObserverQueue::unregisterObserver(traceObserver* obs) {
 void traceObserverQueue::observe(int traceID, 
                                  const std::map<std::string, std::string>& ctxt, 
                                  const std::map<std::string, std::string>& obs,
-                                 const std::map<std::string, anchor>&      obsAnchor/*,
-                                 const std::set<traceObserver*>&           observers*/) {
+                                 const std::map<std::string, anchor>&      obsAnchor) {
   if(firstO!=NULL)
     // Forward the observation to the first traceObserver in the queue and let it forward it to its
     // successors in the queue as it needs to.
@@ -287,6 +308,15 @@ void traceObserverQueue::observe(int traceID,
   //emitObservation(traceID, ctxt, obs, obsAnchor, observers);*/
 }
 
+// Called when the stream of observations has finished to allow the implementor to perform clean-up tasks.
+// This method is optional.
+void traceObserverQueue::obsFinished() {
+  if(firstO!=NULL)
+    // Forward the completion notification to the first traceObserver in the queue and let it forward it to its
+    // successors in the queue as it needs to.
+    firstO->obsFinished();
+}
+
 /***************************************
  ***** externalTraceProcessor_File *****
  ***************************************/
@@ -295,6 +325,7 @@ externalTraceProcessor_File::externalTraceProcessor_File(std::string processorFN
   processorFName(processorFName), obsFName(obsFName) 
 {
   traceFile.open(obsFName.c_str());
+  finished = false;
 }
   
 // Interface implemented by objects that listen for observations a traceStream reads. Such objects
@@ -306,19 +337,19 @@ void externalTraceProcessor_File::observe(int traceID,
 
   // Serialize the current observation into the trace file
   for(std::map<std::string, std::string>::const_iterator c=ctxt.begin(); c!=ctxt.end(); c++) {
-    sight::common::escapedStr key(c->first,  " :", sight::common::escapedStr::escaped);
-    sight::common::escapedStr val(c->second, " :", sight::common::escapedStr::escaped);
+    sight::common::escapedStr key(c->first,  " :", sight::common::escapedStr::unescaped);
+    sight::common::escapedStr val(c->second, " :", sight::common::escapedStr::unescaped);
     traceFile << "ctxt:"<<key.escape()<<":"<<val.escape()<<" ";
   }
 
   for(std::map<std::string, std::string>::const_iterator o=obs.begin(); o!=obs.end(); o++) {
-    sight::common::escapedStr key(o->first,  " :", sight::common::escapedStr::escaped);
-    sight::common::escapedStr val(o->second, " :", sight::common::escapedStr::escaped);
+    sight::common::escapedStr key(o->first,  " :", sight::common::escapedStr::unescaped);
+    sight::common::escapedStr val(o->second, " :", sight::common::escapedStr::unescaped);
     traceFile << "obs:"<<key.escape()<<":"<<val.escape()<<" ";
   }
 
   for(std::map<std::string, anchor>::const_iterator a=obsAnchor.begin(); a!=obsAnchor.end(); a++) {
-    sight::common::escapedStr key(a->first,  " :", sight::common::escapedStr::escaped);
+    sight::common::escapedStr key(a->first,  " :", sight::common::escapedStr::unescaped);
     traceFile << "anchor:"<<key.escape()<<":"<<a->second.getID()<<" ";
   }
 
@@ -328,16 +359,30 @@ void externalTraceProcessor_File::observe(int traceID,
 // Called when the stream of observations has finished to allow the implementor to perform clean-up tasks.
 // This method is optional.
 void externalTraceProcessor_File::obsFinished() {
+  // Only perform finishing code if we haven't already finished
+  if(finished) return;
+  finished = true;
+  
   // We're done writing the trace file, so close the stream
   traceFile.close();
   
   // Execute the processing application
-  ostringstream s; s<< processorFName << " "<<obsFName;
+  ostringstream s; s << processorFName << " "<<obsFName;
+
+  // In case the processor executable is linked with Sight, unset the mutex environment variables from 
+  // LoadTimeRegistry to make sure that they don't leak to the layout process
+  common::LoadTimeRegistry::liftMutexes();
+  
   FILE* out = popen(s.str().c_str(), "r");
+  if(out == NULL) { cerr << "Failed to run command \""<<s.str()<<"\"!"<<endl; assert(0); }
+  
+  // Restore the LoadTimeRegistry mutexes
+  common::LoadTimeRegistry::restoreMutexes();
 
   // Read out the trace produced by the processor
   char line[10000];
   while(fgets(line, 10000, out)) {
+    //cout << "line=\""<<line<<"\""<<endl;
     // Split the line into its individual terms
     sight::common::escapedStr es(string(line), " ", sight::common::escapedStr::escaped);
     vector<string> terms = es.unescapeSplit(" ");
@@ -347,28 +392,30 @@ void externalTraceProcessor_File::obsFinished() {
 
     // Iterate over each term of this observation, adding each one into this observation's context, trace observation or anchors
     for(vector<string>::iterator t=terms.begin(); t!=terms.end(); t++) {
+      //cout << "t=\""<<*t<<"\""<<endl;
+      
       // Split the term into the key and the value
       sight::common::escapedStr es(string(*t), ":", sight::common::escapedStr::escaped);
       vector<string> kv = es.unescapeSplit(":");
-      assert(kv.size()==2);
-      string key=kv[0];
-      string val=kv[1];
+      assert(kv.size()==3);
+      string type=kv[0];
+      string key =kv[1];
+      string val =kv[2];
 
       // Identify the type of this term
-      int colonLoc = key.find(":");
-      string type = key.substr(0, colonLoc);
-      string keyName = key.substr(colonLoc+1);
-      if(type == "ctxt") ctxt[keyName] = val;
-      else if(type=="obs") obs[keyName] = val;
-      else obsAnchor[keyName] = anchor(attrValue::parseInt(val));
+      if(type == "ctxt") ctxt[key] = val;
+      else if(type=="obs") obs[key] = val;
+      else obsAnchor[key] = anchor(attrValue::parseInt(val));
     }
-
+    
     // Emit the observation
     emitObservation(-1, ctxt, obs, obsAnchor);
   }
+  //cout << "done"<<endl;
+  pclose(out);
   
   // Inform this trace's observers that it has finished
-  traceObserver::obsFinished();;
+  traceObserver::obsFinished();
 }
 
 /***********************
@@ -470,8 +517,17 @@ string JSArray(const aggr& l) {
 }
 
 traceStream::~traceStream() {
+  // Notify observers that this traceStream has finished. This is called explicitly instead of 
+  // waiting for this method to be called inside the traceObserver destructor to deal with cases
+  // where there's an observation cycle: 
+  // - this trace listens on observers that listen on this trace, AND
+  // - some observations from those observers are emitted when this stream is finished (e.g. externalTraceProcessor)
+  // In this case, we have to fist notify them, collect their observations and then finish destructing
+  // this traceStream.
+  obsFinished();
+  
   // If the trace is shown by default
-  if(showTrace) { 
+  if(showTrace) {    
     // String that contains the names of all the context attributes 
     string ctxtAttrsStr;
     if(viz==table || viz==decTree || viz==scatter3d || viz==heatmap || viz==boxplot)
@@ -557,7 +613,7 @@ std::string traceStream::getDisplayJSCmd(const std::list<std::string>& contextAt
 // Record an observation
 void* traceStream::observe(properties::iterator props)
 {
-  //cout << "trace::observe() props="<<properties::str(props)<<endl;
+  //cout << "traceStream::observe() props="<<props.str()<<endl;
   long traceID = properties::getInt(props, "traceID");
   assert(active.find(traceID) != active.end());
   traceStream* ts = active[traceID];
@@ -596,13 +652,12 @@ void* traceStream::observe(properties::iterator props)
 
 // Called by any observers of the stream, which may have filtered the raw observation, to inform the traceStream
 // that the given observation should actually be emitted to the output
-void traceStream::observe(int traceID,
+void traceStream::observe(int fromTraceID,
                           const map<string, string>& ctxt, 
                           const map<string, string>& obs,
-                          const map<string, anchor>& obsAnchor/*,
-                          const set<traceObserver*>& observers*/)
+                          const map<string, anchor>& obsAnchor)
 {
-  //cout << "traceStream::observe("<<traceID<<") this="<<this<<", this->traceID="<<this->traceID<<", #contextAttrs="<<contextAttrs.size()<<" #ctxt="<<ctxt.size()<<endl;
+  //cout << "traceStream::observe("<<fromTraceID<<") this="<<this<<", this->traceID="<<this->traceID<<", #contextAttrs="<<contextAttrs.size()<<" #ctxt="<<ctxt.size()<<endl;
   // Read all the context attributes. If contextAttrs is empty, it is filled with the context attributes of 
   // this observation. Otherwise, we verify that this observation's context is identical to prior observations.
   if(contextAttrsInitialized) assert(contextAttrs.size() == ctxt.size());
@@ -707,6 +762,40 @@ traceStream* traceStream::get(int traceID) {
   std::map<int, traceStream*>::iterator it = active.find(traceID);
   assert(it != active.end());
   return it->second;
+}
+
+
+/********************************
+ ***** processedTraceStream *****
+ ********************************/
+
+// hostDiv - the div where the trace data should be displayed
+  // showTrace - indicates whether the trace should be shown by default (true) or whether the host will control
+  //             when it is shown
+processedTraceStream::processedTraceStream(properties::iterator props, std::string hostDiv, bool showTrace) : 
+  traceStream(props.next(), hostDiv, showTrace)
+{
+  queue = new traceObserverQueue();
+  
+  // Add this trace object as a change listener to all the context variables
+  long numCmds = properties::getInt(props, "numCmds");
+  for(long i=0; i<numCmds; i++) {
+    commandProcessors.push_back(new externalTraceProcessor_File(props.get(txt()<<"cmd"<<i), txt()<<"out"<<i));
+    queue->push_back(commandProcessors.back());
+  }
+  // The final observer in the queue is the original traceStream, which accepts the observations and sends
+  // them to be visualized
+  queue->push_back(this);
+
+  // Route all of this traceStream's observations through queue
+  registerObserver(queue);
+}
+
+processedTraceStream::~processedTraceStream() {
+  // Delete all the command processors in the queue as well as the queue itself
+  delete queue;
+  for(list<externalTraceProcessor_File*>::iterator cp=commandProcessors.begin(); cp!=commandProcessors.end(); cp++)
+    delete *cp;
 }
 
 }; // namespace layout

@@ -4,7 +4,7 @@ EXE := .exe
 endif
 
 sight_H := ../*.h ../*/*.h ../widgets/*/*.h
-TESTERS = 5.Tracing${EXE} 10.SpringModules${EXE} 9.CompModules.single${EXE} 9.CompModules.merged${EXE} \
+TESTERS = 11.ExternTraceProcess${EXE} #5.Tracing${EXE} 10.SpringModules${EXE} 9.CompModules.single${EXE} 9.CompModules.merged${EXE} \
           0.Demo${EXE} 1.StructuredFormatting${EXE} 2.ConditionalFormatting${EXE} 3.Navigation${EXE} \
           4.AttributeAnnotationFiltering${EXE} 6.PerfAnalysis${EXE} \
           7.Merging${EXE} 8.Modules${EXE}
@@ -84,6 +84,10 @@ run: ${TESTERS}
 
 10.SpringModules${EXE}: 10.SpringModules.C ../libsight_structure.a ${sight_H}
 	g++ ${SIGHT_CFLAGS} 10.SpringModules.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 10.SpringModules${EXE}
+
+11.ExternTraceProcess${EXE}: 11.ExternTraceProcess.C ../libsight_structure.a ${sight_H}
+	g++ 11.ExternTraceProcess.windowing.C -I.. -L.. -lsight_common -o 11.ExternTraceProcess.windowing${EXE}
+	g++ ${SIGHT_CFLAGS} 11.ExternTraceProcess.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 11.ExternTraceProcess${EXE}
 
 clean:
 	rm -rf ${TESTERS} dbg.*

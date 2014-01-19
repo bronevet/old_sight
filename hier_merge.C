@@ -189,11 +189,11 @@ vector<pair<properties::tagType, properties::iterator> > beginTags(
 // Merge the tags on the given incoming streams, emitting the merged tags to the outgoing stream, if this
 // is requested by the merger. Returns the number of tags emitted.
 int mergeTags(properties::tagType type, string objName,
-               vector<pair<properties::tagType, const properties*> >& nextTag, 
-               std::map<std::string, streamRecord*>& outStreamRecords,
-               std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
-               int& stackDepth, structure::dbgStream& out,
-               string indent) {
+              vector<pair<properties::tagType, const properties*> >& nextTag, 
+              std::map<std::string, streamRecord*>& outStreamRecords,
+              std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+              int& stackDepth, structure::dbgStream& out,
+              string indent) {
   // Merge the properties of all tags
   //Merger* m = mergers[objName]->merge(beginTags(nextTag), outStreamRecords, inStreamRecords);
   Merger* m = (*MergeHandlerInstantiator::MergeHandlers)[objName](beginTags(nextTag), outStreamRecords, inStreamRecords, NULL);
@@ -228,12 +228,16 @@ int mergeTags(properties::tagType type, string objName,
         #endif
         stackDepth++;
         out.enter(m->getProps());
+
+        ((dbgStreamStreamRecord*)outStreamRecords["sight"])->push(true);
       } else {
         #ifdef VERBOSE
       	cout << "Exiting props="<<m->getProps().str()<<"\n";
       	#endif
         stackDepth--;
-        out.exit(m->getProps());
+        // Emit the exit portion of this tag only if the entry was
+        if(((dbgStreamStreamRecord*)outStreamRecords["sight"])->pop())
+          out.exit(m->getProps());
       }
     }
     
@@ -251,9 +255,11 @@ int mergeTags(properties::tagType type, string objName,
       if(type == properties::enterTag) {
       	//cout << "Entering props="<<m->getProps().str()<<"\n";
         stackDepth++;
+        ((dbgStreamStreamRecord*)outStreamRecords["sight"])->push(false);
       } else {
       	//cout << "Exiting props="<<m->getProps().str()<<"\n";
         stackDepth--;
+        ((dbgStreamStreamRecord*)outStreamRecords["sight"])->pop();
       }
     }
     numTagsEmitted=0;
@@ -445,8 +451,8 @@ int merge(vector<FILEStructureParser*>& parsers,
         ///if(mt == commonMerge)
           numTagsEmitted +=
             mergeTags(properties::enterTag, "text", 
-                    groupNextTag, outStreamRecords, groupInStreamRecords,
-                    stackDepth, out, indent+"   .");
+                      groupNextTag, outStreamRecords, groupInStreamRecords,
+                      stackDepth, out, indent+"   .");
         /*else if(mt == zipper) {
           zipperTags(properties::enterTag, "text", 
                     groupNextTag, outStreamRecords, groupInStreamRecords,

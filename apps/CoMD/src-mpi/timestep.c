@@ -46,8 +46,12 @@ double timestep(SimFlat* s, int printRate, int curTime, real_t dt, int iStep, in
 {
    for (int ii=0; ii<printRate && iStep<nSteps; ++ii,++iStep)
    {
-//      scope(txt()<<"Time "<<(iStep*dt), scope::high);
+     attr tsA("time", iStep*dt);
+     
+#if defined(TRACE_POS)
+      scope traceScope(txt()<<"Time "<<(iStep*dt), scope::high);
       trace posTrace("Positions", trace::showBegin, trace::scatter3d);
+#endif
 
       real3 posStdDev;
       computeParticleStdDev(s, s->boxes->nLocalBoxes, s->atoms->r, posStdDev);
@@ -55,129 +59,162 @@ double timestep(SimFlat* s, int printRate, int curTime, real_t dt, int iStep, in
       computeParticleStdDev(s, s->boxes->nLocalBoxes, s->atoms->p, momStdDev);
      
       std::vector<port> externalOutputs;
-      //module tsModule(instance("TimeStep", 2, 2), 
+#if defined(MODULES)
+#if defined(MOD_COMP)
       compModule tsModule(instance("TimeStep", 1, 2), 
-                        /*inputs(port(context("dt", dt)),
+                         inputs(port(context("curTime", curTime))),
+#else
+      module tsModule(instance("TimeStep", 2, 1), 
+                        inputs(port(context("dt", dt)),
                                port(context("posStdDev",  mean(posStdDev),
                                             "momStdDev",  mean(momStdDev),
                                             "ePotential", s->ePotential,
-                                            "eKinetic",   s->eKinetic))),*/
-                         inputs(port(context("curTime", curTime))),
+                                            "eKinetic",   s->eKinetic))),
+#endif // MOD_COMP
                          externalOutputs,
-                         dt==1, // isReference
+#if defined(MOD_COMP)
+                         dt==1 && s->lat==3.615, // isReference
                          context("dt",  dt,
                                  "lat", s->lat), // options
-                         /*namedMeasures(
-                            "time", new timeMeasure(),
-                            "PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS))*/
-                        compNamedMeasures("time", new timeMeasure(), LkComp(2, attrValue::floatT, true),
-                                          "PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS)), LkComp(2, attrValue::intT, true))
+                         compNamedMeasures("time", new timeMeasure(), LkComp(2, attrValue::floatT, true),
+                                           "PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS)), LkComp(2, attrValue::intT, true))
+#else
+                         namedMeasures("time", new timeMeasure(),
+                                       "PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS)))
+#endif // MOD_COMP 
                         );
+#endif // MODULES
      
-      { module advModule(instance("AdvanceVel1", 1, 0), 
-                     inputs(port(context("ii", ii))),
-                     namedMeasures(
-                         "time", new timeMeasure(),
-                         "PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS))));
-       
-      //startTimer(velocityTimer);
-      advanceVelocity(s, s->boxes->nLocalBoxes, 0.5*dt); 
-      //stopTimer(velocityTimer);
+      { 
+#if defined(MODULES)
+         module advModule(instance("AdvanceVel1", 1, 0), 
+                          inputs(port(context("ii", ii))),
+                          namedMeasures(
+                              "time", new timeMeasure(),
+                              "PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS))));
+#endif // MODULES
+         startTimer(velocityTimer);
+         advanceVelocity(s, s->boxes->nLocalBoxes, 0.5*dt); 
+         stopTimer(velocityTimer);
       }
 
-      { module posModule(instance("AdvPos", 1, 0), 
-                     inputs(port(context("ii", ii))),
-                     namedMeasures(
-                         "time", new timeMeasure(),
-                         "PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS))));
-      //startTimer(positionTimer);
-      advancePosition(s, s->boxes->nLocalBoxes, dt);
-      //stopTimer(positionTimer);
+      {
+#if defined(MODULES)
+         module posModule(instance("AdvPos", 1, 0), 
+                          inputs(port(context("ii", ii))),
+                          namedMeasures(
+                              "time", new timeMeasure(),
+                              "PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS))));
+#endif // MODULES
+         startTimer(positionTimer);
+         advancePosition(s, s->boxes->nLocalBoxes, dt);
+         stopTimer(positionTimer);
       }
       
-      { module redModule(instance("Redistribute", 1, 0), 
-                     inputs(port(context("ii", ii))),
-                     namedMeasures(
-                         "time", new timeMeasure(),
-                         "PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS))));
-      //startTimer(redistributeTimer);
-      redistributeAtoms(s);
-      //stopTimer(redistributeTimer);
+      {
+#if defined(MODULES)
+         module redModule(instance("Redistribute", 1, 0), 
+                         inputs(port(context("ii", ii))),
+                         namedMeasures(
+                             "time", new timeMeasure(),
+                             "PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS))));
+#endif // MODULES
+         startTimer(redistributeTimer);
+         redistributeAtoms(s);
+         stopTimer(redistributeTimer);
       }
 
-      { module advModule(instance("Forces", 1, 0), 
-                     inputs(port(context("ii", ii))),
-                     namedMeasures(
-                         "time", new timeMeasure(),
-                         "PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS))));
-      //startTimer(computeForceTimer);
-      computeForce(s);
-      //stopTimer(computeForceTimer);
+      {
+#if defined(MODULES)
+         module advModule(instance("Forces", 1, 0), 
+                          inputs(port(context("ii", ii))),
+                          namedMeasures(
+                              "time", new timeMeasure(),
+                              "PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS))));
+#endif // MODULES
+         startTimer(computeForceTimer);
+         computeForce(s);
+         stopTimer(computeForceTimer);
       }
 
-      { module advModule(instance("AdvanceVel2", 1, 0), 
-                     inputs(port(context("ii", ii))),
-                     namedMeasures(
-                         "time", new timeMeasure(),
-                         "PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS))));
-      //startTimer(velocityTimer);
-      advanceVelocity(s, s->boxes->nLocalBoxes, 0.5*dt); 
-      //stopTimer(velocityTimer);
+      {
+#if defined(MODULES)
+         module advModule(instance("AdvanceVel2", 1, 0), 
+                          inputs(port(context("ii", ii))),
+                          namedMeasures(
+                              "time", new timeMeasure(),
+                              "PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS))));
+#endif // MODULES
+         startTimer(velocityTimer);
+         advanceVelocity(s, s->boxes->nLocalBoxes, 0.5*dt); 
+         stopTimer(velocityTimer);
       }
       
       curTime+=dt;
       
-      //if(ii==nSteps-1) {
-        kineticEnergy(s);
-    
-        computeParticleStdDev(s, s->boxes->nLocalBoxes, s->atoms->r, posStdDev);
-        computeParticleStdDev(s, s->boxes->nLocalBoxes, s->atoms->p, momStdDev);
-    
-        /*tsModule.setOutCtxt(0, context("posStdDev",  mean(posStdDev),
-                                       "momStdDev",  mean(momStdDev),
-                                       "ePotential", s->ePotential,
-                                       "eKinetic",   s->eKinetic));*/
-        tsModule.setOutCtxt(0, compContext("posStdDev",  mean(posStdDev), LkComp(2, attrValue::floatT, true),
-                                           "momStdDev",  mean(momStdDev), LkComp(2, attrValue::floatT, true),
-                                           "ePotential", s->ePotential,   LkComp(2, attrValue::floatT, true),
-                                           "eKinetic",   s->eKinetic,     LkComp(2, attrValue::floatT, true)));
-    
-        std::pair<real3*, int> positionArray = getAllAtoms(s, s->boxes->nLocalBoxes, s->atoms->r);
-        //tsModule.setOutCtxt(1, context("positions",  sightArray(sightArray::dims(positionArray.second,3), (double*)positionArray.first)));
-        tsModule.setOutCtxt(1, compContext("positions",  
-                                           sightArray(sightArray::dims(positionArray.second,3), (double*)positionArray.first), 
-                                           LkComp(2, attrValue::floatT, true)));
-      //}
+      kineticEnergy(s);
+
+#if defined(MODULES)
+#if defined(MOD_COMP)
+      tsModule.setOutCtxt(0, compContext("posStdDev",  mean(posStdDev), LkComp(2, attrValue::floatT, true),
+                                         "momStdDev",  mean(momStdDev), LkComp(2, attrValue::floatT, true),
+                                         "ePotential", s->ePotential,   LkComp(2, attrValue::floatT, true),
+                                         "eKinetic",   s->eKinetic,     LkComp(2, attrValue::floatT, true)));
+
+      std::pair<real3*, int> positionArray = getAllAtoms(s, s->boxes->nLocalBoxes, s->atoms->r);
+      tsModule.setOutCtxt(1, compContext("positions",  
+                                         sightArray(sightArray::dims(positionArray.second,3), (double*)positionArray.first), 
+                                         LkComp(2, attrValue::floatT, true)));
+#else
+      computeParticleStdDev(s, s->boxes->nLocalBoxes, s->atoms->r, posStdDev);
+      computeParticleStdDev(s, s->boxes->nLocalBoxes, s->atoms->p, momStdDev);
       
+      tsModule.setOutCtxt(0, context("posStdDev",  mean(posStdDev),
+                                     "momStdDev",  mean(momStdDev),
+                                     "ePotential", s->ePotential,
+                                     "eKinetic",   s->eKinetic));
+#endif // MOD_COMP
+#endif // MODULES
+
+#if defined(TRACE_PATH)      
       // Trace the positions and properties of all particles
-      for (int iBox=0; iBox<s->boxes->nLocalBoxes; iBox++)
+      for (int iBox=0, i=0, pathTraceCnt=0; iBox<s->boxes->nLocalBoxes; iBox++)
       {
-         for (int iOff=MAXATOMS*iBox,ii=0; ii<s->boxes->nAtoms[iBox]; ii++,iOff++)
+         for (int iOff=MAXATOMS*iBox,ii=0; ii<s->boxes->nAtoms[iBox]; ii++,iOff++,i++)
          {
-         /*  traceAttr(particleTraces[iOff], trace::ctxtVals("x", s->atoms->r[iOff][0],
-                                                           "y", s->atoms->r[iOff][1],
-                                                           "z", s->atoms->r[iOff][2]),
-                      trace::observation(std::make_pair("U", s->atoms->U[iOff])));*/
-           goto END;
+           if(i%10000 != 0) continue;
+           traceAttr(particleTraces[pathTraceCnt], 
+                     trace::ctxtVals("x", s->atoms->r[iOff][0],
+                                     "y", s->atoms->r[iOff][1],
+                                     "z", s->atoms->r[iOff][2]),
+                     trace::observation("U", s->atoms->U[iOff],
+                                        "fx", s->atoms->f[iOff][0],
+                                        "fy", s->atoms->f[iOff][1],
+                                        "fz", s->atoms->f[iOff][2]
+                                        ));
+           pathTraceCnt++;
          }
       }
-      END:
-      ;
+#endif // TRACE_PATH
+      
+#if defined(TRACE_POS)
       for (int iBox=0; iBox<s->boxes->nLocalBoxes; iBox++)
       {
          for (int iOff=MAXATOMS*iBox,ii=0; ii<s->boxes->nAtoms[iBox]; ii++,iOff++)
          {
            if(rand()%100!=0) continue;
-           traceAttr(&posTrace, trace::ctxtVals("x", s->atoms->r[iOff][0],
-                                                "y", s->atoms->r[iOff][1],
-                                                "z", s->atoms->r[iOff][2]),
-                      trace::observation(std::make_pair("U", s->atoms->U[iOff]),
-                                         std::make_pair("fx", s->atoms->f[iOff][0]),
-                                         std::make_pair("fy", s->atoms->f[iOff][1]),
-                                         std::make_pair("fz", s->atoms->f[iOff][2])
+           traceAttr(&posTrace, 
+                     trace::ctxtVals("x", s->atoms->r[iOff][0],
+                                     "y", s->atoms->r[iOff][1],
+                                     "z", s->atoms->r[iOff][2]),
+                     trace::observation("U", s->atoms->U[iOff],
+                                        "fx", s->atoms->f[iOff][0],
+                                        "fy", s->atoms->f[iOff][1],
+                                        "fz", s->atoms->f[iOff][2]
                                         ));
          }
       }
+#endif // TRACE_POS
    }
    
    return s->ePotential;
@@ -291,12 +328,13 @@ void advancePosition(SimFlat* s, int nBoxes, real_t dt)
 /// local potential energy is a by-product of the force routine.
 void kineticEnergy(SimFlat* s)
 {
+/*#if defined(MODULES)
   module enModule(instance("Kinetic Energy", 0, 0), 
                      //inputs(port(context("ii", ii))),
                      namedMeasures(
                          "time", new timeMeasure(),
                          "PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS))));
-  
+#endif // MODULES  */
    real_t eLocal[2];
    eLocal[0] = s->ePotential;
    eLocal[1] = 0;
@@ -313,9 +351,9 @@ void kineticEnergy(SimFlat* s)
    }
 
    real_t eSum[2];
-   //startTimer(commReduceTimer);
+   startTimer(commReduceTimer);
    addRealParallel(eLocal, eSum, 2);
-   //stopTimer(commReduceTimer);
+   stopTimer(commReduceTimer);
 
    s->ePotential = eSum[0];
    s->eKinetic = eSum[1];

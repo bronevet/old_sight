@@ -1043,6 +1043,8 @@ baseCustomAttrValueInstantiator::baseCustomAttrValueInstantiator() {
   (*deserializers)["sightArray"] = sightArray::deserialize;
 }
 
+baseCustomAttrValueInstantiator baseCustomAttrValueInstance;
+
 // ******************************
 // ***** Attribute Database *****
 // ******************************

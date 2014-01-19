@@ -35,6 +35,8 @@ enum TimerHandle{
 ///     ...
 ///
 #ifndef NTIMING
+#define profileInit initProfile
+#define profileFinalize finalizeProfile
 #define startTimer(handle)    \
    do                         \
 {                          \
@@ -46,10 +48,16 @@ enum TimerHandle{
    profileStop(handle);    \
 } while(0)
 #else
+#define profileInit()
+#define profileFinalize();
 #define startTimer(handle)
 #define stopTimer(handle)
 #endif
 
+
+void initProfile();
+void finalizeProfile();
+   
 /// Use profileStart and profileStop only for timers that should *never*
 /// be turned off.  Typically this means they are outside the main
 /// simulation loop.  If the timer is inside the main loop use

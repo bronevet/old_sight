@@ -25,7 +25,7 @@ endif
 
 all: core allExamples
 	
-core: sightDefines.pl gdbLineNum.pl libsight_structure.a slayout${EXE} hier_merge${EXE} widgets_post script/taffydb maketools
+core: sightDefines.pl gdbLineNum.pl libsight_common.a libsight_structure.a slayout${EXE} hier_merge${EXE} widgets_post script/taffydb maketools
 	chmod 755 html img script
 	chmod 644 html/* img/* script/*
 	chmod 755 script/taffydb
@@ -78,6 +78,10 @@ runExamples: libsight_structure.a slayout${EXE} hier_merge${EXE}
 	cd examples; make ROOT_PATH=${ROOT_PATH} OS=${OS}  SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" run
 
 runApps: libsight_structure.a slayout${EXE} hier_merge${EXE} apps
+	cd examples; ../apps/CoMD/bin/CoMD-mpi.modules
+	cd examples; ../apps/CoMD/bin/CoMD-mpi.tracepath
+	cd examples; ../apps/CoMD/bin/CoMD-mpi.tracepos
+	cd examples; ../apps/CoMD/CoMDCompare.pl
 	#cd examples; ../apps/mfem/mfem/examples/ex1 ../apps/mfem/mfem/data/beam-quad.mesh
 	cd examples; ../apps/mfem/mfem/examples/mfemComp.pl
 	cd examples; ../apps/mfem/mfem/examples/ex2 ../apps/mfem/mfem/data/beam-tet.mesh 2
@@ -99,6 +103,9 @@ slayout${EXE}: mfem libsight_layout.a
 hier_merge${EXE}: hier_merge.C process.C process.h libsight_structure.a 
 	g++ ${SIGHT_CFLAGS} hier_merge.C -Wl,--whole-archive libsight_structure.a -Wl,-no-whole-archive \
 	                                 -DMFEM -I. ${SIGHT_LINKFLAGS} -o hier_merge${EXE}
+
+libsight_common.a: ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre
+	ar -r libsight_common.a ${SIGHT_COMMON_O} widgets/*/*_common.o
 
 libsight_structure.a: ${SIGHT_STRUCTURE_O} ${SIGHT_STRUCTURE_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre
 	ar -r libsight_structure.a ${SIGHT_STRUCTURE_O} ${SIGHT_COMMON_O} widgets/*/*_structure.o widgets/*/*_common.o

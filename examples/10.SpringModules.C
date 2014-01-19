@@ -44,7 +44,7 @@ int main (int argc, char *argv[])
   }
   
   std::vector<port> externalOutputs;
-  springModule mod(instance("Heat Computation", 1, 0), 
+  springModule mod(instance("Heat Computation", 2, 0), 
                  inputs(port(context("k", k)),
                         port(context("initTemp", initTemp))),
                  externalOutputs,

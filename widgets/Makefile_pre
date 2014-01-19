@@ -64,7 +64,7 @@ trace/trace_layout.o: trace/trace_layout.C trace/trace_layout.h ../sight_layout.
 module/module_common.o: module/module_common.C module/module_common.h ../attributes/attributes_common.h ../sight_common.h
 	g++ ${SIGHT_CFLAGS} module/module_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o module/module_common.o
 
-module/module_structure.o: module/module_structure.C module/module_structure.h ../attributes/attributes_structure.h ../sight_structure.h
+module/module_structure.o: module/module_structure.C module/module_structure.h ../attributes/attributes_structure.h ../sight_structure.h gsl papi
 	g++ ${SIGHT_CFLAGS} module/module_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o module/module_structure.o
 
 module/module_layout.o: module/module_layout.C module/module_layout.h ../attributes/attributes_layout.h ../sight_layout.h

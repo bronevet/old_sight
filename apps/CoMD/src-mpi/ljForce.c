@@ -132,15 +132,15 @@ BasePotential* initLjPot(void)
 void ljPrint(FILE* file, BasePotential* pot)
 {
    LjPotential* ljPot = (LjPotential*) pot;
-   fprintf(file, "  Potential type   : Lennard-Jones\n");
-   fprintf(file, "  Species name     : %s\n", ljPot->name);
-   fprintf(file, "  Atomic number    : %d\n", ljPot->atomicNo);
-   fprintf(file, "  Mass             : "FMT1" amu\n", ljPot->mass / amuToInternalMass); // print in amu
-   fprintf(file, "  Lattice Type     : %s\n", ljPot->latticeType);
-   fprintf(file, "  Lattice spacing  : "FMT1" Angstroms\n", ljPot->lat);
-   fprintf(file, "  Cutoff           : "FMT1" Angstroms\n", ljPot->cutoff);
-   fprintf(file, "  Epsilon          : "FMT1" eV\n", ljPot->epsilon);
-   fprintf(file, "  Sigma            : "FMT1" Angstroms\n", ljPot->sigma);
+   dbgprintf("<tr><td>Potential type</td><td>Lennard-Jones</td></tr>");
+   dbgprintf("<tr><td>Species name</td><td>%s</td></tr>", ljPot->name);
+   dbgprintf("<tr><td>Atomic number</td><td>%d</td></tr>", ljPot->atomicNo);
+   dbgprintf("<tr><td>Mass</td><td>"FMT1" amu</td></tr>", ljPot->mass / amuToInternalMass); // print in amu
+   dbgprintf("<tr><td>Lattice Type</td><td>%s</td></tr>", ljPot->latticeType);
+   dbgprintf("<tr><td>Lattice spacing</td><td>"FMT1" Angstroms</td></tr>", ljPot->lat);
+   dbgprintf("<tr><td>Cutoff</td><td>"FMT1" Angstroms</td></tr>", ljPot->cutoff);
+   dbgprintf("<tr><td>Epsilon</td><td>"FMT1" eV</td></tr>", ljPot->epsilon);
+   dbgprintf("<tr><td>Sigma</td><td>"FMT1" Angstroms</td></tr>", ljPot->sigma);
 }
 
 int ljForce(SimFlat* s)
@@ -153,13 +153,14 @@ int ljForce(SimFlat* s)
 
 
 //   scope s("LJ Force", scope::high);
-
-   module ljModule(instance("Lennard Jones", 1, 1), 
+#if defined(MODULES)
+/*   module ljModule(instance("Lennard Jones", 1, 1), 
                               inputs(port(context("ePotential", s->ePotential,
                                                   "eKinetic",   s->eKinetic))),
                               namedMeasures(
                                   "time", new timeMeasure(),
-                                  "PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS))));
+                                  "PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS))));*/
+#endif
    
    // zero forces and energy
    real_t ePot = 0.0;
@@ -320,7 +321,9 @@ int ljForce(SimFlat* s)
    ePot = ePot*4.0*epsilon;
    s->ePotential = ePot;
    
-   ljModule.setOutCtxt(0, context("ePotential", ePot));
-
+#if defined(MODULES)
+//   ljModule.setOutCtxt(0, context("ePotential", ePot));
+#endif
+   
    return 0;
 }

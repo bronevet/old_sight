@@ -6,7 +6,9 @@
 
 #include "CoMDTypes.h"
 
+#if defined(TRACE_PATH)
 extern trace** particleTraces;
+#endif
 
 double timestep(SimFlat* s, int printRate, int curTime, real_t dt, int iStep, int nSteps);
 void computeForce(SimFlat* s);

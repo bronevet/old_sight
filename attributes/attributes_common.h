@@ -634,7 +634,7 @@ class baseCustomAttrValueInstantiator: public customAttrValueInstantiator {
 
 // static instance of baseCustomAttrValueInstantiator to ensure that its constructor is called 
 // before main().
-static baseCustomAttrValueInstantiator baseCustomAttrValueInstance;
+extern baseCustomAttrValueInstantiator baseCustomAttrValueInstance;
 
 // ******************************
 // ***** Attribute Database *****

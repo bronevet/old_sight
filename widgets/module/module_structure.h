@@ -63,6 +63,7 @@ class group {
 
   group() { }
   group(const std::list<instance>& stack): stack(stack) {}
+  group(const group& that) : stack(that.stack) {}
 
   // Creates a group given the current stack of modules and a new module instance
   group(const std::list<module*>& mStack, const instance& inst);
@@ -97,6 +98,8 @@ class group {
   
   bool operator==(const group& that) const
   { return stack == that.stack; }
+  
+  bool operator!=(const group& that) const { return !(*this == that); }
   
   bool operator<(const group& that) const
   { return stack < that.stack; }
@@ -250,6 +253,7 @@ class modularApp: public block
   
   // The trace that records performance observations of different modules and contexts
   static std::map<group, traceStream*> moduleTrace;
+  static std::map<group, int>          moduleTraceID;
   
   // Tree that records the hierarchy of module instances that were observed during the execution of this
   // modular application. Each path from the tree's root to a leaf is a stack of module instances that
@@ -345,12 +349,18 @@ class modularApp: public block
 
   // Registers the given traceStream for the given module group
   static void registerTraceStream(const group& g, traceStream* ts);
+  
+  // Registers the ID of the traceStream that will be used for the given module group
+  static void registerTraceStreamID(const group& g, int traceID);
+  
+  // Returns the currently registered the ID of the traceStream that will be used for the given module group
+  static int getTraceStreamID(const group& g);
 
   // Removes the given module object from the modules stack
   static void exitModule(module* m);
 }; // class modularApp
 
-class module: public common::module
+class module: public sightObj, public common::module
 {
   friend class group;
   friend class modularApp;
@@ -437,6 +447,8 @@ class module: public common::module
   module(const instance& inst, const port& inputs,              std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, derivInfo* deriv=NULL);
   module(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, derivInfo* deriv=NULL);
   
+  properties* setProperties(const instance& inst, properties* props, module* me);
+
   void init(const std::vector<port>& in, derivInfo* deriv);
   
   private:
@@ -798,18 +810,18 @@ class springModule: public compModule {
 class moduleTraceStream: public traceStream
 {
   public:
-  moduleTraceStream(int moduleID, module* m/*const std::string& name, int numInputs, int numOutputs*/, vizT viz, mergeT merge, properties* props=NULL);
+  moduleTraceStream(int moduleID, module* m, vizT viz, mergeT merge, int traceID, properties* props=NULL);
   
-  static properties* setProperties(int moduleID, module* m/*const std::string& name, int numInputs, int numOutputs*/, vizT viz, mergeT merge, properties* props);
+  static properties* setProperties(int moduleID, module* m, vizT viz, mergeT merge, properties* props);
 };
 
 // Specialization of moduleTraceStream for the case where they are hosted by a compModule node
 class compModuleTraceStream: public moduleTraceStream
 {
   public:
-  compModuleTraceStream(int moduleID, compModule* cm/*const std::string& name, int numInputs, int numOutputs, bool isReference, const context& options*/, vizT viz, mergeT merge, properties* props=NULL);
+  compModuleTraceStream(int moduleID, compModule* cm, vizT viz, mergeT merge, int traceID, properties* props=NULL);
   
-  static properties* setProperties(int moduleID, compModule* cm/*const std::string& name, int numInputs, int numOutputs, bool isReference, const context& options*/, vizT viz, mergeT merge, properties* props);
+  static properties* setProperties(int moduleID, compModule* cm, vizT viz, mergeT merge, properties* props);
 };
 
 class ModuleMergeHandlerInstantiator: public MergeHandlerInstantiator {
@@ -872,6 +884,7 @@ class ModuleMerger : public Merger {
   // call their parents so they can add any info,
   static void mergeKey(properties::tagType type, properties::iterator tag, 
                        std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key);
+  
 }; // class ModuleMerger
 
 class ModuleEdgeMerger : public Merger {
@@ -998,9 +1011,76 @@ class ModuleStreamRecord: public streamRecord {
   // outgoing streams.
   std::list<streamRecord*> mStack;*/
   
+  // The information that uniquely identifies a module
+  /*class moduleInfo {
+    public:
+    int moduleID;
+    std::string name;
+    int numInputs;
+    int numOutputs;
+    
+    moduleInfo(int moduleID, std::string name, int numInputs, int numOutputs) : moduleID(moduleID), name(name), numInputs(numInputs), numOutputs(numOutputs) {}
+    
+    bool operator==(const moduleInfo& that) const {
+      return moduleID==that.moduleID;//name==that.name && numInputs==that.numInputs && numOutputs==that.numOutputs;
+    }
+    
+    bool operator<(const moduleInfo& that) const {
+      return moduleID < that.moduleID;/ *
+      return (name< that.name) ||
+             (name==that.name && numInputs< that.numInputs) ||
+             (name==that.name && numInputs==that.numInputs && numOutputs<that.numOutputs);* /
+    }
+    
+    std::string str() const {
+      return txt()<<"name=\""<<name<<"\" numInputs="<<numInputs<<" numOutputs="<<numOutputs;
+    }
+  };*/
+  // Stack of the module instances that are currently in scope
+  std::list<instance> iStack;
+  
+  // Mapping from the unique information of all the observed moduleStreamRecords to their moduleIDs.
+  // This is maintained on the outgoing stream to ensure that even if we fail to accurately align
+  // two moduleTS tags that actually belong to the same module, we only keep the record for the first
+  // and ignore the subsequent instances of the tag.
+  std::map<group, int> observedModules;
+  // The maximum ID ever assigned to a module group within this stream
+  int maxModuleID;
+  
+  // Returns a fresh moduleID
+  int genModuleID() { return maxModuleID++; }
+  
+  // Called when a module is entered/exited along the given stream to record the current module group
+  group enterModule(const instance& inst);
+  // Record that we've entered the given module instance on all the given incoming streams
+  static group enterModule(const instance& inst, const std::vector<std::map<std::string, streamRecord*> >& inStreamRecords);
+
+  void exitModule();
+  // Record that we've exited the given module instance on all the given incoming streams
+  static void exitModule(const std::vector<std::map<std::string, streamRecord*> >& inStreamRecords);
+  
+  // Returns the group denoted by the current stack of module instances
+  group getGroup();
+  // Returns the group denoted by the current stack of module instances in all the given incoming streams 
+  // (must be identical on all of them).
+  static group getGroup(const std::vector<std::map<std::string, streamRecord*> >& inStreamRecords);
+  
+  
+  // Returns true if the given module group has already been observed and false otherwise
+  bool isModuleObserved(const group& g)
+  { return observedModules.find(g) != observedModules.end(); }
+  
+  // If the given module group has been observed, returns its streamID
+  int getModuleID(const group& g)
+  { assert(observedModules.find(g) != observedModules.end()); return observedModules[g]; }
+  
+  // Records the ID of a given module group
+  void setModuleID(const group& g, int moduleID)
+  { assert(observedModules.find(g) == observedModules.end()); observedModules[g] = moduleID; }
+  
   public:
-  ModuleStreamRecord(int vID)              : streamRecord(vID, "module") { }
-  ModuleStreamRecord(const variantID& vID) : streamRecord(vID, "module") { }
+  ModuleStreamRecord(int vID)              : streamRecord(vID, "module") { maxModuleID=0; }
+  ModuleStreamRecord(const variantID& vID) : streamRecord(vID, "module") { maxModuleID=0; }
   ModuleStreamRecord(const ModuleStreamRecord& that, int vSuffixID);
   
   // Called to record that we've entered/exited a module
