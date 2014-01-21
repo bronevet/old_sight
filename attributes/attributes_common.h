@@ -731,5 +731,22 @@ class attributesC
   void notifyObsPost(std::string key, attrObserver::attrObsAction action);
 }; // class attributes
 
+/***********************************************************
+ ***** Support for parsing files with attribute values *****
+ ***********************************************************/
+
+// Type of the user-provided functor that takes as input a description of the read data.
+// readData: Maps field group (e.g. "ctxt", "obs", "anchor") to the mapping of attribute names to their string representations
+// lineNum: The current line in the file, which is useful for generating error messages.
+class attrFileReader {
+  public:
+  virtual void operator()(const std::map<std::string, std::map<std::string, std::string> >& readData, int lineNum)=0;
+}; 
+
+// Reads the given file of key/value mappings, calling the provided functor on each instance.
+// Each line is a white-space separated sequence of mappings in the format group:key:value and each
+// call to functor f is provided with a 2-level map that maps each group to a map of key->value mappings.
+void readAttrFile(std::string fName, attrFileReader& f);
+
 }; // namespace common
 }; // namespace sight

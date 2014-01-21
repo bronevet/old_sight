@@ -290,7 +290,7 @@ int ljForce(SimFlat* s)
                         "p1", s->atoms->p[iOff][1],
                         "p2", s->atoms->p[iOff][2]));
 
-          module particleModule(instance("LJ Particle", 1, 1), 
+          processedModule particleModule(instance("LJ Particle", 1, 1), 
                                 inputs(port(c))
                                 );
 
@@ -306,19 +306,6 @@ int ljForce(SimFlat* s)
       
    } // loop over local boxes in system
    
-/*   trace heatmapTrace("Heatmap", trace::context("i", "j"), trace::showBegin, trace::heatmap);
-   for (int iBox=0; iBox<s->boxes->nLocalBoxes; iBox++) {
-   for (int      int nIBox = s->boxes->nAtoms[iBox];
-      if ( nIBox == 0 ) continue;
-      
-      #ifdef DISTILL_MONITOR
-      // Reset the shells state of all the particles in this box
-      for (int iOff=iBox*MAXATOMS,ii=0; ii<nIBox; ii++,iOff++)
- jBox=0; jBox<s->boxes->nLocalBoxes; jBox++) {
-     
-   } }*/
-   
-
    ePot = ePot*4.0*epsilon;
    s->ePotential = ePot;
    

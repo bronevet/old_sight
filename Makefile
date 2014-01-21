@@ -6,7 +6,7 @@ SIGHT_LAYOUT_O := sight_layout.o attributes/attributes_layout.o slayout.o varian
 SIGHT_LAYOUT_H := sight.h sight_layout_internal.h attributes/attributes_layout.h variant_layout.h
 sight := ${sight_O} ${sight_H} gdbLineNum.pl sightDefines.pl
 
-SIGHT_CFLAGS = -g -I${ROOT_PATH}/tools/callpath/src -I${ROOT_PATH}/tools/adept-utils/include -I${ROOT_PATH}/widgets/papi/include
+SIGHT_CFLAGS = -g -I${ROOT_PATH} -I${ROOT_PATH}/attributes -I${ROOT_PATH}/widgets/* -I${ROOT_PATH}/tools/callpath/src -I${ROOT_PATH}/tools/adept-utils/include -I${ROOT_PATH}/widgets/papi/include
 SIGHT_LINKFLAGS = ${ROOT_PATH}/tools/adept-utils/lib/libadept_cutils.so \
                   ${ROOT_PATH}/tools/adept-utils/lib/libadept_timing.so \
 	                ${ROOT_PATH}/tools/adept-utils/lib/libadept_utils.so \

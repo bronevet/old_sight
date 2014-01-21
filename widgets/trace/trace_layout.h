@@ -314,6 +314,11 @@ class traceStream: public attrObserver, public common::trace, public traceObserv
 
 class processedTraceStream: public traceStream
 {
+  // The directory that is used for storing intermediate files
+  static std::string workDir;
+  // The maximum unique ID assigned to any file that was used as input to a processor
+  static int maxFileID;
+  
   // The queue of externalTraceProcessors that filter this traceStream
   traceObserverQueue* queue;
   

@@ -1191,9 +1191,23 @@ void compModule::observe(int traceID,
  ***** processedModuleTraceStream *****
  **************************************/
 
+// The directory that is used for storing intermediate files
+std::string processedModuleTraceStream::workDir;
+// The maximum unique ID assigned to any file that was used as input to a processor
+int processedModuleTraceStream::maxFileID;
+
 processedModuleTraceStream::processedModuleTraceStream(properties::iterator props, traceObserver* observer) :
   moduleTraceStream(props.next(), this)
 {
+  // Initialize the directories this processedTraceStream will use for its temporary storage
+  static bool initialized=false;
+  if(!initialized) {
+    // Create the directory that holds the trace-specific scripts
+    std::pair<std::string, std::string> dirs = dbg.createWidgetDir("moduleProcTS");
+    workDir = dirs.first;
+    maxFileID = 0;
+  }
+  
   // If no observer is specified, register a filtering queue containing a processModule, followed by the the current instance of 
   // modularApp to listen in on observations recorded by this traceStream.
   if(observer==NULL) {
@@ -1203,7 +1217,7 @@ processedModuleTraceStream::processedModuleTraceStream(properties::iterator prop
     // Add this trace object as a change listener to all the context variables
     long numCmds = properties::getInt(props, "numCmds");
     for(long i=0; i<numCmds; i++) {
-      commandProcessors.push_back(new externalTraceProcessor_File(props.get(txt()<<"cmd"<<i), txt()<<"out"<<i));
+      commandProcessors.push_back(new externalTraceProcessor_File(props.get(txt()<<"cmd"<<i), txt()<<workDir<<"/in"<<(maxFileID++)));
       queue->push_back(commandProcessors.back());
     }
 

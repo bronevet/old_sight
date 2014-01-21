@@ -293,6 +293,11 @@ class compModuleTraceStream: public moduleTraceStream
 // Specialization of traceStreams for the case where they are hosted by a processModule 
 class processedModuleTraceStream: public moduleTraceStream
 { 
+  // The directory that is used for storing intermediate files
+  static std::string workDir;
+  // The maximum unique ID assigned to any file that was used as input to a processor
+  static int maxFileID;
+  
   // Pointers to the actual externalTraceProcessors objects in the queue
   std::list<externalTraceProcessor_File*> commandProcessors;
   

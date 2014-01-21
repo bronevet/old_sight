@@ -1219,5 +1219,48 @@ void attributesC::notifyObsPost(std::string key, attrObserver::attrObsAction act
   }
 }
 
+/***********************************************************
+ ***** Support for parsing files with attribute values *****
+ ***********************************************************/
+
+// Reads the given file of key/value mappings, calling the provided functor on each instance.
+// Each line is a white-space separated sequence of mappings in the format group:key:value and each
+// call to functor f is provided with a 2-level map that maps each group to a map of key->value mappings.
+void readAttrFile(std::string fName, attrFileReader& f) {
+  FILE* in = fopen(fName.c_str(), "r");
+  if(in==NULL) { cerr << "ERROR opening file \""<<fName<<"\" for reading!"<<endl; exit(-1); }
+  
+  char line[100000];
+  int lineNum=1;
+  while(fgets(line, 100000, in)) {
+    std::map<std::string, std::map<std::string, std::string> > readData;
+    escapedStr eLine(line, " ", escapedStr::escaped);
+    vector<string> data = eLine.unescapeSplit(" ");
+    //cout << "eLine=\""<<eLine.unescape()<<"\""<<endl;
+    
+    for(vector<string>::iterator d=data.begin(); d!=data.end(); d++) {
+      escapedStr eD(*d, ":", escapedStr::escaped);
+      vector<string> data = eD.unescapeSplit(":");
+      /*cout << "    eD=\""<<eD.unescape()<<"\": ";
+      for(vector<string>::iterator i=data.begin(); i!=data.end(); i++)
+        cout << *i << " ";
+      cout << endl;*/
+      // If this is not the end of the line (empty data or data with one element '\n')
+      if(data.size()>1) {
+        // Data must have 3 fields: group, key, value
+        assert(data.size()==3);
+        readData[data[0]][data[1]] = data[2];
+      }
+    }
+    
+    // Call the user-provided functor
+    f(readData, lineNum);
+    
+    lineNum++;
+  }
+
+  fclose(in);
+}
+
 }; // namespace common
 }; // namespace sight

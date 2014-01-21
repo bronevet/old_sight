@@ -86,8 +86,8 @@ run: ${TESTERS}
 	g++ ${SIGHT_CFLAGS} 10.SpringModules.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 10.SpringModules${EXE}
 
 11.ExternTraceProcess${EXE}: 11.ExternTraceProcess.C ../libsight_structure.a ${sight_H}
-	g++ 11.ExternTraceProcess.windowing.C -I.. -L.. -lsight_common -o 11.ExternTraceProcess.windowing${EXE}
-	g++ ${SIGHT_CFLAGS} 11.ExternTraceProcess.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 11.ExternTraceProcess${EXE}
+	g++ -g 11.ExternTraceProcess.windowing.C -I.. -L.. -lsight_common -o 11.ExternTraceProcess.windowing${EXE}
+	g++ -g ${SIGHT_CFLAGS} 11.ExternTraceProcess.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 11.ExternTraceProcess${EXE}
 
 clean:
 	rm -rf ${TESTERS} dbg.*

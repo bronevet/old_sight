@@ -774,18 +774,32 @@ traceStream* traceStream::get(int traceID) {
  ***** processedTraceStream *****
  ********************************/
 
+// The directory that is used for storing intermediate files
+std::string processedTraceStream::workDir;
+// The maximum unique ID assigned to any file that was used as input to a processor
+int processedTraceStream::maxFileID;
+
 // hostDiv - the div where the trace data should be displayed
   // showTrace - indicates whether the trace should be shown by default (true) or whether the host will control
   //             when it is shown
 processedTraceStream::processedTraceStream(properties::iterator props, std::string hostDiv, bool showTrace) : 
   traceStream(props.next(), hostDiv, showTrace)
 {
+  // Initialize the directories this processedTraceStream will use for its temporary storage
+  static bool initialized=false;
+  if(!initialized) {
+    // Create the directory that holds the trace-specific scripts
+    std::pair<std::string, std::string> dirs = dbg.createWidgetDir("procTS");
+    workDir = dirs.first;
+    maxFileID = 0;
+  }
+  
   queue = new traceObserverQueue();
   
   // Add this trace object as a change listener to all the context variables
   long numCmds = properties::getInt(props, "numCmds");
   for(long i=0; i<numCmds; i++) {
-    commandProcessors.push_back(new externalTraceProcessor_File(props.get(txt()<<"cmd"<<i), txt()<<"out"<<i));
+    commandProcessors.push_back(new externalTraceProcessor_File(props.get(txt()<<"cmd"<<i), txt()<<workDir<<"/in"<<(maxFileID++)));
     queue->push_back(commandProcessors.back());
   }
   // The final observer in the queue is the original traceStream, which accepts the observations and sends
