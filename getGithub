@@ -1,0 +1,18 @@
+#!/bin/bash
+URL=$1
+EXT=$2;
+OPEN=$3;
+
+rm -rf master*
+
+wget --no-check-certificate $URL
+
+if [ -f master ];
+then
+mv master master.$EXT
+fi
+
+$OPEN master.$EXT
+rm master.$EXT
+
+

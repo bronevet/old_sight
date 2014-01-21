@@ -452,8 +452,8 @@ int modularApp::genModuleID(const group& g) {
 
 // Returns whether the current instance of modularApp is active
 bool modularApp::isInstanceActive() {
-  assert(activeMA);
-  return activeMA->isActive();
+  //assert(activeMA);
+  return activeMA!=NULL && activeMA->isActive();
 }
 
 // Assigns a unique ID to the given module group, as needed and returns this ID
@@ -709,6 +709,8 @@ properties* module::setProperties(const instance& inst, properties* props, modul
   
   // If this is an instance of module rather than a class that derives from module
   if(modularApp::isInstanceActive() && props->active && !isDerived) {
+    props->active = true;
+    
     // If no traceStream has been registered for this module group
     if(!modularApp::isTraceStreamRegistered(g)) {
       // We'll create a new traceStream in the destructor but first, generate and record the ID of that 
@@ -720,7 +722,8 @@ properties* module::setProperties(const instance& inst, properties* props, modul
       // Reuse the previously registered traceID
       pMap["traceID"] = txt()<<modularApp::getTraceStreamID(g);
     }
-  }
+  } else
+    props->active = false;
   
   props->add("moduleMarker", pMap);
 
@@ -837,7 +840,7 @@ module::~module()
   if(ins.size() != g.numInputs()) { cerr << "ERROR: module \""<<g.name()<<"\" specifies "<<g.numInputs()<<" inputs but "<<ins.size()<<" inputs are actually provided!"<<endl; }
   
   // Complete the measurement of application's behavior during the module's lifetime
-  if(modularApp::isInstanceActive()) {
+  if(props->active) {
     // If this is an instance of module rather than a class that derives from module
     if(!isDerived) {
       // Register a traceStream for this compModule's module group, if one has not already been registered
@@ -883,12 +886,14 @@ module::~module()
 
 // Sets the context of the given output port
 void module::setInCtxt(int idx, const context& c) {
+  if(!props->active) return;
   assert(idx<g.numInputs());
   ins[idx].setCtxt(c);
 }
 
 // Adds the given key/attrValue pair to the context of the given output port
 void module::addInCtxt(int idx, const std::string& key, const attrValue& val) {
+  if(!props->active) return;
   assert(idx<g.numInputs());
   ins[idx].addCtxt(key, val);
 }
@@ -900,6 +905,7 @@ void module::addInCtxt(const port& p) {
 
 // Sets the context of the given output port
 void module::setOutCtxt(int idx, const context& c) { 
+  if(!props->active) return;
   assert(idx<g.numOutputs());
   outs[idx].setCtxt(c);
   // If the user provided an output vector, update it as well
@@ -921,6 +927,7 @@ std::vector<port> module::outPorts() const {
 }
 
 port module::outPort(int idx) const {
+  if(!props->active) return port();
   assert(idx < g.numOutputs());
   return outs[idx];  
 }
@@ -1075,7 +1082,7 @@ void compModule::init(derivInfo* deriv) {
 
 compModule::~compModule() {
   // If this is an instance of compModule rather than a class that derives from compModule
-  if(!isDerived) {
+  if(props->active && !isDerived) {
     // Register a traceStream for this compModule's module group, if one has not already been registered
     if(!modularApp::isTraceStreamRegistered(g))
       modularApp::registerTraceStream(g, new compModuleTraceStream(moduleID, this, trace::lines, trace::disjMerge, modularApp::getTraceStreamID(g)));
@@ -1085,6 +1092,7 @@ compModule::~compModule() {
 // Sets the context of the given output port. This variant ensures that the outputs of compModules can only
 // be set with compContexts.
 void compModule::setOutCtxt(int idx, const compContext& c) {
+  if(!props->active) return;
   module::setOutCtxt(idx, (const context&)c);
 }
 
@@ -1166,6 +1174,8 @@ long long randomLL() {
 }
 
 void springModularApp::init() {
+  if(!props->active) return;
+  
   bufSize=0;
   if(getenv("SPRING_BUF_SIZE"))
     bufSize = strtol(getenv("SPRING_BUF_SIZE"), NULL, 10);
@@ -1201,7 +1211,7 @@ void springModularApp::init() {
 }
 
 springModularApp::~springModularApp() {
-  if(bufSize>sizeof(long long)) {
+  if(props->active && bufSize>sizeof(long long)) {
     int ret = pthread_cancel(interfThread);
     if(ret!=0) { cerr << "ERROR: return code from pthread_cancel() is "<<ret<<", thread %d\n"; assert(0); }
     
@@ -1255,16 +1265,85 @@ if(app->bufSize>0) { cout << "bufSize="<<app->bufSize<<" sleep("<<(log(app->bufS
 
 bool springModule::isSpringReference() {
   springModularApp* app = springModularApp::getInstance();
-  return app->bufSize==0;
+  if(app) return app->bufSize==0;
+  else    return false;
 }
 
 context springModule::extendOptions(const context& options) {
   context extendedO = options;
   springModularApp* app = springModularApp::getInstance();
-  extendedO.configuration["Spring:bufSize"] = attrValue(app->bufSize);
-  return extendedO;
+  if(app) {
+    extendedO.configuration["Spring:bufSize"] = attrValue(app->bufSize);
+    return extendedO;
+  } else
+    return options;
 }
 
+/***************************
+ ***** processedModule *****
+ ***************************/
+
+processedModule::processedModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+                       const processedTrace::commands& processorCommands,
+                                                                         derivInfo* deriv) :
+          module(inst, inputs, externalOutputs, setProperties(inst, processorCommands, NULL, deriv)),           processorCommands(processorCommands)
+{ init(deriv); }
+
+processedModule::processedModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+                       const processedTrace::commands& processorCommands, 
+                       const attrOp& onoffOp,                            derivInfo* deriv) :
+          module(inst, inputs, externalOutputs, setProperties(inst, processorCommands, &onoffOp, deriv)),       processorCommands(processorCommands)
+{ init(deriv); }
+
+processedModule::processedModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+                       const processedTrace::commands& processorCommands, 
+                                              const namedMeasures& meas, derivInfo* deriv) :
+          module(inst, inputs, externalOutputs, meas, setProperties(inst, processorCommands, NULL, deriv)),     processorCommands(processorCommands)
+{ init(deriv); }
+
+processedModule::processedModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+                       const processedTrace::commands& processorCommands, 
+                       const attrOp& onoffOp, const namedMeasures& meas, derivInfo* deriv) : 
+          module(inst, inputs, externalOutputs, meas, setProperties(inst, processorCommands, &onoffOp, deriv)), processorCommands(processorCommands)
+{ init(deriv); }
+
+// Sets the properties of this object
+module::derivInfo* processedModule::setProperties(const instance& inst, const processedTrace::commands& processorCommands, const attrOp* onoffOp, derivInfo* deriv) {
+/*  if(deriv==NULL) {
+    deriv = new derivInfo();
+  }
+  
+  // If the current attribute query evaluates to true (we're emitting debug output) AND
+  // either onoffOp is not provided or its evaluates to true
+  if(attributes.query() && (onoffOp? onoffOp->apply(): true)) {
+    deriv->props->active = true;
+    
+    map<string, string> pMap;
+    pMap["numCmds"] = txt()<<processorCommands.size();
+    int i=0;
+    for(list<string>::const_iterator c=processorCommands.begin(); c!=processorCommands.end(); c++)
+      pMap[txt()<<"cmd"<<i] = *c;
+    
+    deriv->props->add("processedModule", pMap);
+  }
+  else
+    deriv->props->active = false;
+  */
+  return deriv;
+}
+
+void processedModule::init(derivInfo* deriv) {
+  isDerived = deriv!=NULL; // This is an instance of an object that derives from module if its constructor sets deriv to non-NULL
+}
+
+processedModule::~processedModule() {
+  // If this is an instance of processedModule rather than a class that derives from processedModule
+  if(props->active) {
+    // Register a traceStream for this processedModule's module group, if one has not already been registered
+    if(!modularApp::isTraceStreamRegistered(g))
+      modularApp::registerTraceStream(g, new processedModuleTraceStream(moduleID, this, trace::lines, trace::disjMerge, modularApp::getTraceStreamID(g)));
+  }
+}
 
 /*****************************
  ***** moduleTraceStream *****
@@ -1322,8 +1401,8 @@ properties* compModuleTraceStream::setProperties(int moduleID,
       int compIdx=0;
       for(map<string, pair<string, string> >::iterator comp=ctxt->comparators.begin(); comp!=ctxt->comparators.end(); comp++, compIdx++) {
         pMap[txt()<<"out"<<outIdx<<":compare"<<compIdx] = 
-                    txt()<<escapedStr(comp->first, ":", escapedStr::unescaped).escape()<<":"<<
-                           escapedStr(comp->second.first, ":", escapedStr::unescaped).escape()<<":"<<
+                    txt()<<escapedStr(comp->first,         ":", escapedStr::unescaped).escape()<<":"<<
+                           escapedStr(comp->second.first,  ":", escapedStr::unescaped).escape()<<":"<<
                            escapedStr(comp->second.second, ":", escapedStr::unescaped).escape();
       }
     }
@@ -1333,17 +1412,41 @@ properties* compModuleTraceStream::setProperties(int moduleID,
     int measIdx=0;
     for(map<string, pair<string, string> >::iterator mc=cm->measComp.begin(); mc!=cm->measComp.end(); mc++, measIdx++) {
       pMap[txt()<<"measure"<<measIdx] = 
-              txt()<<escapedStr(mc->first, ":", escapedStr::unescaped).escape()<<":"<<
-                     escapedStr(mc->second.first, ":", escapedStr::unescaped).escape()<<":"<<
+              txt()<<escapedStr(mc->first,         ":", escapedStr::unescaped).escape()<<":"<<
+                     escapedStr(mc->second.first,  ":", escapedStr::unescaped).escape()<<":"<<
                      escapedStr(mc->second.second, ":", escapedStr::unescaped).escape();
     }
     
-    //pMap["isReference"] = txt()<<cm->isReference;
-    /*pMap["moduleID"]    = txt()<<moduleID;
-    pMap["name"]        = name;
-    pMap["numInputs"]   = txt()<<numInputs;
-    pMap["numOutputs"]  = txt()<<numOutputs;*/
     props->add("compModuleTS", pMap);
+  }
+  
+  return props;
+}
+
+/**************************************
+ ***** processedModuleTraceStream *****
+ **************************************/
+
+processedModuleTraceStream::processedModuleTraceStream(int moduleID, 
+                                                       processedModule* pm,
+                                                       vizT viz, mergeT merge, 
+                                                       int traceID, properties* props) : 
+  moduleTraceStream(moduleID, (module*)pm, viz, merge, 
+                    traceID, setProperties(moduleID, pm, viz, merge, props))
+{ }
+
+properties* processedModuleTraceStream::setProperties(int moduleID, 
+                                                      processedModule* pm, vizT viz, mergeT merge, properties* props) {
+  if(props==NULL) props = new properties();
+  
+  if(props->active && props->emitTag) {
+    map<string, string> pMap;
+    pMap["numCmds"] = txt()<<pm->processorCommands.size();
+    int i=0;
+    for(list<string>::const_iterator c=pm->processorCommands.begin(); c!=pm->processorCommands.end(); c++)
+      pMap[txt()<<"cmd"<<i] = *c;
+    
+    props->add("processedModuleTS", pMap);
   }
   
   return props;

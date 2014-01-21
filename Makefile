@@ -180,16 +180,17 @@ clean:
 	cd examples; make clean
 #	cd apps/mcbench; ./clean-linux-x86_64.sh
 	cd apps/mfem; make clean
-	rm -rf dbg dbg.* libsight.a *.o widgets/shellinabox* widgets/mongoose* widgets/graphviz* gdbLineNum.pl
+	rm -rf dbg dbg.* *.a *.o widgets/shellinabox* widgets/mongoose* widgets/graphviz* gdbLineNum.pl
 	rm -rf script/taffydb sightDefines.pl gdbscript
 
 clean_objects:
 	rm -f *.a *.o widgets/*.o widgets/*/*.o
 
 script/taffydb:
-	cd script; wget --no-check-certificate https://github.com/typicaljoe/taffydb/archive/master.zip
-	cd script; mv master master.zip; unzip master.zip
+	#cd script; wget --no-check-certificate https://github.com/typicaljoe/taffydb/archive/master.zip
+	#cd script; mv master master.zip; unzip master.zip
+	#rm script/master*
+	cd script; ./getGithub https://github.com/typicaljoe/taffydb/archive/master.zip zip unzip
 	mv script/taffydb-master script/taffydb
-	rm script/master*
 	chmod 755 script/taffydb
 	chmod 644 script/taffydb/*

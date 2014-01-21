@@ -83,7 +83,7 @@ void *processedTrace::enterProcessedTraceStream(properties::iterator props) {
  *************************/
 
 // Records whether we've notified observers of this trace that it has finished
-bool traceObserver::finishNotified=false;
+//bool traceObserver::finishNotified=false;
 
 traceObserver::~traceObserver() {
   // Unregister this object from all those that it is observing
@@ -115,9 +115,12 @@ void traceObserver::emitObservation(int traceID,
                                     const std::map<std::string, std::string>& ctxt, 
                                     const std::map<std::string, std::string>& obs,
                                     const std::map<std::string, anchor>&      obsAnchor) {
+  //cout << "traceObserve::emitObservation("<<traceID<<") #observers="<<observers.size()<<"=";
   for(std::map<traceObserver*, int>::iterator o=observers.begin(); o!=observers.end(); o++) {
+    //cout << o->first << " ";
     o->first->observe(traceID, ctxt, obs, obsAnchor);
   }
+  //cout << endl;
 }
 
 // Registers/unregisters a given object as an observer of this traceStream
@@ -335,6 +338,7 @@ void externalTraceProcessor_File::observe(int traceID,
              const std::map<std::string, std::string>& obs,
              const std::map<std::string, anchor>&      obsAnchor) {
 
+  //cout << "externalTraceProcessor_File::observe("<<traceID<<")"<<endl;
   // Serialize the current observation into the trace file
   for(std::map<std::string, std::string>::const_iterator c=ctxt.begin(); c!=ctxt.end(); c++) {
     sight::common::escapedStr key(c->first,  " :", sight::common::escapedStr::unescaped);
@@ -359,6 +363,7 @@ void externalTraceProcessor_File::observe(int traceID,
 // Called when the stream of observations has finished to allow the implementor to perform clean-up tasks.
 // This method is optional.
 void externalTraceProcessor_File::obsFinished() {
+  //cout << "externalTraceProcessor_File::obsFinished() finished="<<finished<<endl;
   // Only perform finishing code if we haven't already finished
   if(finished) return;
   finished = true;

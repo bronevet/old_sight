@@ -806,6 +806,38 @@ class springModule: public compModule {
   static context extendOptions(const context& options);
 }; // class springModule
 
+class processedModuleTraceStream;
+
+class processedModule : public structure::module {
+  friend class processedModuleTraceStream;
+  
+  protected:
+  processedTrace::commands processorCommands;
+  
+  public:
+  // processorCommands - list of executables to be run on the information of the module instances to process/filter them
+  processedModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+             const processedTrace::commands& processorCommands,
+                                                               derivInfo* deriv=NULL);
+  processedModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+             const processedTrace::commands& processorCommands,
+             const attrOp& onoffOp,                            derivInfo* deriv=NULL);
+  processedModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+             const processedTrace::commands& processorCommands,
+                                    const namedMeasures& meas, derivInfo* deriv=NULL);
+  processedModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+             const processedTrace::commands& processorCommands,
+             const attrOp& onoffOp, const namedMeasures& meas, derivInfo* deriv=NULL);
+
+  // Sets the properties of this object
+  derivInfo* setProperties(const instance& inst, const processedTrace::commands& processorCommands, 
+                           const attrOp* onoffOp, derivInfo* deriv=NULL);
+  
+  void init(derivInfo* deriv);
+  
+  ~processedModule();
+}; // class processedModule
+
 // Specialization of traceStreams for the case where they are hosted by a module node
 class moduleTraceStream: public traceStream
 {
@@ -822,6 +854,15 @@ class compModuleTraceStream: public moduleTraceStream
   compModuleTraceStream(int moduleID, compModule* cm, vizT viz, mergeT merge, int traceID, properties* props=NULL);
   
   static properties* setProperties(int moduleID, compModule* cm, vizT viz, mergeT merge, properties* props);
+};
+
+// Specialization of moduleTraceStream for the case where they are hosted by a processedModule node
+class processedModuleTraceStream: public moduleTraceStream
+{
+  public:
+  processedModuleTraceStream(int moduleID, processedModule* pm, vizT viz, mergeT merge, int traceID, properties* props=NULL);
+  
+  static properties* setProperties(int moduleID, processedModule* pm, vizT viz, mergeT merge, properties* props);
 };
 
 class ModuleMergeHandlerInstantiator: public MergeHandlerInstantiator {

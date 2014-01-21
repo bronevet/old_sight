@@ -73,16 +73,20 @@ CFLAGS  += ${OPTFLAGS} ${INCLUDES} ${OTHER_INCLUDE}
 SOURCES=$(wildcard *.c)
 OBJECTS_MODULES=$(SOURCES:.c=.modules.o)
 OBJECTS_COMPMODULES=$(SOURCES:.c=.compmodules.o)
+OBJECTS_DISTILLMODULES=$(SOURCES:.c=.distillmodules.o)
 OBJECTS_TRACEPOS=$(SOURCES:.c=.tracepos.o)
 OBJECTS_TRACEPATH=$(SOURCES:.c=.tracepath.o)
 	
-DEFAULT: ${CoMD_EXE}.modules ${CoMD_EXE}.compmodules ${CoMD_EXE}.tracepos ${CoMD_EXE}.tracepath
+DEFAULT: ${CoMD_EXE}.modules ${CoMD_EXE}.compmodules ${CoMD_EXE}.distillmodules ${CoMD_EXE}.tracepos ${CoMD_EXE}.tracepath
 
 %.modules.o: %.c
 	${CC} ${CFLAGS} -DMODULES -c $< -o $@
 
 %.compmodules.o: %.c
 	${CC} ${CFLAGS} -DMODULES -DMOD_COMP -c $< -o $@
+	
+%.distillmodules.o: %.c
+	${CC} ${CFLAGS} -DMODULES -DDISTILL_MONITOR -c $< -o $@
 
 %.tracepos.o: %.c
 	${CC} ${CFLAGS} -DTRACE_POS -c $< -o $@
@@ -96,6 +100,9 @@ ${CoMD_EXE}.modules: ${BIN_DIR} CoMD_info.h ${OBJECTS_MODULES}
 
 ${CoMD_EXE}.compmodules: ${BIN_DIR} CoMD_info.h ${OBJECTS_COMPMODULES} 
 	${CC} ${CFLAGS} -o ${CoMD_EXE}.compmodules ${OBJECTS_COMPMODULES} ${LDFLAGS}
+
+${CoMD_EXE}.distillmodules: ${BIN_DIR} CoMD_info.h ${OBJECTS_DISTILLMODULES} 
+	${CC} ${CFLAGS} -o ${CoMD_EXE}.distillmodules ${OBJECTS_DISTILLMODULES} ${LDFLAGS}
 
 ${CoMD_EXE}.tracepos: ${BIN_DIR} CoMD_info.h ${OBJECTS_TRACEPOS} 
 	${CC} ${CFLAGS} -o ${CoMD_EXE}.tracepos ${OBJECTS_TRACEPOS} ${LDFLAGS}

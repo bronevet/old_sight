@@ -267,6 +267,7 @@ int ljForce(SimFlat* s)
                                           "fZ", s->atoms->f[iOff][2]));*/
 
                #ifdef DISTILL_MONITOR
+               // Update the shell state of particle iOff with its interactions due to particle jOff
                s->atoms->sh[iOff].update(s->atoms->r[iOff], s->atoms->r[jOff]);
                #endif
                }

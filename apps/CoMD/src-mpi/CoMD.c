@@ -128,6 +128,9 @@ int main(int argc, char** argv)
    sim = initSimulation(cmd);
    //printSimulationDataYaml(yamlFile, sim);
    printSimulationDataYaml(screenOut, sim);
+   
+   attr initA("initialized", true);
+   attrIf initCond(new attrEQ("initialized", true));
 
    validate = initValidate(sim); // atom counts, energy
    timestampBarrier("Initialization Finished\n");
@@ -265,6 +268,9 @@ int main(int argc, char** argv)
 /// must be initialized before the atoms.
 SimFlat* initSimulation(Command cmd)
 {
+   attr initA("initialized", false);
+   attrIf initCond(new attrEQ("initialized", true));
+   
    SimFlat* sim = (SimFlat*)comdMalloc(sizeof(SimFlat));
    sim->nSteps = cmd.nSteps;
    sim->printRate = cmd.printRate;

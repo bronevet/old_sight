@@ -208,7 +208,7 @@ class moduleTraceStream: public traceStream
   int numOutputs;
   
   // The instance of module that processes observations of this object
-  module* m;
+  module* mFilter;
   
   // The queue that passes all incoming observations through cmFilter and then forwards them to modularApp.
   traceObserverQueue* queue;
@@ -252,7 +252,7 @@ class compModule : public common::module, public traceObserver {
   std::map<std::string, comparator*> measComparators;
 
   public:  
-  compModule(/*bool isReference, const context& options*/) /*: isReference(isReference), options(options)*/ { }
+  compModule() { }
   
   // Compare the value of each trace attribute value obs1 to the corresponding value in obs2 and return a mapping of 
   // each trace attribute to the serialized representation of their relationship.
@@ -270,8 +270,7 @@ class compModule : public common::module, public traceObserver {
   void observe(int traceID,
                const std::map<std::string, std::string>& ctxt, 
                const std::map<std::string, std::string>& obs,
-               const std::map<std::string, anchor>&      obsAnchor/*,
-               const std::set<traceObserver*>&           observers*/);
+               const std::map<std::string, anchor>&      obsAnchor);
 }; // class compModule
 
 // Specialization of traceStreams for the case where they are hosted by a compModule 
@@ -281,7 +280,7 @@ class compModuleTraceStream: public moduleTraceStream
   compModule* cmFilter;
   
   // The object that filters comparison observations that come out of cmFilter
-  module* mFilter;
+  //module* mFilter;
   
   public:
   compModuleTraceStream(properties::iterator props, traceObserver* observer=NULL);
@@ -290,6 +289,20 @@ class compModuleTraceStream: public moduleTraceStream
   // Called when we observe the entry tag of a compModuleTraceStream
   static void *enterTraceStream(properties::iterator props);
 }; // class compModuleTraceStream
+
+// Specialization of traceStreams for the case where they are hosted by a processModule 
+class processedModuleTraceStream: public moduleTraceStream
+{ 
+  // Pointers to the actual externalTraceProcessors objects in the queue
+  std::list<externalTraceProcessor_File*> commandProcessors;
+  
+  public:
+  processedModuleTraceStream(properties::iterator props, traceObserver* observer=NULL);
+  ~processedModuleTraceStream();
+  
+  // Called when we observe the entry tag of a processedModuleTraceStream
+  static void *enterTraceStream(properties::iterator props);
+}; // class processedModuleTraceStream
 
 }; // namespace layout
 }; // namespace sight

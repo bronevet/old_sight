@@ -23,17 +23,19 @@ boost_1_55_0: #boost_1_55_0.tar
 	rm -r boost_1_55_0.tar
 
 adept-utils.zip:
-	wget --no-check-certificate https://github.com/tgamblin/adept-utils/archive/master.zip
-	mv master master.zip
-	mv master.zip adept-utils.zip
+	#wget --no-check-certificate https://github.com/tgamblin/adept-utils/archive/master.zip
+	#mv master master.zip
+	#mv master.zip adept-utils.zip
+	../getGithub https://github.com/tgamblin/adept-utils/archive/master.zip zip unzip
 
 adept-utils: boost_1_55_0 # adept-utils.zip
-	wget --no-check-certificate https://github.com/tgamblin/adept-utils/archive/master.zip
-	mv master master.zip
-	mv master.zip adept-utils.zip
 	rm -fr adept-utils adept-utils-master
-	unzip adept-utils.zip
-	rm adept-utils.zip
+	#wget --no-check-certificate https://github.com/tgamblin/adept-utils/archive/master.zip
+	#mv master master.zip
+	#mv master.zip adept-utils.zip
+	#unzip adept-utils.zip
+	../getGithub https://github.com/tgamblin/adept-utils/archive/master.zip zip unzip
+	#rm adept-utils.zip
 	mv adept-utils-master adept-utils
 #	cp adept-utils-makefiles/CMakeLists.root.txt   adept-utils
 #	cp adept-utils-makefiles/CMakeLists.cutils.txt adept-utils/cutils/CMakeLists.txt
@@ -44,17 +46,19 @@ adept-utils: boost_1_55_0 # adept-utils.zip
 	cd adept-utils; make; make install
 	
 callpath.zip:
-	wget --no-check-certificate https://github.com/tgamblin/callpath/archive/master.zip
-	mv master master.zip
-	mv master.zip callpath.zip
+	#wget --no-check-certificate https://github.com/tgamblin/callpath/archive/master.zip
+	#mv master master.zip
+	#mv master.zip callpath.zip
+	../getGithub https://github.com/tgamblin/callpath/archive/master.zip zip unzip
 	
 callpath: adept-utils # callpath.zip 
-	wget --no-check-certificate https://github.com/tgamblin/callpath/archive/master.zip
-	mv master master.zip
-	mv master.zip callpath.zip
 	rm -rf callpath-master callpath
-	unzip callpath.zip
-	rm callpath.zip
+	#wget --no-check-certificate https://github.com/tgamblin/callpath/archive/master.zip
+	#mv master master.zip
+	#mv master.zip callpath.zip
+	#unzip callpath.zip
+	#rm callpath.zip
+	../getGithub https://github.com/tgamblin/callpath/archive/master.zip zip unzip
 	mv callpath-master callpath
 	cp CMakeLists.callpath.txt callpath/CMakeLists.txt
 	cd callpath/src; cmake -DCMAKE_INSTALL_PREFIX=${ROOT_PATH}/tools/callpath \

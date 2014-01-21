@@ -26,7 +26,6 @@ class module {
   //    from one or more property names to their values. The context of a given group of a module is the combination
   //    of the contexts of its inputs.
   
-    
   class context {
     public:
     std::map<std::string, attrValue> configuration;

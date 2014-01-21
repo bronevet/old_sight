@@ -39,18 +39,20 @@ void* modularAppEnterHandler(properties::iterator props) { return new modularApp
 void  modularAppExitHandler(void* obj) { modularApp* ma = static_cast<modularApp*>(obj); delete ma; }
   
 moduleLayoutHandlerInstantiator::moduleLayoutHandlerInstantiator() { 
-  (*layoutEnterHandlers)["modularApp"]   = &modularAppEnterHandler;
-  (*layoutExitHandlers )["modularApp"]   = &modularAppExitHandler;
-  (*layoutEnterHandlers)["moduleTS"]     = &moduleTraceStream::enterTraceStream;
-  (*layoutExitHandlers )["moduleTS"]     = &defaultExitHandler;
-  (*layoutEnterHandlers)["module"]       = &modularApp::enterModule;
-  (*layoutExitHandlers )["module"]       = &modularApp::exitModule;
-  (*layoutEnterHandlers)["moduleMarker"] = &defaultEntryHandler;
-  (*layoutExitHandlers )["moduleMarker"] = &defaultExitHandler;
-  (*layoutEnterHandlers)["moduleEdge"]   = &modularApp::addEdge;
-  (*layoutExitHandlers )["moduleEdge"]   = &defaultExitHandler;
-  (*layoutEnterHandlers)["compModuleTS"] = &compModuleTraceStream::enterTraceStream;
-  (*layoutExitHandlers )["compModuleTS"] = &defaultExitHandler;
+  (*layoutEnterHandlers)["modularApp"]        = &modularAppEnterHandler;
+  (*layoutExitHandlers )["modularApp"]        = &modularAppExitHandler;
+  (*layoutEnterHandlers)["moduleTS"]          = &moduleTraceStream::enterTraceStream;
+  (*layoutExitHandlers )["moduleTS"]          = &defaultExitHandler;
+  (*layoutEnterHandlers)["module"]            = &modularApp::enterModule;
+  (*layoutExitHandlers )["module"]            = &modularApp::exitModule;
+  (*layoutEnterHandlers)["moduleMarker"]      = &defaultEntryHandler;
+  (*layoutExitHandlers )["moduleMarker"]      = &defaultExitHandler;
+  (*layoutEnterHandlers)["moduleEdge"]        = &modularApp::addEdge;
+  (*layoutExitHandlers )["moduleEdge"]        = &defaultExitHandler;
+  (*layoutEnterHandlers)["compModuleTS"]      = &compModuleTraceStream::enterTraceStream;
+  (*layoutExitHandlers )["compModuleTS"]      = &defaultExitHandler;
+  (*layoutEnterHandlers)["processedModuleTS"] = &processedModuleTraceStream::enterTraceStream;
+  (*layoutExitHandlers )["processedModuleTS"] = &defaultExitHandler;
   
   
 }
@@ -232,8 +234,12 @@ void modularApp::showButtons(int numInputs, int numOutputs, int ID, std::string 
 // numInputs/numOutputs - the number of inputs/outputs of this module node
 // ID - the unique ID of this module node
 void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int numOutputs, int count) {
-  //cout << "modularApp::enterModule("<<moduleName<<")"<<endl;
+  //cout << "modularApp::enterModule("<<moduleName<<") numInputs="<<numInputs<<", #modules["<<moduleID<<"]->ctxtNames="<<modules[moduleID]->ctxtNames.size()<<endl;
   
+  // Inform the traceStream associated with this module that it is finished. We need this stream to wrap up
+  // all of its processing and analysis now, rather than before it is deallocated.
+  moduleTraces[moduleID]->obsFinished();
+
   // Get the ID of the module that contains this one, if any.
   int containerModuleID=-1;
   if(mStack.size()>0) containerModuleID = mStack.back().moduleID;
@@ -678,9 +684,9 @@ void module::observe(int traceID,
                      const map<string, string>& obs,
                      const map<string, anchor>& obsAnchor/*,
                      const set<traceObserver*>& observers*/) {
-  /*cout << "module::observe("<<traceID<<")"<<endl;
+  //cout << "module::observe("<<traceID<<")"<<endl;
   
-  cout << "    ctxt=";
+  /*cout << "    ctxt=";
   for(map<string, string>::const_iterator c=ctxt.begin(); c!=ctxt.end(); c++) { cout << c->first << "=>"<<c->second<<" "; }
   cout << endl;
   cout << "    obs=";
@@ -880,23 +886,21 @@ moduleTraceStream::moduleTraceStream(properties::iterator props, traceObserver* 
   // If no observer is specified, register the current instance of modularApp to listen in on observations recorded by this traceStream
   if(observer==NULL) {
     // Create a fresh instance of module to analyze data of this stream
-    m = new module(moduleID);
-    modularApp::registerModule(moduleID, m);
+    mFilter = new module(moduleID);
+    modularApp::registerModule(moduleID, mFilter);
     
     // The queue of observation filters
     queue = new traceObserverQueue(traceObservers(
                     // - Observations pass through a new instance of module to enable it to build polynomial 
                     // fits of this data
-                    //modularApp::getInstance(), 
-                    m,
+                    mFilter,
                     // - They then end up at the original traceStream to be included in the generated visualization
                     this));
     registerObserver(queue);
-  } else {
-    m = NULL;
-    queue = NULL;
   }
-  // If an observer is specified, then that observer (a class that derives from will first 
+  // If an observer is specified, then that observer must be doing the processing. We assme that this derived class
+  // sets mFilter and queue.
+  
   
   // Record the mapping between traceStream IDs and the IDs of the module group they're associated with
   modularApp::activeMA->trace2moduleID[getID()] = moduleID;
@@ -904,8 +908,8 @@ moduleTraceStream::moduleTraceStream(properties::iterator props, traceObserver* 
 }
 
 moduleTraceStream::~moduleTraceStream() {
-  if(m)     delete m;
-  if(queue) delete queue;
+  if(mFilter) delete mFilter;
+  if(queue)   delete queue;
 }
 
 // Called when we observe the entry tag of a moduleTraceStream
@@ -985,18 +989,19 @@ compModuleTraceStream::compModuleTraceStream(properties::iterator props, traceOb
                     // - finally it ends up at the original traceStream to be included in the generated visualization
                     this));
     registerObserver(queue);
-  } else {
+  }/* else {
     cmFilter = NULL;
     mFilter = NULL;
     queue = NULL;
-  }
+  }*/
   //cout << "cmFilter="<<cmFilter<<", modularApp::getInstance()="<<modularApp::getInstance()<<", queue="<<queue<<endl;
 }
 
 compModuleTraceStream::~compModuleTraceStream() {
   // Deallocate the observation filter objects
-  if(cmFilter) delete cmFilter;
-  if(mFilter) delete mFilter;
+  if(cmFilter) { delete cmFilter; cmFilter=NULL; }
+  if(mFilter)  { delete mFilter;  mFilter=NULL; }
+  if(queue)    { delete queue;    queue=NULL; }
 }
 
 // Called when we observe the entry tag of a compModuleTraceStream
@@ -1181,6 +1186,70 @@ void compModule::observe(int traceID,
     }
   }
 }
+
+/**************************************
+ ***** processedModuleTraceStream *****
+ **************************************/
+
+processedModuleTraceStream::processedModuleTraceStream(properties::iterator props, traceObserver* observer) :
+  moduleTraceStream(props.next(), this)
+{
+  // If no observer is specified, register a filtering queue containing a processModule, followed by the the current instance of 
+  // modularApp to listen in on observations recorded by this traceStream.
+  if(observer==NULL) {
+    queue = new traceObserverQueue();
+  
+    //cout << "<<< processedModuleTraceStream::processedModuleTraceStream"<<endl;
+    // Add this trace object as a change listener to all the context variables
+    long numCmds = properties::getInt(props, "numCmds");
+    for(long i=0; i<numCmds; i++) {
+      commandProcessors.push_back(new externalTraceProcessor_File(props.get(txt()<<"cmd"<<i), txt()<<"out"<<i));
+      queue->push_back(commandProcessors.back());
+    }
+
+    // Create an instance of module to build the polynomial to fit of the data that comes out of the 
+    // final command
+    mFilter = new module(moduleID);
+    modularApp::registerModule(moduleID, mFilter);
+    
+    queue->push_back(mFilter);
+
+    // The final observer in the queue is the original traceStream, which accepts the observations and sends
+    // them to be visualized
+    queue->push_back(this);
+
+    // Route all of this traceStream's observations through queue
+    registerObserver(queue);
+    //cout << ">>> processedModuleTraceStream::processedModuleTraceStream"<<endl;
+  }/* else {
+    m = NULL;
+    queue = NULL;
+  }*/
+  //cout << "cmFilter="<<cmFilter<<", modularApp::getInstance()="<<modularApp::getInstance()<<", queue="<<queue<<endl;
+}
+
+processedModuleTraceStream::~processedModuleTraceStream() {
+  if(queue)   { delete queue;   queue=NULL; }
+  
+  if(mFilter) { delete mFilter; mFilter=NULL; }
+  // Deallocate all the command processor objects
+  for(list<externalTraceProcessor_File*>::iterator cp=commandProcessors.begin(); cp!=commandProcessors.end(); cp++)
+    delete *cp;
+}
+
+// Called when we observe the entry tag of a processedModuleTraceStream
+void *processedModuleTraceStream::enterTraceStream(properties::iterator props) {
+  //cout << "modularApp::enterTraceStream"<<endl;
+  assert(props.name() == "processedModuleTS");
+  //string moduleName = properties::get(nameProps, "ModuleName");
+  
+  //cout << "processedModuleTraceStream::enterTraceStream() props="<<props.str()<<endl;
+  // Allocate a new processedModuleTraceStream. The constructor takes care of registering it with the currently active module
+  new processedModuleTraceStream(props);
+  
+  return NULL;
+}
+
 
 }; // namespace layout
 }; // namespace sight

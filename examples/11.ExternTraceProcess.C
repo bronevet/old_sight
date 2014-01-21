@@ -14,12 +14,38 @@ int main (int argc, char *argv[])
   
   SightInit(argc, argv, "11.ExternTraceProcess", txt()<<"dbg.11.ExternTraceProcess");
  
-  trace t("Trace", trace::showBegin, trace::lines);
-  processedTrace pt("Processed", processedTrace::commands("./11.ExternTraceProcess.windowing 5"), trace::showBegin, trace::lines);
+  {
+    trace t("Trace", trace::showBegin, trace::lines);
+    processedTrace pt("Processed", processedTrace::commands("./11.ExternTraceProcess.windowing 15"), trace::showBegin, trace::lines);
 
+    for(int i=0; i<50; i++) {
+      traceAttr((trace*)&t,  trace::ctxtVals("i", i), trace::observation("x", abs(50-i*2)));
+      traceAttr((trace*)&pt, trace::ctxtVals("i", i), trace::observation("x", abs(50-i*2)));
+    }
+  }
+  
+  modularApp mfemApp("Processed App"); 
+  
   for(int i=0; i<50; i++) {
-    traceAttr((trace*)&t,  trace::ctxtVals("i", i), trace::observation("x", abs(50-i*2)));
-    traceAttr((trace*)&pt, trace::ctxtVals("i", i), trace::observation("x", abs(50-i*2)));
+    std::vector<port> externalOutputs;
+    {
+      module mod(instance("Unprocessed", 1, 1), 
+                 inputs(port(context("i", i))),
+                 externalOutputs,
+                 namedMeasures("time", new timeMeasure()));
+      usleep(abs(50-i*2)*1000);
+      mod.setOutCtxt(0, context("x", abs(50-i*2)));
+    }
+    
+    {
+      processedModule mod(instance("Processed", 1, 1), 
+                          inputs(port(context("i", i))),
+                          externalOutputs,
+                          processedTrace::commands("./11.ExternTraceProcess.windowing 15"),
+                          namedMeasures("time", new timeMeasure()));
+      usleep(abs(50-i*2)*1000);
+      mod.setOutCtxt(0, context("x", abs(50-i*2)));
+    }
   }
   
   return 0;

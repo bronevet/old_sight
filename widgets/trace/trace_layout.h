@@ -60,7 +60,8 @@ class processedTrace: public trace
 // traceStreams also implement the traceObserver interface so that they can leverage the common mechanism for
 // forwarding observations.
 class traceObserver {
-  protected:
+  //protected:
+public:
   // Set of objects this traceObserver informs of any observations it reads. We map each traceObserver to the number
   // of times it was registered to allow a given observer to get registered multiple times.
   std::map<traceObserver*, int> observers;
@@ -70,11 +71,11 @@ class traceObserver {
   std::map<traceObserver*, int> observing;
   
   // Records whether we've notified observers of this trace that it has finished
-  static bool finishNotified;
+  bool finishNotified;
   
   public:
     
-  traceObserver() {}
+  traceObserver() { finishNotified=false; }
   ~traceObserver();
   // Called on each observation from the traceObserver this object is observing
   // traceID - unique ID of the trace from which the observation came
