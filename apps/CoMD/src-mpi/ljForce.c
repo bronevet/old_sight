@@ -290,7 +290,7 @@ int ljForce(SimFlat* s)
                         "p1", s->atoms->p[iOff][1],
                         "p2", s->atoms->p[iOff][2]));
 
-          processedModule particleModule(instance("LJ Particle", 1, 1), 
+          module particleModule(instance("LJ Particle", 1, 1), 
                                 inputs(port(c))
                                 );
 
