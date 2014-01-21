@@ -157,9 +157,9 @@ ID3-Decision-Tree:
 	#rm -fr master*
 	#cd widgets; wget --no-check-certificate https://github.com/willkurt/ID3-Decision-Tree/archive/master.zip
 	#cd widgets; mv master master.zip; unzip master.zip
-	#mv ID3-Decision-Tree-master ID3-Decision-Tree
 	#rm -r master*
 	../getGithub https://github.com/willkurt/ID3-Decision-Tree/archive/master.zip zip unzip
+	mv ID3-Decision-Tree-master ID3-Decision-Tree
 	chmod 755 ID3-Decision-Tree
 	chmod 644 ID3-Decision-Tree/*
 	chmod 755 ID3-Decision-Tree/data ID3-Decision-Tree/js
@@ -172,7 +172,6 @@ noVNC:
 	#tar -xf master.tar.gz
 	../getGithub http://github.com/kanaka/noVNC/tarball/master tar.gz "tar -xf"
 	mv kanaka-noVNC-* noVNC
-	rm master.tar.gz
 
 gsl:
 	wget ftp://ftp.gnu.org/gnu/gsl/gsl-1.9.tar.gz
