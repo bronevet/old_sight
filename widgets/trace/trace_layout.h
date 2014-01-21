@@ -113,7 +113,7 @@ public:
   
   // Emits an empty observation for cases where the caller wishes that observers are informed that
   // an observation was made but has not information to provide
-  /*void emitEmptyObservation(int traceID, const std::set<traceObserver*>& observers) {
+  / *void emitEmptyObservation(int traceID, const std::set<traceObserver*>& observers) {
     emitObservation(traceID, 
                     std::map<std::string, std::string>(), 
                     std::map<std::string, std::string>(), 

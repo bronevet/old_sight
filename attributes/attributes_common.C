@@ -179,6 +179,8 @@ attrValue& attrValue::operator=(const std::string& strV) {
     type  = strT;
     store = (void*)(new string(strV));
   }
+
+  return *this;
 }
 
 attrValue& attrValue::operator=(char* strV) {
@@ -192,6 +194,8 @@ attrValue& attrValue::operator=(char* strV) {
     type  = strT;
     store = (void*)(new string(strV));  
   }
+
+  return *this;
 }
 
 attrValue& attrValue::operator=(void* ptrV) {
@@ -206,6 +210,8 @@ attrValue& attrValue::operator=(void* ptrV) {
     store = new void*;
     *((void**)store) = ptrV;
   }
+
+  return *this;
 }
 
 attrValue& attrValue::operator=(long intV) {
@@ -220,6 +226,8 @@ attrValue& attrValue::operator=(long intV) {
     store = new long*;
     *((long*)store) = intV;
   }
+
+  return *this;
 }
 
 attrValue& attrValue::operator=(int intV) {
@@ -234,6 +242,8 @@ attrValue& attrValue::operator=(int intV) {
     store = new long*;
     *((long*)store) = intV;
   }
+
+  return *this;
 }
 
 attrValue& attrValue::operator=(double floatV) {
@@ -248,6 +258,8 @@ attrValue& attrValue::operator=(double floatV) {
     store = new double;
     *((double*)store) = floatV;
   }
+
+  return *this;
 }
 
 attrValue& attrValue::operator=(float floatV) {
@@ -262,6 +274,8 @@ attrValue& attrValue::operator=(float floatV) {
     store = new double;
     *((double*)store) = floatV;
   }
+
+  return *this;
 }
 
 // Produces a customSerT type
@@ -276,6 +290,8 @@ attrValue& attrValue::operator=(customAttrValue& customV) {
     type  = customSerT;
     store = (void*)(new string(customV.serialize()));
   }
+
+  return *this;
 }
 
 attrValue& attrValue::operator=(const attrValue& that) {
@@ -319,6 +335,8 @@ attrValue& attrValue::operator=(const attrValue& that) {
       assert(0);
     }
   }
+
+  return *this;
 }
 
 // Returns the type of this attrValue's contents
@@ -864,6 +882,7 @@ bool sightArray::operator==(const customAttrValue& that_arg) {
     cerr << "ERROR: comparing sightArray with a different type of customAttrValue using == operator!"<<endl;
     assert(0);
   }
+  return false;
 }
 
 bool sightArray::operator< (const customAttrValue& that_arg) {
@@ -904,6 +923,7 @@ bool sightArray::operator< (const customAttrValue& that_arg) {
     cerr << "ERROR: comparing sightArray with a different type of customAttrValue using < operator!"<<endl;
     assert(0);
   }
+  return false;
 }
 
 // Adds the string representation of this value to the given output stream

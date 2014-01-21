@@ -260,6 +260,7 @@ void* graph::addNode(properties::iterator props) {
   
   active[graphID]->addNode(anchor(/*false,*/ properties::getInt(props, "anchorID")), 
                            properties::get(props, "label"));
+  return NULL;
 }
 
 }; // namespace layout

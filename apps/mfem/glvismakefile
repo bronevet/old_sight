@@ -9,7 +9,7 @@
 # terms of the GNU Lesser General Public License (as published by the Free
 # Software Foundation) version 2.1 dated February 1999.
 
-CC = g++
+#CC = g++
 OPTS = -O3 ${SIGHT_CFLAGS}
 DEBUG_OPTS = -g -DGLVIS_DEBUG
 
@@ -53,9 +53,8 @@ TIFF_LIBS_NO  =
 TIFF_OPTS     = $(TIFF_OPTS_$(USE_LIBTIFF))
 TIFF_LIBS     = $(TIFF_LIBS_$(USE_LIBTIFF))
 
-COPTS = $(TIFF_OPTS) $(GL_OPTS) $(OPTS)
-LIBS  = $(MFEM_LIB) $(LAPACK_LIBS) $(X11_LIB) $(GL_LIBS) $(TIFF_LIBS) -lpthread
-CCC   = $(CC) $(COPTS) $(DEFINES)
+COPTS = $(TIFF_OPTS) $(GL_OPTS) $(OPTS) ${SIGHT_CFLAGS}
+LIBS  = $(MFEM_LIB) $(LAPACK_LIBS) $(X11_LIB) $(GL_LIBS) $(TIFF_LIBS) -lpthread ${SIGHT_LINKFLAGS}
 
 # generated with 'echo lib/*.c*'
 SOURCE_FILES = lib/aux_gl.cpp lib/aux_vis.cpp lib/gl2ps.c lib/material.cpp \
@@ -73,12 +72,12 @@ HEADER_FILES = lib/aux_gl.hpp lib/aux_vis.hpp lib/gl2ps.h lib/material.hpp \
 
 .SUFFIXES: .c .cpp .o
 .cpp.o:
-	cd $(<D); $(CCC) -I${ROOT_PATH} -I../$(MFEM_DIR) -c $(<F)
+	cd $(<D); $(CC) $(COPTS) $(DEFINES) -I../$(MFEM_DIR) -c $(<F)
 .c.o:
-	cd $(<D); $(CCC) -I${ROOT_PATH} -I../$(MFEM_DIR) -c $(<F)
+	cd $(<D); $(CC) $(COPTS) $(DEFINES) -I../$(MFEM_DIR) -c $(<F)
 
 glvis:	glvis.cpp lib/libglvis.a $(MFEM_DIR)/libmfem.a
-	$(CCC) -I${ROOT_PATH} -I$(MFEM_DIR) -o glvis glvis.cpp -Llib -lglvis $(LIBS)
+	$(CC) $(COPTS) $(DEFINES) -I$(MFEM_DIR) -o glvis glvis.cpp -Llib -lglvis $(LIBS)
 
 debug:
 	make "OPTS=$(DEBUG_OPTS)"

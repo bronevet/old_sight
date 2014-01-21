@@ -308,6 +308,9 @@ class customAttrValue {
   
   // Compares this object to that one using the given comparator and returns their relation to each other.
   virtual attrValue compare(const customAttrValue& that, comparator& comp) const=0;
+
+  customAttrValue() {}
+  virtual ~customAttrValue() {}
 }; // class customAttrValue
 
 // Type of deserialization functions for custom attributes

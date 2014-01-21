@@ -21,68 +21,68 @@ all: gsl papi \
 	chmod 644 canviz-0.1/*/*
 
 scope/scope_common.o: scope/scope_common.C scope/scope_common.h ../attributes/attributes_common.h ../sight_common.h
-	g++ ${SIGHT_CFLAGS} scope/scope_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o scope/scope_common.o
+	${CCC} ${SIGHT_CFLAGS} scope/scope_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o scope/scope_common.o
 
 scope/scope_structure.o: scope/scope_structure.C scope/scope_structure.h ../attributes/attributes_structure.h ../sight_structure.h
-	g++ ${SIGHT_CFLAGS} scope/scope_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o scope/scope_structure.o
+	${CCC} ${SIGHT_CFLAGS} scope/scope_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o scope/scope_structure.o
 
 scope/scope_layout.o: scope/scope_layout.C scope/scope_layout.h ../attributes/attributes_layout.h ../sight_layout.h
-	g++ ${SIGHT_CFLAGS} scope/scope_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o scope/scope_layout.o
+	${CCC} ${SIGHT_CFLAGS} scope/scope_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o scope/scope_layout.o
 
 
 graph/graph_common.o: graph/graph_common.C graph/graph_common.h ../attributes/attributes_common.h ../sight_common.h
-	g++ ${SIGHT_CFLAGS} graph/graph_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o graph/graph_common.o
+	${CCC} ${SIGHT_CFLAGS} graph/graph_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o graph/graph_common.o
 
 graph/graph_structure.o: graph/graph_structure.C graph/graph_structure.h ../attributes/attributes_structure.h ../sight_structure.h
-	g++ ${SIGHT_CFLAGS} graph/graph_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o graph/graph_structure.o
+	${CCC} ${SIGHT_CFLAGS} graph/graph_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o graph/graph_structure.o
 
 graph/graph_layout.o: graph/graph_layout.C graph/graph_layout.h ../attributes/attributes_layout.h ../sight_layout.h
-	g++ ${SIGHT_CFLAGS} graph/graph_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o graph/graph_layout.o
+	${CCC} ${SIGHT_CFLAGS} graph/graph_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o graph/graph_layout.o
 
 
 valSelector/valSelector_common.o: valSelector/valSelector_common.C valSelector/valSelector_common.h ../sight_common.h
-	g++ ${SIGHT_CFLAGS} valSelector/valSelector_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o valSelector/valSelector_common.o
+	${CCC} ${SIGHT_CFLAGS} valSelector/valSelector_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o valSelector/valSelector_common.o
 
 valSelector/valSelector_structure.o: valSelector/valSelector_structure.C valSelector/valSelector_structure.h ../sight_structure.h
-	g++ ${SIGHT_CFLAGS} valSelector/valSelector_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o valSelector/valSelector_structure.o
+	${CCC} ${SIGHT_CFLAGS} valSelector/valSelector_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o valSelector/valSelector_structure.o
 
 valSelector/valSelector_layout.o: valSelector/valSelector_layout.C valSelector/valSelector_layout.h ../sight_layout.h
-	g++ ${SIGHT_CFLAGS} valSelector/valSelector_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o valSelector/valSelector_layout.o
+	${CCC} ${SIGHT_CFLAGS} valSelector/valSelector_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o valSelector/valSelector_layout.o
 
 
 trace/trace_common.o: trace/trace_common.C trace/trace_common.h ../sight_common.h
-	g++ ${SIGHT_CFLAGS} trace/trace_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o trace/trace_common.o
+	${CCC} ${SIGHT_CFLAGS} trace/trace_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o trace/trace_common.o
 
 trace/trace_structure.o: trace/trace_structure.C trace/trace_structure.h ../sight_structure.h
-	g++ ${SIGHT_CFLAGS} trace/trace_structure.C -I.. -Ipapi/include -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o trace/trace_structure.o
+	${CCC} ${SIGHT_CFLAGS} trace/trace_structure.C -I.. -Ipapi/include -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o trace/trace_structure.o
 
 trace/trace_layout.o: trace/trace_layout.C trace/trace_layout.h ../sight_layout.h
-	g++ ${SIGHT_CFLAGS} trace/trace_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o trace/trace_layout.o
+	${CCC} ${SIGHT_CFLAGS} trace/trace_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o trace/trace_layout.o
 
 
 module/module_common.o: module/module_common.C module/module_common.h ../attributes/attributes_common.h ../sight_common.h
-	g++ ${SIGHT_CFLAGS} module/module_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o module/module_common.o
+	${CCC} ${SIGHT_CFLAGS} module/module_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o module/module_common.o
 
 module/module_structure.o: module/module_structure.C module/module_structure.h ../attributes/attributes_structure.h ../sight_structure.h gsl papi
-	g++ ${SIGHT_CFLAGS} module/module_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o module/module_structure.o
+	${CCC} ${SIGHT_CFLAGS} module/module_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o module/module_structure.o
 
 module/module_layout.o: module/module_layout.C module/module_layout.h ../attributes/attributes_layout.h ../sight_layout.h
-	g++ ${SIGHT_CFLAGS} module/module_layout.C -I.. -Igsl/include -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o module/module_layout.o
+	${CCC} ${SIGHT_CFLAGS} module/module_layout.C -I.. -Igsl/include -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o module/module_layout.o
 
 source/source_common.o: source/source_common.C source/source_common.h ../attributes/attributes_common.h ../sight_common.h
-	g++ ${SIGHT_CFLAGS} source/source_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o source/source_common.o
+	${CCC} ${SIGHT_CFLAGS} source/source_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o source/source_common.o
 
 source/source_structure.o: source/source_structure.C source/source_structure.h ../attributes/attributes_structure.h ../sight_structure.h
-	g++ ${SIGHT_CFLAGS} source/source_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o source/source_structure.o
+	${CCC} ${SIGHT_CFLAGS} source/source_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o source/source_structure.o
 
 source/source_layout.o: source/source_layout.C source/source_layout.h ../attributes/attributes_layout.h ../sight_layout.h
-	g++ ${SIGHT_CFLAGS} source/source_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o source/source_layout.o
+	${CCC} ${SIGHT_CFLAGS} source/source_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o source/source_layout.o
 
 clock/clock_structure.o: clock/clock_structure.C clock/clock_structure.h
-	g++ ${SIGHT_CFLAGS} clock/clock_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o clock/clock_structure.o
+	${CCC} ${SIGHT_CFLAGS} clock/clock_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o clock/clock_structure.o
 
 clock/clock_layout.o: clock/clock_layout.C clock/clock_layout.h
-	g++ ${SIGHT_CFLAGS} clock/clock_layout.C -I.. -Igsl/include -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o clock/clock_layout.o
+	${CCC} ${SIGHT_CFLAGS} clock/clock_layout.C -I.. -Igsl/include -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o clock/clock_layout.o
 
 
 ifneq (${OS}, Cygwin)
@@ -91,7 +91,7 @@ xdotool:
 	wget http://semicomplete.googlecode.com/files/xdotool-2.20110530.1.tar.gz
 	tar -xf xdotool-2.20110530.1.tar.gz
 	rm -f xdotool-2.20110530.1.tar.gz
-	cd xdotool-2.20110530.1; CC=gcc; ${MAKE}
+	cd xdotool-2.20110530.1; CC=${CC}; ${MAKE}
 	mv xdotool-2.20110530.1 xdotool
 else
 xdotool:
@@ -137,7 +137,7 @@ ifeq (${OS},Cygwin)
 else
 	wget http://www.graphviz.org/pub/graphviz/stable/SOURCES/graphviz-2.32.0.tar.gz
 	tar -xf graphviz-2.32.0.tar.gz
-	cd graphviz-2.32.0; export CC=gcc; export CXX=g++; ./configure --prefix=${ROOT_PATH}/widgets/graphviz --disable-swig --disable-sharp --disable-go --disable-io --disable-java --disable-lua --disable-ocaml --disable-perl --disable-php --disable-python --disable-r --disable-ruby --disable-tcl --without-pic --without-efence --with-expat=yes --with-expatlibdir=${ROOT_PATH}/widgets/expat/lib --with-expatincludedir=${ROOT_PATH}/widgets/expat/include --without-devil --without-webp --without-poppler --without-ghostscript --without-visio --without-pangocairo --without-lasi --without-glitz --without-freetype2 --without-fontconfig --without-gdk-pixbuf --without-gtk --without-gtkgl --without-gtkglext --without-gts --without-glade --without-ming --without-qt --without-quartz --without-gdiplus --without-libgd --without-glut --without-sfdp --without-smyrna --without-ortho --without-digcola --without-ipsepcola --enable-static --disable-shared
+	cd graphviz-2.32.0; export CC=${CC}; export CXX=${CCC}; ./configure --prefix=${ROOT_PATH}/widgets/graphviz --disable-swig --disable-sharp --disable-go --disable-io --disable-java --disable-lua --disable-ocaml --disable-perl --disable-php --disable-python --disable-r --disable-ruby --disable-tcl --without-pic --without-efence --with-expat=yes --with-expatlibdir=${ROOT_PATH}/widgets/expat/lib --with-expatincludedir=${ROOT_PATH}/widgets/expat/include --without-devil --without-webp --without-poppler --without-ghostscript --without-visio --without-pangocairo --without-lasi --without-glitz --without-freetype2 --without-fontconfig --without-gdk-pixbuf --without-gtk --without-gtkgl --without-gtkglext --without-gts --without-glade --without-ming --without-qt --without-quartz --without-gdiplus --without-libgd --without-glut --without-sfdp --without-smyrna --without-ortho --without-digcola --without-ipsepcola --enable-static --disable-shared
 	cd graphviz-2.32.0; ${MAKE}
 	cd graphviz-2.32.0; ${MAKE} install
 	mv graphviz/bin/dot_static graphviz/bin/dot
@@ -176,7 +176,7 @@ noVNC:
 gsl:
 	wget ftp://ftp.gnu.org/gnu/gsl/gsl-1.9.tar.gz
 	tar -xf gsl-1.9.tar.gz 
-	cd gsl-1.9; CC=gcc; ./configure --prefix=${ROOT_PATH}/widgets/gsl
+	cd gsl-1.9; CC=${CC}; ./configure --prefix=${ROOT_PATH}/widgets/gsl
 	cd gsl-1.9; make; make install
 	rm -r gsl-1.9
 
@@ -184,7 +184,7 @@ papi:
 	rm -f papi-5.3.0.tar.gz
 	wget http://icl.cs.utk.edu/projects/papi/downloads/papi-5.3.0.tar.gz
 	tar -xf papi-5.3.0.tar.gz 
-	cd papi-5.3.0/src; export CC=gcc; export F77=gfortran; ./configure -prefix=${ROOT_PATH}/widgets/papi; make; make install
+	cd papi-5.3.0/src; export CC=${CC}; export F77=gfortran; ./configure -prefix=${ROOT_PATH}/widgets/papi; make; make install
 	rm -fr papi-5.3.0 papi-5.3.0.tar.gz
 
 # JavaScript files from standard JS libraries that we wish to keep local copies of

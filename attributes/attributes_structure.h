@@ -92,6 +92,7 @@ class attrOp
   
   public:
   attrOp(std::string key, applyType type) : key(key), type(type) {}
+  virtual ~attrOp() {}
   
   // For each type of value the functor must provide an implements*() method that 
   // returns whether the functor is applicable to this value type and an apply*()

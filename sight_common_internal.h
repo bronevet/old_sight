@@ -418,34 +418,34 @@ class easylist : public std::list<T> {
 	easylist() {}
 	  
 	easylist(const T& p0)
-	{ push_back(p0); }
+	{ std::list<T>::push_back(p0); }
 	
 	easylist(const T& p0, const T& p1)
-	{ push_back(p0); push_back(p1); }
+	{ std::list<T>::push_back(p0); std::list<T>::push_back(p1); }
 	
 	easylist(const T& p0, const T& p1, const T& p2)
-	{ push_back(p0); push_back(p1); push_back(p2); }
+	{ std::list<T>::push_back(p0); std::list<T>::push_back(p1); std::list<T>::push_back(p2); }
 	
 	easylist(const T& p0, const T& p1, const T& p2, const T& p3)
-	{ push_back(p0); push_back(p1); push_back(p2); push_back(p3); }
+	{ std::list<T>::push_back(p0); std::list<T>::push_back(p1); std::list<T>::push_back(p2); std::list<T>::push_back(p3); }
 	
 	easylist(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4)
-	{ push_back(p0); push_back(p1); push_back(p2); push_back(p3); push_back(p4); }
+	{ std::list<T>::push_back(p0); std::list<T>::push_back(p1); std::list<T>::push_back(p2); std::list<T>::push_back(p3); std::list<T>::push_back(p4); }
 	
 	easylist(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4, const T& p5)
-	{ push_back(p0); push_back(p1); push_back(p2); push_back(p3); push_back(p4); push_back(p5); }
+	{ std::list<T>::push_back(p0); std::list<T>::push_back(p1); std::list<T>::push_back(p2); std::list<T>::push_back(p3); std::list<T>::push_back(p4); std::list<T>::push_back(p5); }
 	
 	easylist(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4, const T& p5, const T& p6)
-	{ push_back(p0); push_back(p1); push_back(p2); push_back(p3); push_back(p4); push_back(p5); push_back(p6); }
+	{ std::list<T>::push_back(p0); std::list<T>::push_back(p1); std::list<T>::push_back(p2); std::list<T>::push_back(p3); std::list<T>::push_back(p4); std::list<T>::push_back(p5); std::list<T>::push_back(p6); }
 	
 	easylist(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4, const T& p5, const T& p6, const T& p7)
-	{ push_back(p0); push_back(p1); push_back(p2); push_back(p3); push_back(p4); push_back(p5); push_back(p6); push_back(p7); }
+	{ std::list<T>::push_back(p0); std::list<T>::push_back(p1); std::list<T>::push_back(p2); std::list<T>::push_back(p3); std::list<T>::push_back(p4); std::list<T>::push_back(p5); std::list<T>::push_back(p6); std::list<T>::push_back(p7); }
 	
 	easylist(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4, const T& p5, const T& p6, const T& p7, const T& p8)
-	{ push_back(p0); push_back(p1); push_back(p2); push_back(p3); push_back(p4); push_back(p5); push_back(p6); push_back(p7); push_back(p8); }
+	{ std::list<T>::push_back(p0); std::list<T>::push_back(p1); std::list<T>::push_back(p2); std::list<T>::push_back(p3); std::list<T>::push_back(p4); std::list<T>::push_back(p5); std::list<T>::push_back(p6); std::list<T>::push_back(p7); std::list<T>::push_back(p8); }
 	
 	easylist(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4, const T& p5, const T& p6, const T& p7, const T& p8, const T& p9)
-	{ push_back(p0); push_back(p1); push_back(p2); push_back(p3); push_back(p4); push_back(p5); push_back(p6); push_back(p7); push_back(p8); push_back(p8); push_back(p9); }
+	{ std::list<T>::push_back(p0); std::list<T>::push_back(p1); std::list<T>::push_back(p2); std::list<T>::push_back(p3); std::list<T>::push_back(p4); std::list<T>::push_back(p5); std::list<T>::push_back(p6); std::list<T>::push_back(p7); std::list<T>::push_back(p8); std::list<T>::push_back(p8); std::list<T>::push_back(p9); }
 }; // class easylist
 
 // Syntactic sugar for specifying vectors
@@ -455,34 +455,34 @@ class easyvector : public std::vector<T> {
 	easyvector() {}
 	  
 	easyvector(const T& p0)
-	{ push_back(p0); }
+	{ std::vector<T>::push_back(p0); }
 	
 	easyvector(const T& p0, const T& p1)
-	{ push_back(p0); push_back(p1); }
+	{ std::vector<T>::push_back(p0); std::vector<T>::push_back(p1); }
 	
 	easyvector(const T& p0, const T& p1, const T& p2)
-	{ push_back(p0); push_back(p1); push_back(p2); }
+	{ std::vector<T>::push_back(p0); std::vector<T>::push_back(p1); std::vector<T>::push_back(p2); }
 	
 	easyvector(const T& p0, const T& p1, const T& p2, const T& p3)
-	{ push_back(p0); push_back(p1); push_back(p2); push_back(p3); }
+	{ std::vector<T>::push_back(p0); std::vector<T>::push_back(p1); std::vector<T>::push_back(p2); std::vector<T>::push_back(p3); }
 	
 	easyvector(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4)
-	{ push_back(p0); push_back(p1); push_back(p2); push_back(p3); push_back(p4); }
+	{ std::vector<T>::push_back(p0); std::vector<T>::push_back(p1); std::vector<T>::push_back(p2); std::vector<T>::push_back(p3); std::vector<T>::push_back(p4); }
 	
 	easyvector(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4, const T& p5)
-	{ push_back(p0); push_back(p1); push_back(p2); push_back(p3); push_back(p4); push_back(p5); }
+	{ std::vector<T>::push_back(p0); std::vector<T>::push_back(p1); std::vector<T>::push_back(p2); std::vector<T>::push_back(p3); std::vector<T>::push_back(p4); std::vector<T>::push_back(p5); }
 	
 	easyvector(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4, const T& p5, const T& p6)
-	{ push_back(p0); push_back(p1); push_back(p2); push_back(p3); push_back(p4); push_back(p5); push_back(p6); }
+	{ std::vector<T>::push_back(p0); std::vector<T>::push_back(p1); std::vector<T>::push_back(p2); std::vector<T>::push_back(p3); std::vector<T>::push_back(p4); std::vector<T>::push_back(p5); std::vector<T>::push_back(p6); }
 	
 	easyvector(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4, const T& p5, const T& p6, const T& p7)
-	{ push_back(p0); push_back(p1); push_back(p2); push_back(p3); push_back(p4); push_back(p5); push_back(p6); push_back(p7); }
+	{ std::vector<T>::push_back(p0); std::vector<T>::push_back(p1); std::vector<T>::push_back(p2); std::vector<T>::push_back(p3); std::vector<T>::push_back(p4); std::vector<T>::push_back(p5); std::vector<T>::push_back(p6); std::vector<T>::push_back(p7); }
 	
 	easyvector(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4, const T& p5, const T& p6, const T& p7, const T& p8)
-	{ push_back(p0); push_back(p1); push_back(p2); push_back(p3); push_back(p4); push_back(p5); push_back(p6); push_back(p7); push_back(p8); }
+	{ std::vector<T>::push_back(p0); std::vector<T>::push_back(p1); std::vector<T>::push_back(p2); std::vector<T>::push_back(p3); std::vector<T>::push_back(p4); std::vector<T>::push_back(p5); std::vector<T>::push_back(p6); std::vector<T>::push_back(p7); std::vector<T>::push_back(p8); }
 	
 	easyvector(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4, const T& p5, const T& p6, const T& p7, const T& p8, const T& p9)
-	{ push_back(p0); push_back(p1); push_back(p2); push_back(p3); push_back(p4); push_back(p5); push_back(p6); push_back(p7); push_back(p8); push_back(p8); push_back(p9); }
+	{ std::vector<T>::push_back(p0); std::vector<T>::push_back(p1); std::vector<T>::push_back(p2); std::vector<T>::push_back(p3); std::vector<T>::push_back(p4); std::vector<T>::push_back(p5); std::vector<T>::push_back(p6); std::vector<T>::push_back(p7); std::vector<T>::push_back(p8); std::vector<T>::push_back(p8); std::vector<T>::push_back(p9); }
 }; // class easyvector
 
 

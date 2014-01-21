@@ -41,7 +41,7 @@ adept-utils: boost_1_55_0 # adept-utils.zip
 #	cp adept-utils-makefiles/CMakeLists.cutils.txt adept-utils/cutils/CMakeLists.txt
 #	cp adept-utils-makefiles/CMakeLists.utils.txt  adept-utils/utils/CMakeLists.txt
 	cd adept-utils; cmake -DCMAKE_INSTALL_PREFIX=${ROOT_PATH}/tools/adept-utils \
-	                      -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ \
+	                      -DCMAKE_C_COMPILER=${CC} -DCMAKE_CXX_COMPILER=${CCC} \
 	                      -DBOOST_ROOT:PATHNAME=${ROOT_PATH}/tools/boost_1_55_0 .
 	cd adept-utils; make; make install
 	
@@ -53,18 +53,14 @@ callpath.zip:
 	
 callpath: adept-utils # callpath.zip 
 	rm -rf callpath-master callpath
-	#wget --no-check-certificate https://github.com/tgamblin/callpath/archive/master.zip
-	#mv master master.zip
-	#mv master.zip callpath.zip
-	#unzip callpath.zip
-	#rm callpath.zip
 	../getGithub https://github.com/tgamblin/callpath/archive/master.zip zip unzip
 	mv callpath-master callpath
 	cp CMakeLists.callpath.txt callpath/CMakeLists.txt
+	cp callpath_safe_bool.h callpath/src/safe_bool.h
 	cd callpath/src; cmake -DCMAKE_INSTALL_PREFIX=${ROOT_PATH}/tools/callpath \
 	                       -DCALLPATH_WALKER=backtrace -DCMAKE_BUILD_TYPE=RelWithDebInfo \
 	                       -DCMAKE_CXX_FLAGS=-fpermissive \
-	                       -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ \
+	                       -DCMAKE_C_COMPILER=${CC} -DCMAKE_CXX_COMPILER=${CCC} \
 	                       -Dadept_utils_DIR=${ROOT_PATH}/tools/adept-utils/share/cmake/adept_utils ..
 	cd callpath/src; make; make install
 

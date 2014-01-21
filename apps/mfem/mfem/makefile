@@ -10,7 +10,7 @@
 # Software Foundation) version 2.1 dated February 1999.
 
 # Serial compiler
-CC         = g++
+#CC         = g++
 CCOPTS     = -O3 -I${ROOT_PATH}
 DEBUG_OPTS = -g -DMFEM_DEBUG
 

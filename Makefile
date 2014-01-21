@@ -18,6 +18,9 @@ SIGHT_LINKFLAGS = ${ROOT_PATH}/tools/adept-utils/lib/libadept_cutils.so \
 	                
 	                #-Wl,-rpath ${ROOT_PATH}/widgets/papi/lib \
 
+CC = clang #gcc
+CCC = clang++ #g++
+
 OS := $(shell uname -o)
 ifeq (${OS}, Cygwin)
 EXE := .exe
@@ -25,7 +28,7 @@ endif
 
 all: core allExamples
 	
-core: sightDefines.pl gdbLineNum.pl libsight_common.a libsight_structure.a slayout${EXE} hier_merge${EXE} widgets_post script/taffydb maketools
+core: sightDefines.pl gdbLineNum.pl maketools libsight_common.a libsight_structure.a slayout${EXE} hier_merge${EXE} widgets_post script/taffydb 
 	chmod 755 html img script
 	chmod 644 html/* img/* script/*
 	chmod 755 script/taffydb
@@ -55,22 +58,19 @@ endif
 apps: mfem #mcbench
 
 mfem: core
-	cd apps/mfem; make ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}"
+	cd apps/mfem; make ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" CC=${CC} CCC=${CCC}
 #	cd apps/mfem; make ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS}
 
 CoMD: 
-	cd apps/CoMD/src-mpi; make ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}"
+	cd apps/CoMD/src-mpi; make ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS} CCC=${CCC}"
 	
-CoMDmon: 
-	cd apps/CoMD/src-mpi; make ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS} -DDISTILL_MONITOR" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}"
-
 #mcbench:
 #ifneq (${OS}, Cygwin)
 #	cd apps/mcbench; ./build-linux-x86_64.sh ${ROOT_PATH}
 #endif
 
 allExamples: libsight_structure.a
-	cd examples; make ROOT_PATH=${ROOT_PATH} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}"
+	cd examples; make ROOT_PATH=${ROOT_PATH} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" CC=${CC} CCC=${CCC}
 
 run: all runExamples runApps
 
@@ -93,15 +93,15 @@ runApps: libsight_structure.a slayout${EXE} hier_merge${EXE} apps
 
 
 slayout.o: slayout.C process.C process.h
-	g++ ${SIGHT_CFLAGS} slayout.C -I. -c -o slayout.o
+	${CCC} ${SIGHT_CFLAGS} slayout.C -I. -c -o slayout.o
 
 slayout${EXE}: mfem libsight_layout.a 
-	g++ -Wl,--whole-archive libsight_layout.a apps/mfem/mfem_layout.o -Wl,-no-whole-archive -o slayout${EXE}
+	${CCC} -Wl,--whole-archive libsight_layout.a apps/mfem/mfem_layout.o -Wl,-no-whole-archive -o slayout${EXE}
 #	ld --whole-archive slayout.o libsight_layout.a apps/mfem/mfem_layout.o -o slayout${EXE}
-#	g++ ${SIGHT_CFLAGS} slayout.C -Wl,--whole-archive libsight_layout.a -DMFEM -I. -Iapps/mfem apps/mfem/mfem_layout.o -Wl,-no-whole-archive -o slayout${EXE}
+#	${CCC} ${SIGHT_CFLAGS} slayout.C -Wl,--whole-archive libsight_layout.a -DMFEM -I. -Iapps/mfem apps/mfem/mfem_layout.o -Wl,-no-whole-archive -o slayout${EXE}
 
 hier_merge${EXE}: hier_merge.C process.C process.h libsight_structure.a 
-	g++ ${SIGHT_CFLAGS} hier_merge.C -Wl,--whole-archive libsight_structure.a -Wl,-no-whole-archive \
+	${CCC} ${SIGHT_CFLAGS} hier_merge.C -Wl,--whole-archive libsight_structure.a -Wl,-no-whole-archive \
 	                                 -DMFEM -I. ${SIGHT_LINKFLAGS} -o hier_merge${EXE}
 
 libsight_common.a: ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre
@@ -122,49 +122,49 @@ libsight_layout.a: ${SIGHT_LAYOUT_O} ${SIGHT_LAYOUT_H} ${SIGHT_COMMON_O} ${SIGHT
 
 
 sight_common.o: sight_common.C sight_common_internal.h attributes/attributes_common.h
-	g++ ${SIGHT_CFLAGS} sight_common.C -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o sight_common.o
+	${CCC} ${SIGHT_CFLAGS} sight_common.C -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o sight_common.o
 
 sight_structure.o: sight_structure.C sight_structure_internal.h attributes/attributes_structure.h sight_common_internal.h attributes/attributes_common.h maketools
-	g++ ${SIGHT_CFLAGS} sight_structure.C -Itools/dtl -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o sight_structure.o
+	${CCC} ${SIGHT_CFLAGS} sight_structure.C -Itools/dtl -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o sight_structure.o
 
 sight_layout.o: sight_layout.C sight_layout_internal.h attributes/attributes_layout.h sight_common_internal.h attributes/attributes_common.h
-	g++ ${SIGHT_CFLAGS} sight_layout.C -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o sight_layout.o
+	${CCC} ${SIGHT_CFLAGS} sight_layout.C -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o sight_layout.o
 
 variant_layout.o: variant_layout.C variant_layout.h sight_layout_internal.h attributes/attributes_layout.h sight_common_internal.h attributes/attributes_common.h
-	g++ ${SIGHT_CFLAGS} variant_layout.C -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o variant_layout.o
+	${CCC} ${SIGHT_CFLAGS} variant_layout.C -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o variant_layout.o
 
 
 attributes/attributes_common.o: attributes/attributes_common.C  sight_common_internal.h attributes/attributes_common.h
-	g++ ${SIGHT_CFLAGS} attributes/attributes_common.C -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o attributes/attributes_common.o
+	${CCC} ${SIGHT_CFLAGS} attributes/attributes_common.C -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o attributes/attributes_common.o
 
 attributes/attributes_structure.o: attributes/attributes_structure.C attributes/attributes_structure.h sight_common_internal.h attributes/attributes_common.h
-	g++ ${SIGHT_CFLAGS} attributes/attributes_structure.C -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o attributes/attributes_structure.o
+	${CCC} ${SIGHT_CFLAGS} attributes/attributes_structure.C -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o attributes/attributes_structure.o
 
 attributes/attributes_layout.o: attributes/attributes_layout.C attributes/attributes_layout.h sight_common_internal.h attributes/attributes_common.h
-	g++ ${SIGHT_CFLAGS} attributes/attributes_layout.C -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o attributes/attributes_layout.o
+	${CCC} ${SIGHT_CFLAGS} attributes/attributes_layout.C -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o attributes/attributes_layout.o
 
 
 # Rule for compiling the aspects of widgets that libsight.a requires
 .PHONY: widgets_pre
-widgets_pre:
-	cd widgets; make -f Makefile_pre ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}"
+widgets_pre: maketools
+	cd widgets; make -f Makefile_pre ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS} CC=${CC} CCC=${CCC}"
 
 # Rule for compiling the aspects of widgets that require libsight.a
 widgets_post: libsight_layout.a libsight_structure.a
-	cd widgets; make -f Makefile_post ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}"
+	cd widgets; make -f Makefile_post ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS} CC=${CC} CCC=${CCC}"
 
 maketools: 
 	cd tools; make -f Makefile ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS}
 
 binreloc.o: binreloc.c binreloc.h
-	g++ ${SIGHT_CFLAGS} binreloc.c -c -o binreloc.o
+	${CCC} ${SIGHT_CFLAGS} binreloc.c -c -o binreloc.o
 
 utils.o: utils.C utils.h
-	g++ ${SIGHT_CFLAGS} utils.C -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o utils.o
+	${CCC} ${SIGHT_CFLAGS} utils.C -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o utils.o
 
 HOSTNAME_ARG=$(shell ./getHostnameArg.pl)
 getAllHostnames.o: getAllHostnames.C getAllHostnames.h
-	g++ ${SIGHT_CFLAGS} getAllHostnames.C -DHOSTNAME_ARG="\"${HOSTNAME_ARG}\"" -c -o getAllHostnames.o
+	${CCC} ${SIGHT_CFLAGS} getAllHostnames.C -DHOSTNAME_ARG="\"${HOSTNAME_ARG}\"" -c -o getAllHostnames.o
 
 gdbLineNum.pl: setupGDBWrap.pl sight_structure.C
 	./setupGDBWrap.pl
