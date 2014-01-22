@@ -10,7 +10,7 @@
 # Software Foundation) version 2.1 dated February 1999.
 
 # Serial compiler
-CC         = g++
+#CC         = g++
 CCOPTS     = -I${ROOT_PATH}
 DEBUG_OPTS = -g -DMFEM_DEBUG
 OPTIM_OPTS = -O3
@@ -52,12 +52,12 @@ USE_METIS_5_DEF = $(USE_METIS_5_$(USE_METIS_5))
 DEFS = $(USE_LAPACK_DEF) $(USE_MEMALLOC_DEF) $(USE_OPENMP_DEF) \
        $(USE_METIS_5_DEF) -I${ROOT_PATH} -I${ROOT_PATH}/widgets/mfem ${SIGHT_CFLAGS} 
 
-CCC = $(CC) $(MODE_OPTS) $(DEFS) $(CCOPTS)
+#CCC = $(CC) $(MODE_OPTS) $(DEFS) $(CCOPTS)
 
 # Compiler and options used for generating deps.mk
 DEPCCC = $(DEPCC) $(CCOPTS) $(MODE_OPTS) $(DEFS)
 
-DEFINES = $(subst -D,,$(filter -D%,$(CCC)))
+DEFINES = $(subst -D,,$(filter -D%,$(CC) $(MODE_OPTS) $(DEFS) $(CCOPTS)))
 
 # Source dirs in logical order
 DIRS = general linalg mesh fem
@@ -66,7 +66,7 @@ OBJECT_FILES = $(SOURCE_FILES:.cpp=.o)
 
 .SUFFIXES: .cpp .o
 .cpp.o:
-	cd $(<D); $(CCC) -c $(<F)
+	cd $(<D); $(CC) $(MODE_OPTS) $(DEFS) $(CCOPTS) -c $(<F)
 
 # Serial build
 serial: opt

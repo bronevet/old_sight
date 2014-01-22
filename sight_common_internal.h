@@ -257,6 +257,42 @@ class properties
 
 namespace common {
 
+class nullBuf: public std::streambuf
+{
+  std::streambuf* baseBuf;
+  public:
+
+  virtual ~nullBuf() {};
+  // Construct a streambuf which tees output to both input
+  // streambufs.
+  nullBuf();
+  nullBuf(std::streambuf* baseBuf);
+  void init(std::streambuf* baseBuf);
+
+private:
+  // This nullBuf has no buffer. So every character "overflows"
+  // and can be put directly into the teed buffers.
+  virtual int overflow(int c);
+
+  virtual std::streamsize xsputn(const char * s, std::streamsize n);
+
+  // Sync buffer.
+  virtual int sync();
+}; // class nullBuf
+
+// Stream that uses nullBuf to ignore all text written to it
+class nullStream : public std::ostream
+{
+  nullBuf nullB;
+
+  public:
+  nullStream(): std::ostream(&nullB) {}
+  //nullStream(std::streambuf* buf): std::ostream(buf) {}
+}; // nullStream
+
+// An instance of nullStream that apps can write to with low overhead when they do not wish to emit output
+extern nullStream nullS;
+
 // Stream that uses dbgBuf
 class dbgStream : public std::ostream
 {

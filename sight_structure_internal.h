@@ -41,6 +41,10 @@ void SightInit(int argc, char** argv, std::string title="Debug Output", std::str
 void SightInit(std::string title, std::string workDir);
 void SightInit_internal(properties* props);
 
+// Empty implementation of Sight initialization, to be used when Sight is disabled via #define DISABLE_SIGHT
+void NullSightInit(std::string title, std::string workDir);
+void NullSightInit(int argc, char** argv, std::string title="Debug Output", std::string workDir="dbg");
+
 class dbgStream;
 
 class variantID {
@@ -842,7 +846,6 @@ class BlockStreamRecord: public streamRecord {
 
   std::string str(std::string indent="") const;
 }; // class BlockStreamRecord
-
 
 // Adapted from http://wordaligned.org/articles/cpp-streambufs
 // A extension of stream that corresponds to a single file produced by sight

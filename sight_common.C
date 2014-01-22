@@ -188,6 +188,50 @@ std::string properties::str(string indent) const {
 
 namespace common {
 
+/*******************
+ ***** nullBuf *****
+ *******************/
+
+nullBuf::nullBuf()
+{
+  init(NULL);
+}
+
+nullBuf::nullBuf(std::streambuf* baseBuf)
+{
+  init(baseBuf);
+}
+
+void nullBuf::init(std::streambuf* baseBuf)
+{
+  this->baseBuf = baseBuf;
+}
+
+// This nullBuf has no buffer. So every character "overflows"
+// and can be put directly into the teed buffers.
+int nullBuf::overflow(int c)
+{
+  return c;
+}
+
+streamsize nullBuf::xsputn(const char * s, streamsize n)
+{
+  return n;
+}
+
+// Sync buffer.
+int nullBuf::sync()
+{
+  return 0;
+}
+
+/**********************
+ ***** nullStream *****
+ **********************/
+
+// An instance of nullStream that apps can write to with low overhead when they do not wish to emit output
+nullStream nullS;
+
 /*********************
  ***** dbgStream *****
  *********************/

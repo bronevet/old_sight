@@ -1,0 +1,16 @@
+ROOT_PATH =  $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
+
+SIGHT_CFLAGS = -I${ROOT_PATH} \
+               -I${ROOT_PATH}/tools/callpath/src -I${ROOT_PATH}/tools/adept-utils/include \
+               -I${ROOT_PATH}/widgets/papi/include
+
+SIGHT_LINKFLAGS = -L${ROOT_PATH} -lsight_structure \
+                  ${ROOT_PATH}/tools/adept-utils/lib/libadept_cutils.so \
+                  ${ROOT_PATH}/tools/adept-utils/lib/libadept_timing.so \
+                  ${ROOT_PATH}/tools/adept-utils/lib/libadept_utils.so \
+                  -Wl,-rpath ${ROOT_PATH}/tools/adept-utils/lib \
+                  ${ROOT_PATH}/tools/callpath/src/src/libcallpath.so \
+                  -Wl,-rpath ${ROOT_PATH}/tools/callpath/src/src \
+                  ${ROOT_PATH}/widgets/papi/lib/libpapi.a \
+                 -lpthread \
+                 

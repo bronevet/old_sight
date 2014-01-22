@@ -18,8 +18,8 @@ SIGHT_LINKFLAGS = ${ROOT_PATH}/tools/adept-utils/lib/libadept_cutils.so \
 	                
 	                #-Wl,-rpath ${ROOT_PATH}/widgets/papi/lib \
 
-CC = clang #gcc
-CCC = clang++ #g++
+CC = gcc #clang #gcc
+CCC = g++ #clang++ #g++
 
 OS := $(shell uname -o)
 ifeq (${OS}, Cygwin)
@@ -57,7 +57,7 @@ endif
 .PHONY: apps
 apps: mfem #mcbench
 
-mfem: core
+mfem: libsight_structure.a
 	cd apps/mfem; make ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" CC=${CC} CCC=${CCC}
 #	cd apps/mfem; make ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS}
 
@@ -182,6 +182,7 @@ clean:
 	cd apps/mfem; make clean
 	rm -rf dbg dbg.* *.a *.o widgets/shellinabox* widgets/mongoose* widgets/graphviz* gdbLineNum.pl
 	rm -rf script/taffydb sightDefines.pl gdbscript
+	rm slayout hier_merge
 
 clean_objects:
 	rm -f *.a *.o widgets/*.o widgets/*/*.o

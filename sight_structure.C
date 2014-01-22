@@ -198,6 +198,10 @@ void SightInit_internal(properties* props, bool storeProps)
   dbg.init(storeProps? props: NULL, properties::get(sightIt, "title"), properties::get(sightIt, "workDir"), imgDir, tmpDir);
 }
 
+// Empty implementation of Sight initialization, to be used when Sight is disabled via #define DISABLE_SIGHT
+void NullSightInit(std::string title, std::string workDir) {}
+void NullSightInit(int argc, char** argv, std::string title, std::string workDir) {}
+
 /**********************
  ***** Call Paths *****
  **********************/

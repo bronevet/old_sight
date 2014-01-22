@@ -271,6 +271,7 @@ modularApp::modularApp(const std::string& appName, const attrOp& onoffOp, const 
 // Common initialization logic
 void modularApp::init() {
   // Register this modularApp instance (there can be only one)
+  if(activeMA != NULL) { cerr << "ERROR: multiple modularApps are active at the same time! Make sure to complete one modularApp before starting another."<<endl; }
   assert(activeMA == NULL);
   activeMA = this;
   
@@ -578,6 +579,7 @@ void modularApp::registerTraceStreamID(const group& g, int traceID) {
 // Returns the currently registered the ID of the traceStream that will be used for the given module group
 int modularApp::getTraceStreamID(const group& g) {
   // A traceID must be registered with this module group
+  if(moduleTraceID.find(g) == moduleTraceID.end()) { cerr << "ERROR: No traceStream registered for module group "<<g.str()<<"!"<<endl; }
   assert(moduleTraceID.find(g) != moduleTraceID.end());
   return moduleTraceID[g];
 }
@@ -887,6 +889,7 @@ module::~module()
 // Sets the context of the given output port
 void module::setInCtxt(int idx, const context& c) {
   if(!props->active) return;
+  if(idx>=g.numInputs()) { cerr << "ERROR: cannot set context of input "<<idx<<" of module group "<<g.str()<<"! This module was declared to have "<<g.numInputs()<<" inputs."<<endl; }
   assert(idx<g.numInputs());
   ins[idx].setCtxt(c);
 }
@@ -894,6 +897,7 @@ void module::setInCtxt(int idx, const context& c) {
 // Adds the given key/attrValue pair to the context of the given output port
 void module::addInCtxt(int idx, const std::string& key, const attrValue& val) {
   if(!props->active) return;
+  if(idx>=g.numInputs()) { cerr << "ERROR: cannot add context to input "<<idx<<" of module group "<<g.str()<<"! This module was declared to have "<<g.numInputs()<<" inputs."<<endl; }
   assert(idx<g.numInputs());
   ins[idx].addCtxt(key, val);
 }
@@ -906,6 +910,7 @@ void module::addInCtxt(const port& p) {
 // Sets the context of the given output port
 void module::setOutCtxt(int idx, const context& c) { 
   if(!props->active) return;
+  if(idx>=g.numOutputs()) { cerr << "ERROR: cannot set context of output "<<idx<<" of module group "<<g.str()<<"! This module was declared to have "<<g.numOutputs()<<" outputs."<<endl; }
   assert(idx<g.numOutputs());
   outs[idx].setCtxt(c);
   // If the user provided an output vector, update it as well
@@ -928,6 +933,7 @@ std::vector<port> module::outPorts() const {
 
 port module::outPort(int idx) const {
   if(!props->active) return port();
+  if(idx>=g.numOutputs()) { cerr << "ERROR: cannot get port "<<idx<<" of module group "<<g.str()<<"! This module was declared to have "<<g.numOutputs()<<" outputs."<<endl; }
   assert(idx < g.numOutputs());
   return outs[idx];  
 }

@@ -51,7 +51,7 @@ USE_METIS_5_DEF = $(USE_METIS_5_$(USE_METIS_5))
 DEFS = $(USE_LAPACK_DEF) $(USE_MEMALLOC_DEF) $(USE_OPENMP_DEF) \
        $(USE_METIS_5_DEF)  -I${ROOT_PATH} -I${ROOT_PATH}/widgets/mfem ${SIGHT_CFLAGS} 
 
-CCC = $(CC) $(CCOPTS) $(DEFS) 
+#CCC = $(CC) $(CCOPTS) $(DEFS) 
 
 # Generate with 'echo general/*.cpp linalg/*.cpp mesh/*.cpp fem/*.cpp'
 SOURCE_FILES = general/array.cpp general/communication.cpp general/error.cpp   \
@@ -85,11 +85,11 @@ fem/lininteg.hpp fem/pbilinearform.hpp fem/pfespace.hpp fem/pgridfunc.hpp      \
 fem/plinearform.hpp
 
 .SUFFIXES: .cpp .o
-.cpp.o:
-	cd $(<D); $(CCC) -c $(<F)
+#.cpp.o:
+#	cd $(<D); $(CC) $(CCOPTS) $(DEFS) -c $(<F)
 
-serial:
-	$(MAKE) "CCC=$(CC) $(DEFS) $(CCOPTS) ROOT_PATH=${ROOT_PATH}" lib
+#serial:
+#	$(MAKE) "CCC=$(CC) $(DEFS) $(CCOPTS) ROOT_PATH=${ROOT_PATH}" lib
 
 parallel:
 	$(MAKE) "CCC=$(MPICC) $(DEFS) -DMFEM_USE_MPI $(MPIOPTS) ROOT_PATH=${ROOT_PATH}" lib

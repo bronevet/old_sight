@@ -26,4 +26,20 @@ These illustrate how dbglog may fit into a larger application, specifically MCBe
 To view the output of a given run look at file dbg.*/index.html with Firefox (other browsers 
 are currently not supported).
 
+Using Sight in your application
+-------------------------
+In each .C file include the following:
+  #include "sight.h"
+  use namespace sight;
+
+At the top of main() initialize Sight:
+  SightInit(argc, argv, "App Name", "DirectoryToStoreDebugOutput");
+
+In your Makefile:
+  include sight/Makefile.extern
+
+  sightApp: sightApp.C
+  	g++ sightApp.C ${SIGHT_CFLAGS} -c -o sightApp.o
+  	g++ sightApp.o ${SIGHT_LINKFLAGS} -o sightApp
+
 
