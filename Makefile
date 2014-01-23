@@ -62,7 +62,7 @@ mfem: libsight_structure.a
 #	cd apps/mfem; make ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS}
 
 CoMD: 
-	cd apps/CoMD/src-mpi; make ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS} CCC=${CCC}"
+	cd apps/CoMD/src-mpi; make ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" CCC=${CCC}
 	
 #mcbench:
 #ifneq (${OS}, Cygwin)
@@ -154,7 +154,7 @@ widgets_post: libsight_layout.a libsight_structure.a
 	cd widgets; make -f Makefile_post ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS} CC=${CC} CCC=${CCC}"
 
 maketools: 
-	cd tools; make -f Makefile ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS}
+	cd tools; make -f Makefile ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} CC=${CC} CCC=${CCC}
 
 binreloc.o: binreloc.c binreloc.h
 	${CCC} ${SIGHT_CFLAGS} binreloc.c -c -o binreloc.o

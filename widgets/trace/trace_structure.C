@@ -118,11 +118,13 @@ void trace::init(std::string label, const std::list<std::string>& contextAttrs, 
 }
 
 trace::~trace() {
-  assert(active.find(getLabel()) != active.end());
-  active.erase(getLabel());
+  if(getProps().active) {
+    assert(active.find(getLabel()) != active.end());
+    active.erase(getLabel());
   
-  assert(stream);
-  delete(stream);
+    assert(stream);
+    delete(stream);
+  }
 }
 
 trace* trace::getT(string label) {
