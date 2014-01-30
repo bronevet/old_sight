@@ -44,8 +44,8 @@ REMOTE_ENABLED := 0
 else
 # Default distribution disables remote access since this capability requires us to run a web server
 # and many compute centers disallow this
-REMOTE_ENABLED := 1
-#REMOTE_ENABLED := 0
+#REMOTE_ENABLED := 1
+REMOTE_ENABLED := 0
 endif
 
 ifneq (${OS}, Cygwin)
@@ -74,7 +74,7 @@ allExamples: libsight_structure.a
 
 run: all runExamples runApps
 
-runExamples: libsight_structure.a slayout${EXE} hier_merge${EXE}
+runExamples: all
 	cd examples; make ROOT_PATH=${ROOT_PATH} OS=${OS}  SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" run
 
 runApps: libsight_structure.a slayout${EXE} hier_merge${EXE} apps
