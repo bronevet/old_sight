@@ -18,8 +18,8 @@ SIGHT_LINKFLAGS = ${ROOT_PATH}/tools/adept-utils/lib/libadept_cutils.so \
 	                
 	                #-Wl,-rpath ${ROOT_PATH}/widgets/papi/lib \
 
-CC = gcc #clang #gcc
-CCC = g++ #clang++ #g++
+CC = clang #gcc
+CCC = clang++ #g++
 
 OS := $(shell uname -o)
 ifeq (${OS}, Cygwin)
@@ -185,7 +185,7 @@ clean:
 	rm slayout hier_merge
 
 clean_objects:
-	rm -f *.a *.o widgets/*.o widgets/*/*.o
+	rm -f *.a *.o widgets/*.o widgets/*/*.o hier_merge slayout
 
 script/taffydb:
 	#cd script; wget --no-check-certificate https://github.com/typicaljoe/taffydb/archive/master.zip

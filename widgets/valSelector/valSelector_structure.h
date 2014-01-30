@@ -95,7 +95,7 @@ namespace textColor
     
   class end { };
   std::ostream& operator<< (std::ostream& stream, const end& e);
-};
+}
 
 
 namespace bgColor
@@ -116,7 +116,7 @@ namespace bgColor
     
   class end { };
   std::ostream& operator<< (std::ostream& stream, const end& e);
-};
+}
 
 namespace borderColor
 {
@@ -136,7 +136,7 @@ namespace borderColor
     
   class end { };
   std::ostream& operator<< (std::ostream& stream, const end& e);
-};
+}
 
 class ColorSelectorMergeHandlerInstantiator: public MergeHandlerInstantiator {
   public:
@@ -244,5 +244,5 @@ class ColorStreamRecord: public streamRecord {
 }; // class ColorStreamRecord
 
 
-}; // namespace structure
-}; // namespace sight
+} // namespace structure
+} // namespace sight

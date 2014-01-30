@@ -26,6 +26,7 @@ void* interVariantHandler(properties::iterator props) {
   dbg.ownerAccessing();
   dbg << endl << "</td><td>" << endl;
   dbg.userAccessing();
+  return NULL;
 }
   
 variantLayoutHandlerInstantiator::variantLayoutHandlerInstantiator() { 

@@ -884,7 +884,7 @@ void dbgStream::init(string title, string workDir, string imgDir, std::string tm
   
   // Including jQuery, which is required by the trace widget and must be loaded before prototype.js, which is part of Canviz
   // and is used by the graph and module widgets
-  dbg.includeWidgetScript("jquery-1.8.1.min.js", "text/javascript"); dbg.includeFile("jquery-1.8.1.min.js");
+  dbg.includeWidgetScript("jquery-1.9.1.min.js", "text/javascript"); dbg.includeFile("jquery-1.9.1.min.js");
   
   // This should be recorded in the structure log
   enterFileLevel(new block(title), true);

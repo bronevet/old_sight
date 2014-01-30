@@ -233,8 +233,10 @@ class compModule : public common::module, public traceObserver {
   // The context that describes the configuration options of this module
   //context options;
   
-  // Maps each configuration of input context values to the mapping of trace attributes to their values 
-  // within the reference configuration of the compModule.
+  // Maps each configuration of input context values for which compContexts were not provided (this identifies
+  // an equivalence class of observations) to the mapping of context and trace attributes to their values 
+  // for observations within that equivalence class.
+  std::map<std::map<std::string, std::string>, std::map<std::string, attrValue> > referenceCtxt;
   std::map<std::map<std::string, std::string>, std::map<std::string, attrValue> > referenceObs;
   
   // Records for each configuration of input context values all the the mappings of trace and context attributes to
@@ -242,7 +244,11 @@ class compModule : public common::module, public traceObserver {
   // find the reference configuration for the given configuration of input context values and once we find 
   // it, we relate these to the reference, emit them to this compModuleTraceStream's observer and empty them out.
   std::map<std::map<std::string, std::string>, std::list<std::map<std::string, attrValue> > > comparisonObs;
-  std::map<std::map<std::string, std::string>, std::list<std::map<std::string, std::string> > > comparisonCtxt;
+  std::map<std::map<std::string, std::string>, std::list<std::map<std::string, attrValue> > > comparisonCtxt;
+  
+  // For each input and name of a context of the input for which a comparator was specified, records a pointer 
+  // to the comparator to be used for this input context.
+  std::vector<std::map<std::string, comparator*> > inComparators;
   
   // For each output and name of a context of the output, records a pointer to the comparator to be used
   // for this output context.
@@ -254,12 +260,14 @@ class compModule : public common::module, public traceObserver {
   public:  
   compModule() { }
   
-  // Compare the value of each trace attribute value obs1 to the corresponding value in obs2 and return a mapping of 
-  // each trace attribute to the serialized representation of their relationship.
-  // obs1 and obs2 must have the same trace attributes (map keys).
+  // Compare the value of each trace attribute value ctxtobs (a given context or observation) to the corresponding value 
+  // in ref (the corresponding reference observation) and return a mapping of each trace attribute to the serialized 
+  // representation of their relationship. Where a comparator is not provided add the raw value from ctxtobs to the 
+  // returned map.
+  // The set of trace attributes in ref must contain that in ctxtobs.
   std::map<std::string, std::string> compareObservations(
-                                           const std::map<std::string, attrValue>& obs1,
-                                           const std::map<std::string, attrValue>& obs2);
+                                         const std::map<std::string, attrValue>& ctxtobs,
+                                         const std::map<std::string, attrValue>& ref);
   
   // Given a mapping of trace attribute names to the serialized representations of their attrValues, returns
   // the same mapping but with the attrValues deserialized as attrValues

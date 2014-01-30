@@ -302,5 +302,5 @@ class NodeStreamRecord: public streamRecord {
 }; // class NodeStreamRecord
 
 
-}; // namespace structure
-}; // namespace sight
+} // namespace structure
+} // namespace sight

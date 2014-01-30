@@ -198,7 +198,7 @@ class traceStream: public attrObserver, public common::trace, public sightObj
                             const std::list<std::pair<std::string, attrValue> >& obsList, 
                             const anchor& target);
   
-  private:
+//  private:
   
   // Emits the output record records the given context and observations pairing
   void emitObservations(const std::list<std::string>& contextAttrs, 
@@ -286,7 +286,7 @@ class measure {
 
   measure(const measure& that);
   
-  ~measure();
+  virtual ~measure();
   
   // Returns a copy of this measure object, including its current measurement state, if any. The returned
   // object is connected to the same traceStream, if any, as the original object.
@@ -674,5 +674,5 @@ class TraceStreamRecord: public streamRecord {
   std::string str(std::string indent="") const;
 }; // class TraceStreamRecord
 
-}; // namespace structure 
-}; // namespace sight
+} // namespace structure 
+} // namespace sight

@@ -122,9 +122,12 @@ class port {
   int index;
 
   port() : ctxt(NULL) {}
-  port(const port& that) : ctxt(that.ctxt->copy()), type(that.type), index(that.index) {}
-  port(const context& ctxt) : ctxt(ctxt.copy()), type(sight::common::module::output), index(-1) {}
+  port(const port& that) : ctxt(that.ctxt? that.ctxt->copy(): NULL), type(that.type), index(that.index) {}
+  port(const context& ctxt) : /*ctxt(ctxt.copy()),*/ type(sight::common::module::output), index(-1) {
+    this->ctxt = ctxt.copy();
+  }
   port(const group& g, const context& ctxt, sight::common::module::ioT type, int index) : g(g), ctxt(ctxt.copy()), type(type), index(index) {}
+  port(const group& g, sight::common::module::ioT type, int index) : g(g), ctxt(NULL), type(type), index(index) {}
   ~port() { if(ctxt) delete ctxt; }
   
   port& operator=(const port& that) {
@@ -276,6 +279,7 @@ class modularApp: public block
   static std::list<module*> mStack;
   
   public:
+  // Returns a constant reference to the current stack of modules
   static const std::list<module*>& getMStack() { return mStack; }
   
   // The unique ID of this application
@@ -303,6 +307,8 @@ class modularApp: public block
   static void exitModuleGroup(const group& g);
   
   ~modularApp();
+
+  virtual void destroy();
   
   private:
   // Common initialization logic
@@ -314,7 +320,7 @@ class modularApp: public block
   public:
   // Returns the module ID of the given module group, generating a fresh one if one has not yet been assigned
   static int genModuleID(const group& g);
-    
+  
   // Returns whether the current instance of modularApp is active
   static bool isInstanceActive();
 
@@ -373,8 +379,12 @@ class module: public sightObj, public common::module
   // The context of this module execution, which is a combination of the contexts of all of its inputs
   std::vector<context> ctxt;
   
-  // The context in a format that traces can understand, set in init() and used in ~module()
+  /* // The context in a format that traces can understand, set in init() and used in ~module()
   std::map<std::string, attrValue> traceCtxt;
+  public:
+  const std::map<std::string, attrValue>& getTraceCtxt() { return traceCtxt; }
+
+  protected:*/
   
   // The input ports of this module
   std::vector<port> ins;
@@ -457,6 +467,12 @@ class module: public sightObj, public common::module
   
   public:
   ~module();
+  virtual void destroy();
+  
+  // Contains the code to destroy this object. This method is called to clean up application state due to an
+  // abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
+  // that implement destroy should call the destroy method of their parent object.
+  //void destroy();
   
   // The variant of the generateTraceStream functor specialized to generating moduleTraceStreams
   /*class generateModuleTraceStream : public generateTraceStream {
@@ -479,6 +495,7 @@ class module: public sightObj, public common::module
   std::string name() const { return g.name(); }
   int numInputs()  const { return g.numInputs(); }
   int numOutputs() const { return g.numOutputs(); }
+  const group& getGroup() const { return g; }
   
   // Sets the context of the given output port
   virtual void setInCtxt(int idx, const context& c);
@@ -499,6 +516,10 @@ class module: public sightObj, public common::module
   // Returns a list of the module's output ports
   std::vector<port> outPorts() const;
   port outPort(int idx) const;
+
+  // Returns the context attributes to be used in this module's measurements by combining the context provided by the classes
+  // that this object derives from with its own unique context attributes.
+  virtual std::map<std::string, attrValue> getTraceCtxt();
   
   // Called to notify this block that a sub-block was started/completed inside of it. 
   // Returns true of this notification should be propagated to the blocks 
@@ -737,11 +758,22 @@ class compModule: public structure::module
   void init(derivInfo* deriv);
   
   ~compModule();
+  virtual void destroy();
   
+  // Sets the context of the given option
+  virtual void setOptionCtxt(std::string name, attrValue val);
+  
+  // Sets the isReference flag to indicate whether this is a reference instance of this compModule or not
+  void setIsReference(bool newVal);
+
   // Sets the context of the given output port. This variant ensures that the outputs of compModules can only
   // be set with compContexts.
   void setOutCtxt(int idx, const context& c) { std::cerr << "ERROR: compModule::setOutCtxt() can only be called with a compContext argument!"<<std::endl; assert(0); }
   virtual void setOutCtxt(int idx, const compContext& c);
+  
+  // Returns the context attributes to be used in this module's measurements by combining the context provided by the classes
+  // that this object derives from with its own unique context attributes.
+  virtual std::map<std::string, attrValue> getTraceCtxt();
 }; // class compModule
 
 class springModule;
@@ -776,10 +808,10 @@ class springModularApp : public compModularApp
 }; // class springModularApp
 
 class springModule: public compModule {
-  // The options passed into the constructor, extended with the configuration options from Spring.
+/*  // The options passed into the constructor, extended with the configuration options from Spring.
   // extendedOptions is cleared at the end of the constructor sincee it is only used to communicate
   // the full set of options to the compModule constructor.
-  context extendedOptions;
+  context extendedOptions;*/
 
   public:
   
@@ -804,6 +836,10 @@ class springModule: public compModule {
   
   static bool isSpringReference();
   static context extendOptions(const context& options);
+
+  // Returns the context attributes to be used in this module's measurements by combining the context provided by the classes
+  // that this object derives from with its own unique context attributes.
+  virtual std::map<std::string, attrValue> getTraceCtxt();
 }; // class springModule
 
 class processedModuleTraceStream;
@@ -836,6 +872,10 @@ class processedModule : public structure::module {
   void init(derivInfo* deriv);
   
   ~processedModule();
+
+  // Returns the context attributes to be used in this module's measurements by combining the context provided by the classes
+  // that this object derives from with its own unique context attributes.
+  virtual std::map<std::string, attrValue> getTraceCtxt();
 }; // class processedModule
 
 // Specialization of traceStreams for the case where they are hosted by a module node
@@ -1108,8 +1148,13 @@ class ModuleStreamRecord: public streamRecord {
   
   
   // Returns true if the given module group has already been observed and false otherwise
-  bool isModuleObserved(const group& g)
-  { return observedModules.find(g) != observedModules.end(); }
+  bool isModuleObserved(const group& g) const
+  { 
+std::cout << "observedModules("<<g.str()<<"), observedModules(#"<<observedModules.size()<<")="<<std::endl;
+for(std::map<group, int>::const_iterator m=observedModules.begin(); m!=observedModules.end(); m++)
+  std::cout << "    " << m->first.str()<<" => "<<m->second<<std::endl;
+
+return observedModules.find(g) != observedModules.end(); }
   
   // If the given module group has been observed, returns its streamID
   int getModuleID(const group& g)
@@ -1156,5 +1201,5 @@ class ModuleStreamRecord: public streamRecord {
   std::string str(std::string indent="") const;
 }; // class ModuleStreamRecord
 
-}; // namespace structure
-}; // namespace sight
+} // namespace structure
+} // namespace sight

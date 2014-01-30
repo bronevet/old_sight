@@ -13,5 +13,5 @@ namespace sight {
 namespace common {
 
 
-}; // namespace common
-}; // namespace sight
+} // namespace common
+} // namespace sight

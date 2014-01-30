@@ -22,4 +22,5 @@ std::string tabs(int n);
 // at approximately every lineWidth characters.
 std::string wrapStr(std::string str, unsigned int lineWidth);
 
-}; // namespace sight
+} // namespace sight
+

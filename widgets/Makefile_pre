@@ -189,13 +189,19 @@ papi:
 
 # JavaScript files from standard JS libraries that we wish to keep local copies of
 
-external_scripts: yui-min.js jquery-1.8.1.min.js underscore-min.js d3.v3.min.js
+external_scripts: yui-min.js jquery-1.9.1.min.js underscore-min.js d3.v3.min.js jquery-ui.js jquery-ui.css
 
 yui-min.js:
 	cd widgets; wget http://yui.yahooapis.com/3.11.0/build/yui/yui-min.js
 
-jquery-1.8.1.min.js:
-	cd widgets; wget http://code.jquery.com/jquery-1.8.1.min.js
+jquery-1.9.1.min.js:
+	cd widgets; wget http://code.jquery.com/jquery-1.9.1.min.js
+	
+jquery-ui.js:
+	cd widgets; wget http://code.jquery.com/ui/1.10.4/jquery-ui.js
+	
+jquery-ui.css:
+	cd widgets; wget http://code.jquery.com/ui/1.10.4/themes/smoothness/jquery-ui.css
 	
 underscore-min.js:
 	cd widgets; wget http://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.3.3/underscore-min.js

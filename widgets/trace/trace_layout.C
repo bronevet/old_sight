@@ -468,6 +468,12 @@ traceStream::traceStream(properties::iterator props, std::string hostDiv, bool s
     dbg.includeWidgetScript("THREEx.WindowResize.js", "text/javascript"); dbg.includeFile("THREEx.WindowResize.js");
     //dbg.includeWidgetScript("Stats.js",   "text/javascript"); dbg.includeFile("Stats.js");
     
+    // JQuery
+    dbg.includeWidgetScript("jquery-1.9.1.min.js", "text/javascript"); dbg.includeFile("jquery-1.9.1.min.js");
+    dbg.includeWidgetScript("jquery-ui.js",        "text/javascript"); dbg.includeFile("jquery-ui.js");
+    dbg.includeWidgetScript("jquery-ui.css",       "text/css");        dbg.includeFile("jquery-ui.css");
+    
+    
     // D3 Widgets
     dbg.includeWidgetScript("d3.v3.min.js", "text/javascript"); dbg.includeFile("d3.v3.min.js");
     //dbg.includeWidgetScript("d3.v3.js", "text/javascript"); dbg.includeFile("d3.v3.js");

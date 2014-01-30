@@ -3,9 +3,9 @@
 // Adapted from http://bl.ocks.org/bunkat/2595950   
 
 function createNumericScale(data, idx, minVisCoord, maxVisCoord, axisType) {
-  var Min = d3.min(data, function(d) { return parseFloat(d[idx]); });
+  var Min = d3.min(data, function(d) { return (d[idx]===undefined? 1e100: parseFloat(d[idx])); });
   var Avg = d3.sum(data, function(d) { return parseFloat(d[idx]); }) / data.length;
-  var Max = d3.max(data, function(d) { return parseFloat(d[idx]); });
+  var Max = d3.max(data, function(d) { return (d[idx]===undefined? -1e100: parseFloat(d[idx])); });
   
   // If this axis is compatible with the log visualization and
   // If it is selected to be log or it is not specified and there is a huge range in the x coordinates, use a log scale
@@ -59,8 +59,8 @@ function showScatterplot(data, hostDivID, xAxisType, yAxisType) {
   // Determine whether the x and y axes are numeric or categorical
   var isXNumeric=true, isYNumeric=true;
   for(d in data) { if(data.hasOwnProperty(d)) {
-    if(!isNumber(data[d][0])) { isXNumeric = false; }
-    if(!isNumber(data[d][1])) { isYNumeric = false; }
+    if(data[d][0] !== undefined && !isNumber(data[d][0])) { isXNumeric = false; }
+    if(data[d][1] !== undefined && !isNumber(data[d][1])) { isYNumeric = false; }
     if(!isXNumeric && !isYNumeric) break;
   } }
   

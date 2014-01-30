@@ -298,15 +298,20 @@ std::string location::str(std::string indent) const {
 /********************
  ***** sightObj *****
  ********************/
+// The stack of sightObjs that are currently in scope
+std::list<sightObj*> sightObj::soStack;
 
 // The of clocks currently being used, mapping the name of each clock class to the set of active 
 // clock objects of this class.
 std::map<std::string, std::set<sightClock*> > sightObj::clocks;
 
-sightObj::sightObj() : props(NULL), emitExitTag(false) {}
+sightObj::sightObj() : props(NULL), emitExitTag(false), destroyed(false) {
+  // Push this sightObj onto the stack
+  if(initializedDebug) soStack.push_back(this);
+}
 
 // isTag - if true, we emit a single enter/exit tag combo in the constructor and nothing in the destructor
-sightObj::sightObj(properties* props, bool isTag) : props(props) {
+sightObj::sightObj(properties* props, bool isTag) : props(props), destroyed(false) {
   //cout << "sightObj::sightObj isTag="<<isTag<<" props="<<props->str()<<endl;
   if(props && props->active && props->emitTag) {
     if(props==NULL) props = new properties();
@@ -328,9 +333,26 @@ sightObj::sightObj(properties* props, bool isTag) : props(props) {
     }
   } else
     emitExitTag = false;
+
+  // Push this sightObj onto the stack
+  if(initializedDebug && emitExitTag) {
+    //cout << "<<< "<<props->str()<<endl;
+    soStack.push_back(this);
+  }
 }
 
-sightObj::~sightObj() {
+sightObj::~sightObj() { if(!destroyed) destroy(); }
+
+void sightObj::destroy() {
+/*  destroy();
+}
+
+// Contains the code to destroy this object. This method is called to clean up application state due to an
+// abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
+// that implement destroy should call the destroy method of their parent object.
+void sightObj::destroy() {*/
+  /*if(soStack.size()>0 && emitExitTag) 
+    cout << ">>> "<<props->str()<<endl;*/
   //assert(props);
   if(props) {
     //cout << "sightObj::~sightObj(), emitExitTag="<<emitExitTag<<" props="<<props->str()<<endl;
@@ -339,6 +361,33 @@ sightObj::~sightObj() {
     delete(props);
     props = NULL;
   }
+
+  // Pop this sightObj off the top of the stack
+  assert(initializedDebug);
+  // The stack is empty when we're trying to destroy global/static sightObjs created before Sight was initialized
+  if(soStack.size()>0 && emitExitTag) {
+    assert(soStack.back() == this);
+    soStack.pop_back();
+  }
+  
+  // We've finished destroying this object and it should not be destroyed again,
+  // even if the destructor is explicitly called.
+  destroyed = true;
+}
+
+// Deallocates all the currently live sightObjs on the stack
+void sightObj::deallocAll() {
+  // Keep deallocating the last sightObj on the stack until we've deallocated them all
+  /*while(soStack.size()>0)
+    soStack.back()->destroy();*/
+  for(list<sightObj*>::reverse_iterator o=soStack.rbegin(); o!=soStack.rend(); o++) {
+    if((*o)->emitExitTag) {
+      //cout << ">!> "<<(*o)->props->str()<<endl;
+      dbg.exit(*o);
+    }
+  }
+
+  dbg.exit(&dbg);
 }
 
 // Returns whether this object is active or not
@@ -732,6 +781,16 @@ std::vector<std::string> Merger::getNames(const std::vector<std::pair<properties
     names.push_back(t->second.name());
   }
   return names;
+}
+
+// Given a vector of tag property iterators that must be the same, returns their common name
+std::string Merger::getSameName(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags) {
+  string ret;
+  for(vector<pair<properties::tagType, properties::iterator> >::const_iterator t=tags.begin(); t!=tags.end(); t++) {
+    if(t==tags.begin()) ret = t->second.name();
+    else assert(ret == t->second.name());
+  }
+  return ret;
 }
 
 // Converts the given set of strings to the corresponding set of integral numbers
@@ -1610,7 +1669,7 @@ int dbgBuf::sync()
 {
   // Only emit text if the current query on attributes evaluates to true
   //  if(!attributes.query()) return 0;
-  //cerr << "dbgBuf::sync()\n";
+  //cerr << "dbgBuf::sync() attributes.query()="<<attributes.query()<<"\n";
   
   // Only emit text if the current query on attributes evaluates to true
   if(!attributes.query()) return 0;
@@ -1931,18 +1990,18 @@ dbgStreamMerger::dbgStreamMerger(//std::string workDir,
       pMap["execFile"] = *execFileValues.begin();
       
       vector<string> numEnvVarsValues = getValues(tags, "numEnvVars");
-      assert(allSame<string>(numEnvVarsValues));
+      //assert(allSame<string>(numEnvVarsValues));
       pMap["numEnvVars"] = *numEnvVarsValues.begin();
       
       long numEnvVars = strtol((*numEnvVarsValues.begin()).c_str(), NULL, 10);
       for(long i=0; i<numEnvVars; i++) {
-        vector<string> envNameValues = getValues(tags, txt()<<"envName_"<<i);
+        //vector<string> envNameValues = getValues(tags, txt()<<"envName_"<<i);
         //assert(allSame<string>(envNameValues));
-        pMap[txt()<<"envName_"<<i] = *envNameValues.begin();
+        pMap[txt()<<"envName_"<<i] = tags.begin()->second.get(txt()<<"envName_"<<i);//*envNameValues.begin();
         
-        vector<string> envValValues = getValues(tags, txt()<<"envVal_"<<i);
+        //vector<string> envValValues = getValues(tags, txt()<<"envVal_"<<i);
         //assert(allSame<string>(envNameValues));
-        pMap[txt()<<"envVal_"<<i] = *envValValues.begin();
+        pMap[txt()<<"envVal_"<<i] = tags.begin()->second.get(txt()<<"envVal_"<<i);//*envValValues.begin();
       }
       
       vector<string> numHostnamesValues = getValues(tags, "numHostnames");

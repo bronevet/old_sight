@@ -81,13 +81,13 @@ function traceRecord(traceLabel, traceVals, traceValLinks, contextVals, viz) {
     // Add the data
     for(ctxtKey in contextVals) { if(contextVals.hasOwnProperty(ctxtKey)) {
       allVals[ctxtKey] = contextVals[ctxtKey];
-      if(parseFloat(minData[traceLabel][ctxtKey]) > parseFloat(contextVals[ctxtKey])) minData[traceLabel][ctxtKey] = contextVals[ctxtKey];
-      if(parseFloat(maxData[traceLabel][ctxtKey]) < parseFloat(contextVals[ctxtKey])) maxData[traceLabel][ctxtKey] = contextVals[ctxtKey];
+      if(parseFloat(minData[traceLabel][ctxtKey]) > parseFloat(contextVals[ctxtKey])) minData[traceLabel][ctxtKey] = parseFloat(contextVals[ctxtKey]);
+      if(parseFloat(maxData[traceLabel][ctxtKey]) < parseFloat(contextVals[ctxtKey])) maxData[traceLabel][ctxtKey] = parseFloat(contextVals[ctxtKey]);
     } }
     for(traceKey in traceVals) { if(traceVals.hasOwnProperty(traceKey)) {
       allVals[traceKey] = traceVals[traceKey];
-      if(parseFloat(minData[traceLabel][traceKey]) > parseFloat(traceVals[traceKey])) minData[traceLabel][traceKey] = traceVals[traceKey];
-      if(parseFloat(maxData[traceLabel][traceKey]) < parseFloat(traceVals[traceKey])) maxData[traceLabel][traceKey] = traceVals[traceKey];
+      if(parseFloat(minData[traceLabel][traceKey]) > parseFloat(traceVals[traceKey])) minData[traceLabel][traceKey] = parseFloat(traceVals[traceKey]);
+      if(parseFloat(maxData[traceLabel][traceKey]) < parseFloat(traceVals[traceKey])) maxData[traceLabel][traceKey] = parseFloat(traceVals[traceKey]);
     } }
   }
   
@@ -335,43 +335,61 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, viz, showFre
   } else if(viz == 'scatter3d') {
     if(numContextAttrs!=3) { alert("3D scatter plots visualizations requre exactly 3 context variables for each chart"); return; }
 
-    //for(var t in traceAttrs) {   if(traceAttrs.hasOwnProperty(t)) {
-      var ctxtStr="";
-      for(var i=0; i<3; i++) {
-        ctxtStr += ctxtAttrs[i].replace(/:/g, "-")+"_";
-      }
+    var ctxtStr="";
+    for(var i=0; i<3; i++) {
+      ctxtStr += ctxtAttrs[i].replace(/:/g, "-")+"_";
+    }
 
-      var newDiv="";
-      if(showLabels) newDiv += ctxtStr + " : " + traceAttrs[0] + "\n";
-      //if(showLabels) newDiv += ctxtStr + " : " + t + "\n";
-      var plotDivID = hostDivID+"_"+ctxtStr+"_"+traceAttrs[0].replace(/:/g, "-");
-      //var plotDivID = hostDivID+"_"+ctxtStr+"_"+t.replace(/:/g, "-");
-      newDiv += "<div id=\""+plotDivID+"\" style=\"height:300; z-index: 100; border-color: #555555; border-style:solid; border-width=1px;\"></div>\n";
-    
-      if(showFresh) hostDiv.innerHTML =  newDiv;
-      else          hostDiv.innerHTML += newDiv;
-    
-      var data = [];
-      for(var i in traceDataList[traceLabel]) { if(traceDataList[traceLabel].hasOwnProperty(i)) {
-//      for(var t in traceAttrs) { if(traceAttrs.hasOwnProperty(t)) {
-        data.push([traceDataList[traceLabel][i][ctxtAttrs[0]], 
-                   traceDataList[traceLabel][i][ctxtAttrs[1]],
-                   traceDataList[traceLabel][i][ctxtAttrs[2]],
-//                   traceDataList[traceLabel][i][traceAttrs[t]]]);
-                   traceDataList[traceLabel][i][traceAttrs[0]],
-                   traceDataList[traceLabel][i][traceAttrs[1]],
-                   traceDataList[traceLabel][i][traceAttrs[2]],
-                   traceDataList[traceLabel][i][traceAttrs[3]],
-                  ]);
-      } }// } }
+    var newDiv="";
+    if(showLabels) newDiv += ctxtStr + " : " + traceAttrs[0] + "\n";
+    //if(showLabels) newDiv += ctxtStr + " : " + t + "\n";
+    var hostDivID = hostDivID+"_"+ctxtStr+"_"+traceAttrs[0].replace(/:/g, "-");
+    //var plotDivID = hostDivID+"_"+ctxtStr+"_"+t.replace(/:/g, "-");
 
-      showScatter3D(data, [ctxtAttrs[0], ctxtAttrs[1], ctxtAttrs[2]], 
-                    [minData[traceLabel][ctxtAttrs[0]], minData[traceLabel][ctxtAttrs[1]], minData[traceLabel][ctxtAttrs[2]]],
-                    [maxData[traceLabel][ctxtAttrs[0]], maxData[traceLabel][ctxtAttrs[1]], maxData[traceLabel][ctxtAttrs[2]]],
-                    minData[traceLabel][traceAttrs[0]], maxData[traceLabel][traceAttrs[0]], plotDivID);
-                    //minData[traceLabel][traceAttrs[t]], maxData[traceLabel][traceAttrs[t]], plotDivID);
-    //} }
+    newDiv += "<div id=\""+hostDivID+"\" style=\"height:auto; z-index: 100; border-color: #555555; border-style:solid; border-width=1px;\" class=\"ui-widget-content\"></div>\n";
 
+    if(showFresh) hostDiv.innerHTML =  newDiv;
+    else          hostDiv.innerHTML += newDiv;
+
+
+    var data = [];
+    var numTraceAttrsKnown = false;
+    var numTraceAttrs=0;
+    for(var i in traceDataList[traceLabel]) { if(traceDataList[traceLabel].hasOwnProperty(i)) {
+      var d = [traceDataList[traceLabel][i][ctxtAttrs[0]], 
+               traceDataList[traceLabel][i][ctxtAttrs[1]],
+               traceDataList[traceLabel][i][ctxtAttrs[2]]];
+
+      for(var t in traceAttrs) { if(traceAttrs.hasOwnProperty(t)) {
+        d.push(traceDataList[traceLabel][i][traceAttrs[t]]);
+        if(!numTraceAttrsKnown) numTraceAttrs++;
+      } }
+
+      data.push(d);
+      numTraceAttrsKnown=true;
+    } }
+
+    // Load the minimum and maximum values taken on by any context or trace attribute
+    var minVals = [], maxVals = [];
+    for(var i=0; i<3; i++) {
+       minVals.push(minData[traceLabel][ctxtAttrs[i]]);
+       maxVals.push(maxData[traceLabel][ctxtAttrs[i]]);
+    }
+    for(var i=0; i<numTraceAttrs; i++) {
+       minVals.push(minData[traceLabel][traceAttrs[i]]);
+       maxVals.push(maxData[traceLabel][traceAttrs[i]]); 
+    }
+
+    // Load the names of the attributes
+    var attrNames = ctxtAttrs.concat(traceAttrs);
+    showScatter3D(data, attrNames, 
+                  //[minData[traceLabel][ctxtAttrs[0]], minData[traceLabel][ctxtAttrs[1]], minData[traceLabel][ctxtAttrs[2]]],
+                  //[maxData[traceLabel][ctxtAttrs[0]], maxData[traceLabel][ctxtAttrs[1]], maxData[traceLabel][ctxtAttrs[2]]],
+                  minVals, maxVals,
+                  //minData[traceLabel][traceAttrs[0]], maxData[traceLabel][traceAttrs[0]], 
+                  3, numTraceAttrs,
+                  hostDivID);
+                  //minData[traceLabel][traceAttrs[t]], maxData[traceLabel][traceAttrs[t]], hostDivID);
   } else if(viz == 'decTree') {
     if(numContextAttrs==0) { alert("Decision Tree visualizations require one or more context variables"); return; }
     

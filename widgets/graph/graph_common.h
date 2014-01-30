@@ -42,5 +42,5 @@ class graphEdge {
 };
 
   
-}; // namespace common
-}; // namespace sight
+} // namespace common
+} // namespace sight

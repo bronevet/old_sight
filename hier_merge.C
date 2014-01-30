@@ -42,6 +42,16 @@ class tagGroup {
   { return type< that.type ||
           (type==that.type && objName< that.objName) ||
           (type==that.type && objName==that.objName  && key<that.key); }
+
+  string str() const {
+    ostringstream s;
+    s << "[tagGroup: objName="<<objName<<", key=";
+    for(list<string>::const_iterator k=key.begin(); k!=key.end(); k++) {
+      if(k!=key.begin()) s << ", ";
+      s << *k;
+    }
+    return s.str();
+  }
 }; // class tagGroup
 
 // The different types of merging 
@@ -369,9 +379,9 @@ int merge(vector<FILEStructureParser*>& parsers,
       // If we're ready to read a tag on this parser
       if(readyForTag[parserIdx] && activeParser[parserIdx]) {
         pair<properties::tagType, const properties*> props = (*p)->next();
-        //#ifdef VERBOSE
-        //cout << indent << parserIdx << ": "<<(props.first==properties::enterTag? "enterTag": "exitTag")<<" "<<const_cast<properties*>(props.second)->str()<<endl;
-        //#endif
+        #ifdef VERBOSE
+        cout << indent << parserIdx << ": "<<(props.first==properties::enterTag? "enterTag": "exitTag")<<" "<<const_cast<properties*>(props.second)->str()<<endl;
+        #endif
         
         // If we've reached the end of this parser's data
         if(props.second->size()==0) {
@@ -545,6 +555,9 @@ int merge(vector<FILEStructureParser*>& parsers,
         
         #ifdef VERBOSE
         cout << indent << "::: "<<tag2stream.size()<<" Variants ::::"<<endl;
+        cout << indent << "        keys="<<endl; 
+        for(map<tagGroup, list<int> >::iterator ts=tag2stream.begin(); ts!=tag2stream.end(); ts++)
+          cout << indent << "            "<<ts->first.str()<<endl;
         #endif
         
         dbgStreamStreamRecord::enterBlock(outStreamRecords);

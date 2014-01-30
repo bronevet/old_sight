@@ -10,7 +10,7 @@
 namespace sight {
 namespace layout {
 class attributesC;
-};
+}
 namespace structure {
 class attrOp;
 class attrQuery;
@@ -751,5 +751,5 @@ class attrFileReader {
 // call to functor f is provided with a 2-level map that maps each group to a map of key->value mappings.
 void readAttrFile(std::string fName, attrFileReader& f);
 
-}; // namespace common
-}; // namespace sight
+} // namespace common
+} // namespace sight

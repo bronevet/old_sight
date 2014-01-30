@@ -652,5 +652,5 @@ class AttributeMerger : public Merger {
 }; // class AttributeMerger
 
   
-}; // namespace structure
-}; // namespace sight
+} // namespace structure
+} // namespace sight

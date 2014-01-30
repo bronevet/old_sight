@@ -232,10 +232,27 @@ class sightObj {
   // care of in the constructor (false)
   bool emitExitTag;
   
+  // Flag that records whether this object has already been destroyed. This must be tracked explicitly
+  // because sightObjs can be be destroyed by calling their destroy() method in addition to calling their
+  // destructor.
+  bool destroyed;
+
+  private:
+  // The stack of sightObjs that are currently in scope
+  static std::list<sightObj*> soStack;
+  public:
+  
   sightObj();
   // isTag - if true, we emit a single enter/exit tag combo in the constructor and nothing in the destructor
   sightObj(properties* props, bool isTag=false);
   ~sightObj();
+
+  virtual void destroy();
+  
+  // Contains the code to destroy this object. This method is called to clean up application state due to an
+  // abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
+  // that implement destroy should call the destroy method of their parent object.
+  //virtual void destroy();
   
   private:
   // The of clocks currently being used, mapping the name of each clock class to the set of active 
@@ -244,6 +261,9 @@ class sightObj {
   
   public:
   const properties& getProps() const { return *props; }
+
+  // Deallocates all the currently live sightObjs on the stack
+  static void deallocAll();
     
   // Returns whether this object is active or not
   bool isActive() const;
@@ -512,6 +532,9 @@ class Merger {
     
   // Given a vector of tag property iterators, returns the list of names of all the object types they refer to
   static std::vector<std::string> getNames(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags);
+  
+  // Given a vector of tag property iterators that must be the same, returns their common name
+  static std::string getSameName(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags);
     
   // Advance the iterators in the given tags vector, returning a reference to the vector
   static std::vector<std::pair<properties::tagType, properties::iterator> >
@@ -522,8 +545,8 @@ class Merger {
   static bool isIterEnd(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags);
 }; // class Merger
 
-}; // namespace structure
-}; // namespace sight
+} // namespace structure
+} // namespace sight
 
 #include "attributes/attributes_structure.h"
 
@@ -913,6 +936,7 @@ protected:
 // Stream that uses dbgBuf
 class dbgStream : public common::dbgStream, public sightObj
 {
+public:
   dbgBuf defaultFileBuf;
   // Stream to the file where the structure will be written
   std::ofstream *dbgFile;
@@ -1120,5 +1144,5 @@ class IndentMerger : public Merger {
 
 int dbgprintf(const char * format, ... );
 
-}; // namespace structure
-}; // namespace sight
+} // namespace structure
+} // namespace sight

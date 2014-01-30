@@ -456,7 +456,7 @@ void attrValue::deserialize(std::string serialized) {
   deallocate();
   
   // Decode the type of the serialized value
-  int typeEnd = serialized.find(":");
+  size_t typeEnd = serialized.find(":");
   assert(typeEnd != string::npos);
   type = (valueType) strtol(serialized.substr(0, typeEnd).c_str(), NULL, 10);
   
@@ -480,7 +480,7 @@ void attrValue::deserialize(std::string serialized) {
 // Decodes the contents of this serialized representation of an attrValue and returns it
 attrValue::valueType attrValue::getType(std::string serialized) {
   // Decode the type of the serialized value
-  int typeEnd = serialized.find(":");
+  size_t typeEnd = serialized.find(":");
   assert(typeEnd != string::npos);
   return (valueType) strtol(serialized.substr(0, typeEnd).c_str(), NULL, 10);
 }
@@ -612,7 +612,7 @@ void customAttrValueInstantiator::init() {
 // Deserializes the given serialized customAttrValue and returns a freshly-allocated reference to it
 customAttrValue* customAttrValueInstantiator::deserialize(std::string serialized) {
   // Get the name of the custom attribute type that is serialized
-  int nameEnd = serialized.find(":");
+  size_t nameEnd = serialized.find(":");
   assert(nameEnd != string::npos);
   string customAttrName = serialized.substr(0, nameEnd);
   

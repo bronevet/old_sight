@@ -253,11 +253,11 @@ std::map<std::pair<port, port>, int> modularApp::edges;
 std::list<module*> modularApp::mStack;
 
 modularApp::modularApp(const std::string& appName,                                                   properties* props) :
-    block(appName, setProperties(appName, NULL, props)), appName(appName), meas(meas)
+    block(appName, setProperties(appName, NULL, props)), appName(appName)
 { init(); }
         
 modularApp::modularApp(const std::string& appName, const attrOp& onoffOp,                            properties* props) :
-    block(appName, setProperties(appName, &onoffOp, props)), appName(appName), meas(meas)
+    block(appName, setProperties(appName, &onoffOp, props)), appName(appName)
 { init(); }
 
 modularApp::modularApp(const std::string& appName,                        const namedMeasures& meas, properties* props) :
@@ -320,7 +320,10 @@ void modularApp::exitModuleGroup(const group& g) {
   moduleProps.erase(g);
 }
 
-modularApp::~modularApp() {
+modularApp::~modularApp() { if(!destroyed) destroy(); }
+
+
+void modularApp::destroy() {
   // Unregister this modularApp instance (there can be only one)
   assert(activeMA);
   activeMA = NULL;
@@ -538,7 +541,7 @@ module* modularApp::getCurModule() {
 }
 
 // Adds the given module object to the modules stack
-void modularApp::enterModule(module* m, int moduleID, properties* props/*, generateTraceStream& tsGenerator*/) {
+void modularApp::enterModule(module* m, int moduleID, properties* props) {
   // Exactly one modularAppInstance must be active
   assert(isInstanceActive());
   
@@ -586,6 +589,9 @@ int modularApp::getTraceStreamID(const group& g) {
 
 // Removes the given module object from the modules stack
 void modularApp::exitModule(module* m) {
+  // Exactly one modularAppInstance must be active
+  assert(isInstanceActive());
+
   // Pop this module from the mStack
   assert(mStack.size()>0);
   assert(mStack.back()==m);
@@ -699,9 +705,7 @@ module::module(const instance& inst, const std::vector<port>& in, std::vector<po
 properties* module::setProperties(const instance& inst, properties* props, module* me) {
   group g(modularApp::mStack, inst);
   bool isDerived = (props!=NULL); // This is an instance of an object that derives from module if its constructor sets props to non-NULL
-  if(props==NULL) {
-    props = new properties();
-  }
+  if(props==NULL) props = new properties();
 
   map<string, string> pMap;
   //pMap["moduleID"] = txt()<<modularApp::genModuleID(g);
@@ -733,10 +737,9 @@ properties* module::setProperties(const instance& inst, properties* props, modul
 }
 
 void module::init(const std::vector<port>& in, derivInfo* deriv) {
-  //generateModuleTraceStream gmts(g);
   isDerived = deriv!=NULL; // This is an instance of an object that derives from module if its constructor sets deriv to non-NULL
   if(deriv==NULL) {
-    deriv = new derivInfo(/*gmts*/);
+    deriv = new derivInfo();
   }
   
   ins = in;
@@ -753,19 +756,7 @@ void module::init(const std::vector<port>& in, derivInfo* deriv) {
     deriv->props->add("module", pMap);
     
     // Add this module instance to the current stack of modules
-    modularApp::enterModule(this, moduleID, deriv->props/*, deriv->tsGenerator*/);
-    
-    // Set the context attributes to be used in this module's measurements by combining the context provided by any
-    // class that may derive from this one as well as the contexts of its inputs
-    
-    // Start with the derived context
-    traceCtxt = deriv->ctxt;
-    
-    // Add to it the context of this module based on the contexts of its inputs
-    for(int i=0; i<in.size(); i++) {
-      for(std::map<std::string, attrValue>::const_iterator c=in[i].ctxt->configuration.begin(); c!=in[i].ctxt->configuration.end(); c++)
-        traceCtxt[encodeCtxtName("module", txt()<<"In"<<i, c->first)] = c->second;
-    }
+    modularApp::enterModule(this, moduleID, deriv->props);
     
     // Make sure that the input contexts have the same names across all the invocations of this module group
     modularApp::registerInOutContexts(g, in, sight::common::module::input);
@@ -777,10 +768,10 @@ void module::init(const std::vector<port>& in, derivInfo* deriv) {
     // Initialize the output ports of this module
     if(externalOutputs) externalOutputs->clear(); 
     for(int i=0; i<g.numOutputs(); i++) {
-      outs.push_back(port(g, context(), output, i));
+      outs.push_back(port(g, /*context(),*/ output, i));
       // If the user provided an output vector, initialize it as well
       if(externalOutputs) { 
-        externalOutputs->push_back(port(g, context(), output, i));
+        externalOutputs->push_back(port(g, /*context(),*/ output, i));
       }
     }
     
@@ -798,58 +789,37 @@ void module::init(const std::vector<port>& in, derivInfo* deriv) {
   }
 }
 
-// Sets the properties of this object
-/*properties* module::setProperties(const instance& inst, const std::vector<port>& inputs, const attrOp* onoffOp, properties* props)  {
-  if(props==NULL) props = new properties();
-  
-  if(inst.numInputs!=inputs.size()) cerr << "ERROR: module group \""<<inst.name<<"\" has "<<inst.numInputs<<" inputs but "<<inputs.size()<<" inputs were provided!"<<endl; 
-  assert(inst.numInputs==inputs.size());
-  
-  // This module instance is active only if the current modularApp instance is active
-  props->active = modularApp::isInstanceActive() && props->active;
-  
-  // If this module instance is active according to the classes that derive from it, AND
-  // If the current attribute query evaluates to true (we're emitting debug output) AND
-  // Either onoffOp is not provided or it evaluates to true
-  if(props->active && attributes.query() && (onoffOp? onoffOp->apply(): true)) {
-    // Register this module and get its unique ID
-    group g(modularApp::mStack, inst);
-    int moduleID = modularApp::addModuleGroup(g);
-    
-    // If we're supposed to actually emit a tag for this module instance
-    if(props->emitTag) {
-      /*map<string, string> pMap = c->first.getProperties();
-      //newProps["callPath"] = cp2str(CPRuntime.doStackwalk());* /
-      map<string, string> pMap;
-      pMap["moduleID"]   = txt()<<moduleID;
-      pMap["name"]       = inst.name;
-      pMap["numInputs"]  = txt()<<inst.numInputs;
-      pMap["numOutputs"] = txt()<<inst.numOutputs;
-      assert(modularApp::group2Count.find(g) != modularApp::group2Count.end());
-      pMap["count"] = txt()<<modularApp::group2Count[g];
-      props->add("module", pMap);
-    }
-  } else
-    props->active = false;
-  
-  return props;
-}*/
+module::~module() { if(!destroyed) destroy(); }
 
-module::~module()
-{ 
+void module::destroy()
+{
+/*  destroy();
+}
+
+// Contains the code to destroy this object. This method is called to clean up application state due to an
+// abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
+// that implement destroy should call the destroy method of their parent object.
+void module::destroy() {*/
   //cout << "~module() props->active="<<props->active<<endl;
 
-  if(ins.size() != g.numInputs()) { cerr << "ERROR: module \""<<g.name()<<"\" specifies "<<g.numInputs()<<" inputs but "<<ins.size()<<" inputs are actually provided!"<<endl; }
+  if(ins.size() != g.numInputs()) { cerr << "WARNING: module \""<<g.name()<<"\" specifies "<<g.numInputs()<<" inputs but "<<ins.size()<<" inputs are actually provided!"<<endl; }
   
   // Complete the measurement of application's behavior during the module's lifetime
   if(props->active) {
     // If this is an instance of module rather than a class that derives from module
     if(!isDerived) {
-      // Register a traceStream for this compModule's module group, if one has not already been registered
+      // Register a traceStream for this module's group, if one has not already been registered
       if(!modularApp::isTraceStreamRegistered(g)) {
         modularApp::registerTraceStream(g, new moduleTraceStream(moduleID, this, trace::lines, trace::disjMerge, modularApp::getTraceStreamID(g)));
       }
     }
+    
+    // Set the context attributes to be used in this module's measurements by combining the context provided by any
+    // class that may derive from this one as well as the contexts of its inputs
+    map<string, attrValue> traceCtxt = getTraceCtxt();
+    /*cout << "traceCtxt="<<endl;
+    for(map<string, attrValue>::iterator tc=traceCtxt.begin(); tc!=traceCtxt.end(); tc++)
+      cout << "    "<<tc->first << ": "<<tc->second.serialize()<<endl;*/
     
     // Complete measuring this instance and collect the observations into props
     list<pair<string, attrValue> > obs;
@@ -859,27 +829,34 @@ module::~module()
       list<pair<string, attrValue> > curObs = m->second->endGet();
       // Push each measurement onto the observation
       for(list<pair<string, attrValue> >::iterator o=curObs.begin(); o!=curObs.end(); o++) {
-        obs.push_back(make_pair(encodeCtxtName("measure", m->first, o->first), o->second));
+        obs.push_back(make_pair(encodeCtxtName("module", "measure", m->first, o->first), o->second));
       }
       delete m->second;
     }
     
     // Add to the trace observation the properties of all of the module's outputs
     for(int i=0; i<outs.size(); i++) {
+      if(outs[i].ctxt==NULL) continue;
+      
       for(map<std::string, attrValue>::iterator c=outs[i].ctxt->configuration.begin();
           c!=outs[i].ctxt->configuration.end(); c++) {
-        obs.push_back(make_pair(encodeCtxtName("output", txt()<<i, c->first), c->second));
+        obs.push_back(make_pair(encodeCtxtName("module", "output", txt()<<i, c->first), c->second));
       }
     }
     
     // Record the observation into this module group's trace
     modularApp::moduleTrace[g]->traceFullObservation(traceCtxt, obs, anchor::noAnchor);
 
+    /* GB 2014-01-24 - IT makes sense to allow different instances of a module group to not provide
+     *        the same outputs since in fault injection we may be aborted before all the outputs are 
+     *        computed and in other cases the code may break out without computing some output. *?
     // Make sure that the output contexts have the same names across all the invocations of this module group
-    modularApp::registerInOutContexts(g, outs, sight::common::module::output);
+    modularApp::registerInOutContexts(g, outs, sight::common::module::output); */
   
     modularApp::exitModule(this);
   }
+
+  sightObj::destroy();
 }
 
 /*traceStream* module::generateModuleTraceStream::operator()(int moduleID) {
@@ -938,6 +915,21 @@ port module::outPort(int idx) const {
   return outs[idx];  
 }
 
+// Returns the context attributes to be used in this module's measurements by combining the context provided by the classes
+// that this object derives from with its own unique context attributes.
+std::map<std::string, attrValue> module::getTraceCtxt() {
+  std::map<std::string, attrValue> traceCtxt;
+
+  // Add to it the context of this module based on the contexts of its inputs
+  for(int i=0; i<ins.size(); i++) {
+    for(std::map<std::string, attrValue>::const_iterator c=ins[i].ctxt->configuration.begin(); c!=ins[i].ctxt->configuration.end(); c++)
+      traceCtxt[encodeCtxtName("module", "input", txt()<<i, c->first)] = c->second;
+  }
+
+  return traceCtxt;
+}
+
+
 /***********************
  ***** compContext *****
  ***********************/
@@ -974,22 +966,30 @@ map<string, string> compContext::getProperties(std::string prefix) const {
 // cast from const context& to their sub-type.
 bool compContext::operator==(const context& that_arg) const {
   try {
+    // If both this and that are compContexts
     const compContext& that = dynamic_cast<const compContext&>(that_arg);
-    return (*(const context*)this)==that_arg && comparators==that.comparators;
+    return context::operator==(that_arg) && comparators==that.comparators;
   } catch(std::bad_cast exp) {
-    cerr << "ERROR: comparing compContext and a different sub-type of context using == operator!"<<endl;
-    assert(0);
+    // Otherwise, relate different context instances based on their typeids
+    //cout << "compContext::operator==() typeid(*this)="<<typeid(*this).name()<<", typeid(that_arg)="<<typeid(that_arg).name()<<", == "<<(typeid(*this) == typeid(that_arg))<<endl;
+    return typeid(*this) == typeid(that_arg);
+    /*cerr << "ERROR: comparing compContext and a different sub-type of context using == operator!"<<endl;
+    assert(0);*/
   }
 }
 
 bool compContext::operator<(const context& that_arg) const { 
   try {
+    // If both this and that are compContexts
     const compContext& that = dynamic_cast<const compContext&>(that_arg);
-    return ((*(const context*)this)< that_arg) ||
-           ((*(const context*)this)==that_arg && comparators<that.comparators);
+    return context::operator<(that_arg) ||
+           (context::operator==(that_arg) && comparators<that.comparators);
   } catch(std::bad_cast exp) {
-    cerr << "ERROR: comparing compContext and a different sub-type of context using < operator!"<<endl;
-    assert(0);
+    // Otherwise, relate different context instances based on their typeids
+    //cout << "compContext::operator<() typeid(*this)="<<typeid(*this).name()<<", typeid(that_arg)="<<typeid(that_arg).name()<<", < "<<(typeid(*this).name() < typeid(that_arg).name())<<endl;
+    return typeid(*this).name() < typeid(that_arg).name();
+    /*cerr << "ERROR: comparing compContext and a different sub-type of context using < operator!"<<endl;
+    assert(0);*/
   }
 }
 
@@ -1056,29 +1056,23 @@ compModule::compModule(const instance& inst, const std::vector<port>& inputs, st
 
 // Sets the properties of this object
 module::derivInfo* compModule::setProperties(const instance& inst, bool isReference, context options, const attrOp* onoffOp, derivInfo* deriv) {
-  // Set gcmts to refer to the properties of this instance of compModule
-  //gcmts.init(inst, isReference, options);
   if(deriv==NULL) {
-    deriv = new derivInfo(/*gcmts*/);
+    deriv = new derivInfo();
   }
-  
+ /* 
   // If the current attribute query evaluates to true (we're emitting debug output) AND
   // either onoffOp is not provided or its evaluates to true
   if(attributes.query() && (onoffOp? onoffOp->apply(): true)) {
-    /* // Initialize pMap to contain the properties of options
+    / * // Initialize pMap to contain the properties of options
     map<string, string> pMap;// = options.getProperties("op");
     //pMap["isReference"]   = txt()<<isReference;
 
-    deriv->props->add("compModule", pMap);*/
+    deriv->props->add("compModule", pMap);* /
     
-    // Add isReference and the options to the trace context attributes in derivInfo
-    deriv->ctxt["compModule:isReference"] = attrValue((long)isReference);
-    for(map<std::string, attrValue>::const_iterator o=options.getCfg().begin(); o!=options.getCfg().end(); o++)
-      deriv->ctxt[encodeCtxtName("compModule", "options", o->first)] = o->second;
-  }
+ }
   else
     deriv->props->active = false;
-  
+ */ 
   return deriv;
 }
 
@@ -1086,14 +1080,43 @@ void compModule::init(derivInfo* deriv) {
   isDerived = deriv!=NULL; // This is an instance of an object that derives from module if its constructor sets deriv to non-NULL
 }
 
-compModule::~compModule() {
+compModule::~compModule() { if(!destroyed) destroy(); }
+
+void compModule::destroy() {
   // If this is an instance of compModule rather than a class that derives from compModule
   if(props->active && !isDerived) {
     // Register a traceStream for this compModule's module group, if one has not already been registered
     if(!modularApp::isTraceStreamRegistered(g))
       modularApp::registerTraceStream(g, new compModuleTraceStream(moduleID, this, trace::lines, trace::disjMerge, modularApp::getTraceStreamID(g)));
   }
+
+  module::destroy();
 }
+
+// Returns the context attributes to be used in this module's measurements by combining the context provided by the classes
+// that this object derives from with its own unique context attributes.
+std::map<std::string, attrValue> compModule::getTraceCtxt() {
+  std::map<std::string, attrValue> traceCtxt = module::getTraceCtxt();
+
+  traceCtxt["compModule:isReference"] = attrValue((long)isReference);
+  
+  // Add all the options to the context
+  for(map<std::string, attrValue>::const_iterator o=options.getCfg().begin(); o!=options.getCfg().end(); o++)
+    traceCtxt[encodeCtxtName("compModule", "option", "0", o->first)] = o->second;
+  
+  return traceCtxt;
+}
+
+// Sets the isReference flag to indicate whether this is a reference instance of this compModule or not
+void compModule::setIsReference(bool newVal) {
+  isReference = newVal;
+}
+
+// Sets the context of the given option
+void compModule::setOptionCtxt(std::string name, attrValue val) {
+  options.configuration[name] = val;
+}
+   
 
 // Sets the context of the given output port. This variant ensures that the outputs of compModules can only
 // be set with compContexts.
@@ -1285,6 +1308,11 @@ context springModule::extendOptions(const context& options) {
     return options;
 }
 
+// Returns the context attributes to be used in this module's measurements by combining the context provided by the classes
+// that this object derives from with its own unique context attributes.
+std::map<std::string, attrValue> springModule::getTraceCtxt()
+{ return compModule::getTraceCtxt(); }
+
 /***************************
  ***** processedModule *****
  ***************************/
@@ -1351,6 +1379,11 @@ processedModule::~processedModule() {
   }
 }
 
+// Returns the context attributes to be used in this module's measurements by combining the context provided by the classes
+// that this object derives from with its own unique context attributes.
+std::map<std::string, attrValue> processedModule::getTraceCtxt()
+{ return module::getTraceCtxt(); }
+
 /*****************************
  ***** moduleTraceStream *****
  *****************************/
@@ -1393,15 +1426,43 @@ properties* compModuleTraceStream::setProperties(int moduleID,
   if(props->active && props->emitTag) {
     map<string, string> pMap;// = cm->options.getProperties("op");
     
-    // Record the number of outputs of this compMduole. This repeats the same attribute in moduleTS but it is easier
-    // let both moduleTS and compModuleTS to have their own than to allow functions of compModuleTS access to properties of moduleTS.
+    // Record the number of inputs and outputs of this compModule. This repeats the same attributes in moduleTS but 
+    // it is easier let both moduleTS and compModuleTS to have their own than to allow functions of compModuleTS
+    // access to properties of moduleTS.
+    pMap["numInputs"]  = txt()<<cm->numInputs(); 
     pMap["numOutputs"] = txt()<<cm->numOutputs(); 
     
+    //cout << "compModuleTraceStream::setProperties() #ins="<<cm->ins.size()<<endl;
+    // Add the comparators to be used for each input attribute, where they are provided
+    for(int inIdx=0; inIdx<cm->ins.size(); inIdx++) {
+      // If the context specified for this input is a compContext
+      compContext* ctxt = dynamic_cast<compContext*>(cm->ins[inIdx].ctxt);
+      // Skip inputs for which a compContext was not provided
+      //cout << "ctxt="<<ctxt<<endl;
+      if(!ctxt) {
+        pMap[txt()<<"in"<<inIdx<<":numAttrs"] = "0";
+        continue;
+      }
+        
+      pMap[txt()<<"in"<<inIdx<<":numAttrs"] = txt()<<ctxt->comparators.size();
+      int compIdx=0;
+      for(map<string, pair<string, string> >::const_iterator comp=ctxt->comparators.begin(); comp!=ctxt->comparators.end(); comp++, compIdx++)
+        pMap[txt()<<"in"<<inIdx<<":compare"<<compIdx] = 
+                  txt()<<escapedStr(comp->first,         ":", escapedStr::unescaped).escape()<<":"<<
+                         escapedStr(comp->second.first,  ":", escapedStr::unescaped).escape()<<":"<<
+                         escapedStr(comp->second.second, ":", escapedStr::unescaped).escape();
+    }
+    
     // Add the comparators to be used for each output attribute
-    int outIdx=0;
-    for(std::vector<port>::iterator o=cm->outs.begin(); o!=cm->outs.end(); o++, outIdx++) {
-      if(o->ctxt==NULL) { cerr << "ERROR in module "<<moduleID<<"! Context of output "<<outIdx<<" not provided!"<<endl; assert(0); }
-      compContext* ctxt = dynamic_cast<compContext*>(o->ctxt);
+    for(int outIdx=0; outIdx<cm->outs.size(); outIdx++) {
+      //if(o->ctxt==NULL) { cerr << "ERROR in module "<<moduleID<<"! Context of output "<<outIdx<<" not provided!"<<endl; assert(0); }
+      // Skip outputs for which contexts were not provided
+      if(cm->outs[outIdx].ctxt==NULL) {
+        pMap[txt()<<"out"<<outIdx<<":numAttrs"] = "0";
+        continue;
+      }
+      
+      compContext* ctxt = dynamic_cast<compContext*>(cm->outs[outIdx].ctxt);
       assert(ctxt);
       pMap[txt()<<"out"<<outIdx<<":numAttrs"] = txt()<<ctxt->comparators.size();
       int compIdx=0;
@@ -2011,12 +2072,11 @@ properties* CompModuleTraceStreamMerger::setProperties(
   properties::tagType type = streamRecord::getTagType(tags); 
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Comparison Module TraceStreams!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
-    vector<string> names = getNames(tags); assert(allSame<string>(names));
-    assert(*names.begin() == "compModuleTS");
+    assert(getSameName(tags) == "compModuleTS");
 
     //int nodeID = ModuleStreamRecord::mergeNodeIDs("nodeID", pMap, tags, outStreamRecords, inStreamRecords);
     
-    // We know that all the tags have the same valuues for isReference, options, output comparators and measurements.
+    // We know that all the tags have the same values for isReference, options, output comparators and measurements.
     // Thus, we only consider this information from the first tag.
     
     /*common::module::context options = common::module::context(tags[0].second, "op");
@@ -2024,7 +2084,18 @@ properties* CompModuleTraceStreamMerger::setProperties(
     
     //pMap["isReference"] = tags[0].second.get("isReference");
 
-    pMap["numOutputs"] = tags[0].second.get("numOutputs");
+    // All the tags have the same values for input comparators, so we only consider this information from the first tag.
+    pMap["numInputs"] = tags[0].second.get("numInputs");
+    long numInputs = attrValue::parseInt(pMap["numInputs"]);
+    for(int inIdx=0; inIdx<numInputs; inIdx++) {
+      pMap[txt()<<"in"<<inIdx<<":numAttrs"] = tags[0].second.get(txt()<<"in"<<inIdx<<":numAttrs");
+      int numAttrs = attrValue::parseInt(pMap[txt()<<"in"<<inIdx<<":numAttrs"]);
+      for(int compIdx=0; compIdx<numAttrs; compIdx++) {
+        pMap[txt()<<"in"<<inIdx<<":compare"<<compIdx] = tags[0].second.get(txt()<<"in"<<inIdx<<":compare"<<compIdx);
+      }
+    }
+    
+    /*pMap["numOutputs"] = tags[0].second.get("numOutputs");
     int numOutputs = attrValue::parseInt(pMap["numOutputs"]);
     for(int outIdx=0; outIdx<numOutputs; outIdx++) {
       pMap[txt()<<"out"<<outIdx<<":numAttrs"] = tags[0].second.get(txt()<<"out"<<outIdx<<":numAttrs");
@@ -2032,7 +2103,34 @@ properties* CompModuleTraceStreamMerger::setProperties(
       for(int compIdx=0; compIdx<numAttrs; compIdx++) {
         pMap[txt()<<"out"<<outIdx<<":compare"<<compIdx] = tags[0].second.get(txt()<<"out"<<outIdx<<":compare"<<compIdx);
       }
+    }*/
+
+    // Collect the union of all the comparators associated with each output. Each attribute of each output
+    // does not need to have a comparator specified for it on all incoming streams. However, if it is specified
+    // it must have the same value on all the incoming streams.
+    pMap["numOutputs"] = getSameValue(tags, "numOutputs");
+    long numOutputs = attrValue::parseInt(pMap["numOutputs"]);
+    vector<int> maxNumAttrs(numOutputs, 0); // The maximum number of attributes observed for any output
+    for(int outIdx=0; outIdx<numOutputs; outIdx++) {
+      for(vector<pair<properties::tagType, properties::iterator> >::iterator t=tags.begin(); t!=tags.end(); t++) {
+        // Iterate over all the attributes that were specified for the current output along the given incoming stream
+        long numAttrs = t->second.getInt(txt()<<"out"<<outIdx<<":numAttrs");
+        for(int compIdx=0; compIdx<numAttrs; compIdx++) {
+          string key = txt()<<"out"<<outIdx<<":compare"<<compIdx;
+          // If we haven't yet recorder the comparator for this attribute of this output, do so now
+          if(pMap.find(key) == pMap.end()) pMap[key] = t->second.get(txt()<<"out"<<outIdx<<":compare"<<compIdx);
+          // Ensure that all the comparators specified for this attribute/output are identical
+          else                      assert(pMap[key] == t->second.get(txt()<<"out"<<outIdx<<":compare"<<compIdx));
+        }
+        
+        // Update the record of the maximum number of attributes
+        if(maxNumAttrs[outIdx] < numAttrs) maxNumAttrs[outIdx] = numAttrs;
+      }
     }
+    
+    // Record the number of attributes for each output
+    for(int outIdx=0; outIdx<maxNumAttrs.size(); outIdx++)
+      pMap[txt()<<"out"<<outIdx<<":numAttrs"] = txt()<<maxNumAttrs[outIdx];
     
     pMap["numMeasurements"] = tags[0].second.get("numMeasurements");
     int numMeasurements = attrValue::parseInt(pMap["numMeasurements"]);
@@ -2072,8 +2170,23 @@ void CompModuleTraceStreamMerger::mergeKey(properties::tagType type, properties:
       key.push_back(c->second.serialize());
     }*/
     
-    // Same comparators on outputs
+    // Same number of inputs
+    key.push_back(tag.get("numInputs"));
+    // Same comparators on all inputs. Inputs are not required to have comparators specified for them, so
+    // if a given input has no comparators specified we merely make sure that this holds along all incoming streams.
+    int numInputs = tag.getInt("numInputs");
+    for(int inIdx=0; inIdx<numInputs; inIdx++) {
+      key.push_back(tag.get(txt()<<"in"<<inIdx<<":numAttrs"));
+      int numAttrs = tag.getInt(txt()<<"in"<<inIdx<<":numAttrs");
+      for(int compIdx=0; compIdx<numAttrs; compIdx++) {
+        key.push_back(tag.get(txt()<<"in"<<inIdx<<":compare"<<compIdx));
+      }
+    }
+    
+    // Same number of outputs
     key.push_back(tag.get("numOutputs"));
+    /*
+    // Same comparators on outputs
     int numOutputs = tag.getInt("numOutputs");
     for(int outIdx=0; outIdx<numOutputs; outIdx++) {
       key.push_back(tag.get(txt()<<"out"<<outIdx<<":numAttrs"));
@@ -2081,7 +2194,7 @@ void CompModuleTraceStreamMerger::mergeKey(properties::tagType type, properties:
       for(int compIdx=0; compIdx<numAttrs; compIdx++) {
         key.push_back(tag.get(txt()<<"out"<<outIdx<<":compare"<<compIdx));
       }
-    }
+    }*/
     
     // Same measurements
     key.push_back(tag.get("numMeasurements"));

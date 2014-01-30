@@ -22,5 +22,5 @@ class scope {
   { return (level==high? "high": (level==medium? "medium": (level==low? "high": (level==minimum? "minimum": "???")))); }
 };
 
-}; // namespace common
-}; // namespace sight
+} // namespace common
+} // namespace sight

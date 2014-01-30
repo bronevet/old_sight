@@ -203,17 +203,17 @@ int traceStream::maxTraceID=0;
 // It can be set to a negative value (or omitted) to indicate that the traceStream should generate an ID on its own.
 
 traceStream::traceStream(const std::list<std::string>& contextAttrs, vizT viz, mergeT merge, int traceID, properties* props) : 
-  sightObj(setProperties(contextAttrs, viz, merge, traceID, props), true),
+  sightObj(setProperties(contextAttrs, viz, merge, traceID, props), /*isTag:*/ true),
   contextAttrs(contextAttrs), viz(viz), merge(merge)
 { init(traceID); }
 
 traceStream::traceStream(std::string contextAttr, vizT viz, mergeT merge, int traceID, properties* props) : 
-  sightObj(setProperties(structure::trace::context(contextAttr), viz, merge, traceID, props), true),
+  sightObj(setProperties(structure::trace::context(contextAttr), viz, merge, traceID, props), /*isTag:*/ true),
   contextAttrs(structure::trace::context(contextAttr)), viz(viz), merge(merge)
 { init(traceID); }
 
 traceStream::traceStream(vizT viz, mergeT merge, int traceID, properties* props) : 
-  sightObj(setProperties(structure::trace::context(), viz, merge, traceID, props), true),
+  sightObj(setProperties(structure::trace::context(), viz, merge, traceID, props), /*isTag:*/ true),
   viz(viz), merge(merge)
 { init(traceID); }
 
@@ -348,6 +348,10 @@ void traceStream::emitObservations(const std::map<std::string, attrValue>& conte
   map<string, string> pMap;
   
   pMap["traceID"] = txt()<<traceID;
+  /*ostringstream traceIDStr; traceIDStr << traceID;
+  pMap["traceID"] = traceIDStr.str();* /
+  char traceIDStr[10000]; snprintf(traceIDStr, 10000, "%d", traceID);
+  pMap["traceID"] = string(traceIDStr);*/
   
   // If we'll keep observations from different streams disjoint, record this stream's ID in each observation
   if(merge == disjMerge) pMap["outputStreamID"] = txt()<<outputStreamID;
@@ -540,6 +544,8 @@ std::list<std::pair<std::string, attrValue> > measure::endGet(bool addToTrace)  
   if(ended) { cerr << "measure::endGet() ERROR: measuring multiple times!"<<endl; assert(0);; }
  
   ended = true;
+
+  return std::list<std::pair<std::string, attrValue> >();
 }
 
 std::string measure::str() const {
@@ -783,7 +789,7 @@ void PAPIMeasure::start() {
   float ireal_time, iproc_time, imflips;
   long long iflpins;
   int retval;
-/*if((retval=PAPI_flips(&ireal_time,&iproc_time,&iflpins,&imflips)) < PAPI_OK)
+/ *if((retval=PAPI_flips(&ireal_time,&iproc_time,&iflpins,&imflips)) < PAPI_OK)
   {
     printf("Could not initialise PAPI_flips \n");
     printf("Your platform may not support floating point instruction event.\n");    printf("retval: %d\n", retval);

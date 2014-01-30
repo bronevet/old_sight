@@ -596,5 +596,6 @@ class easyset : public std::set<T> {
 	{ insert(p0); insert(p1); insert(p2); insert(p3); insert(p4); insert(p5); insert(p6); insert(p7); insert(p8); insert(p8); insert(p9); }
 }; // class easyset
 
-}; // namespace common
-}; // namespace sight
+} // namespace common
+} // namespace sight
+

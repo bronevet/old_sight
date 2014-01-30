@@ -31,7 +31,7 @@ bool isPortUsed(int port) {
   fp = popen(cmd.str().c_str(), "r");
   if(fp == NULL) {
     printf("Failed to run command\n" );
-    exit;
+    exit(-1);
   }
 
   while (fgets(path, sizeof(path)-1, fp) != NULL) {
@@ -50,7 +50,7 @@ list<string> getAllHostnames()
   fp = popen(cmd.str().c_str(), "r");
   if (fp == NULL) {
     printf("Failed to run command\n" );
-    exit;
+    exit(-1);
   }
 
   /* Read the output a line at a time - output it. */

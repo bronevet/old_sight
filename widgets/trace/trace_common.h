@@ -58,5 +58,5 @@ std::string serializeTraceObservation(const std::map<std::string, attrValue>& ct
                                       const std::map<std::string, attrValue>& obs,
                                       const std::map<std::string, int>& anchor);
 
-}; // namespace common
-}; // namespace sight
+} // namespace common
+} // namespace sight

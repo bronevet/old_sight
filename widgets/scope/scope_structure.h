@@ -94,5 +94,5 @@ class ScopeMerger : public BlockMerger {
                        std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key);
 }; // class ScopeMerger
 
-}; // namespace structure
-}; // namespace sight
+} // namespace structure
+} // namespace sight

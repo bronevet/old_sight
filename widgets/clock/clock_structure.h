@@ -184,5 +184,5 @@ class StepClockStreamRecord: public streamRecord {
   }
 }; // class StepClockStreamRecord
 
-}; // namespace structure
-}; // namespace sight
+} // namespace structure
+} // namespace sight
