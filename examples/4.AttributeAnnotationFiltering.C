@@ -1,6 +1,7 @@
 #include "sight.h"
 #include <map>
 #include <assert.h>
+#include <unistd.h>
 using namespace std;
 using namespace sight;
 

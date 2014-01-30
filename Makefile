@@ -38,7 +38,8 @@ refresh: clean_objects all
 
 ROOT_PATH = ${CURDIR}
 
-# Set to "1" if we wish gdb support to be enabled and otherwise set to 0
+# Set to "1" if we wish to enable support for services running on the node on which the original computation was 
+# performed in addition to running code in the browser. The includes gdb and VNC integration. Otherwise set to 0
 ifeq (${OS}, Cygwin)
 REMOTE_ENABLED := 0
 else
@@ -54,15 +55,37 @@ ifneq (${OS}, Cygwin)
 GDB_PORT := 17501
 endif
 
+# Set to "1" if we wish to enable VNC integration
+ifeq (${OS}, Cygwin)
+VNC_ENABLED := 0
+else
+# Default distribution disables VNC 
+VNC_ENABLED := 0
+# VNC is only enabled if remote services are enabled
+#ifeq (${REMOTE_ENABLED}, 1)
+# VNC_ENABLED := 1 
+#endif
+endif
+
+# Set to "!" if we wish to enable examples that use MPI
+MPI_ENABLED = 0
+#MPI_ENABLED = 1
+
+DEFINES = ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} VNC_ENABLED=${VNC_ENABLED} MPI_ENABLED=${MPI_ENABLED} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" CC=${CC} CCC=${CCC}
+
+
 .PHONY: apps
-apps: mfem #mcbench
+ifeq (${MPI_ENABLED}, 1)
+apps: mfem CoMD #mcbench
+else
+apps: mfem
+endif
 
 mfem: libsight_structure.a
-	cd apps/mfem; make ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" CC=${CC} CCC=${CCC}
-#	cd apps/mfem; make ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS}
+	cd apps/mfem; make ${DEFINES}
 
 CoMD: 
-	cd apps/CoMD/src-mpi; make ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" CCC=${CCC}
+	cd apps/CoMD/src-mpi; make ${DEFINES}
 	
 #mcbench:
 #ifneq (${OS}, Cygwin)
@@ -70,26 +93,33 @@ CoMD:
 #endif
 
 allExamples: libsight_structure.a
-	cd examples; make ROOT_PATH=${ROOT_PATH} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" CC=${CC} CCC=${CCC}
-
+	cd examples; make ${DEFINES} 
 run: all runExamples runApps
 
 runExamples: all
-	cd examples; make ROOT_PATH=${ROOT_PATH} OS=${OS}  SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" run
+	cd examples; make ${DEFINES} run
 
-runApps: libsight_structure.a slayout${EXE} hier_merge${EXE} apps
-	cd examples; ../apps/CoMD/bin/CoMD-mpi.modules
-	cd examples; ../apps/CoMD/bin/CoMD-mpi.tracepath
-	cd examples; ../apps/CoMD/bin/CoMD-mpi.tracepos
-	cd examples; ../apps/CoMD/CoMDCompare.pl
+runMFEM:
 	#cd examples; ../apps/mfem/mfem/examples/ex1 ../apps/mfem/mfem/data/beam-quad.mesh
 	cd examples; ../apps/mfem/mfem/examples/mfemComp.pl
 	cd examples; ../apps/mfem/mfem/examples/ex2 ../apps/mfem/mfem/data/beam-tet.mesh 2
 	cd examples; ../apps/mfem/mfem/examples/ex3 ../apps/mfem/mfem/data/ball-nurbs.mesh
 	cd examples; ../apps/mfem/mfem/examples/ex4 ../apps/mfem/mfem/data/fichera-q3.mesh
-#ifneq (${OS}, Cygwin)
+
+ifeq (${MPI_ENABLED}, 1)
+runCoMD:
+	cd examples; ../apps/CoMD/bin/CoMD-mpi.modules
+	cd examples; ../apps/CoMD/bin/CoMD-mpi.tracepath
+	cd examples; ../apps/CoMD/bin/CoMD-mpi.tracepos
+	cd examples; ../apps/CoMD/CoMDCompare.pl
+else
+runCoMD:
+endif
+ 
+#runMCBench:
 #	apps/mcbench/src/MCBenchmark.exe --nCores=1 --distributedSource --numParticles=13107 --nZonesX=256 --nZonesY=256 --xDim=16 --yDim=16 --mirrorBoundary --multiSigma --nThreadCore=1
-#endif
+
+runApps: libsight_structure.a slayout${EXE} hier_merge${EXE} apps runMFEM runCoMD #runMCBench
 
 
 slayout.o: slayout.C process.C process.h
@@ -147,15 +177,12 @@ attributes/attributes_layout.o: attributes/attributes_layout.C attributes/attrib
 # Rule for compiling the aspects of widgets that libsight.a requires
 .PHONY: widgets_pre
 widgets_pre: maketools
-	cd widgets; make -f Makefile_pre ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS} CC=${CC} CCC=${CCC}"
-
+	cd widgets; make -f Makefile_pre all ${DEFINES}
 # Rule for compiling the aspects of widgets that require libsight.a
 widgets_post: libsight_layout.a libsight_structure.a
-	cd widgets; make -f Makefile_post ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS} CC=${CC} CCC=${CCC}"
-
+	cd widgets; make -f Makefile_post ${DEFINES}
 maketools: 
-	cd tools; make -f Makefile ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} CC=${CC} CCC=${CCC}
-
+	cd tools; make -f Makefile ${DEFINES}
 binreloc.o: binreloc.c binreloc.h
 	${CCC} ${SIGHT_CFLAGS} binreloc.c -c -o binreloc.o
 

@@ -414,6 +414,9 @@ class PAPIMeasure : public measure {
   
   // Records the set of PAPI counters currently being measured (non-empty iff numMeasurers>0)
   static papiEvents curEvents;
+
+  // Records whether we were able to successfully start PAPI counting of the selected counters
+  bool PAPIOperational;
   
   public:
   PAPIMeasure(const papiEvents& events);

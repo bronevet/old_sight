@@ -6,6 +6,7 @@
 #include <string>
 #include <string.h>
 #include <errno.h>
+#include <unistd.h>
 #include "utils.h"
 #include "process.h"
 #include "process.C"

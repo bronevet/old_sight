@@ -2,6 +2,14 @@ Installation
 ------------
 run "make"
 
+Dependencies
+------------
+gcc
+g++
+gfortran
+make
+cmake
+
 Example codes
 -------------
 To view the results of the example, run "make runExamples". This executes the codes in
