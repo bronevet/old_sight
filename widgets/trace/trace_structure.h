@@ -94,6 +94,11 @@ class trace: public block, public common::trace
   trace(std::string label,                                             const attrOp& onoffOp, showLocT showLoc=showBegin, vizT viz=table, mergeT merge=disjMerge, properties* props=NULL);
   
   ~trace();
+
+  // Contains the code to destroy this object. This method is called to clean up application state due to an
+  // abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
+  // that implement destroy should call the destroy method of their parent object.
+  virtual void destroy();
   
   // Sets the properties of this object
   static properties* setProperties(const attrOp* onoffOp, showLocT showLoc, properties* props);
@@ -135,6 +140,13 @@ class processedTrace: public trace
   properties* setProperties(const attrOp* onoffOp, const std::list<std::string>& processorCommands, properties* props);
   
   void init(std::string label, const std::list<std::string>& contextAttrs, const std::list<std::string>& processorCommands, vizT viz, mergeT merge, properties* props);
+
+  ~processedTrace();
+
+  // Contains the code to destroy this object. This method is called to clean up application state due to an
+  // abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
+  // that implement destroy should call the destroy method of their parent object.
+  virtual void destroy();
 }; // class processedTrace
 
 
@@ -175,6 +187,11 @@ class traceStream: public attrObserver, public common::trace, public sightObj
   
   public:
   ~traceStream();
+
+  // Contains the code to destroy this object. This method is called to clean up application state due to an
+  // abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
+  // that implement destroy should call the destroy method of their parent object.
+  virtual void destroy();
   
   private:
   
@@ -226,6 +243,13 @@ class processedTraceStream: public traceStream
   
   // Sets the properties of this object
   properties* setProperties(const std::list<std::string>& processorCommands, properties* props);
+
+  ~processedTraceStream();
+
+  // Contains the code to destroy this object. This method is called to clean up application state due to an
+  // abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
+  // that implement destroy should call the destroy method of their parent object.
+  virtual void destroy();
 }; // class processedTraceStream
 
 // Basic API for measuring the elapsed counts of events.

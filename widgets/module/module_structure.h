@@ -308,6 +308,9 @@ class modularApp: public block
   
   ~modularApp();
 
+  // Contains the code to destroy this object. This method is called to clean up application state due to an
+  // abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
+  // that implement destroy should call the destroy method of their parent object.
   virtual void destroy();
   
   private:
@@ -467,6 +470,9 @@ class module: public sightObj, public common::module
   
   public:
   ~module();
+  // Contains the code to destroy this object. This method is called to clean up application state due to an
+  // abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
+  // that implement destroy should call the destroy method of their parent object.
   virtual void destroy();
   
   // Contains the code to destroy this object. This method is called to clean up application state due to an
@@ -694,6 +700,13 @@ class compModularApp : public modularApp
   compModularApp(const std::string& appName, const attrOp& onoffOp,                                 properties* props=NULL);
   compModularApp(const std::string& appName,                        const compNamedMeasures& cMeas, properties* props=NULL);
   compModularApp(const std::string& appName, const attrOp& onoffOp, const compNamedMeasures& cMeas, properties* props=NULL);
+
+  ~compModularApp();
+
+  // Contains the code to destroy this object. This method is called to clean up application state due to an
+  // abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
+  // that implement destroy should call the destroy method of their parent object.
+  virtual void destroy();
 }; // class compModularApp
 
 class compModule: public structure::module
@@ -758,6 +771,10 @@ class compModule: public structure::module
   void init(derivInfo* deriv);
   
   ~compModule();
+
+  // Contains the code to destroy this object. This method is called to clean up application state due to an
+  // abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
+  // that implement destroy should call the destroy method of their parent object.
   virtual void destroy();
   
   // Sets the context of the given option
@@ -797,6 +814,11 @@ class springModularApp : public compModularApp
   
   ~springModularApp();
 
+  // Contains the code to destroy this object. This method is called to clean up application state due to an
+  // abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
+  // that implement destroy should call the destroy method of their parent object.
+  virtual void destroy();
+  
   static void *Interference(void *arg);
 
   // Returns a pointer to the current instance of modularApp
@@ -837,6 +859,13 @@ class springModule: public compModule {
   static bool isSpringReference();
   static context extendOptions(const context& options);
 
+  ~springModule();
+
+  // Contains the code to destroy this object. This method is called to clean up application state due to an
+  // abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
+  // that implement destroy should call the destroy method of their parent object.
+  virtual void destroy();
+
   // Returns the context attributes to be used in this module's measurements by combining the context provided by the classes
   // that this object derives from with its own unique context attributes.
   virtual std::map<std::string, attrValue> getTraceCtxt();
@@ -873,6 +902,11 @@ class processedModule : public structure::module {
   
   ~processedModule();
 
+  // Contains the code to destroy this object. This method is called to clean up application state due to an
+  // abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
+  // that implement destroy should call the destroy method of their parent object.
+  virtual void destroy();
+
   // Returns the context attributes to be used in this module's measurements by combining the context provided by the classes
   // that this object derives from with its own unique context attributes.
   virtual std::map<std::string, attrValue> getTraceCtxt();
@@ -885,6 +919,13 @@ class moduleTraceStream: public traceStream
   moduleTraceStream(int moduleID, module* m, vizT viz, mergeT merge, int traceID, properties* props=NULL);
   
   static properties* setProperties(int moduleID, module* m, vizT viz, mergeT merge, properties* props);
+
+  ~moduleTraceStream();
+
+  // Contains the code to destroy this object. This method is called to clean up application state due to an
+  // abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
+  // that implement destroy should call the destroy method of their parent object.
+  virtual void destroy();
 };
 
 // Specialization of moduleTraceStream for the case where they are hosted by a compModule node
@@ -894,6 +935,13 @@ class compModuleTraceStream: public moduleTraceStream
   compModuleTraceStream(int moduleID, compModule* cm, vizT viz, mergeT merge, int traceID, properties* props=NULL);
   
   static properties* setProperties(int moduleID, compModule* cm, vizT viz, mergeT merge, properties* props);
+
+  ~compModuleTraceStream();
+
+  // Contains the code to destroy this object. This method is called to clean up application state due to an
+  // abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
+  // that implement destroy should call the destroy method of their parent object.
+  virtual void destroy();
 };
 
 // Specialization of moduleTraceStream for the case where they are hosted by a processedModule node
@@ -903,6 +951,13 @@ class processedModuleTraceStream: public moduleTraceStream
   processedModuleTraceStream(int moduleID, processedModule* pm, vizT viz, mergeT merge, int traceID, properties* props=NULL);
   
   static properties* setProperties(int moduleID, processedModule* pm, vizT viz, mergeT merge, properties* props);
+
+  ~processedModuleTraceStream();
+
+  // Contains the code to destroy this object. This method is called to clean up application state due to an
+  // abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
+  // that implement destroy should call the destroy method of their parent object.
+  virtual void destroy();
 };
 
 class ModuleMergeHandlerInstantiator: public MergeHandlerInstantiator {
@@ -1150,9 +1205,9 @@ class ModuleStreamRecord: public streamRecord {
   // Returns true if the given module group has already been observed and false otherwise
   bool isModuleObserved(const group& g) const
   { 
-std::cout << "observedModules("<<g.str()<<"), observedModules(#"<<observedModules.size()<<")="<<std::endl;
+/*std::cout << "observedModules("<<g.str()<<"), observedModules(#"<<observedModules.size()<<")="<<std::endl;
 for(std::map<group, int>::const_iterator m=observedModules.begin(); m!=observedModules.end(); m++)
-  std::cout << "    " << m->first.str()<<" => "<<m->second<<std::endl;
+  std::cout << "    " << m->first.str()<<" => "<<m->second<<std::endl;*/
 
 return observedModules.find(g) != observedModules.end(); }
   

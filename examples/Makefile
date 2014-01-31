@@ -4,8 +4,8 @@ EXE := .exe
 endif
 
 sight_H := ../*.h ../*/*.h ../widgets/*/*.h
-TESTERS = 11.ExternTraceProcess${EXE} 5.Tracing${EXE} 10.SpringModules${EXE} 9.CompModules.single${EXE} 9.CompModules.merged${EXE} \
-          0.Demo${EXE} 1.StructuredFormatting${EXE} 2.ConditionalFormatting${EXE} 3.Navigation${EXE} \
+TESTERS = 0.Demo${EXE} 11.ExternTraceProcess${EXE} 5.Tracing${EXE} 10.SpringModules${EXE} 9.CompModules.single${EXE} 9.CompModules.merged${EXE} \
+          1.StructuredFormatting${EXE} 2.ConditionalFormatting${EXE} 3.Navigation${EXE} \
           4.AttributeAnnotationFiltering${EXE} 6.PerfAnalysis${EXE} \
           7.Merging${EXE} 8.Modules${EXE}
 
@@ -13,7 +13,8 @@ all: ${TESTERS}
 
 run: ${TESTERS}
 	export SIGHT_FILE_OUT=1; ./0.Demo${EXE} 5; ./0.Demo${EXE} 6; ./0.Demo${EXE} 7
-	export SIGHT_FILE_OUT=1; rm -rf dbg.0.Demo; ../hier_merge dbg.0.Demo common dbg.0.Demo.maxDepth_5/structure dbg.0.Demo.maxDepth_6/structure dbg.0.Demo.maxDepth_7/structure
+	export SIGHT_FILE_OUT=1; rm -rf dbg.0.Demo; ../hier_merge dbg.0.Demo common dbg.0.Demo.maxDepth_5/structure dbg.0.Demo.maxDepth_6/structure
+	#dbg.0.Demo.maxDepth_7/structure
 	rm -rf dbg.0.Demo.*;
 	../slayout${EXE} dbg.0.Demo/structure;
 	./1.StructuredFormatting${EXE};         

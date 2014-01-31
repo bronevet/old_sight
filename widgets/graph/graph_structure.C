@@ -77,7 +77,9 @@ properties* graph::setProperties(int graphID, std::string dotText, const attrOp*
   return props;
 }
 
-graph::~graph() {
+graph::~graph() { if(!destroyed) destroy(); }
+
+void graph::destroy() {
   // Refresh nodesConnected based on all the location information collected for the graph node anchors during execution
   // by filling a new set. Anchor IDs are only updated to become consistent with their final location when they're copied
   // to make sure that updated information about anchor locations doesn't invalidate data structures. Thus, we get
@@ -90,6 +92,8 @@ graph::~graph() {
   for(set<anchor>::iterator i=freshNC.begin(); i!=freshNC.end(); i++)
     if(nodesObservedNotEmitted.find(i->getID()) != nodesObservedNotEmitted.end())
       emitNodeTag(i->getID(), nodesObservedNotEmitted[i->getID()].first, nodesObservedNotEmitted[i->getID()].second);
+
+  block::destroy();
 }
 
 // Given a reference to an object that can be represented as a dot graph,  create an image from it and add it to the output.

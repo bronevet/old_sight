@@ -100,15 +100,15 @@ properties* scope::setProperties(scopeLevel level, const attrOp* onoffOp, proper
   else
     active = false;
 }*/
+scope::~scope() { if(!destroyed) destroy(); }
 
-scope::~scope()
-{ 
-  
-  /*if(props->active) {
-    dbg.exit(this);
-  }*/
+// Contains the code to destroy this object. This method is called to clean up application state due to an
+// abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
+// that implement destroy should call the destroy method of their parent object.
+void scope::destroy()
+{
+  block::destroy();
 }
-
 
 /*********************************************
  ***** ScopeMergeHandlerInstantiator *****

@@ -117,12 +117,20 @@ void trace::init(std::string label, const std::list<std::string>& contextAttrs, 
   }
 }
 
-trace::~trace() {
+trace::~trace() { if(!destroyed) destroy(); }
+
+// Contains the code to destroy this object. This method is called to clean up application state due to an
+// abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
+// that implement destroy should call the destroy method of their parent object.
+void trace::destroy()
+{
   assert(active.find(getLabel()) != active.end());
   active.erase(getLabel());
   
   assert(stream);
   delete(stream);
+
+  block::destroy();
 }
 
 trace* trace::getT(string label) {
@@ -189,6 +197,15 @@ void processedTrace::init(std::string label, const std::list<std::string>& conte
   }
 }
 
+processedTrace::~processedTrace() { if(!destroyed) destroy(); }
+
+// Contains the code to destroy this object. This method is called to clean up application state due to an
+// abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
+// that implement destroy should call the destroy method of their parent object.
+void processedTrace::destroy()
+{
+  trace::destroy();
+}
 
 /***********************
  ***** traceStream *****
@@ -260,7 +277,12 @@ void traceStream::init(int traceID) {
   //cout << "traceStream::init(), emitExitTag="<<emitExitTag<<endl;
 }
 
-traceStream::~traceStream() {
+traceStream::~traceStream() { if(!destroyed) destroy(); }
+
+// Contains the code to destroy this object. This method is called to clean up application state due to an
+// abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
+// that implement destroy should call the destroy method of their parent object.
+void traceStream::destroy() {
   //cout << "traceStream::~traceStream()"<<endl;
   //cout << "#active="<<active.size()<<", #contextAttrs="<<contextAttrs.size()<<endl;//", #tracerKeys="<<tracerKeys.size()<<endl;
   
@@ -269,6 +291,8 @@ traceStream::~traceStream() {
     //cout << "    *ca="<<*ca<<endl;
     attributes.remObs(*ca, this);
   }
+
+  sightObj::destroy();
 }
 
 // Observe for changes to the values mapped to the given key
@@ -419,6 +443,14 @@ properties* processedTraceStream::setProperties(const std::list<std::string>& pr
   return props;
 }
 
+processedTraceStream::~processedTraceStream() { if(!destroyed) destroy(); }
+
+// Contains the code to destroy this object. This method is called to clean up application state due to an
+// abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
+// that implement destroy should call the destroy method of their parent object.
+void processedTraceStream::destroy() {
+  traceStream::destroy();
+}
 /*******************
  ***** measure *****
  *******************/

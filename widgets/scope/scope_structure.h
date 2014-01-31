@@ -53,6 +53,11 @@ class scope: public block, public common::scope
   
   public:
   ~scope();
+
+  // Contains the code to destroy this object. This method is called to clean up application state due to an
+  // abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
+  // that implement destroy should call the destroy method of their parent object.
+  virtual void destroy();
   
   // Called to notify this block that a sub-block was started/completed inside of it. 
   // Returns true of this notification should be propagated to the blocks 

@@ -298,8 +298,13 @@ std::string location::str(std::string indent) const {
 /********************
  ***** sightObj *****
  ********************/
-// The stack of sightObjs that are currently in scope
-std::list<sightObj*> sightObj::soStack;
+// The stack of sightObjs that are currently in scope. We declare it as a static inside this function
+// to make it possible to ensure that the global soStack is constructed before it is used and therefore
+// destructed after all of its user objects are destructed.
+std::list<sightObj*>& soStack() {
+  static std::list<sightObj*> s;
+  return s;
+}
 
 // The of clocks currently being used, mapping the name of each clock class to the set of active 
 // clock objects of this class.
@@ -307,11 +312,17 @@ std::map<std::string, std::set<sightClock*> > sightObj::clocks;
 
 sightObj::sightObj() : props(NULL), emitExitTag(false), destroyed(false) {
   // Push this sightObj onto the stack
-  if(initializedDebug) soStack.push_back(this);
+  //if(initializedDebug) soStack.push_back(this);
+  // Don't push this sightObj onto the stack because emitExitTag is initialized to false
+  soStack();
 }
 
 // isTag - if true, we emit a single enter/exit tag combo in the constructor and nothing in the destructor
 sightObj::sightObj(properties* props, bool isTag) : props(props), destroyed(false) {
+  init(props, isTag);
+}
+
+void sightObj::init(properties* props, bool isTag) {
   //cout << "sightObj::sightObj isTag="<<isTag<<" props="<<props->str()<<endl;
   if(props && props->active && props->emitTag) {
     if(props==NULL) props = new properties();
@@ -336,23 +347,19 @@ sightObj::sightObj(properties* props, bool isTag) : props(props), destroyed(fals
 
   // Push this sightObj onto the stack
   if(initializedDebug && emitExitTag) {
-    //cout << "<<< "<<props->str()<<endl;
-    soStack.push_back(this);
+    //cout << "[[[ "<<(props? props->str(): "NULL")<<endl;
+    soStack().push_back(this);
   }
 }
 
 sightObj::~sightObj() { if(!destroyed) destroy(); }
 
-void sightObj::destroy() {
-/*  destroy();
-}
-
 // Contains the code to destroy this object. This method is called to clean up application state due to an
 // abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
 // that implement destroy should call the destroy method of their parent object.
-void sightObj::destroy() {*/
-  /*if(soStack.size()>0 && emitExitTag) 
-    cout << ">>> "<<props->str()<<endl;*/
+void sightObj::destroy() {
+  /*if(soStack().size()>0 && emitExitTag) 
+    cout << "]]](#"<<soStack().size()<<") "<<props->str()<<endl;*/
   //assert(props);
   if(props) {
     //cout << "sightObj::~sightObj(), emitExitTag="<<emitExitTag<<" props="<<props->str()<<endl;
@@ -363,11 +370,10 @@ void sightObj::destroy() {*/
   }
 
   // Pop this sightObj off the top of the stack
-  assert(initializedDebug);
   // The stack is empty when we're trying to destroy global/static sightObjs created before Sight was initialized
-  if(soStack.size()>0 && emitExitTag) {
-    assert(soStack.back() == this);
-    soStack.pop_back();
+  if(soStack().size()>0 && emitExitTag) {
+    assert(soStack().back() == this);
+    soStack().pop_back();
   }
   
   // We've finished destroying this object and it should not be destroyed again,
@@ -375,19 +381,16 @@ void sightObj::destroy() {*/
   destroyed = true;
 }
 
-// Deallocates all the currently live sightObjs on the stack
-void sightObj::deallocAll() {
-  // Keep deallocating the last sightObj on the stack until we've deallocated them all
-  /*while(soStack.size()>0)
-    soStack.back()->destroy();*/
-  for(list<sightObj*>::reverse_iterator o=soStack.rbegin(); o!=soStack.rend(); o++) {
+// Destroy all the currently live sightObjs on the stack
+void sightObj::destroyAll() {
+  // Call the destroy method of each object on the soStack
+  for(list<sightObj*>::reverse_iterator o=soStack().rbegin(); o!=soStack().rend(); o++) {
     if((*o)->emitExitTag) {
-      //cout << ">!> "<<(*o)->props->str()<<endl;
-      dbg.exit(*o);
+//      cout << ">!> "<<(*o)->props->str()<<endl;
+      (*o)->destroy();
     }
   }
-
-  dbg.exit(&dbg);
+  soStack().clear();
 }
 
 // Returns whether this object is active or not
@@ -1433,10 +1436,17 @@ properties* block::setProperties(string label, set<anchor>& pointsTo, properties
   return props;
 }
 
-block::~block() {
+block::~block() { if(!destroyed) destroy(); }
+
+// Contains the code to destroy this object. This method is called to clean up application state due to an
+// abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
+// that implement destroy should call the destroy method of their parent object.
+void block::destroy() {
   assert(props);
   if(props->active && props->emitTag)
     dbg.exitBlock();
+
+  sightObj::destroy();
 }
 
 // Increments blockD. This function serves as the one location that we can use to target conditional
@@ -1695,7 +1705,7 @@ void dbgBuf::ownerAccessing() { ownerAccess = true; synched = true; }
  ***** dbgStream *****
  *********************/
 
-dbgStream::dbgStream() : common::dbgStream(&defaultFileBuf), initialized(false)
+dbgStream::dbgStream() : common::dbgStream(&defaultFileBuf), sightObj(), initialized(false)
 {
   dbgFile = NULL;
   //buf = new dbgBuf(cout.rdbuf());
@@ -1704,7 +1714,7 @@ dbgStream::dbgStream() : common::dbgStream(&defaultFileBuf), initialized(false)
 }
 
 dbgStream::dbgStream(properties* props, string title, string workDir, string imgDir, std::string tmpDir)
-  : common::dbgStream(&defaultFileBuf)
+  : common::dbgStream(&defaultFileBuf), sightObj()
 {
   init(props, title, workDir, imgDir, tmpDir);
 }
@@ -1759,7 +1769,8 @@ void dbgStream::init(properties* props, string title, string workDir, string img
   ostream::init(buf);
   
   this->props = props; 
-  if(props) enter(this);
+  //if(props) enter(this);
+  sightObj::init(props, false);
 
   // The application may have written text to this dbgStream before it was fully initialized.
   // This text was stored in preInitStream. Print it out now.
@@ -1770,8 +1781,12 @@ void dbgStream::init(properties* props, string title, string workDir, string img
   initialized = true;
 }
 
-dbgStream::~dbgStream()
-{
+dbgStream::~dbgStream() { if(!destroyed) destroy(); }
+
+// Contains the code to destroy this object. This method is called to clean up application state due to an
+// abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
+// that implement destroy should call the destroy method of their parent object.
+void dbgStream::destroy() {
   if (!initialized)
     return;
   
@@ -1783,7 +1798,9 @@ dbgStream::~dbgStream()
     system(cmd.str().c_str());
   }
   
-  if(props) exit(this);
+  //if(props) exit(this);
+
+  sightObj::destroy();
 }
 
 // Called when a block is entered.
@@ -2121,11 +2138,13 @@ properties* indent::setProperties(std::string prefix, int repeatCnt, const attrO
   return props;
 }
 
-indent::~indent() {
- /* assert(props);
-  if(props->active) {
-    dbg.exit(this);
-  }*/
+indent::~indent() { if(!destroyed) destroy(); }
+
+// Contains the code to destroy this object. This method is called to clean up application state due to an
+// abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
+// that implement destroy should call the destroy method of their parent object.
+void indent::destroy() {
+  sightObj::destroy();
 }
 
 IndentMerger::IndentMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,

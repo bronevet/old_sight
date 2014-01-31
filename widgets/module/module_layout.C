@@ -686,13 +686,13 @@ void module::observe(int traceID,
                      const map<string, string>& obs,
                      const map<string, anchor>& obsAnchor/*,
                      const set<traceObserver*>& observers*/) {
-  cout << "module::observe("<<traceID<<")"<<endl;
+  /*cout << "module::observe("<<traceID<<")"<<endl;
   cout << "    ctxt=";
   for(map<string, string>::const_iterator c=ctxt.begin(); c!=ctxt.end(); c++) { cout << c->first << "=>"<<c->second<<" "; }
   cout << endl;
   cout << "    obs=";
   for(map<string, string>::const_iterator o=obs.begin(); o!=obs.end(); o++) { cout << o->first << "=>"<<o->second<<" "; }
-  cout << endl;
+  cout << endl;*/
   
   // Extract the context attribute groupings and the names of the attributes within each one
   map<string, list<string> > curCtxtNames;

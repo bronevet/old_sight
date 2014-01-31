@@ -263,7 +263,12 @@ properties* attr::setProperties(std::string key, T val, properties* props) {
   return props;
 }
 
-attr::~attr() {
+attr::~attr() { if(!destroyed) destroy(); }
+
+// Contains the code to destroy this object. This method is called to clean up application state due to an
+// abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
+// that implement destroy should call the destroy method of their parent object.
+void attr::destroy() {
 //cout << "attr::~attr("<<key<<", "<<val.str()<<"), keyPreviouslySet="<<keyPreviouslySet<<"\n"; cout.flush();
   // If this mapping replaced some prior mapping, return key to its original state
   if(keyPreviouslySet)
@@ -272,7 +277,7 @@ attr::~attr() {
   else
     attributes.remove(key);
     
-  //dbg.exit(this);
+  sightObj::destroy();
 }
 // Returns the key of this attribute
 string attr::getKey() const

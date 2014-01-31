@@ -120,7 +120,7 @@ int main(int argc, char** argv)
 #pragma sightLoc MultScopeGraphsEnd
   }
 
-  { 
+  {
     scope s("Performance Analysis", scope::high);
     { source src("source", source::regions(source::reg(thisFile, "PerfAnalysisStart", "PerfAnalysisEnd"),
                                            source::reg(thisFile, "fibStart",          "fibEnd"),

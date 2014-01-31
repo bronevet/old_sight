@@ -31,6 +31,14 @@ class valSelector: public sightObj
   
   valSelector(properties* props=NULL);
   valSelector(std::string attrKey, properties* props=NULL);
+
+  ~valSelector();
+  
+  // Contains the code to destroy this object. This method is called to clean up application state due to an
+  // abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
+  // that implement destroy should call the destroy method of their parent object.
+  virtual void destroy();
+
   
   int getID() const;
   
@@ -65,7 +73,12 @@ class colorSelector : public valSelector {
                                    properties* props=NULL);
 
   ~colorSelector();
-  
+ 
+  // Contains the code to destroy this object. This method is called to clean up application state due to an
+  // abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
+  // that implement destroy should call the destroy method of their parent object.
+  virtual void destroy();
+ 
   // Returns a string that contains a call to a JavaScipt function that at log view time will return a value
   // Returns the string reprentation of the current value.
   std::string observeSelection(const attrValue& val);

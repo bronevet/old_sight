@@ -28,6 +28,15 @@ valSelector::valSelector(std::string attrKey, properties* props) : sightObj(prop
 int valSelector::getID() const
 { return selID; }
 
+valSelector::~valSelector() { if(!destroyed) destroy(); }
+
+// Contains the code to destroy this object. This method is called to clean up application state due to an
+// abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
+// that implement destroy should call the destroy method of their parent object.
+void valSelector::destroy() {
+  sightObj::destroy();
+}
+
 /*************************
  ***** colorSelector *****
  *************************/
@@ -71,9 +80,13 @@ properties* colorSelector::setProperties(float startR, float startG, float start
   return props;
 }
 
-colorSelector::~colorSelector() {
-  //dbg.exit("colorSelector");
-  //dbg.exit(this);
+colorSelector::~colorSelector() { if(!destroyed) destroy(); }
+
+// Contains the code to destroy this object. This method is called to clean up application state due to an
+// abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
+// that implement destroy should call the destroy method of their parent object.
+void colorSelector::destroy() {
+  valSelector::destroy();
 }
 
 // Informs the value selector that we have observed a new value that the selector needs to account for

@@ -322,7 +322,9 @@ void modularApp::exitModuleGroup(const group& g) {
 
 modularApp::~modularApp() { if(!destroyed) destroy(); }
 
-
+// Contains the code to destroy this object. This method is called to clean up application state due to an
+// abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
+// that implement destroy should call the destroy method of their parent object.
 void modularApp::destroy() {
   // Unregister this modularApp instance (there can be only one)
   assert(activeMA);
@@ -410,6 +412,8 @@ void modularApp::destroy() {
     assert(edges.size()==0);
     assert(meas.size()==0);
   }
+
+  block::destroy();
 }
 
 // Sets the properties of this object
@@ -791,6 +795,9 @@ void module::init(const std::vector<port>& in, derivInfo* deriv) {
 
 module::~module() { if(!destroyed) destroy(); }
 
+// Contains the code to destroy this object. This method is called to clean up application state due to an
+// abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
+// that implement destroy should call the destroy method of their parent object.
 void module::destroy()
 {
 /*  destroy();
@@ -1025,6 +1032,15 @@ compModularApp::compModularApp(const std::string& appName, const attrOp& onoffOp
   modularApp(appName, onoffOp, cMeas.getNamedMeasures(), props), measComp(cMeas.getComparators())
 {}
 
+compModularApp::~compModularApp() { if(!destroyed) destroy(); }
+
+// Contains the code to destroy this object. This method is called to clean up application state due to an
+// abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
+// that implement destroy should call the destroy method of their parent object.
+void compModularApp::destroy()
+{
+  modularApp::destroy();
+}
 
 /**********************
  ***** compModule *****
@@ -1239,7 +1255,9 @@ void springModularApp::init() {
     data = NULL;
 }
 
-springModularApp::~springModularApp() {
+springModularApp::~springModularApp() { if(!destroyed) destroy(); }
+
+void springModularApp::destroy() {
   if(props->active && bufSize>sizeof(long long)) {
     int ret = pthread_cancel(interfThread);
     if(ret!=0) { cerr << "ERROR: return code from pthread_cancel() is "<<ret<<", thread %d\n"; assert(0); }
@@ -1250,6 +1268,8 @@ springModularApp::~springModularApp() {
    
     delete data;
   }
+
+  compModularApp::destroy();
 }
 
 /************************
@@ -1306,6 +1326,12 @@ context springModule::extendOptions(const context& options) {
     return extendedO;
   } else
     return options;
+}
+
+springModule::~springModule() { if(!destroyed) destroy(); }
+
+void springModule::destroy() {
+  compModule::destroy();
 }
 
 // Returns the context attributes to be used in this module's measurements by combining the context provided by the classes
@@ -1370,13 +1396,16 @@ void processedModule::init(derivInfo* deriv) {
   isDerived = deriv!=NULL; // This is an instance of an object that derives from module if its constructor sets deriv to non-NULL
 }
 
-processedModule::~processedModule() {
+processedModule::~processedModule() { if(!destroyed) destroy(); }
+
+void processedModule::destroy() {
   // If this is an instance of processedModule rather than a class that derives from processedModule
   if(props->active) {
     // Register a traceStream for this processedModule's module group, if one has not already been registered
     if(!modularApp::isTraceStreamRegistered(g))
       modularApp::registerTraceStream(g, new processedModuleTraceStream(moduleID, this, trace::lines, trace::disjMerge, modularApp::getTraceStreamID(g)));
   }
+  module::destroy();
 }
 
 // Returns the context attributes to be used in this module's measurements by combining the context provided by the classes
@@ -1405,6 +1434,12 @@ properties* moduleTraceStream::setProperties(int moduleID, module* m, vizT viz, 
   }
   
   return props;
+}
+
+moduleTraceStream::~moduleTraceStream() { if(!destroyed) destroy(); }
+
+void moduleTraceStream::destroy() {
+  traceStream::destroy();
 }
 
 /*********************************
@@ -1490,6 +1525,13 @@ properties* compModuleTraceStream::setProperties(int moduleID,
   return props;
 }
 
+compModuleTraceStream::~compModuleTraceStream() { if(!destroyed) destroy(); }
+
+void compModuleTraceStream::destroy() {
+  moduleTraceStream::destroy();
+}
+
+
 /**************************************
  ***** processedModuleTraceStream *****
  **************************************/
@@ -1518,6 +1560,13 @@ properties* processedModuleTraceStream::setProperties(int moduleID,
   
   return props;
 }
+
+processedModuleTraceStream::~processedModuleTraceStream() { if(!destroyed) destroy(); }
+
+void processedModuleTraceStream::destroy() {
+  moduleTraceStream::destroy();
+}
+
 
 /******************************************
  ***** ModuleMergeHandlerInstantiator *****

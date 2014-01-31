@@ -69,6 +69,11 @@ class graph: public structure::block
   
   public:
   ~graph();
+
+  // Contains the code to destroy this object. This method is called to clean up application state due to an
+  // abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
+  // that implement destroy should call the destroy method of their parent object.
+  virtual void destroy();
   
   // Given a reference to an object that can be represented as a dot graph,  create an image from it and add it to the output.
   // Return the path of the image.

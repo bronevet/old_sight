@@ -239,20 +239,19 @@ class sightObj {
 
   private:
   // The stack of sightObjs that are currently in scope
-  static std::list<sightObj*> soStack;
+  //static std::list<sightObj*> soStack;
   public:
   
   sightObj();
   // isTag - if true, we emit a single enter/exit tag combo in the constructor and nothing in the destructor
   sightObj(properties* props, bool isTag=false);
+  void init(properties* props, bool isTag=false);
   ~sightObj();
 
-  virtual void destroy();
-  
   // Contains the code to destroy this object. This method is called to clean up application state due to an
   // abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
   // that implement destroy should call the destroy method of their parent object.
-  //virtual void destroy();
+  virtual void destroy();
   
   private:
   // The of clocks currently being used, mapping the name of each clock class to the set of active 
@@ -262,8 +261,8 @@ class sightObj {
   public:
   const properties& getProps() const { return *props; }
 
-  // Deallocates all the currently live sightObjs on the stack
-  static void deallocAll();
+  // Destroys all the currently live sightObjs on the stack
+  static void destroyAll();
     
   // Returns whether this object is active or not
   bool isActive() const;
@@ -802,6 +801,10 @@ class block : public sightObj
   static properties* setProperties(std::string label, std::set<anchor>& pointsTo, properties* props);
  
   ~block();
+  // Contains the code to destroy this object. This method is called to clean up application state due to an
+  // abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
+  // that implement destroy should call the destroy method of their parent object.
+  virtual void destroy();
   
   // Increments blockID. This function serves as the one location that we can use to target conditional
   // breakpoints that aim to stop when the block count is a specific number
@@ -963,7 +966,12 @@ public:
   dbgStream(properties* props, std::string title, std::string workDir, std::string imgDir, std::string tmpDir);
   void init(properties* props, std::string title, std::string workDir, std::string imgDir, std::string tmpDir);
   ~dbgStream();
-  
+
+  // Contains the code to destroy this object. This method is called to clean up application state due to an
+  // abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
+  // that implement destroy should call the destroy method of their parent object.
+  virtual void destroy();
+ 
   // Switch between the owner class and user code writing text into this stream
   void userAccessing();
   void ownerAccessing();
@@ -1116,6 +1124,11 @@ class indent : public sightObj
   static properties* setProperties(std::string prefix, int repeatCnt, const structure::attrOp* onoffOp, properties* props);
     
   ~indent();
+
+  // Contains the code to destroy this object. This method is called to clean up application state due to an
+  // abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
+  // that implement destroy should call the destroy method of their parent object.
+  virtual void destroy();
 }; // indent
 
 class IndentMerger : public Merger {

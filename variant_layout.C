@@ -57,12 +57,11 @@ variant::variant(properties::iterator props) :
   dbg.userAccessing();  
 }
 
-variant::~variant() {
+variant::~variant() { 
   // Close this scope
   dbg.ownerAccessing();
   dbg << "</td></tr></table>"<<endl;
   dbg.userAccessing();  
-  
 }
 
 }; // namespace layout
