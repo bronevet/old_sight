@@ -6,17 +6,16 @@ SIGHT_LAYOUT_O := sight_layout.o attributes/attributes_layout.o slayout.o varian
 SIGHT_LAYOUT_H := sight.h sight_layout_internal.h attributes/attributes_layout.h variant_layout.h
 sight := ${sight_O} ${sight_H} gdbLineNum.pl sightDefines.pl
 
-SIGHT_CFLAGS = -g -I${ROOT_PATH} -I${ROOT_PATH}/attributes -I${ROOT_PATH}/widgets/* -I${ROOT_PATH}/tools/callpath/src -I${ROOT_PATH}/tools/adept-utils/include -I${ROOT_PATH}/widgets/papi/include
+SIGHT_CFLAGS = -g -fPIC -I${ROOT_PATH} -I${ROOT_PATH}/attributes -I${ROOT_PATH}/widgets/* -I${ROOT_PATH}/tools/callpath/src -I${ROOT_PATH}/tools/adept-utils/include -I${ROOT_PATH}/widgets/papi/include
 SIGHT_LINKFLAGS = ${ROOT_PATH}/tools/adept-utils/lib/libadept_cutils.so \
                   ${ROOT_PATH}/tools/adept-utils/lib/libadept_timing.so \
 	                ${ROOT_PATH}/tools/adept-utils/lib/libadept_utils.so \
 	                -Wl,-rpath ${ROOT_PATH}/tools/adept-utils/lib \
 	                ${ROOT_PATH}/tools/callpath/src/src/libcallpath.so \
 	                -Wl,-rpath ${ROOT_PATH}/tools/callpath/src/src \
-	                ${ROOT_PATH}/widgets/papi/lib/libpapi.a \
+                  ${ROOT_PATH}/widgets/papi/lib/libpapi.so \
+                  -Wl,-rpath ${ROOT_PATH}/widgets/papi/lib \
 	          -lpthread
-	                
-	                #-Wl,-rpath ${ROOT_PATH}/widgets/papi/lib \
 
 CC = gcc #clang #gcc
 CCC = g++ #clang++ #g++
@@ -68,8 +67,8 @@ VNC_ENABLED := 0
 endif
 
 # Set to "!" if we wish to enable examples that use MPI
-MPI_ENABLED = 0
-#MPI_ENABLED = 1
+#MPI_ENABLED = 0
+MPI_ENABLED = 1
 
 DEFINES = ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} VNC_ENABLED=${VNC_ENABLED} MPI_ENABLED=${MPI_ENABLED} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" CC=${CC} CCC=${CCC}
 
@@ -125,8 +124,10 @@ runApps: libsight_structure.a slayout${EXE} hier_merge${EXE} apps runMFEM runCoM
 slayout.o: slayout.C process.C process.h
 	${CCC} ${SIGHT_CFLAGS} slayout.C -I. -c -o slayout.o
 
-slayout${EXE}: mfem libsight_layout.a 
-	${CCC} -Wl,--whole-archive libsight_layout.a apps/mfem/mfem_layout.o -Wl,-no-whole-archive -o slayout${EXE}
+slayout${EXE}: mfem libsight_layout.so
+	${CCC} libsight_layout.so -Wl,-rpath ${ROOT_PATH} apps/mfem/mfem_layout.o -o slayout${EXE}
+#slayout${EXE}: mfem libsight_layout.a
+#	${CCC} -Wl,--whole-archive libsight_layout.a apps/mfem/mfem_layout.o -Wl,-no-whole-archive -o slayout${EXE}
 #	ld --whole-archive slayout.o libsight_layout.a apps/mfem/mfem_layout.o -o slayout${EXE}
 #	${CCC} ${SIGHT_CFLAGS} slayout.C -Wl,--whole-archive libsight_layout.a -DMFEM -I. -Iapps/mfem apps/mfem/mfem_layout.o -Wl,-no-whole-archive -o slayout${EXE}
 
@@ -140,7 +141,10 @@ libsight_common.a: ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre
 libsight_structure.a: ${SIGHT_STRUCTURE_O} ${SIGHT_STRUCTURE_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre
 	ar -r libsight_structure.a ${SIGHT_STRUCTURE_O} ${SIGHT_COMMON_O} widgets/*/*_structure.o widgets/*/*_common.o
 
-libsight_layout.a: ${SIGHT_LAYOUT_O} ${SIGHT_LAYOUT_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre widgets/gsl/lib/libgsl.a widgets/gsl/lib/libgslcblas.a
+libsight_layout.so: ${SIGHT_LAYOUT_O} ${SIGHT_LAYOUT_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre widgets/gsl/lib/libgsl.a widgets/gsl/lib/libgslcblas.a
+	${CC} -shared -Wl,-soname,libsight_layout.so -o libsight_layout.so ${SIGHT_LAYOUT_O} ${SIGHT_COMMON_O} widgets/*/*_layout.o widgets/*/*_common.o widgets/gsl/lib/libgsl.so widgets/gsl/lib/libgslcblas.so
+
+libsight_layout.a: ${SIGHT_LAYOUT_O} ${SIGHT_LAYOUT_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre widgets/gsl/lib/libgsl.so widgets/gsl/lib/libgslcblas.so
 	mkdir -p tmp
 	cd tmp; ar -x ../widgets/gsl/lib/libgsl.a; ar -x ../widgets/gsl/lib/libgslcblas.a
 	ar -r libsight_layout.a    ${SIGHT_LAYOUT_O}    ${SIGHT_COMMON_O} widgets/*/*_layout.o widgets/*/*_common.o tmp/*.o
@@ -212,7 +216,7 @@ clean:
 	rm slayout hier_merge
 
 clean_objects:
-	rm -f *.a *.o widgets/*.o widgets/*/*.o
+	rm -f *.a *.o attributes/*.o widgets/*.o widgets/*/*.o
 
 script/taffydb:
 	#cd script; wget --no-check-certificate https://github.com/typicaljoe/taffydb/archive/master.zip
