@@ -1,0 +1,38 @@
+#!/usr/bin/python
+
+import os
+curDir = os.path.dirname(os.path.realpath(__file__));
+
+f = open('Makefile.extern', 'w')
+
+f.write("ROOT_PATH = "+curDir+"\n");
+
+f.write("""SIGHT_CFLAGS = -I${ROOT_PATH} \\
+               -I${ROOT_PATH}/tools/callpath/src -I${ROOT_PATH}/tools/adept-utils/include \\
+               -I${ROOT_PATH}/widgets/papi/include\n""");
+
+f.write("""SIGHT_LINKFLAGS_NORPATH = -L${ROOT_PATH} -lsight_structure \\
+                  -L${ROOT_PATH}/tools/adept-utils/lib -ladept_cutils -ladept_timing -ladept_utils \\
+                  -L${ROOT_PATH}/tools/callpath/src/src -lcallpath \\
+                  -L${ROOT_PATH}/widgets/papi/lib -lpapi \\
+                  -lpthread\n""");
+
+f.write("""SIGHT_LINKFLAGS = -L${ROOT_PATH} -lsight_structure \\
+                  -L${ROOT_PATH}/tools/adept-utils/lib -ladept_cutils -ladept_timing -ladept_utils \\
+                  -Wl,-rpath ${ROOT_PATH}/tools/adept-utils/lib \\
+                  -L${ROOT_PATH}/tools/callpath/src/src -lcallpath \\
+                  -Wl,-rpath ${ROOT_PATH}/tools/callpath/src/src \\
+                  -L${ROOT_PATH}/widgets/papi/lib -lpapi \\
+                  -Wl,-rpath ${ROOT_PATH}/widgets/papi/lib \\
+                  -lpthread\n""");
+
+#SIGHT_LINKFLAGS = -L${ROOT_PATH} -lsight_structure \
+#                  ${ROOT_PATH}/tools/adept-utils/lib/libadept_cutils.so \
+#                  ${ROOT_PATH}/tools/adept-utils/lib/libadept_timing.so \
+#                  ${ROOT_PATH}/tools/adept-utils/lib/libadept_utils.so \
+#                  -Wl,-rpath ${ROOT_PATH}/tools/adept-utils/lib \
+#                  ${ROOT_PATH}/tools/callpath/src/src/libcallpath.so \
+#                  -Wl,-rpath ${ROOT_PATH}/tools/callpath/src/src \
+#                  ${ROOT_PATH}/widgets/papi/lib/libpapi.a \
+#                 -lpthread 
+                 

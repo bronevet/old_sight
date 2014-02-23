@@ -1,0 +1,99 @@
+
+OBJS = \
+	BoxPartition.o \
+	YAML_Doc.o \
+	YAML_Element.o
+
+UTIL_OBJS = \
+	param_utils.o \
+	utils.o \
+	mytimer.o
+
+MAIN_OBJ = \
+	main.o
+
+OBJS_ELL_BC = \
+	BoxPartition.ell.bc \
+	YAML_Doc.ell.bc \
+	YAML_Element.ell.bc
+
+UTIL_OBJS_ELL_BC = \
+	param_utils.ell.bc \
+	utils.ell.bc \
+	mytimer.ell.bc
+
+MAIN_OBJ_ELL_BC = \
+	main.ell.bc
+
+OBJS_CSR_BC = \
+	BoxPartition.csr.bc \
+	YAML_Doc.csr.bc \
+	YAML_Element.csr.bc
+
+UTIL_OBJS_CSR_BC = \
+	param_utils.csr.bc \
+	utils.csr.bc \
+	mytimer.csr.bc
+
+MAIN_OBJ_CSR_BC = \
+	main.csr.bc
+
+
+MINIFE_INFO = 1
+MINIFE_KERNELS = 0
+
+vpath %.cpp ../utils
+
+all:common_files generate_info miniFE.CSR # miniFE.x miniFE.y miniFE.ELL 
+
+miniFE.ELL:common_files $(MAIN_OBJ_ELL_BC) $(OBJS_ELL_BC) $(UTIL_OBJS_ELL_BC) $(OPTIONAL_OBJS_ELL_BC) *.hpp $(EXTERN_OBJ) generate_info
+	llvm-link $(EXTERN_OBJ) $(MAIN_OBJ_ELL_BC) $(OBJS_ELL_BC) $(UTIL_OBJS_ELL_BC) $(OPTIONAL_OBJS_ELL_BC) -o Final.ell.bc
+	opt -load ${LLVM_INSTALL}/lib/faults.so -dynfault -ef 1 -tf 14285714 -de 1 -pe 1 -ijo 1 < Final.ell.bc > Final.fi.ell.bc
+	llc Final.fi.ell.bc -o Final.fi.ell.mc
+	mpig++ -xassembler Final.fi.ell.mc -c -o Final.fi.ell.o
+	mpig++ Final.fi.ell.o -o miniFE.ELL -lm ${LDFLAGS}
+
+miniFE.CSR:common_files $(MAIN_OBJ_CSR_BC) $(OBJS_CSR_BC) $(UTIL_OBJS_CSR_BC) $(OPTIONAL_OBJS_CSR_BC) *.hpp $(EXTERN_OBJ) generate_info
+	llvm-link $(EXTERN_OBJ) $(MAIN_OBJ_CSR_BC) $(OBJS_CSR_BC) $(UTIL_OBJS_CSR_BC) $(OPTIONAL_OBJS_CSR_BC) -o Final.csr.bc
+	opt -load ${LLVM_INSTALL}/lib/faults.so -dynfault -ef 1 -tf 14285714 -de 1 -pe 1 -ijo 1 < Final.csr.bc > Final.fi.csr.bc
+#	cp Final.csr.bc Final.fi.csr.bc
+	llc Final.fi.csr.bc -o Final.fi.csr.mc
+	mpig++ -xassembler Final.fi.csr.mc -c -o Final.fi.csr.o
+	mpig++ Final.fi.csr.o -o miniFE.CSR -lm ${LDFLAGS}
+
+#	$(INSTRUMENT) $(CXX) $(CXXFLAGS) $(CPPFLAGS) $(MAIN_OBJ) $(OBJS) $(UTIL_OBJS) $(OPTIONAL_OBJS) -o miniFE.x $(LDFLAGS) $(OPTIONAL_LIBS) $(LIBS)
+
+common_files:
+	./get_common_files
+
+generate_info:
+	./generate_info_header "$(CXX)" "$(CXXFLAGS)" "miniFE" "MINIFE"
+
+test:all
+	./run_test
+
+%.o:%.cpp *.hpp
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -DMINIFE_INFO=$(MINIFE_INFO) -DMINIFE_KERNELS=$(MINIFE_KERNELS) -c $< -o $@
+
+%.ell.bc:%.cpp *.hpp
+	$(CXX) -emit-llvm $(CXXFLAGS) $(CPPFLAGS) -DMINIFE_INFO=$(MINIFE_INFO) -DMINIFE_ELL_MATRIX -DMINIFE_KERNELS=$(MINIFE_KERNELS) -c $< -o $@
+
+%.csr.bc:%.cpp *.hpp
+	$(CXX) -emit-llvm $(CXXFLAGS) $(CPPFLAGS) -DMINIFE_INFO=$(MINIFE_INFO) -DMINIFE_KERNELS=$(MINIFE_KERNELS) -c $< -o $@
+
+%.o:%.c *.h
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
+
+%.ell.bc:%.c *.h
+	$(CC) -emit-llvm $(CFLAGS) $(CPPFLAGS) -DMINIFE_ELL_MATRIX -c $< -o $@
+
+%.csr.bc:%.c *.h
+	$(CC) -emit-llvm $(CFLAGS) $(CPPFLAGS) -c $< -o $@
+
+
+clean:
+	rm -f *.o *.a *.x *.linkinfo miniFE_info.hpp
+
+realclean: clean
+	rm -f gmon.out gprof.* *~ *.yaml *.TVD.* *.mtx* *.vec* minife_debug*
+
