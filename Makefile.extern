@@ -33,6 +33,7 @@ SIGHT_LAYOUT_STATIC_LINKFLAGS = \
 SIGHT_LAYOUT_DYNAMIC_LINKFLAGS = \
                   -Wl,-rpath ${ROOT_PATH} \
                   ${ROOT_PATH}/libsight_layout.so \
+                  -Wl,-rpath ${ROOT_PATH}/widgets/gsl/lib -L${ROOT_PATH}/widgets/gsl/lib -lgsl -lgslcblas \
                   ${ROOT_PATH}/tools/adept-utils/lib/libadept_cutils.so \
                   ${ROOT_PATH}/tools/adept-utils/lib/libadept_timing.so \
                   ${ROOT_PATH}/tools/adept-utils/lib/libadept_utils.so \
