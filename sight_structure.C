@@ -1838,6 +1838,8 @@ string dbgStream::enterStr(const properties& props) {
 //void dbgStream::exit(std::string name) {
 void dbgStream::exit(sightObj* obj) {
   ownerAccessing();
+/*cout << "props="<<obj->props->str()<<endl;
+cout << exitStr(*(obj->props)) << endl;*/
   *this << exitStr(*(obj->props));
   userAccessing();
 }

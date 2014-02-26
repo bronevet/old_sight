@@ -141,8 +141,8 @@ libsight_common.a: ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre
 libsight_structure.a: ${SIGHT_STRUCTURE_O} ${SIGHT_STRUCTURE_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre
 	ar -r libsight_structure.a ${SIGHT_STRUCTURE_O} ${SIGHT_COMMON_O} widgets/*/*_structure.o widgets/*/*_common.o
 
-libsight_layout.so: ${SIGHT_LAYOUT_O} ${SIGHT_LAYOUT_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre widgets/gsl/lib/libgsl.a widgets/gsl/lib/libgslcblas.a
-	${CC} -shared -Wl,-soname,libsight_layout.so -o libsight_layout.so ${SIGHT_LAYOUT_O} ${SIGHT_COMMON_O} widgets/*/*_layout.o widgets/*/*_common.o widgets/gsl/lib/libgsl.so widgets/gsl/lib/libgslcblas.so
+libsight_layout.so: ${SIGHT_LAYOUT_O} ${SIGHT_LAYOUT_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre widgets/gsl/lib/libgsl.so widgets/gsl/lib/libgslcblas.so
+	${CC} -shared -Wl,-soname,libsight_layout.so -o libsight_layout.so ${SIGHT_LAYOUT_O} ${SIGHT_COMMON_O} widgets/*/*_layout.o widgets/*/*_common.o -Wl,-rpath widgets/gsl/lib -Wl,--whole-archive widgets/gsl/lib/libgsl.so widgets/gsl/lib/libgslcblas.so -Wl,--no-whole-archive
 
 libsight_layout.a: ${SIGHT_LAYOUT_O} ${SIGHT_LAYOUT_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre widgets/gsl/lib/libgsl.so widgets/gsl/lib/libgslcblas.so
 	mkdir -p tmp
