@@ -1,0 +1,49 @@
+These are instructions for V. 0.01 GA 
+
+Program Description:
+Written in C (C99 std)
+This program takes two files.  One for program information and one for data.
+The program uses linear regression and GA to search the space of possible functions.
+
+Program Depends:
+GNU GSL
+
+Defs.
+{Parms} are the inputs that that the linear models may depend upon.
+{GA} is a genetic algorithm.
+{Linked Parms} are inputs that must change together.  Consider that 1 and 2 are linked.  
+If 1 is in the model than 2 has to be in the model.  
+{Function/Transformation} transformation and functions applied to Parms.
+
+Current Limitation and Changes:
+1.  Cross products need to be added.
+2.  Compound functions.
+3.  More weight functions.
+4.  Rearrange GA functions.
+5.  Add second level search from C++ files.
+
+Input: File = gen.in
+N #    //number of data lines
+p #    //number of parameters 
+L #1  #2 #3 ... #k    //#1 number of linked paramaters, #2.... #k are the number of Parms in each link
+l #1  #2 #3 ... #t    //#1 is the identification of the link, #2 .... #t are the links in link #1
+F #1 #2 #3     //Function assignment.  #1 Parm to have function applied to.  #2 Which function.  #3 value used by function (eg. Pow 2 x^2)
+                // Note: all linked Parm will be updated if function is applied to one of the link's parm
+GAT #1  //Maximum number of GA runs
+GAS #1  //Number of sets to consider in GA
+GARS #1 //Random seed for GA
+GAFIT #1 //Select which fitness function (currently only one)
+GAMAT #1 //Select which type of mate (currently only supporting random pair)
+GAMUT #1 //Mutation.  Prob to be mated.
+
+Input: File = data.data (File with N lines and n+1 values on each line)
+y1 x1 x2 x3 .... xn
+...
+yN
+
+Functions Currently Supports
+0 - nothing (always on by default)
+1 - pow (function takes in an int to know the power)
+2 - exp (function takes in an int to multiple pre exp)
+3 - inv 
+
