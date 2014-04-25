@@ -52,7 +52,7 @@ map<string, string> module::context::getProperties(std::string prefix) const {
 // Returns a human-readable string that describes this context
 std::string module::context::str() const {
   ostringstream s;
-  s << "[context :"<<endl;
+  s << "[context :";
   for(map<string, attrValue>::const_iterator c=configuration.begin(); c!=configuration.end(); c++) {
     if(c!=configuration.begin()) s << " ";
     s << "("<<c->first<<": "<<c->second.getAsStr()<<")";
@@ -84,10 +84,13 @@ void module::decodeCtxtName(const std::string& encoded,
   assert(fields.size()>=2);
   moduleClass  = fields[0];
   ctxtGrouping = fields[1];
-  if(fields.size()>=4) ctxtSubGrouping = fields[2];
+  if(fields.size()>=3) ctxtSubGrouping = fields[2];
   else                 ctxtSubGrouping = "";
   if(fields.size()>=4) attrName = fields[3];
   else                 attrName = "";
+  // Remove any trailing line breaks
+  if(attrName[attrName.length()-1] == '\n') attrName.erase(attrName.length()-1);
+  if(attrName[attrName.length()-1] == '\r') attrName.erase(attrName.length()-1);
 }
 
 }; // namespace common

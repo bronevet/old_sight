@@ -72,7 +72,12 @@ bool attrRange::applyFloat(double& that) const {
 
 /************************
  ***** attrSubQuery *****
- ************************/ 
+ ************************/
+
+attrSubQuery::attrSubQuery(attrOp* op) : sightObj(NULL), op(op) {}
+
+attrSubQuery::~attrSubQuery() { delete op; }
+
 bool attrSubQuery::query() { 
   if(!common::isEnabled()) return false;
   return query(attributes);
@@ -95,6 +100,8 @@ bool attrSubQueryOr::query(const attributesC& attr) {
   return op->apply() ||
          (pred ? pred->query(attr) : true);
 }
+
+attrSubQueryIf::attrSubQueryIf(attrOp* op) : attrSubQuery(op) {}
 
 bool attrSubQueryIf::query(const attributesC& attr) {
   if(!common::isEnabled()) return false;
@@ -154,13 +161,14 @@ bool attrQuery::query(const attributesC& attr) {
 // ***** Attribute Database *****
 // ******************************
 
-attributesC::attributesC() {
+attributesC::attributesC() : sightObj(NULL) {
   // Queries on an empty attributes object evaluate to true by default (by default we emit debug output)
   lastQRet = true;
   qCurrent = true;
 }
 
 attributesC::~attributesC() {
+//  cout << "attributesC::~attributesC("<<endl;
 }
 
 // Adds the given value to the mapping of the given key without removing the key's prior mapping.
@@ -263,12 +271,19 @@ properties* attr::setProperties(std::string key, T val, properties* props) {
   return props;
 }
 
-attr::~attr() { if(!destroyed) destroy(); }
-
-// Contains the code to destroy this object. This method is called to clean up application state due to an
-// abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
-// that implement destroy should call the destroy method of their parent object.
+// Directly calls the destructor of this object. This is necessary because when an application crashes
+// Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+// there is no way to directly call the destructor of a given object when it may have several levels
+// of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+// it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+// an object will invoke the destroy() method of the most-derived class.
 void attr::destroy() {
+  this->~attr();
+}
+
+attr::~attr() {
+  assert(!destroyed);
+
 //cout << "attr::~attr("<<key<<", "<<val.str()<<"), keyPreviouslySet="<<keyPreviouslySet<<"\n"; cout.flush();
   // If this mapping replaced some prior mapping, return key to its original state
   if(keyPreviouslySet)
@@ -276,8 +291,6 @@ void attr::destroy() {
   // Otherwise, just remove the entire mapping
   else
     attributes.remove(key);
-    
-  sightObj::destroy();
 }
 // Returns the key of this attribute
 string attr::getKey() const
@@ -355,6 +368,19 @@ extern "C" {
 void* attrOr_enter(attrOp *op) { return new attrOr(op); }
 void attrOr_exit(void* subQ) { delete (attrOr*)subQ; }
 }
+
+attrIf::attrIf(attrOp* op) : attrSubQueryIf(op)
+{ attributes.push(this); }
+attrIf::~attrIf() { attributes.pop(); }
+
+// Directly calls the destructor of this object. This is necessary because when an application crashes
+// Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since
+// there is no way to directly call the destructor of a given object when it may have several levels
+// of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+// it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on
+// an object will invoke the destroy() method of the most-derived class.
+void attrIf::destroy() { this->~attrIf(); }
+
 
 // C interface
 extern "C" {
@@ -436,14 +462,14 @@ AttributeMerger::AttributeMerger(std::vector<std::pair<properties::tagType, prop
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
 void AttributeMerger::mergeKey(properties::tagType type, properties::iterator tag, 
-                               std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
-  Merger::mergeKey(type, tag.next(), inStreamRecords, key);
+                               std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+  Merger::mergeKey(type, tag.next(), inStreamRecords, info);
   
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
     // Attributes must have identical key names and value types to be mergeable
-    key.push_back(properties::get(tag, "key"));
-    key.push_back(txt()<<attrValue::getType(properties::get(tag, "val")));
+    info.add(properties::get(tag, "key"));
+    info.add(txt()<<attrValue::getType(properties::get(tag, "val")));
     //key.push_back(properties::get(tag, "type"));
   }
 }

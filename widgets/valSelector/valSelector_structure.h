@@ -34,11 +34,13 @@ class valSelector: public sightObj
 
   ~valSelector();
   
-  // Contains the code to destroy this object. This method is called to clean up application state due to an
-  // abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
-  // that implement destroy should call the destroy method of their parent object.
+  // Directly calls the destructor of this object. This is necessary because when an application crashes
+  // Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+  // there is no way to directly call the destructor of a given object when it may have several levels
+  // of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+  // it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+  // an object will invoke the destroy() method of the most-derived class.
   virtual void destroy();
-
   
   int getID() const;
   
@@ -74,9 +76,12 @@ class colorSelector : public valSelector {
 
   ~colorSelector();
  
-  // Contains the code to destroy this object. This method is called to clean up application state due to an
-  // abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
-  // that implement destroy should call the destroy method of their parent object.
+  // Directly calls the destructor of this object. This is necessary because when an application crashes
+  // Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+  // there is no way to directly call the destructor of a given object when it may have several levels
+  // of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+  // it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+  // an object will invoke the destroy() method of the most-derived class.
   virtual void destroy();
  
   // Returns a string that contains a call to a JavaScipt function that at log view time will return a value
@@ -184,7 +189,7 @@ class ColorSelectorMerger : public Merger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key);
+                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
 }; // class ColorSelectorMerger
 
 // Merger for tags textColor, bgColor, borderColor
@@ -212,7 +217,7 @@ class ColorMerger : public Merger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key);
+                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
 }; // class ColorMerger
 
 

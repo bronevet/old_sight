@@ -324,7 +324,7 @@ class attrRange : public attrOp
 // predecessor in the list.
 class attrQuery;
 
-class attrSubQuery
+class attrSubQuery: public sightObj
 {
   protected:
   // The operation that will be performed on the value associated with the key
@@ -336,8 +336,8 @@ class attrSubQuery
   friend class attrQuery;
   
   public:
-  attrSubQuery(attrOp* op) : op(op) {}
-  ~attrSubQuery() { delete op; }
+  attrSubQuery(attrOp* op);
+  ~attrSubQuery();
   
   // Performs the query on either the given attributes object or the one defined globally
   virtual bool query(const attributesC& attr)=0;
@@ -366,7 +366,7 @@ class attrSubQueryAnd : public attrSubQuery
 {
   public:
   attrSubQueryAnd(attrOp* op) : attrSubQuery(op) {}
-    
+  
   // Applies the operator to the values at the given key. The && ensures that if the operator returns true,
   // the query is propagated to the previous attrSubQuery object. If the previous object is NULL, returns true.
   bool query(const attributesC& attr);
@@ -385,7 +385,7 @@ class attrSubQueryOr : public attrSubQuery
 class attrSubQueryIf : public attrSubQuery
 {
   public:
-  attrSubQueryIf(attrOp* op) : attrSubQuery(op) {}
+  attrSubQueryIf(attrOp* op);
   
   // Applies the operator to the values at the given key, returning its result. This object never propagates
   // queries to its predecessors.
@@ -415,11 +415,19 @@ class attrSubQueryFalse : public attrSubQuery
 // ******************************
 
 // Maintains the mapping from atribute keys to values
-class attributesC : public common::attributesC
+class attributesC : public common::attributesC, public sightObj
 {
   public:
   attributesC();
   ~attributesC();
+  
+  // Directly calls the destructor of this object. This is necessary because when an application crashes
+  // Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+  // there is no way to directly call the destructor of a given object when it may have several levels
+  // of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+  // it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+  // an object will invoke the destroy() method of the most-derived class.
+  virtual void destroy() { this->~attributesC(); }
   
   // Adds the given value to the mapping of the given key without removing the key's prior mapping.
   // Returns true if the attributes map changes as a result and false otherwise.
@@ -499,9 +507,12 @@ class attr : public sightObj
   
   ~attr();
 
-  // Contains the code to destroy this object. This method is called to clean up application state due to an
-  // abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
-  // that implement destroy should call the destroy method of their parent object.
+  // Directly calls the destructor of this object. This is necessary because when an application crashes
+  // Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+  // there is no way to directly call the destructor of a given object when it may have several levels
+  // of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+  // it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+  // an object will invoke the destroy() method of the most-derived class.
   virtual void destroy();
   
   // Returns the key of this attribute
@@ -567,6 +578,14 @@ class attrAnd: public attrSubQueryAnd {
   attrAnd(attrOp* op) : attrSubQueryAnd(op)
   { attributes.push(this); }
   ~attrAnd() { attributes.pop(); }
+  
+  // Directly calls the destructor of this object. This is necessary because when an application crashes
+  // Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+  // there is no way to directly call the destructor of a given object when it may have several levels
+  // of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+  // it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+  // an object will invoke the destroy() method of the most-derived class.
+  virtual void destroy() { this->~attrAnd(); }
 };
 
 // C interface
@@ -580,6 +599,14 @@ class attrOr: public attrSubQueryOr {
   attrOr(attrOp* op) : attrSubQueryOr(op)
   { attributes.push(this); }
   ~attrOr() { attributes.pop(); }
+  
+  // Directly calls the destructor of this object. This is necessary because when an application crashes
+  // Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+  // there is no way to directly call the destructor of a given object when it may have several levels
+  // of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+  // it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+  // an object will invoke the destroy() method of the most-derived class.
+  virtual void destroy() { this->~attrOr(); }
 };
 
 // C interface
@@ -590,9 +617,16 @@ void attrOr_exit(void* subQ);
 
 class attrIf: public attrSubQueryIf {
   public:
-  attrIf(attrOp* op) : attrSubQueryIf(op)
-  { attributes.push(this); }
-  ~attrIf() { attributes.pop(); }
+  attrIf(attrOp* op);
+  ~attrIf();
+  
+  // Directly calls the destructor of this object. This is necessary because when an application crashes
+  // Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+  // there is no way to directly call the destructor of a given object when it may have several levels
+  // of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+  // it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+  // an object will invoke the destroy() method of the most-derived class.
+  virtual void destroy();
 };
 
 // C interface
@@ -653,7 +687,7 @@ class AttributeMerger : public Merger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key);
+                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
 }; // class AttributeMerger
 
   

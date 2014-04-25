@@ -100,15 +100,21 @@ properties* scope::setProperties(scopeLevel level, const attrOp* onoffOp, proper
   else
     active = false;
 }*/
-scope::~scope() { if(!destroyed) destroy(); }
 
-// Contains the code to destroy this object. This method is called to clean up application state due to an
-// abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
-// that implement destroy should call the destroy method of their parent object.
-void scope::destroy()
-{
-  block::destroy();
+// Directly calls the destructor of this object. This is necessary because when an application crashes
+// Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+// there is no way to directly call the destructor of a given object when it may have several levels
+// of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+// it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+// an object will invoke the destroy() method of the most-derived class.
+void scope::destroy() {
+  this->~scope();
 }
+
+scope::~scope() {
+  assert(!destroyed);
+}
+
 
 /*********************************************
  ***** ScopeMergeHandlerInstantiator *****
@@ -167,8 +173,8 @@ properties* ScopeMerger::setProperties(std::vector<std::pair<properties::tagType
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info,
 void ScopeMerger::mergeKey(properties::tagType type, properties::iterator tag, 
-                           std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
-  BlockMerger::mergeKey(type, tag.next(), inStreamRecords, key);
+                           std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+  BlockMerger::mergeKey(type, tag.next(), inStreamRecords, info);
 }
 
 }; // namespace structure

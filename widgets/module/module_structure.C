@@ -99,9 +99,11 @@ int group::depth() const {
 std::string group::str() const {
   ostringstream s;
   
-  s << "[group: "<<endl;
-  for(list<instance>::const_iterator i=stack.begin(); i!=stack.end(); i++)
-    s << "    "<<i->str()<<endl;
+  s << "[group: ";
+  for(list<instance>::const_iterator i=stack.begin(); i!=stack.end(); i++) {
+    if(i!=stack.begin()) s << " ";
+    s << "    "<<i->str();
+  }
   s << "]";
   
   return s.str();
@@ -283,6 +285,12 @@ void modularApp::init() {
     for(namedMeasures::iterator m=meas.begin(); m!=meas.end(); m++)
       delete m->second;
   }
+  
+  // Emit the tag that starts the description of the modularApp's body
+  map<string, string> pMapMABody;
+  properties propsMABody;
+  propsMABody.add("modularAppBody", pMapMABody);
+  dbg.enter(propsMABody);
 }
 
 // Stack used while we're emitting the nesting hierarchy of module groups to keep each module group's 
@@ -320,12 +328,19 @@ void modularApp::exitModuleGroup(const group& g) {
   moduleProps.erase(g);
 }
 
-modularApp::~modularApp() { if(!destroyed) destroy(); }
-
-// Contains the code to destroy this object. This method is called to clean up application state due to an
-// abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
-// that implement destroy should call the destroy method of their parent object.
+// Directly calls the destructor of this object. This is necessary because when an application crashes
+// Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+// there is no way to directly call the destructor of a given object when it may have several levels
+// of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+// it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+// an object will invoke the destroy() method of the most-derived class.
 void modularApp::destroy() {
+  this->~modularApp();
+}
+
+modularApp::~modularApp() {
+  assert(!destroyed);
+  
   // Unregister this modularApp instance (there can be only one)
   assert(activeMA);
   activeMA = NULL;
@@ -338,6 +353,19 @@ void modularApp::destroy() {
     for(std::map<context, int>::iterator c=group2ID.begin(); c!=group2ID.end(); c++)
       cout << "    "<<c->first.UID()<<" ==> "<<c->second<<endl;
     */
+    
+    // Emit the tag that ends the description of the modularApp's body
+    map<string, string> pMapMABody;
+    properties propsMABody;
+    propsMABody.add("modularAppBody", pMapMABody);
+    dbg.exit(propsMABody);
+    
+    // Emit the tag that starts the description of the modularApp's structure
+    map<string, string> pMapMAStructure;
+    properties propsMAStructure;
+    propsMAStructure.add("modularAppStructure", pMapMAStructure);
+    dbg.enter(propsMAStructure);
+    
     // Delete the moduleTraces associated with each module group, forcing them to emit their respective end tags
     for(map<group, traceStream*>::iterator m=moduleTrace.begin(); m!=moduleTrace.end(); m++) {
       delete m->second;
@@ -377,6 +405,9 @@ void modularApp::destroy() {
       dbg.tag(edgeP);
     }
     
+    // Emit the exit tag that denotes the end of the description of the modularApp's structure
+    dbg.exit(propsMAStructure);
+    
     // ------------------------
     // Clean up sata structures
     // ------------------------
@@ -412,8 +443,6 @@ void modularApp::destroy() {
     assert(edges.size()==0);
     assert(meas.size()==0);
   }
-
-  block::destroy();
 }
 
 // Sets the properties of this object
@@ -497,7 +526,16 @@ void modularApp::registerInOutContexts(const group& g, const std::vector<port>& 
   } else {
     if(inouts.size() != moduleCtxtNames[g].size()) { cerr << "ERROR: Inconsistent "<<(io==sight::common::module::input?"inputs":"outputs")<<" for module "<<g.name()<<"! Prior instances has "<<moduleCtxtNames[g].size()<<" "<<(io==sight::common::module::input?"inputs":"outputs")<<" while this instance has "<<inouts.size()<<" "<<(io==sight::common::module::input?"inputs":"outputs")<<"!"<<endl; assert(0); }
     for(int i=0; i<inouts.size(); i++) {
-      if(inouts[i].ctxt->configuration.size() != moduleCtxtNames[g][i].size()) { cerr << "ERROR: Inconsistent number of context attributes for "<<(io==sight::common::module::input?"input":"output")<<" "<<i<<" of module "<<g.name()<<"! Prior instances has "<<moduleCtxtNames[g][i].size()<<" "<<(io==sight::common::module::input?"inputs":"outputs")<<" while this instance has "<<inouts[i].ctxt->configuration.size()<<" "<<(io==sight::common::module::input?"inputs":"outputs")<<"!"<<endl; assert(0); }
+      if(inouts[i].ctxt->configuration.size() != moduleCtxtNames[g][i].size()) { 
+         cerr << "ERROR: Inconsistent number of context attributes for "<<(io==sight::common::module::input?"input":"output")<<" "<<i<<" of module "<<g.name()<<"!"<<endl;
+         cerr << "Prior instances has "<<moduleCtxtNames[g][i].size()<<" "<<(io==sight::common::module::input?"inputs":"outputs")<<":"<<endl;
+         for(list<string>::const_iterator c=moduleCtxtNames[g][i].begin(); c!=moduleCtxtNames[g][i].end(); c++)
+           cerr << "    "<<*c<<endl; 
+         cerr << "This instance has "<<inouts[i].ctxt->configuration.size()<<" "<<(io==sight::common::module::input?"inputs":"outputs")<<"!"<<endl; 
+         for(map<std::string, attrValue>::const_iterator c=inouts[i].ctxt->configuration.begin(); c!=inouts[i].ctxt->configuration.end(); c++)
+           cerr << "    "<<c->first<<endl; 
+         assert(0);
+      }
       std::map<std::string, attrValue>::const_iterator c=inouts[i].ctxt->configuration.begin();
       list<std::string>::const_iterator m=moduleCtxtNames[g][i].begin();
       int idx=0;
@@ -586,7 +624,7 @@ void modularApp::registerTraceStreamID(const group& g, int traceID) {
 // Returns the currently registered the ID of the traceStream that will be used for the given module group
 int modularApp::getTraceStreamID(const group& g) {
   // A traceID must be registered with this module group
-  if(moduleTraceID.find(g) == moduleTraceID.end()) { cerr << "ERROR: No traceStream registered for module group "<<g.str()<<"!"<<endl; }
+  if(moduleTraceID.find(g) == moduleTraceID.end()) { cerr << "ERROR: No traceStream registered for module \""<<g.str()<<"\"!"<<endl; }
   assert(moduleTraceID.find(g) != moduleTraceID.end());
   return moduleTraceID[g];
 }
@@ -606,168 +644,174 @@ void modularApp::exitModule(module* m) {
  ***** module *****
  ******************/
 
-module::module(const instance& inst,                                                     derivInfo* deriv) : 
-  sightObj(setProperties(inst, NULL, this)), /*sightObj(setProperties(inst, inputs(),   NULL, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(NULL)
-{ init(inputs(), deriv); }
+module::module(const instance& inst,                                                     properties* props) : 
+  sightObj(setProperties(inst, props, NULL, this)), g(modularApp::mStack, inst), externalOutputs(NULL)
+{ init(inputs(), props); }
 
-module::module(const instance& inst, const port& in,                                     derivInfo* deriv): 
-  sightObj(setProperties(inst, NULL, this)), /*sightObj(setProperties(inst, inputs(in), NULL, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(NULL)
-{ init(inputs(in), deriv); }
+module::module(const instance& inst, const port& in,                                     properties* props): 
+  sightObj(setProperties(inst, props, NULL, this)), g(modularApp::mStack, inst), externalOutputs(NULL)
+{ init(inputs(in), props); }
 
-module::module(const instance& inst, const std::vector<port>& in,                        derivInfo* deriv) :
-  sightObj(setProperties(inst, NULL, this)), /*sightObj(setProperties(inst, in,         NULL, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(NULL)
-{ init(in, deriv); }
+module::module(const instance& inst, const std::vector<port>& in,                        properties* props) :
+  sightObj(setProperties(inst, props, NULL, this)), g(modularApp::mStack, inst), externalOutputs(NULL)
+{ init(in, props); }
 
-module::module(const instance& inst,                              const attrOp& onoffOp, derivInfo* deriv) : 
-  sightObj(setProperties(inst, NULL, this)), /*sightObj(setProperties(inst, inputs(),   &onoffOp, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(NULL)
-{ init(inputs(), deriv); }
+module::module(const instance& inst,                              const attrOp& onoffOp, properties* props) : 
+  sightObj(setProperties(inst, props, &onoffOp, this)), g(modularApp::mStack, inst), externalOutputs(NULL)
+{ init(inputs(), props); }
 
-module::module(const instance& inst, const port& in,              const attrOp& onoffOp, derivInfo* deriv): 
-  sightObj(setProperties(inst, NULL, this)), /*sightObj(setProperties(inst, inputs(in), &onoffOp, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(NULL)
-{ init(inputs(in), deriv); }
+module::module(const instance& inst, const port& in,              const attrOp& onoffOp, properties* props): 
+  sightObj(setProperties(inst, props, &onoffOp, this)), g(modularApp::mStack, inst), externalOutputs(NULL)
+{ init(inputs(in), props); }
 
-module::module(const instance& inst, const std::vector<port>& in, const attrOp& onoffOp, derivInfo* deriv) :
-  sightObj(setProperties(inst, NULL, this)), /*sightObj(setProperties(inst, in,         &onoffOp, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(NULL)
-{ init(in, deriv); }
-
-
-module::module(const instance& inst,                              std::vector<port>& externalOutputs,                        derivInfo* deriv) : 
-  sightObj(setProperties(inst, NULL, this)), /*sightObj(setProperties(inst, inputs(),   NULL, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(&externalOutputs)
-{ init(inputs(), deriv); }
-
-module::module(const instance& inst, const port& in,              std::vector<port>& externalOutputs,                        derivInfo* deriv): 
-  sightObj(setProperties(inst, NULL, this)), /*sightObj(setProperties(inst, inputs(in), NULL, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(&externalOutputs)
-{ init(inputs(in), deriv); }
-
-module::module(const instance& inst, const std::vector<port>& in, std::vector<port>& externalOutputs,                        derivInfo* deriv) :
-  sightObj(setProperties(inst, NULL, this)), /*sightObj(setProperties(inst, in,         NULL, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(&externalOutputs)
-{ init(in, deriv); }
-
-module::module(const instance& inst,                              std::vector<port>& externalOutputs, const attrOp& onoffOp, derivInfo* deriv) : 
-  sightObj(setProperties(inst, NULL, this)), /*sightObj(setProperties(inst, inputs(),   &onoffOp, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(&externalOutputs)
-{ init(inputs(), deriv); }
-
-module::module(const instance& inst, const port& in,              std::vector<port>& externalOutputs, const attrOp& onoffOp, derivInfo* deriv): 
-  sightObj(setProperties(inst, NULL, this)), /*sightObj(setProperties(inst, inputs(in), &onoffOp, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(&externalOutputs)
-{ init(inputs(in), deriv); }
-
-module::module(const instance& inst, const std::vector<port>& in, std::vector<port>& externalOutputs, const attrOp& onoffOp, derivInfo* deriv) :
-  sightObj(setProperties(inst, NULL, this)), /*sightObj(setProperties(inst, in,         &onoffOp, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(&externalOutputs)
-{ init(in, deriv); }
+module::module(const instance& inst, const std::vector<port>& in, const attrOp& onoffOp, properties* props) :
+  sightObj(setProperties(inst, props, &onoffOp, this)), g(modularApp::mStack, inst), externalOutputs(NULL)
+{ init(in, props); }
 
 
+module::module(const instance& inst,                              std::vector<port>& externalOutputs,                        properties* props) : 
+  sightObj(setProperties(inst, props, NULL, this)), g(modularApp::mStack, inst), externalOutputs(&externalOutputs)
+{ init(inputs(), props); }
 
-module::module(const instance& inst,                                                     const namedMeasures& meas, derivInfo* deriv) : 
-  sightObj(setProperties(inst, NULL, this)), /*sightObj(setProperties(inst, inputs(),   NULL, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(NULL), meas(meas)
-{ init(inputs(), deriv); }
+module::module(const instance& inst, const port& in,              std::vector<port>& externalOutputs,                        properties* props): 
+  sightObj(setProperties(inst, props, NULL, this)), g(modularApp::mStack, inst), externalOutputs(&externalOutputs)
+{ init(inputs(in), props); }
 
-module::module(const instance& inst, const port& in,                                     const namedMeasures& meas, derivInfo* deriv): 
-  sightObj(setProperties(inst, NULL, this)), /*sightObj(setProperties(inst, inputs(in), NULL, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(NULL), meas(meas)
-{ init(inputs(in), deriv); }
+module::module(const instance& inst, const std::vector<port>& in, std::vector<port>& externalOutputs,                        properties* props) :
+  sightObj(setProperties(inst, props, NULL, this)), g(modularApp::mStack, inst), externalOutputs(&externalOutputs)
+{ init(in, props); }
 
-module::module(const instance& inst, const std::vector<port>& in,                        const namedMeasures& meas, derivInfo* deriv) :
-  sightObj(setProperties(inst, NULL, this)), /*sightObj(setProperties(inst, in,         NULL, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(NULL), meas(meas)
-{ init(in, deriv); }
+module::module(const instance& inst,                              std::vector<port>& externalOutputs, const attrOp& onoffOp, properties* props) : 
+  sightObj(setProperties(inst, props, &onoffOp, this)), g(modularApp::mStack, inst), externalOutputs(&externalOutputs)
+{ init(inputs(), props); }
 
-module::module(const instance& inst,                              const attrOp& onoffOp, const namedMeasures& meas, derivInfo* deriv) : 
-  sightObj(setProperties(inst, NULL, this)), /*sightObj(setProperties(inst, inputs(),   &onoffOp, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(NULL), meas(meas)
-{ init(inputs(), deriv); }
+module::module(const instance& inst, const port& in,              std::vector<port>& externalOutputs, const attrOp& onoffOp, properties* props): 
+  sightObj(setProperties(inst, props, &onoffOp, this)), g(modularApp::mStack, inst), externalOutputs(&externalOutputs)
+{ init(inputs(in), props); }
 
-module::module(const instance& inst, const port& in,              const attrOp& onoffOp, const namedMeasures& meas, derivInfo* deriv): 
-  sightObj(setProperties(inst, NULL, this)), /*sightObj(setProperties(inst, inputs(in), &onoffOp, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(NULL), meas(meas)
-{ init(inputs(in), deriv); }
-
-module::module(const instance& inst, const std::vector<port>& in, const attrOp& onoffOp, const namedMeasures& meas, derivInfo* deriv) :
-  sightObj(setProperties(inst, NULL, this)), /*sightObj(setProperties(inst, in,         &onoffOp, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(NULL), meas(meas)
-{ init(in, deriv); }
+module::module(const instance& inst, const std::vector<port>& in, std::vector<port>& externalOutputs, const attrOp& onoffOp, properties* props) :
+  sightObj(setProperties(inst, props, &onoffOp, this)), g(modularApp::mStack, inst), externalOutputs(&externalOutputs)
+{ init(in, props); }
 
 
-module::module(const instance& inst,                              std::vector<port>& externalOutputs,                        const namedMeasures& meas, derivInfo* deriv) : 
-  sightObj(setProperties(inst, NULL, this)), /*sightObj(setProperties(inst, inputs(),   NULL, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(&externalOutputs), meas(meas)
-{ init(inputs(), deriv); }
 
-module::module(const instance& inst, const port& in,              std::vector<port>& externalOutputs,                        const namedMeasures& meas, derivInfo* deriv): 
-  sightObj(setProperties(inst, NULL, this)), /*sightObj(setProperties(inst, inputs(in), NULL, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(&externalOutputs), meas(meas)
-{ init(inputs(in), deriv); }
+module::module(const instance& inst,                                                     const namedMeasures& meas, properties* props) : 
+  sightObj(setProperties(inst, props, NULL, this)), g(modularApp::mStack, inst), externalOutputs(NULL), meas(meas)
+{ init(inputs(), props); }
 
-module::module(const instance& inst, const std::vector<port>& in, std::vector<port>& externalOutputs,                        const namedMeasures& meas, derivInfo* deriv) :
-  sightObj(setProperties(inst, NULL, this)), /*sightObj(setProperties(inst, in,         NULL, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(&externalOutputs), meas(meas)
-{ init(in, deriv); }
+module::module(const instance& inst, const port& in,                                     const namedMeasures& meas, properties* props): 
+  sightObj(setProperties(inst, props, NULL, this)), g(modularApp::mStack, inst), externalOutputs(NULL), meas(meas)
+{ init(inputs(in), props); }
 
-module::module(const instance& inst,                              std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, derivInfo* deriv) : 
-  sightObj(setProperties(inst, NULL, this)), /*sightObj(setProperties(inst, inputs(),   &onoffOp, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(&externalOutputs), meas(meas)
-{ init(inputs(), deriv); }
+module::module(const instance& inst, const std::vector<port>& in,                        const namedMeasures& meas, properties* props) :
+  sightObj(setProperties(inst, props, NULL, this)), g(modularApp::mStack, inst), externalOutputs(NULL), meas(meas)
+{ init(in, props); }
 
-module::module(const instance& inst, const port& in,              std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, derivInfo* deriv): 
-  sightObj(setProperties(inst, NULL, this)), /*sightObj(setProperties(inst, inputs(in), &onoffOp, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(&externalOutputs), meas(meas)
-{ init(inputs(in), deriv); }
+module::module(const instance& inst,                              const attrOp& onoffOp, const namedMeasures& meas, properties* props) : 
+  sightObj(setProperties(inst, props, &onoffOp, this)), g(modularApp::mStack, inst), externalOutputs(NULL), meas(meas)
+{ init(inputs(), props); }
 
-module::module(const instance& inst, const std::vector<port>& in, std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, derivInfo* deriv) :
-  sightObj(setProperties(inst, NULL, this)), /*sightObj(setProperties(inst, in,         &onoffOp, derivInfo),*/ g(modularApp::mStack, inst), externalOutputs(&externalOutputs), meas(meas)
-{ init(in, deriv); }
+module::module(const instance& inst, const port& in,              const attrOp& onoffOp, const namedMeasures& meas, properties* props): 
+  sightObj(setProperties(inst, props, &onoffOp, this)), g(modularApp::mStack, inst), externalOutputs(NULL), meas(meas)
+{ init(inputs(in), props); }
 
-properties* module::setProperties(const instance& inst, properties* props, module* me) {
+module::module(const instance& inst, const std::vector<port>& in, const attrOp& onoffOp, const namedMeasures& meas, properties* props) :
+  sightObj(setProperties(inst, props, &onoffOp, this)), g(modularApp::mStack, inst), externalOutputs(NULL), meas(meas)
+{ init(in, props); }
+
+
+module::module(const instance& inst,                              std::vector<port>& externalOutputs,                        const namedMeasures& meas, properties* props) : 
+  sightObj(setProperties(inst, props, NULL, this)), g(modularApp::mStack, inst), externalOutputs(&externalOutputs), meas(meas)
+{ init(inputs(), props); }
+
+module::module(const instance& inst, const port& in,              std::vector<port>& externalOutputs,                        const namedMeasures& meas, properties* props): 
+  sightObj(setProperties(inst, props, NULL, this)), g(modularApp::mStack, inst), externalOutputs(&externalOutputs), meas(meas)
+{ init(inputs(in), props); }
+
+module::module(const instance& inst, const std::vector<port>& in, std::vector<port>& externalOutputs,                        const namedMeasures& meas, properties* props) :
+  sightObj(setProperties(inst, props, NULL, this)), g(modularApp::mStack, inst), externalOutputs(&externalOutputs), meas(meas)
+{ init(in, props); }
+
+module::module(const instance& inst,                              std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, properties* props) : 
+  sightObj(setProperties(inst, props, &onoffOp, this)), g(modularApp::mStack, inst), externalOutputs(&externalOutputs), meas(meas)
+{ init(inputs(), props); }
+
+module::module(const instance& inst, const port& in,              std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, properties* props): 
+  sightObj(setProperties(inst, props, &onoffOp, this)), g(modularApp::mStack, inst), externalOutputs(&externalOutputs), meas(meas)
+{ init(inputs(in), props); }
+
+module::module(const instance& inst, const std::vector<port>& in, std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, properties* props) :
+  sightObj(setProperties(inst, props, &onoffOp, this)), g(modularApp::mStack, inst), externalOutputs(&externalOutputs), meas(meas)
+{ init(in, props); }
+
+properties* module::setProperties(const instance& inst, properties* props, const attrOp* onoffOp, module* me) {
   group g(modularApp::mStack, inst);
   bool isDerived = (props!=NULL); // This is an instance of an object that derives from module if its constructor sets props to non-NULL
-  if(props==NULL) props = new properties();
-
-  map<string, string> pMap;
-  //pMap["moduleID"] = txt()<<modularApp::genModuleID(g);
-  pMap["name"]       = g.name();
-  pMap["numInputs"]  = txt()<<g.numInputs();
-  pMap["numOutputs"] = txt()<<g.numOutputs();
-  
-  // If this is an instance of module rather than a class that derives from module
-  if(modularApp::isInstanceActive() && props->active && !isDerived) {
-    props->active = true;
-    
-    // If no traceStream has been registered for this module group
-    if(!modularApp::isTraceStreamRegistered(g)) {
-      // We'll create a new traceStream in the destructor but first, generate and record the ID of that 
-      // traceStream so that we can include it in the tag and record it in the module object for use in its destructor
-      int traceID = traceStream::genTraceID();
-      modularApp::registerTraceStreamID(g, traceID);
-      pMap["traceID"] = txt()<<traceID;
-    } else {
-      // Reuse the previously registered traceID
-      pMap["traceID"] = txt()<<modularApp::getTraceStreamID(g);
+ 
+  if(attributes.query() && (onoffOp? onoffOp->apply(): true)) {
+    if(!modularApp::isInstanceActive()) {
+      cerr << "ERROR: module "<<inst.str()<<" entered while there no instance of modularApp is active!"<<endl;
+      assert(0);
     }
-  } else
-    props->active = false;
+ 
+    // The properties object for the moduleMarker that will be emitted at this location in the log
+    properties* markerProps = new properties();
   
-  props->add("moduleMarker", pMap);
+    map<string, string> pMap;
+    //pMap["moduleID"] = txt()<<modularApp::genModuleID(g);
+    pMap["name"]       = g.name();
+    pMap["numInputs"]  = txt()<<g.numInputs();
+    pMap["numOutputs"] = txt()<<g.numOutputs();
 
-  return props;
+    // If this is an instance of module rather than a class that derives from module
+    //if(modularApp::isInstanceActive() && !isDerived) {
+      markerProps->active = true;
+
+      // If no traceStream has been registered for this module group
+      if(!modularApp::isTraceStreamRegistered(g)) {
+        // We'll create a new traceStream in the destructor but first, generate and record the ID of that 
+        // traceStream so that we can include it in the tag and record it in the module object for use in its destructor
+        int traceID = traceStream::genTraceID();
+        modularApp::registerTraceStreamID(g, traceID);
+        pMap["traceID"] = txt()<<traceID;
+      } else {
+        // Reuse the previously registered traceID
+        pMap["traceID"] = txt()<<modularApp::getTraceStreamID(g);
+      }
+    //}
+  
+    markerProps->add("moduleMarker", pMap);
+    
+    return markerProps;
+  } else
+    return NULL;
 }
 
-void module::init(const std::vector<port>& in, derivInfo* deriv) {
-  isDerived = deriv!=NULL; // This is an instance of an object that derives from module if its constructor sets deriv to non-NULL
-  if(deriv==NULL) {
-    deriv = new derivInfo();
-  }
+void module::init(const std::vector<port>& ins, properties* derivedProps) {
+  isDerived = (derivedProps!=NULL); // This is an instance of an object that derives from module if its constructor sets props to non-NULL
+  if(derivedProps==NULL) derivedProps = new properties();
+  this->ins = ins;
   
-  ins = in;
-  
-  if(modularApp::isInstanceActive() && deriv->props->active) {
+  if(modularApp::isInstanceActive() && derivedProps->active) {
     moduleID = modularApp::genModuleID(g);
     
-    // Add the properties of this module to props
+    // Add the properties of this module to derivedProps
     map<string, string> pMap;
     pMap["moduleID"]   = txt()<<moduleID;
     pMap["name"]       = g.name();
     pMap["numInputs"]  = txt()<<g.numInputs();
     pMap["numOutputs"] = txt()<<g.numOutputs();
-    deriv->props->add("module", pMap);
+    derivedProps->add("module", pMap);
     
     // Add this module instance to the current stack of modules
-    modularApp::enterModule(this, moduleID, deriv->props);
+    modularApp::enterModule(this, moduleID, derivedProps);
     
     // Make sure that the input contexts have the same names across all the invocations of this module group
-    modularApp::registerInOutContexts(g, in, sight::common::module::input);
+    modularApp::registerInOutContexts(g, ins, sight::common::module::input);
     
     // Add edges between the modules from which this module's inputs came and this module
-    for(int i=0; i<in.size(); i++)
-    	modularApp::addEdge(in[i], port(g, context(), input, i));
+    for(int i=0; i<ins.size(); i++)
+    	modularApp::addEdge(ins[i], port(g, context(), input, i));
     
     // Initialize the output ports of this module
     if(externalOutputs) externalOutputs->clear(); 
@@ -791,39 +835,56 @@ void module::init(const std::vector<port>& in, derivInfo* deriv) {
       m->second->start(); 
     }
   }
+  
+  //cout << "g="<<g.str()<<", ins.size()="<<ins.size()<<endl;
 }
 
-module::~module() { if(!destroyed) destroy(); }
-
-// Contains the code to destroy this object. This method is called to clean up application state due to an
-// abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
-// that implement destroy should call the destroy method of their parent object.
-void module::destroy()
-{
-/*  destroy();
+// Directly calls the destructor of this object. This is necessary because when an application crashes
+// Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+// there is no way to directly call the destructor of a given object when it may have several levels
+// of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+// it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+// an object will invoke the destroy() method of the most-derived class.
+void module::destroy() {
+  this->~module();
 }
 
-// Contains the code to destroy this object. This method is called to clean up application state due to an
-// abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
-// that implement destroy should call the destroy method of their parent object.
-void module::destroy() {*/
+module::~module() {
+  assert(!destroyed);
+  
   //cout << "~module() props->active="<<props->active<<endl;
 
   if(ins.size() != g.numInputs()) { cerr << "WARNING: module \""<<g.name()<<"\" specifies "<<g.numInputs()<<" inputs but "<<ins.size()<<" inputs are actually provided!"<<endl; }
   
+  if(outsSet.size() != g.numOutputs()) { 
+    cerr << "WARNING: module \""<<g.name()<<"\" specifies "<<g.numOutputs()<<" outputs but "<<outsSet.size()<<" outputs are actually provided! ";
+    cerr << "Missing outputs:";
+    for(int i=0; i<outs.size(); i++) if(outsSet.find(i)==outsSet.end()) cerr << " "<<i;
+    cerr << endl;
+  }
+  
   // Complete the measurement of application's behavior during the module's lifetime
   if(props->active) {
+    // Wrap the portion of the moduleMarker tag where we place the control information (the traceStream)
+    // in its own tag to make them easier to match across different streams
+    properties moduleCtrl;
+    moduleCtrl.add("moduleCtrl", map<string, string>());
+    
     // If this is an instance of module rather than a class that derives from module
     if(!isDerived) {
+      dbg.enter(moduleCtrl);
+
       // Register a traceStream for this module's group, if one has not already been registered
       if(!modularApp::isTraceStreamRegistered(g)) {
-        modularApp::registerTraceStream(g, new moduleTraceStream(moduleID, this, trace::lines, trace::disjMerge, modularApp::getTraceStreamID(g)));
+        modularApp::registerTraceStream(g, new moduleTraceStream(moduleID, this, trace::lines, trace::disjMerge, 
+                                        modularApp::getTraceStreamID(g)));
       }
     }
     
     // Set the context attributes to be used in this module's measurements by combining the context provided by any
     // class that may derive from this one as well as the contexts of its inputs
-    map<string, attrValue> traceCtxt = getTraceCtxt();
+    //map<string, attrValue> traceCtxt = getTraceCtxt();
+    if(!isDerived) setTraceCtxt();
     /*cout << "traceCtxt="<<endl;
     for(map<string, attrValue>::iterator tc=traceCtxt.begin(); tc!=traceCtxt.end(); tc++)
       cout << "    "<<tc->first << ": "<<tc->second.serialize()<<endl;*/
@@ -854,16 +915,17 @@ void module::destroy() {*/
     // Record the observation into this module group's trace
     modularApp::moduleTrace[g]->traceFullObservation(traceCtxt, obs, anchor::noAnchor);
 
-    /* GB 2014-01-24 - IT makes sense to allow different instances of a module group to not provide
+    /* GB 2014-01-24 - It makes sense to allow different instances of a module group to not provide
      *        the same outputs since in fault injection we may be aborted before all the outputs are 
      *        computed and in other cases the code may break out without computing some output. *?
     // Make sure that the output contexts have the same names across all the invocations of this module group
     modularApp::registerInOutContexts(g, outs, sight::common::module::output); */
   
     modularApp::exitModule(this);
+    
+    // Close the tag that wraps the control section of this module
+    dbg.exit(moduleCtrl);
   }
-
-  sightObj::destroy();
 }
 
 /*traceStream* module::generateModuleTraceStream::operator()(int moduleID) {
@@ -873,7 +935,7 @@ void module::destroy() {*/
 // Sets the context of the given output port
 void module::setInCtxt(int idx, const context& c) {
   if(!props->active) return;
-  if(idx>=g.numInputs()) { cerr << "ERROR: cannot set context of input "<<idx<<" of module group "<<g.str()<<"! This module was declared to have "<<g.numInputs()<<" inputs."<<endl; }
+  if(idx>=g.numInputs()) { cerr << "ERROR: cannot set context of input "<<idx<<" of module \""<<g.str()<<"\"! This module was declared to have "<<g.numInputs()<<" inputs."<<endl; }
   assert(idx<g.numInputs());
   ins[idx].setCtxt(c);
 }
@@ -881,7 +943,7 @@ void module::setInCtxt(int idx, const context& c) {
 // Adds the given key/attrValue pair to the context of the given output port
 void module::addInCtxt(int idx, const std::string& key, const attrValue& val) {
   if(!props->active) return;
-  if(idx>=g.numInputs()) { cerr << "ERROR: cannot add context to input "<<idx<<" of module group "<<g.str()<<"! This module was declared to have "<<g.numInputs()<<" inputs."<<endl; }
+  if(idx>=g.numInputs()) { cerr << "ERROR: cannot add context to input "<<idx<<" of module \""<<g.str()<<"\"! This module was declared to have "<<g.numInputs()<<" inputs."<<endl; }
   assert(idx<g.numInputs());
   ins[idx].addCtxt(key, val);
 }
@@ -894,12 +956,16 @@ void module::addInCtxt(const port& p) {
 // Sets the context of the given output port
 void module::setOutCtxt(int idx, const context& c) { 
   if(!props->active) return;
-  if(idx>=g.numOutputs()) { cerr << "ERROR: cannot set context of output "<<idx<<" of module group "<<g.str()<<"! This module was declared to have "<<g.numOutputs()<<" outputs."<<endl; }
+  if(idx>=g.numOutputs()) { cerr << "ERROR: cannot set context of output "<<idx<<" of module \""<<g.str()<<"\"! This module was declared to have "<<g.numOutputs()<<" outputs."<<endl; }
   assert(idx<g.numOutputs());
   outs[idx].setCtxt(c);
   // If the user provided an output vector, update it as well
   if(externalOutputs)
     (*externalOutputs)[idx].setCtxt(c);
+    
+  // Emit a warning of an output has been set multiple times
+  if(outsSet.find(idx) != outsSet.end()) cerr << "WARNING: output "<<idx<<" of module \""<<g.str()<<"\" has been set multiple times! Set this time to context "<<c.str()<<endl;
+  else outsSet.insert(idx);
 }
 
 // Returns a list of the module's input ports
@@ -917,25 +983,21 @@ std::vector<port> module::outPorts() const {
 
 port module::outPort(int idx) const {
   if(!props->active) return port();
-  if(idx>=g.numOutputs()) { cerr << "ERROR: cannot get port "<<idx<<" of module group "<<g.str()<<"! This module was declared to have "<<g.numOutputs()<<" outputs."<<endl; }
+  if(idx>=g.numOutputs()) { cerr << "ERROR: cannot get port "<<idx<<" of module \""<<g.str()<<"\"! This module was declared to have "<<g.numOutputs()<<" outputs."<<endl; }
   assert(idx < g.numOutputs());
   return outs[idx];  
 }
 
-// Returns the context attributes to be used in this module's measurements by combining the context provided by the classes
-// that this object derives from with its own unique context attributes.
-std::map<std::string, attrValue> module::getTraceCtxt() {
-  std::map<std::string, attrValue> traceCtxt;
-
+// Sets the traceCtxt map, which contains the context attributes to be used in this module's measurements 
+// by combining the context provided by the classes that this object derives from with its own unique 
+// context attributes.
+void module::setTraceCtxt() {
   // Add to it the context of this module based on the contexts of its inputs
   for(int i=0; i<ins.size(); i++) {
     for(std::map<std::string, attrValue>::const_iterator c=ins[i].ctxt->configuration.begin(); c!=ins[i].ctxt->configuration.end(); c++)
       traceCtxt[encodeCtxtName("module", "input", txt()<<i, c->first)] = c->second;
   }
-
-  return traceCtxt;
 }
-
 
 /***********************
  ***** compContext *****
@@ -1000,6 +1062,21 @@ bool compContext::operator<(const context& that_arg) const {
   }
 }
 
+// Adds the given key/attrValue pair to this context
+void compContext::add(std::string key, const attrValue& val, const comparatorDesc& cdesc) {
+  context::add(key, val);
+  comparators[key] = std::make_pair(cdesc.name(), cdesc.description());
+}
+
+// Add all the key/attrValue pairs from the given context to this one, overwriting keys as needed
+void compContext::add(const compContext& that) {
+  context::add(that);
+  for(std::map<std::string, std::pair<std::string, std::string> >::const_iterator c=that.comparators.begin();
+      c!=that.comparators.end(); c++) {
+    comparators[c->first] = c->second;
+  }
+}
+
 // Returns a human-readable string that describes this context
 std::string compContext::str() const {
   ostringstream s;
@@ -1032,14 +1109,18 @@ compModularApp::compModularApp(const std::string& appName, const attrOp& onoffOp
   modularApp(appName, onoffOp, cMeas.getNamedMeasures(), props), measComp(cMeas.getComparators())
 {}
 
-compModularApp::~compModularApp() { if(!destroyed) destroy(); }
+// Directly calls the destructor of this object. This is necessary because when an application crashes
+// Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+// there is no way to directly call the destructor of a given object when it may have several levels
+// of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+// it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+// an object will invoke the destroy() method of the most-derived class.
+void compModularApp::destroy() {
+  this->~compModularApp();
+}
 
-// Contains the code to destroy this object. This method is called to clean up application state due to an
-// abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
-// that implement destroy should call the destroy method of their parent object.
-void compModularApp::destroy()
-{
-  modularApp::destroy();
+compModularApp::~compModularApp() {
+  assert(!destroyed);
 }
 
 /**********************
@@ -1048,32 +1129,32 @@ void compModularApp::destroy()
 
 compModule::compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
                        bool isReference, context options,
-                                                                         derivInfo* deriv) :
-          module(inst, inputs, externalOutputs, setProperties(inst, isReference, options, NULL, deriv)),           isReference(isReference), options(options)
-{ init(deriv); }
+                                                                         properties* props) :
+            module(inst, inputs, externalOutputs, setProperties(inst, isReference, options, NULL, props)),           isReference(isReference), options(options)
+{ init(props); }
 
 compModule::compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
                        bool isReference, context options, 
-                       const attrOp& onoffOp,                            derivInfo* deriv) :
-          module(inst, inputs, externalOutputs, setProperties(inst, isReference, options, &onoffOp, deriv)),       isReference(isReference), options(options)
-{ init(deriv); }
+                       const attrOp& onoffOp,                            properties* props) :
+          module(inst, inputs, externalOutputs, setProperties(inst, isReference, options, &onoffOp, props)),       isReference(isReference), options(options)
+{ init(props); }
 
 compModule::compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
                        bool isReference, context options, 
-                                              const compNamedMeasures& cMeas, derivInfo* deriv) :
-          module(inst, inputs, externalOutputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, options, NULL, deriv)),     isReference(isReference), options(options), measComp(cMeas.getComparators())
-{ init(deriv); }
+                                              const compNamedMeasures& cMeas, properties* props) :
+          module(inst, inputs, externalOutputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, options, NULL, props)),     isReference(isReference), options(options), measComp(cMeas.getComparators())
+{ init(props); }
 
 compModule::compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
                        bool isReference, context options, 
-                       const attrOp& onoffOp, const compNamedMeasures& cMeas, derivInfo* deriv) : 
-          module(inst, inputs, externalOutputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, options, &onoffOp, deriv)), isReference(isReference), options(options), measComp(cMeas.getComparators())
-{ init(deriv); }
+                       const attrOp& onoffOp, const compNamedMeasures& cMeas, properties* props) : 
+          module(inst, inputs, externalOutputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, options, &onoffOp, props)), isReference(isReference), options(options), measComp(cMeas.getComparators())
+{ init(props); }
 
 // Sets the properties of this object
-module::derivInfo* compModule::setProperties(const instance& inst, bool isReference, context options, const attrOp* onoffOp, derivInfo* deriv) {
-  if(deriv==NULL) {
-    deriv = new derivInfo();
+properties* compModule::setProperties(const instance& inst, bool isReference, context options, const attrOp* onoffOp, properties* props) {
+  if(props==NULL) {
+    props = new properties();
   }
  /* 
   // If the current attribute query evaluates to true (we're emitting debug output) AND
@@ -1089,38 +1170,55 @@ module::derivInfo* compModule::setProperties(const instance& inst, bool isRefere
   else
     deriv->props->active = false;
  */ 
-  return deriv;
+  return props;
 }
 
-void compModule::init(derivInfo* deriv) {
-  isDerived = deriv!=NULL; // This is an instance of an object that derives from module if its constructor sets deriv to non-NULL
+void compModule::init(properties* props) {
+  isDerived = props!=NULL; // This is an instance of an object that derives from module if its constructor sets deriv to non-NULL
+  
+  if(!isDerived) setTraceCtxt();
 }
 
-compModule::~compModule() { if(!destroyed) destroy(); }
-
+// Directly calls the destructor of this object. This is necessary because when an application crashes
+// Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+// there is no way to directly call the destructor of a given object when it may have several levels
+// of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+// it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+// an object will invoke the destroy() method of the most-derived class.
 void compModule::destroy() {
+  this->~compModule();
+}
+
+compModule::~compModule() {
+  assert(!destroyed);
+  
   // If this is an instance of compModule rather than a class that derives from compModule
-  if(props->active && !isDerived) {
+  if(props->active && !isDerived) {    // Wrap the portion of the moduleMarker tag where we place the control information (the traceStream)
+    // in its own tag to make them easier to match across different streams
+    properties moduleCtrl;
+    moduleCtrl.add("moduleCtrl", map<string, string>());
+    dbg.enter(moduleCtrl);
+
     // Register a traceStream for this compModule's module group, if one has not already been registered
     if(!modularApp::isTraceStreamRegistered(g))
       modularApp::registerTraceStream(g, new compModuleTraceStream(moduleID, this, trace::lines, trace::disjMerge, modularApp::getTraceStreamID(g)));
   }
-
-  module::destroy();
+  
+  if(!isDerived) setTraceCtxt();
 }
 
-// Returns the context attributes to be used in this module's measurements by combining the context provided by the classes
-// that this object derives from with its own unique context attributes.
-std::map<std::string, attrValue> compModule::getTraceCtxt() {
-  std::map<std::string, attrValue> traceCtxt = module::getTraceCtxt();
+// Sets the traceCtxt map, which contains the context attributes to be used in this module's measurements 
+// by combining the context provided by the classes that this object derives from with its own unique 
+// context attributes.
+void compModule::setTraceCtxt() {
+  // Initialize traceCtxt with the information from module
+  module::setTraceCtxt();
 
   traceCtxt["compModule:isReference"] = attrValue((long)isReference);
   
   // Add all the options to the context
   for(map<std::string, attrValue>::const_iterator o=options.getCfg().begin(); o!=options.getCfg().end(); o++)
     traceCtxt[encodeCtxtName("compModule", "option", "0", o->first)] = o->second;
-  
-  return traceCtxt;
 }
 
 // Sets the isReference flag to indicate whether this is a reference instance of this compModule or not
@@ -1255,9 +1353,19 @@ void springModularApp::init() {
     data = NULL;
 }
 
-springModularApp::~springModularApp() { if(!destroyed) destroy(); }
-
+// Directly calls the destructor of this object. This is necessary because when an application crashes
+// Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+// there is no way to directly call the destructor of a given object when it may have several levels
+// of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+// it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+// an object will invoke the destroy() method of the most-derived class.
 void springModularApp::destroy() {
+  this->~springModularApp();
+}
+
+springModularApp::~springModularApp() {
+  assert(!destroyed);
+  
   if(props->active && bufSize>sizeof(long long)) {
     int ret = pthread_cancel(interfThread);
     if(ret!=0) { cerr << "ERROR: return code from pthread_cancel() is "<<ret<<", thread %d\n"; assert(0); }
@@ -1268,8 +1376,6 @@ void springModularApp::destroy() {
    
     delete data;
   }
-
-  compModularApp::destroy();
 }
 
 /************************
@@ -1278,8 +1384,8 @@ void springModularApp::destroy() {
 
 springModule::springModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs,
                        const context& options,
-                                                                         derivInfo* deriv) :
-          compModule(inst, inputs, externalOutputs, isSpringReference(), extendOptions(options), compNamedMeasures(), deriv)
+                                                                         properties* props) :
+          compModule(inst, inputs, externalOutputs, isSpringReference(), extendOptions(options), compNamedMeasures(), props)
 { 
 /*springModularApp* app = springModularApp::getInstance();
 if(app->bufSize>0) { cout << "bufSize="<<app->bufSize<<" sleep("<<(log(app->bufSize)/log(10))<<")"<<endl; sleep(log(app->bufSize)/log(10)); }*/
@@ -1287,8 +1393,8 @@ if(app->bufSize>0) { cout << "bufSize="<<app->bufSize<<" sleep("<<(log(app->bufS
 
 springModule::springModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs,
                        const context& options,
-                       const attrOp& onoffOp,                            derivInfo* deriv) :
-          compModule(inst, inputs, externalOutputs, isSpringReference(), extendOptions(options), onoffOp, compNamedMeasures(), deriv)
+                       const attrOp& onoffOp,                            properties* props) :
+          compModule(inst, inputs, externalOutputs, isSpringReference(), extendOptions(options), onoffOp, compNamedMeasures(), props)
 { 
 /*springModularApp* app = springModularApp::getInstance();
 if(app->bufSize>0) { cout << "bufSize="<<app->bufSize<<" sleep("<<(log(app->bufSize)/log(10))<<")"<<endl; sleep(log(app->bufSize)/log(10)); }*/
@@ -1296,8 +1402,8 @@ if(app->bufSize>0) { cout << "bufSize="<<app->bufSize<<" sleep("<<(log(app->bufS
 
 springModule::springModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs,
                        const context& options,
-                                              const compNamedMeasures& cMeas, derivInfo* deriv) :
-          compModule(inst, inputs, externalOutputs, isSpringReference(), extendOptions(options), cMeas, deriv)
+                                              const compNamedMeasures& cMeas, properties* props) :
+          compModule(inst, inputs, externalOutputs, isSpringReference(), extendOptions(options), cMeas, props)
 { 
 /*springModularApp* app = springModularApp::getInstance();
 if(app->bufSize>0) { cout << "bufSize="<<app->bufSize<<" sleep("<<(log(app->bufSize)/log(10))<<")"<<endl; sleep(log(app->bufSize)/log(10)); }*/
@@ -1305,8 +1411,8 @@ if(app->bufSize>0) { cout << "bufSize="<<app->bufSize<<" sleep("<<(log(app->bufS
 
 springModule::springModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs,
                        const context& options,
-                       const attrOp& onoffOp, const compNamedMeasures& cMeas, derivInfo* deriv) :
-          compModule(inst, inputs, externalOutputs, isSpringReference(), extendOptions(options), cMeas, deriv)
+                       const attrOp& onoffOp, const compNamedMeasures& cMeas, properties* props) :
+          compModule(inst, inputs, externalOutputs, isSpringReference(), extendOptions(options), cMeas, props)
 { 
 /*springModularApp* app = springModularApp::getInstance();
 if(app->bufSize>0) { cout << "bufSize="<<app->bufSize<<" sleep("<<(log(app->bufSize)/log(10))<<")"<<endl; sleep(log(app->bufSize)/log(10)); }*/
@@ -1328,16 +1434,24 @@ context springModule::extendOptions(const context& options) {
     return options;
 }
 
-springModule::~springModule() { if(!destroyed) destroy(); }
-
+// Directly calls the destructor of this object. This is necessary because when an application crashes
+// Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+// there is no way to directly call the destructor of a given object when it may have several levels
+// of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+// it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+// an object will invoke the destroy() method of the most-derived class.
 void springModule::destroy() {
-  compModule::destroy();
+  this->~springModule();
+}
+
+springModule::~springModule() {
+  assert(!destroyed);
 }
 
 // Returns the context attributes to be used in this module's measurements by combining the context provided by the classes
 // that this object derives from with its own unique context attributes.
-std::map<std::string, attrValue> springModule::getTraceCtxt()
-{ return compModule::getTraceCtxt(); }
+/*std::map<std::string, attrValue> springModule::getTraceCtxt(const std::vector<port>& inputs, bool isReference, const context& options)
+{ return compModule::getTraceCtxt(ins, isReference, options); }*/
 
 /***************************
  ***** processedModule *****
@@ -1345,31 +1459,31 @@ std::map<std::string, attrValue> springModule::getTraceCtxt()
 
 processedModule::processedModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
                        const processedTrace::commands& processorCommands,
-                                                                         derivInfo* deriv) :
-          module(inst, inputs, externalOutputs, setProperties(inst, processorCommands, NULL, deriv)),           processorCommands(processorCommands)
-{ init(deriv); }
+                                                                         properties* props) :
+          module(inst, inputs, externalOutputs, props),           processorCommands(processorCommands)
+{ init(props); }
 
 processedModule::processedModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
                        const processedTrace::commands& processorCommands, 
-                       const attrOp& onoffOp,                            derivInfo* deriv) :
-          module(inst, inputs, externalOutputs, setProperties(inst, processorCommands, &onoffOp, deriv)),       processorCommands(processorCommands)
-{ init(deriv); }
+                       const attrOp& onoffOp,                            properties* props) :
+          module(inst, inputs, externalOutputs, props),       processorCommands(processorCommands)
+{ init(props); }
 
 processedModule::processedModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
                        const processedTrace::commands& processorCommands, 
-                                              const namedMeasures& meas, derivInfo* deriv) :
-          module(inst, inputs, externalOutputs, meas, setProperties(inst, processorCommands, NULL, deriv)),     processorCommands(processorCommands)
-{ init(deriv); }
+                                              const namedMeasures& meas, properties* props) :
+          module(inst, inputs, externalOutputs, meas, props),     processorCommands(processorCommands)
+{ init(props); }
 
 processedModule::processedModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
                        const processedTrace::commands& processorCommands, 
-                       const attrOp& onoffOp, const namedMeasures& meas, derivInfo* deriv) : 
-          module(inst, inputs, externalOutputs, meas, setProperties(inst, processorCommands, &onoffOp, deriv)), processorCommands(processorCommands)
-{ init(deriv); }
+                       const attrOp& onoffOp, const namedMeasures& meas, properties* props) : 
+          module(inst, inputs, externalOutputs, meas, props), processorCommands(processorCommands)
+{ init(props); }
 
-// Sets the properties of this object
-module::derivInfo* processedModule::setProperties(const instance& inst, const processedTrace::commands& processorCommands, const attrOp* onoffOp, derivInfo* deriv) {
-/*  if(deriv==NULL) {
+/* // Sets the properties of this object
+module::derivInfo* processedModule::setProperties(const instance& inst, const processedTrace::commands& processorCommands, const attrOp* onoffOp, properties* props) {
+/ *  if(deriv==NULL) {
     deriv = new derivInfo();
   }
   
@@ -1388,30 +1502,39 @@ module::derivInfo* processedModule::setProperties(const instance& inst, const pr
   }
   else
     deriv->props->active = false;
-  */
+  * /
   return deriv;
+}*/ 
+
+void processedModule::init(properties* props) {
+  isDerived = props!=NULL; // This is an instance of an object that derives from module if its constructor sets deriv to non-NULL
 }
 
-void processedModule::init(derivInfo* deriv) {
-  isDerived = deriv!=NULL; // This is an instance of an object that derives from module if its constructor sets deriv to non-NULL
-}
-
-processedModule::~processedModule() { if(!destroyed) destroy(); }
-
+// Directly calls the destructor of this object. This is necessary because when an application crashes
+// Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+// there is no way to directly call the destructor of a given object when it may have several levels
+// of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+// it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+// an object will invoke the destroy() method of the most-derived class.
 void processedModule::destroy() {
+  this->~processedModule();
+}
+
+processedModule::~processedModule() {
+  assert(!destroyed);
+  
   // If this is an instance of processedModule rather than a class that derives from processedModule
   if(props->active) {
     // Register a traceStream for this processedModule's module group, if one has not already been registered
     if(!modularApp::isTraceStreamRegistered(g))
       modularApp::registerTraceStream(g, new processedModuleTraceStream(moduleID, this, trace::lines, trace::disjMerge, modularApp::getTraceStreamID(g)));
   }
-  module::destroy();
 }
 
 // Returns the context attributes to be used in this module's measurements by combining the context provided by the classes
 // that this object derives from with its own unique context attributes.
-std::map<std::string, attrValue> processedModule::getTraceCtxt()
-{ return module::getTraceCtxt(); }
+/*std::map<std::string, attrValue> processedModule::getTraceCtxt(const std::vector<port>& inputs)
+{ return module::getTraceCtxt(inputs); }*/
 
 /*****************************
  ***** moduleTraceStream *****
@@ -1436,10 +1559,18 @@ properties* moduleTraceStream::setProperties(int moduleID, module* m, vizT viz, 
   return props;
 }
 
-moduleTraceStream::~moduleTraceStream() { if(!destroyed) destroy(); }
-
+// Directly calls the destructor of this object. This is necessary because when an application crashes
+// Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+// there is no way to directly call the destructor of a given object when it may have several levels
+// of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+// it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+// an object will invoke the destroy() method of the most-derived class.
 void moduleTraceStream::destroy() {
-  traceStream::destroy();
+  this->~moduleTraceStream();
+}
+
+moduleTraceStream::~moduleTraceStream() {
+  assert(!destroyed);
 }
 
 /*********************************
@@ -1525,10 +1656,18 @@ properties* compModuleTraceStream::setProperties(int moduleID,
   return props;
 }
 
-compModuleTraceStream::~compModuleTraceStream() { if(!destroyed) destroy(); }
-
+// Directly calls the destructor of this object. This is necessary because when an application crashes
+// Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+// there is no way to directly call the destructor of a given object when it may have several levels
+// of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+// it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+// an object will invoke the destroy() method of the most-derived class.
 void compModuleTraceStream::destroy() {
-  moduleTraceStream::destroy();
+  this->~compModuleTraceStream();
+}
+
+compModuleTraceStream::~compModuleTraceStream() {
+  assert(!destroyed);
 }
 
 
@@ -1561,10 +1700,18 @@ properties* processedModuleTraceStream::setProperties(int moduleID,
   return props;
 }
 
-processedModuleTraceStream::~processedModuleTraceStream() { if(!destroyed) destroy(); }
-
+// Directly calls the destructor of this object. This is necessary because when an application crashes
+// Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+// there is no way to directly call the destructor of a given object when it may have several levels
+// of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+// it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+// an object will invoke the destroy() method of the most-derived class.
 void processedModuleTraceStream::destroy() {
-  moduleTraceStream::destroy();
+  this->~processedModuleTraceStream();
+}
+
+processedModuleTraceStream::~processedModuleTraceStream() {
+  assert(!destroyed);
 }
 
 
@@ -1573,21 +1720,27 @@ void processedModuleTraceStream::destroy() {
  ******************************************/
 
 ModuleMergeHandlerInstantiator::ModuleMergeHandlerInstantiator() { 
-  (*MergeHandlers   )["modularApp"]   = ModularAppMerger::create;
-  (*MergeKeyHandlers)["modularApp"]   = ModularAppMerger::mergeKey;
-  (*MergeHandlers   )["module"]       = ModuleMerger::create;
-  (*MergeKeyHandlers)["module"]       = ModuleMerger::mergeKey;    
-  (*MergeHandlers   )["moduleMarker"] = ModuleMerger::create;
-  (*MergeKeyHandlers)["moduleMarker"] = ModuleMerger::mergeKey;    
-  (*MergeHandlers   )["moduleEdge"]   = ModuleEdgeMerger::create;
-  (*MergeKeyHandlers)["moduleEdge"]   = ModuleEdgeMerger::mergeKey;
-  (*MergeHandlers   )["moduleTS"]     = ModuleTraceStreamMerger::create;
-  (*MergeKeyHandlers)["moduleTS"]     = ModuleTraceStreamMerger::mergeKey;
+  (*MergeHandlers   )["modularApp"]          = ModularAppMerger::create;
+  (*MergeKeyHandlers)["modularApp"]          = ModularAppMerger::mergeKey;
+  (*MergeHandlers   )["modularAppBody"]      = ModularAppStructureMerger::create;
+  (*MergeKeyHandlers)["modularAppBody"]      = ModularAppStructureMerger::mergeKey;
+  (*MergeHandlers   )["modularAppStructure"] = ModularAppStructureMerger::create;
+  (*MergeKeyHandlers)["modularAppStructure"] = ModularAppStructureMerger::mergeKey;
+  (*MergeHandlers   )["module"]              = ModuleMerger::create;
+  (*MergeKeyHandlers)["module"]              = ModuleMerger::mergeKey;    
+  (*MergeHandlers   )["moduleMarker"]        = ModuleMerger::create;
+  (*MergeKeyHandlers)["moduleMarker"]        = ModuleMerger::mergeKey;
+  (*MergeHandlers   )["moduleCtrl"]          = ModuleCtrlMerger::create;
+  (*MergeKeyHandlers)["moduleCtrl"]          = ModuleCtrlMerger::mergeKey;
+  (*MergeHandlers   )["moduleEdge"]          = ModuleEdgeMerger::create;
+  (*MergeKeyHandlers)["moduleEdge"]          = ModuleEdgeMerger::mergeKey;
+  (*MergeHandlers   )["moduleTS"]            = ModuleTraceStreamMerger::create;
+  (*MergeKeyHandlers)["moduleTS"]            = ModuleTraceStreamMerger::mergeKey;
   
-  (*MergeHandlers   )["compModule"]   = CompModuleMerger::create;
-  (*MergeKeyHandlers)["compModule"]   = CompModuleMerger::mergeKey;    
-  (*MergeHandlers   )["compModuleTS"] = CompModuleTraceStreamMerger::create;
-  (*MergeKeyHandlers)["compModuleTS"] = CompModuleTraceStreamMerger::mergeKey;
+  (*MergeHandlers   )["compModule"]          = CompModuleMerger::create;
+  (*MergeKeyHandlers)["compModule"]          = CompModuleMerger::mergeKey;    
+  (*MergeHandlers   )["compModuleTS"]        = CompModuleTraceStreamMerger::create;
+  (*MergeKeyHandlers)["compModuleTS"]        = CompModuleTraceStreamMerger::mergeKey;
     
   MergeGetStreamRecords->insert(&ModuleGetMergeStreamRecord);
 }
@@ -1656,12 +1809,59 @@ properties* ModularAppMerger::setProperties(std::vector<std::pair<properties::ta
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info,
 void ModularAppMerger::mergeKey(properties::tagType type, properties::iterator tag, 
-                           std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
-  BlockMerger::mergeKey(type, tag.next(), inStreamRecords, key);
+                           std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+  BlockMerger::mergeKey(type, tag.next(), inStreamRecords, info);
   
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; assert(0); }
   if(type==properties::enterTag) {
-    key.push_back(tag.get("appName"));
+    info.add(tag.get("appName"));
+  }
+}
+
+/*************************************
+ ***** ModularAppStructureMerger *****
+ *************************************/
+
+ModularAppStructureMerger::ModularAppStructureMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+                         map<string, streamRecord*>& outStreamRecords,
+                         vector<map<string, streamRecord*> >& inStreamRecords,
+                         properties* props) : 
+        Merger(advance(tags), outStreamRecords, inStreamRecords, 
+                    setProperties(tags, outStreamRecords, inStreamRecords, props)) { }
+
+// Sets the properties of the merged object
+properties* ModularAppStructureMerger::setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+                                       map<string, streamRecord*>& outStreamRecords,
+                                       vector<map<string, streamRecord*> >& inStreamRecords,
+                                       properties* props) {
+  if(props==NULL) props = new properties();
+  
+  assert(tags.size()>0);
+
+  map<string, string> pMap;
+  properties::tagType type = streamRecord::getTagType(tags);
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging modularAppStructure!"<<endl; exit(-1); }
+  if(type==properties::enterTag || type==properties::exitTag) {
+    vector<string> names = getNames(tags); assert(allSame<string>(names));
+    assert(*names.begin() == "modularAppBody" || 
+           *names.begin() == "modularAppStructure");
+    
+    props->add(*names.begin(), pMap);
+  }
+  
+  return props;
+}
+
+// Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+// tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
+// Each level of the inheritance hierarchy may add zero or more elements to the given list and 
+// call their parents so they can add any info,
+void ModularAppStructureMerger::mergeKey(properties::tagType type, properties::iterator tag, 
+                           std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+  Merger::mergeKey(type, tag.next(), inStreamRecords, info);
+  
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; assert(0); }
+  if(type==properties::enterTag) {
   }
 }
 
@@ -1759,8 +1959,8 @@ properties* ModuleMerger::setProperties(std::vector<std::pair<properties::tagTyp
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info,
 void ModuleMerger::mergeKey(properties::tagType type, properties::iterator tag, 
-                           std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
-  Merger::mergeKey(type, tag.next(), inStreamRecords, key);
+                           std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+  Merger::mergeKey(type, tag.next(), inStreamRecords, info);
     
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
@@ -1771,16 +1971,62 @@ void ModuleMerger::mergeKey(properties::tagType type, properties::iterator tag,
     assert(((ModuleStreamRecord*)inStreamRecords["module"])->mStack.back());*/
 
     //if(tag.name() == "moduleMarker") {
-      key.push_back(tag.get("name"));
-      key.push_back(tag.get("numInputs"));
-      key.push_back(tag.get("numOutputs"));
+      info.add(tag.get("name"));
+      info.add(tag.get("numInputs"));
+      info.add(tag.get("numOutputs"));
     /*} else if(tag.name() == "module") {
       streamID inSID(properties::getInt(tag, "moduleID"), inStreamRecords["module"]->getVariantID());
       //streamID outSID = ((ModuleStreamRecord*)inStreamRecords["module"])->mStack.back()->in2outID(inSID);
       map<string, string> pMap;
       streamID outSID = inStreamRecords["module"]->in2outID(inSID);
-      key.push_back(txt()<<outSID.ID);
+      info.add(txt()<<outSID.ID);
     }*/
+  }
+}
+
+/*****************************
+ ***** ModuleCtrlMerger *****
+ ****************************/
+
+ModuleCtrlMerger::ModuleCtrlMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+                         map<string, streamRecord*>& outStreamRecords,
+                         vector<map<string, streamRecord*> >& inStreamRecords,
+                         properties* props) : 
+        Merger(advance(tags), outStreamRecords, inStreamRecords, 
+                    setProperties(tags, outStreamRecords, inStreamRecords, props)) { }
+
+// Sets the properties of the merged object
+properties* ModuleCtrlMerger::setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+                                       map<string, streamRecord*>& outStreamRecords,
+                                       vector<map<string, streamRecord*> >& inStreamRecords,
+                                       properties* props) {
+  if(props==NULL) props = new properties();
+  
+  assert(tags.size()>0);
+
+  map<string, string> pMap;
+  properties::tagType type = streamRecord::getTagType(tags); 
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Module Control tags!"<<endl; exit(-1); }
+  if(type==properties::enterTag || type==properties::exitTag) {
+    vector<string> names = getNames(tags); assert(allSame<string>(names));
+    assert(*names.begin() == "moduleCtrl");
+  }
+  props->add("moduleCtrl", pMap);
+  
+  return props;
+}
+
+// Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+// tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
+// Each level of the inheritance hierarchy may add zero or more elements to the given list and 
+// call their parents so they can add any info,
+void ModuleCtrlMerger::mergeKey(properties::tagType type, properties::iterator tag, 
+                           std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+  Merger::mergeKey(type, tag.next(), inStreamRecords, info);
+    
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge control attribute key!"<<endl; exit(-1); }
+  if(type==properties::enterTag) {
+    info.setUniversal(true);
   }
 }
 
@@ -1869,8 +2115,8 @@ properties* ModuleEdgeMerger::setProperties(std::vector<std::pair<properties::ta
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info,
 void ModuleEdgeMerger::mergeKey(properties::tagType type, properties::iterator tag, 
-                                std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
-  Merger::mergeKey(type, tag.next(), inStreamRecords, key);
+                                std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+  Merger::mergeKey(type, tag.next(), inStreamRecords, info);
     
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
@@ -1881,18 +2127,18 @@ void ModuleEdgeMerger::mergeKey(properties::tagType type, properties::iterator t
     streamID inFromSID(tag.getInt("fromCID"), inStreamRecords["module"]->getVariantID());
     //streamID outFromSID = ((ModuleStreamRecord*)inStreamRecords["module"])->mStack.back()->in2outID(inFromSID);
     streamID outFromSID = inStreamRecords["module"]->in2outID(inFromSID);
-    key.push_back(txt()<<outFromSID.ID);
+    info.add(txt()<<outFromSID.ID);
     
     streamID inToSID(tag.getInt("toCID"), inStreamRecords["module"]->getVariantID());
     //streamID outToSID = ((ModuleStreamRecord*)inStreamRecords["module"])->mStack.back()->in2outID(inToSID);
     streamID outToSID = inStreamRecords["module"]->in2outID(inToSID);
-    key.push_back(txt()<<outToSID.ID);
+    info.add(txt()<<outToSID.ID);
     
     // Edges between different port numbers/types are separated
-    key.push_back(tag.get("fromT"));
-    key.push_back(tag.get("fromP"));
-    key.push_back(tag.get("toT"));
-    key.push_back(tag.get("toP"));
+    info.add(tag.get("fromT"));
+    info.add(tag.get("fromP"));
+    info.add(tag.get("toT"));
+    info.add(tag.get("toP"));
   }
 }
 
@@ -1967,8 +2213,6 @@ properties* ModuleTraceStreamMerger::setProperties(
     pMap["numInputs"] = getSameValue(tags, "numInputs");
     pMap["numOutputs"] = getSameValue(tags, "numOutputs");
     
-    
-    
     // Now check to see if the current group on each incoming stream has already been assigned an ID on the
     // outgoing stream
     /*streamID outSID;
@@ -1993,18 +2237,22 @@ properties* ModuleTraceStreamMerger::setProperties(
       // This means that a moduleTS tag for this module group has already been emitted and thus, we will
       // not be emitting another one.
       // Set the dontEmit field in pMap to communicate this fact to the ModuleTraceStreamMerger constructor
-      pMap["dontEmit"] = 1;
+      pMap["dontEmit"] = "1";
     // If we've never previously observed this module group
     } else {
       int moduleID = ((ModuleStreamRecord*)(outStreamRecords)["module"])->genModuleID();
-      // Record the mapping from the moduleIDs of each incoming stream to this moduleID
-      //int moduleID = streamRecord::mergeIDs("module", "moduleID", pMap, tags, outStreamRecords, inStreamRecords);
       
       // Associate the new moduleID with the module group
       ((ModuleStreamRecord*)(outStreamRecords)["module"])->setModuleID(g, moduleID);
       
       pMap["moduleID"] = txt() << moduleID;
     }
+    
+    // Record the mapping from the moduleIDs of each incoming stream to this moduleID
+    int moduleID = ((ModuleStreamRecord*)(outStreamRecords)["module"])->getModuleID(g);
+    int mergedID = streamRecord::mergeIDs("module", "moduleID", pMap, tags, outStreamRecords, inStreamRecords, moduleID);
+    assert(mergedID == moduleID);
+    
   } else if(type==properties::exitTag) {
   }
   props->add("moduleTS", pMap);
@@ -2018,8 +2266,8 @@ properties* ModuleTraceStreamMerger::setProperties(
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
 void ModuleTraceStreamMerger::mergeKey(properties::tagType type, properties::iterator tag, 
-                           std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
-  Merger::mergeKey(type, tag.next(), inStreamRecords, key);
+                           std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+  Merger::mergeKey(type, tag.next(), inStreamRecords, info);
    
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
@@ -2027,9 +2275,9 @@ void ModuleTraceStreamMerger::mergeKey(properties::tagType type, properties::ite
     // The same rule is used for their associated module but since those tags appear later in the stream
     // they're split according to the ID in the outgoing stream that was assigned to them while processing
     // their moduleNodeTraceStreams.
-    key.push_back(tag.get("name"));
-    key.push_back(tag.get("numInputs"));
-    key.push_back(tag.get("numOutputs"));
+    info.add(tag.get("name"));
+    info.add(tag.get("numInputs"));
+    info.add(tag.get("numOutputs"));
   }
 }
 
@@ -2085,12 +2333,12 @@ properties* CompModuleMerger::setProperties(std::vector<std::pair<properties::ta
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info,
 void CompModuleMerger::mergeKey(properties::tagType type, properties::iterator tag, 
-                           std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
-  ModuleMerger::mergeKey(type, tag.next(), inStreamRecords, key);
+                           std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+  ModuleMerger::mergeKey(type, tag.next(), inStreamRecords, info);
     
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
-    key.push_back(tag.get("compModule:isReference"));
+    info.add(tag.get("compModule:isReference"));
   }
 }
 
@@ -2159,27 +2407,60 @@ properties* CompModuleTraceStreamMerger::setProperties(
     // it must have the same value on all the incoming streams.
     pMap["numOutputs"] = getSameValue(tags, "numOutputs");
     long numOutputs = attrValue::parseInt(pMap["numOutputs"]);
-    vector<int> maxNumAttrs(numOutputs, 0); // The maximum number of attributes observed for any output
+    //vector<int> maxNumAttrs(numOutputs, 0); // The maximum number of attributes observed for any output
+
     for(int outIdx=0; outIdx<numOutputs; outIdx++) {
+      // Maps the name of each output attribute of the current output to the descriptor of its comparator
+      map<string, pair<string, string> > comparators;
+      
       for(vector<pair<properties::tagType, properties::iterator> >::iterator t=tags.begin(); t!=tags.end(); t++) {
         // Iterate over all the attributes that were specified for the current output along the given incoming stream
         long numAttrs = t->second.getInt(txt()<<"out"<<outIdx<<":numAttrs");
         for(int compIdx=0; compIdx<numAttrs; compIdx++) {
-          string key = txt()<<"out"<<outIdx<<":compare"<<compIdx;
-          // If we haven't yet recorder the comparator for this attribute of this output, do so now
+           vector<string> fields = escapedStr(t->second.get(txt()<<"out"<<outIdx<<":compare"<<compIdx), ":", escapedStr::escaped).unescapeSplit(":");
+           assert(fields.size()==3);
+           // The name of the attribute
+           string attrName = fields[0];
+           // The name of the comparator to be used for this attribute
+           string compName = fields[1];
+           // The description of the comparator
+           string compDesc = fields[2];
+
+           // Record the comparator to be used for the current attribute of the current output
+
+           // If we haven't yet recorded the comparator for this attribute, do so now
+           if(comparators.find(attrName) == comparators.end())
+             comparators[attrName] = make_pair(compName, compDesc);
+           // Otherwise, ensure that all the comparators specified for this attribute/output are identical
+           else
+             assert(comparators[attrName] == make_pair(compName, compDesc));
+
+/*          string key = txt()<<"out"<<outIdx<<":compare"<<compIdx;
+cout << "outIdx="<<outIdx<<", compIdx="<<compIdx<<". key="<<key<<": "<<t->second.get(txt()<<"out"<<outIdx<<":compare"<<compIdx)<<endl;
+          // If we haven't yet recorded the comparator for this attribute of this output, do so now
           if(pMap.find(key) == pMap.end()) pMap[key] = t->second.get(txt()<<"out"<<outIdx<<":compare"<<compIdx);
           // Ensure that all the comparators specified for this attribute/output are identical
-          else                      assert(pMap[key] == t->second.get(txt()<<"out"<<outIdx<<":compare"<<compIdx));
+          else                      assert(pMap[key] == t->second.get(txt()<<"out"<<outIdx<<":compare"<<compIdx));*/
         }
         
         // Update the record of the maximum number of attributes
-        if(maxNumAttrs[outIdx] < numAttrs) maxNumAttrs[outIdx] = numAttrs;
+        //if(maxNumAttrs[outIdx] < numAttrs) maxNumAttrs[outIdx] = numAttrs;
+      }
+
+      // We've now collected the comparators for all the attributes of this output. Now add them to pMap[]
+      pMap[txt()<<"out"<<outIdx<<":numAttrs"] = txt()<<comparators.size();
+      int compIdx=0;
+      for(map<string, pair<string, string> >::iterator comp=comparators.begin(); comp!=comparators.end(); comp++, compIdx++) {
+        pMap[txt()<<"out"<<outIdx<<":compare"<<compIdx] = txt() <<
+                           escapedStr(comp->first,         ":", escapedStr::unescaped).escape()<<":"<<
+                           escapedStr(comp->second.first,  ":", escapedStr::unescaped).escape()<<":"<<
+                           escapedStr(comp->second.second, ":", escapedStr::unescaped).escape();
       }
     }
     
     // Record the number of attributes for each output
-    for(int outIdx=0; outIdx<maxNumAttrs.size(); outIdx++)
-      pMap[txt()<<"out"<<outIdx<<":numAttrs"] = txt()<<maxNumAttrs[outIdx];
+    /*for(int outIdx=0; outIdx<maxNumAttrs.size(); outIdx++)
+      pMap[txt()<<"out"<<outIdx<<":numAttrs"] = txt()<<maxNumAttrs[outIdx];*/
     
     pMap["numMeasurements"] = tags[0].second.get("numMeasurements");
     int numMeasurements = attrValue::parseInt(pMap["numMeasurements"]);
@@ -2197,8 +2478,8 @@ properties* CompModuleTraceStreamMerger::setProperties(
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
 void CompModuleTraceStreamMerger::mergeKey(properties::tagType type, properties::iterator tag, 
-                                           std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
-  Merger::mergeKey(type, tag.next(), inStreamRecords, key);
+                                           std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+  Merger::mergeKey(type, tag.next(), inStreamRecords, info);
    
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
@@ -2208,50 +2489,50 @@ void CompModuleTraceStreamMerger::mergeKey(properties::tagType type, properties:
     // The same rule is used for their associated module but since those tags appear later in the stream
     // they're split according to the ID in the outgoing stream that was assigned to them while processing
     // their moduleNodeTraceStreams.
-    //key.push_back(tag.get("isReference"));
+    //info.add(tag.get("isReference"));
     
     // Same options
     /*common::module::context options(tag, "op");
-    key.push_back(txt()<<options.configuration.size());
+    info.add(txt()<<options.configuration.size());
     int cIdx=0;
     for(map<string, attrValue>::iterator c=options.configuration.begin(); c!=options.configuration.end(); c++, cIdx++) {
-      key.push_back(c->first);
-      key.push_back(c->second.serialize());
+      info.add(c->first);
+      info.add(c->second.serialize());
     }*/
     
     // Same number of inputs
-    key.push_back(tag.get("numInputs"));
+    info.add(tag.get("numInputs"));
     // Same comparators on all inputs. Inputs are not required to have comparators specified for them, so
     // if a given input has no comparators specified we merely make sure that this holds along all incoming streams.
     int numInputs = tag.getInt("numInputs");
     for(int inIdx=0; inIdx<numInputs; inIdx++) {
-      key.push_back(tag.get(txt()<<"in"<<inIdx<<":numAttrs"));
+      info.add(tag.get(txt()<<"in"<<inIdx<<":numAttrs"));
       int numAttrs = tag.getInt(txt()<<"in"<<inIdx<<":numAttrs");
       for(int compIdx=0; compIdx<numAttrs; compIdx++) {
-        key.push_back(tag.get(txt()<<"in"<<inIdx<<":compare"<<compIdx));
+        info.add(tag.get(txt()<<"in"<<inIdx<<":compare"<<compIdx));
       }
     }
     
     // Same number of outputs
-    key.push_back(tag.get("numOutputs"));
+    info.add(tag.get("numOutputs"));
     /*
     // Same comparators on outputs
     int numOutputs = tag.getInt("numOutputs");
     for(int outIdx=0; outIdx<numOutputs; outIdx++) {
-      key.push_back(tag.get(txt()<<"out"<<outIdx<<":numAttrs"));
+      info.add(tag.get(txt()<<"out"<<outIdx<<":numAttrs"));
       int numAttrs = tag.getInt(txt()<<"out"<<outIdx<<":numAttrs");
       for(int compIdx=0; compIdx<numAttrs; compIdx++) {
-        key.push_back(tag.get(txt()<<"out"<<outIdx<<":compare"<<compIdx));
+        info.add(tag.get(txt()<<"out"<<outIdx<<":compare"<<compIdx));
       }
     }*/
     
     // Same measurements
-    key.push_back(tag.get("numMeasurements"));
+    info.add(tag.get("numMeasurements"));
     // Concatenate the descriptions of the measurements
     int numMeasurements = tag.getInt("numMeasurements");
     ostringstream measurements;
     for(int m=0; m<numMeasurements; m++)
-      key.push_back(tag.get(txt()<<"measure"<<m));
+      info.add(tag.get(txt()<<"measure"<<m));
   }
 }
 

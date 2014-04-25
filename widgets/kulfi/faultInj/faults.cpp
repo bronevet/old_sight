@@ -238,6 +238,8 @@ static const char* blacklist[] = {
 	"writeFaultSiteHitHistogram",
 	"_GLOBAL__I_a", // .text.startup
 	"MY_SET_SIGSEGV_HANDLER",
+	"EnableKulfi",
+	"DisableKulfi"
 };
 
 static bool isFunctionNameBlacklisted(const char* fn) {
@@ -468,9 +470,6 @@ static PHINode* createBranchForCorruptInst(Value* corrupted,
 
 	corruptValPhi = PHINode::Create(original->getType(), 0, "Corrupted",
 		&(nextBB->front()));
-//	original->dump();
-//	corrupted->dump();
-//	errs() << "\n";
 	corruptValPhi->addIncoming(original, prevBB);
 	corruptValPhi->addIncoming(corrupted, injBB);
 
@@ -1307,8 +1306,7 @@ public:
 	static char ID; 
 	dynfault() : ModulePass(ID) {}
 	virtual bool runOnModule(Module &M) {
-		g_irbuilder = new IRBuilder<true, ConstantFolder, IRBuilderDefaultInserter<true> >(
-			getGlobalContext());
+		g_irbuilder = new IRBuilder<true, ConstantFolder, IRBuilderDefaultInserter<true> >(getGlobalContext());
 		readFunctionInjWhitelist();
 		errs() << "Fault injection white list read\n";
 		recordUseDefChain(M);
@@ -1642,7 +1640,7 @@ bool InjectError_PtrError(Instruction *I)
 			top->getName(),
 			stInst
 			);
-		if(!iAddr) assert(0 ** "Create PtrToInt inst error. This should not happen!");
+		if(!iAddr) assert(0 && "Create PtrToInt inst error. This should not happen!");
 
 		Value *tVal = ConstantInt::get(IntegerType::getInt64Ty(getGlobalContext()), mask);
  
@@ -2049,13 +2047,6 @@ void writeFaultSiteDOTGraph() {
 		unsigned long from = itr->first, to = itr->second;
 		fprintf(out, "\tNode%lu -> Node%lu\n", from, to);
 	}
-/*
-	for(std::list<std::pair<unsigned long, unsigned long> >::iterator itr =
-		branch_edge_list.begin(); itr != branch_edge_list.end(); itr++) {
-		unsigned long from = itr->first, to = itr->second;
-		fprintf(out, "\tNode%lu -> Node%lu [color=\"blue\"]\n", from, to);
-	}
-*/
 	fprintf(out, "}\n");
 	fclose(out);
 }

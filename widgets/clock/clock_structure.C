@@ -224,13 +224,13 @@ properties* TimeClockMerger::setProperties(std::vector<std::pair<properties::tag
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
 void TimeClockMerger::mergeKey(properties::tagType type, properties::iterator tag, 
-                           std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
+                           std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
   properties::iterator blockTag = tag;
     
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
     // Differentiate clocks according to their time
-    key.push_back(properties::get(tag, "time"));
+    info.add(properties::get(tag, "time"));
   }
 }
 
@@ -288,16 +288,16 @@ properties* StepClockMerger::setProperties(std::vector<std::pair<properties::tag
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
 void StepClockMerger::mergeKey(properties::tagType type, properties::iterator tag, 
-                               std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
+                               std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
   properties::iterator blockTag = tag;
     
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
     // Differentiate step clocks according to their step vector
-    key.push_back(properties::get(tag, "numDims"));
+    info.add(properties::get(tag, "numDims"));
     long numDims = properties::getInt(tag, "numDims");
     for(int i=0; i<numDims; i++)
-      key.push_back(properties::get(tag, txt()<<"dim"<<i));
+      info.add(properties::get(tag, txt()<<"dim"<<i));
   }
 }
 

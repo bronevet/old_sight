@@ -6,6 +6,7 @@
 #include <math.h>
 #include "../sight_common_internal.h"
 #include <typeinfo>
+#include <boost/shared_ptr.hpp>
 
 namespace sight {
 namespace layout {
@@ -186,6 +187,10 @@ class comparator {
   virtual void reset()=0;
   
   virtual std::string str()=0;
+
+  // Returns whether this comparator performs no comparison. This is important for cases where users do not wish
+  // to perform a comparison on a given attribute.
+  virtual bool isNoComparator() { return false; }
 };
 
 // Describes the comparator object that will be employed during subsequent analysis phases
@@ -231,16 +236,49 @@ class comparatorDesc {
 
 class scalarComparator : public comparator {
   public:
-  // Called on each pair of elements from a container object, one from each object
-  virtual void compare(const std::string& str1,   const std::string& str2)   { assert(0); }
-  virtual void compare(const void*        ptr1,   const void*        ptr2)   { assert(0); }
-  virtual void compare(long               int1,   long               int2)   { assert(0); }
-  virtual void compare(double             float1, double             float2) { assert(0); }
+  // Called on each pair of elements from a container object, one from each object. None of these
+  // functions is mandatory because individual scalar comparators may only support a subset of the
+  // given datatypes (e.g. a numerical comparator may not support strings and vice versa).
+  virtual void compare(const std::string& str1,   const std::string& str2)   { std::cerr << "ERROR: This comparator does not support strings!"<<std::endl;                assert(0); }
+  virtual void compare(const void*        ptr1,   const void*        ptr2)   { std::cerr << "ERROR: This comparator does not support pointers!"<<std::endl;               assert(0); }
+  virtual void compare(long               int1,   long               int2)   { std::cerr << "ERROR: This comparator does not support integral numbers!"<<std::endl;       assert(0); }
+  virtual void compare(double             float1, double             float2) { std::cerr << "ERROR: This comparator does not support floating point numbers!"<<std::endl; assert(0); }
   
   // Called to get the overall relationship between the two objects given all the individual elements
   // observed so far
   virtual attrValue relation()=0;
+  
+  // Returns whether the given pointer to or reference to a comparator corresponds to a scalarComparator
+  static bool instanceOf(const comparator* comp);
+  static bool instanceOf(const comparator& comp);
+  
+  // Given a pointer or reference to a comparator returns the corresponding pointer/reference to 
+  // a scalar comparator or aborts if the object is not a scalar comparator
+  static scalarComparator* castTo(comparator* comp);
+  static const scalarComparator* castTo(const comparator* comp);
+  static scalarComparator& castTo(comparator& comp);
+  static const scalarComparator& castTo(const comparator& comp);
 }; // class scalarComparator
+
+// This is the most generic comparator class. Its compare method takes in arbitrary attrValues
+// and returns the relation between them.
+class generalComparator : public comparator {
+  public:
+  // Called on each pair of elements from a container object, one from each object. Returns
+  // the relation between them.
+  virtual attrValue compare(const attrValue& str1,   const attrValue& str2)=0;
+  
+  // Returns whether the given pointer to or reference to a comparator corresponds to a generalComparator
+  static bool instanceOf(const comparator* comp);
+  static bool instanceOf(const comparator& comp);
+  
+  // Given a pointer or reference to a comparator returns the corresponding pointer/reference to 
+  // a scalar comparator or aborts if the object is not a scalar comparator
+  static generalComparator* castTo(comparator* comp);
+  static const generalComparator* castTo(const comparator* comp);
+  static generalComparator& castTo(comparator& comp);
+  static const generalComparator& castTo(const comparator& comp);
+}; // class generalComparator
 
 
 // Class that manages the registration of comparator factory objects. Each type of comparator creates an instance of a
@@ -335,14 +373,56 @@ class customAttrValueInstantiator : public sight::common::LoadTimeRegistry {
   static std::string str();
 }; // class customAttrValueInstantiator
 
-// Here we define the standard variants of customAttrValues that are generally useful. Each class includes
-// one or more un-implemented virtual methods that classes that derive them must implement. Individual
-// implementations of customAttrValue may choose to support the additional functionality of these
-// derivations by inheriting from these more specialized variants and users can easily check if a given 
-// customAttrValue object provides a given type of functionality by dynamically casting it to one of these
-// classes and checking if the cast is successful.
+// The NULL comparator that does not perform any comparison at all and instead always 
+// returns the first argument. By convention when we compare a given observation to a 
+// reference observation we call observation->compare(reference, comparator), which 
+// causes the first argument to be comparator's compare() method to be the non-reference
+// observation.
+class noComparator: virtual public scalarComparator, virtual public generalComparator {
+  attrValue rel;
+  public:
+  noComparator() {};
+  
+  // Called on each pair of elements from a container object, one from each object
+  void compare(const std::string& str1,   const std::string& str2)   { rel = attrValue(str1); }
+  void compare(const void*        ptr1,   const void*        ptr2)   { rel = attrValue((void*)ptr1); }
+  void compare(long               int1,   long               int2)   { rel = attrValue(int1); }
+  void compare(double             float1, double             float2) { rel = attrValue(float1); }
+  
+  // Called to get the overall relationship between the two objects given all the individual elements
+  // observed so far. In the noComparator we simply return the relationship between the objects
+  // passed into the last scalar compare() call.
+  attrValue relation() { return rel; }
+  
+  attrValue compare(const attrValue& val1, const attrValue& val2) { return val1; }
+  
+  // Resets the state of this comparator, making it ready for another comparison.
+  // Do nothing since the rel object gets reset on every comparison
+  void reset() {}
+  
+  std::string str() { return txt()<<"[noComparator]"; }
 
-// A specific instance of elementwise comparison: the Lk norm. This is a numeric comparator and therefore can only
+  // Returns whether this comparator performs no comparison. This is important for cases where users do not wish
+  // to perform a comparison on a given attribute.
+  bool isNoComparator() { return true; }
+}; // class noComparator
+
+// Describes the NoComparator object that will be employed during subsequent analysis phases
+class noComp : public comparatorDesc {
+  public:
+  noComp() {}
+  
+  // Returns the unique name of the given comparator type
+  std::string name() const { return "NoComparator"; }
+  
+  // Returns the description of the type of comparison needs to be performed (e.g. the value of k)
+  std::string description() const { return ""; }
+  
+  // Returns a comparator that can be used to compare objects of the given valueType
+  static comparator* generate(std::string description) { return (scalarComparator*)(new noComparator()); }
+}; // class noComp
+
+// A specific instance of scalar comparison: the Lk norm. This is a numeric comparator and therefore can only
 // compare integral and floating point values. 
 template<typename EltType, // The type of elements this comparator operates on
          int k, // The k of the norm. The infinity norm can be requested by specifying k=0. If k is set to -1, we
@@ -461,9 +541,6 @@ class LkComparatorK: public LkComparator<EltType, k, absoluted> {
   }
 };
 
-// Returns a comparator that can be used to compare objects of the given valueType
-comparator* genLkComparator(std::string description);
-
 // Describes the Lk Comparator object that will be employed during subsequent analysis phases
 class LkComp : public comparatorDesc {
   int k;
@@ -480,6 +557,9 @@ class LkComp : public comparatorDesc {
   std::string description() const {
     return txt()<<k<<":"<<type<<":"<<absoluted;
   }
+  
+  // Returns a comparator that can be used to compare objects of the given valueType
+  static comparator* generate(std::string description);
 }; // class LkComp
 
 
@@ -529,9 +609,6 @@ class RelativeComparator: public scalarComparator {
   }
 }; // RelativeCompatator
 
-// Returns a comparator that can be used to compare objects of the given valueType
-comparator* genRelComparator(std::string description);
-
 // Describes the Relative Comparator object that will be employed during subsequent analysis phases
 class RelComp : public comparatorDesc {
   attrValue::valueType type;
@@ -546,6 +623,9 @@ class RelComp : public comparatorDesc {
   std::string description() const {
     return txt()<<type;
   }
+  
+  // Returns a comparator that can be used to compare objects of the given valueType
+  static comparator* generate(std::string description);
 }; // class RelComp
 
 // Registers generation functions for each type of comparator we've defined here
@@ -566,6 +646,40 @@ extern baseAttrValueComparatorInstantiator baseAttrValueComparatorInstance;
 /**********************
  ***** sightArray *****
  **********************/
+/*
+// Simple implementation of a reference counted shared pointer that allows us to choose whether
+// sightArray owns and reference counts an array or is a thin wrapper around an array that is owned
+// by the user.
+template <class T>
+class refCntPtr
+{
+public:
+  explicit refCntPtr(T* pointee, bool owner) : pointee_(pointee), owner_(owner) {
+    if(owner) count = 1;
+    else      count = 0;
+  }
+  refCntPtr(const refCntPtr* that) : pointee_(that.pointee), owner_(that.owner_) {
+    if(owner_) count_ = that.count_+1;
+       
+   }
+   refCntPtr& operator=(const refCntPtr& other) {
+     if(
+   }
+   ~refCntPtr();
+   T& operator*() const
+   {
+      return *pointee_;
+   }
+   T* operator->() const
+   {
+      return pointee_;
+   }
+private:
+   T* pointee_;
+   bool owner_;
+   int count;
+};*/
+
 // Denotes arrays of any dimensionality. 
 // sightArrays maintain a pointer to a given array instead of making a private copy. As such, callers must ensure to 
 // not deallocate the array until they've deallocated any sightArrays that refer to it. Callers also have the option
@@ -585,6 +699,7 @@ class sightArray : public customAttrValue {
   
   // Points to the array contents, which is a buffer of the given scalar type
   void* array;
+  boost::shared_ptr<void> sharray;
   
   // The type of scalar value that is stored in the array
   attrValue::valueType type;
@@ -594,14 +709,24 @@ class sightArray : public customAttrValue {
   bool arrayOwner;
   
   public:
-  sightArray(const dims& d, void* array, attrValue::valueType type, bool arrayOwner=false);
-  sightArray(const dims& d, std::string* array, bool arrayOwner=false);
-  sightArray(const dims& d, char** array,       bool arrayOwner=false);
-  sightArray(const dims& d, void** array,       bool arrayOwner=false);
-  sightArray(const dims& d, long* array,        bool arrayOwner=false);
-  sightArray(const dims& d, int* array,         bool arrayOwner=false);
-  sightArray(const dims& d, double* array,      bool arrayOwner=false);
-  sightArray(const dims& d, float* array,       bool arrayOwner=false);
+  sightArray(const dims& d, void* array, attrValue::valueType type/*, bool arrayOwner=false*/);
+  sightArray(const dims& d, std::string* array/*, bool arrayOwner=false*/);
+  sightArray(const dims& d, char** array/*,       bool arrayOwner=false*/);
+  sightArray(const dims& d, void** array/*,       bool arrayOwner=false*/);
+  sightArray(const dims& d, long* array/*,        bool arrayOwner=false*/);
+  sightArray(const dims& d, int* array/*,         bool arrayOwner=false*/);
+  sightArray(const dims& d, double* array/*,      bool arrayOwner=false*/);
+  sightArray(const dims& d, float* array/*,       bool arrayOwner=false*/);
+  
+  sightArray(const dims& d, boost::shared_ptr<void> array, attrValue::valueType type);
+  sightArray(const dims& d, boost::shared_ptr<std::string> array);
+  sightArray(const dims& d, boost::shared_ptr<char*> array);
+  sightArray(const dims& d, boost::shared_ptr<void*> array);
+  sightArray(const dims& d, boost::shared_ptr<long> array);
+  sightArray(const dims& d, boost::shared_ptr<int> array);
+  sightArray(const dims& d, boost::shared_ptr<double> array);
+  sightArray(const dims& d, boost::shared_ptr<float> array);
+  
   sightArray(const sightArray& that);
   
   void init();

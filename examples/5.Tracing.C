@@ -56,7 +56,10 @@ int main(int argc, char** argv) {
         
         traceAttr("Boxplot", "j", attrValue(j));
         traceAttr("Boxplot", "i", i);
-        traceAttr("Scatter", "func", i*j*k);
+        
+        traceAttr("Scatter", "i*j*k",   i*j*k);
+        traceAttr("Scatter", "(i+j)*k", (i+j)*k);
+        traceAttr("Scatter", "i+j+k",   i+j+k);
       }
     }
   }

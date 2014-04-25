@@ -323,10 +323,8 @@ sightObj::sightObj(properties* props, bool isTag) : props(props), destroyed(fals
 }
 
 void sightObj::init(properties* props, bool isTag) {
-  //cout << "sightObj::sightObj isTag="<<isTag<<" props="<<props->str()<<endl;
+//  cout << "sightObj::sightObj isTag="<<isTag<<" props="<<(props? props->str(): "NULL")<<endl;
   if(props && props->active && props->emitTag) {
-    if(props==NULL) props = new properties();
-    
     // Add the properties of any clocks associated with this sightObj
     for(map<string, set<sightClock*> >::iterator i=clocks.begin(); i!=clocks.end(); i++) {
       for(set<sightClock*>::iterator j=i->second.begin(); j!=i->second.end(); j++)
@@ -347,31 +345,49 @@ void sightObj::init(properties* props, bool isTag) {
 
   // Push this sightObj onto the stack
   if(initializedDebug && emitExitTag) {
-    //cout << "[[[ "<<(props? props->str(): "NULL")<<endl;
+//    cout << "[[[ "<<(props? props->str(): "NULL")<<endl;
     soStack().push_back(this);
   }
 }
 
-sightObj::~sightObj() { if(!destroyed) destroy(); }
-
-// Contains the code to destroy this object. This method is called to clean up application state due to an
-// abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
-// that implement destroy should call the destroy method of their parent object.
+// Directly calls the destructor of this object. This is necessary because when an application crashes
+// Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+// there is no way to directly call the destructor of a given object when it may have several levels
+// of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+// it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+// an object will invoke the destroy() method of the most-derived class.
 void sightObj::destroy() {
-  /*if(soStack().size()>0 && emitExitTag) 
-    cout << "]]](#"<<soStack().size()<<") "<<props->str()<<endl;*/
+  this->~sightObj();
+}
+
+sightObj::~sightObj() {
+  assert(!destroyed);
+  
+/*  if(soStack().size()>0 && emitExitTag) {
+    cout << "]]](#"<<soStack().size()<<") props="<<(props? props->str(): "NULL")<<endl;
+    cout << "soStack().back()="<<(soStack().back()->props? soStack().back()->props->str(): "NULL")<<endl;
+  }*/
+  
+  // If the application calls to exit(), this will call the destructors of all the static objects
+  // but not those on the stack or heap. As such, it is possible to reach the destructor of an object
+  // in the middle of the soStack without calling the destructors for objects in the middle.
+  // As such, we call their destructors directly right now.
+/*  while(emitExitTag && soStack().back() != this) 
+    soStack().back()->destroy();*/
+  
   //assert(props);
   if(props) {
     //cout << "sightObj::~sightObj(), emitExitTag="<<emitExitTag<<" props="<<props->str()<<endl;
     if(props->active && props->emitTag && emitExitTag)
       dbg.exit(this);
-    delete(props);
+    delete props;
     props = NULL;
   }
 
   // Pop this sightObj off the top of the stack
   // The stack is empty when we're trying to destroy global/static sightObjs created before Sight was initialized
   if(soStack().size()>0 && emitExitTag) {
+    // Remove this object from the stack
     assert(soStack().back() == this);
     soStack().pop_back();
   }
@@ -379,16 +395,24 @@ void sightObj::destroy() {
   // We've finished destroying this object and it should not be destroyed again,
   // even if the destructor is explicitly called.
   destroyed = true;
+
+  // Invoke the callbacks registered by classes that derive from sightObj to notify them that the destruction of this
+  // sightObj has completed.
+  for(list<destructNotifier>::iterator n=sightObjDestructNotifiers.begin(); n!=sightObjDestructNotifiers.end(); n++)
+    (*n)(this);
+  sightObjDestructNotifiers.clear();
 }
 
 // Destroy all the currently live sightObjs on the stack
 void sightObj::destroyAll() {
   // Call the destroy method of each object on the soStack
-  for(list<sightObj*>::reverse_iterator o=soStack().rbegin(); o!=soStack().rend(); o++) {
-    if((*o)->emitExitTag) {
-//      cout << ">!> "<<(*o)->props->str()<<endl;
+  while(soStack().size()>0) {
+    list<sightObj*>::reverse_iterator o=soStack().rbegin();
+//    if((*o)->emitExitTag) {
+      //cout << ">!> "<<(*o)->props->str()<<endl;
       (*o)->destroy();
-    }
+//    }
+    // The call to destroy will remove the last element from soStack()
   }
   soStack().clear();
 }
@@ -426,6 +450,11 @@ void sightObj::remClock(std::string clockName) {
 bool sightObj::isActiveClock(std::string clockName, sightClock* c) {
   return clocks.find(clockName) != clocks.end() &&
          clocks[clockName].find(c) != clocks[clockName].end();
+}
+
+// Registers a given callback function to be called when the destruction of this object completes.
+void sightObj::registerDestructNotifier(destructNotifier notifier) {
+  sightObjDestructNotifiers.push_back(notifier);
 }
 
 /************************************
@@ -545,12 +574,15 @@ properties::tagType streamRecord::getTagType(const vector<pair<properties::tagTy
 //    IDName="blockID". Thus, anchor objects maintain the anchorID mappings for blocks as well as others, 
 //    while blocks maintain blockID mappings for themselves. This means that each object type (e.g. anchor, block, 
 //    trace) can only maintain one type of ID in its own streamRecord.
+// The merged ID on the outgoing stream can be explicitly specified via the mergedID argument. If this argument
+//    is not provided, a fresh ID is generated automatically.
 // Returns the merged ID in the outgoing stream.
 int streamRecord::mergeIDs(std::string objName, std::string IDName, 
                            std::map<std::string, std::string>& pMap, 
                            const vector<pair<properties::tagType, properties::iterator> >& tags,
                            std::map<std::string, streamRecord*>& outStreamRecords,
-                           std::vector<std::map<std::string, streamRecord*> >& inStreamRecords) {
+                           std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                           int mergedID) {
   //cout << "streamRecord::mergeIDs()\n";
   
   // Find the anchorID in the outgoing stream that the anchors in the incoming streams will be mapped to.
@@ -566,7 +598,13 @@ int streamRecord::mergeIDs(std::string objName, std::string IDName,
   // If none of the anchors on the incoming stream have been mapped to an anchor in the outgoing stream,
   // create a fresh anchorID in the outgoing stream, advancing the maximum anchor ID in the process
   if(!outSIDKnown) {
-    outSID = streamID(++outS->maxID, outS->getVariantID());
+    // If mergedID is not specified, set it to a fresh ID
+    if(mergedID<0) mergedID = ++outS->maxID;
+    // If it is specified, update maxID to ensure that the next auto-generated ID doesn't conflict with this one
+    else
+      outS->maxID = (outS->maxID <= mergedID? outS->maxID = mergedID+1: outS->maxID);
+    
+    outSID = streamID(mergedID, outS->getVariantID());
     //cout << "streamRecord::mergeIDs(), assigned new ID on outgoing stream outSID="<<outSID.str()<<endl;
   }
   
@@ -724,13 +762,13 @@ Merger::~Merger() {
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
 void Merger::mergeKey(properties::tagType type, properties::iterator tag, 
-                      std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
+                      std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
   // Iterate through the properties of any clocks associated with this object
   while(!tag.isEnd()) {
     if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging keys!"<<endl; exit(-1); }
     if(type==properties::enterTag) {
       // Call the current clock's mergeKey method
-      (*MergeHandlerInstantiator::MergeKeyHandlers)[tag.name()](type, tag, inStreamRecords, key);
+      (*MergeHandlerInstantiator::MergeKeyHandlers)[tag.name()](type, tag, inStreamRecords, info);
     } else { }
     
     tag++;
@@ -1436,17 +1474,23 @@ properties* block::setProperties(string label, set<anchor>& pointsTo, properties
   return props;
 }
 
-block::~block() { if(!destroyed) destroy(); }
-
-// Contains the code to destroy this object. This method is called to clean up application state due to an
-// abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
-// that implement destroy should call the destroy method of their parent object.
+// Directly calls the destructor of this object. This is necessary because when an application crashes
+// Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+// there is no way to directly call the destructor of a given object when it may have several levels
+// of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+// it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+// an object will invoke the destroy() method of the most-derived class.
 void block::destroy() {
+  this->~block();
+}
+
+
+block::~block() {
+  assert(!destroyed);
+  
   assert(props);
   if(props->active && props->emitTag)
     dbg.exitBlock();
-
-  sightObj::destroy();
 }
 
 // Increments blockD. This function serves as the one location that we can use to target conditional
@@ -1560,12 +1604,12 @@ BlockMerger::BlockMerger(std::vector<std::pair<properties::tagType, properties::
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
 void BlockMerger::mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
-  Merger::mergeKey(type, tag.next(), inStreamRecords, key);
+                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+  Merger::mergeKey(type, tag.next(), inStreamRecords, info);
   
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; assert(0); }
   if(type==properties::enterTag) {
-    key.push_back(properties::get(tag, "callPath"));
+    info.add(properties::get(tag, "callPath"));
   }
 }
 
@@ -1781,12 +1825,19 @@ void dbgStream::init(properties* props, string title, string workDir, string img
   initialized = true;
 }
 
-dbgStream::~dbgStream() { if(!destroyed) destroy(); }
-
-// Contains the code to destroy this object. This method is called to clean up application state due to an
-// abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
-// that implement destroy should call the destroy method of their parent object.
+// Directly calls the destructor of this object. This is necessary because when an application crashes
+// Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+// there is no way to directly call the destructor of a given object when it may have several levels
+// of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+// it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+// an object will invoke the destroy() method of the most-derived class.
 void dbgStream::destroy() {
+  this->~dbgStream();
+}
+
+dbgStream::~dbgStream() {
+  assert(!destroyed);
+  
   if (!initialized)
     return;
   
@@ -1797,10 +1848,6 @@ void dbgStream::destroy() {
     cmd << "rm -rf " << tmpDir;
     system(cmd.str().c_str());
   }
-  
-  //if(props) exit(this);
-
-  sightObj::destroy();
 }
 
 // Called when a block is entered.
@@ -1992,7 +2039,7 @@ dbgStreamMerger::dbgStreamMerger(//std::string workDir,
     
     if(pMap["commandLineKnown"] == "1") {
       vector<string> argcValues = getValues(tags, "argc");
-      assert(allSame<string>(argcValues));
+      //assert(allSame<string>(argcValues));
       pMap["argc"] = *argcValues.begin();
       
       long argc = strtol((*argcValues.begin()).c_str(), NULL, 10);
@@ -2138,13 +2185,18 @@ properties* indent::setProperties(std::string prefix, int repeatCnt, const attrO
   return props;
 }
 
-indent::~indent() { if(!destroyed) destroy(); }
-
-// Contains the code to destroy this object. This method is called to clean up application state due to an
-// abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
-// that implement destroy should call the destroy method of their parent object.
+// Directly calls the destructor of this object. This is necessary because when an application crashes
+// Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+// there is no way to directly call the destructor of a given object when it may have several levels
+// of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+// it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+// an object will invoke the destroy() method of the most-derived class.
 void indent::destroy() {
-  sightObj::destroy();
+  this->~indent();
+}
+
+indent::~indent() {
+  assert(!destroyed);
 }
 
 IndentMerger::IndentMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,

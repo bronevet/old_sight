@@ -117,20 +117,23 @@ void trace::init(std::string label, const std::list<std::string>& contextAttrs, 
   }
 }
 
-trace::~trace() { if(!destroyed) destroy(); }
+// Directly calls the destructor of this object. This is necessary because when an application crashes
+// Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+// there is no way to directly call the destructor of a given object when it may have several levels
+// of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+// it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+// an object will invoke the destroy() method of the most-derived class.
+void trace::destroy() {
+  this->~trace();
+}
 
-// Contains the code to destroy this object. This method is called to clean up application state due to an
-// abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
-// that implement destroy should call the destroy method of their parent object.
-void trace::destroy()
-{
+trace::~trace() {
+  assert(!destroyed);
   assert(active.find(getLabel()) != active.end());
   active.erase(getLabel());
   
   assert(stream);
   delete(stream);
-
-  block::destroy();
 }
 
 trace* trace::getT(string label) {
@@ -197,14 +200,18 @@ void processedTrace::init(std::string label, const std::list<std::string>& conte
   }
 }
 
-processedTrace::~processedTrace() { if(!destroyed) destroy(); }
+// Directly calls the destructor of this object. This is necessary because when an application crashes
+// Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+// there is no way to directly call the destructor of a given object when it may have several levels
+// of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+// it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+// an object will invoke the destroy() method of the most-derived class.
+void processedTrace::destroy() {
+  this->~processedTrace();
+}
 
-// Contains the code to destroy this object. This method is called to clean up application state due to an
-// abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
-// that implement destroy should call the destroy method of their parent object.
-void processedTrace::destroy()
-{
-  trace::destroy();
+processedTrace::~processedTrace() {
+  assert(!destroyed);
 }
 
 /***********************
@@ -277,12 +284,19 @@ void traceStream::init(int traceID) {
   //cout << "traceStream::init(), emitExitTag="<<emitExitTag<<endl;
 }
 
-traceStream::~traceStream() { if(!destroyed) destroy(); }
-
-// Contains the code to destroy this object. This method is called to clean up application state due to an
-// abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
-// that implement destroy should call the destroy method of their parent object.
+// Directly calls the destructor of this object. This is necessary because when an application crashes
+// Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+// there is no way to directly call the destructor of a given object when it may have several levels
+// of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+// it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+// an object will invoke the destroy() method of the most-derived class.
 void traceStream::destroy() {
+  this->~traceStream();
+}
+
+traceStream::~traceStream() {
+  assert(!destroyed);
+  
   //cout << "traceStream::~traceStream()"<<endl;
   //cout << "#active="<<active.size()<<", #contextAttrs="<<contextAttrs.size()<<endl;//", #tracerKeys="<<tracerKeys.size()<<endl;
   
@@ -291,8 +305,6 @@ void traceStream::destroy() {
     //cout << "    *ca="<<*ca<<endl;
     attributes.remObs(*ca, this);
   }
-
-  sightObj::destroy();
 }
 
 // Observe for changes to the values mapped to the given key
@@ -443,14 +455,20 @@ properties* processedTraceStream::setProperties(const std::list<std::string>& pr
   return props;
 }
 
-processedTraceStream::~processedTraceStream() { if(!destroyed) destroy(); }
-
-// Contains the code to destroy this object. This method is called to clean up application state due to an
-// abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
-// that implement destroy should call the destroy method of their parent object.
+// Directly calls the destructor of this object. This is necessary because when an application crashes
+// Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+// there is no way to directly call the destructor of a given object when it may have several levels
+// of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+// it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+// an object will invoke the destroy() method of the most-derived class.
 void processedTraceStream::destroy() {
-  traceStream::destroy();
+  this->~processedTraceStream();
 }
+
+processedTraceStream::~processedTraceStream() {
+  assert(!destroyed);
+}
+
 /*******************
  ***** measure *****
  *******************/
@@ -1049,8 +1067,8 @@ properties* TraceMerger::setProperties(std::vector<std::pair<properties::tagType
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
 void TraceMerger::mergeKey(properties::tagType type, properties::iterator tag, 
-                           std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
-  BlockMerger::mergeKey(type, tag.next(), inStreamRecords, key);
+                           std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+  BlockMerger::mergeKey(type, tag.next(), inStreamRecords, info);
   
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; assert(0);; }
   if(type==properties::enterTag) {
@@ -1125,17 +1143,17 @@ TraceStreamMerger::TraceStreamMerger(std::vector<std::pair<properties::tagType, 
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
 void TraceStreamMerger::mergeKey(properties::tagType type, properties::iterator tag, 
-                           std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
-  Merger::mergeKey(type, tag.next(), inStreamRecords, key);
+                           std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+  Merger::mergeKey(type, tag.next(), inStreamRecords, info);
     
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; assert(0);; }
   if(type==properties::enterTag) {
-    key.push_back(properties::get(tag, "viz"));
-    key.push_back(properties::get(tag, "merge"));
+    info.add(properties::get(tag, "viz"));
+    info.add(properties::get(tag, "merge"));
     
-    key.push_back(properties::get(tag, "numCtxtAttrs"));
+    info.add(properties::get(tag, "numCtxtAttrs"));
     int numCtxtAttrs = properties::getInt(tag, "numCtxtAttrs");
-    for(int c=0; c<numCtxtAttrs; c++) key.push_back(properties::get(tag, txt()<<"ctxtAttr_"<<c));
+    for(int c=0; c<numCtxtAttrs; c++) info.add(properties::get(tag, txt()<<"ctxtAttr_"<<c));
   }
 }
 
@@ -1184,16 +1202,16 @@ properties* ProcessedTraceStreamMerger::setProperties(std::vector<std::pair<prop
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
 void ProcessedTraceStreamMerger::mergeKey(properties::tagType type, properties::iterator tag, 
-                           std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
-  BlockMerger::mergeKey(type, tag.next(), inStreamRecords, key);
+                           std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+  BlockMerger::mergeKey(type, tag.next(), inStreamRecords, info);
   
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; assert(0);; }
   if(type==properties::enterTag) {
     // All the  process commands must be identical
-    key.push_back(tag.get("numCmds"));
+    info.add(tag.get("numCmds"));
     int numCmds = tag.getInt("numCmds");
     for(int c=0; c<numCmds; c++) {
-      key.push_back(tag.get(txt()<<"cmd"<<c));
+      info.add(tag.get(txt()<<"cmd"<<c));
     }
   }
 }
@@ -1348,15 +1366,20 @@ TraceObsMerger::TraceObsMerger(std::vector<std::pair<properties::tagType, proper
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
 void TraceObsMerger::mergeKey(properties::tagType type, properties::iterator tag, 
-                              std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
-  Merger::mergeKey(type, tag.next(), inStreamRecords, key);
+                              std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+  static long maxObsID=0;
+  
+  Merger::mergeKey(type, tag.next(), inStreamRecords, info);
   
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; assert(0);; }
   if(type==properties::enterTag) {
-    // Observations may only be merged if they correspond to traces that were merged in the outgoing stream
+    /* // Observations may only be merged if they correspond to traces that were merged in the outgoing stream
     streamID inSID(properties::getInt(tag, "traceID"), 
                    inStreamRecords["traceStream"]->getVariantID());
-    key.push_back(txt()<<inStreamRecords["traceStream"]->in2outID(inSID).ID);
+    info.add(txt()<<inStreamRecords["traceStream"]->in2outID(inSID).ID);*/
+    
+    // Observations may never be merged. Therefore, each observation gets a unique key.
+    info.add(txt()<<(maxObsID++));
   }
 }
 

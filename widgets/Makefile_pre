@@ -6,10 +6,12 @@ WIDGETS_LAYOUT_O := scope/scope_layout.o graph/graph_layout.o valSelector/valSel
 WIDGETS_LAYOUT_H := scope/scope_layout.h graph/graph_layout.h valSelector/valSelector_layout.h trace/trace_layout.h module/module_layout.h source/source_layout.o clock/clock_layout.h
 WIDGETS := ${WIDGETS_O} ${WIDGETS_H}
 
+MAKE_DEFINES = ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" CC=${CC} CCC=${CCC} KULFI_ENABLED=${KULFI_ENABLED} LLVM32_SRC_PATH=${LLVM32_SRC_PATH} LLVM32_BUILD_PATH=${LLVM32_BUILD_PATH} LLVM32_INSTALL_PATH=${LLVM32_INSTALL_PATH}
+
 all: gsl papi \
      ${WIDGETS_COMMON_O} ${WIDGETS_COMMON_H} ${WIDGETS_STRUCTURE_O} ${WIDGETS_STRUCTURE_H} ${WIDGETS_LAYOUT_O} ${WIDGETS_LAYOUT_H}  \
+     kulfi \
      shellinabox/bin/shellinaboxd${EXE} mongoose/mongoose${EXE} graphviz/bin/dot${EXE} \
-     ID3-Decision-Tree \
      xdotool \
      noVNC \
      source/sh_main.js source/sh_cpp.js \
@@ -19,6 +21,7 @@ all: gsl papi \
 	chmod 644 canviz-0.1/*
 	chmod 755 canviz-0.1/excanvas canviz-0.1/lib canviz-0.1/path canviz-0.1/prototype
 	chmod 644 canviz-0.1/*/*
+#     ID3-Decision-Tree \
 
 scope/scope_common.o: scope/scope_common.C scope/scope_common.h ../attributes/attributes_common.h ../sight_common.h
 	${CCC} ${SIGHT_CFLAGS} scope/scope_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o scope/scope_common.o
@@ -84,6 +87,14 @@ clock/clock_structure.o: clock/clock_structure.C clock/clock_structure.h
 clock/clock_layout.o: clock/clock_layout.C clock/clock_layout.h
 	${CCC} ${SIGHT_CFLAGS} clock/clock_layout.C -I.. -Igsl/include -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o clock/clock_layout.o
 
+
+ifeq (${KULFI_ENABLED}, 1)
+.PHONY: kulfi
+kulfi:
+	cd kulfi; ${MAKE} ${MAKE_DEFINES}	
+else
+kulfi:
+endif
 
 ifneq (${OS}, Cygwin)
 xdotool:
@@ -153,17 +164,17 @@ ifneq (${OS},Cygwin)
 	rm -r expat-2.0.1 expat-2.0.1.tar.gz
 endif
 
-ID3-Decision-Tree:
-	#rm -fr master*
-	#cd widgets; wget --no-check-certificate https://github.com/willkurt/ID3-Decision-Tree/archive/master.zip
-	#cd widgets; mv master master.zip; unzip master.zip
-	#rm -r master*
-	../getGithub https://github.com/willkurt/ID3-Decision-Tree/archive/master.zip zip unzip
-	mv ID3-Decision-Tree-master ID3-Decision-Tree
-	chmod 755 ID3-Decision-Tree
-	chmod 644 ID3-Decision-Tree/*
-	chmod 755 ID3-Decision-Tree/data ID3-Decision-Tree/js
-	chmod 644 ID3-Decision-Tree/*/*
+#ID3-Decision-Tree:
+#	#rm -fr master*
+#	#cd widgets; wget --no-check-certificate https://github.com/willkurt/ID3-Decision-Tree/archive/master.zip
+#	#cd widgets; mv master master.zip; unzip master.zip
+#	#rm -r master*
+#	../getGithub https://github.com/willkurt/ID3-Decision-Tree/archive/master.zip zip unzip
+#	mv ID3-Decision-Tree-master ID3-Decision-Tree
+#	chmod 755 ID3-Decision-Tree
+#	chmod 644 ID3-Decision-Tree/*
+#	chmod 755 ID3-Decision-Tree/data ID3-Decision-Tree/js
+#	chmod 644 ID3-Decision-Tree/*/*
 
 noVNC:
 	#rm -rf master
@@ -172,6 +183,10 @@ noVNC:
 	#tar -xf master.tar.gz
 	../getGithub http://github.com/kanaka/noVNC/tarball/master tar.gz "tar -xf"
 	mv kanaka-noVNC-* noVNC
+
+#.PHONY: funcFit
+#funcFit:
+#	cd funcFit; ${MAKE} ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" CC=${CC} CCC=${CCC} GSL_PATH=${ROOT_PATH}/widgets/gsl
 
 gsl:
 	wget ftp://ftp.gnu.org/gnu/gsl/gsl-1.9.tar.gz
@@ -216,7 +231,7 @@ source/sh_main.js:
 source/sh_cpp.js:
 	cd source; wget http://shjs.sourceforge.net/lang/sh_cpp.js
 
-threejs: Three.js Detector.js OrbitControls.js THREEx.WindowResize.js Stats.js
+threejs: Three.js Detector.js OrbitControls.js THREEx.WindowResize.js Stats.js THREE
 
 Three.js:
 	wget http://stemkoski.github.io/Three.js/js/Three.js
@@ -230,12 +245,16 @@ OrbitControls.js:
 THREEx.WindowResize.js:
 	wget http://stemkoski.github.io/Three.js/js/THREEx.WindowResize.js
 
+THREE:
+	../getGithub http://github.com/mrdoob/three.js/zipball/master zip unzip
+	mv mrdoob-three.js-* THREE
+
 Stats.js:
 	wget http://stemkoski.github.io/Three.js/js/Stats.js
 
 clean:
 	rm -fr xdotool
-	rm -rf ID3-Decision-Tree
+#	rm -rf ID3-Decision-Tree
 	../killP mongoose/mongoose
 	../killP shellinabox/bin/shellinaboxd
 	rm -rf *.o shellinabox* mongoose* noVNC graphviz papi

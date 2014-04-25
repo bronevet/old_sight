@@ -70,9 +70,12 @@ class graph: public structure::block
   public:
   ~graph();
 
-  // Contains the code to destroy this object. This method is called to clean up application state due to an
-  // abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
-  // that implement destroy should call the destroy method of their parent object.
+  // Directly calls the destructor of this object. This is necessary because when an application crashes
+  // Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+  // there is no way to directly call the destructor of a given object when it may have several levels
+  // of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+  // it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+  // an object will invoke the destroy() method of the most-derived class.
   virtual void destroy();
   
   // Given a reference to an object that can be represented as a dot graph,  create an image from it and add it to the output.
@@ -139,7 +142,7 @@ class GraphMerger : public BlockMerger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key);
+                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
 }; // class GraphMerger
 
 class GraphStreamRecord: public streamRecord {
@@ -241,8 +244,8 @@ class DirEdgeMerger : public Merger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
-    Merger::mergeKey(type, tag.next(), inStreamRecords, key);
+                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+    Merger::mergeKey(type, tag.next(), inStreamRecords, info);
   }
 }; // class DirEdgeMerger
 
@@ -264,8 +267,8 @@ class UndirEdgeMerger : public Merger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
-    Merger::mergeKey(type, tag.next(), inStreamRecords, key);
+                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+    Merger::mergeKey(type, tag.next(), inStreamRecords, info);
   }
 }; // class UndirEdgeMerger
 
@@ -287,8 +290,8 @@ class NodeMerger : public Merger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
-    Merger::mergeKey(type, tag.next(), inStreamRecords, key);
+                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+    Merger::mergeKey(type, tag.next(), inStreamRecords, info);
   }
 }; // class NodeMerger
 

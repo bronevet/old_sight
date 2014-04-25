@@ -77,9 +77,19 @@ properties* graph::setProperties(int graphID, std::string dotText, const attrOp*
   return props;
 }
 
-graph::~graph() { if(!destroyed) destroy(); }
-
+// Directly calls the destructor of this object. This is necessary because when an application crashes
+// Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+// there is no way to directly call the destructor of a given object when it may have several levels
+// of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+// it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+// an object will invoke the destroy() method of the most-derived class.
 void graph::destroy() {
+  this->~graph();
+}
+
+graph::~graph() { 
+  assert(!destroyed);
+    
   // Refresh nodesConnected based on all the location information collected for the graph node anchors during execution
   // by filling a new set. Anchor IDs are only updated to become consistent with their final location when they're copied
   // to make sure that updated information about anchor locations doesn't invalidate data structures. Thus, we get
@@ -92,8 +102,6 @@ void graph::destroy() {
   for(set<anchor>::iterator i=freshNC.begin(); i!=freshNC.end(); i++)
     if(nodesObservedNotEmitted.find(i->getID()) != nodesObservedNotEmitted.end())
       emitNodeTag(i->getID(), nodesObservedNotEmitted[i->getID()].first, nodesObservedNotEmitted[i->getID()].second);
-
-  block::destroy();
 }
 
 // Given a reference to an object that can be represented as a dot graph,  create an image from it and add it to the output.
@@ -358,9 +366,8 @@ properties* GraphMerger::setProperties(std::vector<std::pair<properties::tagType
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
 void GraphMerger::mergeKey(properties::tagType type, properties::iterator tag, 
-                           std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
-  properties::iterator blockTag = tag;
-  BlockMerger::mergeKey(type, ++blockTag, inStreamRecords, key);
+                           std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+  BlockMerger::mergeKey(type, tag.next(), inStreamRecords, info);
 }
 
 

@@ -28,13 +28,19 @@ valSelector::valSelector(std::string attrKey, properties* props) : sightObj(prop
 int valSelector::getID() const
 { return selID; }
 
-valSelector::~valSelector() { if(!destroyed) destroy(); }
 
-// Contains the code to destroy this object. This method is called to clean up application state due to an
-// abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
-// that implement destroy should call the destroy method of their parent object.
+// Directly calls the destructor of this object. This is necessary because when an application crashes
+// Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+// there is no way to directly call the destructor of a given object when it may have several levels
+// of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+// it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+// an object will invoke the destroy() method of the most-derived class.
 void valSelector::destroy() {
-  sightObj::destroy();
+  this->~valSelector();
+}
+
+valSelector::~valSelector() {
+  assert(!destroyed);
 }
 
 /*************************
@@ -80,13 +86,18 @@ properties* colorSelector::setProperties(float startR, float startG, float start
   return props;
 }
 
-colorSelector::~colorSelector() { if(!destroyed) destroy(); }
-
-// Contains the code to destroy this object. This method is called to clean up application state due to an
-// abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
-// that implement destroy should call the destroy method of their parent object.
+// Directly calls the destructor of this object. This is necessary because when an application crashes
+// Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+// there is no way to directly call the destructor of a given object when it may have several levels
+// of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+// it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+// an object will invoke the destroy() method of the most-derived class.
 void colorSelector::destroy() {
-  valSelector::destroy();
+  this->~colorSelector();
+}
+
+colorSelector::~colorSelector() {
+  if(destroyed) return;
 }
 
 // Informs the value selector that we have observed a new value that the selector needs to account for
@@ -245,8 +256,8 @@ ColorSelectorMerger::ColorSelectorMerger(std::vector<std::pair<properties::tagTy
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
 void ColorSelectorMerger::mergeKey(properties::tagType type, properties::iterator tag, 
-                           std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
-  Merger::mergeKey(type, tag.next(), inStreamRecords, key);
+                           std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+  Merger::mergeKey(type, tag.next(), inStreamRecords, info);
   
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
@@ -298,8 +309,8 @@ ColorMerger::ColorMerger(std::vector<std::pair<properties::tagType, properties::
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
 void ColorMerger::mergeKey(properties::tagType type, properties::iterator tag, 
-                           std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
-  Merger::mergeKey(type, tag.next(), inStreamRecords, key);
+                           std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+  Merger::mergeKey(type, tag.next(), inStreamRecords, info);
   
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
@@ -308,7 +319,7 @@ void ColorMerger::mergeKey(properties::tagType type, properties::iterator tag,
     // we process the color annotations associated with them.
     streamID inSID(properties::getInt(tag, "selID"), inStreamRecords["colorSelector"]->getVariantID());
     streamID outSID = ((ColorStreamRecord*)inStreamRecords["colorSelector"])->in2outID(inSID);
-    key.push_back(txt()<<outSID.ID);
+    info.add(txt()<<outSID.ID);
   }
 }
 

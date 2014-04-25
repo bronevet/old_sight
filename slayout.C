@@ -27,21 +27,25 @@ int main(int argc, char** argv) {
   if(argc==1)
     f = stdin;
   else {
-  	// Make sure the file exists and is not a directory
-  	struct stat s;
-		int err = stat(fName, &s);
-		if(-1 == err) {
-		    if(ENOENT == errno) { cerr << "ERROR: path \""<<fName<<"\" does not exist!"<<endl; exit(-1); }
-		    else                { perror("stat"); exit(-1); }
-		} else {
-		    if(S_ISDIR(s.st_mode)) { cerr << "ERROR: path \""<<fName<<"\" is a directory!"<<endl; exit(-1); }
-		    else {
-		       // exists but is no dir
-		    }
-		}
-  	
-    f = fopen(fName, "r");
-    if(f==NULL) { cerr << "ERROR opening file \""<<fName<<"\" for reading! "<<strerror(errno)<<endl; exit(-1); }
+    // Make sure the file exists and is not a directory
+    struct stat s;
+    int err = stat(fName, &s);
+    string structureFName;
+    if(-1 == err) {
+      if(ENOENT == errno) { cerr << "ERROR: path \""<<fName<<"\" does not exist!"<<endl; exit(-1); }
+      else                { perror("stat"); exit(-1); }
+    } else {
+      if(S_ISDIR(s.st_mode)) { //cerr << "ERROR: path \""<<fName<<"\" is a directory!"<<endl; exit(-1); }
+        // Open the structure file within the directory
+        structureFName = txt() << fName << "/structure";
+      } else {
+        // exists but is no dir
+        structureFName = fName;
+      }
+    }
+  
+    f = fopen(structureFName.c_str(), "r");
+    if(f==NULL) { cerr << "ERROR opening file \""<<structureFName<<"\" for reading! "<<strerror(errno)<<endl; exit(-1); }
   }
 
   

@@ -61,13 +61,18 @@ properties* source::setProperties(std::string label, const source::regions& r, c
   return props;
 }
 
-source::~source() { if(!destroyed) destroy(); }
-
-// Contains the code to destroy this object. This method is called to clean up application state due to an
-// abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
-// that implement destroy should call the destroy method of their parent object.
+// Directly calls the destructor of this object. This is necessary because when an application crashes
+// Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+// there is no way to directly call the destructor of a given object when it may have several levels
+// of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+// it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+// an object will invoke the destroy() method of the most-derived class.
 void source::destroy() {
-  scope::destroy();
+  if(destroyed) return;
+}
+
+source::~source() {
+  assert(!destroyed);
 }
 
 /*****************************************
@@ -140,19 +145,18 @@ properties* SourceMerger::setProperties(std::vector<std::pair<properties::tagTyp
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info,
 void SourceMerger::mergeKey(properties::tagType type, properties::iterator tag, 
-                           std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
-  properties::iterator blockTag = tag;
-  ScopeMerger::mergeKey(type, ++blockTag, inStreamRecords, key);
+                           std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+  ScopeMerger::mergeKey(type, tag.next(), inStreamRecords, info);
   
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
-    key.push_back(properties::get(tag, "numRegions"));
+    info.add(properties::get(tag, "numRegions"));
     int numRegions = properties::getInt(tag, "numRegions");
     
     for(int i=0; i<numRegions; i++) {
-      key.push_back(properties::get(tag, txt()<<"fName_"<<i));
-      key.push_back(properties::get(tag, txt()<<"startLine_"<<i));
-      key.push_back(properties::get(tag, txt()<<"endLine_"<<i));
+      info.add(properties::get(tag, txt()<<"fName_"<<i));
+      info.add(properties::get(tag, txt()<<"startLine_"<<i));
+      info.add(properties::get(tag, txt()<<"endLine_"<<i));
     }
   }
 }

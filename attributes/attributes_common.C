@@ -10,6 +10,7 @@
 #include <string.h>
 
 using namespace std;
+using namespace boost;
 
 namespace sight {
 
@@ -40,7 +41,7 @@ std::string attrValue::type2str(valueType type) {
     case floatT:     return "floatT";
     case customT:    return "customT";
     case customSerT: return "customT";
-    case unknownT: return "unknownT";
+    case unknownT:   return "unknownT";
   }
   assert(0);
 }
@@ -686,8 +687,105 @@ std::string attrValueComparatorInstantiator::str() {
 
 // Registers generation functions for each type of comparator we've defined here
 baseAttrValueComparatorInstantiator::baseAttrValueComparatorInstantiator() {
-  (*compGenerators)["LkComparator"]       = &genLkComparator;
-  (*compGenerators)["RelativeComparator"] = &genRelComparator;
+  (*compGenerators)["NoComparator"]       = &noComp::generate;
+  (*compGenerators)["LkComparator"]       = &LkComp::generate;
+  (*compGenerators)["RelativeComparator"] = &RelComp::generate;
+}
+
+/****************************
+ ***** scalarComparator *****
+ ****************************/
+
+bool scalarComparator::instanceOf(const comparator* comp) 
+{ return dynamic_cast<const scalarComparator*>(comp) != NULL; }
+
+bool scalarComparator::instanceOf(const comparator& comp) {
+  try {
+    const scalarComparator& scomp = dynamic_cast<const scalarComparator&>(comp) ;
+    return true;
+  } catch(std::bad_cast exp) {
+    return false;
+  }
+}
+
+// Given a pointer or reference to a comparator returns the corresponding pointer/reference to 
+// a scalar comparator or aborts if the object is not a scalar comparator
+scalarComparator* scalarComparator::castTo(comparator* comp) {
+  scalarComparator* scomp = dynamic_cast<scalarComparator*>(comp);
+  if(scomp == NULL) { cerr << "ERROR: illegal cast of comparator to a scalarComparator!"<<endl; assert(0); }
+  return scomp;
+}
+
+const scalarComparator* scalarComparator::castTo(const comparator* comp) {
+  const scalarComparator* scomp = dynamic_cast<const scalarComparator*>(comp);
+  if(scomp == NULL) { cerr << "ERROR: illegal cast of comparator to a scalarComparator!"<<endl; assert(0); }
+  return scomp;
+}
+
+scalarComparator& scalarComparator::castTo(comparator& comp) {
+  try {
+    return dynamic_cast<scalarComparator&>(comp);
+  } catch(std::bad_cast exp) {
+    cerr << "ERROR: illegal cast of comparator to a scalarComparator!"<<endl;
+    assert(0);
+  }
+}
+
+const scalarComparator& scalarComparator::castTo(const comparator& comp) {
+  try {
+    return dynamic_cast<const scalarComparator&>(comp);
+  } catch(std::bad_cast exp) {
+    cerr << "ERROR: illegal cast of comparator to a scalarComparator!"<<endl;
+    assert(0);
+  }
+}
+
+/*****************************
+ ***** generalComparator *****
+ *****************************/
+
+bool generalComparator::instanceOf(const comparator* comp) 
+{ return dynamic_cast<const generalComparator*>(comp) != NULL; }
+
+bool generalComparator::instanceOf(const comparator& comp) {
+  try {
+    const generalComparator& scomp = dynamic_cast<const generalComparator&>(comp) ;
+    return true;
+  } catch(std::bad_cast exp) {
+    return false;
+  }
+}
+
+// Given a pointer or reference to a comparator returns the corresponding pointer/reference to 
+// a scalar comparator or aborts if the object is not a scalar comparator
+generalComparator* generalComparator::castTo(comparator* comp) {
+  generalComparator* scomp = dynamic_cast<generalComparator*>(comp);
+  if(scomp == NULL) { cerr << "ERROR: illegal cast of comparator to a generalComparator!"<<endl; assert(0); }
+  return scomp;
+}
+
+const generalComparator* generalComparator::castTo(const comparator* comp) {
+  const generalComparator* scomp = dynamic_cast<const generalComparator*>(comp);
+  if(scomp == NULL) { cerr << "ERROR: illegal cast of comparator to a generalComparator!"<<endl; assert(0); }
+  return scomp;
+}
+
+generalComparator& generalComparator::castTo(comparator& comp) {
+  try {
+    return dynamic_cast<generalComparator&>(comp);
+  } catch(std::bad_cast exp) {
+    cerr << "ERROR: illegal cast of comparator to a generalComparator!"<<endl;
+    assert(0);
+  }
+}
+
+const generalComparator& generalComparator::castTo(const comparator& comp) {
+  try {
+    return dynamic_cast<const generalComparator&>(comp);
+  } catch(std::bad_cast exp) {
+    cerr << "ERROR: illegal cast of comparator to a generalComparator!"<<endl;
+    assert(0);
+  }
 }
 
 /************************
@@ -695,7 +793,7 @@ baseAttrValueComparatorInstantiator::baseAttrValueComparatorInstantiator() {
  ************************/
 
 // Returns a comparator that can be used to compare objects of the given valueType
-comparator* genLkComparator(std::string description) {
+comparator* LkComp::generate(std::string description) {
   int kEnd = description.find(":");
   int typeEnd = description.find(":", kEnd+1);
   int k = strtol(description.substr(0, kEnd).c_str(), NULL, 10);
@@ -756,8 +854,12 @@ comparator* genLkComparator(std::string description) {
   }
 } // genLkComparator()
 
+/******************************
+ ***** RelativeComparator *****
+ ******************************/
+
 // Returns a comparator that can be used to compare objects of the given valueType
-comparator* genRelComparator(std::string description) {
+comparator* RelComp::generate(std::string description) {
   attrValue::valueType type = (attrValue::valueType)attrValue::parseInt(description);
   switch(type) {
     // Create an RelativeComparator of the appropriate type
@@ -776,7 +878,7 @@ baseAttrValueComparatorInstantiator baseAttrValueComparatorInstance;
  ***** sightArray *****
  **********************/
 
-sightArray::sightArray(const dims& d, void* array, attrValue::valueType type, bool arrayOwner) : 
+/*sightArray::sightArray(const dims& d, void* array, attrValue::valueType type, bool arrayOwner) : 
       array(array), d(d), type(type),              arrayOwner(arrayOwner)
 { init(); }
 sightArray::sightArray(const dims& d, std::string* array,                     bool arrayOwner) : 
@@ -799,15 +901,74 @@ sightArray::sightArray(const dims& d, double* array,                          bo
 { init(); }
 sightArray::sightArray(const dims& d, float* array,                           bool arrayOwner) : 
       array(array), d(d), type(attrValue::floatT), arrayOwner(arrayOwner)
+{ init(); }*/
+
+sightArray::sightArray(const dims& d, void* array, attrValue::valueType type) : 
+      array(array), d(d), type(type),              arrayOwner(false)
+{ init(); }
+sightArray::sightArray(const dims& d, std::string* array) : 
+      array(array), d(d), type(attrValue::strT),   arrayOwner(false)
+{ init(); }
+sightArray::sightArray(const dims& d, char** array) : 
+      array(array), d(d), type(attrValue::strT),   arrayOwner(false)
+{ init(); }
+sightArray::sightArray(const dims& d, void** array) : 
+      array(array), d(d), type(attrValue::ptrT),   arrayOwner(false)
+{ init(); }
+sightArray::sightArray(const dims& d, long* array) : 
+      array(array), d(d), type(attrValue::intT),   arrayOwner(false)
+{ init(); }
+sightArray::sightArray(const dims& d, int* array) : 
+      array(array), d(d), type(attrValue::intT),   arrayOwner(false)
+{ init(); }
+sightArray::sightArray(const dims& d, double* array) : 
+      array(array), d(d), type(attrValue::floatT), arrayOwner(false)
+{ init(); }
+sightArray::sightArray(const dims& d, float* array) : 
+      array(array), d(d), type(attrValue::floatT), arrayOwner(false)
 { init(); }
 
+sightArray::sightArray(const dims& d, shared_ptr<void> sharray, attrValue::valueType type) : 
+      array(NULL), sharray(sharray), d(d), type(type),              arrayOwner(true)
+{ init(); }
+sightArray::sightArray(const dims& d, shared_ptr<std::string> sharray) : 
+      array(NULL), sharray(sharray), d(d), type(attrValue::strT),   arrayOwner(true)
+{ init(); }
+sightArray::sightArray(const dims& d, shared_ptr<char*> sharray) : 
+      array(NULL), sharray(sharray), d(d), type(attrValue::strT),   arrayOwner(true)
+{ init(); }
+sightArray::sightArray(const dims& d, shared_ptr<void*> sharray) : 
+      array(NULL), sharray(sharray), d(d), type(attrValue::ptrT),   arrayOwner(true)
+{ init(); }
+sightArray::sightArray(const dims& d, shared_ptr<long> sharray) : 
+      array(NULL), sharray(sharray), d(d), type(attrValue::intT),   arrayOwner(true)
+{ init(); }
+sightArray::sightArray(const dims& d, shared_ptr<int> sharray) : 
+      array(NULL), sharray(sharray), d(d), type(attrValue::intT),   arrayOwner(true)
+{ init(); }
+sightArray::sightArray(const dims& d, shared_ptr<double> sharray) : 
+      array(NULL), sharray(sharray), d(d), type(attrValue::floatT), arrayOwner(true)
+{ init(); }
+sightArray::sightArray(const dims& d, shared_ptr<float> sharray) : 
+      array(NULL), sharray(sharray), d(d), type(attrValue::floatT), arrayOwner(true)
+{ init(); }
+
+
 sightArray::sightArray(const sightArray& that): d(that.d), numElements(that.numElements), type(that.type), arrayOwner(that.arrayOwner) {
-  // Allocate an array to hold a copy of that.array
-  int elementSize = attrValue::sizeofType(type);
-  array = new char[elementSize * numElements];
-  
-  // Copy the contents of the array over from that.array
-  memcpy(array, that.array, elementSize * numElements);
+  // If we're the array's owner, copy the shared pointer, using it to deal with deallocation
+  if(arrayOwner)
+    sharray = that.sharray;
+  // If we're not the owner
+  else {
+    // Allocate an array to hold a copy of that.array
+    int elementSize = attrValue::sizeofType(type);
+    array = new char[elementSize * numElements];
+    
+    // Copy the contents of the array over from that.array
+    memcpy(array, that.array, elementSize * numElements);
+    
+    // ?!!! Why don't we become the owner?
+  }
 }
   
 void sightArray::init() {
@@ -826,7 +987,7 @@ void sightArray::init() {
 }
 
 sightArray::~sightArray() {
-  // If this sightArray object owns this array, deallocate the array along with the sightArray
+  /* // If this sightArray object owns this array, deallocate the array along with the sightArray
   if(arrayOwner) {
     switch(type) {
       case attrValue::strT:   delete (string*)array; break;
@@ -835,7 +996,7 @@ sightArray::~sightArray() {
       case attrValue::floatT: delete (float*) array; break;
       default: assert(0);
     }
-  }
+  }*/
 }
 
 // Returns a deep copy of this object
@@ -950,10 +1111,10 @@ void sightArray::serialize(ostream& s) const {
   for(int i=0; i<totalVals; i++) {
     if(i>0) s << ",";
     switch(type) {
-      case attrValue::strT:   s << ((string*)array)[i]; break;
-      case attrValue::ptrT:   s << ((void**)array)[i];  break;
-      case attrValue::intT:   s << ((long*)array)[i];   break;
-      case attrValue::floatT: s << ((double*)array)[i]; break;
+      case attrValue::strT:   s << (arrayOwner? ((string*)sharray.get())[i]: ((string*)array)[i]); break;
+      case attrValue::ptrT:   s << (arrayOwner? ((void**)sharray.get())[i]:  ((void**)array)[i]);  break;
+      case attrValue::intT:   s << (arrayOwner? ((long*)sharray.get())[i]:   ((long*)array)[i]);   break;
+      case attrValue::floatT: s << (arrayOwner? ((double*)sharray.get())[i]: ((double*)array)[i]); break;
       default: assert(0);
     }
   }
@@ -995,7 +1156,8 @@ customAttrValue* sightArray::deserialize(std::string serialized) {
   
   // Allocate an array to hold totalVals instances of the given type
   int elementSize = attrValue::sizeofType(type);
-  void* array = new char[elementSize * totalVals];
+  //void* array = new char[elementSize * totalVals];
+  shared_ptr<void> array(new char[elementSize * totalVals]);
   
   // Read out each element of the matrix
   for(int i=0; i<totalVals; i++) {
@@ -1003,10 +1165,10 @@ customAttrValue* sightArray::deserialize(std::string serialized) {
     size_t endCurVal = (i<totalVals-1? serialized.find(",", curStrLoc) : string::npos);
     // Decode the current value
     switch(type) {
-      case attrValue::strT:   ((string*)array)[i] =                       serialized.substr(curStrLoc, endCurVal-curStrLoc);  break;
-      case attrValue::ptrT:   ((void**)array) [i] = attrValue::parsePtr  (serialized.substr(curStrLoc, endCurVal-curStrLoc)); break;
-      case attrValue::intT:   ((long*)array)  [i] = attrValue::parseInt  (serialized.substr(curStrLoc, endCurVal-curStrLoc)); break;
-      case attrValue::floatT: ((double*)array)[i] = attrValue::parseFloat(serialized.substr(curStrLoc, endCurVal-curStrLoc)); break;
+      case attrValue::strT:   ((string*)array.get())[i] =                       serialized.substr(curStrLoc, endCurVal-curStrLoc);  break;
+      case attrValue::ptrT:   ((void**)array.get()) [i] = attrValue::parsePtr  (serialized.substr(curStrLoc, endCurVal-curStrLoc)); break;
+      case attrValue::intT:   ((long*)array.get())  [i] = attrValue::parseInt  (serialized.substr(curStrLoc, endCurVal-curStrLoc)); break;
+      case attrValue::floatT: ((double*)array.get())[i] = attrValue::parseFloat(serialized.substr(curStrLoc, endCurVal-curStrLoc)); break;
       default: assert(0);
     }
     
@@ -1015,7 +1177,7 @@ customAttrValue* sightArray::deserialize(std::string serialized) {
   
   // Generate and return a new sightArray that owns the array buffer we just allocated and will
   // deallocate this buffer when it is deallocated.
-  return new sightArray(d, array, type, true);
+  return new sightArray(d, array, type);
 }
 
 const sightArray& castToSightArray(const customAttrValue& that) {
@@ -1023,6 +1185,15 @@ const sightArray& castToSightArray(const customAttrValue& that) {
     return dynamic_cast<const sightArray&>(that);
   } catch(std::bad_cast exp) {
     cerr << "ERROR: attempting to compare a sightArray with a non-sightArray!"<<endl;
+    assert(0);
+  }
+}
+
+scalarComparator& isScalarComparator(comparator& comp) {
+  try {
+    return dynamic_cast<scalarComparator&>(comp);
+  } catch(std::bad_cast exp) {
+    cerr << "ERROR: attempting to compare one sightArray with a another using a comparator that is not an scalarComparator!"<<endl;
     assert(0);
   }
 }
@@ -1039,23 +1210,54 @@ scalarComparator& castToScalarComparator(comparator& comp) {
 // Compares this object to that one using the given comparator and returns their relation to each other
 attrValue sightArray::compare(const customAttrValue& that_arg, comparator& comp_arg) const {
   const sightArray& that = castToSightArray(that_arg);
-  scalarComparator& comp = castToScalarComparator(comp_arg);
+  // If we're provided a scalar comparator, apply it to each array element
+  if(scalarComparator::instanceOf(comp_arg)) {
+    scalarComparator& comp = scalarComparator::castTo(comp_arg);
 
-  if(numElements != that.numElements) { cerr << "ERROR: cannot compare two sightArrays with different element counts: "<<numElements<<" and "<<that.numElements<<"!" << endl; assert(0); }
-  if(d != that.d) { cerr << "ERROR: comparison of sightArrays with different dimensionality is undefined!" << endl; assert(0); }
-  
-  // Iterate over all the elements in the two sightArrays, comparing them element-wise
-  for(int i=0; i<numElements; i++) {
-    switch(type) {
-      case attrValue::strT:   comp.compare(((string*)array)[i], ((string*)that.array)[i]); break;
-      case attrValue::ptrT:   comp.compare(((void**)array)[i],  ((void**)that.array)[i]);  break;
-      case attrValue::intT:   comp.compare(((long*)array)[i],   ((long*)that.array)[i]);   break;
-      case attrValue::floatT: comp.compare(((double*)array)[i], ((double*)that.array)[i]); break;
-      default: assert(0);
+    if(numElements != that.numElements) { cerr << "ERROR: cannot compare two sightArrays with different element counts: "<<numElements<<" and "<<that.numElements<<"!" << endl; assert(0); }
+    if(d != that.d) { cerr << "ERROR: comparison of sightArrays with different dimensionality is undefined!" << endl; assert(0); }
+    
+    comp.reset(); // Reset the comparator to make it ready for a new comparison
+
+    // Iterate over all the elements in the two sightArrays, comparing them element-wise
+
+    void *thisArray, *thatArray;
+    // If this sightArray owns the array, access it through the sharray shared_ptr
+    if(arrayOwner) thisArray = sharray.get();
+    // Otherwise, access it through the raw pointer
+    else           thisArray = array;
+    
+    if(arrayOwner) thatArray = that.sharray.get();
+    else           thatArray = that.array;    
+
+    for(int i=0; i<numElements; i++) {
+      switch(type) {
+        case attrValue::strT:   comp.compare(((string*)thisArray)[i], ((string*)thatArray)[i]); break;
+        case attrValue::ptrT:   comp.compare(((void**)thisArray)[i],  ((void**)thatArray)[i]);  break;
+        case attrValue::intT:   comp.compare(((long*)thisArray)[i],   ((long*)thatArray)[i]);   break;
+        case attrValue::floatT: comp.compare(((double*)thisArray)[i], ((double*)thatArray)[i]); break;
+        default: assert(0);
+      }
     }
+    /*for(int i=0; i<numElements; i++) {
+      switch(type) {
+        case attrValue::strT:   comp.compare(((string*)array)[i], ((string*)that.array)[i]); break;
+        case attrValue::ptrT:   comp.compare(((void**)array)[i],  ((void**)that.array)[i]);  break;
+        case attrValue::intT:   comp.compare(((long*)array)[i],   ((long*)that.array)[i]);   break;
+        case attrValue::floatT: comp.compare(((double*)array)[i], ((double*)that.array)[i]); break;
+        default: assert(0);
+      }
+    }*/
+
+    return comp.relation();
+  // If we're provided a general comparator, apply it to the array as a whole
+  } else if(generalComparator::instanceOf(comp_arg)) {
+    generalComparator& comp = generalComparator::castTo(comp_arg);
+    return comp.compare(*this, that);
+  } else {
+    cerr << "ERROR: unknown type of comparator used on a sightArray! comp="<<comp_arg.str()<<endl;
+    assert(0);
   }
-  
-  return comp.relation();
 }
 
 // Registers deserialization functions for each custom attrValue type we've defined here

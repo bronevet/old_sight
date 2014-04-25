@@ -1,16 +1,18 @@
-ROOT_PATH =  $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
-
+ROOT_PATH = /g/g15/bronevet/code/tmp/sight
 SIGHT_CFLAGS = -I${ROOT_PATH} \
                -I${ROOT_PATH}/tools/callpath/src -I${ROOT_PATH}/tools/adept-utils/include \
+               -I${ROOT_PATH}/tools/boost_1_55_0 \
                -I${ROOT_PATH}/widgets/papi/include
-
+SIGHT_LINKFLAGS_NORPATH = -L${ROOT_PATH} -lsight_structure \
+                  -L${ROOT_PATH}/tools/adept-utils/lib -ladept_cutils -ladept_timing -ladept_utils \
+                  -L${ROOT_PATH}/tools/callpath/src/src -lcallpath \
+                  -L${ROOT_PATH}/widgets/papi/lib -lpapi \
+                  -lpthread
 SIGHT_LINKFLAGS = -L${ROOT_PATH} -lsight_structure \
-                  ${ROOT_PATH}/tools/adept-utils/lib/libadept_cutils.so \
-                  ${ROOT_PATH}/tools/adept-utils/lib/libadept_timing.so \
-                  ${ROOT_PATH}/tools/adept-utils/lib/libadept_utils.so \
+                  -L${ROOT_PATH}/tools/adept-utils/lib -ladept_cutils -ladept_timing -ladept_utils \
                   -Wl,-rpath ${ROOT_PATH}/tools/adept-utils/lib \
-                  ${ROOT_PATH}/tools/callpath/src/src/libcallpath.so \
+                  -L${ROOT_PATH}/tools/callpath/src/src -lcallpath \
                   -Wl,-rpath ${ROOT_PATH}/tools/callpath/src/src \
-                  ${ROOT_PATH}/widgets/papi/lib/libpapi.a \
-                 -lpthread \
-                 
+                  -L${ROOT_PATH}/widgets/papi/lib -lpapi \
+                  -Wl,-rpath ${ROOT_PATH}/widgets/papi/lib \
+                  -lpthread

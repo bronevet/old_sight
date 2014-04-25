@@ -39,7 +39,7 @@ sys("../hier_merge dbg.MFEM.ex1 zipper dbg.MFEM.ex1.meshFile_*.ref_levels_*/stru
 sys("../slayout dbg.MFEM.ex1/structure", $verbose);
 
 # Remove the directories of the individual runs
-sys("rm -fr dbg.MFEM.ex1.*");
+#sys("rm -fr dbg.MFEM.ex1.*");
 
 sub sys {
   my ($cmd, $verbose) = @_;

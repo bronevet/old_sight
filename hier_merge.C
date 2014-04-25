@@ -21,11 +21,10 @@ class tagGroup {
   public:
   properties::tagType type;
   std::string objName;
-  //Callpath cp;
   // A list of key strings provided by the object-specific merger
-  std::list<std::string> key;
+  MergeInfo::mergeKey key;
   
-  tagGroup(properties::tagType type, const properties* props, std::list<std::string> key) {
+  tagGroup(properties::tagType type, const properties* props, MergeInfo::mergeKey key) {
     this->type = type;
     objName = props->name();
 /*    if(properties::exists(props->begin(), "callPath")) {
@@ -36,7 +35,7 @@ class tagGroup {
   }
   
   bool operator==(const tagGroup& that) const
-  { return type==that.type && objName==that.objName /*&& cp==that.cp */&& ((key.size()==0 && that.key.size()==0) || key==that.key); }
+  { return type==that.type && objName==that.objName && ((key.size()==0 && that.key.size()==0) || key==that.key); }
   
   bool operator<(const tagGroup& that) const
   { return type< that.type ||
@@ -79,6 +78,22 @@ mergeType str2MergeType(string mtStr) {
   cerr << "ERROR: Unknown merge type \""<<mtStr<<"\"!"<<endl;
   assert(0);
 }
+
+// Records all the relevant information about how a group of tags should be merged
+class StreamTags {
+  public:
+  // The indexes of the parsers from which this tag was read
+  list<int> parserIndexes;
+  // Records whether this tag can only be merged if it appears with the same key on all the incoming streams
+  bool universal;
+  
+  // Adds the information for a tag from a given parser
+  void add(MergeInfo& info, int parserIdx) {
+    universal = universal || info.getUniversal();
+    parserIndexes.push_back(parserIdx);
+  }
+}; // class StreamTags
+
 // parsers - Vector of parsers from which information will be read
 // nextTag - If merge() is called recursively after a given tag is entered on some but not all the parsers,
 //    contains the information of this entered tag.
@@ -103,7 +118,7 @@ int merge(vector<FILEStructureParser*>& parsers,
                    std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
                    std::vector<bool>  readyForTag,
                    std::vector<bool>& activeParser,
-                   map<tagGroup, list<int> > tag2stream,
+                   map<tagGroup, StreamTags > tag2stream,
                    int numTextTags,
                    int variantStackDepth,
                    structure::dbgStream& out, 
@@ -166,7 +181,7 @@ int main(int argc, char** argv) {
   vector<bool> allParsersActive(fileParsers.size(), true);
   
   // Maps the next observed tag name/type to the input streams on which tags that match this signature were read
-  map<tagGroup, list<int> > tag2stream;
+  map<tagGroup, StreamTags > tag2stream;
   
   // Records the number of parsers on which the last read tag was text. We alternate between reading text 
   // and reading tags and if text is read from some but not all parsers, the contributions from the other 
@@ -329,7 +344,7 @@ int merge(vector<FILEStructureParser*>& parsers,
            std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
            std::vector<bool>  readyForTag,
            std::vector<bool>& activeParser,
-           map<tagGroup, list<int> > tag2stream,
+           map<tagGroup, StreamTags > tag2stream,
            int numTextTags,
            int variantStackDepth,
            structure::dbgStream& out, 
@@ -393,10 +408,10 @@ int merge(vector<FILEStructureParser*>& parsers,
           // If nextTag has not yet been filled in upto this index, add the info to the end of nextTag
           if(nextTag.size()<=parserIdx) {
             assert(nextTag.size()==parserIdx);
-            nextTag.push_back(props/*make_pair(props.first, props.second)*/);
+            nextTag.push_back(props);
           // Otherwise, set this index of nextTag directly
           } else 
-            nextTag[parserIdx] = props;//make_pair(props.first, props.second);
+            nextTag[parserIdx] = props;
             
           // Group this parser with all the other parsers that just read a tag with the same name and type (enter/exit)
 //          cout << "props.second="<<props.second->str()<<endl;
@@ -404,8 +419,13 @@ int merge(vector<FILEStructureParser*>& parsers,
           //std::list<std::string> key = mergers[props.second->name()]->mergeKey(props.first, props.second->begin(), inStreamRecords[parserIdx]);
           if(MergeHandlerInstantiator::MergeKeyHandlers->find(props.second->name()) == MergeHandlerInstantiator::MergeKeyHandlers->end()) { cerr << "ERROR: no merge handler for tag \""<<props.second->name()<<"\"!"<<endl; }
           assert(MergeHandlerInstantiator::MergeKeyHandlers->find(props.second->name()) != MergeHandlerInstantiator::MergeKeyHandlers->end());
-          std::list<std::string> key;
-          (*MergeHandlerInstantiator::MergeKeyHandlers)[props.second->name()](props.first, props.second->begin(), inStreamRecords[parserIdx], key);
+          MergeInfo info;
+          (*MergeHandlerInstantiator::MergeKeyHandlers)[props.second->name()](props.first, props.second->begin(), inStreamRecords[parserIdx], info);
+
+          #ifdef VERBOSE
+          cout << indent << "   "<<info.str()<<endl;
+          #endif
+
 /*          cout << "key=";
           for(list<string>::iterator k=key.begin(); k!=key.end(); k++) cout << *k << " ";
           cout << endl;*/
@@ -414,9 +434,9 @@ int merge(vector<FILEStructureParser*>& parsers,
                               //(mt==commonMerge? 
                                 /*mergers[props.second->name()]->
                                        mergeKey(props.first, props.second->begin(), inStreamRecords[parserIdx])*/
-                                key/*: 
+                                info.getKey()/*: 
                                 list<string>())*/)
-                    ].push_back(parserIdx);
+                    ].add(info, parserIdx);
                     
           // Record whether we read a text tag on any parser
           numTextTags += (props.second->name() == "text"? 1: 0);
@@ -438,11 +458,11 @@ int merge(vector<FILEStructureParser*>& parsers,
     
     // If we read text on any parser, emit the text immediately
     if(numTextTags>0) {
-      for(map<tagGroup, list<int> >::iterator i=tag2stream.begin(); i!=tag2stream.end(); i++) {
+      for(map<tagGroup, StreamTags >::iterator i=tag2stream.begin(); i!=tag2stream.end(); i++) {
       //assert(tag2stream.find(make_pair(properties::enterTag, "text")) != tag2stream.end());
       if(i->first.type==properties::enterTag && i->first.objName=="text") {
         // Parsers on which we read text
-        const list<int>& textParsers = i->second; //tag2stream[make_pair(properties::enterTag, "text")];
+        const list<int>& textParsers = i->second.parserIndexes; 
         //cout << indent << "#textParsers="<<textParsers.size()<<endl;
         assert(textParsers.size()>0);
         for(list<int>::const_iterator j=textParsers.begin(); j!=textParsers.end(); j++) {
@@ -500,6 +520,9 @@ int merge(vector<FILEStructureParser*>& parsers,
           cerr << "ERROR: cannot find a merger for tag \""<<tag2stream.begin()->first.objName<<"\"!"<<endl;
         assert(MergeHandlerInstantiator::MergeKeyHandlers->find(tag2stream.begin()->first.objName) != MergeHandlerInstantiator::MergeKeyHandlers->end());
         
+        // Universal tags can only be processed at the top-most merge() call
+        //assert(!tag2stream.begin()->second.universal || variantStackDepth==0);
+        
         // Contains the next read tag of just the active incoming streams
         vector<pair<properties::tagType, const properties*> > groupNextTag;
         collectGroupVectorBool<pair<properties::tagType, const properties*> >(nextTag, activeParser, groupNextTag);
@@ -556,7 +579,7 @@ int merge(vector<FILEStructureParser*>& parsers,
         #ifdef VERBOSE
         cout << indent << "::: "<<tag2stream.size()<<" Variants ::::"<<endl;
         cout << indent << "        keys="<<endl; 
-        for(map<tagGroup, list<int> >::iterator ts=tag2stream.begin(); ts!=tag2stream.end(); ts++)
+        for(map<tagGroup, StreamTags >::iterator ts=tag2stream.begin(); ts!=tag2stream.end(); ts++)
           cout << indent << "            "<<ts->first.str()<<endl;
         #endif
         
@@ -569,21 +592,32 @@ int merge(vector<FILEStructureParser*>& parsers,
         
         // Check if we're at the tag exits on all streams
         
-        for(map<tagGroup, list<int> >::iterator ts=tag2stream.begin(); ts!=tag2stream.end(); variantID++) {
+        for(map<tagGroup, StreamTags >::iterator ts=tag2stream.begin(); ts!=tag2stream.end(); variantID++) {
           #ifdef VERBOSE
           cout << indent << "    Variant "<<variantID<<", "<<(ts->first.type == properties::enterTag? "enter": "exit")<<", "<<ts->first.objName<<endl;
           #endif
+
+          // Skip over universal tags since if we're here, we know that we're operating on only a subset
+          // of the parsers and thus cannot merge universal tags, which require representatives along
+          // all incoming streams
+          if(ts->second.universal) {
+            #ifdef VERBOSE
+            cout << indent << "        Skipping universal tag."<<endl;
+            #endif
+            ts++;
+            continue;
+          }
           
           if(ts->first.type == properties::enterTag) {
-            assert(ts->second.size()>0);
+            assert(ts->second.parserIndexes.size()>0);
             
             // Contains the parsers of just this group
             vector<FILEStructureParser*> groupParsers;
-            collectGroupVectorIdx<FILEStructureParser*>(parsers, ts->second, groupParsers);
+            collectGroupVectorIdx<FILEStructureParser*>(parsers, ts->second.parserIndexes, groupParsers);
             
             // Contains the next read tag of just this group
             vector<pair<properties::tagType, const properties*> > groupNextTag;
-            collectGroupVectorIdx<pair<properties::tagType, const properties*> >(nextTag, ts->second, groupNextTag);
+            collectGroupVectorIdx<pair<properties::tagType, const properties*> >(nextTag, ts->second.parserIndexes, groupNextTag);
               
             // Create a copy of outStreamRecords for this group
             std::map<std::string, streamRecord*> groupOutStreamRecords;
@@ -593,19 +627,19 @@ int merge(vector<FILEStructureParser*>& parsers,
             
             // Gather the streamRecords of just the incoming streams within this group
             std::vector<std::map<std::string, streamRecord*> > groupInStreamRecords;
-            collectGroupVectorIdx<std::map<std::string, streamRecord*> >(inStreamRecords, ts->second, groupInStreamRecords);
+            collectGroupVectorIdx<std::map<std::string, streamRecord*> >(inStreamRecords, ts->second.parserIndexes, groupInStreamRecords);
             
             // Gather the activeParser of just the incoming streams within this group
             std::vector<bool> groupActiveParser;
-            collectGroupVectorIdx<bool>(activeParser, ts->second, groupActiveParser);
+            collectGroupVectorIdx<bool>(activeParser, ts->second.parserIndexes, groupActiveParser);
             
             // We are not ready for another tag on any stream within this group. We will process the tags
             // we just read
-            std::vector<bool> groupNotReadyForTag(ts->second.size(), false);
+            std::vector<bool> groupNotReadyForTag(ts->second.parserIndexes.size(), false);
               
             // The tag2stream map of this group, which maps all the group's streams to the
             // common tag
-            map<tagGroup, list<int> > groupTag2stream;
+            map<tagGroup, StreamTags > groupTag2stream;
             groupTag2stream.insert(*ts);
               
             // Note: This code assumes that the disagreement point is not a text tag.
@@ -693,7 +727,9 @@ int merge(vector<FILEStructureParser*>& parsers,
             // groupIdx - the index of a given parser within this group (groupParsers[])
             // globalIdx - the index of the same parser within the entire parsers[] vector
             int groupIdx=0;
-            for(list<int>::iterator globalIdx=ts->second.begin(); globalIdx!=ts->second.end(); globalIdx++, groupIdx++) {
+            for(list<int>::iterator globalIdx=ts->second.parserIndexes.begin(); 
+                globalIdx!=ts->second.parserIndexes.end(); 
+                globalIdx++, groupIdx++) {
               assert(activeParser[*globalIdx]);
               
               // If the current parser was previously active and has now terminated, update state
@@ -705,7 +741,7 @@ int merge(vector<FILEStructureParser*>& parsers,
                         
             // Reset readyForTag and tag2stream to forget this tag on the parsers within the current group
             // and get ready to read more from them.
-            for(list<int>::const_iterator i=ts->second.begin(); i!=ts->second.end(); i++)
+            for(list<int>::const_iterator i=ts->second.parserIndexes.begin(); i!=ts->second.parserIndexes.end(); i++)
               readyForTag[*i] = true;
             tag2stream.erase(ts++);
             

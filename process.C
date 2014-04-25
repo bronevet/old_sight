@@ -6,6 +6,9 @@
 #include <string>
 #include <string.h>
 #include <errno.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include "process.h"
 #include "sight_common_internal.h"
 #include "sight_layout.h"
@@ -365,11 +368,21 @@ bool baseStructureParser<streamT>::isMember(char c, const char* termChars, int n
  ***** FILEStructureParser *****
  *******************************/
 
-FILEStructureParser::FILEStructureParser(string fName, int bufSize) : 
+FILEStructureParser::FILEStructureParser(string path, int bufSize) : 
   baseStructureParser<FILE>(bufSize)
-{ 
-  FILE* f = fopen(fName.c_str(), "r");
-  if(f==NULL) { cerr << "ERROR opening file \""<<fName<<"\" for reading! "<<strerror(errno)<<endl; exit(-1); }
+{
+  struct stat st;
+  int ret = stat(path.c_str(), &st);
+  if(ret!=0) { cerr << "ERROR calling stat on file \""<<path<<"! "<<strerror(errno)<<endl; exit(-1); }
+
+  // Get the name of the structure file
+  string structFName;
+  // If the path is a directory
+  if(st.st_mode & S_IFDIR) structFName = txt()<<path<<"/structure";
+  else                     structFName = path;
+ 
+  FILE* f = fopen(structFName.c_str(), "r");
+  if(f==NULL) { cerr << "ERROR opening file \""<<structFName<<"\" for reading! "<<strerror(errno)<<endl; exit(-1); }
   openedFile=true;
   init(f);
 }

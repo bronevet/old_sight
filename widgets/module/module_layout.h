@@ -45,18 +45,18 @@ class module : public common::module, public traceObserver {
   friend class modularApp;
   // Maps each moduleID to the data needed to compute a polynomial approximation of the relationship
   // between its input context and its observations
-  
+  /*
   // Matrix of polynomial terms composed of context values, 1 row per observation, 1 column for each combination of terms
   gsl_matrix* polyfitCtxt;
   
   // For each value that is observed, a vector of the values actually observed, one entry per observation
   //std::map<int, std::vector<gsl_vector*> >  polyfitObs;
-  gsl_matrix* polyfitObs;
+  gsl_matrix* polyfitObs;*/
     
   // The number of observations made for each node
   int numObs;
     
-  // The number of observations for which we've allocated space in polyfitCtxt and polyfitObs (the rows)
+  /* // The number of observations for which we've allocated space in polyfitCtxt and polyfitObs (the rows)
   int numAllocObs;
   
   // The number of trace attributes for which we've allocated space in newObs (the columns)
@@ -70,7 +70,7 @@ class module : public common::module, public traceObserver {
   
   // The number of numeric context attributes of each node. Should be the same for all observations for the node
   int numNumericCtxt;
-  std::list<std::string> numericCtxtNames;
+  std::list<std::string> numericCtxtNames;*/
     
   /* // For each node, for each input, the names of its context attributes
   std::map<int, std::map<int, std::list<std::string> > > ctxtNames;*/
@@ -89,7 +89,7 @@ class module : public common::module, public traceObserver {
   
   // Do a multi-variate polynomial fit of the data observed for the given moduleID and return for each trace attribute 
   // a string that describes the function that best fits its values
-  std::vector<std::string> polyFit();
+  //std::vector<std::string> polyFit();
   
   // Interface implemented by objects that listen for observations a traceStream reads. Such objects
   // call traceStream::registerObserver() to inform a given traceStream that it should observations.
@@ -99,6 +99,97 @@ class module : public common::module, public traceObserver {
                const std::map<std::string, anchor>&      obsAnchor/*,
                const std::set<traceObserver*>&           observers*/);
 }; // class module
+
+// Observation filter that finds a polynomial fit of the numeric features of the observed data
+class polyFitFilter : public traceObserver {
+  private:
+  // The total number of polyFitFilter instances that have been created so far. 
+  // Used to set unique names to files output by polyFitFilters.
+  static int maxFileNum;
+  int fileNum;
+  
+  // Records whether the working directory for this class has been initialized
+  static bool workDirInitialized;
+  
+  // The directory that is used for storing intermediate files
+  static std::string workDir;
+    
+  // Maps each numeric trace attribute's name to the file that holds its observations
+  //std::map<std::string, std::ofstream*> outFiles;
+  
+  // Stores the configuration info for the fit algorithm
+  std::ofstream cfgFile;
+    
+  // Maps each numeric trace attribute's name to the processor that will analyze it
+  std::map<std::string, externalTraceProcessor_File*> outProcessors;
+  
+  // The number of numeric context attributes of each node. Should be the same for all observations for the node
+  std::list<std::string> numericCtxtNames;
+  
+  // The number of numeric trace attributes of each node. Should be the same for all observations for the node
+  std::list<std::string> numericTraceNames;
+  
+  // Maps the names of all the contexts for which only one value has been observed to that value.
+  // Used to identify and filter out contexts that are constant since we'll have a single
+  // term dedicated to const-ness
+  std::map<std::string, std::string> ctxtConstVals;
+  
+  // The total number of observations that have passed through this filter
+  int numObservations; 
+
+  public:
+  polyFitFilter();
+  
+  // Iterates over all combinations of keys in numericCtxt upto maxDegree in size and computes the products of
+  // their values. Adds each such product to the given vector termVals.
+  void addPolyTerms(const std::map<std::string, double>& numericCtxt, int termCnt, int maxDegree, 
+                    std::vector<double>& termVals, double product=1);
+  
+  // Determines which context or trace attributes are numeric and return a mapping of their names to their numeric values
+  // Checks that all observations have the same set of numeric attributes.
+  // data - maps context/trace attribute name to their observed values
+  // numNumeric - refers to the count of numeric context/trace attributes
+  // numericAttrNames - refers to the list of names of numeric context/trace attributes
+  // label - identifies this as context or trace (for error messages)
+  std::map<std::string, std::string/*double*/> getNumericAttrs(const std::map<std::string, std::string>& data, 
+                                                std::list<std::string>& numericAttrNames, 
+                                                std::string label);
+  
+  // Interface implemented by objects that listen for observations a traceStream reads. Such objects
+  // call traceStream::registerObserver() to inform a given traceStream that it should observations.
+  void observe(int traceID,
+               const std::map<std::string, std::string>& ctxt, 
+               const std::map<std::string, std::string>& obs,
+               const std::map<std::string, anchor>&      obsAnchor);
+
+  // Called when the stream of observations has finished to allow the implementor to perform clean-up tasks.
+  // This method is optional.
+  void obsFinished();
+}; // polyFitFilter
+
+// Class that observes the polynomial fits that are produced by polyFitFilter. modularApp reads these fits
+// from this object.
+class polyFitObserver: public traceObserver
+{
+  // Maps the names of each trace attribute for which a fit was computed to the list of terms
+  // in this fit
+  std::map<std::string, std::list<std::string> > fits;
+  
+  public:
+  // Interface implemented by objects that listen for observations a traceStream reads. Such objects
+  // call traceStream::registerObserver() to inform a given traceStream that it should observations.
+  void observe(int traceID,
+               const std::map<std::string, std::string>& ctxt, 
+               const std::map<std::string, std::string>& obs,
+               const std::map<std::string, anchor>&      obsAnchor);
+  
+  // Returns the number of trace attributes for which fits were computed
+  int numFits() const { return fits.size(); }
+  
+  // Returns the formatted text representation of the fits, to be included in the HTML table 
+  // that encodes each module's graph node
+  std::string getFitText() const;
+}; // polyFitObserver
 
 class modularApp: public block, public common::module
 {
@@ -129,6 +220,9 @@ class modularApp: public block, public common::module
   
   // Maps each module group's ID to the module object that processes its data
   std::map<int, sight::layout::module*> modules;
+  
+  // Maps each module group's ID to the polyFitObserver object that records the polynomial fit of the module's trace attributes
+  std::map<int, sight::layout::polyFitObserver*> polyFits;
     
   // Maps each traceStream's ID to the ID of its corresponding module graph node
   std::map<int, int> trace2moduleID;
@@ -166,7 +260,7 @@ class modularApp: public block, public common::module
   //    index of the output. The prefix argument identifies the types of attributs we'll be making buttons for and
   //    it should be either "module" or "output".
   // bgColor - The background color of the buttons
-  void showButtons(int numInputs, int numOutputs, int ID, std::string prefix, std::string bgColor);
+  //void showButtons(int numInputs, int numOutputs, int ID, std::string prefix, std::string bgColor);
   
   // Enter a new module within the current modularApp
   // numInputs/numOutputs - the number of inputs/outputs of this module node
@@ -181,8 +275,9 @@ class modularApp: public block, public common::module
   // Static version of enterModule() that calls exitModule() in the currently active modularApp
   static void exitModule(void* obj);
   
-  // Register the given module object with the currently active modularApp
-  static void registerModule(int moduleID, sight::layout::module* m);
+  // Register the given module object (keeps data on the raw observations) and polyFitObserver object 
+  // (keeps data on the polynomial fits that summarize these observations) with the currently active modularApp
+  static void registerModule(int moduleID, sight::layout::module* m, polyFitObserver* pf);
   
   // Add a directed edge from the location of the from anchor to the location of the to anchor
   void addEdge(int fromC, common::module::ioT fromT, int fromP, 
@@ -207,11 +302,13 @@ class moduleTraceStream: public traceStream
   int numInputs;
   int numOutputs;
   
-  // The instance of module that processes observations of this object
+  // The observers that processes observations of this object
   module* mFilter;
+  polyFitFilter* polyFitter;
+  polyFitObserver* polyFitCollector;
   
   // The queue that passes all incoming observations through cmFilter and then forwards them to modularApp.
-  traceObserverQueue* queue;
+  //traceObserverQueue* queue;
   
   public:
   moduleTraceStream(properties::iterator props, traceObserver* observer=NULL);
@@ -308,6 +405,8 @@ class processedModuleTraceStream: public moduleTraceStream
   
   // Pointers to the actual externalTraceProcessors objects in the queue
   std::list<externalTraceProcessor_File*> commandProcessors;
+  
+  traceObserverQueue* filterQueue;
   
   public:
   processedModuleTraceStream(properties::iterator props, traceObserver* observer=NULL);

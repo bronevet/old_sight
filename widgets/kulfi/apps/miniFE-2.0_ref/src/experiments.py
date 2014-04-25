@@ -30,7 +30,7 @@ numInjSites = 1;
 injPerSite = 1;
 
 SIGHT_ROOT = "/g/g15/bronevet/code/tmp/sight"
-CODE_ROOT = "/g/g15/bronevet/code/tmp/sight/kulfi/miniFE-2.0_ref/src"
+CODE_ROOT = SIGHT_ROOT+"widgets/kulfi/apps/miniFE-2.0_ref/src"
 
 os.environ["SIGHT_FILE_OUT"] = "1"
 

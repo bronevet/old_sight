@@ -3,6 +3,7 @@ var traceDataList = {};
 var traceDataHash = {};
 var traceLinkHash = {};
 
+var minPositiveData = {};
 var minData = {};
 var maxData = {};
 
@@ -34,17 +35,20 @@ function traceRecord(traceLabel, traceVals, traceValLinks, contextVals, viz) {
   }
   
   // Initialize the minimum and maximum for each key
-  if(!minData.hasOwnProperty(traceLabel)) minData[traceLabel] = {};
-  if(!maxData.hasOwnProperty(traceLabel)) maxData[traceLabel] = {};
+  if(!minData.hasOwnProperty(traceLabel))         minData[traceLabel] = {};
+  if(!minPositiveData.hasOwnProperty(traceLabel)) minPositiveData[traceLabel] = {};
+  if(!maxData.hasOwnProperty(traceLabel))         maxData[traceLabel] = {};
     
   for(ctxtKey in contextVals) { if(contextVals.hasOwnProperty(ctxtKey)) {
-    if(!minData[traceLabel].hasOwnProperty(ctxtKey)) minData[traceLabel][ctxtKey] = 1e100;
-    if(!maxData[traceLabel].hasOwnProperty(ctxtKey)) maxData[traceLabel][ctxtKey] = -1e100;
+    if(!minData[traceLabel].hasOwnProperty(ctxtKey))         minData[traceLabel][ctxtKey]         = 1e100;
+    if(!minPositiveData[traceLabel].hasOwnProperty(ctxtKey)) minPositiveData[traceLabel][ctxtKey] = 1e100;
+    if(!maxData[traceLabel].hasOwnProperty(ctxtKey))         maxData[traceLabel][ctxtKey]         = -1e100;
   } }
   
   for(traceKey in traceVals) { if(traceVals.hasOwnProperty(traceKey)) {
-    if(!minData[traceLabel].hasOwnProperty(traceKey)) minData[traceLabel][traceKey] = 1e100;
-    if(!maxData[traceLabel].hasOwnProperty(traceKey)) maxData[traceLabel][traceKey] = -1e100;
+    if(!minData[traceLabel].hasOwnProperty(traceKey))         minData[traceLabel][traceKey]         = 1e100;
+    if(!minPositiveData[traceLabel].hasOwnProperty(traceKey)) minPositiveData[traceLabel][traceKey] = 1e100;
+    if(!maxData[traceLabel].hasOwnProperty(traceKey))         maxData[traceLabel][traceKey]         = -1e100;
   } }
 
   // Update the info on the type of trace and context keys
@@ -82,11 +86,13 @@ function traceRecord(traceLabel, traceVals, traceValLinks, contextVals, viz) {
     for(ctxtKey in contextVals) { if(contextVals.hasOwnProperty(ctxtKey)) {
       allVals[ctxtKey] = contextVals[ctxtKey];
       if(parseFloat(minData[traceLabel][ctxtKey]) > parseFloat(contextVals[ctxtKey])) minData[traceLabel][ctxtKey] = parseFloat(contextVals[ctxtKey]);
+      if(parseFloat(contextVals[ctxtKey])>0 && parseFloat(minPositiveData[traceLabel][ctxtKey]) > parseFloat(contextVals[ctxtKey])) minPositiveData[traceLabel][ctxtKey] = parseFloat(contextVals[ctxtKey]);
       if(parseFloat(maxData[traceLabel][ctxtKey]) < parseFloat(contextVals[ctxtKey])) maxData[traceLabel][ctxtKey] = parseFloat(contextVals[ctxtKey]);
     } }
     for(traceKey in traceVals) { if(traceVals.hasOwnProperty(traceKey)) {
       allVals[traceKey] = traceVals[traceKey];
       if(parseFloat(minData[traceLabel][traceKey]) > parseFloat(traceVals[traceKey])) minData[traceLabel][traceKey] = parseFloat(traceVals[traceKey]);
+      if(parseFloat(contextVals[traceKey])>0 && parseFloat(minPositiveData[traceLabel][traceKey]) > parseFloat(contextVals[ctxtKey])) minPositiveData[traceLabel][traceKey] = parseFloat(contextVals[traceKey]);
       if(parseFloat(maxData[traceLabel][traceKey]) < parseFloat(traceVals[traceKey])) maxData[traceLabel][traceKey] = parseFloat(traceVals[traceKey]);
     } }
   }
@@ -179,6 +185,8 @@ var displayTraceCalled = {};
 //      to them (false)
 // showLabels: boolean that indicates whether we should show a label that annotates a data plot (true) or whether
 //      we should just show the plot (false)
+// refreshView: boolean that indicates that if a visualization already exists at the given hostDiv, this call does not add any new
+//      to view and is merely a request for the current visualization to be refreshed.
 /*function displayTrace(traceLabel, splitCtxtAttrs, projectCtxtAttrs, traceAttrs, hostDivID, splitCtxtHostDivs, viz, loc) {
   var numSplitContextAttrs=0;
   for(i in splitCtxtAttrs)   { if(splitCtxtAttrs.hasOwnProperty(i))   { numSplitContextAttrs++; } }
@@ -235,9 +243,12 @@ var displayTraceCalled = {};
   }
 }*/
 
-function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, viz, showFresh, showLabels) {
+function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, viz, showFresh, showLabels, refreshView) {
   var numContextAttrs=0;
-  for(i in ctxtAttrs) { if(ctxtAttrs.hasOwnProperty(i)) { numContextAttrs++; } }
+  for(var i in ctxtAttrs) { if(ctxtAttrs.hasOwnProperty(i)) { numContextAttrs++; } }
+  
+  var numTraceAttrs=0;
+  for(var i in traceAttrs) { if(traceAttrs.hasOwnProperty(i)) { numTraceAttrs++; } }
   
   var hostDiv = document.getElementById(hostDivID);
   
@@ -333,45 +344,47 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, viz, showFre
       });*/
 
   } else if(viz == 'scatter3d') {
-    if(numContextAttrs!=3) { alert("3D scatter plots visualizations requre exactly 3 context variables for each chart"); return; }
-
     var ctxtStr="";
-    for(var i=0; i<3; i++) {
-      ctxtStr += ctxtAttrs[i].replace(/:/g, "-")+"_";
+    for(var c in ctxtAttrs) { if(ctxtAttrs.hasOwnProperty(c)) {
+      ctxtStr += ctxtAttrs[c].replace(/:/g, "-")+"_";
+    } }
+    
+    var traceStr="";
+    for(var t in traceAttrs) { if(traceAttrs.hasOwnProperty(t)) {
+      traceStr += traceAttrs[t].replace(/:/g, "-")+"_";
+    } }
+
+    var hostDivID = hostDivID+"_Scatter3D";//+ctxtStr+"_"+traceStr;
+    // If no visualization has been placed in this div before or the caller 
+    // wishes to create a fresh visualization on top of a prior visualization
+    if(document.getElementById(hostDivID)==undefined || !refreshView) {
+      // Initialize the HTML inside the host div
+      var newDiv = "";
+      if(showLabels) newDiv += ctxtStr + " : " + traceStr + "\n";
+      
+      newDiv += "<div id=\""+hostDivID+"\" style=\"height:auto; z-index: 100; border-color: #555555; border-style:solid; border-width=1px;\" class=\"ui-widget-content\"></div>\n";
+
+      if(showFresh) hostDiv.innerHTML =  newDiv;
+      else          hostDiv.innerHTML += newDiv;
     }
-
-    var newDiv="";
-    if(showLabels) newDiv += ctxtStr + " : " + traceAttrs[0] + "\n";
-    //if(showLabels) newDiv += ctxtStr + " : " + t + "\n";
-    var hostDivID = hostDivID+"_"+ctxtStr+"_"+traceAttrs[0].replace(/:/g, "-");
-    //var plotDivID = hostDivID+"_"+ctxtStr+"_"+t.replace(/:/g, "-");
-
-    newDiv += "<div id=\""+hostDivID+"\" style=\"height:auto; z-index: 100; border-color: #555555; border-style:solid; border-width=1px;\" class=\"ui-widget-content\"></div>\n";
-
-    if(showFresh) hostDiv.innerHTML =  newDiv;
-    else          hostDiv.innerHTML += newDiv;
-
-
+    
     var data = [];
-    var numTraceAttrsKnown = false;
-    var numTraceAttrs=0;
     for(var i in traceDataList[traceLabel]) { if(traceDataList[traceLabel].hasOwnProperty(i)) {
-      var d = [traceDataList[traceLabel][i][ctxtAttrs[0]], 
-               traceDataList[traceLabel][i][ctxtAttrs[1]],
-               traceDataList[traceLabel][i][ctxtAttrs[2]]];
+      var d = [];
+      for(var c in ctxtAttrs) { if(ctxtAttrs.hasOwnProperty(c)) {
+        d.push(traceDataList[traceLabel][i][ctxtAttrs[c]])
+      } }
 
       for(var t in traceAttrs) { if(traceAttrs.hasOwnProperty(t)) {
         d.push(traceDataList[traceLabel][i][traceAttrs[t]]);
-        if(!numTraceAttrsKnown) numTraceAttrs++;
       } }
 
       data.push(d);
-      numTraceAttrsKnown=true;
     } }
 
     // Load the minimum and maximum values taken on by any context or trace attribute
     var minVals = [], maxVals = [];
-    for(var i=0; i<3; i++) {
+    for(var i=0; i<numContextAttrs; i++) {
        minVals.push(minData[traceLabel][ctxtAttrs[i]]);
        maxVals.push(maxData[traceLabel][ctxtAttrs[i]]);
     }
@@ -387,26 +400,36 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, viz, showFre
                   //[maxData[traceLabel][ctxtAttrs[0]], maxData[traceLabel][ctxtAttrs[1]], maxData[traceLabel][ctxtAttrs[2]]],
                   minVals, maxVals,
                   //minData[traceLabel][traceAttrs[0]], maxData[traceLabel][traceAttrs[0]], 
-                  3, numTraceAttrs,
+                  numContextAttrs, numTraceAttrs,
                   hostDivID);
                   //minData[traceLabel][traceAttrs[t]], maxData[traceLabel][traceAttrs[t]], hostDivID);
   } else if(viz == 'decTree') {
     if(numContextAttrs==0) { alert("Decision Tree visualizations require one or more context variables"); return; }
     
-    var newDiv="";
-    if(showLabels) newDiv += traceAttrs[0] + "\n";
-    newDiv += "<div id=\""+hostDivID+"_"+traceAttrs[0]+"\" style=\"height:300\"></div>\n";
-    
-    if(showFresh) hostDiv.innerHTML =  newDiv;
-    else          hostDiv.innerHTML += newDiv;
-    
-    //if(!displayTraceCalled.hasOwnProperty(traceLabel)) {
-    traceDataList[traceLabel] = _(traceDataList[traceLabel]);
-    var model = id3(traceDataList[traceLabel], traceAttrs[0], ctxtAttrs);
-    //alert(document.getElementById(hostDivID).innerHTML)
-    // Create a div in which to place this attribute's decision tree
-    //document.getElementById(hostDivID).innerHTML += traceAttrs[0]+"<div id='div"+blockID+":"+traceAttrs[0]+"'></div>";
-    drawGraph(model,hostDivID+"_"+traceAttrs[0]);
+    for(t in traceAttrs) { if(traceAttrs.hasOwnProperty(t)) {
+      var newDiv="";
+      var tStr=traceAttrs[t].replace(/:/g, "-");
+      if(showLabels) newDiv += traceAttrs[t] + "\n";
+      
+      if(showFresh) hostDiv.innerHTML =  newDiv;
+      else          hostDiv.innerHTML += newDiv;
+      
+      var data = [];
+      // Iterate over all the data items recorded for this traceLabel
+      for(var i in traceDataList[traceLabel]) { if(traceDataList[traceLabel].hasOwnProperty(i)) {
+        var d = {};
+        for(var c in ctxtAttrs) { if(ctxtAttrs.hasOwnProperty(c)) {
+          d[ctxtAttrs[c]] = partition(ctxtValType, ctxtAttrs[c], traceDataList[traceLabel][i][ctxtAttrs[c]], minData[traceLabel][ctxtAttrs[c]], maxData[traceLabel][ctxtAttrs[c]], 2);
+        } }
+      
+        d[traceAttrs[t]] = partition(traceValType, traceAttrs[t], traceDataList[traceLabel][i][traceAttrs[t]], minData[traceLabel][traceAttrs[t]], maxData[traceLabel][traceAttrs[t]], 2)
+      
+        data.push(d);
+      } }
+      
+      var model= id3(data, traceAttrs[t], ctxtAttrs, "", 2);
+      showDecisionTree(model, hostDivID);
+    } }
   } else if(viz == 'boxplot') {
     var margin = {top: 10, right: 50, bottom: 20, left: 50},
         width = 120 - margin.left - margin.right,
@@ -597,3 +620,17 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, viz, showFre
   displayTraceCalled = true;
 }
 
+// If the given attribute is a number, then
+//   Given a value and its range, returns a string that denotes which sub-range within the range [minVal - maxVal] the value
+//   belongs to, out of a total of numSubRanges 
+// Otherwise, if it is a string, returns val
+function partition(attrType, attrName, val, minVal, maxVal, numSubRanges) {
+  if(attrType[attrName] == "number") {
+    var rangeSize = (maxVal - minVal) / numSubRanges;
+    var rangeMin = Math.floor((val - minVal) / rangeSize) * rangeSize + 
+                   minVal;
+    return "["+rangeMin+" - "+(rangeMin+rangeSize)+"]";
+  } else {
+    return val;
+  }
+}

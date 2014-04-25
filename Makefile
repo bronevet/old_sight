@@ -6,7 +6,13 @@ SIGHT_LAYOUT_O := sight_layout.o attributes/attributes_layout.o slayout.o varian
 SIGHT_LAYOUT_H := sight.h sight_layout_internal.h attributes/attributes_layout.h variant_layout.h
 sight := ${sight_O} ${sight_H} gdbLineNum.pl sightDefines.pl
 
-SIGHT_CFLAGS = -g -I${ROOT_PATH} -I${ROOT_PATH}/attributes -I${ROOT_PATH}/widgets/* -I${ROOT_PATH}/tools/callpath/src -I${ROOT_PATH}/tools/adept-utils/include -I${ROOT_PATH}/widgets/papi/include
+ROOT_PATH = ${CURDIR}
+
+SIGHT_CFLAGS = -g -I${ROOT_PATH} -I${ROOT_PATH}/attributes -I${ROOT_PATH}/widgets/* \
+                -I${ROOT_PATH}/tools/callpath/src -I${ROOT_PATH}/tools/adept-utils/include \
+                -I${ROOT_PATH}/tools/boost_1_55_0 \
+                -I${ROOT_PATH}/widgets/papi/include
+
 SIGHT_LINKFLAGS = ${ROOT_PATH}/tools/adept-utils/lib/libadept_cutils.so \
                   ${ROOT_PATH}/tools/adept-utils/lib/libadept_timing.so \
 	                ${ROOT_PATH}/tools/adept-utils/lib/libadept_utils.so \
@@ -28,15 +34,13 @@ endif
 
 all: core allExamples
 	
-core: sightDefines.pl gdbLineNum.pl maketools libsight_common.a libsight_structure.a slayout${EXE} hier_merge${EXE} widgets_post script/taffydb 
+core: sightDefines.pl gdbLineNum.pl Makefile.extern maketools libsight_common.a libsight_structure.a slayout${EXE} hier_merge${EXE} widgets_post script/taffydb 
 	chmod 755 html img script
 	chmod 644 html/* img/* script/*
 	chmod 755 script/taffydb
 
 # Remakes only the object files
 refresh: clean_objects all
-
-ROOT_PATH = ${CURDIR}
 
 # Set to "1" if we wish gdb support to be enabled and otherwise set to 0
 ifeq (${OS}, Cygwin)
@@ -54,15 +58,31 @@ ifneq (${OS}, Cygwin)
 GDB_PORT := 17501
 endif
 
+# By default we disable KULFI-based fault injection since it requires LLVM
+KULFI_ENABLED := 1
+	
+ifeq (${KULFI_ENABLED}, 1)
+# Sight must use the same LLVM Clang compiler as KULFI does
+# The path to the source, build and install of LLVM 3.2 that Kulfi will use
+LLVM32_SRC_PATH := /g/g15/bronevet/apps/llvm-3.2
+LLVM32_BUILD_PATH := /g/g15/bronevet/apps/llvm-3.2-build
+LLVM32_INSTALL_PATH := /g/g15/bronevet/apps/llvm
+	
+$(info Setting compiler to be the same LLVM Clang as KULFI, from path ${LLVM32_INSTALL_PATH})
+CC = ${LLVM32_INSTALL_PATH}/bin/clang
+CCC = ${LLVM32_INSTALL_PATH}/bin/clang++
+endif
+
+MAKE_DEFINES = ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" CC=${CC} CCC=${CCC} KULFI_ENABLED=${KULFI_ENABLED} LLVM32_SRC_PATH=${LLVM32_SRC_PATH} LLVM32_BUILD_PATH=${LLVM32_BUILD_PATH} LLVM32_INSTALL_PATH=${LLVM32_INSTALL_PATH}
+
 .PHONY: apps
 apps: mfem #mcbench
 
 mfem: libsight_structure.a
-	cd apps/mfem; make ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" CC=${CC} CCC=${CCC}
-#	cd apps/mfem; make ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS}
+	cd apps/mfem; make ${MAKE_DEFINES}
 
 CoMD: 
-	cd apps/CoMD/src-mpi; make ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS} CCC=${CCC}"
+	cd apps/CoMD/src-mpi; make ${MAKE_DEFINES}
 	
 #mcbench:
 #ifneq (${OS}, Cygwin)
@@ -70,23 +90,23 @@ CoMD:
 #endif
 
 allExamples: libsight_structure.a
-	cd examples; make ROOT_PATH=${ROOT_PATH} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" CC=${CC} CCC=${CCC}
+	cd examples; make ${MAKE_DEFINES}
 
 run: all runExamples runApps
 
 runExamples: libsight_structure.a slayout${EXE} hier_merge${EXE}
-	cd examples; make ROOT_PATH=${ROOT_PATH} OS=${OS}  SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" run
+	cd examples; make ${MAKE_DEFINES} run
 
 runApps: libsight_structure.a slayout${EXE} hier_merge${EXE} apps
-	cd examples; ../apps/CoMD/bin/CoMD-mpi.modules
-	cd examples; ../apps/CoMD/bin/CoMD-mpi.tracepath
-	cd examples; ../apps/CoMD/bin/CoMD-mpi.tracepos
-	cd examples; ../apps/CoMD/CoMDCompare.pl
-	#cd examples; ../apps/mfem/mfem/examples/ex1 ../apps/mfem/mfem/data/beam-quad.mesh
 	cd examples; ../apps/mfem/mfem/examples/mfemComp.pl
 	cd examples; ../apps/mfem/mfem/examples/ex2 ../apps/mfem/mfem/data/beam-tet.mesh 2
 	cd examples; ../apps/mfem/mfem/examples/ex3 ../apps/mfem/mfem/data/ball-nurbs.mesh
 	cd examples; ../apps/mfem/mfem/examples/ex4 ../apps/mfem/mfem/data/fichera-q3.mesh
+	cd examples; ../apps/CoMD/bin/CoMD-mpi.modules
+	cd examples; ../apps/CoMD/bin/CoMD-mpi.tracepath
+	cd examples; ../apps/CoMD/bin/CoMD-mpi.tracepos
+	cd examples; ../apps/CoMD/CoMDCompare.pl
+#	cd examples; ../apps/mfem/mfem/examples/ex1 ../apps/mfem/mfem/data/beam-quad.mesh
 #ifneq (${OS}, Cygwin)
 #	apps/mcbench/src/MCBenchmark.exe --nCores=1 --distributedSource --numParticles=13107 --nZonesX=256 --nZonesY=256 --xDim=16 --yDim=16 --mirrorBoundary --multiSigma --nThreadCore=1
 #endif
@@ -95,7 +115,7 @@ runApps: libsight_structure.a slayout${EXE} hier_merge${EXE} apps
 slayout.o: slayout.C process.C process.h
 	${CCC} ${SIGHT_CFLAGS} slayout.C -I. -c -o slayout.o
 
-slayout${EXE}: mfem libsight_layout.a 
+slayout${EXE}: mfem libsight_layout.a widgets_post
 	${CCC} -Wl,--whole-archive libsight_layout.a apps/mfem/mfem_layout.o -Wl,-no-whole-archive -o slayout${EXE}
 #	ld --whole-archive slayout.o libsight_layout.a apps/mfem/mfem_layout.o -o slayout${EXE}
 #	${CCC} ${SIGHT_CFLAGS} slayout.C -Wl,--whole-archive libsight_layout.a -DMFEM -I. -Iapps/mfem apps/mfem/mfem_layout.o -Wl,-no-whole-archive -o slayout${EXE}
@@ -147,14 +167,14 @@ attributes/attributes_layout.o: attributes/attributes_layout.C attributes/attrib
 # Rule for compiling the aspects of widgets that libsight.a requires
 .PHONY: widgets_pre
 widgets_pre: maketools
-	cd widgets; make -f Makefile_pre ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS} CC=${CC} CCC=${CCC}"
+	cd widgets; make -f Makefile_pre ${MAKE_DEFINES}
 
 # Rule for compiling the aspects of widgets that require libsight.a
 widgets_post: libsight_layout.a libsight_structure.a
-	cd widgets; make -f Makefile_post ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS} CC=${CC} CCC=${CCC}"
+	cd widgets; make -f Makefile_post ${MAKE_DEFINES}
 
 maketools: 
-	cd tools; make -f Makefile ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS}
+	cd tools; make -f Makefile ${MAKE_DEFINES}
 
 binreloc.o: binreloc.c binreloc.h
 	${CCC} ${SIGHT_CFLAGS} binreloc.c -c -o binreloc.o
@@ -171,6 +191,10 @@ gdbLineNum.pl: setupGDBWrap.pl sight_structure.C
 
 sightDefines.pl:
 	printf "\$$main::sightPath = \"${ROOT_PATH}\"; return 1;" > sightDefines.pl
+
+Makefile.extern: initMakefile.extern
+	chmod 755 initMakefile.extern
+	./initMakefile.extern
 
 clean:
 	cd widgets; make -f Makefile_pre clean

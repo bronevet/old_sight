@@ -115,7 +115,7 @@ void traceObserver::emitObservation(int traceID,
                                     const std::map<std::string, std::string>& ctxt, 
                                     const std::map<std::string, std::string>& obs,
                                     const std::map<std::string, anchor>&      obsAnchor) {
-  //cout << "traceObserve::emitObservation("<<traceID<<") #observers="<<observers.size()<<"=";
+  //cout << "traceObserve::emitObservation("<<traceID<<") this="<<this<<", #observers="<<observers.size()<<"=";
   for(std::map<traceObserver*, int>::iterator o=observers.begin(); o!=observers.end(); o++) {
     //cout << o->first << " ";
     o->first->observe(traceID, ctxt, obs, obsAnchor);
@@ -135,6 +135,7 @@ void traceObserver::registerObserver(traceObserver* obs) {
     observers[obs]++;
     obs->observing[this]++;
   }
+  //cout << "    "<<this<< " registerObserver("<<obs<<") #observers="<<observers.size()<<endl;
 }
 
 void traceObserver::unregisterObserver(traceObserver* obs) {
@@ -149,6 +150,26 @@ void traceObserver::unregisterObserver(traceObserver* obs) {
   }
 } 
 
+// Places the given set of traceObservers immediately after this observer and before all of the observers that watch it
+void traceObserver::prependObservers(const std::set<traceObserver*>& newObservers) {
+  // Back up the original set of observers and remove them
+  map<traceObserver*, int> origObservers = observers;
+  while(observers.size()>0) {
+    // newObservers and origObservers must be disjoint
+    assert(newObservers.find(observers.begin()->first) == newObservers.end());
+    
+    unregisterObserver(observers.begin()->first);
+  }
+
+  // Add each new observer to this observer
+  for(set<traceObserver*>::const_iterator n=newObservers.begin(); n!=newObservers.end(); n++) {
+    registerObserver(*n);
+    // And add all of the original observers to watch this current new observer
+    for(map<traceObserver*, int>::iterator o=origObservers.begin(); o!=origObservers.end(); o++)
+      (*n)->registerObserver(o->first);
+  }
+}
+
 /******************************
  ***** traceObserverQueue *****
  ******************************/
@@ -159,6 +180,7 @@ traceObserverQueue::traceObserverQueue() {
 }
 
 traceObserverQueue::traceObserverQueue(const std::list<traceObserver*>& observersL)/* : queue(observersL)*/ {
+cout << "traceObserverQueue::traceObserverQueue() #observersL.size="<<observersL.size()<<endl;
   // If observersL is non-empty
   if(observersL.size()>0) {
     firstO = observersL.front();
@@ -172,7 +194,10 @@ traceObserverQueue::traceObserverQueue(const std::list<traceObserver*>& observer
     // The traceObserver most recently encountered by the loop
     traceObserver* recentO=*o;
 
+    cout << "  firstO="<<firstO<<", lastO="<<lastO<<", queue="<<this<<endl;
+    
     for(o++; o!=observersL.end(); o++) {
+      cout << "    traceObserverQueue recentO="<<recentO<<" <-- *o="<<*o<<endl;
       recentO->registerObserver(*o);
       recentO = *o;
     }
@@ -330,7 +355,16 @@ externalTraceProcessor_File::externalTraceProcessor_File(std::string processorFN
   traceFile.open(obsFName.c_str());
   finished = false;
 }
-  
+
+externalTraceProcessor_File::externalTraceProcessor_File(std::string processorFName, 
+                                   const std::list<std::string>& beforeParams, std::string obsFName, const std::list<std::string>& afterParams) : 
+  processorFName(processorFName), beforeParams(beforeParams), obsFName(obsFName), afterParams(afterParams)
+{
+  traceFile.open(obsFName.c_str());
+  finished = false;
+}
+
+
 // Interface implemented by objects that listen for observations a traceStream reads. Such objects
 // call traceStream::registerObserver() to inform a given traceStream that it should observations.
 void externalTraceProcessor_File::observe(int traceID,
@@ -372,7 +406,12 @@ void externalTraceProcessor_File::obsFinished() {
   traceFile.close();
   
   // Execute the processing application
-  ostringstream s; s << processorFName << " "<<obsFName;
+  ostringstream s; 
+  s << processorFName;
+  for(list<string>::iterator b=beforeParams.begin(); b!=beforeParams.end(); b++) s << " "<<*b;
+  s << " "<<obsFName;
+  for(list<string>::iterator a=afterParams.begin(); a!=afterParams.end(); a++) s << " "<<*a;
+  //cout << "Command = "<<s.str()<<endl;
 
   // In case the processor executable is linked with Sight, unset the mutex environment variables from 
   // LoadTimeRegistry to make sure that they don't leak to the layout process
@@ -414,6 +453,9 @@ void externalTraceProcessor_File::obsFinished() {
     }
     
     // Emit the observation
+    /*cout << "ctxt="<<endl;
+    for(map<string, string>::iterator c=ctxt.begin(); c!=ctxt.end(); c++)
+      cout << "    "<<c->first<<" => "<<c->second<<endl;*/
     emitObservation(-1, ctxt, obs, obsAnchor);
   }
   //cout << "done"<<endl;
@@ -448,24 +490,21 @@ traceStream::traceStream(properties::iterator props, std::string hostDiv, bool s
     //dbg.includeScript("http://yui.yahooapis.com/3.11.0/build/yui/yui-min.js", "text/javascript");
     dbg.includeWidgetScript("yui-min.js", "text/javascript"); dbg.includeFile("yui-min.js");
     
-    // Decision Tree
-    //dbg.includeScript("http://code.jquery.com/jquery-1.8.1.min.js",                                  "text/javascript");
-    //dbg.includeScript("http://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.3.3/underscore-min.js", "text/javascript");
-    //dbg.includeScript("http://d3js.org/d3.v2.js", "text/javascript");
-    
     // JQuery must be loaded before prototype.js. Because we don't have a clean way to guaranteed this, we'll load jquery in sight_layout.C
     //dbg.includeWidgetScript("jquery-1.8.1.min.js", "text/javascript"); dbg.includeFile("jquery-1.8.1.min.js");
     dbg.includeWidgetScript("underscore-min.js",   "text/javascript"); dbg.includeFile("underscore-min.js");
     
-    dbg.includeWidgetScript("ID3-Decision-Tree/js/id3.js", "text/javascript");
-    //dbg.includeScript("https://www.google.com/jsapi?autoload={\"modules\":[{\"name\":\"visualization\",\"version\":\"1\",\"packages\":[\"orgchart\"]}]}", "text/javascript");
-    dbg.includeFile("ID3-Decision-Tree");
-
     // Three.js
     dbg.includeWidgetScript("Three.js",               "text/javascript"); dbg.includeFile("Three.js");
     dbg.includeWidgetScript("Detector.js",            "text/javascript"); dbg.includeFile("Detector.js");
     dbg.includeWidgetScript("OrbitControls.js",       "text/javascript"); dbg.includeFile("OrbitControls.js");
     dbg.includeWidgetScript("THREEx.WindowResize.js", "text/javascript"); dbg.includeFile("THREEx.WindowResize.js");
+    dbg.createWidgetDir("THREE/src/materials");
+    dbg.includeWidgetScript("THREE/src/materials/ShaderMaterial.js", "text/javascript"); 
+    dbg.includeFile("THREE/src/materials/ShaderMaterial.js");
+    dbg.createWidgetDir("THREE/src/extras");
+    dbg.includeWidgetScript("THREE/src/extras/ImageUtils.js", "text/javascript"); 
+    dbg.includeFile("THREE/src/extras/ImageUtils.js");
     //dbg.includeWidgetScript("Stats.js",   "text/javascript"); dbg.includeFile("Stats.js");
     
     // JQuery
@@ -482,6 +521,15 @@ traceStream::traceStream(properties::iterator props, std::string hostDiv, bool s
     dbg.includeWidgetScript("trace/gradient.js",  "text/javascript"); dbg.includeFile("trace/gradient.js");
     dbg.includeWidgetScript("trace/scatter.js",   "text/javascript"); dbg.includeFile("trace/scatter.js");
     dbg.includeWidgetScript("trace/scatter3d.js", "text/javascript"); dbg.includeFile("trace/scatter3d.js");
+    
+    // Decision Trees
+    //dbg.includeWidgetScript("ID3-Decision-Tree/js/id3.js", "text/javascript");
+    //dbg.includeScript("https://www.google.com/jsapi?autoload={\"modules\":[{\"name\":\"visualization\",\"version\":\"1\",\"packages\":[\"orgchart\"]}]}", "text/javascript");
+    //dbg.includeFile("ID3-Decision-Tree");
+    dbg.includeWidgetScript("trace/ID3/id3.js", "text/javascript");
+    dbg.includeWidgetScript("trace/ID3/dndTree.js", "text/javascript"); 
+    dbg.includeWidgetScript("trace/ID3/dndTree.css", "text/css");
+    dbg.includeFile("trace/ID3");
 
     dbg.includeWidgetScript("trace/trace.js", "text/javascript"); dbg.includeFile("trace/trace.js"); 
     
@@ -600,7 +648,7 @@ traceStream::~traceStream() {
 // showLabels: boolean that indicates whether we should show a label that annotates a data plot (true) or whether
 //      we should just show the plot (false)
 std::string traceStream::getDisplayJSCmd(const std::list<std::string>& contextAttrs, const std::list<std::string>& traceAttrs,
-                                         std::string hostDiv, vizT viz, bool showFresh, bool showLabels) {
+                                         std::string hostDiv, vizT viz, bool showFresh, bool showLabels, bool refreshView) {
   // Default contextAttrs, traceAttrs, hostDiv and viz to be the values set within this traceStream
   const std::list<std::string> *localContextAttrs = &contextAttrs,
                                *localTraceAttrs   = &traceAttrs;
@@ -617,8 +665,9 @@ std::string traceStream::getDisplayJSCmd(const std::list<std::string>& contextAt
                              ctxtAttrsStr<<", " << 
                              tracerAttrsStr<<", "<<  
                              "'"<<viz2Str(viz)<<"', "<<
-                             (showFresh?"true":"false")<<", "<<
-                             (showLabels?"true":"false")<<");";
+                             (showFresh?  "true":"false")<<", "<<
+                             (showLabels? "true":"false")<<", "<<
+                             (refreshView?"true":"false")<<");";
 }
 
 // Record an observation
@@ -668,7 +717,8 @@ void traceStream::observe(int fromTraceID,
                           const map<string, string>& obs,
                           const map<string, anchor>& obsAnchor)
 {
-  //cout << "traceStream::observe("<<fromTraceID<<") this="<<this<<", this->traceID="<<this->traceID<<", #contextAttrs="<<contextAttrs.size()<<" #ctxt="<<ctxt.size()<<endl;
+  //cout << "traceStream::observe("<<fromTraceID<<") this="<<this<<", this->traceID="<<this->traceID<<", #contextAttrs="<<contextAttrs.size()<<" #ctxt="<<ctxt.size()<<", #obs="<<obs.size()<<endl;
+  
   // Read all the context attributes. If contextAttrs is empty, it is filled with the context attributes of 
   // this observation. Otherwise, we verify that this observation's context is identical to prior observations.
   if(contextAttrsInitialized) assert(contextAttrs.size() == ctxt.size());

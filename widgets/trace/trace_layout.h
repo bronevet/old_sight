@@ -130,6 +130,9 @@ public:
   // Registers/unregisters a given object as an observer of this traceStream
   virtual void registerObserver(traceObserver* obs);
   virtual void unregisterObserver(traceObserver* obs);
+
+  // Places the given set of traceObservers immediately after this observer and before all of the observers that watch it
+  virtual void prependObservers(const std::set<traceObserver*>& newObservers);
   
   // Returns the total number of observers for this object
   int numObservers() const { return observers.size(); }
@@ -184,8 +187,13 @@ class externalTraceProcessor_File : public traceObserver {
   // Path of the executable that will be executed on the observations
   std::string processorFName;
   
-  // Path name that can be used to store intermediate files.
+  // Path name that can be used to store the file that contains the observations.
   std::string obsFName;
+  
+  // Parameters to pass to the command before and after the path of the observation file
+  std::list<std::string> beforeParams;
+  std::list<std::string> afterParams;
+  
   
   // The file stream to which we write observations. The processor application will read this file.
   std::ofstream traceFile;
@@ -195,6 +203,8 @@ class externalTraceProcessor_File : public traceObserver {
   
   public:  
   externalTraceProcessor_File(std::string processorFName, std::string obsFName);
+  externalTraceProcessor_File(std::string processorFName, 
+                              const std::list<std::string>& beforeParams, std::string obsFName, const std::list<std::string>& afterParams);
   
   // Interface implemented by objects that listen for observations a traceStream reads. Such objects
   // call traceStream::registerObserver() to inform a given traceStream that it should observations.
@@ -275,7 +285,8 @@ class traceStream: public attrObserver, public common::trace, public traceObserv
   // showLabels: boolean that indicates whether we should show a label that annotates a data plot (true) or whether
   //      we should just show the plot (false)
   std::string getDisplayJSCmd(const std::list<std::string>& contextAttrs, const std::list<std::string>& traceAttrs,
-                              std::string hostDiv="", vizT viz=unknown, bool showFresh=true, bool showLabels=false);
+                              std::string hostDiv="", vizT viz=unknown, 
+                              bool showFresh=true, bool showLabels=false, bool refreshView=false);
   
   int getID() const { return traceID; }
   private:

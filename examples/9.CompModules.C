@@ -59,19 +59,32 @@ int main (int argc, char *argv[])
   } }
   
   std::vector<port> externalOutputs;
-  compModule mod(instance("Heat Computation", 2, 1), 
-                 inputs(port(context("k", k)),
-                        port(context("initTemp", initTemp))),
+  compModule mod(instance("Heat Computation", 1, 1), 
+                 inputs(port(context("k", k,
+                                     "initTemp", initTemp))),
                  externalOutputs,
                  isReference, 
                  context("dx", dx,
                          "dy", dy,
                          "dt", dt),
-                 compNamedMeasures("time", new timeMeasure(), LkComp(2, attrValue::floatT, true),
-                                   "PAPI", new PAPIMeasure(papiEvents(PAPI_L1_TCM, PAPI_L2_TCM, PAPI_L3_TCM)), LkComp(2, attrValue::intT, true)));
+                 compNamedMeasures("time", new timeMeasure(), noComp(),
+                                   "PAPI", new PAPIMeasure(papiEvents(PAPI_L1_TCM, PAPI_L2_TCM, PAPI_L3_TCM)), noComp()));
   
   // Time step 
   for(int t=0; t<T; t++) {
+    std::vector<port> externalTSOutputs;
+    compModule tsMod(instance("TimeStep", 3, 1), 
+                 inputs(port(context("k", k,
+                                     "initTemp", initTemp)),
+                        port(context("t", t)),
+                        port(compContext("temp", sightArray(sightArray::dims(X,Y), nextTemp), LkComp(2, attrValue::floatT, true)))),
+                 externalTSOutputs,
+                 isReference, 
+                 context("dx", dx,
+                         "dy", dy,
+                         "dt", dt),
+                 compNamedMeasures("time", new timeMeasure(), noComp(),
+                                   "PAPI", new PAPIMeasure(papiEvents(PAPI_L1_TCM, PAPI_L2_TCM, PAPI_L3_TCM)), noComp()));
     //attr tAttr("t", t);
     //attr vAttr("verbose", t%(T/10) == 0);
     //attrIf aI(new attrNEQ("verbose", 0));
@@ -113,6 +126,7 @@ int main (int argc, char *argv[])
     double* tmp = lastTemp;
     lastTemp = nextTemp;
     nextTemp = tmp;
+    tsMod.setOutCtxt(0, compContext("temp", sightArray(sightArray::dims(X,Y), nextTemp), LkComp(2, attrValue::floatT, true)));
     //cout << ">"<<endl;
   }
   mod.setOutCtxt(0, compContext("temp", sightArray(sightArray::dims(X,Y), nextTemp), LkComp(2, attrValue::floatT, true)));

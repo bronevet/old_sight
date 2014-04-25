@@ -58,6 +58,13 @@ class readTraceFileReader : public attrFileReader {
   readTraceFileReader(traceFileReader& f): f(f) {}
 
   void operator()(const std::map<std::string, std::map<std::string, std::string> >& readData, int lineNum) {
+    /*cout << "readTraceFileReader: lineNum="<<lineNum<<", readData="<<endl;
+    for(std::map<std::string, std::map<std::string, std::string> >::const_iterator d=readData.begin(); d!=readData.end(); d++) {
+      cout << "    "<<d->first<<":"<<endl;
+      for(std::map<std::string, std::string>::const_iterator i=d->second.begin(); i!=d->second.end(); i++)
+        cout << "        "<<i->first<<" => "<<i->second<<endl;
+    }*/
+
     // All trace files must have one or more instances of ctxt and obs and zero or more of anchor
     assert(readData.size()==2 || readData.size()==3);
     assert(readData.find("ctxt") != readData.end());
@@ -78,9 +85,10 @@ class readTraceFileReader : public attrFileReader {
     
     for(std::map<std::string, std::string>::const_iterator o=readObs->second.begin();    o!=readObs->second.end();    o++)
       obs[o->first] = attrValue(o->second, attrValue::unknownT);
-    
-    for(std::map<std::string, std::string>::const_iterator a=readAnchor->second.begin(); a!=readAnchor->second.end(); a++)
-      anchor[a->first] = attrValue::parseInt(a->second);
+   
+    if(readData.size()==3) 
+      for(std::map<std::string, std::string>::const_iterator a=readAnchor->second.begin(); a!=readAnchor->second.end(); a++)
+        anchor[a->first] = attrValue::parseInt(a->second);
     
     // Call functor f on this observation
     f(ctxt, obs, anchor, lineNum);

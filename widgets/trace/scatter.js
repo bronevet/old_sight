@@ -2,10 +2,10 @@
 
 // Adapted from http://bl.ocks.org/bunkat/2595950   
 
-function createNumericScale(data, idx, minVisCoord, maxVisCoord, axisType) {
-  var Min = d3.min(data, function(d) { return (d[idx]===undefined? 1e100: parseFloat(d[idx])); });
+function createNumericScale_2DScatter(data, idx, minVisCoord, maxVisCoord, axisType) {
+  var Min = d3.min(data, function(d) { return parseFloat(d[idx]); });
   var Avg = d3.sum(data, function(d) { return parseFloat(d[idx]); }) / data.length;
-  var Max = d3.max(data, function(d) { return (d[idx]===undefined? -1e100: parseFloat(d[idx])); });
+  var Max = d3.max(data, function(d) { return parseFloat(d[idx]); });
   
   // If this axis is compatible with the log visualization and
   // If it is selected to be log or it is not specified and there is a huge range in the x coordinates, use a log scale
@@ -59,8 +59,8 @@ function showScatterplot(data, hostDivID, xAxisType, yAxisType) {
   // Determine whether the x and y axes are numeric or categorical
   var isXNumeric=true, isYNumeric=true;
   for(d in data) { if(data.hasOwnProperty(d)) {
-    if(data[d][0] !== undefined && !isNumber(data[d][0])) { isXNumeric = false; }
-    if(data[d][1] !== undefined && !isNumber(data[d][1])) { isYNumeric = false; }
+    if(!isNumber(data[d][0])) { isXNumeric = false; }
+    if(!isNumber(data[d][1])) { isYNumeric = false; }
     if(!isXNumeric && !isYNumeric) break;
   } }
   
@@ -74,7 +74,7 @@ function showScatterplot(data, hostDivID, xAxisType, yAxisType) {
   var x, y;
   
   if(isXNumeric && xAxisType != "cat") 
-    x = createNumericScale(data, 0, 0, width, xAxisType);
+    x = createNumericScale_2DScatter(data, 0, 0, width, xAxisType);
   else
     x = ["cat", d3.scale.ordinal()
                     .domain(data.map(function (d) {return d[0]; }))
@@ -82,7 +82,7 @@ function showScatterplot(data, hostDivID, xAxisType, yAxisType) {
   xAxisType = x[0];
   
   if(isYNumeric && yAxisType != "cat")
-    y = createNumericScale(data, 1, height, 0, yAxisType);
+    y = createNumericScale_2DScatter(data, 1, height, 0, yAxisType);
   else
     y = ["cat", d3.scale.ordinal().range([height, 0])];
   yAxisType = y[0];
@@ -128,10 +128,10 @@ function showScatterplot(data, hostDivID, xAxisType, yAxisType) {
   g.selectAll("scatter-dots")
        .data(data)
        .enter().append("svg:circle")
-           .attr("cx", function (d,i) { /*alert("d="+d+", i="+i+", x(d[0])="+x(d[0])+", y(d[1])="+y(d[1]));*/ 
+           .attr("cx", function (d,i) { //console.log("d="+d+", i="+i+", x("+d[0]+")="+x[1](parseFloat(d[0]))+", y("+d[1]+")="+y[1](parseFloat(d[1]))+", xAxisType="+xAxisType);
                                          return (xAxisType=="log" || xAxisType=="lin" ? 
                                                     x[1](parseFloat(d[0])): 
-                                                    x[1](d[0]) + x[1].rangeBand()/2); } )
+                                                    x[1](parseFloat(d[0])) + x[1].rangeBand()/2); } )
            .attr("cy", function (d) { return y[1](parseFloat(d[1])); } )
            .attr("r", 3)
            .style("fill", "red"/*function(d,i) { return colors[i]; }*/ );

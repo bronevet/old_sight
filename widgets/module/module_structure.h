@@ -122,16 +122,15 @@ class port {
   int index;
 
   port() : ctxt(NULL) {}
-  port(const port& that) : ctxt(that.ctxt? that.ctxt->copy(): NULL), type(that.type), index(that.index) {}
-  port(const context& ctxt) : /*ctxt(ctxt.copy()),*/ type(sight::common::module::output), index(-1) {
-    this->ctxt = ctxt.copy();
-  }
+  port(const port& that) : g(that.g), ctxt(that.ctxt? that.ctxt->copy(): NULL), type(that.type), index(that.index) {}
+  port(const context& ctxt) : ctxt(ctxt.copy()), type(sight::common::module::output), index(-1) { }
   port(const group& g, const context& ctxt, sight::common::module::ioT type, int index) : g(g), ctxt(ctxt.copy()), type(type), index(index) {}
   port(const group& g, sight::common::module::ioT type, int index) : g(g), ctxt(NULL), type(type), index(index) {}
   ~port() { if(ctxt) delete ctxt; }
   
   port& operator=(const port& that) {
     if(ctxt) delete ctxt;
+    g    = that.g;
     ctxt = that.ctxt->copy();
     type = that.type;
     index = that.index;
@@ -308,9 +307,12 @@ class modularApp: public block
   
   ~modularApp();
 
-  // Contains the code to destroy this object. This method is called to clean up application state due to an
-  // abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
-  // that implement destroy should call the destroy method of their parent object.
+  // Directly calls the destructor of this object. This is necessary because when an application crashes
+  // Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+  // there is no way to directly call the destructor of a given object when it may have several levels
+  // of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+  // it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+  // an object will invoke the destroy() method of the most-derived class.
   virtual void destroy();
   
   private:
@@ -382,18 +384,23 @@ class module: public sightObj, public common::module
   // The context of this module execution, which is a combination of the contexts of all of its inputs
   std::vector<context> ctxt;
   
-  /* // The context in a format that traces can understand, set in init() and used in ~module()
+  // The context in a format that traces can understand, set in setTraceCtxt() of the the class that
+  // ultimately derives from module.
   std::map<std::string, attrValue> traceCtxt;
   public:
   const std::map<std::string, attrValue>& getTraceCtxt() { return traceCtxt; }
 
-  protected:*/
+  protected:
   
   // The input ports of this module
   std::vector<port> ins;
   
   // The  output ports of this module
   std::vector<port> outs;
+  
+  // Set of all the outputs that have already been set by the user. Used to issue
+  // warnings when an output has been set multiple times or has not been set.
+  std::set<int> outsSet;
   
   // We allow the user to provide a pointer to an output vector, which is populated by the module
   // object. This is a pointer to this vector.
@@ -404,7 +411,7 @@ class module: public sightObj, public common::module
   namedMeasures meas;
   
   // Information that describes the class that derives from this on. 
-  class derivInfo {
+  /*class derivInfo {
     public:
     
     // A pointer to a properties object that can be used to create a tag for the derived object that 
@@ -417,13 +424,13 @@ class module: public sightObj, public common::module
     // Points to a function that generates the trace stream instance specific to the given derivation of module
     //generateTraceStream& tsGenerator;
     
-    derivInfo(/*generateTraceStream& tsGenerator*/)/* : tsGenerator(tsGenerator)*/ {
-      props = new properties;
+    derivInfo(/ *generateTraceStream& tsGenerator* /)/ * : tsGenerator(tsGenerator)* / {
+      props = new properties();
     }
     
-    derivInfo(properties* props, const std::map<std::string, attrValue>& ctxt/*, generateTraceStream& tsGenerator*/) :
-                  props(props), ctxt(ctxt)/*, tsGenerator(tsGenerator)*/ { }
-  }; // class derivInfo
+    derivInfo(properties* props, const std::map<std::string, attrValue>& ctxt/ *, generateTraceStream& tsGenerator* /) :
+                  props(props), ctxt(ctxt)/ *, tsGenerator(tsGenerator)* / { }
+  }; // class derivInfo */
   
   // Records whether this class has been derived by another. In this case ~module() relies on the destructor of
   // that class to create an appropriate traceStream.
@@ -434,51 +441,50 @@ class module: public sightObj, public common::module
   // onoffOp - We emit this scope if the current attribute query evaluates to true (i.e. we're emitting debug output) AND
   //           either onoffOp is not provided or its evaluates to true.
   // derivInfo: Information that describes the class that derives from this on.
-  module(const instance& inst,                                                                                                                        derivInfo* deriv=NULL);
-  module(const instance& inst, const port& inputs,                                                                                                    derivInfo* deriv=NULL);
-  module(const instance& inst, const std::vector<port>& inputs,                                                                                       derivInfo* deriv=NULL);
-  module(const instance& inst,                                                                      const attrOp& onoffOp,                            derivInfo* deriv=NULL);
-  module(const instance& inst, const port& inputs,                                                  const attrOp& onoffOp,                            derivInfo* deriv=NULL);
-  module(const instance& inst, const std::vector<port>& inputs,                                     const attrOp& onoffOp,                            derivInfo* deriv=NULL);
-  module(const instance& inst,                                  std::vector<port>& externalOutputs,                                                   derivInfo* deriv=NULL);
-  module(const instance& inst, const port& inputs,              std::vector<port>& externalOutputs,                                                   derivInfo* deriv=NULL);
-  module(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs,                                                   derivInfo* deriv=NULL);
-  module(const instance& inst,                                  std::vector<port>& externalOutputs, const attrOp& onoffOp,                            derivInfo* deriv=NULL);
-  module(const instance& inst, const port& inputs,              std::vector<port>& externalOutputs, const attrOp& onoffOp,                            derivInfo* deriv=NULL);
-  module(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, const attrOp& onoffOp,                            derivInfo* deriv=NULL);
+  module(const instance& inst,                                                                                                                        properties* props=NULL);
+  module(const instance& inst, const port& inputs,                                                                                                    properties* props=NULL);
+  module(const instance& inst, const std::vector<port>& inputs,                                                                                       properties* props=NULL);
+  module(const instance& inst,                                                                      const attrOp& onoffOp,                            properties* props=NULL);
+  module(const instance& inst, const port& inputs,                                                  const attrOp& onoffOp,                            properties* props=NULL);
+  module(const instance& inst, const std::vector<port>& inputs,                                     const attrOp& onoffOp,                            properties* props=NULL);
+  module(const instance& inst,                                  std::vector<port>& externalOutputs,                                                   properties* props=NULL);
+  module(const instance& inst, const port& inputs,              std::vector<port>& externalOutputs,                                                   properties* props=NULL);
+  module(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs,                                                   properties* props=NULL);
+  module(const instance& inst,                                  std::vector<port>& externalOutputs, const attrOp& onoffOp,                            properties* props=NULL);
+  module(const instance& inst, const port& inputs,              std::vector<port>& externalOutputs, const attrOp& onoffOp,                            properties* props=NULL);
+  module(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, const attrOp& onoffOp,                            properties* props=NULL);
     
-  module(const instance& inst,                                                                                             const namedMeasures& meas, derivInfo* deriv=NULL);
-  module(const instance& inst, const port& inputs,                                                                         const namedMeasures& meas, derivInfo* deriv=NULL);
-  module(const instance& inst, const std::vector<port>& inputs,                                                            const namedMeasures& meas, derivInfo* deriv=NULL);
-  module(const instance& inst,                                                                      const attrOp& onoffOp, const namedMeasures& meas, derivInfo* deriv=NULL);
-  module(const instance& inst, const port& inputs,                                                  const attrOp& onoffOp, const namedMeasures& meas, derivInfo* deriv=NULL);
-  module(const instance& inst, const std::vector<port>& inputs,                                     const attrOp& onoffOp, const namedMeasures& meas, derivInfo* deriv=NULL);
-  module(const instance& inst,                                  std::vector<port>& externalOutputs,                        const namedMeasures& meas, derivInfo* deriv=NULL);
-  module(const instance& inst, const port& inputs,              std::vector<port>& externalOutputs,                        const namedMeasures& meas, derivInfo* deriv=NULL);
-  module(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs,                        const namedMeasures& meas, derivInfo* deriv=NULL);
-  module(const instance& inst,                                  std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, derivInfo* deriv=NULL);
-  module(const instance& inst, const port& inputs,              std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, derivInfo* deriv=NULL);
-  module(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, derivInfo* deriv=NULL);
+  module(const instance& inst,                                                                                             const namedMeasures& meas, properties* props=NULL);
+  module(const instance& inst, const port& inputs,                                                                         const namedMeasures& meas, properties* props=NULL);
+  module(const instance& inst, const std::vector<port>& inputs,                                                            const namedMeasures& meas, properties* props=NULL);
+  module(const instance& inst,                                                                      const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
+  module(const instance& inst, const port& inputs,                                                  const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
+  module(const instance& inst, const std::vector<port>& inputs,                                     const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
+  module(const instance& inst,                                  std::vector<port>& externalOutputs,                        const namedMeasures& meas, properties* props=NULL);
+  module(const instance& inst, const port& inputs,              std::vector<port>& externalOutputs,                        const namedMeasures& meas, properties* props=NULL);
+  module(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs,                        const namedMeasures& meas, properties* props=NULL);
+  module(const instance& inst,                                  std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
+  module(const instance& inst, const port& inputs,              std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
+  module(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
   
-  properties* setProperties(const instance& inst, properties* props, module* me);
+  properties* setProperties(const instance& inst, properties* props, const attrOp* onoffOp, module* me);
 
-  void init(const std::vector<port>& in, derivInfo* deriv);
+  void init(const std::vector<port>& in, properties* props);
   
   private:
   // Sets the properties of this object
-  //static properties* setProperties(const instance& inst, const std::vector<port>& inputs, const attrOp* onoffOp, derivInfo* deriv);
+  //static properties* setProperties(const instance& inst, const std::vector<port>& inputs, const attrOp* onoffOp, properties* props);
   
   public:
   ~module();
-  // Contains the code to destroy this object. This method is called to clean up application state due to an
-  // abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
-  // that implement destroy should call the destroy method of their parent object.
-  virtual void destroy();
   
-  // Contains the code to destroy this object. This method is called to clean up application state due to an
-  // abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
-  // that implement destroy should call the destroy method of their parent object.
-  //void destroy();
+  // Directly calls the destructor of this object. This is necessary because when an application crashes
+  // Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+  // there is no way to directly call the destructor of a given object when it may have several levels
+  // of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+  // it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+  // an object will invoke the destroy() method of the most-derived class.
+  virtual void destroy();
   
   // The variant of the generateTraceStream functor specialized to generating moduleTraceStreams
   /*class generateModuleTraceStream : public generateTraceStream {
@@ -495,7 +501,7 @@ class module: public sightObj, public common::module
 */
   
   // Returns the properties of this object
-  //properties* setProperties(int moduleID, derivInfo* deriv=NULL);
+  //properties* setProperties(int moduleID, properties* props=NULL);
   
   const std::vector<context>& getContext() const { return ctxt; }
   std::string name() const { return g.name(); }
@@ -523,16 +529,17 @@ class module: public sightObj, public common::module
   std::vector<port> outPorts() const;
   port outPort(int idx) const;
 
-  // Returns the context attributes to be used in this module's measurements by combining the context provided by the classes
-  // that this object derives from with its own unique context attributes.
-  virtual std::map<std::string, attrValue> getTraceCtxt();
+  // Sets the traceCtxt map, which contains the context attributes to be used in this module's measurements 
+  // by combining the context provided by the classes that this object derives from with its own unique 
+  // context attributes.
+  void setTraceCtxt();
   
   // Called to notify this block that a sub-block was started/completed inside of it. 
   // Returns true of this notification should be propagated to the blocks 
   // that contain this block and false otherwise.
   bool subBlockEnterNotify(block* subBlock) { return true; }
   bool subBlockExitNotify (block* subBlock) { return true; }
-}; // moduleGraph
+}; // module
 
 // Extends the normal context by allowing the caller to specify a description of the comparator to be used
 // for each key
@@ -569,19 +576,19 @@ class compContext: public context {
     context(name0, val0, name1, val1, name2, val2, name3, val3, name4, val4, name5, val5)
   { comparators[name0] = std::make_pair(cdesc0.name(), cdesc0.description()); comparators[name1] = std::make_pair(cdesc1.name(), cdesc1.description()); comparators[name2] = std::make_pair(cdesc2.name(), cdesc2.description()); comparators[name3] = std::make_pair(cdesc3.name(), cdesc3.description()); comparators[name4] = std::make_pair(cdesc4.name(), cdesc4.description()); comparators[name5] = std::make_pair(cdesc5.name(), cdesc5.description()); }
   
-  compContext(const std::string& name0, const attrValue& val0, const comparatorDesc& cdesc0, const std::string& name1, const attrValue& val1, const comparatorDesc& cdesc1, const std::string& name2, const attrValue& val2, const comparatorDesc& cdesc2, const std::string& name3, const attrValue& val3, const comparatorDesc& cdesc3, const std::string& name5, const std::string& name4, const attrValue& val4, const comparatorDesc& cdesc4, const attrValue& val5, const comparatorDesc& cdesc5, const std::string& name6, const attrValue& val6, const comparatorDesc& cdesc6) :
+  compContext(const std::string& name0, const attrValue& val0, const comparatorDesc& cdesc0, const std::string& name1, const attrValue& val1, const comparatorDesc& cdesc1, const std::string& name2, const attrValue& val2, const comparatorDesc& cdesc2, const std::string& name3, const attrValue& val3, const comparatorDesc& cdesc3, const std::string& name4, const attrValue& val4, const comparatorDesc& cdesc4, const std::string& name5, const attrValue& val5, const comparatorDesc& cdesc5, const std::string& name6, const attrValue& val6, const comparatorDesc& cdesc6) :
     context(name0, val0, name1, val1, name2, val2, name3, val3, name4, val4, name5, val5, name6, val6)
   { comparators[name0] = std::make_pair(cdesc0.name(), cdesc0.description()); comparators[name1] = std::make_pair(cdesc1.name(), cdesc1.description()); comparators[name2] = std::make_pair(cdesc2.name(), cdesc2.description()); comparators[name3] = std::make_pair(cdesc3.name(), cdesc3.description()); comparators[name4] = std::make_pair(cdesc4.name(), cdesc4.description()); comparators[name5] = std::make_pair(cdesc5.name(), cdesc5.description()); comparators[name6] = std::make_pair(cdesc6.name(), cdesc6.description()); }
   
-  compContext(const std::string& name0, const attrValue& val0, const comparatorDesc& cdesc0, const std::string& name1, const attrValue& val1, const comparatorDesc& cdesc1, const std::string& name2, const attrValue& val2, const comparatorDesc& cdesc2, const std::string& name3, const attrValue& val3, const comparatorDesc& cdesc3, const std::string& name5, const std::string& name4, const attrValue& val4, const comparatorDesc& cdesc4, const attrValue& val5, const comparatorDesc& cdesc5, const std::string& name6, const attrValue& val6, const comparatorDesc& cdesc6, const std::string& name7, const attrValue& val7, const comparatorDesc& cdesc7) :
+  compContext(const std::string& name0, const attrValue& val0, const comparatorDesc& cdesc0, const std::string& name1, const attrValue& val1, const comparatorDesc& cdesc1, const std::string& name2, const attrValue& val2, const comparatorDesc& cdesc2, const std::string& name3, const attrValue& val3, const comparatorDesc& cdesc3, const std::string& name4, const attrValue& val4, const comparatorDesc& cdesc4, const std::string& name5, const attrValue& val5, const comparatorDesc& cdesc5, const std::string& name6, const attrValue& val6, const comparatorDesc& cdesc6, const std::string& name7, const attrValue& val7, const comparatorDesc& cdesc7) :
     context(name0, val0, name1, val1, name2, val2, name3, val3, name4, val4, name5, val5, name6, val6, name7, val7)
   { comparators[name0] = std::make_pair(cdesc0.name(), cdesc0.description()); comparators[name1] = std::make_pair(cdesc1.name(), cdesc1.description()); comparators[name2] = std::make_pair(cdesc2.name(), cdesc2.description()); comparators[name3] = std::make_pair(cdesc3.name(), cdesc3.description()); comparators[name4] = std::make_pair(cdesc4.name(), cdesc4.description()); comparators[name5] = std::make_pair(cdesc5.name(), cdesc5.description()); comparators[name6] = std::make_pair(cdesc6.name(), cdesc6.description()); comparators[name7] = std::make_pair(cdesc7.name(), cdesc7.description()); }
   
-  compContext(const std::string& name0, const attrValue& val0, const comparatorDesc& cdesc0, const std::string& name1, const attrValue& val1, const comparatorDesc& cdesc1, const std::string& name2, const attrValue& val2, const comparatorDesc& cdesc2, const std::string& name3, const attrValue& val3, const comparatorDesc& cdesc3, const std::string& name5, const std::string& name4, const attrValue& val4, const comparatorDesc& cdesc4, const attrValue& val5, const comparatorDesc& cdesc5, const std::string& name6, const attrValue& val6, const comparatorDesc& cdesc6, const std::string& name7, const attrValue& val7, const comparatorDesc& cdesc7, const std::string& name8, const attrValue& val8, const comparatorDesc& cdesc8) :
+  compContext(const std::string& name0, const attrValue& val0, const comparatorDesc& cdesc0, const std::string& name1, const attrValue& val1, const comparatorDesc& cdesc1, const std::string& name2, const attrValue& val2, const comparatorDesc& cdesc2, const std::string& name3, const attrValue& val3, const comparatorDesc& cdesc3, const std::string& name4, const attrValue& val4, const comparatorDesc& cdesc4, const std::string& name5, const attrValue& val5, const comparatorDesc& cdesc5, const std::string& name6, const attrValue& val6, const comparatorDesc& cdesc6, const std::string& name7, const attrValue& val7, const comparatorDesc& cdesc7, const std::string& name8, const attrValue& val8, const comparatorDesc& cdesc8) :
     context(name0, val0, name1, val1, name2, val2, name3, val3, name4, val4, name5, val5, name6, val6, name7, val7, name8, val8)
   { comparators[name0] = std::make_pair(cdesc0.name(), cdesc0.description()); comparators[name1] = std::make_pair(cdesc1.name(), cdesc1.description()); comparators[name2] = std::make_pair(cdesc2.name(), cdesc2.description()); comparators[name3] = std::make_pair(cdesc3.name(), cdesc3.description()); comparators[name4] = std::make_pair(cdesc4.name(), cdesc4.description()); comparators[name5] = std::make_pair(cdesc5.name(), cdesc5.description()); comparators[name6] = std::make_pair(cdesc6.name(), cdesc6.description()); comparators[name7] = std::make_pair(cdesc7.name(), cdesc7.description()); comparators[name8] = std::make_pair(cdesc8.name(), cdesc8.description()); }
   
-  compContext(const std::string& name0, const attrValue& val0, const comparatorDesc& cdesc0, const std::string& name1, const attrValue& val1, const comparatorDesc& cdesc1, const std::string& name2, const attrValue& val2, const comparatorDesc& cdesc2, const std::string& name3, const attrValue& val3, const comparatorDesc& cdesc3, const std::string& name5, const std::string& name4, const attrValue& val4, const comparatorDesc& cdesc4, const attrValue& val5, const comparatorDesc& cdesc5, const std::string& name6, const attrValue& val6, const comparatorDesc& cdesc6, const std::string& name7, const attrValue& val7, const comparatorDesc& cdesc7, const std::string& name8, const attrValue& val8, const comparatorDesc& cdesc8, const std::string& name9, const attrValue& val9, const comparatorDesc& cdesc9) :
+  compContext(const std::string& name0, const attrValue& val0, const comparatorDesc& cdesc0, const std::string& name1, const attrValue& val1, const comparatorDesc& cdesc1, const std::string& name2, const attrValue& val2, const comparatorDesc& cdesc2, const std::string& name3, const attrValue& val3, const comparatorDesc& cdesc3, const std::string& name4, const attrValue& val4, const comparatorDesc& cdesc4, const std::string& name5, const attrValue& val5, const comparatorDesc& cdesc5, const std::string& name6, const attrValue& val6, const comparatorDesc& cdesc6, const std::string& name7, const attrValue& val7, const comparatorDesc& cdesc7, const std::string& name8, const attrValue& val8, const comparatorDesc& cdesc8, const std::string& name9, const attrValue& val9, const comparatorDesc& cdesc9) :
     context(name0, val0, name1, val1, name2, val2, name3, val3, name4, val4, name5, val5, name6, val6, name7, val7, name8, val8, name9, val9)
   { comparators[name0] = std::make_pair(cdesc0.name(), cdesc0.description()); comparators[name1] = std::make_pair(cdesc1.name(), cdesc1.description()); comparators[name2] = std::make_pair(cdesc2.name(), cdesc2.description()); comparators[name3] = std::make_pair(cdesc3.name(), cdesc3.description()); comparators[name4] = std::make_pair(cdesc4.name(), cdesc4.description()); comparators[name5] = std::make_pair(cdesc5.name(), cdesc5.description()); comparators[name6] = std::make_pair(cdesc6.name(), cdesc6.description()); comparators[name7] = std::make_pair(cdesc7.name(), cdesc7.description()); comparators[name8] = std::make_pair(cdesc8.name(), cdesc8.description()); comparators[name9] = std::make_pair(cdesc9.name(), cdesc9.description()); }
   
@@ -603,6 +610,12 @@ class compContext: public context {
   virtual bool operator==(const context& that) const;
 
   virtual bool operator<(const context& that) const;
+
+  // Adds the given key/attrValue pair to this context
+  void add(std::string key, const attrValue& val, const comparatorDesc& cdesc);
+
+  // Add all the key/attrValue pairs from the given context to this one, overwriting keys as needed
+  void add(const compContext& that);
 
   // Returns the properties map that describes this context object.
   // The names of all the fields in the map are prefixed with the given string.
@@ -703,9 +716,12 @@ class compModularApp : public modularApp
 
   ~compModularApp();
 
-  // Contains the code to destroy this object. This method is called to clean up application state due to an
-  // abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
-  // that implement destroy should call the destroy method of their parent object.
+  // Directly calls the destructor of this object. This is necessary because when an application crashes
+  // Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+  // there is no way to directly call the destructor of a given object when it may have several levels
+  // of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+  // it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+  // an object will invoke the destroy() method of the most-derived class.
   virtual void destroy();
 }; // class compModularApp
 
@@ -720,7 +736,7 @@ class compModule: public structure::module
     
   // The context that describes the configuration options of this module
   context options;
-    
+  
   // Records whether this class has been derived by another. In this case ~module() relies on the destructor of
   // that class to create an appropriate traceStream.
   bool isDerived;
@@ -754,27 +770,30 @@ class compModule: public structure::module
   //    of this module.
   compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
              bool isReference, context options,
-                                                               derivInfo* deriv=NULL);
+                                                               properties* props=NULL);
   compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
              bool isReference, context options, 
-             const attrOp& onoffOp,                            derivInfo* deriv=NULL);
+             const attrOp& onoffOp,                            properties* props=NULL);
   compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
              bool isReference, context options,
-                                    const compNamedMeasures& meas, derivInfo* deriv=NULL);
+                                    const compNamedMeasures& meas, properties* props=NULL);
   compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
              bool isReference, context options, 
-             const attrOp& onoffOp, const compNamedMeasures& meas, derivInfo* deriv=NULL);
+             const attrOp& onoffOp, const compNamedMeasures& meas, properties* props=NULL);
 
   // Sets the properties of this object
-  derivInfo* setProperties(const instance& inst, bool isReference, context options, const attrOp* onoffOp, derivInfo* deriv=NULL);
+  properties* setProperties(const instance& inst, bool isReference, context options, const attrOp* onoffOp, properties* props=NULL);
   
-  void init(derivInfo* deriv);
+  void init(properties* props);
   
   ~compModule();
 
-  // Contains the code to destroy this object. This method is called to clean up application state due to an
-  // abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
-  // that implement destroy should call the destroy method of their parent object.
+  // Directly calls the destructor of this object. This is necessary because when an application crashes
+  // Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+  // there is no way to directly call the destructor of a given object when it may have several levels
+  // of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+  // it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+  // an object will invoke the destroy() method of the most-derived class.
   virtual void destroy();
   
   // Sets the context of the given option
@@ -788,9 +807,10 @@ class compModule: public structure::module
   void setOutCtxt(int idx, const context& c) { std::cerr << "ERROR: compModule::setOutCtxt() can only be called with a compContext argument!"<<std::endl; assert(0); }
   virtual void setOutCtxt(int idx, const compContext& c);
   
-  // Returns the context attributes to be used in this module's measurements by combining the context provided by the classes
-  // that this object derives from with its own unique context attributes.
-  virtual std::map<std::string, attrValue> getTraceCtxt();
+  // Sets the traceCtxt map, which contains the context attributes to be used in this module's measurements 
+  // by combining the context provided by the classes that this object derives from with its own unique 
+  // context attributes.
+  void setTraceCtxt();
 }; // class compModule
 
 class springModule;
@@ -814,9 +834,12 @@ class springModularApp : public compModularApp
   
   ~springModularApp();
 
-  // Contains the code to destroy this object. This method is called to clean up application state due to an
-  // abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
-  // that implement destroy should call the destroy method of their parent object.
+  // Directly calls the destructor of this object. This is necessary because when an application crashes
+  // Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+  // there is no way to directly call the destructor of a given object when it may have several levels
+  // of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+  // it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+  // an object will invoke the destroy() method of the most-derived class.
   virtual void destroy();
   
   static void *Interference(void *arg);
@@ -845,30 +868,33 @@ class springModule: public compModule {
   //    of this module.
   springModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
                const context& options,
-                                                               derivInfo* deriv=NULL);
+                                                               properties* props=NULL);
   springModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
              const context& options, 
-             const attrOp& onoffOp,                            derivInfo* deriv=NULL);
+             const attrOp& onoffOp,                            properties* props=NULL);
   springModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
              const context& options,
-                                    const compNamedMeasures& meas, derivInfo* deriv=NULL);
+                                    const compNamedMeasures& meas, properties* props=NULL);
   springModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
              const context& options, 
-             const attrOp& onoffOp, const compNamedMeasures& meas, derivInfo* deriv=NULL);
+             const attrOp& onoffOp, const compNamedMeasures& meas, properties* props=NULL);
   
   static bool isSpringReference();
   static context extendOptions(const context& options);
 
   ~springModule();
 
-  // Contains the code to destroy this object. This method is called to clean up application state due to an
-  // abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
-  // that implement destroy should call the destroy method of their parent object.
+  // Directly calls the destructor of this object. This is necessary because when an application crashes
+  // Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+  // there is no way to directly call the destructor of a given object when it may have several levels
+  // of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+  // it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+  // an object will invoke the destroy() method of the most-derived class.
   virtual void destroy();
 
   // Returns the context attributes to be used in this module's measurements by combining the context provided by the classes
   // that this object derives from with its own unique context attributes.
-  virtual std::map<std::string, attrValue> getTraceCtxt();
+  //static std::map<std::string, attrValue> getTraceCtxt(const std::vector<port>& inputs, bool isReference, const context& options);
 }; // class springModule
 
 class processedModuleTraceStream;
@@ -883,33 +909,36 @@ class processedModule : public structure::module {
   // processorCommands - list of executables to be run on the information of the module instances to process/filter them
   processedModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
              const processedTrace::commands& processorCommands,
-                                                               derivInfo* deriv=NULL);
+                                                               properties* props=NULL);
   processedModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
              const processedTrace::commands& processorCommands,
-             const attrOp& onoffOp,                            derivInfo* deriv=NULL);
+             const attrOp& onoffOp,                            properties* props=NULL);
   processedModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
              const processedTrace::commands& processorCommands,
-                                    const namedMeasures& meas, derivInfo* deriv=NULL);
+                                    const namedMeasures& meas, properties* props=NULL);
   processedModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
              const processedTrace::commands& processorCommands,
-             const attrOp& onoffOp, const namedMeasures& meas, derivInfo* deriv=NULL);
+             const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
 
   // Sets the properties of this object
-  derivInfo* setProperties(const instance& inst, const processedTrace::commands& processorCommands, 
-                           const attrOp* onoffOp, derivInfo* deriv=NULL);
+  /*derivInfo* setProperties(const instance& inst, const processedTrace::commands& processorCommands, 
+                           const attrOp* onoffOp, properties* props=NULL);*/
   
-  void init(derivInfo* deriv);
+  void init(properties* props);
   
   ~processedModule();
 
-  // Contains the code to destroy this object. This method is called to clean up application state due to an
-  // abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
-  // that implement destroy should call the destroy method of their parent object.
+  // Directly calls the destructor of this object. This is necessary because when an application crashes
+  // Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+  // there is no way to directly call the destructor of a given object when it may have several levels
+  // of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+  // it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+  // an object will invoke the destroy() method of the most-derived class.
   virtual void destroy();
 
   // Returns the context attributes to be used in this module's measurements by combining the context provided by the classes
   // that this object derives from with its own unique context attributes.
-  virtual std::map<std::string, attrValue> getTraceCtxt();
+  //static std::map<std::string, attrValue> getTraceCtxt();
 }; // class processedModule
 
 // Specialization of traceStreams for the case where they are hosted by a module node
@@ -922,9 +951,12 @@ class moduleTraceStream: public traceStream
 
   ~moduleTraceStream();
 
-  // Contains the code to destroy this object. This method is called to clean up application state due to an
-  // abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
-  // that implement destroy should call the destroy method of their parent object.
+  // Directly calls the destructor of this object. This is necessary because when an application crashes
+  // Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+  // there is no way to directly call the destructor of a given object when it may have several levels
+  // of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+  // it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+  // an object will invoke the destroy() method of the most-derived class.
   virtual void destroy();
 };
 
@@ -938,9 +970,12 @@ class compModuleTraceStream: public moduleTraceStream
 
   ~compModuleTraceStream();
 
-  // Contains the code to destroy this object. This method is called to clean up application state due to an
-  // abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
-  // that implement destroy should call the destroy method of their parent object.
+  // Directly calls the destructor of this object. This is necessary because when an application crashes
+  // Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+  // there is no way to directly call the destructor of a given object when it may have several levels
+  // of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+  // it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+  // an object will invoke the destroy() method of the most-derived class.
   virtual void destroy();
 };
 
@@ -954,9 +989,12 @@ class processedModuleTraceStream: public moduleTraceStream
 
   ~processedModuleTraceStream();
 
-  // Contains the code to destroy this object. This method is called to clean up application state due to an
-  // abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
-  // that implement destroy should call the destroy method of their parent object.
+  // Directly calls the destructor of this object. This is necessary because when an application crashes
+  // Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+  // there is no way to directly call the destructor of a given object when it may have several levels
+  // of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+  // it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+  // an object will invoke the destroy() method of the most-derived class.
   virtual void destroy();
 };
 
@@ -992,8 +1030,35 @@ class ModularAppMerger : public BlockMerger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info,
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key);
+                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
 }; // class ModularAppMerger
+
+class ModularAppStructureMerger : public Merger {
+  public:
+  ModularAppStructureMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+              std::map<std::string, streamRecord*>& outStreamRecords,
+              std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+              properties* props=NULL);
+  
+  static Merger* create(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
+                        std::map<std::string, streamRecord*>& outStreamRecords,
+                        std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                        properties* props)
+  { return new ModularAppStructureMerger(tags, outStreamRecords, inStreamRecords, props); }
+  
+  // Sets the properties of the merged object
+  static properties* setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+                                   std::map<std::string, streamRecord*>& outStreamRecords,
+                                   std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                                   properties* props);
+                                   
+  // Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+  // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
+  // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
+  // call their parents so they can add any info,
+  static void mergeKey(properties::tagType type, properties::iterator tag, 
+                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
+}; // class ModularAppStructureMerger
 
 class ModuleMerger : public Merger {
   public:
@@ -1019,9 +1084,37 @@ class ModuleMerger : public Merger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info,
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key);
+                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
   
 }; // class ModuleMerger
+
+class ModuleCtrlMerger : public Merger {
+  public:
+  ModuleCtrlMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+              std::map<std::string, streamRecord*>& outStreamRecords,
+              std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+              properties* props=NULL);
+  
+  static Merger* create(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
+                        std::map<std::string, streamRecord*>& outStreamRecords,
+                        std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                        properties* props)
+  { return new ModuleCtrlMerger(tags, outStreamRecords, inStreamRecords, props); }
+  
+  // Sets the properties of the merged object
+  static properties* setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+                                   std::map<std::string, streamRecord*>& outStreamRecords,
+                                   std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                                   properties* props);
+                                   
+  // Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+  // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
+  // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
+  // call their parents so they can add any info,
+  static void mergeKey(properties::tagType type, properties::iterator tag, 
+                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
+  
+}; // class ModuleCtrlMerger
 
 class ModuleEdgeMerger : public Merger {
   public:
@@ -1047,7 +1140,7 @@ class ModuleEdgeMerger : public Merger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info,
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key);
+                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
 }; // class ModuleEdgeMerger
 
 class ModuleTraceStreamMerger : public TraceStreamMerger {
@@ -1074,7 +1167,7 @@ class ModuleTraceStreamMerger : public TraceStreamMerger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key);
+                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
 }; // class ModuleTraceStreamMerger
 
 class CompModuleMerger : public ModuleMerger {
@@ -1101,7 +1194,7 @@ class CompModuleMerger : public ModuleMerger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info,
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key);
+                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
 }; // class CompModuleMerger
 
 class CompModuleTraceStreamMerger : public ModuleTraceStreamMerger {
@@ -1128,7 +1221,7 @@ class CompModuleTraceStreamMerger : public ModuleTraceStreamMerger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key);
+                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
 }; // class CompModuleTraceStreamMerger
 
 class ModuleStreamRecord: public streamRecord {

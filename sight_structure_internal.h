@@ -223,6 +223,93 @@ class sightClock
   virtual bool modified()=0;
 };
 
+
+/*
+sightObj is the base class for all entities in Sight that correspond to entities in the
+structured log. sightObj takes care of all the base details of serializing objects into 
+the log and has two major functionalities, one at construction-time and another at 
+destruction-time.
+
+Construction:
+-------------
+When an object is constructed in most cases widgets need to serialize the object into an
+entry tag that is specific to this type of object. The data of the object is maintained
+inside a properties object that is created by the specific object and then passed to the
+sightObj constructor, where it is emitted into the structured log. An object's data is
+encoded as a key-value map, which is serialized into the log. However, since Sight
+is highly modular, a given object may represent several levels of inheritance, each of which
+may have been written by a different group of people. This means that the key-value maps
+provided by each object may have keys that accidentally overlap, which may cause complex
+bugs due to information loss and/or corruption. As such, properties objects allow different
+classes to record separate key-value maps and use the properties::add() method to register 
+them under different unique strings. Since this simply requires each class to use a different
+string label, this makes name collisions significantly less likely and in general, fairly 
+easy to debug.
+
+By default the entry tag of a class is emitted during its constructor and the exit tag is 
+emitted during the destructor. If a derived constructor passes NULL as the properties object
+to the sightObj constructor, no tags are emitted. If the properties object is non-NULL, but
+the isTag flag is set to true then both the entry and exit tag are emitted in the sightObj
+constructor and nothing is emitted during the destructor.
+
+The properties object that encodes a given object, including all of the classes in its 
+inheritance hierarchy, is created when the object is constructed and passed on to the 
+sightObj constructor for serialization into the structured log. The mechanism for this is as
+follows. Each object's constructor must take as an argument a pointer to a properties object, 
+which is set to NULL by default. Each class must when implement a static method 
+(called setProperties() by convention) that 
+  - takes this pointer as an argument
+  - if the pointer is set to NULL, allocates a fresh properties object
+  - creates a key-value map of type map<string, string> into which it records the object's 
+    properties from the current class
+  - uses properties::add() to include this map into  properties object under its own unique name
+  - returns this properties object
+This method is called before invoking the constructor of the parent class and its return
+value should be passed to the properties argument of the parent class' constructor. 
+
+This setup ensures that:
+  - If an object of a given class is used directly by the user, the user is free to ignore this
+    scheme and does not specify a properties object.
+  - The object's constructor knows whether it corresponds to the most derived class in the object
+    or not because the properties pointer is set to NULL if it the most derived and not NULL
+	if it is more deeply derived.
+  - Each constructor gets to add its own, independent key-value map.
+  - The order in which a properties object is constructed directly mirrors the construction of
+    the objects themselves and benefits from the compiler's type checking of constructor calls.
+  - The serialization task is done once inside the sightObj constructor
+  
+The major weakness of this setup is that the setProperties() function must be static, which
+may require extra copying that would not be necessary if the creation of the properties object
+were done after the object were fully constructed. However, if we did it this way, it would be
+difficult to make sure that each object always called the properties initialization method 
+of the correct parent class.
+
+Destruction:
+------------
+A key challenge in the design of Sight is that it must produce valid output even if the application
+crashes mid-way through its execution. This includes crashes due to application bugs, as well as
+crashes induced by Sight tools, such as fault injection. Since the destructor of most sightObjs emit
+the object's exit tag and in many cases (e.g. modularApps and modules) object destructors perform a 
+lot of processing work, it is necessary to call the destructors of all currently active objects
+in the reverse order of their creation (order ensures that enter/exit tags are nested hierarchically).
+It is not possible to call the destructors of objects directly because
+  - Many of them are allocated on the stack, making it impossible to use delete on them
+  - To call the destructor className::~className() of a given object directly we need to know the name
+    of the most derived class of this object, which we do not in general.
+As such, objects that derive from sightObj are required to implement a virtual destroy() method that 
+calls the object's destructor directly. Since the method is virtual, if the destroy() method of any given
+sightObj is called, C++ ensures that the most derived instance of this method is called, which then 
+invokes the destructor of the most-derived class. Destruction then proceeds as normal.
+
+In some cases the destructors of some sightObj derived classes need to know when the object has 
+finished destructing (e.g. in fault injection we disable injection when entering a constructor/
+destructor and re-enable it when exiting it). To achieve this it is necessary to implement a function
+of type destructCallback and inside the destructor of a derived class register a pointer to this function
+using method sightObj::registerDestructNotifier(). This method will be called after the destructor
+of the sightObj() completes. The same callback function may be registered multiple times and is called
+separatedly for each registration. Callbacks are called in the same order as they are registered.
+*/
+
 // Base class of all sight objects that provides some common functionality
 class sightObj {
   public:
@@ -248,9 +335,12 @@ class sightObj {
   void init(properties* props, bool isTag=false);
   ~sightObj();
 
-  // Contains the code to destroy this object. This method is called to clean up application state due to an
-  // abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
-  // that implement destroy should call the destroy method of their parent object.
+  // Directly calls the destructor of this object. This is necessary because when an application crashes
+  // Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+  // there is no way to directly call the destructor of a given object when it may have several levels
+  // of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+  // it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+  // an object will invoke the destroy() method of the most-derived class.
   virtual void destroy();
   
   private:
@@ -278,6 +368,17 @@ class sightObj {
   
   // Returns whether the given clock object is currently registered
   static bool isActiveClock(std::string clockName, sightClock* c);
+  
+  // Destruction notification support
+  
+  // Function to be called when a given sightObj has finished destructing. A pointer to the destructed
+  // sighObj (still valid at the time of the call) is provided as an argument.
+  typedef void (*destructNotifier)(sightObj* obj);
+  private:
+  std::list<destructNotifier> sightObjDestructNotifiers;
+  public:
+  // Registers a given callback function to be called when the destruction of this object completes.
+  void registerDestructNotifier(destructNotifier notifier);
 }; // class sightObj
 
 /*
@@ -302,6 +403,57 @@ Examples:
 class streamRecord;
 class Merger;
 
+/* 
+ * During merging Sight must decide whether two tags of the same type should be 
+ * merged or not and if not, which tag should be placed in the outgoing stream 
+ * first. This is communicated by the MergeInfo object. For each tag type, widgets
+ * are required to implement a method that initializes an object of type MergeInfo.
+ * This method, which is called static Merger::mergeKey(type, tag, inStreamRecords, 
+ * info) by convention must be registered with the MergeHandlerInstantiator. When 
+ * the mergeKey() method of the most derived Merger class is called, it first calls 
+ * its parent class' mergeKey() method as ParentMerger::mergeKey(type, tag.next(), inStreamRecords, 
+ * info) so that the parent class can add its own keys adds then one or more 
+ * identifying strings to the info object. Once the key is generated 
+ * the merger algorithm ensures that only tags with identical keys can get merged 
+ * and that they are merged in the order defined by the keys. The comparison is 
+ * performed in string insertion order, meaning that strings inserted by more deeply 
+ * nested classes within an object have a higher priority in the comparison used 
+ * first for the comparison.
+ * 
+ * In some cases we know that a given tag exists on one incoming stream iff it 
+ * exists on all other incoming streams. Sight allows widgets to specify this by 
+ * calling info.isUniversal(). Tags for which this has been specified will only 
+ * be merged only once we reach a tag with an identical key on every other 
+ * incoming stream.
+ */
+class MergeInfo {
+  public:
+  typedef std::list<std::string> mergeKey;
+  
+  private:
+  mergeKey key;
+  bool universal;
+
+  public:  
+  MergeInfo() : universal(false) {}
+  
+  void add(std::string subKey) { key.push_back(subKey); }
+  void setUniversal(bool newVal=true) { universal = universal || newVal; }
+  bool getUniversal() const { return universal; }
+  const mergeKey& getKey() const { return key; }
+
+  std::string str() const {
+    std::ostringstream s;
+    s << "[MergeInfo: universal="<<universal<<", key=[";
+    for(std::list<std::string>::const_iterator k=key.begin(); k!=key.end(); k++) {
+      if(k!=key.begin()) s << ", ";
+      s << *k;
+    }
+    s << "]]";
+    return s.str();
+  }
+};
+
 typedef sight::structure::Merger* (*MergeHandler)(
                                        const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
                                        std::map<std::string, streamRecord*>& outStreamRecords,
@@ -310,7 +462,7 @@ typedef sight::structure::Merger* (*MergeHandler)(
 typedef void (*MergeKeyHandler)(properties::tagType type,
                                 properties::iterator tag, 
                                 std::map<std::string, streamRecord*>& inStreamRecords,
-                                std::list<std::string>& key);
+                                MergeInfo& info);
 // Returns a mapping from the names of objects for which records are kept by a given code module to the freshly-allocated 
 // streamRecord objects that keep their records. The records are specialized with the given stream ID.
 typedef std::map<std::string, streamRecord*> (*GetMergeStreamRecord)(int streamID);
@@ -379,7 +531,7 @@ class streamRecord : public printable {
   
   public:
   // Merge the IDs of the next ID field (named IDName, e.g. "anchorID" or "blockID") of the current tag maintained 
-  // within object nameed objName (e.g. "anchor" or "block") of each the incoming stream into a single ID in the 
+  // within object named objName (e.g. "anchor" or "block") of each the incoming stream into a single ID in the 
   // outgoing stream, updating each incoming stream's mappings from its IDs to the outgoing stream's 
   // IDs. If a given incoming stream anchorID has already been assigned to a different outgoing stream anchorID, yell.
   // For example, to merge the anchorIDs of anchors, blocks or any other tags that maintain anchorIDs, we need to set 
@@ -387,12 +539,15 @@ class streamRecord : public printable {
   //    IDName="blockID". Thus, anchor objects maintain the anchorID mappings for blocks as well as others, 
   //    while blocks maintain blockID mappings for themselves. This means that each object type (e.g. anchor, block, 
   //    trace) can only maintain one type of ID in its own streamRecord.
+  // The merged ID on the outgoing stream can be explicitly specified via the mergedID argument. If this argument
+  //    is not provided, a fresh ID is generated automatically.
   // Returns the merged ID in the outgoing stream.
   static int mergeIDs(std::string objName, std::string IDName, 
                       std::map<std::string, std::string>& pMap, 
                       const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
                       std::map<std::string, streamRecord*>& outStreamRecords,
-                      std::vector<std::map<std::string, streamRecord*> >& inStreamRecords);
+                      std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                      int mergedID=-1);
   
   // Variant of mergeIDs where it is assumed that all the IDs in the incoming stream map to the same ID in the outgoing
   // stream and an error is thrown if this is not the case
@@ -478,7 +633,7 @@ class Merger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key);
+                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
     
   // Given a vector of tag properties, returns the vector of values assigned to the given key within the given tag
   static std::vector<std::string> getValues(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags, 
@@ -570,8 +725,8 @@ class TextMerger : public Merger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
-    Merger::mergeKey(type, tag.next(), inStreamRecords, key);
+                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+    Merger::mergeKey(type, tag.next(), inStreamRecords, info);
   }
 }; // class TextMerger
 
@@ -713,8 +868,8 @@ class LinkMerger : public Merger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) { 
-    Merger::mergeKey(type, tag.next(), inStreamRecords, key);
+                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) { 
+    Merger::mergeKey(type, tag.next(), inStreamRecords, info);
   }
 }; // class LinkMerger
 
@@ -801,9 +956,13 @@ class block : public sightObj
   static properties* setProperties(std::string label, std::set<anchor>& pointsTo, properties* props);
  
   ~block();
-  // Contains the code to destroy this object. This method is called to clean up application state due to an
-  // abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
-  // that implement destroy should call the destroy method of their parent object.
+  
+  // Directly calls the destructor of this object. This is necessary because when an application crashes
+  // Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+  // there is no way to directly call the destructor of a given object when it may have several levels
+  // of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+  // it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+  // an object will invoke the destroy() method of the most-derived class.
   virtual void destroy();
   
   // Increments blockID. This function serves as the one location that we can use to target conditional
@@ -838,7 +997,7 @@ class BlockMerger : public Merger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key);
+                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
 }; // class BlockMerger
 
 class BlockStreamRecord: public streamRecord {
@@ -967,9 +1126,12 @@ public:
   void init(properties* props, std::string title, std::string workDir, std::string imgDir, std::string tmpDir);
   ~dbgStream();
 
-  // Contains the code to destroy this object. This method is called to clean up application state due to an
-  // abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
-  // that implement destroy should call the destroy method of their parent object.
+  // Directly calls the destructor of this object. This is necessary because when an application crashes
+  // Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+  // there is no way to directly call the destructor of a given object when it may have several levels
+  // of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+  // it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+  // an object will invoke the destroy() method of the most-derived class.
   virtual void destroy();
  
   // Switch between the owner class and user code writing text into this stream
@@ -1059,8 +1221,8 @@ class dbgStreamMerger : public Merger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) { 
-    Merger::mergeKey(type, tag.next(), inStreamRecords, key);
+                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) { 
+    Merger::mergeKey(type, tag.next(), inStreamRecords, info);
   }
 };
 
@@ -1125,9 +1287,12 @@ class indent : public sightObj
     
   ~indent();
 
-  // Contains the code to destroy this object. This method is called to clean up application state due to an
-  // abnormal termination instead of using delete because some objects may be allocated on the stack. Classes
-  // that implement destroy should call the destroy method of their parent object.
+  // Directly calls the destructor of this object. This is necessary because when an application crashes
+  // Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+  // there is no way to directly call the destructor of a given object when it may have several levels
+  // of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+  // it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+  // an object will invoke the destroy() method of the most-derived class.
   virtual void destroy();
 }; // indent
 
@@ -1149,8 +1314,8 @@ class IndentMerger : public Merger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, std::list<std::string>& key) {
-    Merger::mergeKey(type, tag.next(), inStreamRecords, key);
+                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+    Merger::mergeKey(type, tag.next(), inStreamRecords, info);
   }
 }; // class IndentMerger
 
