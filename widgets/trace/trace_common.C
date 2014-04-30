@@ -58,7 +58,7 @@ class readTraceFileReader : public attrFileReader {
   readTraceFileReader(traceFileReader& f): f(f) {}
 
   void operator()(const std::map<std::string, std::map<std::string, std::string> >& readData, int lineNum) {
-    /*cout << "readTraceFileReader: lineNum="<<lineNum<<", readData="<<endl;
+    /*cout << "readTraceFileReader: lineNum="<<lineNum<<", readData(#"<<readData.size()<<")="<<endl;
     for(std::map<std::string, std::map<std::string, std::string> >::const_iterator d=readData.begin(); d!=readData.end(); d++) {
       cout << "    "<<d->first<<":"<<endl;
       for(std::map<std::string, std::string>::const_iterator i=d->second.begin(); i!=d->second.end(); i++)

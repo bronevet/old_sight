@@ -4,7 +4,7 @@ EXE := .exe
 endif
 
 sight_H := ../*.h ../*/*.h ../widgets/*/*.h
-TESTERS = 5.Tracing${EXE} #9.CompModules.merged${EXE} #8.Modules${EXE} 9.CompModules.single${EXE} # 0.Demo${EXE} 11.ExternTraceProcess${EXE} 10.SpringModules${EXE} \
+TESTERS = 5.Tracing${EXE} 9.CompModules.merged${EXE} 8.Modules${EXE} 9.CompModules.single${EXE} 0.Demo${EXE} 11.ExternTraceProcess${EXE} 10.SpringModules${EXE} \
           1.StructuredFormatting${EXE} 2.ConditionalFormatting${EXE} 3.Navigation${EXE} \
           4.AttributeAnnotationFiltering${EXE} 6.PerfAnalysis${EXE} \
           7.Merging${EXE} 
@@ -12,13 +12,6 @@ TESTERS = 5.Tracing${EXE} #9.CompModules.merged${EXE} #8.Modules${EXE} 9.CompMod
 all: ${TESTERS}
 
 run: ${TESTERS}
-	export SIGHT_FILE_OUT=1; rm -rf dbg.9.CompModules*; ./9.CompModules.merged${EXE} 1 .1 .1 .001 .05; ./9.CompModules.merged${EXE} 0 .1 .1 .005 .05; ./9.CompModules.merged${EXE} 0 .1 .1 .01 .05; ./9.CompModules.merged${EXE} 0 .1 .1 .05 .05; ./9.CompModules.merged${EXE} 0 .1 .1 .1 .05;
-	export SIGHT_FILE_OUT=1; ../hier_merge dbg.9.CompModules zipper dbg.9.CompModules.*/structure
-	rm -rf dbg.9.CompModules.*;
-	../slayout${EXE} dbg.9.CompModules/structure;
-	./9.CompModules.single${EXE} 0 .1 .1 .05 .01
-
-blah:
 	export SIGHT_FILE_OUT=1; ./0.Demo${EXE} 5; ./0.Demo${EXE} 6; ./0.Demo${EXE} 7
 	export SIGHT_FILE_OUT=1; rm -rf dbg.0.Demo; ../hier_merge dbg.0.Demo common dbg.0.Demo.maxDepth_5/structure dbg.0.Demo.maxDepth_6/structure dbg.0.Demo.maxDepth_7/structure
 	rm -rf dbg.0.Demo.*;
@@ -41,6 +34,11 @@ blah:
 	export SIGHT_FILE_OUT=1; ../hier_merge dbg.8.Modules common dbg.8.Modules.*/structure
 	rm -rf dbg.8.Modules.*;
 	../slayout${EXE} dbg.8.Modules/structure;
+	export SIGHT_FILE_OUT=1; rm -rf dbg.9.CompModules*; ./9.CompModules.merged${EXE} 1 .1 .1 .001 .05; ./9.CompModules.merged${EXE} 0 .1 .1 .005 .05; ./9.CompModules.merged${EXE} 0 .1 .1 .01 .05; ./9.CompModules.merged${EXE} 0 .1 .1 .05 .05; ./9.CompModules.merged${EXE} 0 .1 .1 .1 .05;
+	export SIGHT_FILE_OUT=1; ../hier_merge dbg.9.CompModules zipper dbg.9.CompModules.*/structure
+	rm -rf dbg.9.CompModules.*;
+	../slayout${EXE} dbg.9.CompModules/structure;
+	./9.CompModules.single${EXE} 0 .1 .1 .05 .01
 	rm -rf dbg.10.SpringModules*; 
 	export SIGHT_FILE_OUT=1; export SPRING_BUF_SIZE=0;       ./10.SpringModules${EXE} 0 .1 .1 .01 .05; 
 	export SIGHT_FILE_OUT=1; export SPRING_BUF_SIZE=1024;    ./10.SpringModules${EXE} 0 .1 .1 .01 .05; ./10.SpringModules${EXE} 1 .1 .1 .01 .05; ./10.SpringModules${EXE} 2 .1 .1 .01 .05; ./10.SpringModules${EXE} 3 .1 .1 .01 .05;  ./10.SpringModules${EXE} 4 .1 .1 .01 .05;

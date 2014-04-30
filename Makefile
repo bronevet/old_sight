@@ -194,7 +194,7 @@ sightDefines.pl:
 
 Makefile.extern: initMakefile.extern
 	chmod 755 initMakefile.extern
-	./initMakefile.extern
+	./initMakefile.extern ${CC} ${CCC}
 
 clean:
 	cd widgets; make -f Makefile_pre clean
@@ -206,7 +206,7 @@ clean:
 	cd apps/mfem; make clean
 	rm -rf dbg dbg.* *.a *.o widgets/shellinabox* widgets/mongoose* widgets/graphviz* gdbLineNum.pl
 	rm -rf script/taffydb sightDefines.pl gdbscript
-	rm slayout hier_merge
+	rm -f slayout hier_merge
 
 clean_objects:
 	rm -f *.a *.o widgets/*.o widgets/*/*.o hier_merge slayout

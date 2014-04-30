@@ -1,7 +1,6 @@
 ROOT_PATH = /g/g15/bronevet/code/tmp/sight
 SIGHT_CFLAGS = -I${ROOT_PATH} \
                -I${ROOT_PATH}/tools/callpath/src -I${ROOT_PATH}/tools/adept-utils/include \
-               -I${ROOT_PATH}/tools/boost_1_55_0 \
                -I${ROOT_PATH}/widgets/papi/include
 SIGHT_LINKFLAGS_NORPATH = -L${ROOT_PATH} -lsight_structure \
                   -L${ROOT_PATH}/tools/adept-utils/lib -ladept_cutils -ladept_timing -ladept_utils \
@@ -16,3 +15,5 @@ SIGHT_LINKFLAGS = -L${ROOT_PATH} -lsight_structure \
                   -L${ROOT_PATH}/widgets/papi/lib -lpapi \
                   -Wl,-rpath ${ROOT_PATH}/widgets/papi/lib \
                   -lpthread
+CC = clang
+CCC = clang++

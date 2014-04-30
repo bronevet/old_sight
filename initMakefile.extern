@@ -1,7 +1,14 @@
 #!/usr/bin/python
 
+import sys
 import os
 curDir = os.path.dirname(os.path.realpath(__file__));
+
+if(len(sys.argv) != 3) :
+    sys.exit("Usage: initMakefile.extern CC CCC");
+
+CC = sys.argv[1];
+CCC = sys.argv[2];
 
 f = open('Makefile.extern', 'w')
 
@@ -26,13 +33,5 @@ f.write("""SIGHT_LINKFLAGS = -L${ROOT_PATH} -lsight_structure \\
                   -Wl,-rpath ${ROOT_PATH}/widgets/papi/lib \\
                   -lpthread\n""");
 
-#SIGHT_LINKFLAGS = -L${ROOT_PATH} -lsight_structure \
-#                  ${ROOT_PATH}/tools/adept-utils/lib/libadept_cutils.so \
-#                  ${ROOT_PATH}/tools/adept-utils/lib/libadept_timing.so \
-#                  ${ROOT_PATH}/tools/adept-utils/lib/libadept_utils.so \
-#                  -Wl,-rpath ${ROOT_PATH}/tools/adept-utils/lib \
-#                  ${ROOT_PATH}/tools/callpath/src/src/libcallpath.so \
-#                  -Wl,-rpath ${ROOT_PATH}/tools/callpath/src/src \
-#                  ${ROOT_PATH}/widgets/papi/lib/libpapi.a \
-#                 -lpthread 
-                 
+f.write("CC = "+CC+"\n");
+f.write("CCC = "+CCC+"\n");

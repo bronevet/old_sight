@@ -52,6 +52,7 @@ int** bitVector = gamodel->model->bitVector;
 	}
       fprintf(log, "\n");
     }
+  fflush(log);
 }
 
 // Initialize the GSL matrix input and vector y with the observed data and set the vector c to 0.

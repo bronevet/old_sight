@@ -407,8 +407,12 @@ void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int
       }
         //dotFile << "\t\t<TR><TD>:"<<modules[moduleID]->traceAttrNames[i]<< ": "<<wrapStr(polynomials[i], 50)<<"</TD></TR>"<<endl;
     }*/
+    //cout << "polyFits[moduleID]="<<polyFits[moduleID]<<", polyFits[moduleID]->numFits()="<<polyFits[moduleID]->numFits()<<endl;
     if(polyFits[moduleID] && polyFits[moduleID]->numFits()>0)
       dotFile << "\t\t"<<polyFits[moduleID]->getFitText()<<""<<endl;
+    
+    
+    //cout << "#modules[moduleID]->traceAttrNames="<<modules[moduleID]->traceAttrNames.size()<<endl;
     
     if(modules[moduleID]->traceAttrNames.size()>0) {
     //for(int i=0; i<modules[moduleID]->traceAttrNames.size(); i++) {
@@ -459,8 +463,10 @@ void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int
   dotFile << "{rank=source;node"<<moduleID<<";}"<<endl;
   dotFile << "{rank=sink;node"<<moduleID<<"_Out;}"<<endl;
   
-  // Add a module object that records this module to the modularApp's stack
+  // Add a moduleInfo object that records this module to the modularApp's stack
   mStack.push_back(sight::layout::moduleInfo(moduleName, moduleID, numInputs, numOutputs, count));
+  
+  //cout << "modularApp::enterModule() done\n";
 }
 
 // Static version of enterModule() that pulls the from/to anchor IDs from the properties iterator and calls 
@@ -736,7 +742,7 @@ void module::observe(int traceID,
                      const map<string, string>& ctxt, 
                      const map<string, string>& obs,
                      const map<string, anchor>& obsAnchor) {
-  /*cout << "module::observe("<<traceID<<") #ctxt="<<ctxt.size()<<" #obs="<<obs.size()<<endl;
+  /*cout << "module::observe("<<traceID<<") moduleID="<<moduleID<<" #ctxt="<<ctxt.size()<<" #obs="<<obs.size()<<endl;
   cout << "    ctxt=";
   for(map<string, string>::const_iterator c=ctxt.begin(); c!=ctxt.end(); c++) { cout << c->first << "=>"<<c->second<<" "; }
   cout << endl;
@@ -750,7 +756,22 @@ void module::observe(int traceID,
     curTraceAttrNames.insert(o->first);
   if(numObs == 0) traceAttrNames = curTraceAttrNames;
   else if(traceAttrNames != curTraceAttrNames)
-  { cerr << "ERROR: Inconsistent trace attributes in different observations for the same module node "<<moduleID<<"! Before observed "<<traceAttrNames.size()<<" numeric context attributed but this observation has "<<curTraceAttrNames.size()<<"."<<endl; assert(false); }
+  { 
+    cerr << "ERROR: Inconsistent trace attributes in different observations for the same module node "<<moduleID<<"!"<<endl;
+    cerr << "Before observed "<<traceAttrNames.size()<<" trace attributes: ["; 
+    for(set<string>::iterator t=traceAttrNames.begin(); t!=traceAttrNames.end(); t++) {
+      if(t!=traceAttrNames.begin()) cerr << ", ";
+      cerr << *t;
+    }
+    cerr << "]."<<endl;
+    cerr <<"This observation has "<<curTraceAttrNames.size()<<": [";
+    for(set<string>::iterator t=curTraceAttrNames.begin(); t!=curTraceAttrNames.end(); t++) {
+      if(t!=curTraceAttrNames.begin()) cerr << ", ";
+        cerr << *t;
+    }
+    cerr << "]."<<endl;
+    assert(0);
+  }
   
   // Record the context attribute groupings and the names of the attributes within each one
   map<string, list<string> > curCtxtNames;
@@ -760,10 +781,32 @@ void module::observe(int traceID,
     curCtxtNames[moduleClass+":"+ctxtGrouping+":"+ctxtSubGrouping].push_back(attrName);
   }
   if(numObs==0) ctxtNames = curCtxtNames;
-  else if(ctxtNames != curCtxtNames)
-  { cerr << "ERROR: Inconsistent context attributes in different observations for the same module node "<<moduleID<<"! Before observed "<<ctxtNames.size()<<" numeric context attributed but this observation has "<<curCtxtNames.size()<<"."<<endl; assert(false); }
+  else if(ctxtNames != curCtxtNames) { 
+    cerr << "ERROR: Inconsistent context attributes in different observations for the same module node "<<moduleID<<"!"<<endl;
+    cerr << "Before observed "<<ctxtNames.size()<<" context attributes: "<<endl; 
+    for(map<string, list<string> >::iterator c=ctxtNames.begin(); c!=ctxtNames.end(); c++) {
+      cerr << "    "<<c->first<<" : ";
+      for(list<string>::iterator i=c->second.begin(); i!=c->second.end(); i++) {
+        if(i!=c->second.begin()) cerr << ", ";
+        cerr << *i;
+      }
+      cerr << endl;
+    }
+    cerr <<"This observation has "<<curCtxtNames.size()<<":"<<endl;
+    for(map<string, list<string> >::iterator c=curCtxtNames.begin(); c!=curCtxtNames.end(); c++) {
+      cerr << "    "<<c->first<<" : ";
+      for(list<string>::iterator i=c->second.begin(); i!=c->second.end(); i++) {
+        if(i!=c->second.begin()) cerr << ", ";
+        cerr << *i;
+      }
+      cerr << endl;
+    }
+    assert(false);
+  }
   
   numObs++;
+  
+  //cout << "#curTraceAttrNames="<<curTraceAttrNames.size()<<", curCtxtNames="<<curCtxtNames.size()<<", numObs="<<numObs<<endl;
   
 /*  // Maps the names of numeric contexts to their floating point values
   map<string, double> numericCtxt;
@@ -1048,7 +1091,7 @@ void polyFitFilter::observe(int traceID,
                                               easylist<string>(txt()<<workDir<<"/in"<<fileNum<<".cfg"),
                                               txt()<<workDir<<"/in"<<fileNum<<"."<<t->first<<".data",
                                               easylist<string>(txt()<<workDir<<"/in"<<fileNum<<"."<<t->first<<".log",
-                                                               t->first));
+                                                               "\""+t->first+"\""));
      
       /*// Write the column headers
       for(map<string, double>::iterator c=numericCtxt.begin(); c!=numericCtxt.end(); c++)
@@ -1088,10 +1131,12 @@ void polyFitFilter::obsFinished() {
   }*/
   
   //cout << workDir<<"/in"<<fileNum<<".cfg numObservations="<<numObservations<<endl;
-  if(numObservations>0) {
+  // If we've collected at least one observation and at least one context dimension
+  // is not a constant
+  if(numObservations>0 && (numericCtxtNames.size() - ctxtConstVals.size())>0) {
     // Write out the configuration file before the command runs
     {
-      ofstream cfgFile((txt()<<workDir<<"/in"<<fileNum<<".cfg").c_str(), ofstream::app);
+      ofstream cfgFile((txt()<<workDir<<"/in"<<fileNum<<".cfg").c_str(), ofstream::out);
       
       // Number of data lines
       cfgFile << "N "<<numObservations<<endl;

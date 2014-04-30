@@ -91,6 +91,9 @@ int main(int argc, char** argv) {
   GAMODEL* gamodel;
   gamodel = initGAModel();
   parseInput(cfgFName, model,gamodel);
+  
+  // If there is not enough data to train on, quit
+  if(model->N <=1) return (EXIT_SUCCESS);
  
   fprintf(log, "Data\n");
   dataReader reader(model);
@@ -99,6 +102,8 @@ int main(int argc, char** argv) {
   printParm(log, model->parm, model->N, model->p);
 
   functionSetup(log, model, gamodel);
+  
+  if(gamodel->model->cp<=1) { fprintf(stderr, "ERROR: Insufficient number of model terms provided: %d.\n", model->cp); exit(-1); }
 
   fprintf(log, "Number of Links: %d  %d\n", model->L, gamodel->model->L);
   fprintf(log, "Size of GALINKS: %d %d\n", gamodel->model->llist->nlinks[0], gamodel->model->llist->nlinks[1]);

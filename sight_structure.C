@@ -348,6 +348,10 @@ void sightObj::init(properties* props, bool isTag) {
 //    cout << "[[[ "<<(props? props->str(): "NULL")<<endl;
     soStack().push_back(this);
   }
+  
+  // If Sight was not initialized at the time this object was created, record that
+  // this object does not emit an exit tag since this object should be left invisible to Sight.
+  if(!initializedDebug) emitExitTag = false;
 }
 
 // Directly calls the destructor of this object. This is necessary because when an application crashes

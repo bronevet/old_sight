@@ -1,0 +1,85 @@
+#BHEADER**********************************************************************
+# Copyright (c) 2008,  Lawrence Livermore National Security, LLC.
+# Produced at the Lawrence Livermore National Laboratory.
+# This file is part of HYPRE.  See file COPYRIGHT for details.
+#
+# HYPRE is free software; you can redistribute it and/or modify it under the
+# terms of the GNU Lesser General Public License (as published by the Free
+# Software Foundation) version 2.1 dated February 1999.
+#
+# $Revision: 2.4 $
+#EHEADER**********************************************************************
+
+
+.SUFFIXES:
+.SUFFIXES: .c .bc
+                                                                                               
+srcdir = .
+                                                                                               
+include ../Makefile.include
+LLVM32_INSTALL_PATH := /g/g15/bronevet/apps/llvm
+                                                                                               
+CFLAGS = \
+ -I..\
+ -I../utilities\
+ -I../struct_mv\
+ -I../sstruct_mv\
+ -I../IJ_mv\
+ -I../seq_mv\
+ -I../parcsr_mv\
+ -I../parcsr_ls\
+ -I../krylov\
+ ${INCLUDE_CFLAGS}\
+ -DHYPRE_TIMING
+                                                                                               
+LFLAGS =\
+ -L.\
+ -L../parcsr_ls\
+ -L../parcsr_mv\
+ -L../IJ_mv\
+ -L../seq_mv\
+ -L../sstruct_mv\
+ -L../struct_mv\
+ -L../krylov\
+ -L../utilities\
+ -lparcsr_ls\
+ -lparcsr_mv\
+ -lseq_mv\
+ -lsstruct_mv\
+ -lIJ_mv\
+ -lHYPRE_struct_mv\
+ -lkrylov\
+ -lHYPRE_utilities\
+ ${INCLUDE_LFLAGS}
+
+##################################################################
+# Targets
+##################################################################
+                                                                                                                                         
+all: amg2013.fi
+                                                                                                                                         
+clean:
+	@rm -f *.bc *.mc *.o
+                                                                                                                                         
+veryclean: clean
+	@rm -f amg2013.fi
+                                                                                                                                         
+##################################################################
+# Rules
+##################################################################
+                                                                                                                                         
+amg2013.fi: amg2013.bc
+	@echo  "Linking" $@ "... "
+	llvm-link ../*/lib*.bc amg2013.bc ${ROOT_PATH}/widgets/kulfi/kulfi_structure.bc -o amg2013.all.bc
+	opt -load ${LLVM32_INSTALL_PATH}/lib/faults.so -dynfault -ef 1 -tf 14285714 -de 1 -pe 1 -ijo 1 < amg2013.all.bc > amg2013.all.fi.bc
+	llc amg2013.all.fi.bc -o amg2013.all.fi.mc
+	mpig++ -xassembler amg2013.all.fi.mc -c -o amg2013.all.fi.o
+	mpig++ amg2013.all.fi.o -lm ${INCLUDE_LFLAGS} -L/usr/lib/gcc/x86_64-redhat-linux6E/4.6.1 -lstdc++ -lsqlite3 -o amg2013.fi
+                 
+##################################################################
+# Generic rules
+##################################################################
+                                                                                                                                         
+.c.bc:
+	${CCC} -emit-llvm -o $@ -c ${CFLAGS} $<
+                                                               
