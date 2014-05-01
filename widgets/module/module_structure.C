@@ -23,6 +23,37 @@ using namespace sight::common;
 namespace sight {
 namespace structure {
 
+// Record the configuration handlers in this file
+moduleConfHandlerInstantiator::moduleConfHandlerInstantiator() {
+  /*(*confEnterHandlers)["modularApp"]          = &modularAppEnterHandler;
+  (*confExitHandlers )["modularApp"]          = &modularAppExitHandler;
+  (*confEnterHandlers)["modularAppBody"]      = &defaultConfEntryHandler;
+  (*confExitHandlers )["modularAppBody"]      = &defaultConfExitHandler;
+  (*confEnterHandlers)["modularAppStructure"] = &defaultConfEntryHandler;
+  (*confExitHandlers )["modularAppStructure"] = &defaultConfExitHandler;
+  (*confEnterHandlers)["moduleTS"]            = &moduleTraceStream::enterTraceStream;
+  (*confExitHandlers )["moduleTS"]            = &defaultConfExitHandler;
+  (*confEnterHandlers)["module"]              = &modularApp::enterModule;
+  (*confExitHandlers )["module"]              = &modularApp::exitModule;
+  (*confEnterHandlers)["moduleMarker"]        = &defaultConfEntryHandler;
+  (*confExitHandlers )["moduleMarker"]        = &defaultConfExitHandler;
+  (*confEnterHandlers)["moduleCtrl"]          = &defaultConfEntryHandler;
+  (*confExitHandlers )["moduleCtrl"]          = &defaultConfExitHandler;
+  (*confEnterHandlers)["moduleEdge"]          = &modularApp::addEdge;
+  (*confExitHandlers )["moduleEdge"]          = &defaultConfExitHandler;
+  (*confEnterHandlers)["compModuleTS"]        = &compModuleTraceStream::enterTraceStream;
+  (*confExitHandlers )["compModuleTS"]        = &defaultConfExitHandler;
+  (*confEnterHandlers)["processedModuleTS"]   = &processedModuleTraceStream::enterTraceStream;
+  (*confExitHandlers )["processedModuleTS"]   = &defaultConfExitHandler;*/
+
+  (*enterHandlers)["module"]          = &module::configure;
+  (*exitHandlers )["module"]          = &moduleConfHandlerInstantiator::defaultExitFunc;
+  (*enterHandlers)["compModule"]      = &compModule::configure;
+  (*exitHandlers )["compModule"]      = &moduleConfHandlerInstantiator::defaultExitFunc;
+}
+moduleConfHandlerInstantiator moduleConfHandlerInstance;
+
+
 /********************
  ***** instance *****
  ********************/
@@ -1237,6 +1268,33 @@ void compModule::setOptionCtxt(std::string name, attrValue val) {
 void compModule::setOutCtxt(int idx, const compContext& c) {
   if(!props->active) return;
   module::setOutCtxt(idx, (const context&)c);
+}
+
+// -------------------------
+// ----- Configuration -----
+// -------------------------
+
+// We can configure the values that modifiable options take within each module
+// module name -> modifiable option name -> option value
+std::map<std::string, std::map<std::string, attrValue> > compModule::modOptValue;
+
+// Checks whether a modifiable option with the given name was specified for this module. 
+// This option may be set in a configuration file and then applications may use this 
+// function to query for its value and act accordingly
+bool compModule::existsModOption(std::string name) {
+  return (modOptValue.find(g.name()) != modOptValue.end()) &&
+         (modOptValue[g.name()].find(name) != modOptValue[g.name()].end());
+}
+
+// Returns the value of the given modifiable option of this module.
+attrValue compModule::getModOption(std::string name) {
+  if(modOptValue.find(g.name()) == modOptValue.end())
+  { cerr << "ERROR: no modifiable options specified for module "<<g.name()<<"!"<<endl; assert(0); }
+  
+  if(modOptValue[g.name()].find(name) == modOptValue[g.name()].end())
+  { cerr << "ERROR: no value specified for modifiable option "<<name<<" in module "<<g.name()<<"!"<<endl; assert(0); }
+  
+  return modOptValue[g.name()][name];
 }
 
 /*****************************

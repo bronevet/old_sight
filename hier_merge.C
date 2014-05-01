@@ -8,7 +8,7 @@
 #include <errno.h>
 #include "utils.h"
 #include "process.h"
-#include "process.C"
+//#include "process.C"
 #include "sight_structure.h"
 using namespace std;
 using namespace sight;

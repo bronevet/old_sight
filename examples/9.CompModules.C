@@ -104,6 +104,11 @@ int main (int argc, char *argv[])
         
         /*scope s(txt()<<"x="<<x<<" y="<<y);
         dbg << "lastTemp["<<x<<"]["<<y<<"] = "<<lastTemp[idx(x,y,Y)]<<endl;*/
+        if(tsMod.existsModOption("k")) {
+          cout << "k specified. old val="<<k<<", new val="<<tsMod.getModOption("k").getAsFloat()<<endl;
+          k = tsMod.getModOption("k").getAsFloat();
+        }
+        
         nextTemp[idx(x,y,X)] = lastTemp[idx(x,y,X)]+
                                k*(dt/dx/dx)*
                                  (lastTemp[idx(x+1,y,X)]+

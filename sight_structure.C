@@ -18,7 +18,8 @@
 #include "getAllHostnames.h" 
 #include "utils.h"
 #include "fdstream.h"
-
+#include "process.h"
+#include "process.C"
 using namespace std;
 using namespace sight::common;
 
@@ -82,7 +83,15 @@ void SightInit(string title, string workDir)
 void SightInit_internal(int argc, char** argv, string title, string workDir)
 {
   map<string, string> newProps;
-
+  
+  // If the user has specified a configuration file to be loaded
+  if(getenv("SIGHT_CONFIG")) {
+    FILE* f = fopen(getenv("SIGHT_CONFIG"), "r");
+    if(f==NULL) { cerr << "ERROR opening configuration file \""<<getenv("SIGHT_CONFIG")<<"\" for reading! "<<strerror(errno)<<endl; assert(f); }
+    FILEStructureParser parser(f, 10000);
+    loadConfiguration(parser);
+  }
+  
   newProps["title"] = title;
   newProps["workDir"] = workDir;
   // Records whether we know the application's command line, which would enable us to call it

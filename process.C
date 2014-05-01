@@ -11,7 +11,6 @@
 #include <unistd.h>
 #include "process.h"
 #include "sight_common_internal.h"
-#include "sight_layout.h"
 using namespace std;
 using namespace sight::common;
 

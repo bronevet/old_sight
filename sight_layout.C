@@ -15,6 +15,7 @@
 #include "sight_common.h"
 #include "getAllHostnames.h"
 #include "process.h"
+#include "process.C"
 
 //#define VERBOSE
 

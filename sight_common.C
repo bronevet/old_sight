@@ -619,9 +619,9 @@ void escapedStr::selfTest() {
   }
 }
 
-/********************************
+/****************************
  ***** LoadTimeRegistry *****
- ********************************/
+ ****************************/
 // The names of all the LoadTimeRegistry's derived classes that have already been initialized.
 std::set<std::string>* LoadTimeRegistry::initialized;
 
@@ -663,6 +663,108 @@ void LoadTimeRegistry::restoreMutexes() {
 
 // Create an instance of LoadTimeRegistry to ensure that it is initialized even if it is never derived from
 LoadTimeRegistry LoadTimeRegInstance("BASE", LoadTimeRegistry::init);
- 
+
+/*********************************
+ ***** TagFileReaderRegistry *****
+ *********************************/
+
+// Map the names of tags to the functions to be called when these tags are entered/exited
+template<typename objType>
+std::map<std::string, typename TagFileReaderRegistry<objType>::enterFunc>* TagFileReaderRegistry<objType>::enterHandlers;
+template<typename objType>
+std::map<std::string, typename TagFileReaderRegistry<objType>::exitFunc>*  TagFileReaderRegistry<objType>::exitHandlers;
+
+// The stack of pointers to objects that encode the tags that are currently entered but not exited
+template<typename objType>
+std::map<std::string, std::list<objType*> > TagFileReaderRegistry<objType>::stack;
+
+template<typename objType>
+TagFileReaderRegistry<objType>::TagFileReaderRegistry(std::string name): 
+     LoadTimeRegistry(name, TagFileReaderRegistry<objType>::init)
+{} 
+
+template<typename objType>
+void TagFileReaderRegistry<objType>::init() {
+  enterHandlers = new std::map<std::string, enterFunc>();
+  exitHandlers  = new std::map<std::string, exitFunc>();
+}
+
+// Call the entry handler of the most recently-entered object with name objName
+// and push the object it returns onto the stack.
+template<typename objType>
+void TagFileReaderRegistry<objType>::enter(string objName, properties::iterator iter) {
+  #ifdef VERBOSE
+  cout << "<<<"<<stack[objName].size()<<": "<<objName<<endl;
+  #endif
+  if(enterHandlers->find(objName) == enterHandlers->end()) { cerr << "ERROR: no entry handler for \""<<objName<<"\" tags!" << endl; }
+  assert(enterHandlers->find(objName) != enterHandlers->end());
+  stack[objName].push_back((*enterHandlers)[objName](iter));
+}
+
+// Call the exit handler of the most recently-entered object with name objName
+// and pop the object off its stack.
+template<typename objType>
+void TagFileReaderRegistry<objType>::exit(string objName) {
+  #ifdef VERBOSE
+  cout << ">>>"<<stack[objName].size()<<": "<<objName<<endl;
+  #endif
+  assert(stack[objName].size()>0);
+  if(exitHandlers->find(objName) == exitHandlers->end()) { cerr << "ERROR: no exit handler for \""<<objName<<"\" tags!" << endl; }
+  assert(exitHandlers->find(objName) != exitHandlers->end());
+  (*exitHandlers)[objName](stack[objName].back());
+  stack[objName].pop_back();
+}
+
+template<typename objType>
+std::string TagFileReaderRegistry<objType>::str() {
+  ostringstream s;
+  s << "confHandlers:\n";
+  for(typename map<string, enterFunc>::const_iterator i=enterHandlers->begin(); i!=enterHandlers->end(); i++)
+    s << i->first << endl;
+  return s.str();
+}
+
+/*******************************
+ ***** Configuration Files *****
+ *******************************/
+
+/***********************************
+ ***** confHandlerInstantiator *****
+ ***********************************/
+
+sightConfHandlerInstantiator::sightConfHandlerInstantiator() {
+/*  (*confEnterHandlers)["sight"] = &SightInit;
+  (*confExitHandlers )["sight"] = &defaultExitHandler;
+  (*confEnterHandlers)["indent"] = &indentEnterHandler;
+  (*confExitHandlers )["indent"] = &indentExitHandler;
+  (*confEnterHandlers)["link"]   = &anchor::link;
+  (*confExitHandlers )["link"]   = &defaultExitHandler;*/
+}
+sightConfHandlerInstantiator sightConfHandlerInstantance;
+
+// Given a parser that reads a given configuration file, load it
+void loadConfiguration(structureParser& parser) {
+  #ifdef VERBOSE
+  cout << TagFileReaderRegistry<Configuration>::str()<<endl;
+  #endif
+
+  pair<properties::tagType, const properties*> props = parser.next();
+  while(props.second->size()>0) {
+    if(props.first == properties::enterTag) {
+      // Ignore all text between tags
+      if(props.second->name() == "text") continue;
+      
+      // Call the entry handler of the most recently-entered object with this tag name
+      // and push the object it returns onto the stack dedicated to objects of this type.
+      TagFileReaderRegistry<Configuration>::enter(props.second->name(), props.second->begin());
+    } else if(props.first == properties::exitTag) {
+      // Call the exit handler of the most recently-entered object with this tag name
+      // and pop the object off its stack
+      TagFileReaderRegistry<Configuration>::exit(props.second->name());
+    }
+    props = parser.next();
+  }
+}
+
 }; // namespace common
 }; // namespace sight
