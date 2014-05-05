@@ -16,12 +16,12 @@ namespace layout {
 
 // Maps the names of various tags that may be read by the layout reader to the functions
 // that instantiate the objects they encode.
-// An entry handler is called when the object's entry tag is encountered in the debug log. It 
+// An entry handler is called when the object's entry tag is encountered in the structure file. It 
 //   takes as input the properties of the object to be laid out and returns a pointer to the 
 //   created object. NULL is a valid return value.
 // An exit handler is called when the object's exit tag is encountered and takes as input a pointer
 //   to the object.
-// It is assumed that all objects are hierarchically scoped, in that objects are exted in the 
+// It is assumed that all objects are hierarchically scoped, in that objects are exited in the 
 //   reverse order of their entry. The layout engine keeps track of the entry/exit stacks and 
 //   ensures that the appropriate object pointers are passed to exit handlers.
 typedef void* (*layoutEnterHandler)(properties::iterator props);

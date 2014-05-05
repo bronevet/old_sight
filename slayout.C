@@ -10,10 +10,11 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include "process.h"
-#include "process.C"
+//#include "process.C"
 #include <iostream>
 using namespace std;
 using namespace sight;
+#include "sight_layout.h"
 using namespace sight::layout;
 
 //#define VERBOSE

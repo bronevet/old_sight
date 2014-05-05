@@ -446,6 +446,120 @@ class LoadTimeRegistry {
 // Create an instance of LoadTimeRegistry to ensure that it is initialized even if it is never derived from
 extern LoadTimeRegistry LoadTimeRegInstance;
 
+// Specialization of the LoadTimeRegistry focused on the specific case of parsing structure/configuration files where we need
+// to invoke special methods when tags are entered and exited. This registry provides methods to register callback
+// functions that will be invoked on tag entry and exit. The entry functions are assumed to take in a properties
+// object that describes the tag and returns an object that represents it. This object is placed onto a stack
+// (tag entries/exits are assumed to be strictly hierarchical) and passed to the corresponding exit function when 
+// its tag is exited.
+// The entry functions are assumed to have the prototype:
+//    objectType* entry(properties props)
+// The exit functions are assumed to have the prototype:
+//    void exit(objType* obj)
+// Entry functions may return NULL, in which case the corresponding exit function is also passed NULL.
+template<typename objType>
+class TagFileReaderRegistry: public LoadTimeRegistry {
+  public:
+  typedef objType* (*enterFunc)(properties::iterator props);
+  typedef void (*exitFunc)(objType*);
+
+  // Map the names of tags to the functions to be called when these tags are entered/exited
+  static std::map<std::string, enterFunc>* enterHandlers;
+  static std::map<std::string, exitFunc>*  exitHandlers;
+
+  TagFileReaderRegistry(std::string name);
+  // Called exactly once for each class that derives from LoadTimeRegistry to initialize its static data structures.
+  static void init();
+
+  protected:
+  // The stack of pointers to objects that encode the tags that are currently entered but not exited
+  static std::map<std::string, std::list<objType*> > stack;
+
+  public:
+  // Call the entry handler of the most recently-entered object with name objName
+  // and push the object it returns onto the stack.
+  static void enter(std::string objName, properties::iterator iter);
+
+  // Call the exit handler of the most recently-entered object with name objName
+  // and pop the object off its stack.
+  static void exit(std::string objName);
+
+  // Default entry/exit handlers to use when no special handling is needed
+  static objType* defaultEnterFunc(properties::iterator props) { return NULL; }
+  static void  defaultExitFunc(objType* obj) {}
+  
+  static std::string str();
+}; // class TagFileReaderRegistry
+
+/*******************************
+ ***** Configuration Files *****
+ *******************************/
+
+/* The behavior of Sight widgets can be parameterized by specifying a configuration file.
+ * This file has the same format as the structure file that is laid out by the layout layer,
+ * and contains tags that describe the different types of widgets that may exist at runtime 
+ * and the properties of these widgets. Since each widget may inherit from another widgets,
+ * tags in the configuration file (must like those in the structure file) explicitly document
+ * their inheritance hierarchy:
+ * [kulfiModule ...][|compModule ...][|module ...][|block ...] ... [/kulfiModule]
+ * This gets mapped to a properties object with separate key->value maps for each widget
+ * in the inheritance hierarchy. To incorporate a tag in the configuration file into the state
+ * of a Sight widget the following steps must be taken:
+ * - Register a callback function under the widget's name that takes this properties object
+ * - When a tag is read the callback function for its most derived widget name is invoked
+ * - This callback creates a Configuration object that is specific to the widget and derives
+ *   from a Configuration of the widget from which it is derived (ex: KulfiConfiguration derives
+ *   from CompModuleConfiguration, which derives from ModuleConfiguration because kulfiModule 
+ *   derives from compModule, which derives from module)
+ * - The constructor of each Configuration object takes in properties iterator object that corresponds
+ *   to the read tag, incorporates the information into the widget's state (likely some static
+ *   data structures specific to the widget) and passes the successor of this iterator to
+ *   its parent constructor (this successor's properties must correspond to the parent's widget type)
+ *
+ * Each widget provides its own scheme for mapping the widgets specified in the configuration
+ * file to the widgets that occur at runtime. For example, the configuration file may have
+ * several module tags with different labels. In this case the modules widget may record a 
+ * global mapping from these names to their properties and whenever the user creates a module
+ * with a name that matches one that appeared in the configuration file, the corresponding
+ * properties object will be communicated to it. Thus, the constructor of each module will get
+ * two properties objects. First, the properties of the widget instance that will be written
+ * to the structure file and second, the properties iterator for the configuratoin that are 
+ * being applied to this widget. Both will be propagated up the constructor, with the configuration
+ * properties iterator advancing each time the parent constructor is called.
+ */
+
+class Configuration {
+  protected:
+  Configuration(properties::iterator props) {}
+}; // class Configuration
+
+/* Maps the names of various tags that may appear in a configuration file to the functions
+ * that decode them.
+ * An entry handler is called when the object's entry tag is encountered in the configuration file. It
+ *   takes as input the properties of this tag and returns a pointer to Configuration object that 
+ *   decodes it. NULL is a valid return value.
+ * An exit handler is called when the object's exit tag is encountered and takes as input a pointer
+ *  to its corresponding Configuration object, as returned by the entry function.
+ * It is assumed that all objects are hierarchically scoped, in that objects are exited in the
+ *   reverse order of their entry. The layout engine keeps track of the entry/exit stacks and
+ *   ensures that the appropriate object pointers are passed to exit handlers.
+ */
+class confHandlerInstantiator : public TagFileReaderRegistry<Configuration> {
+  public:
+  confHandlerInstantiator() : TagFileReaderRegistry<Configuration>("confHandlerInstantiator") {}
+};
+class sightConfHandlerInstantiator : confHandlerInstantiator {
+  public:
+  sightConfHandlerInstantiator();
+};
+extern sightConfHandlerInstantiator sightConfHandlerInstantance;
+
+// Given a parser that reads a given configuration file, load it
+void loadConfiguration(structureParser& parser);
+
+/***********************************************
+ ***** Syntactic Sugar for Data Structures *****
+ ***********************************************/
 
 // Syntactic sugar for specifying lists
 template<class T>

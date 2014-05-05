@@ -17,6 +17,15 @@
 namespace sight {
 namespace structure {
 
+class moduleConfHandlerInstantiator : common::confHandlerInstantiator {
+  public:
+  moduleConfHandlerInstantiator();
+};
+extern moduleConfHandlerInstantiator moduleConfHandlerInstance;
+
+class moduleTraceStream;
+
+
 //#ifndef MODULE_STRUCTURE_C
 // Rename for contexts, groups and ports that enables users to refer to them without prepending common::module
 //typedef common::module::group group;
@@ -539,6 +548,25 @@ class module: public sightObj, public common::module
   // that contain this block and false otherwise.
   bool subBlockEnterNotify(block* subBlock) { return true; }
   bool subBlockExitNotify (block* subBlock) { return true; }
+
+
+  // -------------------------
+  // ----- Configuration -----
+  // -------------------------
+  // Currently there isn't anything that can be configured but in the future we may wish to
+  // add measurements that will be taken on all modules
+  public:
+  class ModuleConfiguration : public common::Configuration{
+    public:
+    ModuleConfiguration(properties::iterator props) : common::Configuration(props.next()) {}
+  };
+  static common::Configuration* configure(properties::iterator props) { 
+    // Create a ModuleConfiguration object, using the invocation of the constructor hierarchy to
+    // record the configuration details with the respective widgets from which modules inherit
+    ModuleConfiguration* c = new ModuleConfiguration(props); 
+    delete c;
+    return NULL;
+  }
 }; // module
 
 // Extends the normal context by allowing the caller to specify a description of the comparator to be used
@@ -811,6 +839,42 @@ class compModule: public structure::module
   // by combining the context provided by the classes that this object derives from with its own unique 
   // context attributes.
   void setTraceCtxt();
+
+  // -------------------------
+  // ----- Configuration -----
+  // -------------------------
+  // We can configure the values that modifiable options take within each module
+  // module name -> modifiable option name -> option value
+  static std::map<std::string, std::map<std::string, attrValue> > modOptValue;
+  
+  public:
+  class CompModuleConfiguration : public ModuleConfiguration {
+    public:
+    CompModuleConfiguration(properties::iterator props) : ModuleConfiguration(props.next()) {
+      int numModOpts = props.getInt("numModOpts");
+      for(int i=0; i<numModOpts; i++) {
+        modOptValue[props.get(txt()<<"mo_Module_"<<i)][props.get(txt()<<"mo_Key_"<<i)] = 
+            attrValue(props.get(txt()<<"mo_Val_"<<i), attrValue::unknownT);
+      }
+    }
+  };
+  static common::Configuration* configure(properties::iterator props) { 
+    // Create a ModuleConfiguration object, using the invocation of the constructor hierarchy to
+    // record the configuration details with the respective widgets from which modules inherit
+    CompModuleConfiguration* c = new CompModuleConfiguration(props); 
+    delete c;
+    return NULL;
+  }
+  
+  // Checks whether a modifiable option with the given name was specified for this module. 
+  // This option may be set in a configuration file and then applications may use this 
+  // function to query for its value and act accordingly
+  virtual bool existsModOption(std::string name);
+  
+  // Returns the value of the given modifiable option of this module.
+  virtual attrValue getModOption(std::string name);
+  
+  
 }; // class compModule
 
 class springModule;
