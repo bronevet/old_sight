@@ -498,6 +498,97 @@ class PAPIMeasure : public measure {
   std::string str() const;
 }; // class PAPIMeasure
 
+#include "msr_rapl.h"
+
+// Base class of measurement objects that measure MSRs 
+class MSRMeasure {
+  protected:
+  static int numMeasurers;
+  MSRMeasure();
+  ~MSRMeasure();
+};
+
+// Measurement class for RAPL counters, which report power draw of the CPU and other sub-systems
+class RAPLMeasure : public measure, public MSRMeasure {
+  // Records the accumulated energy use and the amount of time over which it was used
+  class Euse {
+    public:
+    double E;
+    double T;
+
+    Euse() : E(0), T(0) {}
+    Euse(const Euse& that) : E(that.E), T(that.T) {}
+    void add(double moreE, double moreT) {
+      E+=moreE;
+      T+=moreT;
+    }
+    double getPower() {
+      if(T==0) return 0;
+      else return E/T;
+    }
+  };
+
+  // The internal state of the RAPL measurement library, specific to this RAPLMeasure instance
+  struct rapl_int_state raplS;
+
+  // Records the accumulated energy use in the CPU and DRAM
+  Euse accumCpuE[NUM_SOCKETS];
+  Euse accumDramE[NUM_SOCKETS];
+
+  // The data structure that maintains the current state of the RAPL counters
+  struct rapl_data rapl;
+  
+  // The label associated with this measurement
+  std::string valLabel;
+  
+  
+  public:
+  RAPLMeasure();
+  
+  // Non-full measure
+  RAPLMeasure(                        std::string valLabel);
+  RAPLMeasure(std::string traceLabel, std::string valLabel);
+  RAPLMeasure(trace* t,               std::string valLabel);
+  RAPLMeasure(traceStream* ts,        std::string valLabel);
+  // Full measure
+  RAPLMeasure(                        std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt);
+  RAPLMeasure(std::string traceLabel, std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt);
+  RAPLMeasure(trace* t,               std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt);
+  RAPLMeasure(traceStream* ts,        std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt);
+  
+  RAPLMeasure(const RAPLMeasure& that);
+  
+  ~RAPLMeasure();
+ 
+  private:
+  // Common initialization code
+  void init();   
+          
+  public:
+  // Returns a copy of this measure object, including its current measurement state, if any
+  measure* copy() const;
+    
+  // Start the measurement
+  void start();
+   
+  // Pauses the measurement so that time elapsed between this call and resume() is not counted.
+  // Returns true if the measure is not currently paused and false if it is (i.e. the pause command has no effect)
+  bool pause();
+
+  // Restarts counting time. Time collection is restarted regardless of how many times pause() was called
+  // before the call to resume().
+  void resume();
+ 
+  // Complete the measurement and add the observation to the trace associated with this measurement
+  void end();
+  
+  // Complete the measurement and return the observation.
+  // If addToTrace is true, the observation is addes to this measurement's trace and not, otherwise
+  std::list<std::pair<std::string, attrValue> > endGet(bool addToTrace=false);
+  
+  std::string str() const;
+}; // class RAPLMeasure
+
 // Non-full measure
 template<class MT>
 MT* startMeasure(std::string traceLabel, std::string valLabel) {

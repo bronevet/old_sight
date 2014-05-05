@@ -16,12 +16,15 @@ f.write("ROOT_PATH = "+curDir+"\n");
 
 f.write("""SIGHT_CFLAGS = -I${ROOT_PATH} \\
                -I${ROOT_PATH}/tools/callpath/src -I${ROOT_PATH}/tools/adept-utils/include \\
-               -I${ROOT_PATH}/widgets/papi/include\n""");
+               -I${ROOT_PATH}/widgets/papi/include\\
+               -I${ROOT_PATH}/widgets/libmsr/include\n""");
 
 f.write("""SIGHT_LINKFLAGS_NORPATH = -L${ROOT_PATH} -lsight_structure \\
                   -L${ROOT_PATH}/tools/adept-utils/lib -ladept_cutils -ladept_timing -ladept_utils \\
                   -L${ROOT_PATH}/tools/callpath/src/src -lcallpath \\
                   -L${ROOT_PATH}/widgets/papi/lib -lpapi \\
+                  -L${ROOT_PATH}/widgets/gsl/lib -lgsl \\
+                  -L${ROOT_PATH}/widgets/libmsr/lib -lmsr \\
                   -lpthread\n""");
 
 f.write("""SIGHT_LINKFLAGS = -L${ROOT_PATH} -lsight_structure \\
@@ -31,6 +34,10 @@ f.write("""SIGHT_LINKFLAGS = -L${ROOT_PATH} -lsight_structure \\
                   -Wl,-rpath ${ROOT_PATH}/tools/callpath/src/src \\
                   -L${ROOT_PATH}/widgets/papi/lib -lpapi \\
                   -Wl,-rpath ${ROOT_PATH}/widgets/papi/lib \\
+                  ${ROOT_PATH}/widgets/gsl/lib/libgsl.so \\
+                  -Wl,-rpath ${ROOT_PATH}/widgets/gsl/lib \\
+                  ${ROOT_PATH}/widgets/libmsr/lib/libmsr.so \\
+                  -Wl,-rpath ${ROOT_PATH}/widgets/libmsr/lib \\
                   -lpthread\n""");
 
 f.write("CC = "+CC+"\n");

@@ -1814,7 +1814,8 @@ main( int   argc,
    }
    attr myidAttr("MPIrank", 0/*myid*/);
    
-   modularApp AMGApp("AMG", namedMeasures("time", new timeMeasure()/*,
+   modularApp AMGApp("AMG", namedMeasures("time", new timeMeasure(),
+                                          "RAPL", new RAPLMeasure()/*,
                                           "PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS/ *, PAPI_L1_TCM, PAPI_L2_TCM, PAPI_L3_TCM* /))*/));
    
    

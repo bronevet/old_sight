@@ -96,7 +96,7 @@ else
 kulfi:
 endif
 
-ifneq (${OS}, Cygwin)
+ifeq (${REMOTE_ENABLED}, 1)
 xdotool:
 	rm -rf xdotool-2.20110530.1.tar.gz xdottool
 	wget http://semicomplete.googlecode.com/files/xdotool-2.20110530.1.tar.gz

@@ -21,6 +21,7 @@ mfem_structure.o: mfem_structure.C mfem_structure.h ../../sight_structure_intern
 meshFile2Socket: meshFile2Socket.cpp mfem/mfem.hpp 
 	${CCC} ${SIGHT_CFLAGS} meshFile2Socket.cpp -Imfem -Lmfem -lmfem -I${ROOT_PATH} -L${ROOT_PATH} -lsight_structure -DROOT_PATH=${ROOT_PATH} ${SIGHT_LINKFLAGS} -o meshFile2Socket
 
+ifeq (${REMOTE_ENABLED}, 1)
 glvis:
 #	cd glvis; make ROOT_PATH=${ROOT_PATH}
 	wget --no-check-certificate https://glvis.googlecode.com/files/glvis-2.0.tgz 
@@ -29,6 +30,9 @@ glvis:
 	cp glvismakefile glvis-2.0/makefile
 	cd glvis-2.0; make ROOT_PATH=${ROOT_PATH} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" CC=${CCC}
 	mv glvis-2.0 glvis
+else
+glvis:
+endif
 
 clean:
 	rm -fr meshFile2Socket
