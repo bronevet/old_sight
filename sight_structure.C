@@ -2124,60 +2124,86 @@ dbgStreamMerger::dbgStreamMerger(//std::string workDir,
     
     pMap["title"] = getMergedValue(tags, "title");
     
+    // Merge the command lines, environments, machine and user details (info required to 
+    // re-execute the application) across all the runs. Treat this as unknown if there are
+    // any inconsistencies.
     vector<string> commandLineKnownValues = getValues(tags, "commandLineKnown");
-    pMap["commandLineKnown"] = "0";
-    for(vector<string>::iterator i=commandLineKnownValues.begin(); i!=commandLineKnownValues.end(); i++)
-      if(*i=="1") {
-        pMap["commandLineKnown"] = "1";
-        break;
-      }
-    
-    if(pMap["commandLineKnown"] == "1") {
-      vector<string> argcValues = getValues(tags, "argc");
+    if(allSame<string>(commandLineKnownValues) && *commandLineKnownValues.begin()=="1") {
+      map<string, string> execPMap;
+      long argc;
+      { vector<string> argcValues = getValues(tags, "argc");
       //assert(allSame<string>(argcValues));
-      pMap["argc"] = *argcValues.begin();
+      execPMap["argc"] = *argcValues.begin();
+      // If the command lines are inconsistent, act as if the re-execution info is unknown
+      if(!allSame<string>(argcValues)) goto LABEL_INCONSISTENT_EXEC;
+      argc = strtol((*argcValues.begin()).c_str(), NULL, 10); }
       
-      long argc = strtol((*argcValues.begin()).c_str(), NULL, 10);
       for(long i=0; i<argc; i++) {
         vector<string> argvValues = getValues(tags, txt()<<"argv_"<<i);
-        //assert(allSame<string>(argvValues));
-        pMap[txt()<<"argv_"<<i] = *argvValues.begin();
-      }
-      
-      vector<string> execFileValues = getValues(tags, "execFile");
-      assert(allSame<string>(execFileValues));
-      pMap["execFile"] = *execFileValues.begin();
-      
-      vector<string> numEnvVarsValues = getValues(tags, "numEnvVars");
-      //assert(allSame<string>(numEnvVarsValues));
-      pMap["numEnvVars"] = *numEnvVarsValues.begin();
-      
-      long numEnvVars = strtol((*numEnvVarsValues.begin()).c_str(), NULL, 10);
-      for(long i=0; i<numEnvVars; i++) {
-        //vector<string> envNameValues = getValues(tags, txt()<<"envName_"<<i);
-        //assert(allSame<string>(envNameValues));
-        pMap[txt()<<"envName_"<<i] = tags.begin()->second.get(txt()<<"envName_"<<i);//*envNameValues.begin();
+        // If the command lines are inconsistent, act as if the re-execution info is unknown
+        if(!allSame<string>(argvValues)) goto LABEL_INCONSISTENT_EXEC;
         
-        //vector<string> envValValues = getValues(tags, txt()<<"envVal_"<<i);
-        //assert(allSame<string>(envNameValues));
-        pMap[txt()<<"envVal_"<<i] = tags.begin()->second.get(txt()<<"envVal_"<<i);//*envValValues.begin();
+        //assert(allSame<string>(argvValues));
+        execPMap[txt()<<"argv_"<<i] = *argvValues.begin();
       }
       
-      vector<string> numHostnamesValues = getValues(tags, "numHostnames");
-      assert(allSame<string>(numHostnamesValues));
-      pMap["numHostnames"] = *numHostnamesValues.begin();
+      { vector<string> execFileValues = getValues(tags, "execFile");
+      // If the command lines are inconsistent, act as if the re-execution info is unknown
+      if(!allSame<string>(execFileValues)) goto LABEL_INCONSISTENT_EXEC;
+      execPMap["execFile"] = *execFileValues.begin(); }
       
-      long numHostnames = strtol((*numHostnamesValues.begin()).c_str(), NULL, 10);
+      long numEnvVars;
+      { vector<string> numEnvVarsValues = getValues(tags, "numEnvVars");
+      // If the environments are inconsistent, act as if the re-execution info is unknown
+      if(!allSame<string>(numEnvVarsValues)) goto LABEL_INCONSISTENT_EXEC;
+      execPMap["numEnvVars"] = *numEnvVarsValues.begin();
+      numEnvVars = strtol((*numEnvVarsValues.begin()).c_str(), NULL, 10); }
+      
+      for(long i=0; i<numEnvVars; i++) {
+        { vector<string> envNameValues = getValues(tags, txt()<<"envName_"<<i);
+        // If the environments are inconsistent, act as if the re-execution info is unknown
+        if(!allSame<string>(envNameValues)) goto LABEL_INCONSISTENT_EXEC;
+        execPMap[txt()<<"envName_"<<i] = *envNameValues.begin(); }
+        
+        { vector<string> envValValues = getValues(tags, txt()<<"envVal_"<<i);
+        // If the environments are inconsistent, act as if the re-execution info is unknown
+        if(!allSame<string>(envValValues)) goto LABEL_INCONSISTENT_EXEC;
+        execPMap[txt()<<"envVal_"<<i] = *envValValues.begin(); }
+      }
+      
+      long numHostnames;
+      { vector<string> numHostnamesValues = getValues(tags, "numHostnames");
+      // If the machine details are inconsistent, act as if the re-execution info is unknown
+      if(!allSame<string>(numHostnamesValues)) goto LABEL_INCONSISTENT_EXEC;
+      execPMap["numHostnames"] = *numHostnamesValues.begin(); 
+      numHostnames = strtol((*numHostnamesValues.begin()).c_str(), NULL, 10); }
+      
       for(long i=0; i<numHostnames; i++) {
         vector<string> hostnameValues = getValues(tags, txt()<<"hostname_"<<i);
-        //assert(allSame<string>(hostnameValues));
-        pMap[txt()<<"hostname_"<<i] = *hostnameValues.begin();
+        // If the machine details are inconsistent, act as if the re-execution info is unknown
+        if(!allSame<string>(hostnameValues)) goto LABEL_INCONSISTENT_EXEC;
+        execPMap[txt()<<"hostname_"<<i] = *hostnameValues.begin();
       }
       
-      vector<string> usernameValues = getValues(tags, "username");
-      //assert(allSame<string>(usernameValues));
-      pMap["username"] = *usernameValues.begin();
+      { vector<string> usernameValues = getValues(tags, "username");
+      // If the user details are inconsistent, act as if the re-execution info is unknown
+      if(!allSame<string>(usernameValues)) goto LABEL_INCONSISTENT_EXEC;
+      execPMap["username"] = *usernameValues.begin(); }
+      
+      // All the execution info is consistent, so add it to pMap
+      pMap.insert(execPMap.begin(), execPMap.end());
+      pMap["commandLineKnown"] = "1";
+      goto LABEL_EXEC_END;
+      
+      // The label we'll jump to if we discover that the command line is not the same
+      // across all runs
+      LABEL_INCONSISTENT_EXEC:
+      pMap["commandLineKnown"] = "0";
+      
+      // The label we'll jump to when we've finished processing the command line
+      LABEL_EXEC_END: ;
     }
+    
     
     props->add("sight", pMap);
     //SightInit_internal(props, false);
