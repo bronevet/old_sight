@@ -317,7 +317,7 @@ hypre_PCGSolve( void *pcg_vdata,
    anchor lastAnchor = anchor::noAnchor;
    
    {
-     sightModule modPCGStep(instance("PCG Start", 1, 0), 
+     sightModule modPCGStart(instance("PCG Start", 1, 0), 
                        inputs(port(runCfg)),
 #if defined(KULFI)
                        module::context("EXP_ID", getenv("EXP_ID")),
@@ -475,7 +475,7 @@ hypre_PCGSolve( void *pcg_vdata,
 
    while ((i+1) <= max_iter)
    {
-     sightModule modPCGStep(instance("PCG Step", 2, 1), 
+     sightModule modPCGStep(instance("PCG Step", 2, 2), 
                        inputs(port(runCfg),
                               port(context("i", i))),
 #if defined(KULFI)

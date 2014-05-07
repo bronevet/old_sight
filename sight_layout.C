@@ -17,7 +17,7 @@
 #include "process.h"
 #include "process.C"
 
-#define VERBOSE
+//#define VERBOSE
 
 using namespace std;
 using namespace sight::common;
