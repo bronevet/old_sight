@@ -21,6 +21,14 @@ class trace;
 // Syntactic sugar for specifying anchors to observation sites
 //typedef common::easylist<anchor> obsAnchors;
 
+class traceConfHandlerInstantiator : common::confHandlerInstantiator {
+  public:
+  traceConfHandlerInstantiator();
+};
+extern traceConfHandlerInstantiator traceConfHandlerInstance;
+
+class traceTraceStream;
+
 // Traces are organized as a two-level hierarchy. The traceStream class performs all the work of collecting
 // trace data, emitting it to the output and laying the data out within some div in an HTML page. 
 // traceStreams are contained in classes that derive from block and denote a specific location in the output.
@@ -587,6 +595,38 @@ class RAPLMeasure : public measure, public MSRMeasure {
   std::list<std::pair<std::string, attrValue> > endGet(bool addToTrace=false);
   
   std::string str() const;
+
+  // -------------------------
+  // ----- Configuration -----
+  // -------------------------
+  public:
+  static common::Configuration* configure(properties::iterator props) {
+    // Set the current power cap based on the specification in props
+    struct rapl_limit CPULimit, DRAMLimit;
+    bool CPUSpecified=false;
+    if(props.exists("CPUWatts") && props.exists("CPUSeconds")) {
+      CPULimit.watts   = props.getFloat("CPUWatts");
+      CPULimit.seconds = props.getFloat("CPUSeconds");
+      CPUSpecified=true;
+      std::cout << "Setting CPU to "<<CPULimit.watts<<"W * "<<CPULimit.seconds<<"s "<<std::endl;
+    }
+    
+    bool DRAMSpecified=false;
+    if(props.exists("DRAMWatts") && props.exists("DRAMSeconds")) {
+      DRAMLimit.watts   = props.getFloat("DRAMWatts");
+      DRAMLimit.seconds = props.getFloat("DRAMSeconds");
+      std::cout << "Setting DRAM to "<<CPULimit.watts<<"W * "<<CPULimit.seconds<<"s"<<std::endl;
+      DRAMSpecified=true;
+    }
+
+    if(CPUSpecified || DRAMSpecified) {
+      std::cout << "Calling init_msr()\n";
+      init_msr();
+      for(int s=0; s<NUM_SOCKETS; s++) {
+        set_rapl_limit(s, (CPUSpecified? &CPULimit: NULL), NULL, (DRAMSpecified? &DRAMLimit: NULL));
+      }
+    }
+  }
 }; // class RAPLMeasure
 
 // Non-full measure

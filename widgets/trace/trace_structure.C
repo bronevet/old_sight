@@ -6,6 +6,21 @@ using namespace sight::common;
 namespace sight {
 namespace structure {
 
+// -------------------------
+// ----- Configuration -----
+// -------------------------
+
+// Record the configuration handlers in this file
+traceConfHandlerInstantiator::traceConfHandlerInstantiator() {
+  (*enterHandlers)["rapl"]          = &RAPLMeasure::configure;
+  (*exitHandlers )["rapl"]          = &traceConfHandlerInstantiator::defaultExitFunc;
+}
+traceConfHandlerInstantiator traceConfHandlerInstance;
+
+/*********************
+ ***** traceAttr *****
+ *********************/
+
 void traceAttr(std::string label, std::string key, const attrValue& val) {
   // Inform the chosen tracer of the observation
   trace::getTS(label)->traceAttrObserved(key, val, anchor::noAnchor);

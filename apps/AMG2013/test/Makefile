@@ -70,6 +70,10 @@ veryclean: clean
 amg2013: amg2013.o
 	@echo  "Linking" $@ "... "
 	${CCC} -o amg2013 amg2013.o ${LFLAGS}
+
+iterTest: iterTest.o
+	@echo  "Linking" $@ "... "
+	${CCC} -o iterTest iterTest.o ${LFLAGS}
                                                                                                                         
                  
 ##################################################################
