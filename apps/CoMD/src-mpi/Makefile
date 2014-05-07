@@ -15,9 +15,9 @@ DO_MPI = ON
 ### specify paths to include files that the compiler can't find on its
 ### own.  If you need any -L or -l switches to get C standard libraries
 ### (such as -lm for the math library) put them in C_LIB.
-CC = mpi${CCC}
+#CCC := mpi${CCC}
 CFLAGS = -I../../.. ${SIGHT_CFLAGS}
-OPTFLAGS = -g -O5
+OPTFLAGS = -g -O3
 INCLUDES = 
 C_LIB = -lm
 
@@ -80,35 +80,35 @@ OBJECTS_TRACEPATH=$(SOURCES:.c=.tracepath.o)
 DEFAULT: ${CoMD_EXE}.modules ${CoMD_EXE}.compmodules ${CoMD_EXE}.distillmodules ${CoMD_EXE}.tracepos ${CoMD_EXE}.tracepath
 
 %.modules.o: %.c
-	${CC} ${CFLAGS} -DMODULES -c $< -o $@
+	${MPICCC} ${CFLAGS} -DMODULES -c $< -o $@
 
 %.compmodules.o: %.c
-	${CC} ${CFLAGS} -DMODULES -DMOD_COMP -c $< -o $@
+	${MPICCC} ${CFLAGS} -DMODULES -DMOD_COMP -c $< -o $@
 	
 %.distillmodules.o: %.c
-	${CC} ${CFLAGS} -DMODULES -DDISTILL_MONITOR -c $< -o $@
+	${MPICCC} ${CFLAGS} -DMODULES -DDISTILL_MONITOR -c $< -o $@
 
 %.tracepos.o: %.c
-	${CC} ${CFLAGS} -DTRACE_POS -c $< -o $@
+	${MPICCC} ${CFLAGS} -DTRACE_POS -c $< -o $@
 
 %.tracepath.o: %.c
-	${CC} ${CFLAGS} -DTRACE_PATH -c $< -o $@
+	${MPICCC} ${CFLAGS} -DTRACE_PATH -c $< -o $@
 
 
 ${CoMD_EXE}.modules: ${BIN_DIR} CoMD_info.h ${OBJECTS_MODULES} 
-	${CC} ${CFLAGS} -o ${CoMD_EXE}.modules ${OBJECTS_MODULES} ${LDFLAGS}
+	${MPICCC} ${CFLAGS} -o ${CoMD_EXE}.modules ${OBJECTS_MODULES} ${LDFLAGS}
 
 ${CoMD_EXE}.compmodules: ${BIN_DIR} CoMD_info.h ${OBJECTS_COMPMODULES} 
-	${CC} ${CFLAGS} -o ${CoMD_EXE}.compmodules ${OBJECTS_COMPMODULES} ${LDFLAGS}
+	${MPICCC} ${CFLAGS} -o ${CoMD_EXE}.compmodules ${OBJECTS_COMPMODULES} ${LDFLAGS}
 
 ${CoMD_EXE}.distillmodules: ${BIN_DIR} CoMD_info.h ${OBJECTS_DISTILLMODULES} 
-	${CC} ${CFLAGS} -o ${CoMD_EXE}.distillmodules ${OBJECTS_DISTILLMODULES} ${LDFLAGS}
+	${MPICCC} ${CFLAGS} -o ${CoMD_EXE}.distillmodules ${OBJECTS_DISTILLMODULES} ${LDFLAGS}
 
 ${CoMD_EXE}.tracepos: ${BIN_DIR} CoMD_info.h ${OBJECTS_TRACEPOS} 
-	${CC} ${CFLAGS} -o ${CoMD_EXE}.tracepos ${OBJECTS_TRACEPOS} ${LDFLAGS}
+	${MPICCC} ${CFLAGS} -o ${CoMD_EXE}.tracepos ${OBJECTS_TRACEPOS} ${LDFLAGS}
 
 ${CoMD_EXE}.tracepath: ${BIN_DIR} CoMD_info.h ${OBJECTS_TRACEPATH} 
-	${CC} ${CFLAGS} -o ${CoMD_EXE}.tracepath ${OBJECTS_TRACEPATH} ${LDFLAGS}
+	${MPICCC} ${CFLAGS} -o ${CoMD_EXE}.tracepath ${OBJECTS_TRACEPATH} ${LDFLAGS}
 
 
 CoMD_info.h: Makefile

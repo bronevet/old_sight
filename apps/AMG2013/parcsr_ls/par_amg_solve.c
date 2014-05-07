@@ -22,8 +22,6 @@
 
 #include "headers.h"
 #include "par_amg.h"
-#include "sight.h"
-using namespace sight;
 /*--------------------------------------------------------------------
  * hypre_BoomerAMGSolve
  *--------------------------------------------------------------------*/
@@ -129,8 +127,11 @@ hypre_BoomerAMGSolve( void               *amg_vdata,
       //solveCtxt.add(txt()<<"numVars_l"<<j, num_variables[j]);
    }
    
-   module modSolve(instance("BoomerAMG Solve", 2, 1), 
+   sightModule modSolve(instance("BoomerAMG Solve", 2, 1), 
                    inputs(port(runCfg), port(solveCtxt)),
+#if defined(KULFI)
+                   module::context("EXP_ID", getenv("EXP_ID")),
+#endif
                    attrEQ("MPIrank", 0));
    
    scope sSolve("BoomerAMG Solve");
@@ -233,11 +234,14 @@ hypre_BoomerAMGSolve( void               *amg_vdata,
    while ((relative_resid >= tol || cycle_count < min_iter)
           && cycle_count < max_iter)
    {
-     module modCycle(instance("V Cycle", 3, 1), 
+     sightModule modCycle(instance("V Cycle", 3, 1), 
                      inputs(port(runCfg),
                             port(solveCtxt),
                             port(context("relative_resid", relative_resid,
                                          "cycle_count",    cycle_count))),
+#if defined(KULFI)
+                     module::context("EXP_ID", getenv("EXP_ID")),
+#endif
                      attrEQ("MPIrank", 0));
       scope sCycle(txt()<<"V Cycle count"<<cycle_count);
      

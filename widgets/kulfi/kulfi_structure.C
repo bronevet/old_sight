@@ -858,6 +858,30 @@ void kulfiModularApp::recordFaultInjection(const char* error_type, unsigned bPos
  ***** kulfiModule *****
  ************************/
 
+kulfiModule::kulfiModule(const instance& inst, const std::vector<port>& inputs, 
+                       const context& options,
+                                                                         properties* props) :
+          compModule(modifyInst(inst), inputs, !kulfiModularApp::isFIEnabled(), options, compNamedMeasures(), props)
+{ init(); }
+
+kulfiModule::kulfiModule(const instance& inst, const std::vector<port>& inputs, 
+                         const context& options,
+                         const attrOp& onoffOp,                            properties* props) :
+          compModule(modifyInst(inst), inputs, !kulfiModularApp::isFIEnabled(), options, onoffOp, compNamedMeasures(), props)
+{ init(); }
+
+kulfiModule::kulfiModule(const instance& inst, const std::vector<port>& inputs, 
+                         const context& options,
+                                              const compNamedMeasures& cMeas, properties* props) :
+          compModule(modifyInst(inst), inputs, !kulfiModularApp::isFIEnabled(), options, cMeas, props)
+{ init(); }
+
+kulfiModule::kulfiModule(const instance& inst, const std::vector<port>& inputs, 
+                         const context& options,
+                         const attrOp& onoffOp, const compNamedMeasures& cMeas, properties* props) :
+          compModule(modifyInst(inst), inputs, !kulfiModularApp::isFIEnabled(), options, cMeas, props)
+{ init(); }
+
 kulfiModule::kulfiModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs,
                        const context& options,
                                                                          properties* props) :
@@ -903,7 +927,7 @@ void kulfiModule::init() {
   // Initialize the options to correspond to no error being injected
   // Set injType to "before" if the start of this module's execution precedes the fault injection
   //                "after" if the start follows the fault injection
-cout << "<<<"<<g.str()<<endl;
+//cout << "<<<"<<g.str()<<endl;
   setOptionCtxt("injType",  string(fault_injection_count==0? "before": "after"));
   setOptionCtxt("bPos",     -1);
   setOptionCtxt("faultIdx", -1);
@@ -925,7 +949,7 @@ void kulfiModuleDestructNotifier(sightObj* obj) {
 kulfiModule::~kulfiModule() {
   // This is the first piece of code that gets executed upon the exit from a kulfiModule, disable fault injection here
   DisableKulfi();
-cout << ">>>"<<g.str()<<endl;
+//cout << ">>>"<<g.str()<<endl;
   
   registerDestructNotifier(kulfiModuleDestructNotifier);
 }
@@ -934,6 +958,14 @@ cout << ">>>"<<g.str()<<endl;
 // that this object derives from with its own unique context attributes.
 std::map<std::string, attrValue> kulfiModule::getTraceCtxt()
 { return compModule::getTraceCtxt(); }
+
+// Sets the context of the given output port. This variant ensures that KULFI fault injection
+// is disabled while setting the output context
+void kulfiModule::setOutCtxt(int idx, const compContext& c) {
+  DisableKulfi();
+  compModule::setOutCtxt(idx, c);
+  EnableKulfi();
+}
 
 }; //namespace sight
 }; //namespace structure

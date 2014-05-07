@@ -76,7 +76,7 @@ public:
   public:
     
   traceObserver() { finishNotified=false; }
-  ~traceObserver();
+  virtual ~traceObserver();
   // Called on each observation from the traceObserver this object is observing
   // traceID - unique ID of the trace from which the observation came
   // ctxt - maps the names of the observation's context attributes to string representations of their values

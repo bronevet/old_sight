@@ -1157,7 +1157,7 @@ function formatNum(val, digits) {
 	return val;
 	
   } else if(digits>0) {
-    return Number(Number(val).toPrecision(digits)).toFixed(digits);
+    return Number(Number(val).toPrecision(digits>10?10:digits)).toFixed(digits>10?10:digits);
   } else
     return val;
 }
@@ -1207,7 +1207,7 @@ function getAttrType(data, attrIdx, hostDivID, axisSize) {
   	    // If this value is numeric, we update the min and max
   	    if(isNumber(data[d][attrIdx]) || String(data[d][attrIdx]).toLowerCase()=="nan" || String(data[d][attrIdx]).toLowerCase()=="inf") {
   	  	  if(isNumber(data[d][attrIdx])) {
-  	  	    var val = parseFloat(data[d][attrIdx]); if(-1e-100<val && val < 1e-100) val = 0;
+  	  	    var val = parseFloat(data[d][attrIdx]); 
   	  	    
   	  	    if(val>0 && minPositiveVal > val) minPositiveVal = val;
   	  	    if(minVal > val) minVal = val;
@@ -1219,6 +1219,14 @@ function getAttrType(data, attrIdx, hostDivID, axisSize) {
   	    }
   	  }
     } }
+    
+    // Stretch the range to keep the min and max from being too close to 0 
+    // (the range can only become larger as a result of this stretching)
+    if(-1e-10<minVal && minVal < 0) minVal = -1e-10;
+    if(0>minPositiveVal && minPositiveVal < 1e-10) minPositiveVal = 0;
+    
+    if(0>maxVal && maxVal < 1e-10) maxVal = 1e-10;
+    if(-1e-10<maxVal && maxVal < 0) maxVal = 0;
 	
 	  minVal_AllData = minVal;
 	  maxVal_AllData = maxVal;

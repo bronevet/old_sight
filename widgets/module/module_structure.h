@@ -796,6 +796,45 @@ class compModule: public structure::module
   //    object that can be used to create a tag for the derived object that includes info about its parents. Further,
   //    it includes fields that must be included within the context of any trace observations made during the execution
   //    of this module.
+  compModule(const instance& inst, const std::vector<port>& inputs,  
+             bool isReference,
+                                                               properties* props=NULL);
+  compModule(const instance& inst, const std::vector<port>& inputs,  
+             bool isReference, 
+             const attrOp& onoffOp,                            properties* props=NULL);
+  compModule(const instance& inst, const std::vector<port>& inputs,  
+             bool isReference,
+                                    const compNamedMeasures& meas, properties* props=NULL);
+  compModule(const instance& inst, const std::vector<port>& inputs,  
+             bool isReference, 
+             const attrOp& onoffOp, const compNamedMeasures& meas, properties* props=NULL);
+
+  compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+             bool isReference,
+                                                               properties* props=NULL);
+  compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+             bool isReference, 
+             const attrOp& onoffOp,                            properties* props=NULL);
+  compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+             bool isReference,
+                                    const compNamedMeasures& meas, properties* props=NULL);
+  compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+             bool isReference, 
+             const attrOp& onoffOp, const compNamedMeasures& meas, properties* props=NULL);
+
+  compModule(const instance& inst, const std::vector<port>& inputs,  
+             bool isReference, context options,
+                                                               properties* props=NULL);
+  compModule(const instance& inst, const std::vector<port>& inputs,  
+             bool isReference, context options, 
+             const attrOp& onoffOp,                            properties* props=NULL);
+  compModule(const instance& inst, const std::vector<port>& inputs,  
+             bool isReference, context options,
+                                    const compNamedMeasures& meas, properties* props=NULL);
+  compModule(const instance& inst, const std::vector<port>& inputs,  
+             bool isReference, context options, 
+             const attrOp& onoffOp, const compNamedMeasures& meas, properties* props=NULL);
+
   compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
              bool isReference, context options,
                                                                properties* props=NULL);
@@ -1336,7 +1375,8 @@ class ModuleStreamRecord: public streamRecord {
   // This is maintained on the outgoing stream to ensure that even if we fail to accurately align
   // two moduleTS tags that actually belong to the same module, we only keep the record for the first
   // and ignore the subsequent instances of the tag.
-  std::map<group, int> observedModules;
+  std::map<group, int> observedModules;  // module group -> moduleID
+  std::map<group, int> observedModulesTS; // module group -> traceID
   // The maximum ID ever assigned to a module group within this stream
   int maxModuleID;
   
@@ -1360,21 +1400,27 @@ class ModuleStreamRecord: public streamRecord {
   
   
   // Returns true if the given module group has already been observed and false otherwise
-  bool isModuleObserved(const group& g) const
-  { 
-/*std::cout << "observedModules("<<g.str()<<"), observedModules(#"<<observedModules.size()<<")="<<std::endl;
-for(std::map<group, int>::const_iterator m=observedModules.begin(); m!=observedModules.end(); m++)
-  std::cout << "    " << m->first.str()<<" => "<<m->second<<std::endl;*/
-
-return observedModules.find(g) != observedModules.end(); }
+  bool isModuleObserved(const group& g) const { 
+    assert((observedModules.find(g)   != observedModules.end()) ==
+           (observedModulesTS.find(g) != observedModulesTS.end()));
+    return observedModules.find(g) != observedModules.end();
+  }
   
-  // If the given module group has been observed, returns its streamID
+  // If the given module group has been observed, returns its moduleID
   int getModuleID(const group& g)
   { assert(observedModules.find(g) != observedModules.end()); return observedModules[g]; }
   
+  // If the given module group has been observed, returns its traceID
+  int getModuleTraceID(const group& g)
+  { assert(observedModulesTS.find(g) != observedModulesTS.end()); return observedModulesTS[g]; }
+  
   // Records the ID of a given module group
-  void setModuleID(const group& g, int moduleID)
-  { assert(observedModules.find(g) == observedModules.end()); observedModules[g] = moduleID; }
+  void setModuleID(const group& g, int moduleID, int traceID) { 
+    assert(observedModules.find(g)   == observedModules.end()); 
+    assert(observedModulesTS.find(g) == observedModulesTS.end()); 
+    observedModules[g]   = moduleID;
+    observedModulesTS[g] = traceID;
+  }
   
   public:
   ModuleStreamRecord(int vID)              : streamRecord(vID, "module") { maxModuleID=0; }

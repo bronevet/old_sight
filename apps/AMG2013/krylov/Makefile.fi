@@ -19,7 +19,7 @@ include ../Makefile.include
 CFLAGS = \
  -I..\
  -I../utilities\
- ${INCLUDE_CFLAGS}
+ ${INCLUDE_CFLAGS} -DKULFI
 
 RANLIB = ranlib
 

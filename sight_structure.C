@@ -67,30 +67,48 @@ char* saved_execFile = NULL;
 // The unique ID of this process' output stream
 int outputStreamID=0;
 
-void SightInit(int argc, char** argv, string title, string workDir)
-{
-  if(initializedDebug) return;
-  SightInit_internal(argc, argv, title, workDir);
-}
-
-// Initializes the debug sub-system
-void SightInit(string title, string workDir)
-{
-  if(initializedDebug) return; 
-  SightInit_internal(0, NULL, title, workDir);
-}
-
-void SightInit_internal(int argc, char** argv, string title, string workDir)
-{
-  map<string, string> newProps;
-  
-  // If the user has specified a configuration file to be loaded
+// Initializes Sight
+void loadSightConfig() {
+// If the user has specified a configuration file to be loaded
   if(getenv("SIGHT_CONFIG")) {
     FILE* f = fopen(getenv("SIGHT_CONFIG"), "r");
     if(f==NULL) { cerr << "ERROR opening configuration file \""<<getenv("SIGHT_CONFIG")<<"\" for reading! "<<strerror(errno)<<endl; assert(f); }
     FILEStructureParser parser(f, 10000);
     loadConfiguration(parser);
   }
+}
+
+// Provides the output directory and run title as well as the arguments that are required to rerun the application
+void SightInit(int argc, char** argv, string title, string workDir)
+{
+  if(initializedDebug) return;
+  SightInit_internal(argc, argv, title, workDir);
+}
+
+// Provides the output directory and run title as well but does not provide enough info to rerun the application
+void SightInit(string title, string workDir)
+{
+  if(initializedDebug) return; 
+  SightInit_internal(0, NULL, title, workDir);
+}
+
+// Low-level initialization of Sight that sets up some basics but does not allow users to use the dbg
+// output stream to emit their debug output, meaning that other widgets cannot be used directly.
+// Users that using this type of initialization must create their own dbgStreams and emit enter/exit
+// tags to these streams directly without using any of the high-level APIs.
+void SightInit_LowLevel()
+{
+  loadSightConfig();
+  
+  initializedDebug = true;
+}
+
+
+void SightInit_internal(int argc, char** argv, string title, string workDir)
+{
+  map<string, string> newProps;
+  
+  loadSightConfig();
   
   newProps["title"] = title;
   newProps["workDir"] = workDir;
@@ -207,6 +225,25 @@ void SightInit_internal(properties* props, bool storeProps)
   dbg.init(storeProps? props: NULL, properties::get(sightIt, "title"), properties::get(sightIt, "workDir"), imgDir, tmpDir);
 }
 
+// Creates a new dbgStream based on the given properties of a "sight" tag and returns a pointer to it.
+// storeProps: if true, the given properties object is emitted into this dbgStream's output file
+structure::dbgStream* createDbgStream(properties* props, bool storeProps) {
+  properties::iterator sightIt = props->find("sight");
+  assert(!sightIt.isEnd());
+  
+  // Create the directory structure for the structural information
+  // Main output directory
+  createDir(properties::get(sightIt, "workDir"), "");
+
+  // Directory where client-generated images will go
+  string imgDir = createDir(properties::get(sightIt, "workDir"), "html/dbg_imgs");
+  
+  // Directory that widgets can use as temporary scratch space
+  string tmpDir = createDir(properties::get(sightIt, "workDir"), "html/tmp");
+  
+  return new dbgStream(storeProps? props: NULL, properties::get(sightIt, "title"), properties::get(sightIt, "workDir"), imgDir, tmpDir);
+}
+
 // Empty implementation of Sight initialization, to be used when Sight is disabled via #define DISABLE_SIGHT
 void NullSightInit(std::string title, std::string workDir) {}
 void NullSightInit(int argc, char** argv, std::string title, std::string workDir) {}
@@ -310,28 +347,36 @@ std::string location::str(std::string indent) const {
 // The stack of sightObjs that are currently in scope. We declare it as a static inside this function
 // to make it possible to ensure that the global soStack is constructed before it is used and therefore
 // destructed after all of its user objects are destructed.
-std::list<sightObj*>& soStack() {
-  static std::list<sightObj*> s;
-  return s;
+// There is a separate stack for each outgoing stream.
+std::map<dbgStream*, std::list<sightObj*> > staticSoStack;
+std::list<sightObj*>& soStack(dbgStream* outStream) {
+  return staticSoStack[outStream];
+}
+
+std::map<dbgStream*, std::list<sightObj*> >& soStackAllStreams() {
+  return staticSoStack;
 }
 
 // The of clocks currently being used, mapping the name of each clock class to the set of active 
 // clock objects of this class.
 std::map<std::string, std::set<sightClock*> > sightObj::clocks;
 
-sightObj::sightObj() : props(NULL), emitExitTag(false), destroyed(false) {
+sightObj::sightObj(dbgStream* outStream) : 
+    props(NULL), emitExitTag(false), destroyed(false), outStream(outStream?outStream:&structure::dbg) {
   // Push this sightObj onto the stack
   //if(initializedDebug) soStack.push_back(this);
   // Don't push this sightObj onto the stack because emitExitTag is initialized to false
-  soStack();
+  //soStack(this->outStream);
 }
 
 // isTag - if true, we emit a single enter/exit tag combo in the constructor and nothing in the destructor
-sightObj::sightObj(properties* props, bool isTag) : props(props), destroyed(false) {
+sightObj::sightObj(properties* props, bool isTag, dbgStream* outStream) : 
+      props(props), destroyed(false), outStream(outStream?outStream:&structure::dbg) {
   init(props, isTag);
 }
 
 void sightObj::init(properties* props, bool isTag) {
+  assert(outStream);
 //  cout << "sightObj::sightObj isTag="<<isTag<<" props="<<(props? props->str(): "NULL")<<endl;
   if(props && props->active && props->emitTag) {
     // Add the properties of any clocks associated with this sightObj
@@ -343,10 +388,10 @@ void sightObj::init(properties* props, bool isTag) {
     }
     
     if(isTag) {
-      dbg.tag(this);
+      outStream->tag(this);
       emitExitTag = false;
     } else {
-      dbg.enter(this);
+      outStream->enter(this);
       emitExitTag = true;
     }
   } else
@@ -355,12 +400,34 @@ void sightObj::init(properties* props, bool isTag) {
   // Push this sightObj onto the stack
   if(initializedDebug && emitExitTag) {
 //    cout << "[[[ "<<(props? props->str(): "NULL")<<endl;
-    soStack().push_back(this);
+    soStack(outStream).push_back(this);
   }
   
   // If Sight was not initialized at the time this object was created, record that
   // this object does not emit an exit tag since this object should be left invisible to Sight.
   if(!initializedDebug) emitExitTag = false;
+}
+
+// Emits this sightObj's exit tag to the outgoing stream
+// If popStack==true, remove this sightObj from the stack of objects on its dbgStream.
+// It will be set to false inside the dbgStream constructor since 1. its redundant and 
+// 2. if the dbgStream is the static one, the stack may have been destructed before the dbgStream's destructor
+void sightObj::exitTag(bool popStack) {
+  assert(outStream);
+  if(!emitExitTag) return;
+  
+  outStream->exit(this);
+  
+  // Pop this sightObj off the top of the stack
+  // The stack is empty when we're trying to destroy global/static sightObjs created before Sight was initialized
+  if(popStack)
+    if(soStack(this->outStream).size()>0) {
+      // Remove this object from the stack
+      assert(soStack(this->outStream).back() == this);
+      soStack(this->outStream).pop_back();
+    }
+  
+  emitExitTag = false;
 }
 
 // Directly calls the destructor of this object. This is necessary because when an application crashes
@@ -374,35 +441,37 @@ void sightObj::destroy() {
 }
 
 sightObj::~sightObj() {
-  assert(!destroyed);
+  //assert(!destroyed);
+  if(destroyed) return;
+  assert(outStream);
   
-/*  if(soStack().size()>0 && emitExitTag) {
-    cout << "]]](#"<<soStack().size()<<") props="<<(props? props->str(): "NULL")<<endl;
-    cout << "soStack().back()="<<(soStack().back()->props? soStack().back()->props->str(): "NULL")<<endl;
+/*  if(soStack(outStream).size()>0 && emitExitTag) {
+    cout << "]]](#"<<soStack(outStream).size()<<") props="<<(props? props->str(): "NULL")<<endl;
+    cout << "soStack(outStream).back()="<<(soStack(outStream).back()->props? soStack(outStream).back()->props->str(): "NULL")<<endl;
   }*/
   
   // If the application calls to exit(), this will call the destructors of all the static objects
   // but not those on the stack or heap. As such, it is possible to reach the destructor of an object
   // in the middle of the soStack without calling the destructors for objects in the middle.
   // As such, we call their destructors directly right now.
-/*  while(emitExitTag && soStack().back() != this) 
-    soStack().back()->destroy();*/
+/*  while(emitExitTag && soStack(outStream).back() != this) 
+    soStack(outStream).back()->destroy();*/
   
   //assert(props);
   if(props) {
     //cout << "sightObj::~sightObj(), emitExitTag="<<emitExitTag<<" props="<<props->str()<<endl;
     if(props->active && props->emitTag && emitExitTag)
-      dbg.exit(this);
+      outStream->exit(this);
     delete props;
     props = NULL;
   }
 
   // Pop this sightObj off the top of the stack
   // The stack is empty when we're trying to destroy global/static sightObjs created before Sight was initialized
-  if(soStack().size()>0 && emitExitTag) {
+  if(emitExitTag && soStack(outStream).size()>0) {
     // Remove this object from the stack
-    assert(soStack().back() == this);
-    soStack().pop_back();
+    assert(soStack(outStream).back() == this);
+    soStack(outStream).pop_back();
   }
   
   // We've finished destroying this object and it should not be destroyed again,
@@ -419,15 +488,18 @@ sightObj::~sightObj() {
 // Destroy all the currently live sightObjs on the stack
 void sightObj::destroyAll() {
   // Call the destroy method of each object on the soStack
-  while(soStack().size()>0) {
-    list<sightObj*>::reverse_iterator o=soStack().rbegin();
-//    if((*o)->emitExitTag) {
-      //cout << ">!> "<<(*o)->props->str()<<endl;
-      (*o)->destroy();
-//    }
-    // The call to destroy will remove the last element from soStack()
+  map<dbgStream*, list<sightObj*> > stack = soStackAllStreams();
+  for(map<dbgStream*, list<sightObj*> >::iterator s=stack.begin(); s!=stack.end(); s++) {
+    while(s->second.size()>0) {
+      list<sightObj*>::reverse_iterator o=s->second.rbegin();
+  //    if((*o)->emitExitTag) {
+        //cout << ">!> "<<(*o)->props->str()<<endl;
+        (*o)->destroy();
+  //    }
+      // The call to destroy will remove the last element from soStack(outStream)
+    }
   }
-  soStack().clear();
+  stack.clear();
 }
 
 // Returns whether this object is active or not
@@ -1028,7 +1100,9 @@ void anchor::reachedLocation() {
 
 // Updates this anchor to use the canonical ID of its location, if one has been established
 void anchor::update() {
-  if(anchorLocs.find(anchorID) != anchorLocs.end()) {
+  if(anchorID==-1) {
+    located = false;
+  } else if(anchorLocs.find(anchorID) != anchorLocs.end()) {
     located = true;
     loc = anchorLocs[anchorID];
   }
@@ -1762,7 +1836,7 @@ void dbgBuf::ownerAccessing() { ownerAccess = true; synched = true; }
  ***** dbgStream *****
  *********************/
 
-dbgStream::dbgStream() : common::dbgStream(&defaultFileBuf), sightObj(), initialized(false)
+dbgStream::dbgStream() : common::dbgStream(&defaultFileBuf), sightObj(this), initialized(false)
 {
   dbgFile = NULL;
   //buf = new dbgBuf(cout.rdbuf());
@@ -1771,7 +1845,7 @@ dbgStream::dbgStream() : common::dbgStream(&defaultFileBuf), sightObj(), initial
 }
 
 dbgStream::dbgStream(properties* props, string title, string workDir, string imgDir, std::string tmpDir)
-  : common::dbgStream(&defaultFileBuf), sightObj()
+  : common::dbgStream(&defaultFileBuf), sightObj(this)
 {
   init(props, title, workDir, imgDir, tmpDir);
 }
@@ -1832,7 +1906,7 @@ void dbgStream::init(properties* props, string title, string workDir, string img
   // The application may have written text to this dbgStream before it was fully initialized.
   // This text was stored in preInitStream. Print it out now.
   ownerAccessing();
-  dbg << preInitStream.str();
+  *this << preInitStream.str();
   userAccessing();
   
   initialized = true;
@@ -1854,6 +1928,9 @@ dbgStream::~dbgStream() {
   if (!initialized)
     return;
   
+  // Emit the exit tag for this dbgStream
+  sightObj::exitTag(false);
+  
 //  assert(dbgFile);
   if(dbgFile) dbgFile->close();
   
@@ -1861,6 +1938,11 @@ dbgStream::~dbgStream() {
     cmd << "rm -rf " << tmpDir;
     system(cmd.str().c_str());
   }
+
+  /*// If this is the static dbgStream object, det the destroyed flag to true to keep the sightObj destructor 
+  // from removing this object from the object stack, which may have already been destroyed.
+  if(this == &dbg)
+    destroyed = true;*/
 }
 
 // Called when a block is entered.
@@ -2098,7 +2180,7 @@ dbgStreamMerger::dbgStreamMerger(//std::string workDir,
     }
     
     props->add("sight", pMap);
-    SightInit_internal(props, false);
+    //SightInit_internal(props, false);
   } else
     props->add("sight", pMap);
 }

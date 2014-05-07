@@ -25,7 +25,7 @@ CFLAGS =\
  -I../seq_mv\
  -I../parcsr_mv\
  -I../parcsr_ls\
- ${INCLUDE_CFLAGS}
+ ${INCLUDE_CFLAGS} -DKULFI
  
 RANLIB = ranlib
 

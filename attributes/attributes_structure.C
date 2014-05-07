@@ -74,7 +74,7 @@ bool attrRange::applyFloat(double& that) const {
  ***** attrSubQuery *****
  ************************/
 
-attrSubQuery::attrSubQuery(attrOp* op) : sightObj(NULL), op(op) {}
+attrSubQuery::attrSubQuery(attrOp* op) : sightObj((properties*)NULL), op(op) {}
 
 attrSubQuery::~attrSubQuery() { delete op; }
 
@@ -161,7 +161,7 @@ bool attrQuery::query(const attributesC& attr) {
 // ***** Attribute Database *****
 // ******************************
 
-attributesC::attributesC() : sightObj(NULL) {
+attributesC::attributesC() : sightObj((properties*)NULL) {
   // Queries on an empty attributes object evaluate to true by default (by default we emit debug output)
   lastQRet = true;
   qCurrent = true;

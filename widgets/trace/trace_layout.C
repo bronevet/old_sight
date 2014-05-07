@@ -86,6 +86,10 @@ void *processedTrace::enterProcessedTraceStream(properties::iterator props) {
 //bool traceObserver::finishNotified=false;
 
 traceObserver::~traceObserver() {
+  // Unregister this object from all those that are observing it
+  while(observers.size()>0)
+    unregisterObserver(observers.begin()->first);
+  
   // Unregister this object from all those that it is observing
   while(observing.size()>0)
     observing.begin()->first->unregisterObserver(this);
@@ -559,7 +563,6 @@ traceStream::traceStream(properties::iterator props, std::string hostDiv, bool s
   //traceAttrsInitialized = false;
 
   active[traceID] = this;
-  //cout << "New Trace "<<traceID<<", this="<<this<<endl;
 }
 
 // Returns the representation of the given list as a JavaScript array
@@ -675,7 +678,8 @@ void* traceStream::observe(properties::iterator props)
 {
   //cout << "traceStream::observe() props="<<props.str()<<endl;
   long traceID = properties::getInt(props, "traceID");
-  assert(active.find(traceID) != active.end());
+  //assert(active.find(traceID) != active.end());
+  if(active.find(traceID) == active.end()) { volatile long* ptr = NULL; *ptr = 1; exit(-1); }
   traceStream* ts = active[traceID];
   //cout << "    t="<<t<<endl;
   //cout << "    #ts->traceAttrs="<<ts->traceAttrs.size()<<endl;

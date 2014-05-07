@@ -22,7 +22,7 @@ CFLAGS =\
  -I..\
  -I../utilities\
  -I../seq_mv\
- ${INCLUDE_CFLAGS}
+ ${INCLUDE_CFLAGS} -DKULFI
                                                                                                
 RANLIB = ranlib
                                                                                                

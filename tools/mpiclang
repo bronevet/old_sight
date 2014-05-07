@@ -1,0 +1,469 @@
+#! /bin/sh
+#
+# Script to compile and link with plugin libraries
+
+DIRROOT=/usr/local/tools/lcc
+usrlocal_plugins="/usr/local/etc/lcc"
+usrstlocal_plugins="/usr/stlocal/etc/lcc"
+usrglobal_plugins="/usr/global/tools/etc/lcc"
+macrodir="/usr/local/dpkg-db/info"
+quiet=0
+verbose=0
+lccecho=0
+
+# print script usage to screen
+print_usage()
+{
+        echo ""
+        echo "  $scriptname - compile or link MPI programs"
+        echo ""
+        echo "  Usage:  $scriptname [MPI Options] [Compiler / Linker Options] -o foo foo.c "
+        echo ""
+        echo "  MPI Options:"
+        echo "    -show      - Show the build command(s) that would be used without runnning them"
+        echo "    -cc=<comp> - Change the program used to compile and link MPI programs"
+        echo "                 Overrides MPICH_CC"
+        echo "    -mpi=<mpi> - Build against a particular MPI"
+        echo "                 Overrides MPICH_MPI"
+        echo "    -mpicpp    - Use C++ interface to MPI; e.g., MPI::Init()"
+        echo "    -rpath={yes,no}"
+        echo "               - Whether to use -rpath linker option for MPI libraries (default yes)"
+        echo "    -shlib={yes,no}"
+        echo "               - Whether to use shared MPI libraries (default yes)"
+        echo "    -lcc-compile"
+        echo "               - Just include compile flags"
+        echo "    -lcc-link  - Just include link flags"
+        echo "    -lcc-flags - Don't build, just echo flags"
+        echo "    -lcc-echo  - Echo build command just before running it"
+        echo "    -help      - Show this help screen"
+        echo ""
+        echo "  Compiler / Linker Options:"
+        echo "    Passed through to the underlying compiler / linker"
+        echo ""
+        echo "  Environment Variables:"
+        echo "    MPICH_CC        - Selects compiler to use"
+        echo "    MPICH_MPI       - Selects MPI to build against"
+        echo "    MPICH_ROOT      - Selects root directory to find MPI libraries"
+        echo "    MPICH_RPATH     - \"yes\" (default) links with -rpath entries for MPI libraries,"
+        echo "                      \"no\" links without -rpath"
+        echo "    MPICH_SHLIB     - \"yes\" (default) enables dynamic linking of MPI libraries,"
+        echo "                      \"no\" links statically"
+        echo ""
+        exit 1
+}
+
+# given a list of configuration files to look for
+# source the first found and return, throw error if none exist
+read_conf()
+{
+  for f in $*
+  do
+    if [ -r "$f" ] ; then
+      . $f ; return 0
+    fi
+  done
+  if [ "$quiet" == "0" ] ; then
+    echo "$scriptname: WARNING: Missing plugin configuration file(s): $*"
+  fi
+  return 1
+}
+
+#get script name and directory
+scriptname=${0##*/}
+scriptdir=${0%$scriptname}
+scriptdir=${0%/}
+
+#if no arguments are given, print usage and bail out
+if [ $# -lt 1 ] ; then print_usage ; fi
+
+#configuration file directory
+confdir="$DIRROOT/conf"
+
+#extract complier name from mpi* command
+CCname=${scriptname##*mpi}
+CCname=`echo $CCname | sed 's/ /-/g'`
+
+# map mpicc, mpiCC, mpif77, mpif90 to GNU
+CCmapped=$CCname
+case "$CCname" in
+  cc)  CCmapped="gcc" ;;
+  CC)  CCmapped="g++" ;;
+  f77) CCmapped="gfortran" ;;
+  f90) CCmapped="gfortran" ;;
+esac
+
+#allow for override of compiler and linker via environment variables
+CC="${MPICH_CC:-$CCmapped}"
+
+#allow for override of default MPI via environment variable
+MPIname="${MPICH_MPI:-mvapich}"
+
+# define defaults before processing command line arguments
+Show=eval
+ShowFlag=0
+mpicpp=0
+compileargs=
+PLUGINask=${MPICH_PLUGIN:-""}
+UseRpath=${MPICH_RPATH:-"yes"}
+UseSharedLib=${MPICH_SHLIB:-"yes"}
+cflags=0
+lflags=0
+flagsonly=0
+if [ "$UseRpath" != "yes" -a "$UseRpath" != "no" ] ; then
+  echo "ERROR: Invalid variable setting: MPICH_RPATH=$UseRpath ; please set to either 'yes' or 'no'"
+  exit 1
+fi
+if [ "$UseSharedLib" != "yes" -a "$UseSharedLib" != "no" ] ; then
+  echo "ERROR: Invalid variable setting: MPICH_SHLIB=$UseSharedLib ; please set to either 'yes' or 'no'"
+  exit 1
+fi
+
+# Process command line options
+for arg in "$@" ; do
+    case "$arg" in 
+	-show)
+	Show=echo
+	ShowFlag=1
+	;;
+	-echo)
+	set -x
+	;;
+        -mpicpp)
+        mpicpp=1
+        ;;
+        -mpi=*)
+        MPIname=`echo A$arg | sed -e 's/A-mpi=//g'`
+        ;;
+        -cc=*)
+        CC=`echo A$arg | sed -e 's/A-cc=//g'`
+        ;;
+        -plugin=*)
+        temp_plugins=`echo A$arg | sed -e 's/A-plugin=//g'`
+        PLUGINask="$PLUGINask,$temp_plugins"
+        ;;
+        -rpath=*)
+        UseRpath=`echo A$arg | sed -e 's/A-rpath=//g'`
+        if [ "$UseRpath" != "yes" -a "$UseRpath" != "no" ] ; then
+          echo "ERROR: Invalid option: -rpath=$UseRpath ; please use -rpath=yes or -rpath=no"
+          exit 1
+        fi
+        ;;
+        -shlib=*)
+        UseSharedLib=`echo A$arg | sed -e 's/A-shlib=//g'`
+        if [ "$UseSharedLib" != "yes" -a "$UseSharedLib" != "no" ] ; then
+          echo "ERROR: Invalid option: -shlib=$UseSharedLib ; please use -shlib=yes or -shlib=no"
+          exit 1
+        fi
+        ;;
+        -c) # catch -c to enable compile-only (we'll handle this case since it's so common)
+        cflags=1
+	compileargs="$compileargs $arg"
+        ;;
+        -lcc-compile)
+        cflags=1
+        ;;
+        -lcc-link)
+        lflags=1
+        ;;
+        -lcc-flags)
+        flagsonly=1
+        ;;
+        -lcc-echo)
+        lccecho=1
+        ;;
+        -lcc-verbose)
+        verbose=1
+        ;;
+	-help | -h )
+        print_usage
+	;;
+
+	# Unrecognized args.  Because we do an eval, we need to
+	# carefully quote any args that contain quotes.
+        *\"*) 
+	qarg="'"$arg"'"
+	compileargs="$compileargs $qarg"
+	;;
+        *\'*) 
+	qarg='\"'"$arg"'\"'
+	compileargs="$compileargs $qarg"
+	;;
+        *)
+	compileargs="$compileargs $arg"
+	;;
+    esac
+done
+
+# get compiler vendor
+ccvendor=""
+lang=""
+RPATH='-Wl,-rpath,'
+COMP_CFLAGS=""
+COMP_LFLAGS=""
+CCbasename=`basename $CC`
+case "$CCbasename" in
+  # GNU Compilers ----------------------
+  gcc*) # GNU C compiler configuration.
+    ccvendor="gnu"
+    lang="C"
+    CCBASE="gcc"
+    CLINKERBASE="gcc"
+    ;;
+  gCC* | g++*) # GNU C++ compiler configuration.
+    ccvendor="gnu"
+    lang="CPP"
+    CCBASE="g++"
+    CLINKERBASE="g++"
+    ;;
+  g77*) # GNU F77 compiler configuration.
+    ccvendor="gnu"
+    lang="F77"
+    CCBASE="g77"
+    CLINKERBASE="g77"
+    COMP_CFLAGS="-fPIC -fno-second-underscore"
+    ;;
+  gfortran*) # GNU F90 compiler configuration.
+    ccvendor="gnu"
+    lang="F90"
+    CCBASE="gfortran"
+    CLINKERBASE="gfortran"
+    COMP_CFLAGS="-fPIC -fno-second-underscore"
+    ;;
+
+  # Clang Compilers ----------------------
+  clang*) # GNU C compiler configuration.
+    ccvendor="gnu"
+    lang="C"
+    CCBASE="clang"
+    CLINKERBASE="clang"
+    ;;
+  clang++*) # GNU C++ compiler configuration.
+    ccvendor="gnu"
+    lang="CPP"
+    CCBASE="clang++"
+    CLINKERBASE="clang++"
+    ;;
+
+  # Intel Compilers --------------------
+  icc*) # Intel C compiler configuration.
+    ccvendor="intel"
+    lang="C"
+    CCBASE="icc"
+    CLINKERBASE="icc"
+    COMP_CFLAGS="-i-dynamic"
+    ;;
+  icpc*) # Intel C++ compiler configuration.
+    ccvendor="intel"
+    lang="CPP"
+    CCBASE="icpc"
+    CLINKERBASE="icpc"
+    COMP_CFLAGS="-i-dynamic"
+    ;;
+  ifc*) # Intel Fortran compiler configuration.
+    ccvendor="intel"
+    lang="F90"
+    CCBASE="ifc"
+    CLINKERBASE="ifc"
+    COMP_CFLAGS="-i-dynamic"
+    ;;
+  ifort*) # Intel Fortran compiler configuration.
+    ccvendor="intel"
+    lang="F90"
+    CCBASE="ifort"
+    CLINKERBASE="ifort"
+    COMP_CFLAGS="-i-dynamic"
+    ;;
+
+  # Pathscale Compilers ----------------
+  pathcc*) # PathScale C compiler configuration.
+    ccvendor="pathscale"
+    lang="C"
+    CCBASE="pathcc"
+    CLINKERBASE="pathcc"
+    ;;
+  pathCC*) # PathScale C++ compiler configuration.
+    ccvendor="pathscale"
+    lang="CPP"
+    CCBASE="pathCC"
+    CLINKERBASE="pathCC"
+    ;;
+  pathf90*) # PathScale F90 compiler configuration.
+    ccvendor="pathscale"
+    lang="F90"
+    CCBASE="pathf90"
+    CLINKERBASE="pathf90"
+    COMP_CFLAGS="-fno-second-underscore"
+    ;;
+
+  # PGI Compilers ----------------------
+  pgcc*) # PGI C compiler configuration.
+    ccvendor="pgi"
+    lang="C"
+    CCBASE="pgcc"
+    CLINKERBASE="pgcc"
+    ;;
+  pgCC*) # PGI C++ compiler configuration.
+    ccvendor="pgi"
+    lang="CPP"
+    CCBASE="pgCC"
+    CLINKERBASE="pgCC"
+    ;;
+  pgf77*) # PGI F77 compiler configuration.
+    ccvendor="pgi"
+    lang="F77"
+    CCBASE="pgf77"
+    CLINKERBASE="pgf77"
+    COMP_CFLAGS="-Mnosecond_underscore"
+    ;;
+  pgf90*) # PGI F90 compiler configuration.
+    ccvendor="pgi"
+    lang="F90"
+    CCBASE="pgf90"
+    CLINKERBASE="pgf90"
+    COMP_CFLAGS="-Mnosecond_underscore"
+    ;;
+  pgf95*) # PGI F90 compiler configuration.
+    ccvendor="pgi"
+    lang="F90"
+    CCBASE="pgf95"
+    CLINKERBASE="pgf95"
+    COMP_CFLAGS="-Mnosecond_underscore"
+    ;;
+  pghpf*) # PGI F90 compiler configuration.
+    ccvendor="pgi"
+    lang="F90"
+    CCBASE="pghpf"
+    CLINKERBASE="pghpf"
+    COMP_CFLAGS="-Mnosecond_underscore"
+    ;;
+
+  # Unknown compiler, print warning ----------------------
+  *)
+    echo "$scriptname: WARNING: Could not determine compiler vendor for $CC"
+    ;;
+esac
+
+# build the MPI plugin name
+MPIplugin=${MPIname}
+if [ $mpicpp = 1 ] ;
+then MPIplugin="${MPIplugin}::cxx"
+else MPIplugin="${MPIplugin}::c"
+fi
+PLUGINask="$PLUGINask,$MPIplugin"
+
+# if both compile and link flags are disabled, neither was specified, so turn them both on
+if [ "$cflags" == "0" -a "$lflags" == "0" ] ; then
+  cflags=1
+  lflags=1
+fi
+
+# echo flags to screen (don't execute compile)
+if [ "$flagsonly" == "1" ] ; then
+  CC=""
+  Show=echo
+  quiet=1
+fi
+
+LCC_ARGS=""
+PLUGINask=`echo $PLUGINask | sed -e 's/,/ /g'` # or comma-separated (or both)
+SEARCH_PATH="$usrlocal_plugins"
+if [ -e $usrstlocal_plugins ] ; then SEARCH_PATH="$SEARCH_PATH $usrstlocal_plugins" ; fi
+if [ -e $usrglobal_plugins  ] ; then SEARCH_PATH="$SEARCH_PATH $usrglobal_plugins"  ; fi
+if [ "$HOME" != "" -a -e "$HOME/.lcc" ] ; then SEARCH_PATH="$HOME/.lcc $SEARCH_PATH" ; fi
+for plugin in $PLUGINask ; do
+  LCC_CFLAGS=""
+  LCC_LFLAGS=""
+  LCC_LIBS=""
+
+  LCC_SHLIB_CFLAGS=""
+  LCC_SHLIB_LFLAGS=""
+  LCC_SHLIB_LRPATH=""
+  LCC_SHLIB_LIBS=""
+
+  # extract the package and plug name from the plugin package::plug
+  package=${plugin%::*}
+  plug=${plugin##*::}
+  if [ "$plugin" == "$plug" ] ; then plug="" ; fi
+
+  # split version string off package name basepackage-version
+  basepackage=${package%-[0-9.]*}
+  version=${package##$basepackage}
+
+  if [ $verbose -eq 1 ] ; then echo "plugin=\"$plugin\", package=\"$package\", plug=\"$plug\", basepackage=\"$basepackage\", version=\"$version\"" ; fi
+
+  confname=""
+  # search for compiler vendor-specific plugin file first
+  if [ "$confname" == "" -a "$ccvendor" != "" ] ; then
+    name="${basepackage}-${ccvendor}${version:+$version}${plug:+::$plug}.lcc"
+    for path in $SEARCH_PATH ; do
+      if [ $verbose -eq 1 ] ; then echo "Searching for lcc file: $path/$name" ; fi
+      if [ -r "$path/$name" ] ; then
+        confname="$path/$name"
+        package="${basepackage}-${ccvendor}${version:+$version}"
+        break
+      fi
+    done
+  fi
+
+  # search for compiler vendor-specific plugin file first
+  if [ "$confname" == "" -a "$ccvendor" != "" ] ; then
+    name="${package}-${ccvendor}${plug:+::$plug}.lcc"
+    for path in $SEARCH_PATH ; do
+      if [ $verbose -eq 1 ] ; then echo "Searching for lcc file: $path/$name" ; fi
+      if [ -r "$path/$name" ] ; then
+        confname="$path/$name"
+        package="${pacakge}-${ccvendor}"
+        break
+      fi
+    done
+  fi
+
+  # if we don't find and vendor-specific file, look for a general one
+  if [ "$confname" == "" ] ; then
+    name="${plugin}.lcc"
+    for path in $SEARCH_PATH ; do
+      if [ $verbose -eq 1 ] ; then echo "Searching for lcc file: $path/$name" ; fi
+      if [ -r "$path/$name" ] ; then confname="$path/$name" ; break; fi
+    done
+  fi
+
+  # should have found a plugin file by now
+  # just fill in the name so the user knows what file is missing
+  if [ "$confname" == "" ] ; then confname="${plugin}.lcc" ; fi
+
+  # if we can find a macros file for this plugin, source it to define $dpkg_prefix
+  dpkg_prefix="LCC_NULL_PREFIX"
+  macrosfile="${macrodir}/${package}.macros"
+  if [ $verbose -eq 1 ] ; then echo "Searching for macrosfile: $macrosfile" ; fi
+  if [ -r "$macrosfile" ] ; then . $macrosfile ; fi
+  prefix=$dpkg_prefix
+
+  read_conf "$confname"
+  if [ $? -ne 0 ] ; then continue ; fi  # if plugin was not found, go to the next
+
+  # add compiler-specific compile and link flags
+  if [ "$UseSharedLib" = "no" ] ; then
+    if [ "$cflags" == "1" ] ; then LCC_ARGS="$LCC_ARGS $LCC_CFLAGS" ; fi
+    if [ "$lflags" == "1" ] ; then LCC_ARGS="$LCC_ARGS $LCC_LFLAGS $LCC_LIBS" ; fi
+  else # append any flags for shared (dynamic) libraries
+    # may need to add on options like "-Wl,-rpath,"
+    if [ -n "${RPATH}" -a -n "${LCC_SHLIB_LRPATH}" -a "$UseRpath" == "yes" -a "$lflags" == "1" ] ; then
+      for path in $LCC_SHLIB_LRPATH ; do
+        LCC_ARGS="$LCC_ARGS ${RPATH}${path}"
+      done
+    fi
+    if [ "$cflags" == "1" ] ; then LCC_ARGS="$LCC_ARGS $LCC_SHLIB_CFLAGS" ; fi
+    if [ "$lflags" == "1" ] ; then LCC_ARGS="$LCC_ARGS $LCC_SHLIB_LFLAGS $LCC_SHLIB_LIBS" ; fi
+  fi
+done
+
+# Do the build
+if [ $ShowFlag = 1 ] ; then echo ""; echo "Build Line:"
+elif [ $verbose -eq 1 -o $lccecho -eq 1 ] ; then echo "$CC $compileargs $LCC_ARGS"
+fi
+$Show $CC $compileargs $LCC_ARGS $COMP_CFLAGS
+status=$?
+if [ $ShowFlag = 1 ] ; then echo "" ; fi
+
+# We're done, return the last exit code
+exit $status

@@ -55,7 +55,7 @@ LFLAGS =\
 # Targets
 ##################################################################
                                                                                                                                          
-all: amg2013
+all: amg2013 iterTest
                                                                                                                                          
 clean:
 	@rm -f *.o
@@ -70,6 +70,10 @@ veryclean: clean
 amg2013: amg2013.o
 	@echo  "Linking" $@ "... "
 	${CCC} -o amg2013 amg2013.o ${LFLAGS}
+
+iterTest: iterTest.o
+	@echo  "Linking" $@ "... "
+	${CCC} -o iterTest iterTest.o ${LFLAGS}
                                                                                                                         
                  
 ##################################################################
