@@ -231,7 +231,7 @@ hypre_BoomerAMGCycle( void              *amg_vdata,
         relax_type = 0;
       }
       
-      module modCycle(instance("V Iter ", 2, 0), 
+      sightModule modCycle(instance("V Iter ", 2, 0), 
                      inputs(port(runCfg), 
                             port(context("local_size",  local_size,
                                          "level",       level,
@@ -240,6 +240,9 @@ hypre_BoomerAMGCycle( void              *amg_vdata,
                                          "cycle_param", (string)(cycle_param==1? "Coarsen": cycle_param==2? "Refine": (cycle_param==3? "Solve": "???")),
                                          "num_sweep",   num_sweep,
                                          "relax_type",  relax_type))),
+#if defined(KULFI)
+                     module::context("EXP_ID", getenv("EXP_ID")),
+#endif
                      attrEQ("MPIrank", 0));
       scope sCycle(txt()<<"V Iter level "<<level);
       

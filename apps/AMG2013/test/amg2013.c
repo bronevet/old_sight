@@ -18,6 +18,14 @@ using namespace sight;
 
 #define DEBUG 0
 
+#if defined(KULFI)
+   #define sightModularApp kulfiModularApp
+   #define sightModule     kulfiModule
+#else
+   #define sightModularApp modularApp
+   #define sightModule     module
+#endif
+
 /*--------------------------------------------------------------------------
  * Data structures
  *--------------------------------------------------------------------------*/
@@ -1824,15 +1832,13 @@ main( int   argc,
    }
    attr myidAttr("MPIrank", 0/*myid*/);
    
-   modularApp AMGApp("AMG", namedMeasures("time", new timeMeasure(),
-                                          "RAPL", new RAPLMeasure()/*,
-                                          "PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS/ *, PAPI_L1_TCM, PAPI_L2_TCM, PAPI_L3_TCM* /))*/));
-   
+   sightModularApp AMGApp("AMG", namedMeasures("time", new timeMeasure(),
+                                               "RAPL", new RAPLMeasure()));
    
    if (build_matrix_type > 1 && build_matrix_type < 8)
    {
      { 
-       module mod(instance("Setup matrix and rhs", 1, 0), 
+       sightModule mod(instance("Setup matrix and rhs", 1, 0), 
                   inputs(port(runCfg)),
                   attrEQ("MPIrank", 0));
       
@@ -2013,8 +2019,11 @@ main( int   argc,
     *-----------------------------------------------------------*/
 
    {
-     module mod(instance("Distrib Data", 1, 0), 
+     sightModule mod(instance("Distrib Data", 1, 0), 
                 inputs(port(runCfg)),
+#if defined(KULFI)
+                module::context("EXP_ID", getenv("EXP_ID")),
+#endif
                 attrEQ("MPIrank", 0));
    DistributeData(global_data, pooldist, refine, distribute, block,
                   num_procs, myid, &data);
@@ -2032,8 +2041,11 @@ main( int   argc,
    time_index = hypre_InitializeTiming("SStruct Interface");
    hypre_BeginTiming(time_index);
    {
-     module mod(instance("SStruct Interface", 1, 0), 
+     sightModule mod(instance("SStruct Interface", 1, 0), 
                 inputs(port(runCfg)),
+#if defined(KULFI)
+                module::context("EXP_ID", getenv("EXP_ID")),
+#endif
                 attrEQ("MPIrank", 0));
    
    HYPRE_SStructGridCreate(MPI_COMM_WORLD, data.ndim, data.nparts, &grid);
@@ -2550,8 +2562,11 @@ main( int   argc,
        * Solve the system using ParCSR version of PCG
        *-----------------------------------------------------------*/
    {
-     module modSolve(instance("Solve", 1, 0), 
+     sightModule modSolve(instance("Solve", 1, 0), 
                     inputs(port(runCfg)),
+#if defined(KULFI)
+                module::context("EXP_ID", getenv("EXP_ID")),
+#endif
                     attrEQ("MPIrank", 0));
      scope sSolve("Solve");
      
@@ -2560,8 +2575,11 @@ main( int   argc,
          time_index = hypre_InitializeTiming("PCG Setup");
          hypre_BeginTiming(time_index);
          {
-         module modPCGSetup(instance("PCG Setup", 1, 0), 
+         sightModule modPCGSetup(instance("PCG Setup", 1, 0), 
                             inputs(port(runCfg)),
+#if defined(KULFI)
+                module::context("EXP_ID", getenv("EXP_ID")),
+#endif
                             attrEQ("MPIrank", 0));
          scope sPCGSetup(txt()<<"PCG Setup");
          
@@ -2622,8 +2640,11 @@ main( int   argc,
          time_index = hypre_InitializeTiming("PCG Solve");
          hypre_BeginTiming(time_index);
          {
-         module modPCGSolve(instance("PCG Solve", 1, 0), 
+         sightModule modPCGSolve(instance("PCG Solve", 1, 0), 
                             inputs(port(runCfg)),
+#if defined(KULFI)
+                module::context("EXP_ID", getenv("EXP_ID")),
+#endif
                             attrEQ("MPIrank", 0));
          scope sPCGSolve(txt()<<"PCG Solve");
          

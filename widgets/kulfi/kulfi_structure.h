@@ -68,6 +68,19 @@ class kulfiModule: public compModule {
   //    object that can be used to create a tag for the derived object that includes info about its parents. Further,
   //    it includes fields that must be included within the context of any trace observations made during the execution
   //    of this module.
+  kulfiModule(const instance& inst, const std::vector<port>& inputs, 
+               const context& options,
+                                                               sight::properties* props=NULL);
+  kulfiModule(const instance& inst, const std::vector<port>& inputs, 
+             const context& options,
+             const attrOp& onoffOp,                            sight::properties* props=NULL);
+  kulfiModule(const instance& inst, const std::vector<port>& inputs, 
+             const context& options,
+                                    const compNamedMeasures& meas, sight::properties* props=NULL);
+  kulfiModule(const instance& inst, const std::vector<port>& inputs, 
+             const context& options,
+             const attrOp& onoffOp, const compNamedMeasures& meas, sight::properties* props=NULL);
+
   kulfiModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs,
                const context& options,
                                                                sight::properties* props=NULL);
@@ -94,6 +107,10 @@ class kulfiModule: public compModule {
   // Returns the context attributes to be used in this module's measurements by combining the context provided by the classes
   // that this object derives from with its own unique context attributes.
   virtual std::map<std::string, sight::attrValue> getTraceCtxt();
+  
+  // Sets the context of the given output port. This variant ensures that KULFI fault injection
+  // is disabled while setting the output context
+  virtual void setOutCtxt(int idx, const compContext& c);
 }; // class kulfiModule
 
 }; // namespace sight

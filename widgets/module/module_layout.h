@@ -76,6 +76,7 @@ class module : public common::module, public traceObserver {
   std::map<int, std::map<int, std::list<std::string> > > ctxtNames;*/
   // For each node, for each grouping of context attributes, the names of all the attributes within the grouping
   std::map<std::string, std::list<std::string> > ctxtNames;
+  //std::map<std::string, std::set<std::string> > ctxtNames;
     
   // The names of the observation trace attributes
   std::set<std::string> traceAttrNames;
@@ -121,18 +122,27 @@ class polyFitFilter : public traceObserver {
   std::ofstream cfgFile;
     
   // Maps each numeric trace attribute's name to the processor that will analyze it
-  std::map<std::string, externalTraceProcessor_File*> outProcessors;
+  //std::map<std::string, externalTraceProcessor_File*> outProcessors;
   
-  // The number of numeric context attributes of each node. Should be the same for all observations for the node
-  std::list<std::string> numericCtxtNames;
+  // The numeric context attributes of each node.
+  // This is the intersection of the numeric attributes of the individual observations.
+  std::set<std::string> numericCtxtNames;
   
-  // The number of numeric trace attributes of each node. Should be the same for all observations for the node
-  std::list<std::string> numericTraceNames;
+  // The numeric trace attributes of each node.
+  // This is the intersection of the numeric attributes of the individual observations.
+  std::set<std::string> numericTraceNames;
   
   // Maps the names of all the contexts for which only one value has been observed to that value.
   // Used to identify and filter out contexts that are constant since we'll have a single
   // term dedicated to const-ness
   std::map<std::string, std::string> ctxtConstVals;
+  
+  // Records the context and trace data of all the observations observed by this filter.
+  // This data is passed to observers at the end when we've identified the context and
+  // trace attributes that are constant or not always numeric.
+  std::list<std::map<std::string, std::string> > dataCtxt;
+  std::list<std::map<std::string, std::string> > dataTrace;
+  
   
   // The total number of observations that have passed through this filter
   int numObservations; 
@@ -146,13 +156,15 @@ class polyFitFilter : public traceObserver {
                     std::vector<double>& termVals, double product=1);
   
   // Determines which context or trace attributes are numeric and return a mapping of their names to their numeric values
-  // Checks that all observations have the same set of numeric attributes.
+  //    (if numObservations>0, only the attributes that are currently in numericAttrNames)
+  // Updates numericAttrNames to be the the intersection of itself and the numeric 
+  //    attributes of this observation (keys of data)
   // data - maps context/trace attribute name to their observed values
   // numNumeric - refers to the count of numeric context/trace attributes
   // numericAttrNames - refers to the list of names of numeric context/trace attributes
   // label - identifies this as context or trace (for error messages)
   std::map<std::string, std::string/*double*/> getNumericAttrs(const std::map<std::string, std::string>& data, 
-                                                std::list<std::string>& numericAttrNames, 
+                                                std::set<std::string>& numericAttrNames, 
                                                 std::string label);
   
   // Interface implemented by objects that listen for observations a traceStream reads. Such objects

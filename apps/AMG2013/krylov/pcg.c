@@ -317,8 +317,11 @@ hypre_PCGSolve( void *pcg_vdata,
    anchor lastAnchor = anchor::noAnchor;
    
    {
-     module modPCGStep(instance("PCG Start", 1, 0), 
+     sightModule modPCGStep(instance("PCG Start", 1, 0), 
                        inputs(port(runCfg)),
+#if defined(KULFI)
+                       module::context("EXP_ID", getenv("EXP_ID")),
+#endif
                        attrEQ("MPIrank", 0));
    
      
@@ -472,9 +475,12 @@ hypre_PCGSolve( void *pcg_vdata,
 
    while ((i+1) <= max_iter)
    {
-     module modPCGStep(instance("PCG Step", 2, 2), 
+     sightModule modPCGStep(instance("PCG Step", 2, 1), 
                        inputs(port(runCfg),
                               port(context("i", i))),
+#if defined(KULFI)
+                       module::context("EXP_ID", getenv("EXP_ID")),
+#endif
                        attrEQ("MPIrank", 0));
      scope sPCGStep(txt()<<"PCG Step i="<<i);
       i++;

@@ -83,6 +83,7 @@ attrValue::attrValue(const string& strV) {
 }
 
 attrValue::attrValue(char* strV) {
+  if(strV == NULL) { cerr << "ERROR: char* provided as attrValue is NULL!"<<endl; exit(0); }
   type  = strT;
   store = (void*)(new string(strV));
 }
@@ -688,6 +689,7 @@ std::string attrValueComparatorInstantiator::str() {
 // Registers generation functions for each type of comparator we've defined here
 baseAttrValueComparatorInstantiator::baseAttrValueComparatorInstantiator() {
   (*compGenerators)["NoComparator"]       = &noComp::generate;
+  (*compGenerators)["EqComparator"]       = &eqComp::generate;
   (*compGenerators)["LkComparator"]       = &LkComp::generate;
   (*compGenerators)["RelativeComparator"] = &RelComp::generate;
 }

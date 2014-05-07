@@ -21,7 +21,7 @@ include ../Makefile.include
                                                                                                
 CFLAGS =\
  -I..\
- ${INCLUDE_CFLAGS}\
+ ${INCLUDE_CFLAGS} -DKULFI \
  -DHYPRE_TIMING
                                                                                                
 RANLIB= ranlib

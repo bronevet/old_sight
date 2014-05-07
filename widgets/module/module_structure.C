@@ -1162,6 +1162,79 @@ compModularApp::~compModularApp() {
  ***** compModule *****
  **********************/
 
+compModule::compModule(const instance& inst, const std::vector<port>& inputs,  
+                       bool isReference,
+                                                                         properties* props) :
+            module(inst, inputs, setProperties(inst, isReference, module::context(), NULL, props)),           isReference(isReference), options(module::context())
+{ init(props); }
+
+compModule::compModule(const instance& inst, const std::vector<port>& inputs,  
+                       bool isReference, 
+                       const attrOp& onoffOp,                            properties* props) :
+          module(inst, inputs, setProperties(inst, isReference, module::context(), &onoffOp, props)),       isReference(isReference), options(module::context())
+{ init(props); }
+
+compModule::compModule(const instance& inst, const std::vector<port>& inputs,  
+                       bool isReference, 
+                                              const compNamedMeasures& cMeas, properties* props) :
+          module(inst, inputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, module::context(), NULL, props)),     isReference(isReference), options(module::context()), measComp(cMeas.getComparators())
+{ init(props); }
+
+compModule::compModule(const instance& inst, const std::vector<port>& inputs,  
+                       bool isReference, 
+                       const attrOp& onoffOp, const compNamedMeasures& cMeas, properties* props) : 
+          module(inst, inputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, module::context(), &onoffOp, props)), isReference(isReference), options(module::context()), measComp(cMeas.getComparators())
+{ init(props); }
+
+compModule::compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+                       bool isReference,
+                                                                         properties* props) :
+            module(inst, inputs, externalOutputs, setProperties(inst, isReference, module::context(), NULL, props)),           isReference(isReference), options(module::context())
+{ init(props); }
+
+compModule::compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+                       bool isReference, 
+                       const attrOp& onoffOp,                            properties* props) :
+          module(inst, inputs, externalOutputs, setProperties(inst, isReference, module::context(), &onoffOp, props)),       isReference(isReference), options(module::context())
+{ init(props); }
+
+compModule::compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+                       bool isReference, 
+                                              const compNamedMeasures& cMeas, properties* props) :
+          module(inst, inputs, externalOutputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, module::context(), NULL, props)),     isReference(isReference), options(module::context()), measComp(cMeas.getComparators())
+{ init(props); }
+
+compModule::compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+                       bool isReference, 
+                       const attrOp& onoffOp, const compNamedMeasures& cMeas, properties* props) : 
+          module(inst, inputs, externalOutputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, module::context(), &onoffOp, props)), isReference(isReference), options(module::context()), measComp(cMeas.getComparators())
+{ init(props); }
+
+
+compModule::compModule(const instance& inst, const std::vector<port>& inputs,  
+                       bool isReference, context options,
+                                                                         properties* props) :
+            module(inst, inputs, setProperties(inst, isReference, options, NULL, props)),           isReference(isReference), options(options)
+{ init(props); }
+
+compModule::compModule(const instance& inst, const std::vector<port>& inputs,  
+                       bool isReference, context options, 
+                       const attrOp& onoffOp,                            properties* props) :
+          module(inst, inputs, setProperties(inst, isReference, options, &onoffOp, props)),       isReference(isReference), options(options)
+{ init(props); }
+
+compModule::compModule(const instance& inst, const std::vector<port>& inputs,  
+                       bool isReference, context options, 
+                                              const compNamedMeasures& cMeas, properties* props) :
+          module(inst, inputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, options, NULL, props)),     isReference(isReference), options(options), measComp(cMeas.getComparators())
+{ init(props); }
+
+compModule::compModule(const instance& inst, const std::vector<port>& inputs,  
+                       bool isReference, context options, 
+                       const attrOp& onoffOp, const compNamedMeasures& cMeas, properties* props) : 
+          module(inst, inputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, options, &onoffOp, props)), isReference(isReference), options(options), measComp(cMeas.getComparators())
+{ init(props); }
+
 compModule::compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
                        bool isReference, context options,
                                                                          properties* props) :
@@ -1988,7 +2061,7 @@ properties* ModuleMerger::setProperties(std::vector<std::pair<properties::tagTyp
     
     } else if(*names.begin() == "moduleMarker") {
       // Merge the IDs of the traceStreams associated with these modules
-      pMap["traceID"] = txt()<<streamRecord::mergeIDs("traceStream", "traceID", pMap, tags, outStreamRecords, inStreamRecords);
+//      pMap["traceID"] = txt()<<streamRecord::mergeIDs("traceStream", "traceID", pMap, tags, outStreamRecords, inStreamRecords);
       
       // Record for every incoming stream that we've entered the given module instance, making sure that the 
       // module group along every incoming stream is the same
@@ -2293,6 +2366,11 @@ properties* ModuleTraceStreamMerger::setProperties(
     }*/
     //group g = ModuleStreamRecord::getGroup(inStreamRecords);
     group g = ((ModuleStreamRecord*)(outStreamRecords)["module"])->getGroup();
+    int moduleID;
+    
+    // The tags of the traceStream objects along the incoming streams, which are the parent objects of
+    // the moduleTraceStreams considered in this function.
+    std::vector<std::pair<properties::tagType, properties::iterator> > TraceStreamTags = advance(tags);
     
     // If we've previously assigned a streamID in the outgoing stream to this module group
     if(((ModuleStreamRecord*)(outStreamRecords)["module"])->isModuleObserved(g)) {
@@ -2300,21 +2378,38 @@ properties* ModuleTraceStreamMerger::setProperties(
       // not be emitting another one.
       // Set the dontEmit field in pMap to communicate this fact to the ModuleTraceStreamMerger constructor
       pMap["dontEmit"] = "1";
+      
+      moduleID = ((ModuleStreamRecord*)(outStreamRecords)["module"])->getModuleID(g);
+      
+      // We get into this case where the merger cannot align different instances of ModuleTraceStream,
+      //   causing one instance to appear on one incoming stream before the same ModuleTraceStream appear
+      //   on another incoming stream. Since we've already chosen the traceID for this module group,
+      //   simply retrieve it and and use mergeIDs() to force all the newly-observed ModuleTraceStreams
+      //   to use it.
+      // When TraceStreamMerger calls mergeIDs() in TraceStreamMerger::TraceStreamMerger() call right 
+      //   after this function ends it will get this traceID.
+      int traceID = ((ModuleStreamRecord*)(outStreamRecords)["module"])->getModuleTraceID(g);
+      streamRecord::mergeIDs("traceStream", "traceID", pMap, TraceStreamTags, outStreamRecords, inStreamRecords, traceID);
     // If we've never previously observed this module group
     } else {
-      int moduleID = ((ModuleStreamRecord*)(outStreamRecords)["module"])->genModuleID();
+      // Generate a fresh ID for all the modules along the incoming streams
+      moduleID = ((ModuleStreamRecord*)(outStreamRecords)["module"])->genModuleID();
       
-      // Associate the new moduleID with the module group
-      ((ModuleStreamRecord*)(outStreamRecords)["module"])->setModuleID(g, moduleID);
+      // Make sure that the traceIDs of the traceStreams associated with the aligned modules along the 
+      //   incoming streams are mapped to the same traceID along the outgoing stream. 
+      // When TraceStreamMerger calls mergeIDs() in TraceStreamMerger::TraceStreamMerger() call right 
+      //   after this function ends it will get this traceID.
+      int traceID = streamRecord::mergeIDs("traceStream", "traceID", pMap, TraceStreamTags, outStreamRecords, inStreamRecords);
+      
+      // Associate the new moduleID and traceID with the module group
+      ((ModuleStreamRecord*)(outStreamRecords)["module"])->setModuleID(g, moduleID, traceID);
       
       pMap["moduleID"] = txt() << moduleID;
     }
     
     // Record the mapping from the moduleIDs of each incoming stream to this moduleID
-    int moduleID = ((ModuleStreamRecord*)(outStreamRecords)["module"])->getModuleID(g);
     int mergedID = streamRecord::mergeIDs("module", "moduleID", pMap, tags, outStreamRecords, inStreamRecords, moduleID);
     assert(mergedID == moduleID);
-    
   } else if(type==properties::exitTag) {
   }
   props->add("moduleTS", pMap);
@@ -2663,7 +2758,7 @@ group ModuleStreamRecord::getGroup(const std::vector<std::map<std::string, strea
 }
 
 ModuleStreamRecord::ModuleStreamRecord(const ModuleStreamRecord& that, int vSuffixID) :
-  streamRecord(that, vSuffixID), iStack(that.iStack), observedModules(that.observedModules), maxModuleID(that.maxModuleID)
+  streamRecord(that, vSuffixID), iStack(that.iStack), observedModules(that.observedModules), observedModulesTS(that.observedModulesTS), maxModuleID(that.maxModuleID)
 {}
 
 /*
@@ -2778,6 +2873,7 @@ void ModuleStreamRecord::resumeFrom(std::vector<std::map<std::string, streamReco
   
   // Set observedModules to be the union of its counterparts in streams
   observedModules.clear();
+  observedModulesTS.clear();
   
   for(vector<map<string, streamRecord*> >::iterator s=streams.begin(); s!=streams.end(); s++) {
     ModuleStreamRecord* ms = (ModuleStreamRecord*)(*s)["module"];
@@ -2788,6 +2884,9 @@ void ModuleStreamRecord::resumeFrom(std::vector<std::map<std::string, streamReco
     
     for(map<group, int>::const_iterator i=ms->observedModules.begin(); i!=ms->observedModules.end(); i++)
       observedModules.insert(*i);
+    
+    for(map<group, int>::const_iterator i=ms->observedModulesTS.begin(); i!=ms->observedModulesTS.end(); i++)
+      observedModulesTS.insert(*i);
   }
   
   /*cout << "| ModuleStreamRecord::resumeFrom observedModules (#"<<observedModules.size()<<")="<<endl;

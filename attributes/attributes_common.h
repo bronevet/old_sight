@@ -113,7 +113,7 @@ class attrValue {
   // Encodes the contents of this attrValue into a string and returns the result.
   std::string getAsStr() const;
   
-  // Encodes the contents of this attrValue into a floating point numberand returns the result.
+  // Encodes the contents of this attrValue into a floating point number and returns the result.
   double getAsFloat() const;
   
   // Encodes the contents of this attrValue into a string that can be decoded by providing it to the 
@@ -421,6 +421,50 @@ class noComp : public comparatorDesc {
   // Returns a comparator that can be used to compare objects of the given valueType
   static comparator* generate(std::string description) { return (scalarComparator*)(new noComparator()); }
 }; // class noComp
+
+// The equality comparator checks whether two scalars are equal (same value)
+// or not. The relation is an integer that is 1 for equal and 0 for unequal.
+class eqComparator: virtual public scalarComparator {
+  bool eq;
+  public:
+  eqComparator() : eq(true) {};
+  
+  // Called on each pair of elements from a container object, one from each object
+  void compare(const std::string& str1,   const std::string& str2)   { eq = eq && (str1  ==str2  ); }
+  void compare(const void*        ptr1,   const void*        ptr2)   { eq = eq && (ptr1  ==ptr2  ); }
+  void compare(long               int1,   long               int2)   { eq = eq && (int1  ==int2  ); }
+  void compare(double             float1, double             float2) { eq = eq && (float1==float2); }
+  
+  // Called to get the overall relationship between the two objects given all the individual elements
+  // observed so far. In the noComparator we simply return the relationship between the objects
+  // passed into the last scalar compare() call.
+  attrValue relation() { return attrValue((int)eq); }
+  
+  // Resets the state of this comparator, making it ready for another comparison.
+  // Do nothing since the rel object gets reset on every comparison
+  void reset() { eq = true; }
+  
+  std::string str() { return txt()<<"[eqComparator]"; }
+
+  // Returns whether this comparator performs no comparison. This is important for cases where users do not wish
+  // to perform a comparison on a given attribute.
+  bool isNoComparator() { return false; }
+}; // class noComparator
+
+// Describes the NoComparator object that will be employed during subsequent analysis phases
+class eqComp : public comparatorDesc {
+  public:
+  eqComp() {}
+  
+  // Returns the unique name of the given comparator type
+  std::string name() const { return "EqComparator"; }
+  
+  // Returns the description of the type of comparison needs to be performed (e.g. the value of k)
+  std::string description() const { return ""; }
+  
+  // Returns a comparator that can be used to compare objects of the given valueType
+  static comparator* generate(std::string description) { return (scalarComparator*)(new eqComparator()); }
+}; // class eqComp
 
 // A specific instance of scalar comparison: the Lk norm. This is a numeric comparator and therefore can only
 // compare integral and floating point values. 

@@ -501,7 +501,7 @@ std::string GraphStreamRecord::str(std::string indent) const {
   
   s << indent << "edges="<<endl;
   for(map<int, set<streamGraphEdge> >::const_iterator se=edges.begin(); se!=edges.end(); se++) {
-    cout << se->first << ": "<<endl;
+    s << se->first << ": "<<endl;
     for(set<streamGraphEdge>::const_iterator e=se->second.begin(); e!=se->second.end(); e++)
       s << indent << "    "<<e->str(indent+"            ")<<endl;
   }

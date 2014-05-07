@@ -31,6 +31,8 @@ SIGHT_LINKFLAGS = ${ROOT_PATH}/tools/adept-utils/lib/libadept_cutils.so \
 
 CC = gcc #clang #gcc
 CCC = g++ #clang++ #g++
+MPICC = mpi${CC}
+MPICCC = mpi${CCC}
 
 OS := $(shell uname -o)
 ifeq (${OS}, Cygwin)
@@ -76,6 +78,8 @@ LLVM32_INSTALL_PATH := /g/g15/bronevet/apps/llvm
 $(info Setting compiler to be the same LLVM Clang as KULFI, from path ${LLVM32_INSTALL_PATH})
 CC = ${LLVM32_INSTALL_PATH}/bin/clang
 CCC = ${LLVM32_INSTALL_PATH}/bin/clang++
+MPICC = ${ROOT_PATH}/tools/mpiclang
+MPICCC = ${ROOT_PATH}/tools/mpiclang++
 endif
 
 MAKE_DEFINES = ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" CC=${CC} CCC=${CCC} KULFI_ENABLED=${KULFI_ENABLED} LLVM32_SRC_PATH=${LLVM32_SRC_PATH} LLVM32_BUILD_PATH=${LLVM32_BUILD_PATH} LLVM32_INSTALL_PATH=${LLVM32_INSTALL_PATH}
@@ -216,7 +220,7 @@ clean:
 	rm -f slayout hier_merge
 
 clean_objects:
-	rm -f *.a *.o widgets/*.o widgets/*/*.o hier_merge slayout
+	rm -f *.a *.o attributes/*.o widgets/*.o widgets/*/*.o hier_merge slayout
 
 script/taffydb:
 	#cd script; wget --no-check-certificate https://github.com/typicaljoe/taffydb/archive/master.zip

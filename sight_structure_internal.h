@@ -36,16 +36,28 @@ extern int outputStreamID;
 
 extern bool initializedDebug;
 
-// Initializes the debug sub-system
+class dbgStream;
+
+// Provides the output directory and run title as well as the arguments that are required to rerun the application
 void SightInit(int argc, char** argv, std::string title="Debug Output", std::string workDir="dbg");
+// Provides the output directory and run title as well but does not provide enough info to rerun the application
 void SightInit(std::string title, std::string workDir);
+// Low-level initialization of Sight that sets up some basics but does not allow users to use the dbg
+// output stream to emit their debug output, meaning that other widgets cannot be used directly.
+// Users that using this type of initialization must create their own dbgStreams and emit enter/exit
+// tags to these streams directly without using any of the high-level APIs.
+// The dummy argument is there to encourage users to read the above text instead of just calling this
+// initializer directly.
+void SightInit_LowLevel();
+
 void SightInit_internal(properties* props);
+// Creates a new dbgStream based on the given properties of a "sight" tag and returns a pointer to it.
+// storeProps: if true, the given properties object is emitted into this dbgStream's output file
+structure::dbgStream* createDbgStream(properties* props, bool storeProps);
 
 // Empty implementation of Sight initialization, to be used when Sight is disabled via #define DISABLE_SIGHT
 void NullSightInit(std::string title, std::string workDir);
 void NullSightInit(int argc, char** argv, std::string title="Debug Output", std::string workDir="dbg");
-
-class dbgStream;
 
 class variantID {
   public:
@@ -325,16 +337,38 @@ class sightObj {
   bool destroyed;
 
   private:
+  // The stack of sightObjs that are currently in scope. We declare it as a static inside this function
+  // to make it possible to ensure that the global soStack is constructed before it is used and therefore
+  // destructed after all of its user objects are destructed.
+  // There is a separate stack for each outgoing stream.
+  //static std::map<dbgStream*, std::list<sightObj*> > staticSoStack;
   // The stack of sightObjs that are currently in scope
   //static std::list<sightObj*> soStack;
+    
+  // The dbgStream on which this sightObj was written. It is possible to concurrently 
+  // maintain multiple such streams and we need to be sure that we emit exit tags
+  // on the same streams as their corresponding entry tags.
+  dbgStream* outStream;
   public:
+    
+  /*static std::list<sightObj*>& soStack(dbgStream* outStream);
+  static std::map<dbgStream*, std::list<sightObj*> >& soStackAllStreams();*/
   
-  sightObj();
+  // If outStream is not specified it defaults to structure::dbg. This default is
+  // is implemented in sight_structure.C because structure::dbg must be declared 
+  // below the declaration of the sighObj class.
+  sightObj(dbgStream* outStream=NULL);
   // isTag - if true, we emit a single enter/exit tag combo in the constructor and nothing in the destructor
-  sightObj(properties* props, bool isTag=false);
+  sightObj(properties* props, bool isTag=false, dbgStream* outStream=NULL);
   void init(properties* props, bool isTag=false);
   ~sightObj();
 
+  // Emits this sightObj's exit tag to the outgoing stream.
+  // If popStack==true, remove this sightObj from the stack of objects on its dbgStream.
+  // It will be set to false inside the dbgStream constructor since 1. its redundant and 
+  // 2. if the dbgStream is the static one, the stack may have been destructed before the dbgStream's destructor
+  void exitTag(bool popStack=true);
+  
   // Directly calls the destructor of this object. This is necessary because when an application crashes
   // Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
   // there is no way to directly call the destructor of a given object when it may have several levels

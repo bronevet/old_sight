@@ -71,6 +71,7 @@ veryclean: clean
 amg2013.fi: amg2013.bc
 	@echo  "Linking" $@ "... "
 	llvm-link ../*/lib*.bc amg2013.bc ${ROOT_PATH}/widgets/kulfi/kulfi_structure.bc -o amg2013.all.bc
+#	llvm-link ../*/lib*.bc amg2013.bc ${ROOT_PATH}/widgets/kulfi/KULFI/src/other/Corrupt.bc -o amg2013.all.bc
 	opt -load ${LLVM32_INSTALL_PATH}/lib/faults.so -dynfault -ef 1 -tf 14285714 -de 1 -pe 1 -ijo 1 < amg2013.all.bc > amg2013.all.fi.bc
 	llc amg2013.all.fi.bc -o amg2013.all.fi.mc
 	mpig++ -xassembler amg2013.all.fi.mc -c -o amg2013.all.fi.o
