@@ -184,8 +184,6 @@ void* SightInit(properties::iterator props) {
       argv[i] = properties::get(props, txt()<<"argv_"<<i);
 
     execFile = properties::get(props, "execFile");
-  } else
-    saved_appExecInfo = false;
 
   #if REMOTE_ENABLED
   if(!isPortUsed(GDB_PORT)) {
@@ -194,12 +192,14 @@ void* SightInit(properties::iterator props) {
   }
   #endif
   
-  // Get all the aliases of the current host's name
-  long numHostnames = properties::getInt(props, "numHostnames");
-  for(long i=0; i<numHostnames; i++)
-    hostnames.push_back(properties::get(props, txt()<<"hostname_"<<i));
-  
-  username = properties::get(props, "username");
+    // Get all the aliases of the current host's name
+    long numHostnames = properties::getInt(props, "numHostnames");
+    for(long i=0; i<numHostnames; i++)
+      hostnames.push_back(properties::get(props, txt()<<"hostname_"<<i));
+
+    username = properties::get(props, "username");
+  } else
+    saved_appExecInfo = false;
     
   string workDir = properties::get(props, "workDir");
   
