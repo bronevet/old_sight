@@ -39,6 +39,7 @@ void initBitVector(GAMODEL* gamodel)
 //void printBitVector(int numm, int n, int **bitVector)
 void printBitVector(FILE* log, GAMODEL* gamodel)
 {
+  if(log==NULL) return;
  int numm = gamodel->sets;
 int n = gamodel->model->cp;
 int** bitVector = gamodel->model->bitVector;
@@ -94,8 +95,8 @@ void trainLinModel(FILE* log, int N, int n,
                    gsl_matrix *cov, gsl_multifit_linear_workspace *work, double& chi) {
     /*Linear Regression on all the data */
     int gslFlg = gsl_multifit_linear(input, y, c, cov, &chi, work);
-    //fprintf(log, "chi1=%le\n", chi);
-    if(gslFlg != GSL_SUCCESS){fprintf(log, "Regression Failed\n"); exit(1);}
+    //if(log) fprintf(log, "chi1=%le\n", chi);
+    if(gslFlg != GSL_SUCCESS){fprintf(log?log:stderr, "Regression Failed\n"); exit(1);}
       
     // Find the x% of the data elements that have the highest error, 
     // exclude them and repeat the regression without them.
@@ -112,7 +113,7 @@ void trainLinModel(FILE* log, int N, int n,
                 pred += gsl_vector_get(c,in) * gsl_matrix_get(input, iN, in);
             
             double error = fabs(pred - gsl_vector_get(y, iN));// / max(fabs(pred), fabs(gsl_vector_get(y, iN)));
-            //fprintf(log, "        Error: iN=%d, pred=%le, real=%le, error=%le\n", iN, pred, gsl_vector_get(y, iN), error);
+            //if(log) fprintf(log, "        Error: iN=%d, pred=%le, real=%le, error=%le\n", iN, pred, gsl_vector_get(y, iN), error);
             
               
             // If we haven't yet placed at least numHighError entries into 
@@ -130,19 +131,19 @@ void trainLinModel(FILE* log, int N, int n,
           }
         
         // Remove all the observations with high errors from input and y
-        //fprintf(log, "    Erasing ");
+        //if(log) fprintf(log, "    Erasing ");
         for(multimap<double, int>::iterator i=highErrIdx.begin(); i!=highErrIdx.end(); i++) {
-          //fprintf(log, "    %d|%le|%le ", i->second, i->first, gsl_vector_get(y, i->second));
+          //if(log) fprintf(log, "    %d|%le|%le ", i->second, i->first, gsl_vector_get(y, i->second));
           for(int in=0; in < n; in++)
             gsl_matrix_set(input, i->second, in, 0.0);
           gsl_vector_set(y, i->second, 0.0);
         }
-        //fprintf(log, "\n");
+        //if(log) fprintf(log, "\n");
         
         /* Repeat the Linear Regression on just the normal data */
         gslFlg = gsl_multifit_linear(input, y, c, cov, &chi, work);
-        //fprintf(log, "chi2=%le\n", chi);
-        if(gslFlg != GSL_SUCCESS){fprintf(log, "Regression Failed\n"); exit(1);}
+        //if(log) fprintf(log, "chi2=%le\n", chi);
+        if(gslFlg != GSL_SUCCESS){fprintf(log?log:stderr, "Regression Failed\n"); exit(1);}
       }
 }
 
@@ -179,7 +180,7 @@ void findModels(FILE* log, GAMODEL* gamodel)
 
       trainLinModel(log, N, n, input, y, c, cov, work, chi);
       sq[i] = chi;
-      //fprintf(log, "ChiSq: %le\n", chi);
+      //if(log) fprintf(log, "ChiSq: %le\n", chi);
 
     } /*End Each Model*/
 
@@ -215,7 +216,7 @@ void AIC(FILE* log, GAMODEL* gamodel)
       // Models with 1 parameter are not penalized relative to models with 0 parameters
       if(k>0) k--;
       AIC[i] = sq[i] + 10*k;
-      fprintf(log, "%d: ChiSq=%le, NumBits=%d, AIC=%le\n", i, sq[i], k, AIC[i]);
+      if(log) fprintf(log, "%d: ChiSq=%le, NumBits=%d, AIC=%le\n", i, sq[i], k, AIC[i]);
     }
 }
 //void MateSinglePoint(int NUMM, int n, int **bitVector, int **tbitVector, double *sq)
@@ -236,19 +237,19 @@ void MateSinglePoint(FILE* log, GAMODEL* gamodel)
   if((NUMM-numElit)%2 == 1){numElit++;} /*if odd take one more to keep*/
   numpair = (NUMM-numElit)/2;
 
-  //fprintf(log, "Number Kept: %d \n ", numElit);
-  //fprintf(log, "Number Changed: %d \n", numpair);
+  //if(log) fprintf(log, "Number Kept: %d \n ", numElit);
+  //if(log) fprintf(log, "Number Changed: %d \n", numpair);
 
   int *top; int topindex = 0 ; int addindex = 0;
   top = (int *)calloc(numElit, sizeof(double));
-  if(top == NULL){fprintf(log, "NULL pointer\n"); exit(1);}
+  if(top == NULL){fprintf(log?log:stderr, "NULL pointer\n"); exit(1);}
 
   /*Rank Models*/ /*smallest to largest*/
   //qsort(sq, NUMM, sizeof(double), compare);
   for(i = 0 ; i < numpair; i++)
     { 
       int splitpoint = rand()%(n-1);
-      //fprintf(log, "Split Point: %d\n", splitpoint);
+      //if(log) fprintf(log, "Split Point: %d\n", splitpoint);
 
       /*Find smallest*/
       double one = DBL_MAX, two = DBL_MAX;
@@ -270,8 +271,8 @@ void MateSinglePoint(FILE* log, GAMODEL* gamodel)
 
 	 }
       
-      // fprintf(log, "topindex: %d %d\n", topindex, topindex+1);
-      // fprintf(log, "ione: %d itwo: %d \n", ione, itwo);
+      // if(log) fprintf(log, "topindex: %d %d\n", topindex, topindex+1);
+      // if(log) fprintf(log, "ione: %d itwo: %d \n", ione, itwo);
       if(topindex < numElit)
 	{
 	  top[topindex] = ione; top[topindex+1] = itwo;
@@ -444,13 +445,14 @@ void PrintModels(FILE* log, GAMODEL* gamodel)
       //gsl_multifit_linear_free(work); work = NULL;
       sq[i] = chi;
      
-      fprintf(log, "\n\n");
-      for(in=0; in < n; in++)
-          fprintf(log, "%le ", gsl_vector_get(c,in));
-      fprintf(log, "|| %le \n", chi);
+      if(log) {
+          fprintf(log, "\n\n");
+          for(in=0; in < n; in++)
+              fprintf(log, "%le ", gsl_vector_get(c,in));
+          fprintf(log, "|| %le \n", chi);
 	
-      //fprintf(log, "\n");
-
+          fprintf(log, "\n");
+      }
       chi = 0;
 
     } /*End Each Model*/
@@ -462,32 +464,32 @@ void PrintModels(FILE* log, GAMODEL* gamodel)
 
 void RunGA(FILE* log, GAMODEL* gamodel)
 {    
-    fprintf(log, "INIT BIT VECTOR\n");
+    if(log) fprintf(log, "INIT BIT VECTOR\n");
     printBitVector(log, gamodel);
     int rindex;
     for(rindex = 0; rindex < gamodel->runs; rindex++)
     {
-        fprintf(log, "STEP %d \n", rindex);   
+        if(log) fprintf(log, "STEP %d \n", rindex);   
         findModels(log, gamodel);
         AIC(log, gamodel);
         //MateSinglePoint(log, gamodel);
         MateSinglePointLink(log, gamodel);
         copyBitVector(gamodel);
-        //printBitVector(log, gamodel);
+        //if(log) printBitVector(log, gamodel);
         
         if(((rindex+1)%gamodel->tmute==0)&&(rindex<(gamodel->runs-2)))
         {
-            //fprintf(log, "Mutation\n");
+            //if(log) fprintf(log, "Mutation\n");
             //mutation(gamodel);
             mutationLink(gamodel);
-            //printBitVector(log, gamodel);
+            //if(log) printBitVector(log, gamodel);
         }
     }
     // Find the parameters of the final models and compute their AIC
     findModels(log, gamodel);
     AIC(log, gamodel);
     
-    printBitVector(log, gamodel);
+    if(log) printBitVector(log, gamodel);
     PrintModels(log, gamodel);
 }
 void MateSinglePointLink(FILE* log, GAMODEL* gamodel)
@@ -508,19 +510,19 @@ void MateSinglePointLink(FILE* log, GAMODEL* gamodel)
   if((NUMM-numElit)%2 == 1){numElit++;} /*if odd take one more to keep*/
   numpair = (NUMM-numElit)/2;
 
-  //fprintf(log, "Number Kept: %d \n ", numElit);
-  //fprintf(log, "Number Changed: %d \n", numpair);
+  //if(log) fprintf(log, "Number Kept: %d \n ", numElit);
+  //if(log) fprintf(log, "Number Changed: %d \n", numpair);
 
   int *top; int topindex = 0 ; int addindex = 0;
   top = (int *)calloc(numElit, sizeof(double));
-  if(top == NULL){fprintf(log, "NULL pointer\n"); exit(1);}
+  if(top == NULL){fprintf(log?log:stderr, "NULL pointer\n"); exit(1);}
 
   /*Rank Models*/ /*smallest to largest*/
   //qsort(sq, NUMM, sizeof(double), compare);
   for(i = 0 ; i < numpair; i++)
     { 
       int splitpoint = rand()%(n-1);
-      //fprintf(log, "Split Point: %d\n", splitpoint);
+      //if(log) fprintf(log, "Split Point: %d\n", splitpoint);
 
       /*Find smallest*/
       double one = DBL_MAX, two = DBL_MAX;
@@ -544,8 +546,8 @@ void MateSinglePointLink(FILE* log, GAMODEL* gamodel)
 	 }//find top two to mate
       
       
-      // fprintf(log, "topindex: %d %d\n", topindex, topindex+1);
-      //fprintf(log, "ione: %d[%le] itwo: %d[%le] \n", ione, sq[ione], itwo, sq[itwo]);
+      // if(log) fprintf(log, "topindex: %d %d\n", topindex, topindex+1);
+      //if(log) fprintf(log, "ione: %d[%le] itwo: %d[%le] \n", ione, sq[ione], itwo, sq[itwo]);
       AIC[ione] = DBL_MAX;
       AIC[itwo] = DBL_MAX;
       

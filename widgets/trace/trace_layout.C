@@ -464,6 +464,9 @@ void externalTraceProcessor_File::obsFinished() {
   }
   //cout << "done"<<endl;
   pclose(out);
+
+  // Delete the file that was provided as input to the command since it is no longer needed
+  unlink(obsFName.c_str());
   
   // Inform this trace's observers that it has finished
   traceObserver::obsFinished();
@@ -678,8 +681,7 @@ void* traceStream::observe(properties::iterator props)
 {
   //cout << "traceStream::observe() props="<<props.str()<<endl;
   long traceID = properties::getInt(props, "traceID");
-  //assert(active.find(traceID) != active.end());
-  if(active.find(traceID) == active.end()) { volatile long* ptr = NULL; *ptr = 1; exit(-1); }
+  assert(active.find(traceID) != active.end());
   traceStream* ts = active[traceID];
   //cout << "    t="<<t<<endl;
   //cout << "    #ts->traceAttrs="<<ts->traceAttrs.size()<<endl;

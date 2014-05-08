@@ -21,19 +21,19 @@ void functionSetup(FILE* log, MODEL *model, GAMODEL *gamodel)
         int numFunc = 0;
         for(j=0; j < NFUN; j++)
         {
-            fprintf(log, "p: %d  f: %d  val: %d ", i, j, model->llist->flist[i][j]);
+            if(log) fprintf(log, "p: %d  f: %d  val: %d ", i, j, model->llist->flist[i][j]);
             if(model->llist->flist[i][j] > 0)
             {
-                fprintf(log, "YES");
+                if(log) fprintf(log, "YES");
                 tcp++;
                 numFunc++;                
             }
-            fprintf(log, "\n");
+            if(log) fprintf(log, "\n");
         }
     }
     /*init the model*/
     gamodel->model->cp =  tcp;
-    fprintf(log, "Number of new parameters: %d\n", tcp);
+    if(log) fprintf(log, "Number of new parameters: %d\n", tcp);
     
     /*Create flist that will keep the mapping*/
     gamodel->model->llist->flist  =  (int **)malloc(model->p*sizeof(int*));
@@ -61,7 +61,7 @@ void functionSetup(FILE* log, MODEL *model, GAMODEL *gamodel)
     }
     
     int index = 0;
-    fprintf(log, "total links: %d\n", totallinks);
+    if(log) fprintf(log, "total links: %d\n", totallinks);
     gamodel->model->L = totallinks;
     
     
@@ -121,7 +121,7 @@ void functionSetup(FILE* log, MODEL *model, GAMODEL *gamodel)
         }  
         glindex++;
     }
-    fprintf(log, "Global index %d\n", glindex);
+    if(log) fprintf(log, "Global index %d\n", glindex);
     free(linkcopy);
     
  
