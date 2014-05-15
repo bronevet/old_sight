@@ -52,7 +52,7 @@ callpath.zip:
 	../getGithub https://github.com/tgamblin/callpath/archive/master.zip zip unzip
 
 callpath.tar.gz:
-	rm callpath.tar.gz*
+	rm -f callpath.tar.gz*
 	wget http://greg.bronevetsky.com/data/callpath.tar.gz
 	
 callpath: adept-utils callpath.tar.gz 
