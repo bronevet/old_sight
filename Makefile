@@ -11,16 +11,25 @@ ROOT_PATH = ${CURDIR}
 SIGHT_CFLAGS = -g -I${ROOT_PATH} -I${ROOT_PATH}/attributes -I${ROOT_PATH}/widgets/* \
                 -I${ROOT_PATH}/tools/callpath/src -I${ROOT_PATH}/tools/adept-utils/include \
                 -I${ROOT_PATH}/tools/boost_1_55_0 \
-                -I${ROOT_PATH}/widgets/papi/include
+                -I${ROOT_PATH}/widgets/papi/include \
+                -I${ROOT_PATH}/widgets/libmsr/include
 
 SIGHT_LINKFLAGS = ${ROOT_PATH}/tools/adept-utils/lib/libadept_cutils.so \
                   ${ROOT_PATH}/tools/adept-utils/lib/libadept_timing.so \
-	                ${ROOT_PATH}/tools/adept-utils/lib/libadept_utils.so \
-	                -Wl,-rpath ${ROOT_PATH}/tools/adept-utils/lib \
-	                ${ROOT_PATH}/tools/callpath/src/src/libcallpath.so \
-	                -Wl,-rpath ${ROOT_PATH}/tools/callpath/src/src \
-	                ${ROOT_PATH}/widgets/papi/lib/libpapi.a \
+                  ${ROOT_PATH}/tools/adept-utils/lib/libadept_utils.so \
+                  -Wl,-rpath ${ROOT_PATH}/tools/adept-utils/lib \
+                  ${ROOT_PATH}/tools/callpath/src/src/libcallpath.so \
+                  -Wl,-rpath ${ROOT_PATH}/tools/callpath/src/src \
+                  ${ROOT_PATH}/widgets/papi/lib/libpapi.a \
+                  ${ROOT_PATH}/widgets/gsl/lib/libgsl.so \
+                  ${ROOT_PATH}/widgets/gsl/lib/libgslcblas.so \
+                  -Wl,-rpath ${ROOT_PATH}/widgets/gsl/lib \
 	          -lpthread
+RAPL_ENABLED = 0
+ifeq (${RAPL_ENABLED}, 1)
+SIGHT_LINKFLAGS += ${ROOT_PATH}/widgets/libmsr/lib/libmsr.so \
+                    -Wl,-rpath ${ROOT_PATH}/widgets/libmsr/lib
+endif
 	                
 	                #-Wl,-rpath ${ROOT_PATH}/widgets/papi/lib \
 
@@ -50,8 +59,8 @@ REMOTE_ENABLED := 0
 else
 # Default distribution disables remote access since this capability requires us to run a web server
 # and many compute centers disallow this
-REMOTE_ENABLED := 1
-#REMOTE_ENABLED := 0
+#REMOTE_ENABLED := 1
+REMOTE_ENABLED := 0
 endif
 
 ifneq (${OS}, Cygwin)
@@ -101,7 +110,7 @@ run: all runExamples runApps
 runExamples: libsight_structure.a slayout${EXE} hier_merge${EXE}
 	cd examples; make ${MAKE_DEFINES} run
 
-runApps: libsight_structure.a slayout${EXE} hier_merge${EXE} apps
+runApps: libsight_structure.a slayout${EXE} hier_merge${EXE} apps mfem_ex1
 	cd examples; ../apps/mfem/mfem/examples/mfemComp.pl
 	cd examples; ../apps/mfem/mfem/examples/ex2 ../apps/mfem/mfem/data/beam-tet.mesh 2
 	cd examples; ../apps/mfem/mfem/examples/ex3 ../apps/mfem/mfem/data/ball-nurbs.mesh
@@ -110,7 +119,9 @@ runApps: libsight_structure.a slayout${EXE} hier_merge${EXE} apps
 	cd examples; ../apps/CoMD/bin/CoMD-mpi.tracepath
 	cd examples; ../apps/CoMD/bin/CoMD-mpi.tracepos
 	cd examples; ../apps/CoMD/CoMDCompare.pl
-#	cd examples; ../apps/mfem/mfem/examples/ex1 ../apps/mfem/mfem/data/beam-quad.mesh
+ifeq (${REMOTE_ENABLED}, 1)
+	cd examples; ../apps/mfem/mfem/examples/ex1 ../apps/mfem/mfem/data/beam-quad.mesh
+endif
 #ifneq (${OS}, Cygwin)
 #	apps/mcbench/src/MCBenchmark.exe --nCores=1 --distributedSource --numParticles=13107 --nZonesX=256 --nZonesY=256 --xDim=16 --yDim=16 --mirrorBoundary --multiSigma --nThreadCore=1
 #endif
@@ -198,7 +209,7 @@ sightDefines.pl:
 
 Makefile.extern: initMakefile.extern
 	chmod 755 initMakefile.extern
-	./initMakefile.extern ${CC} ${CCC}
+	./initMakefile.extern ${CC} ${CCC} ${RAPL_ENABLED}
 
 clean:
 	cd widgets; make -f Makefile_pre clean

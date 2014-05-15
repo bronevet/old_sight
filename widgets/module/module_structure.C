@@ -23,6 +23,10 @@ using namespace sight::common;
 namespace sight {
 namespace structure {
 
+// -------------------------
+// ----- Configuration -----
+// -------------------------
+
 // Record the configuration handlers in this file
 moduleConfHandlerInstantiator::moduleConfHandlerInstantiator() {
   /*(*confEnterHandlers)["modularApp"]          = &modularAppEnterHandler;

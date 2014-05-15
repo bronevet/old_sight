@@ -378,6 +378,17 @@ class modularApp: public block
 
   // Removes the given module object from the modules stack
   static void exitModule(module* m);
+
+  // -------------------------
+  // ----- Configuration -----
+  // -------------------------
+  // Currently there isn't anything that can be configured but in the future we may wish to
+  // add measurements that will be taken on all modules
+  public:
+  class ModularAppConfiguration : public common::Configuration{
+    public:
+    ModularAppConfiguration(properties::iterator props) : common::Configuration(props.next()) {}
+  };
 }; // class modularApp
 
 class module: public sightObj, public common::module
@@ -751,6 +762,17 @@ class compModularApp : public modularApp
   // it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
   // an object will invoke the destroy() method of the most-derived class.
   virtual void destroy();
+
+  // -------------------------
+  // ----- Configuration -----
+  // -------------------------
+  // Currently there isn't anything that can be configured but in the future we may wish to
+  // add measurements that will be taken on all modules
+  public:
+  class CompModularAppConfiguration : public ModularAppConfiguration{
+    public:
+    CompModularAppConfiguration(properties::iterator props) : ModularAppConfiguration(props.next()) {}
+  };
 }; // class compModularApp
 
 class compModule: public structure::module

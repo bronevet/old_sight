@@ -47,7 +47,7 @@ class dataReader : public traceFileReader {
       if(lineNum==1) obsTypes[o->first] = o->second.getType();
       // Otherwise, check for type consistency
       else if(obs.find(o->first) == obs.end()) { cerr << "ERROR: Inconsistent observation attributes! Attribute \""<<o->first<<"\" was provided on line "<<lineNum<<" for the first time!"<<endl; exit(-1); }
-      else if(obsTypes[o->first] != o->second.getType()) { cerr << "ERROR: Inconsistent types of observation attribute \""<<o->first<<"\"! On line "<<lineNum<<" type is "<<attrValue::type2str(o->second.getType())<<" but on prior lines it is "<<attrValue::type2str(o->second.getType())<<"!"<<endl; exit(-1); }
+      else if(obsTypes[o->first] != o->second.getType()) { cerr << "ERROR: Inconsistent types of observation attribute \""<<o->first<<"\"! On line "<<lineNum<<" type is "<<attrValue::type2str(o->second.getType())<<" but on prior lines it is "<<attrValue::type2str(obsTypes[o->first])<<"!"<<endl; exit(-1); }
     }
     if(obs.size() != obsTypes.size()) { cerr << "ERROR: observation attributes on line "<<lineNum<<" inconsistent with those on earlier lines!"<<endl; exit(-1); }
   
@@ -78,7 +78,7 @@ class dataReader : public traceFileReader {
 };
 
 int main(int argc, char** argv) {
-  if(argc!=4 && argc!=5) { cerr << "Usage: filter cfgFName dataFName label [logFName]"<<endl; exit(-1); }
+  if(argc!=4 && argc!=5) { cerr << "Usage: filter cfgFName dataFName label [logFName]"<<endl<<"Command Line:"; for(int i=0; i<argc; i++) cerr << "\""<<argv[i]<<"\" "; cerr<<endl; exit(-1); }
   char* cfgFName  = argv[1];
   char* dataFName = argv[2];
   char* label     = argv[3];

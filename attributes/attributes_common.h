@@ -423,17 +423,17 @@ class noComp : public comparatorDesc {
 }; // class noComp
 
 // The equality comparator checks whether two scalars are equal (same value)
-// or not. The relation is an integer that is 1 for equal and 0 for unequal.
+// or not. The relation is an integer that is 0 for equal (no difference) and 1 for unequal (maximal difference).
 class eqComparator: virtual public scalarComparator {
   bool eq;
   public:
   eqComparator() : eq(true) {};
   
   // Called on each pair of elements from a container object, one from each object
-  void compare(const std::string& str1,   const std::string& str2)   { eq = eq && (str1  ==str2  ); }
-  void compare(const void*        ptr1,   const void*        ptr2)   { eq = eq && (ptr1  ==ptr2  ); }
-  void compare(long               int1,   long               int2)   { eq = eq && (int1  ==int2  ); }
-  void compare(double             float1, double             float2) { eq = eq && (float1==float2); }
+  void compare(const std::string& str1,   const std::string& str2)   { eq = eq && (str1  !=str2  ); }
+  void compare(const void*        ptr1,   const void*        ptr2)   { eq = eq && (ptr1  !=ptr2  ); }
+  void compare(long               int1,   long               int2)   { eq = eq && (int1  !=int2  ); }
+  void compare(double             float1, double             float2) { eq = eq && (float1!=float2); }
   
   // Called to get the overall relationship between the two objects given all the individual elements
   // observed so far. In the noComparator we simply return the relationship between the objects

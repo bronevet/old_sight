@@ -278,7 +278,13 @@ hypre_GMRESSolve(void  *gmres_vdata,
 
    graph AMGVCycleGraph;
    anchor lastAnchor;
-   
+  
+   {
+     module modPCGStep(instance("GMRES Start", 1, 0),
+                       inputs(port(runCfg)),
+                       attrEQ("MPIrank", 0));
+
+ 
    (gmres_data -> converged) = 0;
    /*-----------------------------------------------------------------------
     * With relative change convergence test on, it is possible to attempt
@@ -415,8 +421,22 @@ hypre_GMRESSolve(void  *gmres_vdata,
       relative_error= epsilon + 1.;
    }
 
+   }
+
    while (iter < max_iter)
    {
+     module modGMRESOutStep(instance("GMRES Outer Step", 2, 2),
+                         inputs(port(runCfg),
+                                port(context("iter", iter,
+                                             "epsilon", epsilon,
+		                             "cf_tol", cf_tol,
+                                             "r_norm", r_norm,
+                                             "r_norm_rel", r_norm/den_norm,
+                                             "relative_error", relative_error))),
+                         attrEQ("MPIrank", 0));
+     scope sGMRESOutStep(txt()<<"GMRES Outer Step iter="<<iter);
+
+
    /* initialize first term of hessenberg system */
 
 	rs[0] = r_norm;
@@ -447,6 +467,7 @@ hypre_GMRESSolve(void  *gmres_vdata,
                             printf("\n\n");
                             printf("Final L2 norm of residual: %e\n\n", r_norm);
                          }
+		         modGMRESOutStep.setOutCtxt(1, context("break", 1));
                          break;
                       }
                       else
@@ -466,13 +487,13 @@ hypre_GMRESSolve(void  *gmres_vdata,
                             printf("\n\n");
                             printf("Final L2 norm of residual: %e\n\n", r_norm);
                        }
+		       modGMRESOutStep.setOutCtxt(1, context("break", 2));
                        break;
                    }
                    else
                       if ( print_level>0 && my_id == 0)
                            printf("false convergence 1\n");
                 }
-
 	}
 
       	t = 1.0 / r_norm;
@@ -482,6 +503,15 @@ hypre_GMRESSolve(void  *gmres_vdata,
                          || ((rel_change) && relative_error > epsilon) )
                          && iter < max_iter)
 	{
+                module modGMRESInStep(instance("GMRES Inner Step", 2, 2),
+		         inputs(port(runCfg),
+		                port(context("iter",   iter,
+		                             "i",      i,
+		                             "t",      t,
+		                             "cf_tol", cf_tol))),
+                         attrEQ("MPIrank", 0));
+                scope sGMRESInStep(txt()<<"GMRES Inner Step iter="<<iter);
+
 		i++;
 		iter++;
 		(*(gmres_functions->ClearVector))(r);
@@ -531,6 +561,11 @@ hypre_GMRESSolve(void  *gmres_vdata,
 				norms[iter]/norms[iter-1]);
    		   }
 		}
+		modGMRESInStep.setOutCtxt(0, context(
+		         "r_norm", r_norm,
+		         "gamma",  gamma,
+		         "conv_rate", norms[iter]/norms[iter-1],
+		         "rel_res_norm", norms[iter]/b_norm));
                 if (cf_tol > 0.0)
                 {
                    cf_ave_0 = cf_ave_1;
@@ -545,11 +580,13 @@ hypre_GMRESSolve(void  *gmres_vdata,
 #endif
            	   if (weight * cf_ave_1 > cf_tol) 
 		   {
+		     modGMRESInStep.setOutCtxt(1, context("weight*cf_ave_1", weight * cf_ave_1,
+		                                          "break",           1));
 		      break_value = 1;
 		      break;
 		   }
         	}
-
+		modGMRESInStep.setOutCtxt(1, context("break",           0));
 	}
 	/* now compute solution, first solve upper triangular system */
 
@@ -605,12 +642,22 @@ hypre_GMRESSolve(void  *gmres_vdata,
                       if ( relative_error < epsilon )
                       {
                          (gmres_data -> converged) = 1;
+	                 modGMRESOutStep.setOutCtxt(0, context(
+	                               "r_norm", r_norm,
+	                               "r_norm_rel", r_norm/den_norm,
+	                               "relative_error", relative_error));
+		         modGMRESOutStep.setOutCtxt(1, context("break", 3));
                          break;
                       }
                    }
                    else
                    {
                       (gmres_data -> converged) = 1;
+	               modGMRESOutStep.setOutCtxt(0, context(
+	                             "r_norm", r_norm,
+	                             "r_norm_rel", r_norm/den_norm,
+	                             "relative_error", relative_error));
+		       modGMRESOutStep.setOutCtxt(1, context("break", 4));
                       break;
                    }
                 }
@@ -634,6 +681,12 @@ hypre_GMRESSolve(void  *gmres_vdata,
 	if (i) (*(gmres_functions->Axpy))(rs[0]-1.0,p[0],p[0]);
 	for (j=1; j < i+1; j++)
 		(*(gmres_functions->Axpy))(rs[j],p[j],p[0]);	
+
+	modGMRESOutStep.setOutCtxt(0, context(
+	            "r_norm", r_norm,
+	            "r_norm_rel", r_norm/den_norm,
+	            "relative_error", relative_error));
+	modGMRESOutStep.setOutCtxt(1, context("break",           0));
    }
 
    if ( print_level>1 && my_id == 0 )

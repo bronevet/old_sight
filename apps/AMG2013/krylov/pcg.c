@@ -317,7 +317,7 @@ hypre_PCGSolve( void *pcg_vdata,
    anchor lastAnchor = anchor::noAnchor;
    
    {
-     sightModule modPCGStep(instance("PCG Start", 1, 0), 
+     sightModule modPCGStart(instance("PCG Start", 1, 0), 
                        inputs(port(runCfg)),
 #if defined(KULFI)
                        module::context("EXP_ID", getenv("EXP_ID")),
@@ -475,14 +475,14 @@ hypre_PCGSolve( void *pcg_vdata,
 
    while ((i+1) <= max_iter)
    {
-     sightModule modPCGStep(instance("PCG Step", 2, 1), 
+     sightModule modPCGStep(instance("PCG Step", 2, 2), 
                        inputs(port(runCfg),
                               port(context("i", i))),
 #if defined(KULFI)
                        module::context("EXP_ID", getenv("EXP_ID")),
 #endif
                        attrEQ("MPIrank", 0));
-     scope sPCGStep(txt()<<"PCGStep i="<<i);
+     scope sPCGStep(txt()<<"PCG Step i="<<i);
       i++;
 
       /* s = A*p */
@@ -494,6 +494,13 @@ hypre_PCGSolve( void *pcg_vdata,
       {
          ++ierr;
          if (i==1) i_prod=i_prod_0;
+         modPCGStep.setOutCtxt(0, context("s_dotp", sdotp,
+                                          "i_prod",   0.0, 
+                                          "rel_norm", 0.0,
+                                          "beta",     0.0,
+                                          "gamma",    0.0,
+                                          "ratio",    ratio));
+         modPCGStep.setOutCtxt(1, context("return", 1));
          break;
       }
       alpha = gamma / sdotp;
@@ -534,9 +541,6 @@ hypre_PCGSolve( void *pcg_vdata,
          norms[i]     = sqrt(i_prod);
          rel_norms[i] = bi_prod ? sqrt(i_prod/bi_prod) : 0;
       }
-      modPCGStep.setOutCtxt(0, context("i_prod",   i_prod, 
-                                       "rel_norm", bi_prod ? sqrt(i_prod/bi_prod) : 0,
-                                       "gamma",    gamma));
       
       if ( print_level > 1 && my_id==0 )
       {
@@ -571,18 +575,39 @@ hypre_PCGSolve( void *pcg_vdata,
             if (ratio < eps)
  	    {
                (pcg_data -> converged) = 1;
+               modPCGStep.setOutCtxt(0, context("s_dotp", sdotp,
+                                       "i_prod",   i_prod, 
+                                       "rel_norm", bi_prod ? sqrt(i_prod/bi_prod) : 0.0,
+                                       "gamma",    gamma,
+                                       "beta",     0.0,
+                                       "ratio",    ratio));
+               modPCGStep.setOutCtxt(1, context("return", 2));
                break;
  	    }
          }
          else
          {
             (pcg_data -> converged) = 1;
+             modPCGStep.setOutCtxt(0, context("s_dotp", sdotp,
+                                       "i_prod",   i_prod, 
+                                       "rel_norm", bi_prod ? sqrt(i_prod/bi_prod) : 0.0,
+                                       "gamma",    gamma,
+                                       "beta",     0.0,
+                                       "ratio",    ratio));
+            modPCGStep.setOutCtxt(1, context("return", 3));
             break;
          }
       }
 
       if ( (gamma<1.0e-292) && ((-gamma)<1.0e-292) ) {
          ierr = 1;
+         modPCGStep.setOutCtxt(0, context("s_dotp", sdotp,
+                                       "i_prod",   i_prod, 
+                                       "rel_norm", bi_prod ? sqrt(i_prod/bi_prod) : 0.0,
+                                       "gamma",    gamma,
+                                       "beta",     0.0,
+                                       "ratio",    ratio));
+         modPCGStep.setOutCtxt(1, context("return", 4));
          break;
       }
       /* ... gamma should be >=0.  IEEE subnormal numbers are < 2**(-1022)=2.2e-308
@@ -608,6 +633,13 @@ hypre_PCGSolve( void *pcg_vdata,
                and we're just calculating garbage - time to bail out before the
                next step, which will be a divide by zero (or close to it). */
             ierr = 1;
+            modPCGStep.setOutCtxt(0, context("s_dotp", sdotp,
+                                       "i_prod",   i_prod, 
+                                       "rel_norm", bi_prod ? sqrt(i_prod/bi_prod) : 0.0,
+                                       "gamma",    gamma,
+                                       "beta",     0.0,
+                                       "ratio",    ratio));
+             modPCGStep.setOutCtxt(1, context("return", 5));
             break;
          }
 	 cf_ave_1 = pow( i_prod / i_prod_0, 1.0/(2.0*i)); 
@@ -619,7 +651,16 @@ hypre_PCGSolve( void *pcg_vdata,
          dbgprintf("I = %d: cf_new = %e, cf_old = %e, weight = %e\n",
                 i, cf_ave_1, cf_ave_0, weight );
 #endif
-         if (weight * cf_ave_1 > cf_tol) break;
+         if (weight * cf_ave_1 > cf_tol) {
+            modPCGStep.setOutCtxt(0, context("s_dotp", sdotp,
+                                       "i_prod",   i_prod, 
+                                       "rel_norm", bi_prod ? sqrt(i_prod/bi_prod) : 0.0,
+                                       "gamma",    gamma,
+                                       "beta",     0.0,
+                                       "ratio",    ratio));
+            modPCGStep.setOutCtxt(1, context("return", 6));
+            break;
+         }
       }
 
       /* beta = gamma / gamma_old */
@@ -628,6 +669,13 @@ hypre_PCGSolve( void *pcg_vdata,
       /* p = s + beta p */
       (*(pcg_functions->ScaleVector))(beta, p);   
       (*(pcg_functions->Axpy))(1.0, s, p);
+      modPCGStep.setOutCtxt(0, context("s_dotp", sdotp,
+                                       "i_prod",   i_prod, 
+                                       "rel_norm", bi_prod ? sqrt(i_prod/bi_prod) : 0.0,
+                                       "gamma",    gamma,
+                                       "beta", beta,
+                                       "ratio",    ratio));
+      modPCGStep.setOutCtxt(1, context("return", 0));
    }
 
    if ( print_level > 1 && my_id==0 )  /* formerly for par_csr only */

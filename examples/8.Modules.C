@@ -72,7 +72,9 @@ int main(int argc, char** argv)
          "each containing 1, 2 or 3 dimensional positions. The outputs of these runs are merged, including their input/output "<<
          "relations and module measurements."<<endl;    
   
-  modularApp mdApp("Molecular Dynamics", namedMeasures("time", new timeMeasure())); 
+  modularApp mdApp("Molecular Dynamics", 
+                   namedMeasures("time", new timeMeasure(),
+                                 "power", new RAPLMeasure())); 
   
   // List of particle positions
   double neighRadius = .2;

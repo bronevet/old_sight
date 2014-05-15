@@ -1,11 +1,14 @@
 ROOT_PATH = /g/g15/bronevet/code/tmp/sight
 SIGHT_CFLAGS = -I${ROOT_PATH} \
                -I${ROOT_PATH}/tools/callpath/src -I${ROOT_PATH}/tools/adept-utils/include \
-               -I${ROOT_PATH}/widgets/papi/include
+               -I${ROOT_PATH}/widgets/papi/include\
+               -I${ROOT_PATH}/widgets/libmsr/include
 SIGHT_LINKFLAGS_NORPATH = -L${ROOT_PATH} -lsight_structure \
                   -L${ROOT_PATH}/tools/adept-utils/lib -ladept_cutils -ladept_timing -ladept_utils \
                   -L${ROOT_PATH}/tools/callpath/src/src -lcallpath \
                   -L${ROOT_PATH}/widgets/papi/lib -lpapi \
+                  -L${ROOT_PATH}/widgets/gsl/lib -lgsl -lgslcblas \
+                  -L${ROOT_PATH}/widgets/libmsr/lib -lmsr \
                   -lpthread
 SIGHT_LINKFLAGS = -L${ROOT_PATH} -lsight_structure \
                   -L${ROOT_PATH}/tools/adept-utils/lib -ladept_cutils -ladept_timing -ladept_utils \
@@ -14,6 +17,9 @@ SIGHT_LINKFLAGS = -L${ROOT_PATH} -lsight_structure \
                   -Wl,-rpath ${ROOT_PATH}/tools/callpath/src/src \
                   -L${ROOT_PATH}/widgets/papi/lib -lpapi \
                   -Wl,-rpath ${ROOT_PATH}/widgets/papi/lib \
+                  ${ROOT_PATH}/widgets/gsl/lib/libgsl.so \
+                  ${ROOT_PATH}/widgets/gsl/lib/libgslcblas.so \
+                  -Wl,-rpath ${ROOT_PATH}/widgets/gsl/lib \
                   -lpthread
 CC = clang
 CCC = clang++

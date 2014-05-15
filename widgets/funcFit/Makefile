@@ -1,9 +1,11 @@
 SRC = functionSetup.C ga.C parseinput.C transformation.C
 OBJ = functionSetup.o ga.o parseinput.o transformation.o
 
+GSL_PATH = ../gsl
+
 .SUFFIXES: .c .C .o 
 .C.o:
-	${CCC} ${SIGHT_CFLAGS} $^ -c -o $@
+	${CCC} ${SIGHT_CFLAGS} -I${GSL_PATH}/include $^ -c -o $@
 
 all: funcFit #ga
 	

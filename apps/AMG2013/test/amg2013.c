@@ -1700,11 +1700,12 @@ main( int   argc,
    
    context runCfg;
    {
-   string mtxName = "";
+   string mtxName = "default";
    string solverName = "";
    int P[3]; P[0]=1; P[1]=1; P[2]=1;
    int r[3]; r[0]=1; r[1]=1; r[2]=1;
    int b[3]; b[0]=1; b[1]=1; b[2]=1;
+   int n[3]; n[0]=1; n[1]=1; n[2]=1;
    string pooldistStr = "0";
    string rhsStr = "default";
    while ( (arg_index < argc))
@@ -1773,10 +1774,17 @@ main( int   argc,
          for (j = 0; j < 3; j++)
             b[j] = atoi(argv[arg_index++]);
       }
+      else if ( strcmp(argv[arg_index], "-n") == 0 )
+      {
+         arg_index++;
+         for (j = 0; j < 3; j++)
+            n[j] = atoi(argv[arg_index++]);
+      }
       else if ( strcmp(argv[arg_index], "-pooldist") == 0 )
       {
          arg_index++;
          pooldist = atoi(argv[arg_index++]);
+         pooldistStr = txt() << pooldist;
       }
       else if ( strcmp(argv[arg_index], "-printsystem") == 0 )
       {
@@ -1806,6 +1814,7 @@ main( int   argc,
    runCfg.add("Px", P[0]); runCfg.add("Py", P[1]); runCfg.add("Pz", P[2]);
    runCfg.add("rx", r[0]); runCfg.add("ry", r[1]); runCfg.add("rz", r[2]);
    runCfg.add("bx", b[0]); runCfg.add("by", b[1]); runCfg.add("bz", b[2]);
+   runCfg.add("nx", n[0]); runCfg.add("ny", n[1]); runCfg.add("nz", n[2]);
    runCfg.add("pooldist", pooldistStr);
    runCfg.add("rhs", rhsStr);
    runCfg.add("MPIRank", myid);
@@ -1815,21 +1824,19 @@ main( int   argc,
                                                         ".P_"<<P[0]<<"_"<<P[1]<<"_"<<P[2]<<
                                                         ".r_"<<r[0]<<"_"<<r[1]<<"_"<<r[2]<<
                                                         ".b_"<<b[0]<<"_"<<b[1]<<"_"<<b[2]<<
+                                                        ".n_"<<n[0]<<"_"<<n[1]<<"_"<<n[2]<<
                                                         ".pooldist_"<<pooldistStr<<
                                                         ".rhs_"<<rhsStr<<
                                                         ".rank_"<<myid<<
                                                         (getenv("EXP_ID")? txt()<<".exp_"<<getenv("EXP_ID"): string("")));
    }
    attr myidAttr("MPIrank", 0/*myid*/);
-
-
-   sightModularApp AMGApp("AMG"
-#if !defined(KULFI)
-   , namedMeasures("time", new timeMeasure()/*,
-                                          "PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS/ *, PAPI_L1_TCM, PAPI_L2_TCM, PAPI_L3_TCM* /))*/)
-#endif
-   );
    
+   sightModularApp AMGApp("AMG", namedMeasures("time", new timeMeasure()
+#ifdef RAPL
+                                               ,"RAPL", new RAPLMeasure()
+#endif
+                         ));
    
    if (build_matrix_type > 1 && build_matrix_type < 8)
    {

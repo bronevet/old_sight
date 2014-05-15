@@ -6,6 +6,23 @@ using namespace sight::common;
 namespace sight {
 namespace structure {
 
+// -------------------------
+// ----- Configuration -----
+// -------------------------
+
+// Record the configuration handlers in this file
+traceConfHandlerInstantiator::traceConfHandlerInstantiator() {
+#ifdef RAPL
+  (*enterHandlers)["rapl"]          = &RAPLMeasure::configure;
+  (*exitHandlers )["rapl"]          = &traceConfHandlerInstantiator::defaultExitFunc;
+#endif // RAPL
+}
+traceConfHandlerInstantiator traceConfHandlerInstance;
+
+/*********************
+ ***** traceAttr *****
+ *********************/
+
 void traceAttr(std::string label, std::string key, const attrValue& val) {
   // Inform the chosen tracer of the observation
   trace::getTS(label)->traceAttrObserved(key, val, anchor::noAnchor);
@@ -998,6 +1015,201 @@ std::list<std::pair<std::string, attrValue> > endGetMeasure(measure* m, bool add
   return result;
 }
 
+
+#ifdef RAPL
+
+/**********************
+ ***** MSRMeasure *****
+ **********************/
+
+int MSRMeasure::numMeasurers=0;
+
+MSRMeasure::MSRMeasure() {
+  // If the MSRs are not currently being measured, initialize the MSR library
+  if(numMeasurers==0) init_msr();
+
+  numMeasurers++;
+}
+
+MSRMeasure::~MSRMeasure() {
+  numMeasurers--;
+
+  // If the MSRs are no longer being measured, finalize the MSR library
+  if(numMeasurers==0) finalize_msr();
+}
+
+/***********************
+ ***** RAPLMeasure *****
+ ***********************/
+
+// Non-full measure
+RAPLMeasure::RAPLMeasure(): measure(), valLabel("")
+{ init(); }
+
+RAPLMeasure::RAPLMeasure(                        std::string valLabel): measure(), valLabel(valLabel)
+{ init(); }
+
+RAPLMeasure::RAPLMeasure(std::string traceLabel, std::string valLabel): measure(traceLabel), valLabel(valLabel)
+{ init(); }
+
+RAPLMeasure::RAPLMeasure(trace* t,               std::string valLabel): measure(t), valLabel(valLabel)
+{ init(); }
+
+RAPLMeasure::RAPLMeasure(traceStream* ts,        std::string valLabel): measure(ts), valLabel(valLabel)
+{ init(); }
+
+// Full measure
+RAPLMeasure::RAPLMeasure(                        std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt) :
+     measure(fullMeasureCtxt), valLabel(valLabel)
+{ init(); }
+
+RAPLMeasure::RAPLMeasure(std::string traceLabel, std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt) :
+     measure(traceLabel, fullMeasureCtxt), valLabel(valLabel)
+{ init(); }
+
+RAPLMeasure::RAPLMeasure(trace* t,               std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt) :
+     measure(t, fullMeasureCtxt), valLabel(valLabel)
+{ init(); }
+
+RAPLMeasure::RAPLMeasure(traceStream* ts,        std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt) :
+     measure(ts, fullMeasureCtxt), valLabel(valLabel)
+{ init(); }
+
+RAPLMeasure::RAPLMeasure(const RAPLMeasure& that) : 
+  measure(that), accumCpuE(that.accumCpuE), accumDramE(that.accumDramE), valLabel(that.valLabel) 
+{ }
+
+RAPLMeasure::~RAPLMeasure() {
+}
+
+// Common initialization code
+void RAPLMeasure::init() {
+  init_rapl_int_state(&raplS);
+}
+
+// Returns a copy of this measure object, including its current measurement state, if any. The returned
+// object is connected to the same traceStream, if any, as the original object.
+measure* RAPLMeasure::copy() const
+{ return new RAPLMeasure(*this); }
+
+// Start the measurement
+void RAPLMeasure::start() {
+  measure::start();
+  
+  // Start measuring the RAPL counters
+  struct rapl_data r;
+  read_rapl_data_r(0, &r, &raplS);
+}
+
+// Pauses the measurement so that time elapsed between this call and resume() is not counted.
+// Returns true if the measure is not currently paused and false if it is (i.e. the pause command has no effect)
+bool RAPLMeasure::pause() {
+  bool modified = measure::pause();
+
+  // Read the energy used on each socket since the last measurement and accumulate it into accumCpuE and accumDramE
+  for(int socket=0; socket<NUM_SOCKETS; socket++) {
+    struct rapl_data r;
+    read_rapl_data_r(socket, &r, &raplS);
+    accumCpuE[socket].add(r.pkg_joules,   r.elapsed);
+    accumDramE[socket].add(r.dram_joules, r.elapsed);
+  }
+
+  return modified;  
+}
+
+// Restarts counting time. Time collection is restarted regardless of how many times pause() was called
+// before the call to resume().
+void RAPLMeasure::resume() {
+  measure::resume();
+  
+  // Restart measurement
+  struct rapl_data r;
+  read_rapl_data_r(0, &r, &raplS);
+}
+
+// Complete the measurement
+void RAPLMeasure::end() {
+  measure::end();
+  
+  // Call pause() to update elapsed with the time since the start of the measure or the last call to resume() 
+  pause(); 
+  
+  assert(ts);
+
+  string labelStr="";
+  if(valLabel!="") labelStr = valLabel + ":";
+
+  // Emit the measurement
+  for(int socket=0; socket<NUM_SOCKETS; socket++) {
+    if(fullMeasure) {
+      ts->traceFullObservation(fullMeasureCtxt, trace::observation((string)(txt()<<labelStr<<"Energy_CPU_S"<<socket),  accumCpuE[socket].E),           anchor::noAnchor);
+      ts->traceFullObservation(fullMeasureCtxt, trace::observation((string)(txt()<<labelStr<<"Energy_DRAM_S"<<socket), accumDramE[socket].E),          anchor::noAnchor);
+      ts->traceFullObservation(fullMeasureCtxt, trace::observation((string)(txt()<<labelStr<<"Power_CPU_S"<<socket),   accumCpuE[socket].getPower()),  anchor::noAnchor);
+      ts->traceFullObservation(fullMeasureCtxt, trace::observation((string)(txt()<<labelStr<<"Power_DRAM_S"<<socket),  accumDramE[socket].getPower()), anchor::noAnchor);
+    } else {
+      ts->traceAttrObserved(txt()<<labelStr<<"Energy_CPU_S"<<socket,  accumCpuE[socket].E,           anchor::noAnchor);
+      ts->traceAttrObserved(txt()<<labelStr<<"Energy_DRAM_S"<<socket, accumDramE[socket].E,          anchor::noAnchor);
+      ts->traceAttrObserved(txt()<<labelStr<<"Power_CPU_S"<<socket,   accumCpuE[socket].getPower(),  anchor::noAnchor);
+      ts->traceAttrObserved(txt()<<labelStr<<"Power_DRAM_S"<<socket,  accumDramE[socket].getPower(), anchor::noAnchor);
+    }
+  }
+}
+
+// Complete the measurement and return the observation.
+// If addToTrace is true, the observation is addes to this measurement's trace and not, otherwise
+std::list<std::pair<std::string, attrValue> > RAPLMeasure::endGet(bool addToTrace) {
+  measure::end();
+  
+  // Call pause() to update elapsed with the time since the start of the measure or the last call to resume() 
+  pause(); 
+  
+  if(addToTrace)
+    assert(ts);
+  
+  string labelStr="";
+  if(valLabel!="") labelStr = valLabel + ":";
+
+  // Emit the measurement and record it in ret;
+  std::list<std::pair<std::string, attrValue> > ret;
+ 
+  if(addToTrace)
+    ts->traceFullObservation(fullMeasureCtxt, trace::observation((string)(txt()<<labelStr<<"Elapsed"),  accumCpuE[0].T),  anchor::noAnchor);
+  ret.push_back(make_pair((string)(txt()<<labelStr<<"Elapsed"),  accumCpuE[0].T));
+  
+  for(int socket=0; socket<NUM_SOCKETS; socket++) {
+    ret.push_back(make_pair((string)(txt()<<labelStr<<"Energy_CPU_S"<<socket),  accumCpuE[socket].E));
+    ret.push_back(make_pair((string)(txt()<<labelStr<<"Energy_DRAM_S"<<socket), accumDramE[socket].E));
+    ret.push_back(make_pair((string)(txt()<<labelStr<<"Power_CPU_S"<<socket),  accumCpuE[socket].getPower()));
+    ret.push_back(make_pair((string)(txt()<<labelStr<<"Power_DRAM_S"<<socket), accumDramE[socket].getPower()));
+    //cout << "elapsed="<<accumCpuE[socket].T<<", CPU E="<<accumCpuE[socket].E<<", CPU P="<<accumCpuE[socket].getPower()<<endl;
+   
+    if(addToTrace) { 
+      if(fullMeasure) {
+        ts->traceFullObservation(fullMeasureCtxt, trace::observation((string)(txt()<<labelStr<<"Energy_CPU_S"<<socket),  accumCpuE[socket].E),  anchor::noAnchor);
+        ts->traceFullObservation(fullMeasureCtxt, trace::observation((string)(txt()<<labelStr<<"Energy_DRAM_S"<<socket), accumDramE[socket].E), anchor::noAnchor);
+        ts->traceFullObservation(fullMeasureCtxt, trace::observation((string)(txt()<<labelStr<<"Power_CPU_S"<<socket),  accumCpuE[socket].getPower()),  anchor::noAnchor);
+        ts->traceFullObservation(fullMeasureCtxt, trace::observation((string)(txt()<<labelStr<<"Power_DRAM_S"<<socket), accumDramE[socket].getPower()), anchor::noAnchor);
+      } else {
+        ts->traceAttrObserved(txt()<<labelStr<<"Energy_CPU_S"<<socket,  accumCpuE[socket].E,  anchor::noAnchor);
+        ts->traceAttrObserved(txt()<<labelStr<<"Energy_DRAM_S"<<socket, accumDramE[socket].E, anchor::noAnchor);
+        ts->traceAttrObserved(txt()<<labelStr<<"Power_CPU_S"<<socket,  accumCpuE[socket].getPower(),  anchor::noAnchor);
+        ts->traceAttrObserved(txt()<<labelStr<<"Power_DRAM_S"<<socket, accumDramE[socket].getPower(), anchor::noAnchor);
+      }
+    }
+  }
+  
+  return ret;
+}
+
+std::string RAPLMeasure::str() const { 
+  ostringstream s;
+  s<<"[RAPLMeasure: ";
+  s<<" "<<measure::str();
+  s<<"]";
+  return s.str();
+}
+
+#endif // RAPL
 
 /*****************************************
  ***** TraceMergeHandlerInstantiator *****

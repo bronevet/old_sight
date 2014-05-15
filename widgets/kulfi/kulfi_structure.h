@@ -13,6 +13,12 @@ extern "C" {
 
 extern long next_fault_countdown;
 
+class kulfiConfHandlerInstantiator : common::confHandlerInstantiator {
+  public:
+  kulfiConfHandlerInstantiator();
+};
+extern kulfiConfHandlerInstantiator kulfiConfHandlerInstance;
+
 class kulfiModularApp : public compModularApp
 {
   friend class kulfiModule;
@@ -54,6 +60,40 @@ class kulfiModularApp : public compModularApp
   }
 
   static void recordFaultInjection(const char* error_type, unsigned bPos, int fault_index, int ef, int tf);
+  
+  // Directly calls the destructor of this object. This is necessary because when an application crashes
+  // Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+  // there is no way to directly call the destructor of a given object when it may have several levels
+  // of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+  // it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+  // an object will invoke the destroy() method of the most-derived class.
+  void destroy();
+
+  // -------------------------
+  // ----- Configuration -----
+  // -------------------------
+  // The amount of time the app may run before it is aborted due to a timeout
+  static double timeoutLimitS;
+
+  static void* timeoutWatcher(void*);
+
+  public:
+  class KulfiModularAppConfiguration : public CompModularAppConfiguration {
+    public:
+    KulfiModularAppConfiguration(properties::iterator props) : CompModularAppConfiguration(props.next()) {
+      timeoutLimitS = props.getFloat("timeoutLimitS");
+      pthread_t thread;
+      int ret = pthread_create(&thread, NULL, kulfiModularApp::timeoutWatcher, (void*)NULL);
+      if(ret) { std::cerr << "ERROR creating timeoutWatcher thread! Error code "<<ret<<"."<<std::endl; exit(-1); }
+    }
+  };
+  static common::Configuration* configure(properties::iterator props) {
+    // Create a ModuleConfiguration object, using the invocation of the constructor hierarchy to
+    // record the configuration details with the respective widgets from which modules inherit
+    KulfiModularAppConfiguration* c = new KulfiModularAppConfiguration(props);
+    delete c;
+    return NULL;
+  } 
 }; // class kulfiModularApp
 
 class kulfiModule: public compModule {

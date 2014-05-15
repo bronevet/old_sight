@@ -33,6 +33,7 @@
 #include <stdio.h>
 #include <math.h>
 #include "sight.h"
+using namespace sight;
 /*
 #ifndef max
 #define max(a,b)  (((a)<(b)) ? (b) : (a))

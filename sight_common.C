@@ -750,10 +750,10 @@ void loadConfiguration(structureParser& parser) {
 
   pair<properties::tagType, const properties*> props = parser.next();
   while(props.second->size()>0) {
-    if(props.first == properties::enterTag) {
-      // Ignore all text between tags
-      if(props.second->name() == "text") continue;
-      
+    if(props.first == properties::enterTag && 
+       // Ignore all text between tags
+       props.second->name() != "text")
+    {
       // Call the entry handler of the most recently-entered object with this tag name
       // and push the object it returns onto the stack dedicated to objects of this type.
       TagFileReaderRegistry<Configuration>::enter(props.second->name(), props.second->begin());

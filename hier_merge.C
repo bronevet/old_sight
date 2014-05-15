@@ -14,7 +14,7 @@ using namespace std;
 using namespace sight;
 using namespace sight::structure;
 
-#define VERBOSE
+//#define VERBOSE
 
 // A unique signature that differentiates tags of incompatible types from each other
 class tagGroup {

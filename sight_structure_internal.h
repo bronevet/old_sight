@@ -327,16 +327,30 @@ class sightObj {
   public:
   properties* props;
   
+  protected:
   // Records whether we should emit the exit tag in the destructor (true) or whether this was already taken
   // care of in the constructor (false)
   bool emitExitTag;
+  
+  // Records whether we should remove this object from the sight object stack
+  bool removeFromStack;
+  
+  // Records whether we've begun the process of destroying all objects. This is to differentiate`
+  // the case of Sight doing the destruction and of the runtime system destroying all objects
+  // at process termination
+  static bool SightDestruction;
+  
+  // Records whether we've started processing static destructors. In this case
+  // the sight object stack may not be valid anymore and thus should not be accessed.
+  static bool stackMayBeInvalidFlag;
+  // Records that the stack may not be valid
+  void stackMayBeInvalid() { stackMayBeInvalidFlag=true; }
   
   // Flag that records whether this object has already been destroyed. This must be tracked explicitly
   // because sightObjs can be be destroyed by calling their destroy() method in addition to calling their
   // destructor.
   bool destroyed;
 
-  private:
   // The stack of sightObjs that are currently in scope. We declare it as a static inside this function
   // to make it possible to ensure that the global soStack is constructed before it is used and therefore
   // destructed after all of its user objects are destructed.
@@ -669,6 +683,9 @@ class Merger {
   static void mergeKey(properties::tagType type, properties::iterator tag, 
                        std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
     
+  // Given a vector of tag properties, returns whether the given key exists in all tags
+  bool keyExists(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags, std::string key);
+  
   // Given a vector of tag properties, returns the vector of values assigned to the given key within the given tag
   static std::vector<std::string> getValues(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags, 
                                             std::string key);
