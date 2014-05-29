@@ -78,13 +78,18 @@ class dataReader : public traceFileReader {
 };
 
 int main(int argc, char** argv) {
-  if(argc!=5) { cerr << "Usage: filter cfgFName dataFName logFName label"<<endl<<"Command Line:"; for(int i=0; i<argc; i++) cerr << "\""<<argv[i]<<"\" "; cerr<<endl; exit(-1); }
+  if(argc!=4 && argc!=5) { cerr << "Usage: filter cfgFName dataFName label [logFName]"<<endl<<"Command Line:"; for(int i=0; i<argc; i++) cerr << "\""<<argv[i]<<"\" "; cerr<<endl; exit(-1); }
   char* cfgFName  = argv[1];
   char* dataFName = argv[2];
-  char* logFName  = argv[3];
-  char* label     = argv[4];
+  char* label     = argv[3];
+  char* logFName = NULL;
+  if(argc==5) logFName = argv[4];
   
-  FILE* log = fopen(logFName, "w"); if(log==NULL) { fprintf(stderr, "ERROR opening file \"%s\" for writing! %s", logFName, strerror(errno)); exit(-1); }
+  FILE* log=NULL;
+  if(logFName) {
+    log = fopen(logFName, "w"); 
+    if(log==NULL) { fprintf(stderr, "ERROR opening file \"%s\" for writing! %s", logFName, strerror(errno)); exit(-1); }
+  }
 
   MODEL* model;
   model = initModel();
@@ -95,24 +100,24 @@ int main(int argc, char** argv) {
   // If there is not enough data to train on, quit
   if(model->N <=1) return (EXIT_SUCCESS);
  
-  fprintf(log, "Data\n");
+  if(log) fprintf(log, "Data\n");
   dataReader reader(model);
   readTraceFile(string(dataFName), reader);
 
-  printParm(log, model->parm, model->N, model->p);
+  if(log) printParm(log, model->parm, model->N, model->p);
 
   functionSetup(log, model, gamodel);
   
   if(gamodel->model->cp<=1) { fprintf(stderr, "ERROR: Insufficient number of model terms provided: %d.\n", model->cp); exit(-1); }
 
-  fprintf(log, "Number of Links: %d  %d\n", model->L, gamodel->model->L);
-  fprintf(log, "Size of GALINKS: %d %d\n", gamodel->model->llist->nlinks[0], gamodel->model->llist->nlinks[1]);
-  fprintf(log, "Link 1: %d  Link 2: %d \n", gamodel->model->llist->links[0][0], gamodel->model->llist->links[0][1] );
-  fprintf(log, "Link 1: %d  Link 2: %d \n", gamodel->model->llist->links[1][0], gamodel->model->llist->links[1][1] );
+  if(log) fprintf(log, "Number of Links: %d  %d\n", model->L, gamodel->model->L);
+  if(log) fprintf(log, "Size of GALINKS: %d %d\n", gamodel->model->llist->nlinks[0], gamodel->model->llist->nlinks[1]);
+  if(log) fprintf(log, "Link 1: %d  Link 2: %d \n", gamodel->model->llist->links[0][0], gamodel->model->llist->links[0][1] );
+  if(log) fprintf(log, "Link 1: %d  Link 2: %d \n", gamodel->model->llist->links[1][0], gamodel->model->llist->links[1][1] );
   /*Done loading*/
 
   initBitVector(gamodel);
-  fprintf(log, "bitvector: %d %d\n", gamodel->model->bitVector[0][0], gamodel->model->bitVector[0][1]);
+  if(log) fprintf(log, "bitvector: %d %d\n", gamodel->model->bitVector[0][0], gamodel->model->bitVector[0][1]);
   RunGA(log, gamodel);
 
   PrintBestModel(log, gamodel, label);
@@ -147,6 +152,7 @@ GAMODEL* initGAModel(void)
 
 void printParm(FILE* log, double **parm, int n, int p)
 {
+    if(log==NULL) return;
     int i,j;
     for(i=0; i<n; i++)
     {
@@ -159,6 +165,7 @@ void printParm(FILE* log, double **parm, int n, int p)
 }
 void printY(FILE* log, double *y, int n)
 {
+    if(log==NULL) return;
     fprintf(log, "-------------Y-VALUES ---------------\n");
     int i=0;
     for(i=0; i<n; i++)

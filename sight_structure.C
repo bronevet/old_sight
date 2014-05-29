@@ -356,6 +356,15 @@ std::map<dbgStream*, std::list<sightObj*> >& soStackAllStreams() {
   return staticSoStack;
 }
 
+// Records whether we've begun the process of destroying all objects. This is to differentiate`
+// the case of Sight doing the destruction and of the runtime system destroying all objects
+// at process termination
+bool sightObj::SightDestruction=false;
+
+// Records whether we've started processing static destructors. In this case
+// the sight object stack may not be valid anymore and thus should not be accessed.
+bool sightObj::stackMayBeInvalidFlag=false;
+
 // The of clocks currently being used, mapping the name of each clock class to the set of active 
 // clock objects of this class.
 std::map<std::string, std::set<sightClock*> > sightObj::clocks;
@@ -395,7 +404,7 @@ void sightObj::init(properties* props, bool isTag) {
     }
   } else
     emitExitTag = false;
-
+  
   // Push this sightObj onto the stack
   if(initializedDebug && emitExitTag) {
 //    cout << "[[[ "<<(props? props->str(): "NULL")<<endl;
@@ -405,6 +414,10 @@ void sightObj::init(properties* props, bool isTag) {
   // If Sight was not initialized at the time this object was created, record that
   // this object does not emit an exit tag since this object should be left invisible to Sight.
   if(!initializedDebug) emitExitTag = false;
+  
+  // Initially removeFromStack is identical to emitExitTag but if we call emitTag()
+  // before the object is destructed, it will become true while emitExitTag is set to false.
+  removeFromStack = emitExitTag;
 }
 
 // Emits this sightObj's exit tag to the outgoing stream
@@ -467,7 +480,7 @@ sightObj::~sightObj() {
 
   // Pop this sightObj off the top of the stack
   // The stack is empty when we're trying to destroy global/static sightObjs created before Sight was initialized
-  if(emitExitTag && soStack(outStream).size()>0) {
+  if(!stackMayBeInvalidFlag && removeFromStack && soStack(outStream).size()>0) {
     // Remove this object from the stack
     assert(soStack(outStream).back() == this);
     soStack(outStream).pop_back();
@@ -486,13 +499,17 @@ sightObj::~sightObj() {
 
 // Destroy all the currently live sightObjs on the stack
 void sightObj::destroyAll() {
+  // Record that we've begun the process of destroying all sight objects
+  SightDestruction = true;
+  
   // Call the destroy method of each object on the soStack
-  map<dbgStream*, list<sightObj*> > stack = soStackAllStreams();
+  map<dbgStream*, list<sightObj*> >& stack = soStackAllStreams();
   for(map<dbgStream*, list<sightObj*> >::iterator s=stack.begin(); s!=stack.end(); s++) {
     while(s->second.size()>0) {
       list<sightObj*>::reverse_iterator o=s->second.rbegin();
   //    if((*o)->emitExitTag) {
         //cout << ">!> "<<(*o)->props->str()<<endl;
+        assert(!stackMayBeInvalidFlag);
         (*o)->destroy();
   //    }
       // The call to destroy will remove the last element from soStack(outStream)
@@ -857,6 +874,14 @@ void Merger::mergeKey(properties::tagType type, properties::iterator tag,
     
     tag++;
   }
+}
+
+// Given a vector of tag properties, returns whether the given key exists in all tags
+bool Merger::keyExists(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags, std::string key) {
+  for(vector<pair<properties::tagType, properties::iterator> >::const_iterator t=tags.begin(); t!=tags.end(); t++) {
+    if(!t->second.exists(key)) return false;
+  }
+  return true;
 }
 
 // Given a vector of tag properties, returns the set of values assigned to the given key within the given tag
@@ -1930,6 +1955,12 @@ dbgStream::~dbgStream() {
   // Emit the exit tag for this dbgStream
   sightObj::exitTag(false);
   
+  // If we're processing the destructor of the static dbgStream object and we're not doing this as
+  // part of a Sight-driven destruction process (i.e. the process is being shut down), record that 
+  // the stack may no longer be valid so that the sighObj destructor knows not to access it
+  if(this == &dbg && !SightDestruction) 
+    sightObj::stackMayBeInvalid();
+  
 //  assert(dbgFile);
   if(dbgFile) dbgFile->close();
   
@@ -2126,6 +2157,7 @@ dbgStreamMerger::dbgStreamMerger(//std::string workDir,
     // Merge the command lines, environments, machine and user details (info required to 
     // re-execute the application) across all the runs. Treat this as unknown if there are
     // any inconsistencies.
+    if(keyExists(tags, "commandLineKnown")) {
     vector<string> commandLineKnownValues = getValues(tags, "commandLineKnown");
     if(allSame<string>(commandLineKnownValues) && *commandLineKnownValues.begin()=="1") {
       map<string, string> execPMap;
@@ -2193,16 +2225,15 @@ dbgStreamMerger::dbgStreamMerger(//std::string workDir,
       pMap.insert(execPMap.begin(), execPMap.end());
       pMap["commandLineKnown"] = "1";
       goto LABEL_EXEC_END;
-      
-      // The label we'll jump to if we discover that the command line is not the same
-      // across all runs
-      LABEL_INCONSISTENT_EXEC:
-      pMap["commandLineKnown"] = "0";
-      
-      // The label we'll jump to when we've finished processing the command line
-      LABEL_EXEC_END: ;
-    }
-    
+    } }
+
+    // The label we'll jump to if we discover that the command line is not the same
+    // across all runs
+    LABEL_INCONSISTENT_EXEC:
+    pMap["commandLineKnown"] = "0";
+
+    // The label we'll jump to when we've finished processing the command line
+    LABEL_EXEC_END: ;   
     
     props->add("sight", pMap);
     //SightInit_internal(props, false);

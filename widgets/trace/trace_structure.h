@@ -507,6 +507,7 @@ class PAPIMeasure : public measure {
   std::string str() const;
 }; // class PAPIMeasure
 
+#ifdef RAPL
 #include "msr_rapl.h"
 
 // Base class of measurement objects that measure MSRs 
@@ -603,6 +604,7 @@ class RAPLMeasure : public measure, public MSRMeasure {
   public:
   static common::Configuration* configure(properties::iterator props);
 }; // class RAPLMeasure
+#endif // RAPL
 
 // Non-full measure
 template<class MT>

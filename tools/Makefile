@@ -52,14 +52,14 @@ callpath.zip:
 	../getGithub https://github.com/tgamblin/callpath/archive/master.zip zip unzip
 
 callpath.tar.gz:
-	rm callpath.tar.gz*
+	#rm -f callpath.tar.gz*
 	wget http://greg.bronevetsky.com/data/callpath.tar.gz
-	
-callpath: adept-utils callpath.tar.gz 
-	rm -rf callpath-master callpath
-	#../getGithub https://github.com/tgamblin/callpath/archive/master.zip zip unzip
-	#mv callpath-master callpath
 	tar -xf callpath.tar.gz
+	
+callpath: adept-utils # callpath.tar.gz
+	rm -rf callpath-master callpath
+	../getGithub https://github.com/tgamblin/callpath/archive/master.zip zip unzip
+	mv callpath-master callpath
 	rm -f callpath/CMakeCache.txt callpath/*/CMakeCache.txt
 	cp CMakeLists.callpath.txt callpath/CMakeLists.txt
 	cp callpath_safe_bool.h callpath/src/safe_bool.h

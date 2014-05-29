@@ -713,6 +713,18 @@ namespace structure {
 		printFaultInfo("Float Addr64 Error", bPos, fault_index, ef, tf);
 		return (double *)((long long)inst_add ^ (0x1L << bPos));   
 	}
+
+// -------------------------
+// ----- Configuration -----
+// -------------------------
+
+// Record the configuration handlers in this file
+kulfiConfHandlerInstantiator::kulfiConfHandlerInstantiator() {
+  (*enterHandlers)["kulfiModularApp"] = &kulfiModularApp::configure;
+  (*exitHandlers )["kulfiModularApp"] = &kulfiConfHandlerInstantiator::defaultExitFunc;
+}
+kulfiConfHandlerInstantiator kulfiConfHandlerInstance;
+
 	
 /*****************************
  ***** kulfiModularApp  *****
@@ -852,6 +864,54 @@ void kulfiModularApp::recordFaultInjection(const char* error_type, unsigned bPos
       km->setOptionCtxt("faultIdx", fault_index);
     }
   }
+}
+
+// -------------------------
+// ----- Configuration -----
+// -------------------------
+double kulfiModularApp::timeoutLimitS;
+
+void* kulfiModularApp::timeoutWatcher(void*) {
+  //cout << "kulfiModularApp::timeoutWatcher() sleeping for "<<timeoutLimitS<<" seconds."<<endl;
+  // Wait for a while
+  pthread_yield();
+  usleep(floor(timeoutLimitS*1000000));
+  cout << "kulfiModularApp::timeoutWatcher() woke up. Killing application."<<endl;
+
+  // Since the app hasn't completed by now, abort it by force.
+
+  // If the fault occured while a KULFI modular application was executing
+  if(modularApp::isInstanceActive()) {
+    // Record for all currently active modules that an application timeout was recorded while it was execcuting
+    const std::list<module*>& mStack = modularApp::getMStack();
+    //cout << "traceContexts: #mStack="<<mStack.size()<<"\n";
+    for(list<module*>::const_reverse_iterator m=mStack.rbegin(); m!=mStack.rend(); m++) {
+      kulfiModule* km = (kulfiModule*)*m;
+      assert(km);
+
+      km->setOutCtxt(km->numOutputs()-1, compContext("outcome", (char*)"timeout", noComp()));
+    }
+  }
+  
+  // On Termination deallocate all the currently live sightObjs
+  sightObj::destroyAll();
+
+  // Flush the file used to output the structure log and close the file to make sure it is flushed.
+  dbg.flush();
+  if(dbg.dbgFile)
+    dbg.dbgFile->close();
+
+  exit(0);
+}
+
+// Directly calls the destructor of this object. This is necessary because when an application crashes
+// Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+// there is no way to directly call the destructor of a given object when it may have several levels
+// of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+// it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+// an object will invoke the destroy() method of the most-derived class.
+void kulfiModularApp::destroy() {
+  this->~kulfiModularApp();
 }
 
 /************************

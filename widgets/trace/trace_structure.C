@@ -12,8 +12,10 @@ namespace structure {
 
 // Record the configuration handlers in this file
 traceConfHandlerInstantiator::traceConfHandlerInstantiator() {
+#ifdef RAPL
   (*enterHandlers)["rapl"]          = &RAPLMeasure::configure;
   (*exitHandlers )["rapl"]          = &traceConfHandlerInstantiator::defaultExitFunc;
+#endif // RAPL
 }
 traceConfHandlerInstantiator traceConfHandlerInstance;
 
@@ -1014,6 +1016,8 @@ std::list<std::pair<std::string, attrValue> > endGetMeasure(measure* m, bool add
 }
 
 
+#ifdef RAPL
+
 /**********************
  ***** MSRMeasure *****
  **********************/
@@ -1237,6 +1241,7 @@ common::Configuration* RAPLMeasure::configure(properties::iterator props) {
   }
 }
 
+#endif // RAPL
 
 /*****************************************
  ***** TraceMergeHandlerInstantiator *****

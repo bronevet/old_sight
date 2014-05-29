@@ -22,10 +22,14 @@ SIGHT_LINKFLAGS = ${ROOT_PATH}/tools/adept-utils/lib/libadept_cutils.so \
                   -Wl,-rpath ${ROOT_PATH}/tools/callpath/src/src \
                   ${ROOT_PATH}/widgets/papi/lib/libpapi.a \
                   ${ROOT_PATH}/widgets/gsl/lib/libgsl.so \
+                  ${ROOT_PATH}/widgets/gsl/lib/libgslcblas.so \
                   -Wl,-rpath ${ROOT_PATH}/widgets/gsl/lib \
-                  ${ROOT_PATH}/widgets/libmsr/lib/libmsr.so \
-                  -Wl,-rpath ${ROOT_PATH}/widgets/libmsr/lib \
 	          -lpthread
+RAPL_ENABLED = 0
+ifeq (${RAPL_ENABLED}, 1)
+SIGHT_LINKFLAGS += ${ROOT_PATH}/widgets/libmsr/lib/libmsr.so \
+                    -Wl,-rpath ${ROOT_PATH}/widgets/libmsr/lib
+endif
 	                
 	                #-Wl,-rpath ${ROOT_PATH}/widgets/papi/lib \
 
@@ -205,7 +209,7 @@ sightDefines.pl:
 
 Makefile.extern: initMakefile.extern
 	chmod 755 initMakefile.extern
-	./initMakefile.extern ${CC} ${CCC}
+	./initMakefile.extern ${CC} ${CCC} ${RAPL_ENABLED}
 
 clean:
 	cd widgets; make -f Makefile_pre clean

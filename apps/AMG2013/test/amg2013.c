@@ -1834,8 +1834,13 @@ main( int   argc,
    }
    attr myidAttr("MPIrank", 0/*myid*/);
    
-   sightModularApp AMGApp("AMG", namedMeasures(/*"time", new timeMeasure(),*/
-                                               "RAPL", new RAPLMeasure()));
+   sightModularApp AMGApp("AMG", namedMeasures(
+#ifdef RAPL
+                                               "RAPL", new RAPLMeasure()
+#else
+                                               "time", new timeMeasure()
+#endif
+                         ));
    
    if (build_matrix_type > 1 && build_matrix_type < 8)
    {

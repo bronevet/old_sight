@@ -1191,8 +1191,8 @@ void polyFitFilter::obsFinished() {
             new externalTraceProcessor_File(string(ROOT_PATH)+"/widgets/funcFit/funcFit", 
                                             easylist<string>(txt()<<workDir<<"/in"<<fileNum<<".cfg"),
                                             txt()<<workDir<<"/in"<<fileNum<<"."<<*t<<".data",
-                                            easylist<string>(txt()<<workDir<<"/in"<<fileNum<<"."<<*t<<".log",
-                                                             "\""+*t+"\""));
+                                            easylist<string>("\""+*t+"\""/*,
+                                                             txt()<<workDir<<"/in"<<fileNum<<"."<<*t<<".log"*/));
     outProcessors.insert(out);
     
     // Pass all the observations to this processor

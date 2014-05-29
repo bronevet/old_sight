@@ -431,8 +431,9 @@ int merge(vector<FILEStructureParser*>& parsers,
     // Read the next item from each parser
     int parserIdx=0;
     
-    // The number of sight tags read on the incoming stream (key for initialization of the output stream)
-    int numSightTags=0;
+    // The number of sight enter/exit tags read on the incoming stream (key for initialization of the output stream)
+    int numSightEnterTags=0;
+    int numSightExitTags=0;
     
     for(vector<FILEStructureParser*>::iterator p=parsers.begin(); p!=parsers.end(); p++, parserIdx++) {
       #ifdef VERBOSE
@@ -493,7 +494,10 @@ int merge(vector<FILEStructureParser*>& parsers,
           numTextTags += (props.second->name() == "text"? 1: 0);
           
           // Record whether we read a sight tag on any parser
-          numSightTags += (props.second->name() == "sight"? 1: 0);
+          if(props.first==properties::enterTag && props.second->name() == "sight") 
+            numSightEnterTags++;
+          if(props.first==properties::exitTag  && props.second->name() == "sight") 
+            numSightExitTags++;
           
           // We've just read a tag and are thus not ready for another on this incoming parser
           // until this one is processed
@@ -503,7 +507,7 @@ int merge(vector<FILEStructureParser*>& parsers,
     }
     
     #ifdef VERBOSE
-    dbg << "numSightTags="<<numSightTags<<", numTextTags="<<numTextTags<<", numActive="<<numActive<<", nextTag("<<nextTag.size()<<")"<<endl;
+    dbg << "numSightEnterTags="<<numSightEnterTags<<", numSightExitTags="<<numSightExitTags<<", numTextTags="<<numTextTags<<", numActive="<<numActive<<", nextTag("<<nextTag.size()<<")"<<endl;
     #endif
     if(numActive==0) break;
     #ifdef VERBOSE
@@ -513,39 +517,45 @@ int merge(vector<FILEStructureParser*>& parsers,
     
     // If we read a sight tag on all parsers (it must be all or none), merge these tags
     // and initialize an output stream from the merged result.
-    if(numSightTags>0) {
+    if(numSightEnterTags>0) {
       ITER_ACTION(txt()<<indent<<": "<<"Sight Tag. depth="<<variantStackDepth);
-      assert(numSightTags == parsers.size());
+      assert(numSightEnterTags == parsers.size());
       assert(numActive == parsers.size());
       assert(variantStackDepth==0);
       assert(nextTag.size()>0);
+      
+      // On entry, merge the entry tags and create a new dbgStream object for the merged stream
+      // Ensure that there is a tag merger for sight
+      if(MergeHandlerInstantiator::MergeKeyHandlers->find("sight") == MergeHandlerInstantiator::MergeKeyHandlers->end()) 
+        cerr << "ERROR: cannot find a merger for tag \"sight\"!"<<endl;
+      assert(MergeHandlerInstantiator::MergeKeyHandlers->find("sight") != MergeHandlerInstantiator::MergeKeyHandlers->end());
 
-      if(nextTag.begin()->first==properties::enterTag) {
-        // On entry, merge the entry tags and create a new dbgStream object for the merged stream
-        
-        // Ensure that there is a tag merger for sight
-        if(MergeHandlerInstantiator::MergeKeyHandlers->find("sight") == MergeHandlerInstantiator::MergeKeyHandlers->end()) 
-          cerr << "ERROR: cannot find a merger for tag \"sight\"!"<<endl;
-        assert(MergeHandlerInstantiator::MergeKeyHandlers->find("sight") != MergeHandlerInstantiator::MergeKeyHandlers->end());
-        
-        Merger* m = (*MergeHandlerInstantiator::MergeHandlers)["sight"](beginTags(nextTag), outStreamRecords, inStreamRecords, NULL);
-        assert(out==NULL);
-        
-        // Create the new dbgStream using a freshly-allocated properties object to enable the 
-        // Merger and the dbgStream to have and ultimately deallocate their own copies 
-        // (optimization opportunity to use smart pointers and avoid the extra allocation)
-        out = createDbgStream(new properties(m->getProps()), true);
-        
-        // The merger is no longer needed
-        delete m;
-      } else {
-        // On exit delete the previously-created dbgStream object
-        assert(out);
-        delete out;
-        // Set out to NULL so make sure it is not deleted again on exit from this function
-        // (need account for the case where the sight close tag is not observed)
-        out = NULL;
-      }
+      Merger* m = (*MergeHandlerInstantiator::MergeHandlers)["sight"](beginTags(nextTag), outStreamRecords, inStreamRecords, NULL);
+      assert(out==NULL);
+
+      // Create the new dbgStream using a freshly-allocated properties object to enable the 
+      // Merger and the dbgStream to have and ultimately deallocate their own copies 
+      // (optimization opportunity to use smart pointers and avoid the extra allocation)
+      out = createDbgStream(new properties(m->getProps()), true);
+
+      // The merger is no longer needed
+      delete m;
+      
+      // We're ready to read a new tag on all parsers
+      for(std::vector<bool>::iterator r=readyForTag.begin(); r!=readyForTag.end(); r++)
+        *r = true;
+      
+      // Reset tag2stream since we'll be reloading it based on the next tag read from each parser
+      tag2stream.clear();
+    // If we're finished reading on all parsers and we're at the top-most level
+    } else if(numActive==0 && variantStackDepth==0) {
+      assert(nextTag.size()>0);
+      // On exit delete the previously-created dbgStream object
+      assert(out);
+      delete out;
+      // Set out to NULL so make sure it is not deleted again on exit from this function
+      // (need account for the case where the sight close tag is not observed)
+      out = NULL;
       
       // We're ready to read a new tag on all parsers
       for(std::vector<bool>::iterator r=readyForTag.begin(); r!=readyForTag.end(); r++)
@@ -554,10 +564,8 @@ int merge(vector<FILEStructureParser*>& parsers,
       // Reset tag2stream since we'll be reloading it based on the next tag read from each parser
       tag2stream.clear();
       
-      dbg << "numActive="<<numActive<<endl;
-    }
     // If we read text on any parser, emit the text immediately
-    else if(numTextTags>0) {
+    } else if(numTextTags>0) {
       ITER_ACTION(txt()<<indent<<": "<<"Text Tag. depth="<<variantStackDepth);
       assert(out);
       
@@ -614,13 +622,24 @@ int merge(vector<FILEStructureParser*>& parsers,
       #ifdef VERBOSE
       dbg << tag2stream.size() << " key groups"<<endl;
       #endif
+
+      // If we observed a sight exit tag on any of the streams, pass over it
+      bool sightExitTagFound = false;
+      for(map<tagGroup, StreamTags >::iterator ts=tag2stream.begin(); ts!=tag2stream.end(); ts++) {
+        if(ts->first.objName=="sight" && ts->first.type == properties::exitTag) {
+          sightExitTagFound = true;
+          for(list<int>::iterator parserIdx=ts->second.parserIndexes.begin(); parserIdx!=ts->second.parserIndexes.end(); parserIdx++)
+            readyForTag[*parserIdx] = true;
+        }
+      }
+      
       // Group all the streams with the same next tag name/type. Since all parsers must have the same
       // stack of tags that have been entered, if we read the exit of a tag on any parser(s), they all 
       // must exit the same tag. However, different parsers may enter different tags.
       //
       // If there is just one group, then we merge the properties of the tags (all same type)
       // read from all the parsers, and perform the enter/exit action of this group
-      if(tag2stream.size()==1) {
+      if(!sightExitTagFound && tag2stream.size()==1) {
         ITER_ACTION(txt()<<indent<<": "<<"1 "<<tag2stream.begin()->first.objName<<" "<<(tag2stream.begin()->first.type==properties::enterTag?"enter":"exit")<<" Tag. depth="<<variantStackDepth);
         if(MergeHandlerInstantiator::MergeKeyHandlers->find(tag2stream.begin()->first.objName) == MergeHandlerInstantiator::MergeKeyHandlers->end()) 
           cerr << "ERROR: cannot find a merger for tag \""<<tag2stream.begin()->first.objName<<"\"!"<<endl;
@@ -678,7 +697,7 @@ int merge(vector<FILEStructureParser*>& parsers,
       // this tag until it is exited. The groups that are trying to exit a tag are left alone to wait for the
       // enterers to complete. Eventually all the parsers that entered a tag will exit it and thus exit the 
       // merge() call. At this point we'll read the next tag from them and see if they can be merged.
-      else {
+      else if(!sightExitTagFound && tag2stream.size()>1) {
         ITER_ACTION(txt()<<indent<<": "<<tag2stream.size()<<" Variants. depth="<<variantStackDepth);
         
         // Each group gets a separate copy of outStreamRecords. This list stores them all so that we can later merge them.
@@ -699,7 +718,6 @@ int merge(vector<FILEStructureParser*>& parsers,
         vector<string> variantSubDirs;
         
         // Check if we're at the tag exits on all streams
-        
         for(map<tagGroup, StreamTags >::iterator ts=tag2stream.begin(); ts!=tag2stream.end(); variantID++) {
           #ifdef VERBOSE
           dbg << "    Variant "<<variantID<<", "<<(ts->first.type == properties::enterTag? "enter": "exit")<<", "<<ts->first.objName<<endl;
