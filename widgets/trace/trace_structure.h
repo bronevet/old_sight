@@ -13,6 +13,7 @@
 #include "../../sight_structure_internal.h"
 #include <sys/time.h>
 #include <papi.h>
+#include "msr_core.h"
 
 namespace sight {
 namespace structure {
@@ -537,7 +538,7 @@ class RAPLMeasure : public measure, public MSRMeasure {
   };
 
   // The internal state of the RAPL measurement library, specific to this RAPLMeasure instance
-  struct rapl_int_state raplS;
+  //struct rapl_int_state raplS;
 
   // Records the accumulated energy use in the CPU and DRAM
   Euse accumCpuE[NUM_SOCKETS];
@@ -600,33 +601,7 @@ class RAPLMeasure : public measure, public MSRMeasure {
   // ----- Configuration -----
   // -------------------------
   public:
-  static common::Configuration* configure(properties::iterator props) {
-    // Set the current power cap based on the specification in props
-    struct rapl_limit CPULimit, DRAMLimit;
-    bool CPUSpecified=false;
-    if(props.exists("CPUWatts") && props.exists("CPUSeconds")) {
-      CPULimit.watts   = props.getFloat("CPUWatts");
-      CPULimit.seconds = props.getFloat("CPUSeconds");
-      CPUSpecified=true;
-      std::cout << "Setting CPU to "<<CPULimit.watts<<"W * "<<CPULimit.seconds<<"s "<<std::endl;
-    }
-    
-    bool DRAMSpecified=false;
-    if(props.exists("DRAMWatts") && props.exists("DRAMSeconds")) {
-      DRAMLimit.watts   = props.getFloat("DRAMWatts");
-      DRAMLimit.seconds = props.getFloat("DRAMSeconds");
-      std::cout << "Setting DRAM to "<<CPULimit.watts<<"W * "<<CPULimit.seconds<<"s"<<std::endl;
-      DRAMSpecified=true;
-    }
-
-    if(CPUSpecified || DRAMSpecified) {
-      std::cout << "Calling init_msr()\n";
-      init_msr();
-      for(int s=0; s<NUM_SOCKETS; s++) {
-        set_rapl_limit(s, (CPUSpecified? &CPULimit: NULL), NULL, (DRAMSpecified? &DRAMLimit: NULL));
-      }
-    }
-  }
+  static common::Configuration* configure(properties::iterator props);
 }; // class RAPLMeasure
 
 // Non-full measure

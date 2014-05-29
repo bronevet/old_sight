@@ -1031,7 +1031,7 @@ MSRMeasure::~MSRMeasure() {
   numMeasurers--;
 
   // If the MSRs are no longer being measured, finalize the MSR library
-  if(numMeasurers==0) finalize_msr();
+//  if(numMeasurers==0) finalize_msr();
 }
 
 /***********************
@@ -1080,7 +1080,9 @@ RAPLMeasure::~RAPLMeasure() {
 
 // Common initialization code
 void RAPLMeasure::init() {
-  init_rapl_int_state(&raplS);
+  //init_rapl_int_state(&raplS);
+  rapl.flags = RDF_REENTRANT;
+  read_rapl_data(0, &rapl);
 }
 
 // Returns a copy of this measure object, including its current measurement state, if any. The returned
@@ -1094,7 +1096,7 @@ void RAPLMeasure::start() {
   
   // Start measuring the RAPL counters
   struct rapl_data r;
-  read_rapl_data_r(0, &r, &raplS);
+  read_rapl_data(0, &rapl);
 }
 
 // Pauses the measurement so that time elapsed between this call and resume() is not counted.
@@ -1104,10 +1106,9 @@ bool RAPLMeasure::pause() {
 
   // Read the energy used on each socket since the last measurement and accumulate it into accumCpuE and accumDramE
   for(int socket=0; socket<NUM_SOCKETS; socket++) {
-    struct rapl_data r;
-    read_rapl_data_r(socket, &r, &raplS);
-    accumCpuE[socket].add(r.pkg_joules,   r.elapsed);
-    accumDramE[socket].add(r.dram_joules, r.elapsed);
+    read_rapl_data(socket, &rapl);
+    accumCpuE[socket].add(rapl.pkg_joules,   rapl.elapsed);
+    accumDramE[socket].add(rapl.dram_joules, rapl.elapsed);
   }
 
   return modified;  
@@ -1119,8 +1120,7 @@ void RAPLMeasure::resume() {
   measure::resume();
   
   // Restart measurement
-  struct rapl_data r;
-  read_rapl_data_r(0, &r, &raplS);
+  read_rapl_data(0, &rapl);
 }
 
 // Complete the measurement
@@ -1142,11 +1142,13 @@ void RAPLMeasure::end() {
       ts->traceFullObservation(fullMeasureCtxt, trace::observation((string)(txt()<<labelStr<<"Energy_DRAM_S"<<socket), accumDramE[socket].E),          anchor::noAnchor);
       ts->traceFullObservation(fullMeasureCtxt, trace::observation((string)(txt()<<labelStr<<"Power_CPU_S"<<socket),   accumCpuE[socket].getPower()),  anchor::noAnchor);
       ts->traceFullObservation(fullMeasureCtxt, trace::observation((string)(txt()<<labelStr<<"Power_DRAM_S"<<socket),  accumDramE[socket].getPower()), anchor::noAnchor);
+      ts->traceFullObservation(fullMeasureCtxt, trace::observation((string)(txt()<<labelStr<<"EDP_S"<<socket),         (accumCpuE[socket].E+accumDramE[socket].E)/accumCpuE[socket].T), anchor::noAnchor);
     } else {
       ts->traceAttrObserved(txt()<<labelStr<<"Energy_CPU_S"<<socket,  accumCpuE[socket].E,           anchor::noAnchor);
       ts->traceAttrObserved(txt()<<labelStr<<"Energy_DRAM_S"<<socket, accumDramE[socket].E,          anchor::noAnchor);
       ts->traceAttrObserved(txt()<<labelStr<<"Power_CPU_S"<<socket,   accumCpuE[socket].getPower(),  anchor::noAnchor);
       ts->traceAttrObserved(txt()<<labelStr<<"Power_DRAM_S"<<socket,  accumDramE[socket].getPower(), anchor::noAnchor);
+      ts->traceAttrObserved(txt()<<labelStr<<"EDP_S"<<socket,         (accumCpuE[socket].E+accumDramE[socket].E)/accumCpuE[socket].T, anchor::noAnchor);
     }
   }
 }
@@ -1175,21 +1177,24 @@ std::list<std::pair<std::string, attrValue> > RAPLMeasure::endGet(bool addToTrac
   for(int socket=0; socket<NUM_SOCKETS; socket++) {
     ret.push_back(make_pair((string)(txt()<<labelStr<<"Energy_CPU_S"<<socket),  accumCpuE[socket].E));
     ret.push_back(make_pair((string)(txt()<<labelStr<<"Energy_DRAM_S"<<socket), accumDramE[socket].E));
-    ret.push_back(make_pair((string)(txt()<<labelStr<<"Power_CPU_S"<<socket),  accumCpuE[socket].getPower()));
-    ret.push_back(make_pair((string)(txt()<<labelStr<<"Power_DRAM_S"<<socket), accumDramE[socket].getPower()));
+    ret.push_back(make_pair((string)(txt()<<labelStr<<"Power_CPU_S"<<socket),   accumCpuE[socket].getPower()));
+    ret.push_back(make_pair((string)(txt()<<labelStr<<"Power_DRAM_S"<<socket),  accumDramE[socket].getPower()));
+    ret.push_back(make_pair((string)(txt()<<labelStr<<"EDP_S"<<socket),         (accumCpuE[socket].E+accumDramE[socket].E)/accumCpuE[socket].T));
     //cout << "elapsed="<<accumCpuE[socket].T<<", CPU E="<<accumCpuE[socket].E<<", CPU P="<<accumCpuE[socket].getPower()<<endl;
    
     if(addToTrace) { 
       if(fullMeasure) {
         ts->traceFullObservation(fullMeasureCtxt, trace::observation((string)(txt()<<labelStr<<"Energy_CPU_S"<<socket),  accumCpuE[socket].E),  anchor::noAnchor);
         ts->traceFullObservation(fullMeasureCtxt, trace::observation((string)(txt()<<labelStr<<"Energy_DRAM_S"<<socket), accumDramE[socket].E), anchor::noAnchor);
-        ts->traceFullObservation(fullMeasureCtxt, trace::observation((string)(txt()<<labelStr<<"Power_CPU_S"<<socket),  accumCpuE[socket].getPower()),  anchor::noAnchor);
-        ts->traceFullObservation(fullMeasureCtxt, trace::observation((string)(txt()<<labelStr<<"Power_DRAM_S"<<socket), accumDramE[socket].getPower()), anchor::noAnchor);
+        ts->traceFullObservation(fullMeasureCtxt, trace::observation((string)(txt()<<labelStr<<"Power_CPU_S"<<socket),   accumCpuE[socket].getPower()),  anchor::noAnchor);
+        ts->traceFullObservation(fullMeasureCtxt, trace::observation((string)(txt()<<labelStr<<"Power_DRAM_S"<<socket),  accumDramE[socket].getPower()), anchor::noAnchor);
+        ts->traceFullObservation(fullMeasureCtxt, trace::observation((string)(txt()<<labelStr<<"EDP_S"<<socket),         (accumCpuE[socket].E+accumDramE[socket].E)/accumCpuE[socket].T), anchor::noAnchor);
       } else {
-        ts->traceAttrObserved(txt()<<labelStr<<"Energy_CPU_S"<<socket,  accumCpuE[socket].E,  anchor::noAnchor);
-        ts->traceAttrObserved(txt()<<labelStr<<"Energy_DRAM_S"<<socket, accumDramE[socket].E, anchor::noAnchor);
-        ts->traceAttrObserved(txt()<<labelStr<<"Power_CPU_S"<<socket,  accumCpuE[socket].getPower(),  anchor::noAnchor);
-        ts->traceAttrObserved(txt()<<labelStr<<"Power_DRAM_S"<<socket, accumDramE[socket].getPower(), anchor::noAnchor);
+        ts->traceAttrObserved(txt()<<labelStr<<"Energy_CPU_S"<<socket,  accumCpuE[socket].E,           anchor::noAnchor);
+        ts->traceAttrObserved(txt()<<labelStr<<"Energy_DRAM_S"<<socket, accumDramE[socket].E,          anchor::noAnchor);
+        ts->traceAttrObserved(txt()<<labelStr<<"Power_CPU_S"<<socket,   accumCpuE[socket].getPower(),  anchor::noAnchor);
+        ts->traceAttrObserved(txt()<<labelStr<<"Power_DRAM_S"<<socket,  accumDramE[socket].getPower(), anchor::noAnchor);
+        ts->traceAttrObserved(txt()<<labelStr<<"EDP_S"<<socket,         (accumCpuE[socket].E+accumDramE[socket].E)/accumCpuE[socket].T, anchor::noAnchor);
       }
     }
   }
@@ -1204,6 +1209,34 @@ std::string RAPLMeasure::str() const {
   s<<"]";
   return s.str();
 }
+
+common::Configuration* RAPLMeasure::configure(properties::iterator props) {
+  // Set the current power cap based on the specification in props
+  struct rapl_limit CPULimit, DRAMLimit;
+  bool CPUSpecified=false;
+  if(props.exists("CPUWatts") && props.exists("CPUSeconds")) {
+    CPULimit.watts   = props.getFloat("CPUWatts");
+    CPULimit.seconds = props.getFloat("CPUSeconds");
+    CPUSpecified=true;
+  }
+
+  bool DRAMSpecified=false;
+  if(props.exists("DRAMWatts") && props.exists("DRAMSeconds")) {
+    DRAMLimit.watts   = props.getFloat("DRAMWatts");
+    DRAMLimit.seconds = props.getFloat("DRAMSeconds");
+    DRAMSpecified=true;
+  }
+  
+  if(CPUSpecified || DRAMSpecified) {
+    init_msr();
+    for(int s=0; s<NUM_SOCKETS; s++) {
+      if(CPUSpecified)  std::cout << "Setting CPU on socket "<<s<<" to "<<CPULimit.watts<<"W * "<<CPULimit.seconds<<"s "<<std::endl;
+      if(DRAMSpecified) std::cout << "Setting DRAM on socket "<<s<<" to "<<DRAMLimit.watts<<"W * "<<DRAMLimit.seconds<<"s"<<std::endl;
+      set_rapl_limit(s, (CPUSpecified? &CPULimit: NULL), NULL, DRAMSpecified? &DRAMLimit: NULL);
+    }
+  }
+}
+
 
 /*****************************************
  ***** TraceMergeHandlerInstantiator *****

@@ -131,7 +131,8 @@ int HYPRE_BoomerAMGSolve(HYPRE_Solver       solver,
                          HYPRE_ParVector    x,
                          context& runCfg,
                          graph& AMGVCycleGraph, 
-                         anchor& lastAnchor);
+                         anchor& lastAnchor,
+                         context& solverCtxt);
 
 /**
  * Solve the transpose system $A^T x = b$ or apply AMG as a preconditioner

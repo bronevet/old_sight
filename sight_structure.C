@@ -103,7 +103,6 @@ void SightInit_LowLevel()
   initializedDebug = true;
 }
 
-
 void SightInit_internal(int argc, char** argv, string title, string workDir)
 {
   map<string, string> newProps;

@@ -834,14 +834,14 @@ int hypre_ParCSRRelax_CG( HYPRE_Solver solver,
                              hypre_ParVector    *f,
                              hypre_ParVector    *u,
                              int num_its,
-                             context& runCfg)
+                             context& runCfg, sightModule& solveModule, int solveModOutput)
 {
    int num_iterations;
    double final_res_norm;
    
    HYPRE_PCGSetMaxIter(solver, num_its); /* max iterations */
 
-   HYPRE_ParCSRPCGSolve(solver, (HYPRE_ParCSRMatrix)A, (HYPRE_ParVector)f, (HYPRE_ParVector)u, runCfg);
+   HYPRE_ParCSRPCGSolve(solver, (HYPRE_ParCSRMatrix)A, (HYPRE_ParVector)f, (HYPRE_ParVector)u, runCfg, solveModule,solveModOutput);
  
    HYPRE_PCGGetNumIterations(solver, &num_iterations);
    HYPRE_PCGGetFinalRelativeResidualNorm(solver, &final_res_norm);

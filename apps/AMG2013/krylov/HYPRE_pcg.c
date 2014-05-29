@@ -72,13 +72,15 @@ HYPRE_PCGSolve( HYPRE_Solver solver,
                 HYPRE_Matrix A,
                 HYPRE_Vector b,
                 HYPRE_Vector x,
-                context& runCfg )
+                context& runCfg,
+                sightModule& solveModule, int solveModOutput )
 {
    return( hypre_PCGSolve( (void *) solver,
                            (void *) A,
                            (void *) b,
                            (void *) x,
-                           runCfg) );
+                           runCfg,
+                           solveModule, solveModOutput) );
 }
 
 /*--------------------------------------------------------------------------

@@ -30,7 +30,8 @@ int
 hypre_BoomerAMGSolve( void               *amg_vdata,
                    hypre_ParCSRMatrix *A,
                    hypre_ParVector    *f,
-                   hypre_ParVector    *u, context& runCfg, graph& AMGVCycleGraph, anchor& lastAnchor)
+                   hypre_ParVector    *u, context& runCfg, graph& AMGVCycleGraph, anchor& lastAnchor,
+                   context& solverCtxt)
 {
 
    MPI_Comm 	      comm = hypre_ParCSRMatrixComm(A);   
@@ -114,7 +115,7 @@ hypre_BoomerAMGSolve( void               *amg_vdata,
 
    Vtemp = hypre_ParAMGDataVtemp(amg_data);
    
-   context solveCtxt("num_levels", num_levels,
+   context amgCtxt("num_levels", num_levels,
                      "tol",        tol/*,
                      "nnz_l0",     num_coeffs[0],
                      "numVars_l0", num_variables[0]*/);
@@ -123,12 +124,12 @@ hypre_BoomerAMGSolve( void               *amg_vdata,
    {
       num_coeffs[j]    = (double) hypre_ParCSRMatrixNumNonzeros(A_array[j]);
       num_variables[j] = (double) hypre_ParCSRMatrixGlobalNumRows(A_array[j]);
-      //solveCtxt.add(txt()<<"nnz_l"<<j,     num_coeffs[j]);
-      //solveCtxt.add(txt()<<"numVars_l"<<j, num_variables[j]);
+      //amgCtxt.add(txt()<<"nnz_l"<<j,     num_coeffs[j]);
+      //amgCtxt.add(txt()<<"numVars_l"<<j, num_variables[j]);
    }
    
-   sightModule modSolve(instance("BoomerAMG Solve", 2, 1), 
-                   inputs(port(runCfg), port(solveCtxt)),
+   sightModule modSolve(instance("BoomerAMG Solve", 3, 1), 
+                   inputs(port(runCfg), port(amgCtxt), port(solverCtxt)),
 #if defined(KULFI)
                    module::context("EXP_ID", getenv("EXP_ID")),
 #endif
@@ -234,9 +235,10 @@ hypre_BoomerAMGSolve( void               *amg_vdata,
    while ((relative_resid >= tol || cycle_count < min_iter)
           && cycle_count < max_iter)
    {
-     sightModule modCycle(instance("V Cycle", 3, 1), 
+     sightModule modCycle(instance("V Cycle", 4, 1), 
                      inputs(port(runCfg),
-                            port(solveCtxt),
+                            port(amgCtxt),
+                            port(solverCtxt),
                             port(context("relative_resid", relative_resid,
                                          "cycle_count",    cycle_count))),
 #if defined(KULFI)
@@ -254,7 +256,7 @@ hypre_BoomerAMGSolve( void               *amg_vdata,
 #endif
   
 
-      hypre_BoomerAMGCycle(amg_data, F_array, U_array, runCfg, AMGVCycleGraph, lastAnchor); 
+      hypre_BoomerAMGCycle(amg_data, F_array, U_array, runCfg, AMGVCycleGraph, lastAnchor, solverCtxt); 
 
 #if MPIP_SOLVE_ON
       MPI_Pcontrol(3); 

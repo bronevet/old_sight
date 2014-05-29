@@ -58,12 +58,13 @@ HYPRE_GMRESSolve( HYPRE_Solver solver,
                         HYPRE_Matrix A,
                         HYPRE_Vector b,
                         HYPRE_Vector x,
-                        context& runCfg)
+                        context& runCfg,
+                        sightModule& solveModule, int solveModOutput)
 {
    return( hypre_GMRESSolve( solver,
                              A,
                              b,
-                             x, runCfg ) );
+                             x, runCfg, solveModule, solveModOutput ) );
 }
 
 /*--------------------------------------------------------------------------

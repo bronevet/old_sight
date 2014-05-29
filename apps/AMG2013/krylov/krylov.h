@@ -32,8 +32,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
-#include "sight.h"
-using namespace sight;
+#include "../headers.h"
+/*#include "sight.h"
+using namespace sight;*/
 /*
 #ifndef max
 #define max(a,b)  (((a)<(b)) ? (b) : (a))
@@ -68,7 +69,9 @@ typedef struct hypre_Vector_struct *HYPRE_Vector;
 typedef int (*HYPRE_PtrToSolverFcn)(HYPRE_Solver,
                                     HYPRE_Matrix,
                                     HYPRE_Vector,
-                                    HYPRE_Vector, context& runCfg, graph& AMGVCycleGraph, anchor& lastAnchor);
+                                    HYPRE_Vector, 
+                                    context& runCfg, graph& AMGVCycleGraph, anchor& lastAnchor,
+                                    context& solverIter);
 
 #endif
 
@@ -422,7 +425,7 @@ void *hypre_GMRESCreate ( hypre_GMRESFunctions *gmres_functions );
 int hypre_GMRESDestroy ( void *gmres_vdata );
 int hypre_GMRESGetResidual ( void *gmres_vdata , void **residual );
 int hypre_GMRESSetup ( void *gmres_vdata , void *A , void *b , void *x, context& runCfg );
-int hypre_GMRESSolve ( void *gmres_vdata , void *A , void *b , void *x, context& runCfg );
+int hypre_GMRESSolve ( void *gmres_vdata , void *A , void *b , void *x, context& runCfg, sightModule& solveModule, int solveModOutput );
 int hypre_GMRESSetKDim ( void *gmres_vdata , int k_dim );
 int hypre_GMRESGetKDim ( void *gmres_vdata , int *k_dim );
 int hypre_GMRESSetTol ( void *gmres_vdata , double tol );
@@ -449,7 +452,7 @@ int hypre_GMRESGetFinalRelativeResidualNorm ( void *gmres_vdata , double *relati
 
 /* HYPRE_gmres.c */
 int HYPRE_GMRESSetup ( HYPRE_Solver solver , HYPRE_Matrix A , HYPRE_Vector b , HYPRE_Vector x, context& runCfg );
-int HYPRE_GMRESSolve ( HYPRE_Solver solver , HYPRE_Matrix A , HYPRE_Vector b , HYPRE_Vector x, context& runCfg );
+int HYPRE_GMRESSolve ( HYPRE_Solver solver , HYPRE_Matrix A , HYPRE_Vector b , HYPRE_Vector x, context& runCfg, sightModule& solveModule, int solveModOutput );
 int HYPRE_GMRESSetKDim ( HYPRE_Solver solver , int k_dim );
 int HYPRE_GMRESGetKDim ( HYPRE_Solver solver , int *k_dim );
 int HYPRE_GMRESSetTol ( HYPRE_Solver solver , double tol );
@@ -477,7 +480,7 @@ int HYPRE_GMRESGetResidual ( HYPRE_Solver solver , void **residual );
 
 /* HYPRE_pcg.c */
 int HYPRE_PCGSetup ( HYPRE_Solver solver , HYPRE_Matrix A , HYPRE_Vector b , HYPRE_Vector x, context& runCfg );
-int HYPRE_PCGSolve ( HYPRE_Solver solver , HYPRE_Matrix A , HYPRE_Vector b , HYPRE_Vector x, context& runCfg );
+int HYPRE_PCGSolve ( HYPRE_Solver solver , HYPRE_Matrix A , HYPRE_Vector b , HYPRE_Vector x, context& runCfg, sightModule& solveModule, int solveModOutput);
 int HYPRE_PCGSetTol ( HYPRE_Solver solver , double tol );
 int HYPRE_PCGGetTol ( HYPRE_Solver solver , double *tol );
 int HYPRE_PCGSetAbsoluteTolFactor ( HYPRE_Solver solver , double abstolf );
@@ -509,7 +512,7 @@ void *hypre_PCGCreate ( hypre_PCGFunctions *pcg_functions );
 int hypre_PCGDestroy ( void *pcg_vdata );
 int hypre_PCGGetResidual ( void *pcg_vdata , void **residual );
 int hypre_PCGSetup ( void *pcg_vdata , void *A , void *b , void *x, context& runCfg );
-int hypre_PCGSolve ( void *pcg_vdata , void *A , void *b , void *x, context& runCfg );
+int hypre_PCGSolve ( void *pcg_vdata , void *A , void *b , void *x, context& runCfg, sightModule& solveModule, int solveModOutput );
 int hypre_PCGSetTol ( void *pcg_vdata , double tol );
 int hypre_PCGGetTol ( void *pcg_vdata , double *tol );
 int hypre_PCGSetAbsoluteTolFactor ( void *pcg_vdata , double atolf );

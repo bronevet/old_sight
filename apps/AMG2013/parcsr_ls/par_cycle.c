@@ -38,7 +38,8 @@ hypre_BoomerAMGCycle( void              *amg_vdata,
                    hypre_ParVector  **U_array,
                    context& runCfg, 
                    graph& AMGVCycleGraph,
-                   anchor& lastAnchor
+                   anchor& lastAnchor, 
+                   context& solverCtxt
          )
 {
    hypre_ParAMGData *amg_data = (hypre_ParAMGData*)amg_vdata;
@@ -280,7 +281,8 @@ hypre_BoomerAMGCycle( void              *amg_vdata,
                            U_array, 
                            runCfg,
                            AMGVCycleGraph,
-                           lastAnchor);
+                           lastAnchor,
+                           solverCtxt);
          
 
 
@@ -373,7 +375,7 @@ hypre_BoomerAMGCycle( void              *amg_vdata,
                                            Aux_F,      
                                            Aux_U,
                                            num_sweep,
-                                           runCfg);
+                                           runCfg, solveModule, solveModOutput);
                }
                else if (relax_type == 8)
                {

@@ -224,7 +224,8 @@ hypre_PCGSetup( void *pcg_vdata,
       (*(pcg_functions->MatvecDestroy))(pcg_data -> matvec_data);
    (pcg_data -> matvec_data) = (*(pcg_functions->MatvecCreate))(A, x);
 
-   ierr = precond_setup((HYPRE_Solver)precond_data, (HYPRE_Matrix)A, (HYPRE_Vector)b, (HYPRE_Vector)x, runCfg, AMGVCycleGraph, lastAnchor);
+   context solverCtxt("i", "-1");
+   ierr = precond_setup((HYPRE_Solver)precond_data, (HYPRE_Matrix)A, (HYPRE_Vector)b, (HYPRE_Vector)x, runCfg, AMGVCycleGraph, lastAnchor, solverCtxt);
 
    /*-----------------------------------------------------
     * Allocate space for log info
@@ -269,7 +270,9 @@ hypre_PCGSolve( void *pcg_vdata,
                 void *A,
                 void *b,
                 void *x,
-                context& runCfg         )
+                context& runCfg,
+                sightModule& solveModule, int solveModOutput
+                         )
 {
    hypre_PCGData  *pcg_data     = (hypre_PCGData *)pcg_vdata;
    hypre_PCGFunctions *pcg_functions = pcg_data->functions;
@@ -312,6 +315,7 @@ hypre_PCGSolve( void *pcg_vdata,
    int             i = 0;
    int             ierr = 0;
    int             my_id, num_procs;
+   int num_precond_calls = 0;
 
    graph AMGVCycleGraph;
    anchor lastAnchor = anchor::noAnchor;
@@ -354,7 +358,9 @@ hypre_PCGSolve( void *pcg_vdata,
    {
       /* bi_prod = <C*b,b> */
       (*(pcg_functions->ClearVector))(p);
-      precond((HYPRE_Solver)precond_data, (HYPRE_Matrix)A, (HYPRE_Vector)b, (HYPRE_Vector)p, runCfg, AMGVCycleGraph, lastAnchor);
+      context solverCtxt("i", -2);
+      precond((HYPRE_Solver)precond_data, (HYPRE_Matrix)A, (HYPRE_Vector)b, (HYPRE_Vector)p, runCfg, AMGVCycleGraph, lastAnchor, solverCtxt);
+      num_precond_calls++;
       bi_prod = (*(pcg_functions->InnerProd))(p, b);
       if (print_level > 1 && my_id == 0)
           dbgprintf("<C*b,b>: %e\n",bi_prod);
@@ -379,6 +385,7 @@ hypre_PCGSolve( void *pcg_vdata,
         printf("ERROR detected by Hypre ...  END\n\n\n");
       }
       ierr += 101;
+      solveModule.setOutCtxt(0, context("num_precond_calls", num_precond_calls));
       return ierr;
    }
 
@@ -403,6 +410,7 @@ hypre_PCGSolve( void *pcg_vdata,
          rel_norms[i] = 0.0;
       }
       ierr = 0;
+      solveModule.setOutCtxt(0, context("num_precond_calls", num_precond_calls));
       return ierr;
       /* In this case, for the original parcsr pcg, the code would take special
          action to force iterations even though the exact value was known. */
@@ -414,7 +422,9 @@ hypre_PCGSolve( void *pcg_vdata,
  
    /* p = C*r */
    (*(pcg_functions->ClearVector))(p);
-   precond((HYPRE_Solver)precond_data, (HYPRE_Matrix)A, (HYPRE_Vector)r, (HYPRE_Vector)p, runCfg, AMGVCycleGraph, lastAnchor);
+   context solverCtxt("i", -1);
+   precond((HYPRE_Solver)precond_data, (HYPRE_Matrix)A, (HYPRE_Vector)r, (HYPRE_Vector)p, runCfg, AMGVCycleGraph, lastAnchor, solverCtxt);
+   num_precond_calls++;
 
    /* gamma = <r,p> */
    gamma = (*(pcg_functions->InnerProd))(r,p);
@@ -438,6 +448,7 @@ hypre_PCGSolve( void *pcg_vdata,
         printf("ERROR detected by Hypre ...  END\n\n\n");
       }
       ierr += 101;
+      solveModule.setOutCtxt(0, context("num_precond_calls", num_precond_calls));
       return ierr;
    }
 
@@ -483,6 +494,9 @@ hypre_PCGSolve( void *pcg_vdata,
 #endif
                        attrEQ("MPIrank", 0));
      scope sPCGStep(txt()<<"PCG Step i="<<i);
+
+     context solverCtxt("i", i);
+
       i++;
 
       /* s = A*p */
@@ -515,7 +529,8 @@ hypre_PCGSolve( void *pcg_vdata,
          
       /* s = C*r */
       (*(pcg_functions->ClearVector))(s);
-      precond((HYPRE_Solver)precond_data, (HYPRE_Matrix)A, (HYPRE_Vector)r, (HYPRE_Vector)s, runCfg, AMGVCycleGraph, lastAnchor);
+      precond((HYPRE_Solver)precond_data, (HYPRE_Matrix)A, (HYPRE_Vector)r, (HYPRE_Vector)s, runCfg, AMGVCycleGraph, lastAnchor, solverCtxt);
+      num_precond_calls++;
 
       /* gamma = <r,s> */
       gamma = (*(pcg_functions->InnerProd))(r, s);
@@ -687,6 +702,7 @@ hypre_PCGSolve( void *pcg_vdata,
    else /* actually, we'll never get here... */
       (pcg_data -> rel_residual_norm) = 0.0;
 
+   solveModule.setOutCtxt(0, context("num_precond_calls", num_precond_calls));
    return ierr;
 }
 

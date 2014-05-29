@@ -283,7 +283,8 @@ hypre_seqAMGCycle( hypre_ParAMGData *amg_data,
                    hypre_ParVector  **Par_U_array,
                    context& runCfg,
                    graph& AMGVCycleGraph,
-                   anchor& lastAnchor   )
+                   anchor& lastAnchor,
+                   context& solverCtxt   )
 {
    
    hypre_ParVector    *Aux_U;
@@ -392,7 +393,7 @@ hypre_seqAMGCycle( hypre_ParAMGData *amg_data,
       /* clean up */
       if (redundant || my_id ==0)
       {
-         hypre_BoomerAMGSolve(coarse_solver, A_coarse, F_coarse, U_coarse, runCfg, AMGVCycleGraph, lastAnchor);
+         hypre_BoomerAMGSolve(coarse_solver, A_coarse, F_coarse, U_coarse, runCfg, AMGVCycleGraph, lastAnchor, solverCtxt);
       }
 
       /*copy my part of U to parallel vector */

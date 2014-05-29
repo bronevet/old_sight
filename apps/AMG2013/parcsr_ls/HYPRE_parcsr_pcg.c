@@ -86,13 +86,14 @@ HYPRE_ParCSRPCGSolve( HYPRE_Solver solver,
                       HYPRE_ParCSRMatrix A,
                       HYPRE_ParVector b,
                       HYPRE_ParVector x,
-                      context& runCfg)
+                      context& runCfg, sightModule& solveModule, int solveModOutput)
 {
    return( HYPRE_PCGSolve( solver,
                            (HYPRE_Matrix) A,
                            (HYPRE_Vector) b,
                            (HYPRE_Vector) x,
-                           runCfg ) );
+                           runCfg,
+                           solveModule, solveModOutput ) );
 }
 
 /*--------------------------------------------------------------------------

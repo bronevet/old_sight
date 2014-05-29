@@ -1817,6 +1817,7 @@ main( int   argc,
    runCfg.add("nx", n[0]); runCfg.add("ny", n[1]); runCfg.add("nz", n[2]);
    runCfg.add("pooldist", pooldistStr);
    runCfg.add("rhs", rhsStr);
+   if(getenv("POWER")) runCfg.add("power_cap", string(getenv("POWER")));
    runCfg.add("MPIRank", myid);
    //if(myid == 0)
      SightInit(argc, argv, "AMG2013", txt()<<"dbg.AMG2013.mtx_"<<mtxName<<
@@ -1827,12 +1828,13 @@ main( int   argc,
                                                         ".n_"<<n[0]<<"_"<<n[1]<<"_"<<n[2]<<
                                                         ".pooldist_"<<pooldistStr<<
                                                         ".rhs_"<<rhsStr<<
+                                                        (getenv("POWER")? txt()<<".power_"<<getenv("POWER"): string(""))<<
                                                         ".rank_"<<myid<<
                                                         (getenv("EXP_ID")? txt()<<".exp_"<<getenv("EXP_ID"): string("")));
    }
    attr myidAttr("MPIrank", 0/*myid*/);
    
-   sightModularApp AMGApp("AMG", namedMeasures("time", new timeMeasure(),
+   sightModularApp AMGApp("AMG", namedMeasures(/*"time", new timeMeasure(),*/
                                                "RAPL", new RAPLMeasure()));
    
    if (build_matrix_type > 1 && build_matrix_type < 8)
@@ -1986,7 +1988,7 @@ main( int   argc,
       else if ( strcmp(argv[arg_index], "-solver") == 0 )
       {
          arg_index++;
-	 solver_id = atoi(argv[arg_index++]);
+	 //solver_id = atoi(argv[arg_index++]);
       }
       else if ( strcmp(argv[arg_index], "-rhsone") == 0 )
       {
@@ -2562,14 +2564,14 @@ main( int   argc,
        * Solve the system using ParCSR version of PCG
        *-----------------------------------------------------------*/
    {
-     sightModule modSolve(instance("Solve", 1, 0), 
+     sightModule modSolve(instance("Solve", 1, 1), 
                     inputs(port(runCfg)),
 #if defined(KULFI)
                 module::context("EXP_ID", getenv("EXP_ID")),
 #endif
                     attrEQ("MPIrank", 0));
      scope sSolve("Solve");
-     
+    
       if ((solver_id > -1) && (solver_id < 2))
       {
          time_index = hypre_InitializeTiming("PCG Setup");
@@ -2649,7 +2651,7 @@ main( int   argc,
          scope sPCGSolve(txt()<<"PCG Solve");
          
          HYPRE_PCGSolve( par_solver, (HYPRE_Matrix) par_A,
-                         (HYPRE_Vector) par_b, (HYPRE_Vector) par_x, runCfg );
+                         (HYPRE_Vector) par_b, (HYPRE_Vector) par_x, runCfg, modSolve, 0 );
          
          }
          hypre_EndTiming(time_index);
@@ -2738,7 +2740,7 @@ main( int   argc,
          hypre_BeginTiming(time_index);
          
          HYPRE_GMRESSolve( par_solver, (HYPRE_Matrix) par_A,
-                           (HYPRE_Vector) par_b, (HYPRE_Vector) par_x, runCfg);
+                           (HYPRE_Vector) par_b, (HYPRE_Vector) par_x, runCfg, modSolve, 0);
          
          hypre_EndTiming(time_index);
          hypre_PrintTiming("Solve phase times", &wall_time, MPI_COMM_WORLD);
