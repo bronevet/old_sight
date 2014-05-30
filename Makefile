@@ -33,8 +33,8 @@ endif
 	                
 	                #-Wl,-rpath ${ROOT_PATH}/widgets/papi/lib \
 
-CC = gcc #clang #gcc
-CCC = g++ #clang++ #g++
+CC = clang #gcc
+CCC = clang++ #g++
 MPICC = mpi${CC}
 MPICCC = mpi${CCC}
 
@@ -107,7 +107,7 @@ allExamples: libsight_structure.a
 
 run: all runExamples runApps
 
-runExamples: libsight_structure.a slayout${EXE} hier_merge${EXE}
+runExamples: core
 	cd examples; make ${MAKE_DEFINES} run
 
 runApps: libsight_structure.a slayout${EXE} hier_merge${EXE} apps mfem_ex1
