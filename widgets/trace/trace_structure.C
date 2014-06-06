@@ -149,9 +149,8 @@ trace::~trace() {
   assert(active.find(getLabel()) != active.end());
   active.erase(getLabel());
   
-    assert(stream);
-    delete(stream);
-  }
+  assert(stream);
+  delete(stream);
 }
 
 trace* trace::getT(string label) {
