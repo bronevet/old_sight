@@ -44,7 +44,7 @@ run: ${TESTERS}
 	export SIGHT_FILE_OUT=1; export SPRING_BUF_SIZE=1024;    ./10.SpringModules${EXE} 0 .1 .1 .01 .05; ./10.SpringModules${EXE} 1 .1 .1 .01 .05; ./10.SpringModules${EXE} 2 .1 .1 .01 .05; ./10.SpringModules${EXE} 3 .1 .1 .01 .05;  ./10.SpringModules${EXE} 4 .1 .1 .01 .05;
 	export SIGHT_FILE_OUT=1; export SPRING_BUF_SIZE=8096;    ./10.SpringModules${EXE} 0 .1 .1 .01 .05; ./10.SpringModules${EXE} 1 .1 .1 .01 .05; ./10.SpringModules${EXE} 2 .1 .1 .01 .05; ./10.SpringModules${EXE} 3 .1 .1 .01 .05;  ./10.SpringModules${EXE} 4 .1 .1 .01 .05;
 	export SIGHT_FILE_OUT=1; export SPRING_BUF_SIZE=524288;  ./10.SpringModules${EXE} 0 .1 .1 .01 .05; ./10.SpringModules${EXE} 1 .1 .1 .01 .05; ./10.SpringModules${EXE} 2 .1 .1 .01 .05; ./10.SpringModules${EXE} 3 .1 .1 .01 .05;  ./10.SpringModules${EXE} 4 .1 .1 .01 .05;
-	export SIGHT_FILE_OUT=1; export SPRING_BUF_SIZE=4194304; ./10.SpringModules${EXE} 0 .1 .1 .01 .05; ./10.SpringModules${EXE} 1 .1 .1 .01 .05; ./10.SpringModules${EXE} 2 .1 .1 .01 .05; ./10.SpringModules${EXE} 3 .1 .1 .01 .05;  ./10.SpringModules${EXE} 4 .1 .1 .01 .05;
+#	export SIGHT_FILE_OUT=1; export SPRING_BUF_SIZE=4194304; ./10.SpringModules${EXE} 0 .1 .1 .01 .05; ./10.SpringModules${EXE} 1 .1 .1 .01 .05; ./10.SpringModules${EXE} 2 .1 .1 .01 .05; ./10.SpringModules${EXE} 3 .1 .1 .01 .05;  ./10.SpringModules${EXE} 4 .1 .1 .01 .05;
 	export SIGHT_FILE_OUT=1; ../hier_merge dbg.10.SpringModules zipper dbg.10.SpringModules.*/structure
 	rm -rf dbg.10.SpringModules.*;
 	../slayout${EXE} dbg.10.SpringModules/structure;

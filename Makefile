@@ -32,7 +32,6 @@ SIGHT_LINKFLAGS += ${ROOT_PATH}/widgets/libmsr/lib/libmsr.so \
 endif
 	                
 	                #-Wl,-rpath ${ROOT_PATH}/widgets/papi/lib \
-
 CC = clang #gcc
 CCC = clang++ #g++
 MPICC = mpi${CC}
@@ -53,7 +52,8 @@ core: sightDefines.pl gdbLineNum.pl Makefile.extern maketools libsight_common.a 
 # Remakes only the object files
 refresh: clean_objects all
 
-# Set to "1" if we wish gdb support to be enabled and otherwise set to 0
+# Set to "1" if we wish to enable support for services running on the node on which the original computation was 
+# performed in addition to running code in the browser. The includes gdb and VNC integration. Otherwise set to 0
 ifeq (${OS}, Cygwin)
 REMOTE_ENABLED := 0
 else
@@ -67,6 +67,17 @@ ifneq (${OS}, Cygwin)
 # The port on which sight sets up a daemon that invokes gdb so that it runs upto a particular point
 # in the target application's execution
 GDB_PORT := 17501
+endif
+
+# Set to "1" if we wish to enable VNC integration
+ifeq (${OS}, Cygwin)
+VNC_ENABLED := 0
+else
+# Default distribution disables VNC 
+VNC_ENABLED := 0
+# VNC is only enabled if remote services are enabled
+#ifeq (${REMOTE_ENABLED}, 1)
+# VNC_ENABLED := 1 
 endif
 
 # By default we disable KULFI-based fault injection since it requires LLVM
@@ -86,10 +97,18 @@ MPICC = ${ROOT_PATH}/tools/mpiclang
 MPICCC = ${ROOT_PATH}/tools/mpiclang++
 endif
 
-MAKE_DEFINES = ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" CC=${CC} CCC=${CCC} KULFI_ENABLED=${KULFI_ENABLED} LLVM32_SRC_PATH=${LLVM32_SRC_PATH} LLVM32_BUILD_PATH=${LLVM32_BUILD_PATH} LLVM32_INSTALL_PATH=${LLVM32_INSTALL_PATH}
+MAKE_DEFINES = ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} VNC_ENABLED=${VNC_ENABLED} MPI_ENABLED=${MPI_ENABLED} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" CC=${CC} CCC=${CCC} KULFI_ENABLED=${KULFI_ENABLED} LLVM32_SRC_PATH=${LLVM32_SRC_PATH} LLVM32_BUILD_PATH=${LLVM32_BUILD_PATH} LLVM32_INSTALL_PATH=${LLVM32_INSTALL_PATH}
+
+# Set to "!" if we wish to enable examples that use MPI
+MPI_ENABLED = 0
+#MPI_ENABLED = 1
 
 .PHONY: apps
-apps: mfem #mcbench
+ifeq (${MPI_ENABLED}, 1)
+apps: mfem CoMD #mcbench
+else
+apps: mfem
+endif
 
 mfem: libsight_structure.a
 	cd apps/mfem; make ${MAKE_DEFINES}
@@ -110,21 +129,25 @@ run: all runExamples runApps
 runExamples: core
 	cd examples; make ${MAKE_DEFINES} run
 
-runApps: libsight_structure.a slayout${EXE} hier_merge${EXE} apps mfem_ex1
+runApps: libsight_structure.a slayout${EXE} hier_merge${EXE} apps
 	cd examples; ../apps/mfem/mfem/examples/mfemComp.pl
 	cd examples; ../apps/mfem/mfem/examples/ex2 ../apps/mfem/mfem/data/beam-tet.mesh 2
 	cd examples; ../apps/mfem/mfem/examples/ex3 ../apps/mfem/mfem/data/ball-nurbs.mesh
 	cd examples; ../apps/mfem/mfem/examples/ex4 ../apps/mfem/mfem/data/fichera-q3.mesh
+ifeq (${MPI_ENABLED}, 1)
 	cd examples; ../apps/CoMD/bin/CoMD-mpi.modules
 	cd examples; ../apps/CoMD/bin/CoMD-mpi.tracepath
 	cd examples; ../apps/CoMD/bin/CoMD-mpi.tracepos
 	cd examples; ../apps/CoMD/CoMDCompare.pl
+endif
 ifeq (${REMOTE_ENABLED}, 1)
 	cd examples; ../apps/mfem/mfem/examples/ex1 ../apps/mfem/mfem/data/beam-quad.mesh
 endif
-#ifneq (${OS}, Cygwin)
+
+#runMCBench:
 #	apps/mcbench/src/MCBenchmark.exe --nCores=1 --distributedSource --numParticles=13107 --nZonesX=256 --nZonesY=256 --xDim=16 --yDim=16 --mirrorBoundary --multiSigma --nThreadCore=1
-#endif
+
+runApps: libsight_structure.a slayout${EXE} hier_merge${EXE} apps runMFEM runCoMD #runMCBench
 
 
 slayout.o: slayout.C process.C process.h
@@ -132,6 +155,10 @@ slayout.o: slayout.C process.C process.h
 
 slayout${EXE}: mfem libsight_layout.a widgets_post
 	${CCC} -Wl,--whole-archive libsight_layout.a apps/mfem/mfem_layout.o -Wl,-no-whole-archive -o slayout${EXE}
+#slayout${EXE}: mfem libsight_layout.so
+#	${CCC} libsight_layout.so -Wl,-rpath ${ROOT_PATH} -Wl,-rpath ${ROOT_PATH}/widgets/gsl/lib -Lwidgets/gsl/lib -lgsl -lgslcblas apps/mfem/mfem_layout.o -o slayout${EXE}
+#slayout${EXE}: mfem libsight_layout.a
+#	${CCC} -Wl,--whole-archive libsight_layout.a apps/mfem/mfem_layout.o -Wl,-no-whole-archive -o slayout${EXE}
 #	ld --whole-archive slayout.o libsight_layout.a apps/mfem/mfem_layout.o -o slayout${EXE}
 #	${CCC} ${SIGHT_CFLAGS} slayout.C -Wl,--whole-archive libsight_layout.a -DMFEM -I. -Iapps/mfem apps/mfem/mfem_layout.o -Wl,-no-whole-archive -o slayout${EXE}
 
@@ -145,7 +172,12 @@ libsight_common.a: ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre
 libsight_structure.a: ${SIGHT_STRUCTURE_O} ${SIGHT_STRUCTURE_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre
 	ar -r libsight_structure.a ${SIGHT_STRUCTURE_O} ${SIGHT_COMMON_O} widgets/*/*_structure.o widgets/*/*_common.o
 
-libsight_layout.a: ${SIGHT_LAYOUT_O} ${SIGHT_LAYOUT_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre widgets/gsl/lib/libgsl.a widgets/gsl/lib/libgslcblas.a
+libsight_layout.so: ${SIGHT_LAYOUT_O} ${SIGHT_LAYOUT_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre widgets/gsl/lib/libgsl.so widgets/gsl/lib/libgslcblas.so
+	${CC} -shared -Wl,-soname,libsight_layout.so -o libsight_layout.so ${SIGHT_LAYOUT_O} ${SIGHT_COMMON_O} widgets/*/*_layout.o widgets/*/*_common.o -Lwidgets/gsl/lib -lgsl -lgslcblas
+#widgets/gsl/lib/libgsl.a widgets/gsl/lib/libgslcblas.a
+#-Wl,-rpath widgets/gsl/lib -Wl,--whole-archive widgets/gsl/lib/libgsl.so widgets/gsl/lib/libgslcblas.so -Wl,--no-whole-archive
+
+libsight_layout.a: ${SIGHT_LAYOUT_O} ${SIGHT_LAYOUT_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre widgets/gsl/lib/libgsl.so widgets/gsl/lib/libgslcblas.so
 	mkdir -p tmp
 	cd tmp; ar -x ../widgets/gsl/lib/libgsl.a; ar -x ../widgets/gsl/lib/libgslcblas.a
 	ar -r libsight_layout.a    ${SIGHT_LAYOUT_O}    ${SIGHT_COMMON_O} widgets/*/*_layout.o widgets/*/*_common.o tmp/*.o

@@ -70,7 +70,7 @@ class variantID {
   variantID(std::string serialized) {
     // Deserialized the comma-separated list of integers into the ID std::list
     int i=0;
-    int next = serialized.find(",", i);
+    size_t next = serialized.find(",", i);
     while(next<serialized.length()) {
       ID.push_back(strtol(serialized.substr(i, next-i).c_str(), NULL, 10));
       next = serialized.find(",", i);

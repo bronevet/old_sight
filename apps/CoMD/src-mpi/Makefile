@@ -110,7 +110,6 @@ ${CoMD_EXE}.tracepos: ${BIN_DIR} CoMD_info.h ${OBJECTS_TRACEPOS}
 ${CoMD_EXE}.tracepath: ${BIN_DIR} CoMD_info.h ${OBJECTS_TRACEPATH} 
 	${MPICCC} ${CFLAGS} -o ${CoMD_EXE}.tracepath ${OBJECTS_TRACEPATH} ${LDFLAGS}
 
-
 CoMD_info.h: Makefile
 	./generate_info_header ${CoMD_VARIANT} "$(CC)" "$(CFLAGS)" "$(LDFLAGS)"
 
