@@ -28,7 +28,9 @@ f.write("""SIGHT_LINKFLAGS_NORPATH = -L${ROOT_PATH} -lsight_structure \\
                   -L${ROOT_PATH}/widgets/libmsr/lib -lmsr \\
                   -lpthread\n""");
 
-f.write("""SIGHT_LINKFLAGS = -L${ROOT_PATH} -lsight_structure \\
+f.write("""SIGHT_LINKFLAGS = \\
+                  -Wl,-rpath ${ROOT_PATH} \\
+                  -L${ROOT_PATH} -lsight_structure \\
                   -L${ROOT_PATH}/tools/adept-utils/lib -ladept_cutils -ladept_timing -ladept_utils \\
                   -Wl,-rpath ${ROOT_PATH}/tools/adept-utils/lib \\
                   -L${ROOT_PATH}/tools/callpath/src/src -lcallpath \\

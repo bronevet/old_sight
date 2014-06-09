@@ -14,7 +14,9 @@ SIGHT_CFLAGS = -g -fPIC -I${ROOT_PATH} -I${ROOT_PATH}/attributes -I${ROOT_PATH}/
                 -I${ROOT_PATH}/widgets/papi/include \
                 -I${ROOT_PATH}/widgets/libmsr/include
 
-SIGHT_LINKFLAGS = ${ROOT_PATH}/tools/adept-utils/lib/libadept_cutils.so \
+SIGHT_LINKFLAGS = \
+                  -Wl,-rpath ${ROOT_PATH} \
+                  ${ROOT_PATH}/tools/adept-utils/lib/libadept_cutils.so \
                   ${ROOT_PATH}/tools/adept-utils/lib/libadept_timing.so \
                   ${ROOT_PATH}/tools/adept-utils/lib/libadept_utils.so \
                   -Wl,-rpath ${ROOT_PATH}/tools/adept-utils/lib \
