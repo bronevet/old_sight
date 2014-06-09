@@ -44,7 +44,7 @@ endif
 
 all: core allExamples
 	
-core: sightDefines.pl gdbLineNum.pl Makefile.extern maketools libsight_common.a libsight_structure.a slayout${EXE} libsight_layout.so hier_merge${EXE} widgets_post script/taffydb 
+core: sightDefines.pl gdbLineNum.pl Makefile.extern maketools libsight_common.a libsight_structure.so slayout${EXE} libsight_layout.so hier_merge${EXE} widgets_post script/taffydb 
 	chmod 755 html img script
 	chmod 644 html/* img/* script/*
 	chmod 755 script/taffydb
@@ -110,7 +110,7 @@ else
 apps: mfem
 endif
 
-mfem: libsight_structure.a
+mfem: libsight_structure.so
 	cd apps/mfem; make ${MAKE_DEFINES}
 
 CoMD: 
@@ -121,7 +121,7 @@ CoMD:
 #	cd apps/mcbench; ./build-linux-x86_64.sh ${ROOT_PATH}
 #endif
 
-allExamples: libsight_structure.a
+allExamples: libsight_structure.so
 	cd examples; make ${MAKE_DEFINES}
 
 run: all runExamples runApps
@@ -129,7 +129,7 @@ run: all runExamples runApps
 runExamples: core
 	cd examples; make ${MAKE_DEFINES} run
 
-runApps: libsight_structure.a slayout${EXE} hier_merge${EXE} apps
+runApps: libsight_structure.so slayout${EXE} hier_merge${EXE} apps
 	cd examples; ../apps/mfem/mfem/examples/mfemComp.pl
 	cd examples; ../apps/mfem/mfem/examples/ex2 ../apps/mfem/mfem/data/beam-tet.mesh 2
 	cd examples; ../apps/mfem/mfem/examples/ex3 ../apps/mfem/mfem/data/ball-nurbs.mesh
@@ -147,14 +147,14 @@ endif
 #runMCBench:
 #	apps/mcbench/src/MCBenchmark.exe --nCores=1 --distributedSource --numParticles=13107 --nZonesX=256 --nZonesY=256 --xDim=16 --yDim=16 --mirrorBoundary --multiSigma --nThreadCore=1
 
-runApps: libsight_structure.a slayout${EXE} hier_merge${EXE} apps runMFEM runCoMD #runMCBench
+runApps: libsight_structure.so slayout${EXE} hier_merge${EXE} apps runMFEM runCoMD #runMCBench
 
 
 slayout.o: slayout.C process.C process.h
 	${CCC} ${SIGHT_CFLAGS} slayout.C -I. -c -o slayout.o
 
-slayout${EXE}: mfem libsight_layout.a widgets_post
-	${CCC} -Wl,--whole-archive libsight_layout.a apps/mfem/mfem_layout.o -Wl,-no-whole-archive -o slayout${EXE}
+slayout${EXE}: mfem libsight_layout.so widgets_post
+	${CCC} -Wl,--whole-archive libsight_layout.so apps/mfem/mfem_layout.o -Wl,-no-whole-archive -o slayout${EXE}
 #slayout${EXE}: mfem libsight_layout.so
 #	${CCC} libsight_layout.so -Wl,-rpath ${ROOT_PATH} -Wl,-rpath ${ROOT_PATH}/widgets/gsl/lib -Lwidgets/gsl/lib -lgsl -lgslcblas apps/mfem/mfem_layout.o -o slayout${EXE}
 #slayout${EXE}: mfem libsight_layout.a
@@ -162,26 +162,29 @@ slayout${EXE}: mfem libsight_layout.a widgets_post
 #	ld --whole-archive slayout.o libsight_layout.a apps/mfem/mfem_layout.o -o slayout${EXE}
 #	${CCC} ${SIGHT_CFLAGS} slayout.C -Wl,--whole-archive libsight_layout.a -DMFEM -I. -Iapps/mfem apps/mfem/mfem_layout.o -Wl,-no-whole-archive -o slayout${EXE}
 
-hier_merge${EXE}: hier_merge.C process.C process.h libsight_structure.a 
-	${CCC} ${SIGHT_CFLAGS} hier_merge.C -Wl,--whole-archive libsight_structure.a -Wl,-no-whole-archive \
+hier_merge${EXE}: hier_merge.C process.C process.h libsight_structure.so 
+	${CCC} ${SIGHT_CFLAGS} hier_merge.C -Wl,--whole-archive libsight_structure.so -Wl,-no-whole-archive \
 	                                 -DMFEM -I. ${SIGHT_LINKFLAGS} -o hier_merge${EXE}
 
 libsight_common.a: ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre
 	ar -r libsight_common.a ${SIGHT_COMMON_O} widgets/*/*_common.o
 
-libsight_structure.a: ${SIGHT_STRUCTURE_O} ${SIGHT_STRUCTURE_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre
-	ar -r libsight_structure.a ${SIGHT_STRUCTURE_O} ${SIGHT_COMMON_O} widgets/*/*_structure.o widgets/*/*_common.o
+libsight_structure.so: ${SIGHT_STRUCTURE_O} ${SIGHT_STRUCTURE_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre
+	${CC} -shared  -Wl,-soname,libsight_structure.so -o libsight_structure.so  ${SIGHT_STRUCTURE_O} ${SIGHT_COMMON_O} widgets/*/*_structure.o widgets/*/*_common.o
+
+#libsight_structure.a: ${SIGHT_STRUCTURE_O} ${SIGHT_STRUCTURE_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre
+#	ar -r libsight_structure.a ${SIGHT_STRUCTURE_O} ${SIGHT_COMMON_O} widgets/*/*_structure.o widgets/*/*_common.o
 
 libsight_layout.so: ${SIGHT_LAYOUT_O} ${SIGHT_LAYOUT_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre widgets/gsl/lib/libgsl.so widgets/gsl/lib/libgslcblas.so
 	${CC} -shared -Wl,-soname,libsight_layout.so -o libsight_layout.so ${SIGHT_LAYOUT_O} ${SIGHT_COMMON_O} widgets/*/*_layout.o widgets/*/*_common.o -Lwidgets/gsl/lib -lgsl -lgslcblas
 #widgets/gsl/lib/libgsl.a widgets/gsl/lib/libgslcblas.a
 #-Wl,-rpath widgets/gsl/lib -Wl,--whole-archive widgets/gsl/lib/libgsl.so widgets/gsl/lib/libgslcblas.so -Wl,--no-whole-archive
 
-libsight_layout.a: ${SIGHT_LAYOUT_O} ${SIGHT_LAYOUT_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre widgets/gsl/lib/libgsl.so widgets/gsl/lib/libgslcblas.so
-	mkdir -p tmp
-	cd tmp; ar -x ../widgets/gsl/lib/libgsl.a; ar -x ../widgets/gsl/lib/libgslcblas.a
-	ar -r libsight_layout.a    ${SIGHT_LAYOUT_O}    ${SIGHT_COMMON_O} widgets/*/*_layout.o widgets/*/*_common.o tmp/*.o
-	rm -fr tmp
+#libsight_layout.a: ${SIGHT_LAYOUT_O} ${SIGHT_LAYOUT_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre widgets/gsl/lib/libgsl.so widgets/gsl/lib/libgslcblas.so
+#	mkdir -p tmp
+#	cd tmp; ar -x ../widgets/gsl/lib/libgsl.a; ar -x ../widgets/gsl/lib/libgslcblas.a
+#	ar -r libsight_layout.a    ${SIGHT_LAYOUT_O}    ${SIGHT_COMMON_O} widgets/*/*_layout.o widgets/*/*_common.o tmp/*.o
+#	rm -fr tmp
 	
 #libaz.a: libabc.a(*.o) libxyz.a(*.o)
 #    ar rcs $@ $^
@@ -217,7 +220,7 @@ widgets_pre: maketools
 	cd widgets; make -f Makefile_pre ${MAKE_DEFINES}
 
 # Rule for compiling the aspects of widgets that require libsight.a
-widgets_post: libsight_layout.a libsight_structure.a
+widgets_post: libsight_layout.so libsight_structure.so
 	cd widgets; make -f Makefile_post ${MAKE_DEFINES}
 
 maketools: 
