@@ -1,0 +1,33 @@
+widgets/jquery-1.9.1.min.js text/javascript
+widgets/canviz-0.1/prototype/prototype.js text/javascript
+widgets/canviz-0.1/path/path.js text/javascript
+widgets/canviz-0.1/canviz.css text/css
+widgets/canviz-0.1/canviz.js text/javascript
+widgets/canviz-0.1/x11colors.js text/javascript
+widgets/module/module.js text/javascript
+widgets/yui-min.js text/javascript
+widgets/underscore-min.js text/javascript
+widgets/Three.js text/javascript
+widgets/Detector.js text/javascript
+widgets/OrbitControls.js text/javascript
+widgets/THREEx.WindowResize.js text/javascript
+widgets/THREE/src/materials/ShaderMaterial.js text/javascript
+widgets/THREE/src/extras/ImageUtils.js text/javascript
+widgets/jquery-ui.js text/javascript
+widgets/jquery-ui.css text/css
+widgets/d3.v3.min.js text/javascript
+widgets/trace/table.js text/javascript
+widgets/trace/boxplot.js text/javascript
+widgets/trace/gradient.js text/javascript
+widgets/trace/scatter.js text/javascript
+widgets/trace/scatter3d.js text/javascript
+widgets/trace/ID3/id3.js text/javascript
+widgets/trace/ID3/dndTree.js text/javascript
+widgets/trace/ID3/dndTree.css text/css
+widgets/trace/trace.js text/javascript
+widgets/trace/cscp.js text/javascript
+widgets/trace/pcp/cscp.js text/javascript
+widgets/trace/lertjs/lert.js text/javascript
+widgets/trace/lertjs/lert.css text/css
+
+

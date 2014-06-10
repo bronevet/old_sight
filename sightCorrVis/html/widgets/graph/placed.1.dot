@@ -1,0 +1,7 @@
+digraph G {
+	graph [_draw_="c 7 -#ffffff C 7 -#ffffff P 4 0 -1 0 0 1 0 1 -1 ",
+		bb="0,0,0,0",
+		xdotversion=1.4
+	];
+	node [label="\N"];
+}

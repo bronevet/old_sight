@@ -110,7 +110,7 @@ run: all runExamples runApps
 runExamples: libsight_structure.a slayout${EXE} hier_merge${EXE}
 	cd examples; make ${MAKE_DEFINES} run
 
-runApps: libsight_structure.a slayout${EXE} hier_merge${EXE} apps mfem_ex1
+runApps: libsight_structure.a slayout${EXE} hier_merge${EXE} apps mfem
 	cd examples; ../apps/mfem/mfem/examples/mfemComp.pl
 	cd examples; ../apps/mfem/mfem/examples/ex2 ../apps/mfem/mfem/data/beam-tet.mesh 2
 	cd examples; ../apps/mfem/mfem/examples/ex3 ../apps/mfem/mfem/data/ball-nurbs.mesh
