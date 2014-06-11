@@ -1,6 +1,6 @@
 
 // hoa edited
-
+var inwin = 1;
 var initialized=false;
 var clock;
 // Maps each hostID to the properties of the 3D scene within it
@@ -94,8 +94,11 @@ numCtxtVars, numTraceAttrs, hostDivID)
 
 // Called from trace.js to show or un-hide the 3d scatter plot visualization
 //function showScatter3D(data, attrNames, minVals, maxVals, numCtxtVars, numTraceAttrs, hostDivID)
-function showScatter3D(dataB, attrNamesB, minValsB, maxValsB, numCtxtVars, numTraceAttrs, hostDivID)
+function showScatter3D(dataB, attrNamesB, minValsB, maxValsB, numCtxtVars, numTraceAttrs, hostDivID, inw)
 {
+  inwin = inw;
+  if(Number(inw) == 0)
+  {
     numCtxtVars = Number(numCtxtVars);
     numTraceAttrs = Number(numTraceAttrs);
     numsum = Number(numCtxtVars + numTraceAttrs);
@@ -130,7 +133,14 @@ function showScatter3D(dataB, attrNamesB, minValsB, maxValsB, numCtxtVars, numTr
     var maxVals = [];
     for(var i = 0; i < maxV.length; i++)
         maxVals.push(parseFloat(maxV[i]));
-    
+  }
+  else
+  {
+     var data = dataB;
+     var attrNames = attrNamesB;
+     var minVals = minValsB;
+     var maxVals = maxValsB;
+  }
     // Records whether we've already initialized the state of this hostDiv
   var hostDivInitialized = (typeof contents[hostDivID] !== "undefined");
     
@@ -963,7 +973,13 @@ function setUpHostDiv(attrNames, minVals, maxVals,
   controlHTML += "<col style=\"color: #ffffff; border: 1px solid #000000;\"/><col />";
   controlHTML += "<col style=\"color: #ffffff; border: 1px solid #000000;\"/>";
   controlHTML += "<tr>";
-  controlHTML += "<td style=\"font-size:22pt; text-decoration:underline;\"><img src=\"../../img/close.png\" onclick=\"hide3DViz('"+hostDivID+"'); event.stopPropagation();\"></td>\n";
+  
+  // hoa edited
+  if(inwin == 1)
+      controlHTML += "<td style=\"font-size:22pt; text-decoration:underline;\"><img src=\"img/close.png\" onclick=\"hide3DViz('"+hostDivID+"'); event.stopPropagation();\"></td>\n";
+  else
+      controlHTML += "<td style=\"font-size:22pt; text-decoration:underline;\"><img src=\"../../img/close.png\" onclick=\"hide3DViz('"+hostDivID+"'); event.stopPropagation();\"></td>\n";
+    
   controlHTML += "<td style=\"font-size:22pt; text-decoration:underline;\">Visualizations</td>\n"
   controlHTML += "<td>&nbsp;</td>";
   controlHTML += "<td style=\"font-size:22pt; text-decoration:underline;\">Data Ranges</td>\n"
