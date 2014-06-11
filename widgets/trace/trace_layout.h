@@ -239,7 +239,7 @@ class traceStream: public attrObserver, public common::trace, public traceObserv
   // Names of attributes to be used as context when visualizing the values of trace observations
   std::list<std::string> contextAttrs;
   
-  // Set that contains the same attributes as contextAttrs. It is used for quick lookups to ensure that
+ // Set that contains the same attributes as contextAttrs. It is used for quick lookups to ensure that
   // all observations have the same set of context attributes, even for cases where the context is not
   // specified up-front for the entire trace but separately for each observation.
   std::set<std::string> contextAttrsSet;
@@ -258,6 +258,10 @@ class traceStream: public attrObserver, public common::trace, public traceObserv
   // Flag that indicates whether this trace's trace has already been initialized (it may have 0 keys)
   bool traceAttrsInitialized;
   
+  // set up list of visualization methods
+  std::list<std::string> vizList;
+  bool vizListInitialized;
+
   // The div specified by the object that hosts this traceStream. The stream's data visualization will be placed
   // in this div.
   std::string hostDiv;
@@ -265,6 +269,7 @@ class traceStream: public attrObserver, public common::trace, public traceObserv
   // Indicates whether the trace should be shown by default (true) or whether the host will control
   // when it is shown.
   bool showTrace;
+  bool inwin;
   
   public:
   // hostDiv - the div where the trace data should be displayed
@@ -284,9 +289,20 @@ class traceStream: public attrObserver, public common::trace, public traceObserv
   //      to them (false)
   // showLabels: boolean that indicates whether we should show a label that annotates a data plot (true) or whether
   //      we should just show the plot (false)
-  std::string getDisplayJSCmd(const std::list<std::string>& contextAttrs, const std::list<std::string>& traceAttrs,
-                              std::string hostDiv="", vizT viz=unknown, 
+  // hoa edit
+
+  std::string getDisplayJSCmd(const std::list<std::string>& contextAttrs, const std::list<std::string>& traceAttrs, std::string hostDiv, const std::list<std::string>& vizList, bool inwin,
+                                bool showFresh, bool showLabels, bool refreshView);
+
+  /*
+  std::string getDisplayJSCmd(const std::list<std::string>& contextAttrs, const std::list<std::string>& traceAttrs, std::string hostDiv="", const std::list<std::string>& vizList, bool inwin=true,
                               bool showFresh=true, bool showLabels=false, bool refreshView=false);
+  */
+  /*
+  std::string getDisplayJSCmd(const std::list<std::string>& contextAttrs, const std::list<std::string>& traceAttrs,
+                              std::string hostDiv="", vizT viz=unknown,
+                              bool showFresh=true, bool showLabels=false, bool refreshView=false);
+  */
   
   int getID() const { return traceID; }
   private:

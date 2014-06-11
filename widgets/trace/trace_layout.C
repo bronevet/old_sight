@@ -540,6 +540,19 @@ traceStream::traceStream(properties::iterator props, std::string hostDiv, bool s
 
     dbg.includeWidgetScript("trace/trace.js", "text/javascript"); dbg.includeFile("trace/trace.js"); 
     
+    // hoa edit
+    dbg.includeWidgetScript("trace/cscp.js", "text/javascript"); dbg.includeFile("trace/cscp.js");
+    dbg.includeWidgetScript("trace/pcp/cscp.js", "text/javascript"); dbg.includeFile("trace/pcp/cscp.js");
+    dbg.includeWidgetScript("trace/lertjs/lert.js", "text/javascript"); dbg.includeFile("trace/lertjs/lert.js");
+    dbg.includeWidgetScript("trace/lertjs/lert.css", "text/css"); dbg.includeFile("trace/lertjs/lert.css");
+
+    // add new files
+    dbg.includeFile("trace/pcp");
+    dbg.includeFile("trace/scatter3d.html");
+    dbg.includeFile("trace/web-export");
+    dbg.includeFile("trace/sketch.properties");
+    dbg.includeFile("trace/trace.pde");
+
     initialized = true;
   }
   
@@ -653,7 +666,36 @@ traceStream::~traceStream() {
 //      to them (false)
 // showLabels: boolean that indicates whether we should show a label that annotates a data plot (true) or whether
 //      we should just show the plot (false)
+
+// hoa edit
 std::string traceStream::getDisplayJSCmd(const std::list<std::string>& contextAttrs, const std::list<std::string>& traceAttrs,
+                                         std::string hostDiv, const std::list<std::string>& vizList, bool inwin, bool showFresh, bool showLabels, bool refreshView)
+{
+  // Default contextAttrs, traceAttrs, hostDiv and viz to be the values set within this traceStream
+  const std::list<std::string> *localContextAttrs = &contextAttrs,
+                               *localTraceAttrs   = &traceAttrs, *localVizList = &vizList;
+  if(contextAttrs.size()==0) localContextAttrs = &(this->contextAttrs);
+  if(traceAttrs.size()==0)   localTraceAttrs = &(this->traceAttrs);
+  if(hostDiv=="")            hostDiv = this->hostDiv;
+  if(vizList.size()==0) localVizList = &(this->vizList);
+  //if(viz == unknown)         viz = this->viz;
+
+  string ctxtAttrsStr = JSArray<list<string> >(*localContextAttrs);
+  string tracerAttrsStr = JSArray<list<string> >(*localTraceAttrs);
+  string vizListStr = JSArray<list<string> >(*localVizList);
+
+  return txt()<<"displayTrace('"<<traceID<<"', "<<
+                             "'"<<hostDiv<<"', "<<
+                             ctxtAttrsStr<<", " <<
+                             tracerAttrsStr<<", "<<
+                             vizListStr<<", "<<
+                             (inwin?  "true":"false")<<", "<<
+                             (showFresh?  "true":"false")<<", "<<
+                             (showLabels? "true":"false")<<", "<<
+                             (refreshView?"true":"false")<<");";
+}
+/*
+ std::string traceStream::getDisplayJSCmd(const std::list<std::string>& contextAttrs, const std::list<std::string>& traceAttrs,
                                          std::string hostDiv, vizT viz, bool showFresh, bool showLabels, bool refreshView) {
   // Default contextAttrs, traceAttrs, hostDiv and viz to be the values set within this traceStream
   const std::list<std::string> *localContextAttrs = &contextAttrs,
@@ -675,7 +717,7 @@ std::string traceStream::getDisplayJSCmd(const std::list<std::string>& contextAt
                              (showLabels? "true":"false")<<", "<<
                              (refreshView?"true":"false")<<");";
 }
-
+*/
 // Record an observation
 void* traceStream::observe(properties::iterator props)
 {
