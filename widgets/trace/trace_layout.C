@@ -542,12 +542,14 @@ traceStream::traceStream(properties::iterator props, std::string hostDiv, bool s
     
     // hoa edit
     dbg.includeWidgetScript("trace/cscp.js", "text/javascript"); dbg.includeFile("trace/cscp.js");
-    dbg.includeWidgetScript("trace/pcp/cscp.js", "text/javascript"); dbg.includeFile("trace/pcp/cscp.js");
-    dbg.includeWidgetScript("trace/lertjs/lert.js", "text/javascript"); dbg.includeFile("trace/lertjs/lert.js");
-    dbg.includeWidgetScript("trace/lertjs/lert.css", "text/css"); dbg.includeFile("trace/lertjs/lert.css");
+    dbg.includeWidgetScript("trace/pcp/cscp.js", "text/javascript"); //dbg.includeFile("trace/pcp/cscp.js");
+    dbg.includeFile("trace/pcp");
+
+    dbg.includeWidgetScript("trace/lertjs/lert.js", "text/javascript"); //dbg.includeFile("trace/lertjs/lert.js");
+    dbg.includeWidgetScript("trace/lertjs/lert.css", "text/css"); //dbg.includeFile("trace/lertjs/lert.css");
+    dbg.includeFile("trace/lertjs");
 
     // add new files
-    dbg.includeFile("trace/pcp");
     dbg.includeFile("trace/scatter3d.html");
     dbg.includeFile("trace/web-export");
     dbg.includeFile("trace/sketch.properties");
