@@ -28,7 +28,9 @@ f.write("""SIGHT_LINKFLAGS_NORPATH = -L${ROOT_PATH} -lsight_structure \\
                   -L${ROOT_PATH}/widgets/libmsr/lib -lmsr \\
                   -lpthread\n""");
 
-f.write("""SIGHT_LINKFLAGS = -L${ROOT_PATH} -lsight_structure \\
+f.write("""SIGHT_LINKFLAGS = \\
+                  -Wl,-rpath ${ROOT_PATH} \\
+                  -L${ROOT_PATH} -lsight_structure \\
                   -L${ROOT_PATH}/tools/adept-utils/lib -ladept_cutils -ladept_timing -ladept_utils \\
                   -Wl,-rpath ${ROOT_PATH}/tools/adept-utils/lib \\
                   -L${ROOT_PATH}/tools/callpath/src/src -lcallpath \\
@@ -50,18 +52,6 @@ f.write("""
 # Flags to use when linking a version of slayout that include object files
 # for additional widgets and capabilities
 
-# Static linking
-SIGHT_LAYOUT_STATIC_LINKFLAGS = \\
-                  -Wl,--whole-archive ${ROOT_PATH} libsight_layout.a -Wl,-no-whole-archive \\
-                  ${ROOT_PATH}/tools/adept-utils/lib/libadept_cutils.so \\
-                  ${ROOT_PATH}/tools/adept-utils/lib/libadept_timing.so \\
-                  ${ROOT_PATH}/tools/adept-utils/lib/libadept_utils.so \\
-                  -Wl,-rpath ${ROOT_PATH}/tools/adept-utils/lib \\
-                  ${ROOT_PATH}/tools/callpath/src/src/libcallpath.so \\
-                  -Wl,-rpath ${ROOT_PATH}/tools/callpath/src/src \\
-                  ${ROOT_PATH}/widgets/papi/lib/libpapi.a \\
-                 -lpthread
-
 # Dynamic linking
 SIGHT_LAYOUT_DYNAMIC_LINKFLAGS = \\
                   -Wl,-rpath ${ROOT_PATH} \\
@@ -75,6 +65,18 @@ SIGHT_LAYOUT_DYNAMIC_LINKFLAGS = \\
                   -Wl,-rpath ${ROOT_PATH}/tools/callpath/src/src \\
                   ${ROOT_PATH}/widgets/papi/lib/libpapi.a \\
                  -lpthread\n""");
+
+## Static linking
+#SIGHT_LAYOUT_STATIC_LINKFLAGS = \\
+#                  -Wl,--whole-archive ${ROOT_PATH} libsight_layout.a -Wl,-no-whole-archive \\
+#                  ${ROOT_PATH}/tools/adept-utils/lib/libadept_cutils.so \\
+#                  ${ROOT_PATH}/tools/adept-utils/lib/libadept_timing.so \\
+#                  ${ROOT_PATH}/tools/adept-utils/lib/libadept_utils.so \\
+#                  -Wl,-rpath ${ROOT_PATH}/tools/adept-utils/lib \\
+#                  ${ROOT_PATH}/tools/callpath/src/src/libcallpath.so \\
+#                  -Wl,-rpath ${ROOT_PATH}/tools/callpath/src/src \\
+#                  ${ROOT_PATH}/widgets/papi/lib/libpapi.a \\
+#                 -lpthread
 
 f.write("CC = "+CC+"\n");
 f.write("CCC = "+CCC+"\n");

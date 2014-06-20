@@ -2,26 +2,35 @@ Installation
 ------------
 run "make"
 
+Dependencies
+------------
+gcc
+g++
+gfortran
+make
+cmake
+
 Example codes
 -------------
 To view the results of the example, run "make runExamples". This executes the codes in
 directory examples/, producing directories 
-  dbglog/examples/dbg.1.StructuredFormatting/
-  dbglog/examples/dbg.2.ConditionalFormatting/
-  dbglog/examples/dbg.3.Navigation/
-  dbglog/examples/dbg.4.AttributeAnnotationFiltering/
-  dbglog/examples/dbg.5.Tracing/
-  dbglog/examples/dbg.6.PerfAnalysis/
-To understand the APIs provided by dbglog please look at the source and the output of these
+  sight/examples/dbg.1.StructuredFormatting/
+  sight/examples/dbg.2.ConditionalFormatting/
+  sight/examples/dbg.3.Navigation/
+  sight/examples/dbg.4.AttributeAnnotationFiltering/
+  sight/examples/dbg.5.Tracing/
+  sight/examples/dbg.6.PerfAnalysis/
+
+To understand the APIs provided by Sight please look at the source and the output of these
 codes since each one focuses on a specific portion of the API.
 
-"make runExamples" also executes the dbglog-enhanced applications in directory apps/, producing directories 
-  dbglog/dbg.MCBenchmark/
-  dbglog/dbg.MFEM.ex1/
-  dbglog/dbg.MFEM.ex2/
-  dbglog/dbg.MFEM.ex3/
-  dbglog/dbg.MFEM.ex4/
-These illustrate how dbglog may fit into a larger application, specifically MCBench and MFEM.
+"make runExamples" also executes the Sight-enhanced applications in directory apps/, producing directories 
+  sight/dbg.MCBenchmark/
+  sight/dbg.MFEM.ex1/
+  sight/dbg.MFEM.ex2/
+  sight/dbg.MFEM.ex3/
+  sight/dbg.MFEM.ex4/
+These illustrate how Sight may fit into a larger application, specifically CoMD and MFEM.
 
 To view the output of a given run look at file dbg.*/index.html with Firefox (other browsers 
 are currently not supported).

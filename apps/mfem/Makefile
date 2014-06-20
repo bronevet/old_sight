@@ -5,7 +5,7 @@ mfem:
 	cd mfem; make ROOT_PATH=${ROOT_PATH} SIGHT_CFLAGS="${SIGHT_CFLAGS}"  CC=${CCC}
 
 mfem_examples:
-	cd mfem/examples; make ROOT_PATH=${ROOT_PATH} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" CC=${CCC}
+	cd mfem/examples; make ROOT_PATH=${ROOT_PATH} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" CC=${CCC} VNC_ENABLED=${VNC_ENABLED}
 #	wget --no-check-certificate https://mfem.googlecode.com/files/mfem-2.0.tgz
 #	tar -xf mfem-2.0.tgz
 #	rm mfem-2.0.tgz

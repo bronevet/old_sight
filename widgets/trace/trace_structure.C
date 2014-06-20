@@ -912,7 +912,7 @@ PAPIMeasure::PAPIMeasure(traceStream* ts,        std::string valLabel, const std
 { init(); }
 
 PAPIMeasure::PAPIMeasure(const PAPIMeasure& that) : 
-  measure(that), accumValues(that.accumValues), lastValues(that.lastValues), events(that.events), valLabel(that.valLabel) 
+  measure(that), accumValues(that.accumValues), lastValues(that.lastValues), events(that.events), valLabel(that.valLabel), PAPIOperational(that.PAPIOperational)
 { }
 
 PAPIMeasure::~PAPIMeasure() {
@@ -929,6 +929,8 @@ void PAPIMeasure::init() {
   accumValues.resize(events.size(), 0); // Initialized to all 0's
   lastValues.resize(events.size());
   readValues.resize(events.size());
+
+  PAPIOperational = false;
 }
 
 // Returns a copy of this measure object, including its current measurement state, if any. The returned
@@ -943,7 +945,12 @@ void PAPIMeasure::start() {
   // If no other PAPIMeasure objects are currently trying to measure counters, 
   if(numMeasurers==0) {
     // Start measuring them
-    if(PAPI_start_counters((int*)&(events[0]), events.size()) != PAPI_OK) { cerr << "PAPIMeasure::start() ERROR starting PAPI counters!"<<endl; assert(0); }
+    if(PAPI_start_counters((int*)&(events[0]), events.size()) != PAPI_OK) { 
+      cerr << "PAPIMeasure::start() ERROR starting PAPI counters!"<<endl; 
+      PAPIOperational=false;
+      return;
+    }
+    PAPIOperational=true;
     
     // Record the events that are currently being measured
     curEvents = events;
@@ -1011,6 +1018,9 @@ void PAPIMeasure::start() {
 bool PAPIMeasure::pause() {
   bool modified = measure::pause();
 
+  // Return if PAPI measurement is not operational
+  if(!PAPIOperational) return  modified;
+
   // Add the counts since the last call to start or resume to values
   if(PAPI_read_counters((long_long*)&(readValues[0]), readValues.size()) != PAPI_OK) { cerr << "PAPIMeasure::pause() ERROR accumulating PAPI counters!"<<endl; assert(0); }
 
@@ -1028,6 +1038,10 @@ bool PAPIMeasure::pause() {
 // before the call to resume().
 void PAPIMeasure::resume() {
   measure::resume();
+
+  // Return if PAPI measurement is not operational
+  if(!PAPIOperational) return;
+
   
   // Restart measurement
   //if(PAPI_start_counters((int*)&events[0], events.size()) != PAPI_OK) { cerr << "PAPIMeasure::resume() ERROR starting PAPI counters!"<<endl; assert(0); }
@@ -1040,6 +1054,9 @@ void PAPIMeasure::resume() {
 void PAPIMeasure::end() {
   measure::end();
   
+  // Return if PAPI measurement is not operational
+  if(!PAPIOperational) return;
+
   // Call pause() to update elapsed with the time since the start of the measure or the last call to resume() 
   pause(); 
   
@@ -1072,6 +1089,9 @@ void PAPIMeasure::end() {
 // If addToTrace is true, the observation is addes to this measurement's trace and not, otherwise
 std::list<std::pair<std::string, attrValue> > PAPIMeasure::endGet(bool addToTrace) {
   measure::end();
+  
+  // Return if PAPI measurement is not operational
+  if(!PAPIOperational) return std::list<std::pair<std::string, attrValue> >();
   
   // Call pause() to update elapsed with the time since the start of the measure or the last call to resume() 
   pause(); 
