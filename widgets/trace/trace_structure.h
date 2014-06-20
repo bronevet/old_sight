@@ -434,6 +434,62 @@ class timeMeasure : public measure {
   std::string str() const;
 }; // class timeMeasure
 
+// Measures the absolute time when measurement started and stopped, ignoring
+// any pauses in measurement
+class timeStampMeasure : public measure {
+  // The time when we started and ended this measure since the Epoch, seconds
+  double startTime;
+  double endTime;
+  
+  // The label associated with this measurement
+  std::string valLabel;
+  
+  public:
+  // Non-full measure
+  timeStampMeasure(                        std::string valLabel="timestamp");
+  timeStampMeasure(std::string traceLabel, std::string valLabel);
+  timeStampMeasure(trace* t,               std::string valLabel="timestamp");
+  timeStampMeasure(traceStream* ts,        std::string valLabel="timestamp");
+  // Full measure
+  timeStampMeasure(                        std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt);
+  timeStampMeasure(std::string traceLabel, std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt);
+  timeStampMeasure(trace* t,               std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt);
+  timeStampMeasure(traceStream* ts,        std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt);
+  
+  timeStampMeasure(const timeStampMeasure& that);
+  
+  ~timeStampMeasure();
+ 
+  private:
+  // Common initialization code
+  void init();   
+          
+  public:
+  
+  // Returns a copy of this measure object, including its current measurement state, if any. The returned
+  // object is connected to the same traceStream, if any, as the original object.
+  measure* copy() const;
+  
+  // Start the measurement
+  void start();
+   
+  // Pauses the measurement so that time elapsed between this call and resume() is not counted.
+  // Returns true if the measure is not currently paused and false if it is (i.e. the pause command has no effect)
+  bool pause();
+
+  // Restarts counting time. Time collection is restarted regardless of how many times pause() was called
+  // before the call to resume().
+  void resume();
+ 
+  // Complete the measurement and add the observation to the trace associated with this measurement
+  void end();
+  
+  // Complete the measurement and return the observation.
+  // If addToTrace is true, the observation is addes to this measurement's trace and not, otherwise
+  std::list<std::pair<std::string, attrValue> > endGet(bool addToTrace=false);
+  
+  std::string str() const;
+}; // class timeStampMeasure
 
 // Syntactic sugar for specifying measurements
 typedef common::easyvector<int> papiEvents;
@@ -546,7 +602,7 @@ class RAPLMeasure : public measure, public MSRMeasure {
   Euse accumDramE[NUM_SOCKETS];
 
   // The data structure that maintains the current state of the RAPL counters
-  struct rapl_data rapl;
+  struct rapl_data rapl[NUM_SOCKETS];
   
   // The label associated with this measurement
   std::string valLabel;

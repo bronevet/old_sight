@@ -73,7 +73,8 @@ int main(int argc, char** argv)
          "relations and module measurements."<<endl;    
   
   modularApp mdApp("Molecular Dynamics", 
-                   namedMeasures("time", new timeMeasure())); 
+                   namedMeasures("time",      new timeMeasure(),
+                                 "timestamp", new timeStampMeasure())); 
   
   // List of particle positions
   double neighRadius = .2;

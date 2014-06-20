@@ -12,6 +12,7 @@
 #include <errno.h>
 #include "getAllHostnames.h" 
 #include "utils.h"
+#include <sys/stat.h>
 
 using namespace std;
 
@@ -85,6 +86,65 @@ std::string wrapStr(std::string str, unsigned int lineWidth) {
     multiLineStr += str.substr(i, str.length()-i);
   
   return multiLineStr;
+}
+
+// Returns the human-readable representation of the given list of strings
+std::string list2str(const std::list<std::string>& l) {
+  ostringstream s;
+  s << "[";
+  for(list<string>::const_iterator i=l.begin(); i!=l.end(); i++) {
+    if(i!=l.begin()) s << ", ";
+    s << *i;
+  }
+    
+  s << "]";
+  return s.str();
+}
+
+// Returns the human-readable representation of the given set of strings
+std::string set2str(const std::set<std::string>& l) {
+  ostringstream s;
+  s << "[";
+  for(set<string>::const_iterator i=l.begin(); i!=l.end(); i++) {
+    if(i!=l.begin()) s << ", ";
+    s << *i;
+  }
+    
+  s << "]";
+  return s.str();
+}
+
+// Adapted from http://stackoverflow.com/questions/675039/how-can-i-create-directory-tree-in-c-linux
+// Creates the directory with the given path, creating any sub-directories within it
+// If isDir is true, s is a directory. Otherwise, it is a file and thus, we need to create its parent directory.
+int mkpath(std::string s,mode_t mode, bool isDir)
+{
+    size_t pre=0;
+    std::string dir;
+    int mdret;
+
+    if(s[s.size()-1]!='/'){
+        // force trailing / so we can handle everything in loop
+        s+='/';
+    }
+
+    size_t pos=s.find_first_of('/',pre);
+    size_t nextPos=s.find_first_of('/',pos+1);
+    // While another path portion is available and 
+    // either we're generating the entire path or we're omitting the last portion but we have not yet reached it
+    while(pos!=std::string::npos &&
+          (isDir || nextPos !=std::string::npos)){
+        dir=s.substr(0,pos++);
+        pre=pos;
+        if(dir.size()==0) continue; // if leading / first time is 0 length
+        if((mdret=mkdir(dir.c_str(),mode)) && errno!=EEXIST){
+            return mdret;
+        }
+
+        pos=nextPos+1;
+        nextPos=s.find_first_of('/',nextPos+1);
+    }
+    return mdret;
 }
 
 } // namespace sight

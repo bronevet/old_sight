@@ -1,19 +1,16 @@
-include ../../../Makefile.extern
+include ../../../Makefile
 
-sightTest: sightTest.c
-	${CCC} -O3 ${SIGHT_CFLAGS} -c sightTest.c -o sightTest.o
-	${CCC} sightTest.o ${SIGHT_LINKFLAGS} -o sightTest
-	rm sightTest.o
+all: libmsr_test libmsr_mpi_test libmsr_powercap_test
 
-libmsr_powercap_test: libmsr_powercap_test.c 
-	gcc -Wall -o libmsr_powercap_test libmsr_powercap_test.c -L ../lib -lmsr
 
 libmsr_test: libmsr_test.c 
-	gcc -DLINEBREAK -Wall -o libmsr_test.linebreak libmsr_test.c -L ../lib -lmsr
-	gcc -Wall -o libmsr_test libmsr_test.c -L ../lib -lmsr
+	${CC} -Wall -o libmsr_test libmsr_test.c -L ../lib -lmsr
 
 libmsr_mpi_test: libmsr_test.c 
 	mpicc -Wall -DMPI -o libmsr_mpi_test libmsr_test.c -L ../lib -lmsr
+
+libmsr_powercap_test: libmsr_powercap_test.c 
+	${CC} -Wall -o libmsr_powercap_test libmsr_powercap_test.c -L ../lib -lmsr
 
 mpi: mpi_test.c
 	mpicc -Wall -o mpi_test mpi_test.c -L../lib -lgaramond 

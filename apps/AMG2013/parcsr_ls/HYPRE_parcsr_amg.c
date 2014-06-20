@@ -76,7 +76,7 @@ HYPRE_BoomerAMGSolve( HYPRE_Solver solver,
                    context& runCfg,
                    graph& AMGVCycleGraph,
                    anchor& lastAnchor,
-                   context& solverCtxt      )
+                   context& solverCtxt, int& num_precond_calls      )
 {
 
 
@@ -86,7 +86,7 @@ HYPRE_BoomerAMGSolve( HYPRE_Solver solver,
                               (hypre_ParVector *) x,
                               runCfg,
                               AMGVCycleGraph,
-                              lastAnchor, solverCtxt ) );
+                              lastAnchor, solverCtxt, num_precond_calls ) );
 }
 
 /*--------------------------------------------------------------------------

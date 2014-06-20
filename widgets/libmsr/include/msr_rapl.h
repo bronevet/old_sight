@@ -14,36 +14,34 @@
 // scaled values.  The bit vector is the 64-bit values that is
 // read from/written to the msr.
 struct rapl_data{
-	uint64_t pvt_old_pkg_bits;
-	uint64_t pvt_pkg_bits;
+	uint64_t old_pkg_bits;
 	uint64_t pkg_bits;
 
-	uint64_t pvt_old_dram_bits;
-	uint64_t pvt_dram_bits;
+	uint64_t old_dram_bits;
 	uint64_t dram_bits;
 
-	double pvt_old_pkg_joules;
-	double pvt_pkg_joules;
+	double old_pkg_joules;
 	double pkg_joules;
 
-	double pvt_old_dram_joules;
-	double pvt_dram_joules;
+	double old_dram_joules;
 	double dram_joules;
 
-	struct timeval pvt_old_now;
-	struct timeval pvt_now;
+	struct timeval old_now;
 	struct timeval now;
 
 	double elapsed;
+	double pkg_delta_joules;
 	double pkg_watts;
+	double dram_delta_joules;
 	double dram_watts;
+
 
 	uint64_t flags;
 };
 
 enum rapl_data_flags{
 	RDF_REENTRANT	= 0x01,
-	RDF_INITIALIZE	= 0x02
+	RDF_INIT        = 0x02
 };
 
 struct rapl_limit{

@@ -8,114 +8,66 @@
 #include <mpi.h>
 #endif
 
-// A sleep with some CPU and DRAM activity
-char buf[100*1024];
-void stall(int numSecs) {
-  sleep(numSecs);
-  int i;
-  for(i=0; i<100*1024; i++)
-    buf[i]++;
-}
-
 void rapl_set_test(double limit) {
 	struct rapl_limit CPULimit, DRAMLimit;
 	int s;
 	CPULimit.watts = limit;
-	CPULimit.seconds = 1;
+	CPULimit.seconds = 0.1;
+        CPULimit.bits = 0;
 	DRAMLimit.watts = limit;
-	DRAMLimit.seconds = 1;
-	fprintf(stdout, "Capping power at %f\n", limit);
+	DRAMLimit.seconds = 0.1;
+        DRAMLimit.bits = 0;
 	for(s=0; s<NUM_SOCKETS; s++) {
+		struct rapl_limit measuredCPULimit;
+		get_rapl_limit(s, &measuredCPULimit, NULL, NULL);
+		fprintf(stdout, "Initial power cap on socket %d at %f for %f secs\n", s, measuredCPULimit.watts, measuredCPULimit.seconds);
+
 		set_rapl_limit(s, &CPULimit, NULL, &DRAMLimit);
+		fprintf(stdout, "Capping power on socket %d at %f for %f secs\n", s, CPULimit.watts, CPULimit.seconds);
+
+		get_rapl_limit(s, &measuredCPULimit, NULL, NULL);
+		fprintf(stdout, "Capped power on socket %d at %f for %f secs\n", s, measuredCPULimit.watts, measuredCPULimit.seconds);
 	}
-}
-
-void rapl_test(){
-	read_rapl_data(0, NULL);	// Initialize
-	stall(3);
-
-	dump_rapl_terse_label();
-	fprintf(stdout, "\n");
-	dump_rapl_terse();		// Read and dump.
-	fprintf(stdout, "\n");
-
-}
-
-void thermal_test(){
-	dump_thermal_terse_label();
-	fprintf(stdout, "\n");
-	dump_thermal_terse();
-	fprintf(stdout, "\n");
 }
 
 void perform_rapl_measurement(struct rapl_data* r) {
 	int socket;
-	r->flags = RDF_REENTRANT;
 	for(socket=0; socket<NUM_SOCKETS; socket++)
-		fprintf(stdout,"pkgW%02d\tdramW%02d\telapsed%02d\t", socket, socket, socket );
+		fprintf(stdout,"pkgW%02d\tpkgE%02d\tdramW%02d\tdramE%02d\telapsed%02d\t", socket, socket, socket, socket, socket );
 	fprintf(stdout, "\n");
 
 	for(socket=0; socket<NUM_SOCKETS; socket++) {
-		read_rapl_data(socket, r);
-		fprintf(stdout,"%8.6lf\t%8.6lf\t%8.6lf\t", r->pkg_watts, r->dram_watts, r->elapsed);
+		r[socket].flags = RDF_REENTRANT;
+		read_rapl_data(socket, &r[socket]);
+		fprintf(stdout,"%8.6lf\t%8.6lf\t%8.6lf\t%8.6lf\t%8.6lf\t", r[socket].pkg_watts, r[socket].pkg_delta_joules, r[socket].dram_watts, r[socket].dram_delta_joules, r[socket].elapsed);
 	}
 	fprintf(stdout, "\n");
 }
-
-
-void rapl_r_test(){
-	// Initialize two separate state objects and read rapl data into them during overlapping time windows
-	struct rapl_data r1; r1.flags = RDF_REENTRANT;
-	struct rapl_data r2; r2.flags = RDF_REENTRANT;
-
-	read_rapl_data(0, &r1);  // Initialize r1
-	stall(1);
-
-	read_rapl_data(0, &r2);  // Initialize r2
-	stall(1);
-
-	// Complete and report s2 measurement
-	fprintf(stdout, "R2: ");
-	perform_rapl_measurement(&r2);
-	stall(1);
-
-	// Complete and report s1 measurement
-	fprintf(stdout, "R1: ");
-	perform_rapl_measurement(&r1);
-	stall(1);
-
-	// Complete and report s2 measurement
-	fprintf(stdout, "R2: ");
-	perform_rapl_measurement(&r2);
-	stall(1);
-
-	// Complete and report s1 measurement
-	fprintf(stdout, "R1: ");
-	perform_rapl_measurement(&r1);
-}
-
 
 int main(int argc, char** argv){
 	#ifdef MPI
 	MPI_Init(&argc, &argv);
 	#endif
 
-
 	int power;
 	init_msr();
 
-	// Launch the Mersenne finder program
-	//system("mersenne/mprime -t&");
+	struct rapl_data r[NUM_SOCKETS]; 
+	
+        int socket;
+	
+	for(socket=0; socket<NUM_SOCKETS; socket++)
+		r[socket].flags =  RDF_REENTRANT | RDF_INIT;
+	// Initialize r
+	for(socket=0; socket<NUM_SOCKETS; socket++) 
+		read_rapl_data(socket, &r[socket]);
 
-	// Wait for it to spin up
-	//sleep(10);
-
-	struct rapl_data r; r.flags = RDF_REENTRANT;
-	read_rapl_data(0, &r);  // Initialize r
+	sleep(1);	
+	perform_rapl_measurement(r);
 	for(power=5; power<150; power+=10) {
 		rapl_set_test(power);
 		sleep(10);
-		perform_rapl_measurement(&r);
+		perform_rapl_measurement(r);
 	}
 
 	finalize_msr();

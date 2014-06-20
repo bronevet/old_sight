@@ -8,6 +8,8 @@ using namespace std;
 #include <sight.h>
 using namespace sight;
 
+#include "msr_core.h"
+
 int main( int   argc, char *argv[] )
 {
    context runCfg;
@@ -15,8 +17,8 @@ int main( int   argc, char *argv[] )
    //runCfg.add("MPIRank", myid);
    SightInit(argc, argv, "Sight RAPL Test", txt()<<"dbg.SightRAPLTest"<<
                                                         (getenv("POWER")? txt()<<".power_"<<getenv("POWER"): string("")));
-   modularApp ma("AMG"/*, namedMeasures(/ *"time", new timeMeasure(),* /
-                                      "RAPL", new RAPLMeasure())*/);
+   modularApp ma("AMG", namedMeasures(/*"time", new timeMeasure(),*/
+                                      "RAPL", new RAPLMeasure()));
    
    module modSolve(instance("Solve", 1, 0), 
                     inputs(port(runCfg)));
@@ -46,7 +48,7 @@ int main( int   argc, char *argv[] )
    //if(pid == 0){       /*child*/
    //  execl("mersenne/mprime", "mersenne/mprime", "-t");
    //} else if(pid > 0){  /*parent*/
-     sleep(10);
+     sleep(1);
    //  kill(pid, SIGTERM);
    //}
 

@@ -136,10 +136,10 @@ int main(int argc, char** argv)
    timestampBarrier("Initialization Finished\n");
    
 #if defined(MODULES)
-   {modularApp app("CoMD"/*, namedMeasures("time0", new timeMeasure())*/);
+   {modularApp app("CoMD", namedMeasures("timestamp", new timeStampMeasure()));
 #endif
 /*#elif defined(SIGHT_COMP)
-   compModularApp app("CoMD"/*, namedMeasures("time0", new timeMeasure())* /);
+   compModularApp app("CoMD"/ *, namedMeasures("time0", new timeMeasure())* /);
 #endif*/
    
    timestampBarrier("Starting simulation\n");

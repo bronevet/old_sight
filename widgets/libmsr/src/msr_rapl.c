@@ -4,9 +4,10 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stddef.h>
+#include <assert.h>
 #include "msr_core.h"
 #include "msr_rapl.h"
-
+//#define LIBMSR_DEBUG
 /* 
  * Macros 
  */
@@ -156,17 +157,19 @@ translate( const int socket, uint64_t* bits, double* units, int type ){
 
 struct rapl_power_info{
 	uint64_t msr_pkg_power_info;	// raw msr values
-	uint64_t msr_dram_power_info;
 
 	double pkg_max_power;		// watts
 	double pkg_min_power;
 	double pkg_max_window;		// seconds
 	double pkg_therm_power;		// watts
 
+#ifdef RAPL_USE_DRAM
+	uint64_t msr_dram_power_info;
 	double dram_max_power;		// watts
 	double dram_min_power;
 	double dram_max_window;		// seconds
 	double dram_therm_power;	// watts
+#endif
 };
 
 static void
@@ -176,9 +179,10 @@ get_rapl_power_info( const int socket, struct rapl_power_info *info){
 	//info->msr_dram_power_info = 0x682d0001482d0;
 
 	read_msr_by_coord( socket, 0, 0, MSR_PKG_POWER_INFO, &(info->msr_pkg_power_info) );
-#ifdef RAPL_DRAM_AVAIL
+#ifdef RAPL_USE_DRAM
 	read_msr_by_coord( socket, 0, 0, MSR_DRAM_POWER_INFO, &(info->msr_dram_power_info) );
 #endif
+
 	// Note that the same units are used in both the PKG and DRAM domains.
 	
 	val = MASK_VAL( info->msr_pkg_power_info,  53, 48 );
@@ -192,7 +196,7 @@ get_rapl_power_info( const int socket, struct rapl_power_info *info){
 
 	val = MASK_VAL( info->msr_pkg_power_info,  14,  0 );
 	translate( socket, &val, &(info->pkg_therm_power), BITS_TO_WATTS );
-
+#ifdef RAPL_USE_DRAM
 	val = MASK_VAL( info->msr_dram_power_info, 53, 48 );
 	translate( socket, &val, &(info->dram_max_window), BITS_TO_SECONDS );
 
@@ -204,6 +208,7 @@ get_rapl_power_info( const int socket, struct rapl_power_info *info){
 
 	val = MASK_VAL( info->msr_dram_power_info, 14,  0 );
 	translate( socket, &val, &(info->dram_therm_power), BITS_TO_WATTS );
+#endif
 }
 
 static void
@@ -234,6 +239,10 @@ calc_rapl_limit(const int socket, struct rapl_limit* limit1, struct rapl_limit* 
 			// these into bit values.
 			translate( socket, &watts_bits,   &limit1->watts,   WATTS_TO_BITS   );
 			translate( socket, &seconds_bits, &limit1->seconds, SECONDS_TO_BITS );
+#ifdef LIBMSR_DEBUG
+			fprintf(stderr, "Converted %lf watts into %lx bits.\n", limit1->watts, watts_bits);
+			fprintf(stderr, "Converted %lf seconds into %lx bits.\n", limit1->seconds, seconds_bits);
+#endif
 			limit1->bits |= watts_bits   << 0;
 			limit1->bits |= seconds_bits << 17;
 		}
@@ -253,6 +262,7 @@ calc_rapl_limit(const int socket, struct rapl_limit* limit1, struct rapl_limit* 
 			limit2->bits |= seconds_bits << 49;
 		}
 	}
+#ifdef RAPL_USE_DRAM
 	if(dram){
 		if (dram->bits){
 			// We have been given the bits to be written to the msr.
@@ -273,6 +283,7 @@ calc_rapl_limit(const int socket, struct rapl_limit* limit1, struct rapl_limit* 
 			dram->bits |= seconds_bits << 17;
 		}
 	}
+#endif
 }
 
 void
@@ -287,9 +298,10 @@ void
 set_rapl_limit( const int socket, struct rapl_limit* limit1, struct rapl_limit* limit2, struct rapl_limit* dram ){
 	// Fill in whatever values are necessary.
 	uint64_t pkg_limit=0;
-#ifdef RAPL_DRAM_AVAIL
+#ifdef RAPL_USE_DRAM
 	uint64_t dram_limit=0;
-#endif 
+#endif
+
 	calc_rapl_limit( socket, limit1, limit2, dram );
 
 	if(limit1){
@@ -301,7 +313,7 @@ set_rapl_limit( const int socket, struct rapl_limit* limit1, struct rapl_limit* 
 	if(limit1 || limit2){
 		write_msr_by_coord( socket, 0, 0, MSR_PKG_POWER_LIMIT, pkg_limit );
 	}
-#ifdef RAPL_DRAM_AVAIL
+#ifdef RAPL_USE_DRAM
 	if(dram){
 		dram_limit |= dram->bits | (1LL << 15) | (1LL << 16);	// enable clamping
 		write_msr_by_coord( socket, 0, 0, MSR_DRAM_POWER_LIMIT, dram_limit );
@@ -311,17 +323,19 @@ set_rapl_limit( const int socket, struct rapl_limit* limit1, struct rapl_limit* 
 
 void 
 get_rapl_limit( const int socket, struct rapl_limit* limit1, struct rapl_limit* limit2, struct rapl_limit* dram ){
+	assert(socket < NUM_SOCKETS);
+	assert(socket >=0 );
 	if(limit1){
 		read_msr_by_coord( socket, 0, 0, MSR_PKG_POWER_LIMIT, &(limit1->bits) );
 	}
 	if(limit2){
 		read_msr_by_coord( socket, 0, 0, MSR_PKG_POWER_LIMIT, &(limit2->bits) );
 	}
-#ifdef RAPL_DRAM_AVAIL
+#ifdef RAPL_USE_DRAM
 	if(dram){
 		read_msr_by_coord( socket, 0, 0, MSR_DRAM_POWER_LIMIT, &(dram->bits) );
 	}
-#endif 
+#endif
 	// Fill in whatever values are necessary.
 	calc_rapl_limit( socket, limit1, limit2, dram );
 }
@@ -399,68 +413,78 @@ read_rapl_data( const int socket, struct rapl_data *r ){
 		p = &s[socket];
 	} else{
 		p = r;
-/*		if(r->flags & RDF_INITIALIZE) {
-			p->pkg_bits = 0;
-			p->dram_bits = 0;
-			p->pkg_joules = 0;
-			p->dram_joules = 0;
-			
-		}*/
 	}
 
 
+	// Zero out values on init.
+	if(p->flags & RDF_INIT){
+		p->pkg_bits=0;
+		p->pkg_joules=0.0;
+		p->now.tv_sec=0;
+		p->now.tv_usec=0;
+		p->pkg_delta_joules=0.0;
+	}
+	
 	// Move current variables to "old" variables.
-	p->pvt_old_pkg_bits	= p->pvt_pkg_bits;
-	p->pvt_old_dram_bits	= p->pvt_dram_bits;
-	p->pvt_old_pkg_joules	= p->pvt_pkg_joules;
-	p->pvt_old_dram_joules	= p->pvt_dram_joules;
-	p->pvt_old_now.tv_sec 	= p->pvt_now.tv_sec;
-	p->pvt_old_now.tv_usec	= p->pvt_now.tv_usec;
+	p->old_pkg_bits		= p->pkg_bits;
+	p->old_pkg_joules	= p->pkg_joules;
+	p->old_now.tv_sec 	= p->now.tv_sec;
+	p->old_now.tv_usec	= p->now.tv_usec;
 
 	// Get current timestamp
-	gettimeofday( &(p->pvt_now), NULL );
+	gettimeofday( &(p->now), NULL );
 
 	// Get raw joules
-	read_msr_by_coord( socket, 0, 0, MSR_PKG_ENERGY_STATUS,  &(p->pvt_pkg_bits)  );
-#ifdef RAPL_DRAM_AVAIL
-	read_msr_by_coord( socket, 0, 0, MSR_DRAM_ENERGY_STATUS, &(p->pvt_dram_bits) );
+	read_msr_by_coord( socket, 0, 0, MSR_PKG_ENERGY_STATUS,  &(p->pkg_bits)  );
+	translate( socket, &(p->pkg_bits),  &(p->pkg_joules),  BITS_TO_JOULES );
+	
+#ifdef RAPL_USE_DRAM
+	p->old_dram_bits	= p->dram_bits;
+	p->old_dram_joules	= p->dram_joules;
+	read_msr_by_coord( socket, 0, 0, MSR_DRAM_ENERGY_STATUS, &(p->dram_bits) );
+	translate( socket, &(p->dram_bits), &(p->dram_joules), BITS_TO_JOULES );
 #endif
 	
-	// get normalized joules
-	translate( socket, &(p->pvt_pkg_bits),  &(p->pvt_pkg_joules),  BITS_TO_JOULES );
-	translate( socket, &(p->pvt_dram_bits), &(p->pvt_dram_joules), BITS_TO_JOULES );
-	
 	// Fill in the struct if present.
-	if(r){
+	if(r && !(r->flags & RDF_INIT)){
 		// Get delta in seconds
-		r->elapsed = (p->pvt_now.tv_sec - p->pvt_old_now.tv_sec) 
+		r->elapsed = (p->now.tv_sec - p->old_now.tv_sec) 
 			     +
-			     (p->pvt_now.tv_usec - p->pvt_old_now.tv_usec)/1000000.0;
+			     (p->now.tv_usec - p->old_now.tv_usec)/1000000.0;
 
 		// Get delta joules.
 		// Now handles wraparound.
-//printf("p->pkg_joules=%le, p->old_pkg_joules=%le\n", p->pvt_pkg_joules , p->pvt_old_pkg_joules);
-//printf("p->dram_joules=%le, p->old_dram_joules=%le\n", p->pvt_dram_joules , p->pvt_old_dram_joules);
-		if(p->pvt_pkg_joules - p->pvt_old_pkg_joules < 0)
+		if(p->pkg_joules - p->old_pkg_joules < 0)
 		{
 			translate(socket, &maxbits, &max_joules, BITS_TO_JOULES); 
-			r->pkg_joules = ( p->pvt_pkg_joules + max_joules) - p->pvt_old_pkg_joules;
+			r->pkg_delta_joules = ( p->pkg_joules + max_joules) - p->old_pkg_joules;
 		} else {
-			r->pkg_joules  = p->pvt_pkg_joules  - p->pvt_old_pkg_joules;		
+			r->pkg_delta_joules  = p->pkg_joules  - p->old_pkg_joules;		
 		}
 
-		if(p->pvt_dram_joules - p->pvt_old_dram_joules < 0)
+#ifdef RAPL_USE_DRAM
+		if(p->dram_joules - p->old_dram_joules < 0)
 		{
 			translate(socket, &maxbits, &max_joules, BITS_TO_JOULES); 
-			r->dram_joules = (p->pvt_dram_joules + max_joules) - p->pvt_old_dram_joules;
+			r->dram_delta_joules = (p->dram_joules + max_joules) - p->old_dram_joules;
 		} else {
-			r->dram_joules = p->pvt_dram_joules - p->pvt_old_dram_joules;	
+			r->dram_delta_joules = p->dram_joules - p->old_dram_joules;	
 		}	
+#endif
 
 		// Get watts.
 		// Does not check for div by 0.
-		r->pkg_watts  = r->pkg_joules  / r->elapsed;
-		r->dram_watts = r->dram_joules / r->elapsed;
+		if(r->elapsed > 0){
+			r->pkg_watts  = r->pkg_delta_joules  / r->elapsed;
+#ifdef RAPL_USE_DRAM
+			r->dram_watts = r->dram_delta_joules / r->elapsed;
+#endif
+		}else{
+			r->pkg_watts  = -999.0;
+#ifdef RAPL_USE_DRAM
+			r->dram_watts = -999.0;
+#endif
+		}
 	}
 }
 

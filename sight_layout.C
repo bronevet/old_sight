@@ -56,8 +56,8 @@ void* indentEnterHandler(properties::iterator props) { return new indent(props);
 void  indentExitHandler(void* obj) { indent* i = static_cast<indent*>(obj); delete i; }
 
 sightLayoutHandlerInstantiator::sightLayoutHandlerInstantiator() { 
-  (*layoutEnterHandlers)["sight"] = &SightInit;
-  (*layoutExitHandlers )["sight"] = &defaultExitHandler;
+  (*layoutEnterHandlers)["sight"]  = &SightInit;
+  (*layoutExitHandlers )["sight"]  = &defaultExitHandler;
   (*layoutEnterHandlers)["indent"] = &indentEnterHandler;
   (*layoutExitHandlers )["indent"] = &indentExitHandler;
   (*layoutEnterHandlers)["link"]   = &anchor::link;
@@ -175,6 +175,9 @@ void* SightInit(properties::iterator props) {
   if(dbginit == NULL) { fprintf(stderr, "ERROR opening file \"%s\" for writing! %s\n", fname, strerror(errno)); exit(-1); }
   
   fclose(dbginit);*/
+  
+  loadSightConfig(configFileEnvVars("SIGHT_LAYOUT_CONFIG", "SIGHT_CONFIG"));
+  
   if(properties::getInt(props, "commandLineKnown")) {
     saved_appExecInfo = true;
     

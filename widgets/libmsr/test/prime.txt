@@ -2,6 +2,13 @@ V24OptionsConverted=1
 WGUID_version=2
 StressTester=1
 UsePrimenet=0
+MinTortureFFT=8
+MaxTortureFFT=4096
+TortureMem=100
+TortureTime=3
+DialUp=0
+V5UserID=ANONYMOUS
 
 [PrimeNet]
 Debug=0
+ProxyHost=

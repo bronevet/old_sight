@@ -218,6 +218,35 @@ class externalTraceProcessor_File : public traceObserver {
   void obsFinished();
 }; // class externalTraceProcessor_File
 
+// This is a trace observer that processes incoming observations by writing them into the given file in
+// tab-separated format
+class traceFileWriterTSV : public traceObserver {
+  // The keys of the context and trace observations. All observations must have identical keys.
+  std::set<std::string> ctxtKeys;
+  std::set<std::string> traceKeys;
+  
+  // The file that the observations will be emitted to
+  std::ofstream out;
+  
+  // The number of observations that have been seen
+  int numObservations;
+  
+  public:  
+  traceFileWriterTSV(std::string outFName);
+  ~traceFileWriterTSV();
+  
+  // Interface implemented by objects that listen for observations a traceStream reads. Such objects
+  // call traceStream::registerObserver() to inform a given traceStream that it should observations.
+  void observe(int traceID,
+               const std::map<std::string, std::string>& ctxt, 
+               const std::map<std::string, std::string>& obs,
+               const std::map<std::string, anchor>&      obsAnchor);
+  
+  // Called when the stream of observations has finished to allow the implementor to perform clean-up tasks.
+  // This method is optional.
+  void obsFinished();
+}; // class traceFileWriterTSV
+
 class traceStream: public attrObserver, public common::trace, public traceObserver
 {
   public:

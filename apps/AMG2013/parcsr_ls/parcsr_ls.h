@@ -25,8 +25,8 @@ int hypre_ParCSRFindExtendCommPkg ( hypre_ParCSRMatrix *A , int newoff , HYPRE_B
 int new_offd_nodes ( HYPRE_BigInt **found , int num_cols_A_offd , int *A_ext_i , HYPRE_BigInt *big_A_ext_j , int **A_ext_j_ptr , int num_cols_S_offd , HYPRE_BigInt *col_map_offd , HYPRE_BigInt col_1 , HYPRE_BigInt col_n , int *Sop_i , HYPRE_BigInt *big_Sop_j , int **Sop_j_ptr , int *CF_marker , hypre_ParCSRCommPkg *comm_pkg );
 
 /* gen_redcs_mat.c */
-int hypre_seqAMGSetup ( hypre_ParAMGData *amg_data , int p_level , int coarse_threshold, context& runCfg);
-int hypre_seqAMGCycle ( hypre_ParAMGData *amg_data , int p_level , hypre_ParVector **Par_F_array , hypre_ParVector **Par_U_array, context& runCfg, graph& AMGVCycleGraph, anchor& lastAnchor, context& solverCtxt );
+int hypre_seqAMGSetup ( hypre_ParAMGData *amg_data , int p_level , int coarse_threshold, context& runCfg/*, int& num_precond_calls*/);
+int hypre_seqAMGCycle ( hypre_ParAMGData *amg_data , int p_level , hypre_ParVector **Par_F_array , hypre_ParVector **Par_U_array, context& runCfg, graph& AMGVCycleGraph, anchor& lastAnchor, context& solverCtxt, int& num_precond_calls );
 int hypre_GenerateSubComm ( MPI_Comm comm , int participate , MPI_Comm *new_comm_ptr );
 void hypre_merge_lists ( int *list1 , int *list2 , int *np1 , MPI_Datatype *dptr );
 
@@ -34,7 +34,7 @@ void hypre_merge_lists ( int *list1 , int *list2 , int *np1 , MPI_Datatype *dptr
 int HYPRE_BoomerAMGCreate ( HYPRE_Solver *solver );
 int HYPRE_BoomerAMGDestroy ( HYPRE_Solver solver );
 int HYPRE_BoomerAMGSetup ( HYPRE_Solver solver , HYPRE_ParCSRMatrix A , HYPRE_ParVector b , HYPRE_ParVector x, context& runCfg);
-int HYPRE_BoomerAMGSolve ( HYPRE_Solver solver , HYPRE_ParCSRMatrix A , HYPRE_ParVector b , HYPRE_ParVector x, context& runCfg, graph& AMGVCycleGraph, anchor& lastAnchor, context& solverCtxt );
+int HYPRE_BoomerAMGSolve ( HYPRE_Solver solver , HYPRE_ParCSRMatrix A , HYPRE_ParVector b , HYPRE_ParVector x, context& runCfg, graph& AMGVCycleGraph, anchor& lastAnchor, context& solverCtxt, int& num_precond_calls );
 int HYPRE_BoomerAMGSetRestriction ( HYPRE_Solver solver , int restr_par );
 int HYPRE_BoomerAMGSetMaxLevels ( HYPRE_Solver solver , int max_levels );
 int HYPRE_BoomerAMGGetMaxLevels ( HYPRE_Solver solver , int *max_levels );
@@ -147,8 +147,8 @@ int HYPRE_ParCSRGMRESGetFinalRelativeResidualNorm ( HYPRE_Solver solver , double
 /* HYPRE_parcsr_pcg.c */
 int HYPRE_ParCSRPCGCreate ( MPI_Comm comm , HYPRE_Solver *solver );
 int HYPRE_ParCSRPCGDestroy ( HYPRE_Solver solver );
-int HYPRE_ParCSRPCGSetup ( HYPRE_Solver solver , HYPRE_ParCSRMatrix A , HYPRE_ParVector b , HYPRE_ParVector x, context& runCfg );
-int HYPRE_ParCSRPCGSolve ( HYPRE_Solver solver , HYPRE_ParCSRMatrix A , HYPRE_ParVector b , HYPRE_ParVector x, context& runCfg );
+int HYPRE_ParCSRPCGSetup ( HYPRE_Solver solver , HYPRE_ParCSRMatrix A , HYPRE_ParVector b , HYPRE_ParVector x, context& runCfg, int& num_precond_calls );
+int HYPRE_ParCSRPCGSolve ( HYPRE_Solver solver , HYPRE_ParCSRMatrix A , HYPRE_ParVector b , HYPRE_ParVector x, context& runCfg, int& num_precond_calls );
 int HYPRE_ParCSRPCGSetTol ( HYPRE_Solver solver , double tol );
 int HYPRE_ParCSRPCGSetMaxIter ( HYPRE_Solver solver , int max_iter );
 int HYPRE_ParCSRPCGSetStopCrit ( HYPRE_Solver solver , int stop_crit );
@@ -278,10 +278,10 @@ int hypre_BoomerAMGSetSeqThreshold ( void *data , int seq_threshold );
 
 
 /* par_amg_setup.c */
-int hypre_BoomerAMGSetup ( void *amg_vdata , hypre_ParCSRMatrix *A , hypre_ParVector *f , hypre_ParVector *u, context& runCfg);
+int hypre_BoomerAMGSetup ( void *amg_vdata , hypre_ParCSRMatrix *A , hypre_ParVector *f , hypre_ParVector *u, context& runCfg/*, int& num_precond_calls*/);
 
 /* par_amg_solve.c */
-int hypre_BoomerAMGSolve ( void *amg_vdata , hypre_ParCSRMatrix *A , hypre_ParVector *f , hypre_ParVector *u, context& runCfg, graph& AMGVCycleGraph, anchor& lastAnchor, context& solverCtxt );
+int hypre_BoomerAMGSolve ( void *amg_vdata , hypre_ParCSRMatrix *A , hypre_ParVector *f , hypre_ParVector *u, context& runCfg, graph& AMGVCycleGraph, anchor& lastAnchor, context& solverCtxt, int& num_precond_calls );
 
 /* par_cg_relax_wt.c */
 int hypre_BoomerAMGCGRelaxWt ( void *amg_vdata , int level , int num_cg_sweeps , double *rlx_wt_ptr );
@@ -298,7 +298,7 @@ int hypre_BoomerAMGCoarsenPMIS ( hypre_ParCSRMatrix *S , hypre_ParCSRMatrix *A ,
 int hypre_BoomerAMGCoarseParms ( MPI_Comm comm , int local_num_variables , int num_functions , int *dof_func , int *CF_marker , int **coarse_dof_func_ptr , HYPRE_BigInt **coarse_pnts_global_ptr );
 
 /* par_cycle.c */
-int hypre_BoomerAMGCycle ( void *amg_vdata , hypre_ParVector **F_array , hypre_ParVector **U_array, context& runCfg, graph& AMGVCycleGraph, anchor& lastAnchor, context& solverCtxt );
+int hypre_BoomerAMGCycle ( void *amg_vdata , hypre_ParVector **F_array , hypre_ParVector **U_array, context& runCfg, graph& AMGVCycleGraph, anchor& lastAnchor, context& solverCtxt, int& num_precond_calls );
 
 /* par_indepset.c */
 int hypre_BoomerAMGIndepSetInit ( hypre_ParCSRMatrix *S , double *measure_array , int seq_rand );
@@ -419,7 +419,7 @@ int hypre_ParCSRMaxEigEstimateCG(hypre_ParCSRMatrix *A, /* matrix to relax with 
                                  double *max_eig, double *min_eig);
 int hypre_ParCSRRelax_Cheby(hypre_ParCSRMatrix *A, hypre_ParVector *f, double max_eig,  double min_eig, double eig_ratio, int order, int scale,  int variant, hypre_ParVector *u,  hypre_ParVector *v, hypre_ParVector *v2);
 int hypre_BoomerAMGRelax_FCFJacobi( hypre_ParCSRMatrix *A,  hypre_ParVector *f, int *cf_marker, double relax_weight, hypre_ParVector *u, hypre_ParVector *Vtemp );
-int hypre_ParCSRRelax_CG( HYPRE_Solver solver, hypre_ParCSRMatrix *A, hypre_ParVector    *f, hypre_ParVector    *u, int num_its, context& runCfg, sightModule& solveModule, int solveModOutput);
+int hypre_ParCSRRelax_CG( HYPRE_Solver solver, hypre_ParCSRMatrix *A, hypre_ParVector    *f, hypre_ParVector    *u, int num_its, context& runCfg, /*sightModule* solveModule, int solveModOutput*/ int& num_precond_calls);
 int hypre_ParCSRRelax_SD( hypre_ParCSRMatrix *A,  hypre_ParVector    *f,  hypre_ParVector    *u, hypre_ParVector *r,    hypre_ParVector *p,    int num_its);
 int hypre_ParCSRComputeTheta(hypre_ParCSRMatrix *A, double *theta_est);
 int hypre_ParCSRComputeL1Norms ( hypre_ParCSRMatrix *A , int option , int *cf_marker , double **l1_norm_ptr);

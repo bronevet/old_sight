@@ -1,6 +1,10 @@
-OldCpuSpeed=3498
-NewCpuSpeedCount=0
-NewCpuSpeed=0
+OldCpuSpeed=3055
+NewCpuSpeedCount=4
+NewCpuSpeed=2596
 RollingAverage=1000
 RollingAverageIsFromV27=1
-ComputerGUID=789886e1232488620fcade24c10731e4
+ComputerGUID=ed4d9692444583b2c00ca98a98351f9a
+RollingStartTime=0
+Affinity=100
+ThreadsPerTest=1
+Pid=129194

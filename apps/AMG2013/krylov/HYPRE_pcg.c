@@ -54,13 +54,13 @@ HYPRE_PCGSetup( HYPRE_Solver solver,
                 HYPRE_Matrix A,
                 HYPRE_Vector b,
                 HYPRE_Vector x,
-                context& runCfg)
+                context& runCfg, int& num_precond_calls)
 {
    return( hypre_PCGSetup( solver,
                            A,
                            b,
                            x,
-                           runCfg ) );
+                           runCfg, num_precond_calls) );
 }
 
 /*--------------------------------------------------------------------------
@@ -73,14 +73,14 @@ HYPRE_PCGSolve( HYPRE_Solver solver,
                 HYPRE_Vector b,
                 HYPRE_Vector x,
                 context& runCfg,
-                sightModule& solveModule, int solveModOutput )
+                /*sightModule* solveModule, int solveModOutput*/ int& num_precond_calls )
 {
    return( hypre_PCGSolve( (void *) solver,
                            (void *) A,
                            (void *) b,
                            (void *) x,
                            runCfg,
-                           solveModule, solveModOutput) );
+                           /*solveModule, solveModOutput*/ num_precond_calls) );
 }
 
 /*--------------------------------------------------------------------------

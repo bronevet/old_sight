@@ -9,10 +9,14 @@
 #include <assert.h>
 #include <iostream>
 #include <iomanip>
-
+#include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/time.h>
+#include <string.h>
+#include <errno.h>
+#include <boost/algorithm/string.hpp>                                                                                                                                                
+#include <boost/algorithm/string/regex.hpp>       
 
 #include "module_layout.h"
 
@@ -55,8 +59,8 @@ moduleLayoutHandlerInstantiator::moduleLayoutHandlerInstantiator() {
   (*layoutExitHandlers )["moduleTS"]            = &defaultExitHandler;
   (*layoutEnterHandlers)["module"]              = &modularApp::enterModule;
   (*layoutExitHandlers )["module"]              = &modularApp::exitModule;
-  (*layoutEnterHandlers)["moduleMarker"]        = &defaultEntryHandler;
-  (*layoutExitHandlers )["moduleMarker"]        = &defaultExitHandler;
+  (*layoutEnterHandlers)["moduleMarker"]        = &modularApp::enterModuleMarker;
+  (*layoutExitHandlers )["moduleMarker"]        = &modularApp::exitModuleMarker;
   (*layoutEnterHandlers)["moduleCtrl"]          = &defaultEntryHandler;
   (*layoutExitHandlers )["moduleCtrl"]          = &defaultExitHandler;
   (*layoutEnterHandlers)["moduleEdge"]          = &modularApp::addEdge;
@@ -68,6 +72,39 @@ moduleLayoutHandlerInstantiator::moduleLayoutHandlerInstantiator() {
 }
 moduleLayoutHandlerInstantiator moduleLayoutHandlerInstance;
 
+// -------------------------
+// ----- Configuration -----
+// -------------------------
+
+// Record the configuration handlers in this file
+moduleConfHandlerInstantiator::moduleConfHandlerInstantiator() {
+  (*enterHandlers)["modularApp"]  = &modularApp::configure;
+  (*exitHandlers )["modularApp"]  = &moduleConfHandlerInstantiator::defaultExitFunc;
+  /*(*confEnterHandlers)["modularAppBody"]      = &defaultConfEntryHandler;
+  (*confExitHandlers )["modularAppBody"]      = &defaultConfExitHandler;
+  (*confEnterHandlers)["modularAppStructure"] = &defaultConfEntryHandler;
+  (*confExitHandlers )["modularAppStructure"] = &defaultConfExitHandler;
+  (*confEnterHandlers)["moduleTS"]            = &moduleTraceStream::enterTraceStream;
+  (*confExitHandlers )["moduleTS"]            = &defaultConfExitHandler;
+  (*confEnterHandlers)["module"]              = &modularApp::enterModule;
+  (*confExitHandlers )["module"]              = &modularApp::exitModule;
+  (*confEnterHandlers)["moduleMarker"]        = &defaultConfEntryHandler;
+  (*confExitHandlers )["moduleMarker"]        = &defaultConfExitHandler;
+  (*confEnterHandlers)["moduleCtrl"]          = &defaultConfEntryHandler;
+  (*confExitHandlers )["moduleCtrl"]          = &defaultConfExitHandler;
+  (*confEnterHandlers)["moduleEdge"]          = &modularApp::addEdge;
+  (*confExitHandlers )["moduleEdge"]          = &defaultConfExitHandler;
+  (*confEnterHandlers)["compModuleTS"]        = &compModuleTraceStream::enterTraceStream;
+  (*confExitHandlers )["compModuleTS"]        = &defaultConfExitHandler;
+  (*confEnterHandlers)["processedModuleTS"]   = &processedModuleTraceStream::enterTraceStream;
+  (*confExitHandlers )["processedModuleTS"]   = &defaultConfExitHandler;
+  (*enterHandlers)["module"]          = &module::configure;
+  (*exitHandlers )["module"]          = &moduleConfHandlerInstantiator::defaultExitFunc;
+  (*enterHandlers)["compModule"]      = &compModule::configure;
+  (*exitHandlers )["compModule"]      = &moduleConfHandlerInstantiator::efaultExitFunc;*/
+}
+moduleConfHandlerInstantiator moduleConfHandlerInstance;
+
 // Points to the currently active instance of modularApp. There can be only one.
 modularApp* modularApp::activeMA=NULL;
 
@@ -76,6 +113,9 @@ modularApp* modularApp::activeMA=NULL;
 string modularApp::outDir="";
 // Relative to root of HTML document
 string modularApp::htmlOutDir="";
+
+// Stack of the module markers that are currently in scope within this modularApp
+list<sight::layout::moduleInfo> modularApp::mMarkerStack;
 
 // Stack of the modules that are currently in scope within this modularApp
 list<sight::layout::moduleInfo> modularApp::mStack;
@@ -99,6 +139,37 @@ modularApp::modularApp(properties::iterator props) : block(properties::next(prop
   dotFile.open(origDotFName.str().c_str());
   dotFile << "digraph G {"<<endl;
   dotFile << "\tcompound=true;"<<endl;
+  
+  // If we were asked to emit all observations from all modules into a file, 
+  // create a traceObserver to do this. This traceObserver will be connected to the
+  // moduleTraceStreams of individual modules as they are encountered.
+  if(emitObsCommonDataTable) 
+    commonDataTableLogger = new SynopticModuleObsLogger(txt()<<modularApp::getOutDir()<<"/data/"<<
+                                                        boost::replace_all_copy(modularApp::getInstance()->getAppName(), " ", "_"));
+  else
+    commonDataTableLogger = NULL;
+}
+
+// Returns a string that uniquely identifies all the module markers currently on the stack, using the 
+// given string to separate the strings of different module instances.
+std::string modularApp::getModuleMarkerStackName(std::string separator) {
+  ostringstream s;
+  for(list<sight::layout::moduleInfo>::iterator m=mMarkerStack.begin(); m!=mMarkerStack.end(); m++) {
+    if(m!=mMarkerStack.begin()) s << separator;
+    s << m->moduleName;
+  }
+  return s.str();
+}
+
+// Returns a string that uniquely identifies all the modules currently on the stack, using the 
+// given string to separate the strings of different module instances.
+std::string modularApp::getModuleStackName(std::string separator) {
+  ostringstream s;
+  for(list<sight::layout::moduleInfo>::iterator m=mStack.begin(); m!=mStack.end(); m++) {
+    if(m!=mStack.begin()) s << separator;
+    s << m->moduleName;
+  }
+  return s.str();
 }
 
 // Initialize the environment within which generated graphs will operate, including
@@ -158,6 +229,8 @@ modularApp::~modularApp() {
   // Delete all the traceStreams associated with the given trace, which emits their output
   for(map<int, traceStream*>::iterator m=moduleTraces.begin(); m!=moduleTraces.end(); m++)
     delete m->second;
+  
+  if(commonDataTableLogger) delete commonDataTableLogger;
 }
 
 string portName(common::module::ioT type, int index) 
@@ -239,6 +312,36 @@ int maxButtonID=0; // The maximum ID that has ever been assigned to a button
 //    dotFile << "\t\t\t</TR>"<<endl;
 //  } // trace attrs
 //}
+
+// Enter a new moduleMarker within the current modularApp
+// numInputs/numOutputs - the number of inputs/outputs of this module node
+// ID - the unique ID of this module node
+void modularApp::enterModuleMarker(string moduleName, int numInputs, int numOutputs) {
+  // Add a moduleInfo object that records this moduleMarker to the modularApp's stack
+  mMarkerStack.push_back(sight::layout::moduleInfo(moduleName, -1, numInputs, numOutputs, -1));
+}
+
+// Static version of enterModuleMarker() that pulls the from/to anchor IDs from the properties iterator and calls 
+// enterModule() in the currently active modularApp
+void* modularApp::enterModuleMarker(properties::iterator props) {
+  assert(modularApp::activeMA);
+  modularApp::activeMA->enterModuleMarker(props.get("name"), 
+                                          props.getInt("numInputs"), 
+                                          props.getInt("numOutputs")); 
+  return NULL;
+}
+
+// Exit a module within the current modularApp
+void modularApp::exitModuleMarker() {
+  assert(mMarkerStack.size()>0);
+  mMarkerStack.pop_back();
+}
+
+// Static version of exitModuleMarker() that calls exitModuleMarker() in the currently active modularApp
+void modularApp::exitModuleMarker(void* obj) {
+  assert(modularApp::activeMA);
+  modularApp::activeMA->exitModuleMarker();
+}
 
 // Enter a new module within the current modularApp
 // numInputs/numOutputs - the number of inputs/outputs of this module node
@@ -538,6 +641,10 @@ void* modularApp::addEdge(properties::iterator props) {
   return NULL;
 }
 
+// Records whether we should emit the observations of each module into a separate table for use by external tools
+bool modularApp::emitObsIndividualDataTable;
+// Records whether we should emit the observations of all modular into a single table for use by external tools
+bool modularApp::emitObsCommonDataTable;
 
 /******************
  ***** module *****
@@ -1191,7 +1298,7 @@ void polyFitFilter::obsFinished() {
             new externalTraceProcessor_File(string(ROOT_PATH)+"/widgets/funcFit/funcFit", 
                                             easylist<string>(txt()<<workDir<<"/in"<<fileNum<<".cfg"),
                                             txt()<<workDir<<"/in"<<fileNum<<"."<<*t<<".data",
-                                            easylist<string>("\""+*t+"\""/*,
+                                            easylist<string>(*t/*,
                                                              txt()<<workDir<<"/in"<<fileNum<<"."<<*t<<".log"*/));
     outProcessors.insert(out);
     
@@ -1433,22 +1540,42 @@ moduleTraceStream::moduleTraceStream(properties::iterator props, traceObserver* 
     registerObserver(polyFitter);
     registerObserver(this);
     
-    modularApp::registerModule(moduleID, mFilter, polyFitCollector);
+    // If we need to record all the observations in a file
+    if(modularApp::emitObsIndividualDataTable) {
+      fileWriter = new traceFileWriterTSV(txt()<<modularApp::outDir<<"/data_individual/"<<
+                                                 modularApp::activeMA->getAppName()<<"/"<<
+                                                 modularApp::activeMA->getModuleMarkerStackName("/")<<".tsv");
+      registerObserver(fileWriter);
+    } else
+      fileWriter = NULL;
     
+    // If we need to record all observations from all modules into a common file, connect
+    // commonDataTableLogger to observe this traceStream
+    if(modularApp::emitObsCommonDataTable) {
+      assert(modularApp::activeMA->commonDataTableLogger);
+      registerObserver(modularApp::activeMA->commonDataTableLogger);
+      modularApp::getInstance()->commonDataTableLogger->recordTraceLabel(
+                                    getID(), 
+                                    txt()<<modularApp::getInstance()->getAppName()<<"-"<<
+                                           modularApp::getInstance()->getModuleMarkerStackName("-"));
+    }
+	    
+    modularApp::registerModule(moduleID, mFilter, polyFitCollector);
+	    
     // The queue of observation filters
 /*    queue = new traceObserverQueue(traceObservers(
-                    // - Observations pass through a new instance of module to enable it to build polynomial 
-                    // fits of this data
-                    new polyFitFilter(),
-                    mFilter,
-                    // - They then end up at the original traceStream to be included in the generated visualization
-                    this));
+    // - Observations pass through a new instance of module to enable it to build polynomial 
+    // fits of this data
+    new polyFitFilter(),
+    mFilter,
+    // - They then end up at the original traceStream to be included in the generated visualization
+		    this));
     registerObserver(queue);*/
   }
   // If an observer is specified, then that observer must be doing the processing. We assme that this derived class
   // sets mFilter and queue.
-  
-  
+	  
+	  
   // Record the mapping between traceStream IDs and the IDs of the module group they're associated with
   modularApp::activeMA->trace2moduleID[getID()] = moduleID;
   ///cout << "moduleID="<<moduleID<<", traceID="<<m->moduleTraces[moduleID]->getID()<<endl;
@@ -1493,18 +1620,18 @@ compModuleTraceStream::compModuleTraceStream(properties::iterator props, traceOb
       
       int numCtxtAttrs = props.getInt(txt()<<"in"<<i<<":numAttrs");
       for(int c=0; c<numCtxtAttrs; c++) {
-        escapedStr comparator(props.get(txt()<<"in"<<i<<":compare"<<c), ":", escapedStr::escaped);
-        vector<string> fields = comparator.unescapeSplit(":");
-        assert(fields.size()==3);
-        // The name of the input attribute
-        string inName = fields[0];
-        // The name of the comparator to be used for this attribute
-        string compName = fields[1];
-        // The description of the comparator
-        string compDesc = fields[2];
-        
-        // Generate a comparator object based on the encoded comparator name and description and store it in the compModule
-        cmFilter->inComparators[i][inName] = attrValueComparatorInstantiator::genComparator(compName, compDesc);
+	escapedStr comparator(props.get(txt()<<"in"<<i<<":compare"<<c), ":", escapedStr::escaped);
+	vector<string> fields = comparator.unescapeSplit(":");
+	assert(fields.size()==3);
+	// The name of the input attribute
+	string inName = fields[0];
+	// The name of the comparator to be used for this attribute
+	string compName = fields[1];
+	// The description of the comparator
+	string compDesc = fields[2];
+	
+	// Generate a comparator object based on the encoded comparator name and description and store it in the compModule
+	cmFilter->inComparators[i][inName] = attrValueComparatorInstantiator::genComparator(compName, compDesc);
 //cout << "inComparators["<<i<<"]["<<inName<<"] => "<<compName<<" , "<<compDesc<<endl;
       }
     }
@@ -1515,18 +1642,18 @@ compModuleTraceStream::compModuleTraceStream(properties::iterator props, traceOb
       
       int numCtxtAttrs = props.getInt(txt()<<"out"<<i<<":numAttrs");
       for(int c=0; c<numCtxtAttrs; c++) {
-        escapedStr comparator(props.get(txt()<<"out"<<i<<":compare"<<c), ":", escapedStr::escaped);
-        vector<string> fields = comparator.unescapeSplit(":");
-        assert(fields.size()==3);
-        // The name of the output attribute
-        string outName = fields[0];
-        // The name of the comparator to be used for this attribute
-        string compName = fields[1];
-        // The description of the comparator
-        string compDesc = fields[2];
-        
-        // Generate a comparator object based on the encoded comparator name and description and store it in the compModule
-        cmFilter->outComparators[i][outName] = attrValueComparatorInstantiator::genComparator(compName, compDesc);
+	escapedStr comparator(props.get(txt()<<"out"<<i<<":compare"<<c), ":", escapedStr::escaped);
+	vector<string> fields = comparator.unescapeSplit(":");
+	assert(fields.size()==3);
+	// The name of the output attribute
+	string outName = fields[0];
+	// The name of the comparator to be used for this attribute
+	string compName = fields[1];
+	// The description of the comparator
+	string compDesc = fields[2];
+	
+	// Generate a comparator object based on the encoded comparator name and description and store it in the compModule
+	cmFilter->outComparators[i][outName] = attrValueComparatorInstantiator::genComparator(compName, compDesc);
 //cout << "outComparators["<<i<<"]["<<outName<<"] => "<<compName<<" , "<<compDesc<<endl;
       }
     }
@@ -1562,6 +1689,32 @@ compModuleTraceStream::compModuleTraceStream(properties::iterator props, traceOb
     cmFilter->registerObserver(polyFitter);
     cmFilter->registerObserver(this);
     
+    // If we need to record all the observations in a file
+    //cout << "modularApp::emitObsIndividualDataTable="<<modularApp::emitObsIndividualDataTable<<endl;
+    if(modularApp::emitObsIndividualDataTable) {
+      /*cout << "Logging to "<<modularApp::getOutDir()<<"/data/"<<
+                                                 modularApp::getInstance()->getAppName()<<"/"<<
+                                                 modularApp::getInstance()->getModuleMarkerStackName("/")<<endl;
+      cout << "    #mStack="<< modularApp::getInstance()->getMMarkerStack().size()<<endl;*/
+
+      fileWriter = new traceFileWriterTSV(txt()<<modularApp::getOutDir()<<"/data/"<<
+                                                 modularApp::getInstance()->getAppName()<<"/"<<
+                                                 modularApp::getInstance()->getModuleMarkerStackName("/")<<".tsv");
+      cmFilter->registerObserver(fileWriter);
+    } else
+      fileWriter = NULL;
+    
+    // If we need to record all observations from all modules into a common file, connect
+    // commonDataTableLogger to observe this traceStream
+    if(modularApp::emitObsCommonDataTable) {
+      assert(modularApp::getInstance()->commonDataTableLogger);
+      cmFilter->registerObserver(modularApp::getInstance()->commonDataTableLogger);
+      modularApp::getInstance()->commonDataTableLogger->recordTraceLabel(
+                                    getID(), 
+                                    txt()<<modularApp::getInstance()->getAppName()<<"-"<<
+                                           modularApp::getInstance()->getModuleMarkerStackName("-"));
+    }
+ 
     modularApp::registerModule(moduleID, mFilter, polyFitCollector);
     
     /*
@@ -1663,7 +1816,10 @@ std::map<std::string, std::string> compModule::compareObservations(
       cout << endl;*/
       
       // Get the comparator for this property of this output and compare the two attrValues
-      assert(measComparators.find(traceSubGrouping) != measComparators.end());
+      if(measComparators.find(traceSubGrouping) == measComparators.end()) {
+        cerr << "ERROR: no comparator found for trace attribute "<<traceSubGrouping<<"!"<<endl;
+        assert(0);
+      }
       comp = measComparators[traceSubGrouping];
     
     // If the current attribute is an option, do not perform a comparison on it
@@ -1900,6 +2056,81 @@ void *processedModuleTraceStream::enterTraceStream(properties::iterator props) {
   return NULL;
 }
 
+/***********************************
+ ***** SynopticModuleObsLogger *****
+ ***********************************/
+
+SynopticModuleObsLogger::SynopticModuleObsLogger(std::string outFName) : outFName(outFName){
+  mkpath(outFName, 0755, false);
+  //cout << "SynopticModuleObsLogger opening file "<<outFName<<endl;
+  string fName = txt()<<outFName<<".synoptic";
+  out.open(fName.c_str(), std::ofstream::out);
+  if(!out.is_open()) { cerr << "SynopticModuleObsLogger::SynopticModuleObsLogger() ERROR opening file \""<<fName<<"\" for writing! "<<strerror(errno)<<endl; assert(0); }
+}
+
+// Interface implemented by objects that listen for observations a traceStream reads. Such objects
+// call traceStream::registerObserver() to inform a given traceStream that it should observations.
+void SynopticModuleObsLogger::observe(int traceID,
+             const std::map<std::string, std::string>& ctxt, 
+             const std::map<std::string, std::string>& obs,
+             const std::map<std::string, anchor>&      obsAnchor) {
+  assert(traceID2Label.find(traceID) != traceID2Label.end());
+  escapedStr esLabel(traceID2Label[traceID], "\"", escapedStr::unescaped);
+  
+  /*cout << "SynopticModuleObsLogger::observe("<<traceID<<": "<<traceID2Label[traceID]<<") #ctxt="<<ctxt.size()<<" #obs="<<obs.size()<<endl;
+  cout << "    ctxt=";
+  for(map<string, string>::const_iterator c=ctxt.begin(); c!=ctxt.end(); c++) { cout << c->first << "=>"<<c->second<<" "; }
+  cout << endl;
+  cout << "    obs=";   
+  for(map<string, string>::const_iterator o=obs.begin(); o!=obs.end(); o++) { cout << o->first << "=>"<<o->second<<" "; }
+  cout << endl;*/
+  
+  map<string, string>::const_iterator startO = obs.find("module:measure:timestamp:Start");
+  if(startO != obs.end()) {
+    out << "\"" << esLabel.escape() << "-Start\" "<<attrValue(startO->second, attrValue::unknownT).getAsStr()<<endl;
+    //cout << "\"" << esLabel.escape() << "-Start\" "<<attrValue(startO->second, attrValue::unknownT).getAsStr()<<endl;
+  }
+  
+  map<string, string>::const_iterator endO = obs.find("module:measure:timestamp:End");
+  if(endO != obs.end()) {
+    out << "\"" << esLabel.escape() << "-End\" "<<attrValue(endO->second, attrValue::unknownT).getAsStr()<<endl;
+    //cout << "\"" << esLabel.escape() << "-End\" "<<attrValue(endO->second, attrValue::unknownT).getAsStr()<<endl;
+  }
+}
+  
+// Called when the stream of observations has finished to allow the implementor to perform clean-up tasks.
+// This method is optional.
+void SynopticModuleObsLogger::obsFinished() {
+}
+
+SynopticModuleObsLogger::~SynopticModuleObsLogger() {
+  assert(out.is_open());
+  out.close();
+
+  // Run synoptic on the log to produce its output file
+  
+  // First, write out a file that contains the arguments to Synoptic, if it does not already exist
+  string argsFName = txt()<<outFName<<".args";
+  //cout << "argsFName="<<argsFName<<endl;
+  struct stat s;
+  int ret;
+  if((ret=stat(argsFName.c_str(), &s)) != 0) {
+    if(errno==ENOENT) {
+      ofstream out(argsFName.c_str(), ios::out);
+      out << "-o "<<outFName<<endl;
+      out << "-r \"(?<TYPE>.+)\" (?<DTIME>.+)"<<endl;
+    }
+  }
+  
+  // Next run Synoptic on these files
+  ostringstream cmd; cmd << "cd "<<ROOT_PATH << "/widgets/synoptic; "<<ROOT_PATH << "/widgets/synoptic/synoptic-jar.sh -q -c "<<argsFName<<" "<<outFName<<".synoptic";
+  //cout << "cmd="<<cmd.str()<<endl;
+  system(cmd.str().c_str());
+  
+  // Remove the temporary files
+  remove(argsFName.c_str());
+  remove(string(txt()<<outFName<<".synoptic").c_str());
+}
 
 }; // namespace layout
 }; // namespace sight

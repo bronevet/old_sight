@@ -68,13 +68,13 @@ HYPRE_ParCSRPCGSetup( HYPRE_Solver solver,
                       HYPRE_ParCSRMatrix A,
                       HYPRE_ParVector b,
                       HYPRE_ParVector x,
-                      context& runCfg)
+                      context& runCfg, int& num_precond_calls)
 {
    return( HYPRE_PCGSetup( solver,
                            (HYPRE_Matrix) A,
                            (HYPRE_Vector) b,
                            (HYPRE_Vector) x,
-                           runCfg) );
+                           runCfg, num_precond_calls) );
 }
 
 /*--------------------------------------------------------------------------
@@ -86,14 +86,14 @@ HYPRE_ParCSRPCGSolve( HYPRE_Solver solver,
                       HYPRE_ParCSRMatrix A,
                       HYPRE_ParVector b,
                       HYPRE_ParVector x,
-                      context& runCfg, sightModule& solveModule, int solveModOutput)
+                      context& runCfg, /*sightModule* solveModule, int solveModOutput*/ int& num_precond_calls)
 {
    return( HYPRE_PCGSolve( solver,
                            (HYPRE_Matrix) A,
                            (HYPRE_Vector) b,
                            (HYPRE_Vector) x,
                            runCfg,
-                           solveModule, solveModOutput ) );
+                          /* solveModule, solveModOutput*/ num_precond_calls ) );
 }
 
 /*--------------------------------------------------------------------------

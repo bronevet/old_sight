@@ -425,7 +425,7 @@ int merge(vector<FILEStructureParser*>& parsers,
     #ifdef VERBOSE
     //dbg << "=================================, numActive="<<numActive<<"\n";
     scope loopS(txt()<<"Loop depth="<<variantStackDepth<<", numActive="<<numActive);
-    { scope streamS("streamRecords", scope::high); printStreamRecords(dbg, outStreamRecords, inStreamRecords, ""); }
+    { scope streamS("streamRecords", scope::medium); printStreamRecords(dbg, outStreamRecords, inStreamRecords, ""); }
     #endif
     
     // Read the next item from each parser
@@ -435,6 +435,7 @@ int merge(vector<FILEStructureParser*>& parsers,
     int numSightEnterTags=0;
     int numSightExitTags=0;
     
+    // Read the next tag on each parser, updating nextTag and tag2stream
     for(vector<FILEStructureParser*>::iterator p=parsers.begin(); p!=parsers.end(); p++, parserIdx++) {
       #ifdef VERBOSE
       dbg << "readyForTag["<<parserIdx<<"]="<<readyForTag[parserIdx]<<", activeParser["<<parserIdx<<"]="<<activeParser[parserIdx]<<endl;
@@ -511,7 +512,7 @@ int merge(vector<FILEStructureParser*>& parsers,
     #endif
     if(numActive==0) break;
     #ifdef VERBOSE
-    { scope s("Tags", scope::high); 
+    { scope s("Tags", scope::medium); 
       printTags(dbg, activeParser, nextTag, ""); }
     #endif
     
@@ -625,12 +626,14 @@ int merge(vector<FILEStructureParser*>& parsers,
 
       // If we observed a sight exit tag on any of the streams, pass over it
       bool sightExitTagFound = false;
-      for(map<tagGroup, StreamTags >::iterator ts=tag2stream.begin(); ts!=tag2stream.end(); ts++) {
+      for(map<tagGroup, StreamTags >::iterator ts=tag2stream.begin(); ts!=tag2stream.end(); ) {
         if(ts->first.objName=="sight" && ts->first.type == properties::exitTag) {
           sightExitTagFound = true;
           for(list<int>::iterator parserIdx=ts->second.parserIndexes.begin(); parserIdx!=ts->second.parserIndexes.end(); parserIdx++)
             readyForTag[*parserIdx] = true;
-        }
+          tag2stream.erase(ts++);
+        } else
+          ts++;
       }
       
       // Group all the streams with the same next tag name/type. Since all parsers must have the same

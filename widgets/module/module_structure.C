@@ -29,9 +29,9 @@ namespace structure {
 
 // Record the configuration handlers in this file
 moduleConfHandlerInstantiator::moduleConfHandlerInstantiator() {
-  /*(*confEnterHandlers)["modularApp"]          = &modularAppEnterHandler;
-  (*confExitHandlers )["modularApp"]          = &modularAppExitHandler;
-  (*confEnterHandlers)["modularAppBody"]      = &defaultConfEntryHandler;
+  (*enterHandlers)["modularApp"] = &modularApp::configure;
+  (*exitHandlers )["modularApp"] = &moduleConfHandlerInstantiator::defaultExitFunc;
+  /*(*confEnterHandlers)["modularAppBody"]      = &defaultConfEntryHandler;
   (*confExitHandlers )["modularAppBody"]      = &defaultConfExitHandler;
   (*confEnterHandlers)["modularAppStructure"] = &defaultConfEntryHandler;
   (*confExitHandlers )["modularAppStructure"] = &defaultConfExitHandler;
@@ -49,7 +49,6 @@ moduleConfHandlerInstantiator::moduleConfHandlerInstantiator() {
   (*confExitHandlers )["compModuleTS"]        = &defaultConfExitHandler;
   (*confEnterHandlers)["processedModuleTS"]   = &processedModuleTraceStream::enterTraceStream;
   (*confExitHandlers )["processedModuleTS"]   = &defaultConfExitHandler;*/
-
   (*enterHandlers)["module"]          = &module::configure;
   (*exitHandlers )["module"]          = &moduleConfHandlerInstantiator::defaultExitFunc;
   (*enterHandlers)["compModule"]      = &compModule::configure;
@@ -631,7 +630,11 @@ void modularApp::enterModule(module* m, int moduleID, properties* props) {
   else {
     /*cout << "props="<<props->str()<<endl;
     cout << "moduleProps["<<m->g.str()<<"]="<<moduleProps[m->g]->str()<<endl;*/
-    assert(*(moduleProps[m->g]) == *props);
+    //assert(*(moduleProps[m->g]) == *props);
+    if(*(moduleProps[m->g]) != *props) {
+      cerr << "ERROR: module "<<m->g.str()<<" observed multiple times with different properties (count of inputs and outputs)!\n";
+      assert(0);
+    }
     // Delete props since it is no longer useful
     delete props;
   }
@@ -871,6 +874,9 @@ void module::init(const std::vector<port>& ins, properties* derivedProps) {
     }
   }
   
+  // We've not yet completed measuring this module's behavior
+  measurementCompleted = false;
+  
   //cout << "g="<<g.str()<<", ins.size()="<<ins.size()<<endl;
 }
 
@@ -898,15 +904,14 @@ module::~module() {
     cerr << endl;
   }
   
-  // Complete the measurement of application's behavior during the module's lifetime
   if(props->active) {
-    // Wrap the portion of the moduleMarker tag where we place the control information (the traceStream)
-    // in its own tag to make them easier to match across different streams
-    properties moduleCtrl;
-    moduleCtrl.add("moduleCtrl", map<string, string>());
-    
     // If this is an instance of module rather than a class that derives from module
     if(!isDerived) {
+      // Wrap the portion of the moduleMarker tag where we place the control information (the traceStream)
+      // in its own tag to make them easier to match across different streams
+      properties moduleCtrl;
+      moduleCtrl.add("moduleCtrl", map<string, string>());
+
       dbg.enter(moduleCtrl);
 
       // Register a traceStream for this module's group, if one has not already been registered
@@ -915,7 +920,7 @@ module::~module() {
                                         modularApp::getTraceStreamID(g)));
       }
     }
-    
+
     // Set the context attributes to be used in this module's measurements by combining the context provided by any
     // class that may derive from this one as well as the contexts of its inputs
     //map<string, attrValue> traceCtxt = getTraceCtxt();
@@ -923,30 +928,24 @@ module::~module() {
     /*cout << "traceCtxt="<<endl;
     for(map<string, attrValue>::iterator tc=traceCtxt.begin(); tc!=traceCtxt.end(); tc++)
       cout << "    "<<tc->first << ": "<<tc->second.serialize()<<endl;*/
-    
-    // Complete measuring this instance and collect the observations into props
-    list<pair<string, attrValue> > obs;
-    int measIdx=0;
-    for(namedMeasures::iterator m=meas.begin(); m!=meas.end(); m++, measIdx++) {
-      // Complete the m's measurement
-      list<pair<string, attrValue> > curObs = m->second->endGet();
-      // Push each measurement onto the observation
-      for(list<pair<string, attrValue> >::iterator o=curObs.begin(); o!=curObs.end(); o++) {
-        obs.push_back(make_pair(encodeCtxtName("module", "measure", m->first, o->first), o->second));
-      }
-      delete m->second;
-    }
+
+    // Complete the measurement of application's behavior during the module's lifetime
+    completeMeasurement();
     
     // Add to the trace observation the properties of all of the module's outputs
     for(int i=0; i<outs.size(); i++) {
       if(outs[i].ctxt==NULL) continue;
-      
+
       for(map<std::string, attrValue>::iterator c=outs[i].ctxt->configuration.begin();
           c!=outs[i].ctxt->configuration.end(); c++) {
         obs.push_back(make_pair(encodeCtxtName("module", "output", txt()<<i, c->first), c->second));
       }
     }
     
+    /*cout << "obs="<<endl;
+  for(list<pair<string, attrValue> >::iterator tc=obs.begin(); tc!=obs.end(); tc++)
+    cout << "    "<<tc->first << ": "<<tc->second.serialize()<<endl;*/
+
     // Record the observation into this module group's trace
     modularApp::moduleTrace[g]->traceFullObservation(traceCtxt, obs, anchor::noAnchor);
 
@@ -959,13 +958,36 @@ module::~module() {
     modularApp::exitModule(this);
     
     // Close the tag that wraps the control section of this module
+    properties moduleCtrl;
+    moduleCtrl.add("moduleCtrl", map<string, string>());
     dbg.exit(moduleCtrl);
   }
 }
 
-/*traceStream* module::generateModuleTraceStream::operator()(int moduleID) {
-  return new moduleTraceStream(moduleID, g->name(), g->numInputs(), g->numOutputs(), trace::lines, trace::disjMerge);
-}*/
+// Called to complete the measurement of this module's execution. This measurement may be completed before
+// the module itself completes to enable users to separate the portion of the module's execution that 
+// represents its core behavior (and thus should be measured) from the portion where the module's outputs
+// are computed.
+void module::completeMeasurement() {
+  if(!props->active) return;
+  
+  if(measurementCompleted) return; // { cerr << "ERROR: completing measurement of execution of module "<<g.str()<<" multiple times!"<<endl; assert(0); }
+  
+  // Complete measuring this instance and collect the observations into props
+  int measIdx=0;
+  for(namedMeasures::iterator m=meas.begin(); m!=meas.end(); m++, measIdx++) {
+    // Complete the m's measurement
+    list<pair<string, attrValue> > curObs = m->second->endGet();
+    // Push each measurement onto the observation
+    for(list<pair<string, attrValue> >::iterator o=curObs.begin(); o!=curObs.end(); o++) {
+      obs.push_back(make_pair(encodeCtxtName("module", "measure", m->first, o->first), o->second));
+    }
+    delete m->second;
+  }
+  
+  // We've completed measuring this module
+  measurementCompleted = true;
+}
 
 // Sets the context of the given output port
 void module::setInCtxt(int idx, const context& c) {
@@ -1029,8 +1051,9 @@ port module::outPort(int idx) const {
 void module::setTraceCtxt() {
   // Add to it the context of this module based on the contexts of its inputs
   for(int i=0; i<ins.size(); i++) {
-    for(std::map<std::string, attrValue>::const_iterator c=ins[i].ctxt->configuration.begin(); c!=ins[i].ctxt->configuration.end(); c++)
+    for(std::map<std::string, attrValue>::const_iterator c=ins[i].ctxt->configuration.begin(); c!=ins[i].ctxt->configuration.end(); c++) {
       traceCtxt[encodeCtxtName("module", "input", txt()<<i, c->first)] = c->second;
+    }
   }
 }
 
@@ -1945,8 +1968,11 @@ properties* ModularAppMerger::setProperties(std::vector<std::pair<properties::ta
 // call their parents so they can add any info,
 void ModularAppMerger::mergeKey(properties::tagType type, properties::iterator tag, 
                            std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
-  BlockMerger::mergeKey(type, tag.next(), inStreamRecords, info);
-  
+  // We do not call the mergeKey method of the BlockMerger because we wish to keep the API of modularApps simple:
+  // If there are two modular apps with the same name, they should be merged even if their call stacks are different.
+  // This is because for the most part users define a single modularApp variable in their application and details
+  // of call stack, etc. should not make a difference.
+  //BlockMerger::mergeKey(type, tag.next(), inStreamRecords, info);
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; assert(0); }
   if(type==properties::enterTag) {
     info.add(tag.get("appName"));

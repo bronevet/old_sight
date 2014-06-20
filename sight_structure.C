@@ -67,17 +67,6 @@ char* saved_execFile = NULL;
 // The unique ID of this process' output stream
 int outputStreamID=0;
 
-// Initializes Sight
-void loadSightConfig() {
-// If the user has specified a configuration file to be loaded
-  if(getenv("SIGHT_CONFIG")) {
-    FILE* f = fopen(getenv("SIGHT_CONFIG"), "r");
-    if(f==NULL) { cerr << "ERROR opening configuration file \""<<getenv("SIGHT_CONFIG")<<"\" for reading! "<<strerror(errno)<<endl; assert(f); }
-    FILEStructureParser parser(f, 10000);
-    loadConfiguration(parser);
-  }
-}
-
 // Provides the output directory and run title as well as the arguments that are required to rerun the application
 void SightInit(int argc, char** argv, string title, string workDir)
 {
@@ -98,7 +87,7 @@ void SightInit(string title, string workDir)
 // tags to these streams directly without using any of the high-level APIs.
 void SightInit_LowLevel()
 {
-  loadSightConfig();
+  loadSightConfig(configFileEnvVars("SIGHT_STRUCTURE_CONFIG", "SIGHT_CONFIG"));
   
   initializedDebug = true;
 }
@@ -107,7 +96,7 @@ void SightInit_internal(int argc, char** argv, string title, string workDir)
 {
   map<string, string> newProps;
   
-  loadSightConfig();
+  loadSightConfig(configFileEnvVars("SIGHT_STRUCTURE_CONFIG", "SIGHT_CONFIG"));
   
   newProps["title"] = title;
   newProps["workDir"] = workDir;
@@ -1698,8 +1687,8 @@ BlockMerger::BlockMerger(std::vector<std::pair<properties::tagType, properties::
     }
     
     vector<string> cpValues = getValues(tags, "callPath");
-    assert(allSame<string>(cpValues));
-    pMap["callPath"] = *cpValues.begin();
+    if(allSame<string>(cpValues)) pMap["callPath"] = *cpValues.begin();
+    else                          pMap["callPath"] = "";
     
     props->add("block", pMap);
   } else {

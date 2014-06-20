@@ -11,6 +11,9 @@
 #include <sstream>
 #include <assert.h>
 
+// Include all the definitions that control compilation
+#include "definitions.h"
+
 namespace sight {
 
 namespace common {
@@ -105,6 +108,9 @@ class properties
     std::cout << "active==that.active = "<<(active==that.active)<<std::endl;
     std::cout << "emitTag==that.emitTag = "<<(emitTag==that.emitTag)<<std::endl;*/
     return p==that.p && active==that.active && emitTag==that.emitTag; }
+
+  bool operator!=(const properties& that) const
+  { return !(*this == that); }
   
   bool operator<(const properties& that) const
   { return (p< that.p) ||
@@ -325,6 +331,21 @@ std::string unescape(std::string s);
 
 // Wrapper for strings in which some characters have been escaped. This is useful for serializing multi-level 
 // collection objects, while using the same separator for each level of the encoding.
+// escapedStr's are used as follows:
+// Serialization: (serialized representations of multiple objects separated by ':')
+//   esapedStr str1(obj1.serialize(), ":", escapedStr::unescaped);
+//   esapedStr str2(obj2.serialize(), ":", escapedStr::unescaped);
+//   esapedStr str3(obj3.serialize(), ":", escapedStr::unescaped);
+//   str serialized = str1.escape() + ":" + str2.escape() + ":" str3.escape();
+//
+// Deserialization: (of above objects)
+//   Given str serialized;
+//   common::escapedStr es(serialized, ":", escapedStr::escaped);
+//   vector<string> fields = es.unescapeSplit(":");
+//   assert(fields.size()==3);
+//   obj1Type obj1(fields[0]);
+//   obj2Type obj2(fields[1]);
+//   obj3Type obj3(fields[2]);
 class escapedStr {
   std::string s;
   std::string control;
@@ -491,72 +512,6 @@ class TagFileReaderRegistry: public LoadTimeRegistry {
   static std::string str();
 }; // class TagFileReaderRegistry
 
-/*******************************
- ***** Configuration Files *****
- *******************************/
-
-/* The behavior of Sight widgets can be parameterized by specifying a configuration file.
- * This file has the same format as the structure file that is laid out by the layout layer,
- * and contains tags that describe the different types of widgets that may exist at runtime 
- * and the properties of these widgets. Since each widget may inherit from another widgets,
- * tags in the configuration file (must like those in the structure file) explicitly document
- * their inheritance hierarchy:
- * [kulfiModule ...][|compModule ...][|module ...][|block ...] ... [/kulfiModule]
- * This gets mapped to a properties object with separate key->value maps for each widget
- * in the inheritance hierarchy. To incorporate a tag in the configuration file into the state
- * of a Sight widget the following steps must be taken:
- * - Register a callback function under the widget's name that takes this properties object
- * - When a tag is read the callback function for its most derived widget name is invoked
- * - This callback creates a Configuration object that is specific to the widget and derives
- *   from a Configuration of the widget from which it is derived (ex: KulfiConfiguration derives
- *   from CompModuleConfiguration, which derives from ModuleConfiguration because kulfiModule 
- *   derives from compModule, which derives from module)
- * - The constructor of each Configuration object takes in properties iterator object that corresponds
- *   to the read tag, incorporates the information into the widget's state (likely some static
- *   data structures specific to the widget) and passes the successor of this iterator to
- *   its parent constructor (this successor's properties must correspond to the parent's widget type)
- *
- * Each widget provides its own scheme for mapping the widgets specified in the configuration
- * file to the widgets that occur at runtime. For example, the configuration file may have
- * several module tags with different labels. In this case the modules widget may record a 
- * global mapping from these names to their properties and whenever the user creates a module
- * with a name that matches one that appeared in the configuration file, the corresponding
- * properties object will be communicated to it. Thus, the constructor of each module will get
- * two properties objects. First, the properties of the widget instance that will be written
- * to the structure file and second, the properties iterator for the configuratoin that are 
- * being applied to this widget. Both will be propagated up the constructor, with the configuration
- * properties iterator advancing each time the parent constructor is called.
- */
-
-class Configuration {
-  protected:
-  Configuration(properties::iterator props) {}
-}; // class Configuration
-
-/* Maps the names of various tags that may appear in a configuration file to the functions
- * that decode them.
- * An entry handler is called when the object's entry tag is encountered in the configuration file. It
- *   takes as input the properties of this tag and returns a pointer to Configuration object that 
- *   decodes it. NULL is a valid return value.
- * An exit handler is called when the object's exit tag is encountered and takes as input a pointer
- *  to its corresponding Configuration object, as returned by the entry function.
- * It is assumed that all objects are hierarchically scoped, in that objects are exited in the
- *   reverse order of their entry. The layout engine keeps track of the entry/exit stacks and
- *   ensures that the appropriate object pointers are passed to exit handlers.
- */
-class confHandlerInstantiator : public TagFileReaderRegistry<Configuration> {
-  public:
-  confHandlerInstantiator() : TagFileReaderRegistry<Configuration>("confHandlerInstantiator") {}
-};
-class sightConfHandlerInstantiator : confHandlerInstantiator {
-  public:
-  sightConfHandlerInstantiator();
-};
-extern sightConfHandlerInstantiator sightConfHandlerInstantance;
-
-// Given a parser that reads a given configuration file, load it
-void loadConfiguration(structureParser& parser);
-
 /***********************************************
  ***** Syntactic Sugar for Data Structures *****
  ***********************************************/
@@ -709,6 +664,76 @@ class easyset : public std::set<T> {
 	easyset(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4, const T& p5, const T& p6, const T& p7, const T& p8, const T& p9)
 	{ insert(p0); insert(p1); insert(p2); insert(p3); insert(p4); insert(p5); insert(p6); insert(p7); insert(p8); insert(p8); insert(p9); }
 }; // class easyset
+
+/*******************************
+ ***** Configuration Files *****
+ *******************************/
+
+/* The behavior of Sight widgets can be parameterized by specifying a configuration file.
+ * This file has the same format as the structure file that is laid out by the layout layer,
+ * and contains tags that describe the different types of widgets that may exist at runtime 
+ * and the properties of these widgets. Since each widget may inherit from another widgets,
+ * tags in the configuration file (must like those in the structure file) explicitly document
+ * their inheritance hierarchy:
+ * [kulfiModule ...][|compModule ...][|module ...][|block ...] ... [/kulfiModule]
+ * This gets mapped to a properties object with separate key->value maps for each widget
+ * in the inheritance hierarchy. To incorporate a tag in the configuration file into the state
+ * of a Sight widget the following steps must be taken:
+ * - Register a callback function under the widget's name that takes this properties object
+ * - When a tag is read the callback function for its most derived widget name is invoked
+ * - This callback creates a Configuration object that is specific to the widget and derives
+ *   from a Configuration of the widget from which it is derived (ex: KulfiConfiguration derives
+ *   from CompModuleConfiguration, which derives from ModuleConfiguration because kulfiModule 
+ *   derives from compModule, which derives from module)
+ * - The constructor of each Configuration object takes in properties iterator object that corresponds
+ *   to the read tag, incorporates the information into the widget's state (likely some static
+ *   data structures specific to the widget) and passes the successor of this iterator to
+ *   its parent constructor (this successor's properties must correspond to the parent's widget type)
+ *
+ * Each widget provides its own scheme for mapping the widgets specified in the configuration
+ * file to the widgets that occur at runtime. For example, the configuration file may have
+ * several module tags with different labels. In this case the modules widget may record a 
+ * global mapping from these names to their properties and whenever the user creates a module
+ * with a name that matches one that appeared in the configuration file, the corresponding
+ * properties object will be communicated to it. Thus, the constructor of each module will get
+ * two properties objects. First, the properties of the widget instance that will be written
+ * to the structure file and second, the properties iterator for the configuratoin that are 
+ * being applied to this widget. Both will be propagated up the constructor, with the configuration
+ * properties iterator advancing each time the parent constructor is called.
+ */
+
+class Configuration {
+  protected:
+  Configuration(properties::iterator props) {}
+}; // class Configuration
+
+/* Maps the names of various tags that may appear in a configuration file to the functions
+ * that decode them.
+ * An entry handler is called when the object's entry tag is encountered in the configuration file. It
+ *   takes as input the properties of this tag and returns a pointer to Configuration object that 
+ *   decodes it. NULL is a valid return value.
+ * An exit handler is called when the object's exit tag is encountered and takes as input a pointer
+ *  to its corresponding Configuration object, as returned by the entry function.
+ * It is assumed that all objects are hierarchically scoped, in that objects are exited in the
+ *   reverse order of their entry. The layout engine keeps track of the entry/exit stacks and
+ *   ensures that the appropriate object pointers are passed to exit handlers.
+ */
+class confHandlerInstantiator : public TagFileReaderRegistry<Configuration> {
+  public:
+  confHandlerInstantiator() : TagFileReaderRegistry<Configuration>("confHandlerInstantiator") {}
+};
+class sightConfHandlerInstantiator : confHandlerInstantiator {
+  public:
+  sightConfHandlerInstantiator();
+};
+extern sightConfHandlerInstantiator sightConfHandlerInstantance;
+
+// Loads the configuration file(s) stored in the files specified in the given environment variables
+typedef easylist<std::string> configFileEnvVars;
+void loadSightConfig(const std::list<std::string>& cfgFNameEnv); 
+
+// Given a parser that reads a given configuration file, load it
+void loadConfiguration(structureParser& parser);
 
 } // namespace common
 } // namespace sight

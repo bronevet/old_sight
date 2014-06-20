@@ -1,6 +1,6 @@
-CFLAGS=-fPIC -Wall -O3 -I../include
-CC=gcc
+include ../../../Makefile.extern
 
+CFLAGS=-fPIC -Wall -O3 -I../include ${SIGHT_CFLAGS}
 all: libmsr
 
 libmsr: msr_core.o msr_rapl.o msr_thermal.o msr_clocks.o cpuid.o msr_counters.o profile.o msr_misc.o 

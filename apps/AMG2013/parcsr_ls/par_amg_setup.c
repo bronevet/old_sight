@@ -1693,10 +1693,11 @@ hypre_BoomerAMGSetup( void               *amg_vdata,
       {
          
          HYPRE_ParCSRPCGCreate(comm, &smoother[j]);
+         int num_precond_calls=0;
          HYPRE_ParCSRPCGSetup(smoother[j],
                              (HYPRE_ParCSRMatrix) A_array[j],
                              (HYPRE_ParVector) F_array[j],
-                             (HYPRE_ParVector) U_array[j], runCfg);
+                             (HYPRE_ParVector) U_array[j], runCfg, num_precond_calls);
 
          HYPRE_PCGSetTol(smoother[j], 1e-9); /* do a fixed number of iterations, so the
                                                  conv. tolerance is small*/
@@ -1720,19 +1721,19 @@ hypre_BoomerAMGSetup( void               *amg_vdata,
          HYPRE_ParCSRPCGSetup(smoother[j], 
                               (HYPRE_ParCSRMatrix) A_array[j], 
                               (HYPRE_ParVector) F_array[j], 
-                              (HYPRE_ParVector) U_array[j], runCfg);
+                              (HYPRE_ParVector) U_array[j], runCfg, num_precond_calls);
   
          
       }
 
       if (grid_relax_type[1] == 14 || (grid_relax_type[3] == 14 && j == (num_levels-1))  )
       {
-         
+         int num_precond_calls=0; 
          HYPRE_ParCSRPCGCreate(comm, &smoother[j]);
          HYPRE_ParCSRPCGSetup(smoother[j],
                              (HYPRE_ParCSRMatrix) A_array[j],
                              (HYPRE_ParVector) F_array[j],
-                             (HYPRE_ParVector) U_array[j], runCfg);
+                             (HYPRE_ParVector) U_array[j], runCfg, num_precond_calls);
 
          HYPRE_PCGSetTol(smoother[j], 1e-9); /* want to do a fixed number of iterations, so the
                                                  conv. tolerance is very small*/
@@ -1760,7 +1761,7 @@ hypre_BoomerAMGSetup( void               *amg_vdata,
          HYPRE_ParCSRPCGSetup(smoother[j], 
                               (HYPRE_ParCSRMatrix) A_array[j], 
                               (HYPRE_ParVector) F_array[j], 
-                              (HYPRE_ParVector) U_array[j], runCfg);
+                              (HYPRE_ParVector) U_array[j], runCfg, num_precond_calls);
   
          
       }

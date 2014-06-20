@@ -1708,6 +1708,8 @@ main( int   argc,
    int n[3]; n[0]=1; n[1]=1; n[2]=1;
    string pooldistStr = "0";
    string rhsStr = "default";
+   double powercap=0;
+   char tolStr[100];
    while ( (arg_index < argc))
    {
       if ( strcmp(argv[arg_index], "-laplace") == 0 )
@@ -1786,6 +1788,11 @@ main( int   argc,
          pooldist = atoi(argv[arg_index++]);
          pooldistStr = txt() << pooldist;
       }
+      else if ( strcmp(argv[arg_index], "-powercap") == 0 )
+      {
+         arg_index++;
+         powercap = strtod(argv[arg_index++], NULL);
+      }
       else if ( strcmp(argv[arg_index], "-printsystem") == 0 )
       {
          arg_index++;
@@ -1796,7 +1803,13 @@ main( int   argc,
          arg_index++;
          rhsStr = "cosine";
       }
-      else if ( strcmp(argv[arg_index], "-rhsone") == 0 )
+      else if ( strcmp(argv[arg_index], "-tol") == 0 )
+      {
+         arg_index++;
+         tol = strtod(argv[arg_index++], NULL);
+         snprintf(tolStr, 100, "%.0le", tol);
+      }
+       else if ( strcmp(argv[arg_index], "-rhsone") == 0 )
       {
          arg_index++;
          rhsStr = "one";
@@ -1817,7 +1830,8 @@ main( int   argc,
    runCfg.add("nx", n[0]); runCfg.add("ny", n[1]); runCfg.add("nz", n[2]);
    runCfg.add("pooldist", pooldistStr);
    runCfg.add("rhs", rhsStr);
-   if(getenv("POWER")) runCfg.add("power_cap", string(getenv("POWER")));
+   runCfg.add("powercap", powercap);
+   runCfg.add("tol", tol);
    runCfg.add("MPIRank", myid);
    //if(myid == 0)
      SightInit(argc, argv, "AMG2013", txt()<<"dbg.AMG2013.mtx_"<<mtxName<<
@@ -1828,13 +1842,14 @@ main( int   argc,
                                                         ".n_"<<n[0]<<"_"<<n[1]<<"_"<<n[2]<<
                                                         ".pooldist_"<<pooldistStr<<
                                                         ".rhs_"<<rhsStr<<
-                                                        (getenv("POWER")? txt()<<".power_"<<getenv("POWER"): string(""))<<
+                                                        ".powercap_"<<powercap<<
+                                                        ".tol_"<<tolStr<<
                                                         ".rank_"<<myid<<
                                                         (getenv("EXP_ID")? txt()<<".exp_"<<getenv("EXP_ID"): string("")));
    }
    attr myidAttr("MPIrank", 0/*myid*/);
    
-   sightModularApp AMGApp("AMG", namedMeasures(
+   sightModularApp AMGApp("AMG", namedMeasures("timestamp", new timeStampMeasure(),
 #ifdef RAPL
                                                "RAPL", new RAPLMeasure()
 #else
@@ -2569,26 +2584,28 @@ main( int   argc,
        * Solve the system using ParCSR version of PCG
        *-----------------------------------------------------------*/
    {
-     sightModule modSolve(instance("Solve", 1, 1), 
-                    inputs(port(runCfg)),
+      sightModule modSolve(instance("Solve", 1, 1), 
+                           inputs(port(runCfg)),
 #if defined(KULFI)
-                module::context("EXP_ID", getenv("EXP_ID")),
+                           module::context("EXP_ID", getenv("EXP_ID")),
 #endif
-                    attrEQ("MPIrank", 0));
-     scope sSolve("Solve");
+                           attrEQ("MPIrank", 0));
+      scope sSolve("Solve");
+      int num_precond_calls=0;
     
       if ((solver_id > -1) && (solver_id < 2))
       {
          time_index = hypre_InitializeTiming("PCG Setup");
          hypre_BeginTiming(time_index);
          {
-         sightModule modPCGSetup(instance("PCG Setup", 1, 0), 
+         sightModule modPCGSetup(instance("PCG Setup", 1, 1), 
                             inputs(port(runCfg)),
 #if defined(KULFI)
                 module::context("EXP_ID", getenv("EXP_ID")),
 #endif
                             attrEQ("MPIrank", 0));
          scope sPCGSetup(txt()<<"PCG Setup");
+         int num_setup_precond_calls=0;
          
          HYPRE_ParCSRPCGCreate(MPI_COMM_WORLD, &par_solver);
          HYPRE_PCGSetTol( par_solver, tol );
@@ -2631,8 +2648,10 @@ main( int   argc,
          }
 
          HYPRE_PCGSetup( par_solver, (HYPRE_Matrix) par_A,
-                         (HYPRE_Vector) par_b, (HYPRE_Vector) par_x, runCfg );
+                         (HYPRE_Vector) par_b, (HYPRE_Vector) par_x, runCfg, num_setup_precond_calls );
          
+         modPCGSetup.setOutCtxt(0, context("num_precond_calls", num_setup_precond_calls));
+         num_precond_calls += num_setup_precond_calls;
          }
          hypre_EndTiming(time_index);
 
@@ -2647,17 +2666,20 @@ main( int   argc,
          time_index = hypre_InitializeTiming("PCG Solve");
          hypre_BeginTiming(time_index);
          {
-         sightModule modPCGSolve(instance("PCG Solve", 1, 0), 
+         sightModule modPCGSolve(instance("PCG Solve", 1, 1), 
                             inputs(port(runCfg)),
 #if defined(KULFI)
                 module::context("EXP_ID", getenv("EXP_ID")),
 #endif
                             attrEQ("MPIrank", 0));
          scope sPCGSolve(txt()<<"PCG Solve");
+         int num_solve_precond_calls=0;
          
          HYPRE_PCGSolve( par_solver, (HYPRE_Matrix) par_A,
-                         (HYPRE_Vector) par_b, (HYPRE_Vector) par_x, runCfg, modSolve, 0 );
+                         (HYPRE_Vector) par_b, (HYPRE_Vector) par_x, runCfg, /*modSolve, 0*/ num_solve_precond_calls );
          
+         modPCGSolve.setOutCtxt(0, context("num_precond_calls", num_solve_precond_calls));
+         num_precond_calls += num_solve_precond_calls;
          }
          hypre_EndTiming(time_index);
          hypre_PrintTiming("Solve phase times", &wall_time, MPI_COMM_WORLD);
@@ -2686,7 +2708,16 @@ main( int   argc,
       {
          time_index = hypre_InitializeTiming("GMRES Setup");
          hypre_BeginTiming(time_index);
-         
+         {
+         sightModule modGMRESSetup(instance("GMRES Setup", 1, 1), 
+                            inputs(port(runCfg)),
+#if defined(KULFI)
+                module::context("EXP_ID", getenv("EXP_ID")),
+#endif
+                            attrEQ("MPIrank", 0));
+         scope sGMRESSetup(txt()<<"GMRES Setup");
+         int num_setup_precond_calls=0;
+  
          HYPRE_ParCSRGMRESCreate(MPI_COMM_WORLD, &par_solver);
          HYPRE_GMRESSetKDim(par_solver, 10);
          HYPRE_GMRESSetTol(par_solver, tol);
@@ -2728,10 +2759,12 @@ main( int   argc,
          }
          
          HYPRE_GMRESSetup( par_solver, (HYPRE_Matrix) par_A,
-                           (HYPRE_Vector) par_b, (HYPRE_Vector) par_x, runCfg);
+                           (HYPRE_Vector) par_b, (HYPRE_Vector) par_x, runCfg, num_setup_precond_calls);
+         modGMRESSetup.setOutCtxt(0, context("num_precond_calls", num_setup_precond_calls));
+         num_precond_calls += num_setup_precond_calls;
          
          hypre_EndTiming(time_index);
-
+         }
 
          hypre_PrintTiming("Setup phase times", &wall_time, MPI_COMM_WORLD);
          hypre_FinalizeTiming(time_index);
@@ -2743,10 +2776,21 @@ main( int   argc,
          
          time_index = hypre_InitializeTiming("GMRES Solve");
          hypre_BeginTiming(time_index);
-         
+         {
+         sightModule modGMRESSolve(instance("GMRES Solve", 1, 1), 
+                            inputs(port(runCfg)),
+#if defined(KULFI)
+                module::context("EXP_ID", getenv("EXP_ID")),
+#endif
+                            attrEQ("MPIrank", 0));
+         scope sGMRESSolve(txt()<<"GMRES Solve");
+         int num_solve_precond_calls=0;
+ 
          HYPRE_GMRESSolve( par_solver, (HYPRE_Matrix) par_A,
-                           (HYPRE_Vector) par_b, (HYPRE_Vector) par_x, runCfg, modSolve, 0);
-         
+                           (HYPRE_Vector) par_b, (HYPRE_Vector) par_x, runCfg, /*modSolve, 0*/ num_solve_precond_calls);
+         modGMRESSolve.setOutCtxt(0, context("num_precond_calls", num_solve_precond_calls));
+         num_precond_calls += num_solve_precond_calls;
+         }
          hypre_EndTiming(time_index);
          hypre_PrintTiming("Solve phase times", &wall_time, MPI_COMM_WORLD);
          hypre_FinalizeTiming(time_index);
@@ -2781,6 +2825,7 @@ main( int   argc,
             HYPRE_SStructVectorPrint("sstruct.out.x", x, 0);
          }
       }
+      modSolve.setOutCtxt(0, context("num_precond_calls", num_precond_calls));
    } 
       if (myid == 0 )
       {

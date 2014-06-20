@@ -41,12 +41,12 @@ HYPRE_GMRESSetup( HYPRE_Solver solver,
                         HYPRE_Matrix A,
                         HYPRE_Vector b,
                         HYPRE_Vector x,
-                        context& runCfg)
+                        context& runCfg, int& num_precond_calls)
 {
    return( hypre_GMRESSetup( solver,
                              A,
                              b,
-                             x, runCfg ) );
+                             x, runCfg, num_precond_calls ) );
 }
 
 /*--------------------------------------------------------------------------
@@ -59,12 +59,12 @@ HYPRE_GMRESSolve( HYPRE_Solver solver,
                         HYPRE_Vector b,
                         HYPRE_Vector x,
                         context& runCfg,
-                        sightModule& solveModule, int solveModOutput)
+                        /*sightModule* solveModule, int solveModOutput*/int& num_precond_calls)
 {
    return( hypre_GMRESSolve( solver,
                              A,
                              b,
-                             x, runCfg, solveModule, solveModOutput ) );
+                             x, runCfg, /*solveModule, solveModOutput*/num_precond_calls ) );
 }
 
 /*--------------------------------------------------------------------------

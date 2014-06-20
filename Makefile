@@ -25,7 +25,7 @@ SIGHT_LINKFLAGS = ${ROOT_PATH}/tools/adept-utils/lib/libadept_cutils.so \
                   ${ROOT_PATH}/widgets/gsl/lib/libgslcblas.so \
                   -Wl,-rpath ${ROOT_PATH}/widgets/gsl/lib \
 	          -lpthread
-RAPL_ENABLED = 0
+RAPL_ENABLED = 1
 ifeq (${RAPL_ENABLED}, 1)
 SIGHT_LINKFLAGS += ${ROOT_PATH}/widgets/libmsr/lib/libmsr.so \
                     -Wl,-rpath ${ROOT_PATH}/widgets/libmsr/lib
@@ -45,7 +45,7 @@ endif
 
 all: core allExamples
 	
-core: sightDefines.pl gdbLineNum.pl Makefile.extern maketools libsight_common.a libsight_structure.a slayout${EXE} hier_merge${EXE} widgets_post script/taffydb 
+core: sightDefines.pl gdbLineNum.pl Makefile.extern definitions.h maketools libsight_common.a libsight_structure.a slayout${EXE} hier_merge${EXE} widgets_post script/taffydb 
 	chmod 755 html img script
 	chmod 644 html/* img/* script/*
 	chmod 755 script/taffydb
@@ -210,6 +210,10 @@ sightDefines.pl:
 Makefile.extern: initMakefile.extern
 	chmod 755 initMakefile.extern
 	./initMakefile.extern ${CC} ${CCC} ${RAPL_ENABLED}
+
+definitions.h: initDefinitionsH
+	chmod 755 initDefinitionsH
+	./initDefinitionsH ${RAPL_ENABLED}
 
 clean:
 	cd widgets; make -f Makefile_pre clean

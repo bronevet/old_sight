@@ -738,6 +738,135 @@ std::string timeMeasure::str() const {
                 measure::str()<<"]";
 }
 
+/****************************
+ ***** timeStampMeasure *****
+ ****************************/
+
+// Non-full measure
+timeStampMeasure::timeStampMeasure(                        std::string valLabel): measure(), valLabel(valLabel)
+{ init(); }
+
+timeStampMeasure::timeStampMeasure(std::string traceLabel, std::string valLabel): measure(traceLabel), valLabel(valLabel)
+{ init(); }
+
+timeStampMeasure::timeStampMeasure(trace* t,               std::string valLabel): measure(t), valLabel(valLabel)
+{ init(); }
+
+timeStampMeasure::timeStampMeasure(traceStream* ts,        std::string valLabel): measure(ts), valLabel(valLabel)
+{ init(); }
+
+// Full measure
+timeStampMeasure::timeStampMeasure(                        std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt) :
+     measure(fullMeasureCtxt), valLabel(valLabel)
+{ init(); }
+
+timeStampMeasure::timeStampMeasure(std::string traceLabel, std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt) :
+     measure(traceLabel, fullMeasureCtxt), valLabel(valLabel)
+{ init(); }
+
+timeStampMeasure::timeStampMeasure(trace* t,               std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt) :
+     measure(t, fullMeasureCtxt), valLabel(valLabel)
+{ init(); }
+
+timeStampMeasure::timeStampMeasure(traceStream* ts,        std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt) :
+     measure(ts, fullMeasureCtxt), valLabel(valLabel)
+{ init(); }
+
+timeStampMeasure::timeStampMeasure(const timeStampMeasure& that) : measure(that), startTime(that.startTime), endTime(that.endTime), valLabel(that.valLabel)
+{ }
+
+timeStampMeasure::~timeStampMeasure() {
+}
+
+// Common initialization code
+void timeStampMeasure::init() {
+  startTime = 0.0;
+  endTime = 0.0;
+}
+
+// Returns a copy of this measure object, including its current measurement state, if any. The returned
+// object is connected to the same traceStream, if any, as the original object.
+measure* timeStampMeasure::copy() const
+{ return new timeStampMeasure(*this); }
+
+// Start the measurement
+void timeStampMeasure::start() {
+  measure::start();
+  struct timeval startTV;
+  gettimeofday(&startTV, NULL);  
+  startTime = double(startTV.tv_sec*1000000 + startTV.tv_usec)/1000000.0;
+}
+
+// Pauses the measurement so that time elapsed between this call and resume() is not counted.
+// Returns true if the measure is not currently paused and false if it is (i.e. the pause command has no effect)
+bool timeStampMeasure::pause() {
+  return measure::pause();
+}
+
+// Restarts counting time. Time collection is restarted regardless of how many times pause() was called
+// before the call to resume().
+void timeStampMeasure::resume() {
+  measure::resume();
+}
+
+// Complete the measurement
+void timeStampMeasure::end() {
+  measure::end();
+  
+  struct timeval endTV;
+  gettimeofday(&endTV, NULL);  
+  endTime = double(endTV.tv_sec*1000000 + endTV.tv_usec)/1000000.0;
+  
+  assert(ts);
+  if(fullMeasure) {
+    ts->traceFullObservation(fullMeasureCtxt, 
+                             trace::observation(txt()<<valLabel<<"_Start", startTime),
+                             anchor::noAnchor);
+    ts->traceFullObservation(fullMeasureCtxt, 
+                             trace::observation(txt()<<valLabel<<"_End", endTime),
+                             anchor::noAnchor);
+  } else {
+    ts->traceAttrObserved(txt()<<valLabel<<"_Start", attrValue(startTime), anchor::noAnchor);
+    ts->traceAttrObserved(txt()<<valLabel<<"_End",   attrValue(endTime),   anchor::noAnchor);
+  }
+}
+
+// Complete the measurement and return the observation.
+// If addToTrace is true, the observation is addes to this measurement's trace and not, otherwise
+std::list<std::pair<std::string, attrValue> > timeStampMeasure::endGet(bool addToTrace) {
+  measure::end();
+  
+  struct timeval endTV;
+  gettimeofday(&endTV, NULL);  
+  endTime = double(endTV.tv_sec*1000000 + endTV.tv_usec)/1000000.0;
+  
+  if(addToTrace) {
+    if(fullMeasure) {
+      ts->traceFullObservation(fullMeasureCtxt, 
+                               trace::observation(txt()<<valLabel<<"_Start", startTime),
+                               anchor::noAnchor);
+      ts->traceFullObservation(fullMeasureCtxt, 
+                               trace::observation(txt()<<valLabel<<"_End", endTime),
+                               anchor::noAnchor);
+    } else {
+      ts->traceAttrObserved(txt()<<valLabel<<"_Start", attrValue(startTime), anchor::noAnchor);
+      ts->traceAttrObserved(txt()<<valLabel<<"_End",   attrValue(endTime),   anchor::noAnchor);
+    }
+  }
+  
+  std::list<std::pair<std::string, attrValue> > ret;
+  ret.push_back(make_pair("Start", attrValue(startTime)));
+  ret.push_back(make_pair("End",   attrValue(endTime)));
+  return ret;
+}
+
+std::string timeStampMeasure::str() const { 
+  struct timeval cur;
+  gettimeofday(&cur, NULL);
+
+  return txt()<<"[timeStampMeasure: startTime="<<startTime<<", endTime="<<endTime<<" "<<
+                measure::str()<<"]";
+}
 
 /***********************
  ***** PAPIMeasure *****
@@ -1076,17 +1205,25 @@ RAPLMeasure::RAPLMeasure(traceStream* ts,        std::string valLabel, const std
 { init(); }
 
 RAPLMeasure::RAPLMeasure(const RAPLMeasure& that) : 
-  measure(that), accumCpuE(that.accumCpuE), accumDramE(that.accumDramE), valLabel(that.valLabel) 
-{ }
+  measure(that), valLabel(that.valLabel) 
+{
+  for(int socket=0; socket<NUM_SOCKETS; socket++) {
+    accumCpuE[socket]  = that.accumCpuE[socket];
+    accumDramE[socket] = that.accumDramE[socket];
+    rapl[socket]       = that.rapl[socket];
+  }
+}
 
 RAPLMeasure::~RAPLMeasure() {
 }
 
 // Common initialization code
 void RAPLMeasure::init() {
-  //init_rapl_int_state(&raplS);
-  rapl.flags = RDF_REENTRANT;
-  read_rapl_data(0, &rapl);
+  /*for(int socket=0; socket<NUM_SOCKETS; socket++) {
+    rapl[socket].flags = RDF_REENTRANT | RDF_INIT;
+    read_rapl_data(socket, &(rapl[socket]));
+    cout << "socket "<<socket<<" initialized"<<endl;
+  }*/
 }
 
 // Returns a copy of this measure object, including its current measurement state, if any. The returned
@@ -1099,8 +1236,15 @@ void RAPLMeasure::start() {
   measure::start();
   
   // Start measuring the RAPL counters
-  struct rapl_data r;
-  read_rapl_data(0, &rapl);
+  for(int socket=0; socket<NUM_SOCKETS; socket++) {
+    //cout << "socket "<<socket<<" started &rapl[socket]="<<&rapl[socket]<<endl;
+    // Initialize the rapl struct
+    rapl[socket].flags = RDF_REENTRANT | RDF_INIT;
+    read_rapl_data(socket, &rapl[socket]);
+
+    // Set the flags so that subsequentcalls to read_rapl_data don't re-initialize rapl[socket]
+    rapl[socket].flags = RDF_REENTRANT;
+  }
 }
 
 // Pauses the measurement so that time elapsed between this call and resume() is not counted.
@@ -1110,9 +1254,16 @@ bool RAPLMeasure::pause() {
 
   // Read the energy used on each socket since the last measurement and accumulate it into accumCpuE and accumDramE
   for(int socket=0; socket<NUM_SOCKETS; socket++) {
-    read_rapl_data(socket, &rapl);
-    accumCpuE[socket].add(rapl.pkg_joules,   rapl.elapsed);
-    accumDramE[socket].add(rapl.dram_joules, rapl.elapsed);
+    read_rapl_data(socket, &rapl[socket]);
+    // Eliminate noisy almost-0 energy measurements
+    if(rapl[socket].pkg_delta_joules<1e-10)  rapl[socket].pkg_delta_joules = 0;
+    if(rapl[socket].dram_delta_joules<1e-10) rapl[socket].dram_delta_joules = 0;
+
+    // Accumulare the measurement into accumCpuE and accumDramE
+    /*cout << "socket "<<socket<<", CPU pkg_delta_joules="<<rapl[socket].pkg_delta_joules<<" elapsed="<<rapl[socket].elapsed<<endl;
+    cout << "socket "<<socket<<", DRAM pkg_delta_joules="<<rapl[socket].dram_delta_joules<<" elapsed="<<rapl[socket].elapsed<<endl;*/
+    accumCpuE[socket].add(rapl[socket].pkg_delta_joules,   rapl[socket].elapsed);
+    accumDramE[socket].add(rapl[socket].dram_delta_joules, rapl[socket].elapsed);
   }
 
   return modified;  
@@ -1124,7 +1275,9 @@ void RAPLMeasure::resume() {
   measure::resume();
   
   // Restart measurement
-  read_rapl_data(0, &rapl);
+  for(int socket=0; socket<NUM_SOCKETS; socket++) {
+    read_rapl_data(socket, &(rapl[socket]));
+  }
 }
 
 // Complete the measurement
@@ -1221,6 +1374,7 @@ common::Configuration* RAPLMeasure::configure(properties::iterator props) {
   if(props.exists("CPUWatts") && props.exists("CPUSeconds")) {
     CPULimit.watts   = props.getFloat("CPUWatts");
     CPULimit.seconds = props.getFloat("CPUSeconds");
+    CPULimit.bits    = 0;
     CPUSpecified=true;
   }
 
@@ -1228,17 +1382,35 @@ common::Configuration* RAPLMeasure::configure(properties::iterator props) {
   if(props.exists("DRAMWatts") && props.exists("DRAMSeconds")) {
     DRAMLimit.watts   = props.getFloat("DRAMWatts");
     DRAMLimit.seconds = props.getFloat("DRAMSeconds");
+    DRAMLimit.bits    = 0;
     DRAMSpecified=true;
   }
   
   if(CPUSpecified || DRAMSpecified) {
     init_msr();
+
+   /*for(int s=0; s<NUM_SOCKETS; s++) {
+      struct rapl_limit socketCPULimit, socketDRAMLimit;
+      get_rapl_limit(s, (CPUSpecified? &socketCPULimit: NULL), NULL, DRAMSpecified? &socketDRAMLimit: NULL);
+      if(CPUSpecified)  std::cout << "Initial CPU on socket "<<s<<" to "<<socketCPULimit.watts<<"W * "<<socketCPULimit.seconds<<"s "<<std::endl;
+      if(DRAMSpecified) std::cout << "Initial DRAM on socket "<<s<<" to "<<socketDRAMLimit.watts<<"W * "<<socketDRAMLimit.seconds<<"s"<<std::endl;
+    }*/
+
     for(int s=0; s<NUM_SOCKETS; s++) {
-      if(CPUSpecified)  std::cout << "Setting CPU on socket "<<s<<" to "<<CPULimit.watts<<"W * "<<CPULimit.seconds<<"s "<<std::endl;
-      if(DRAMSpecified) std::cout << "Setting DRAM on socket "<<s<<" to "<<DRAMLimit.watts<<"W * "<<DRAMLimit.seconds<<"s"<<std::endl;
+      /*if(CPUSpecified)  std::cout << "Setting CPU on socket "<<s<<" to "<<CPULimit.watts<<"W * "<<CPULimit.seconds<<"s "<<std::endl;
+      if(DRAMSpecified) std::cout << "Setting DRAM on socket "<<s<<" to "<<DRAMLimit.watts<<"W * "<<DRAMLimit.seconds<<"s"<<std::endl;*/
       set_rapl_limit(s, (CPUSpecified? &CPULimit: NULL), NULL, DRAMSpecified? &DRAMLimit: NULL);
     }
+
+    /*for(int s=0; s<NUM_SOCKETS; s++) {
+      struct rapl_limit socketCPULimit, socketDRAMLimit;
+      get_rapl_limit(s, (CPUSpecified? &socketCPULimit: NULL), NULL, DRAMSpecified? &socketDRAMLimit: NULL);
+      if(CPUSpecified)  std::cout << "Set CPU on socket "<<s<<" to "<<socketCPULimit.watts<<"W * "<<socketCPULimit.seconds<<"s "<<std::endl;
+      if(DRAMSpecified) std::cout << "Set DRAM on socket "<<s<<" to "<<socketDRAMLimit.watts<<"W * "<<socketDRAMLimit.seconds<<"s"<<std::endl;
+    }*/
   }
+
+  return NULL;
 }
 
 #endif // RAPL

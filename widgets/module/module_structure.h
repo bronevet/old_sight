@@ -387,8 +387,17 @@ class modularApp: public block
   public:
   class ModularAppConfiguration : public common::Configuration{
     public:
-    ModularAppConfiguration(properties::iterator props) : common::Configuration(props.next()) {}
+    ModularAppConfiguration(properties::iterator props) : common::Configuration(props.next()) {
+    }
   };
+
+  static common::Configuration* configure(properties::iterator props) {
+    // Create a ModuleConfiguration object, using the invocation of the constructor hierarchy to
+    // record the configuration details with the respective widgets from which modules inherit
+    ModularAppConfiguration* c = new ModularAppConfiguration(props);
+    delete c;
+    return NULL;
+  }
 }; // class modularApp
 
 class module: public sightObj, public common::module
@@ -429,6 +438,11 @@ class module: public sightObj, public common::module
   // List of all the measurements that should be taken during the execution of this module. This is a list of pointers to
   // measure objects. When the module instance is deleted, its measure objects are automatically deleted as well.
   namedMeasures meas;
+  
+  // Records the observation made during the execution of this module. obs may be filled in
+  // all at once in the destructor. Alternately, if users call completeMeasurement() directly,
+  // the measurements are written to obs then and the outputs are written in the destructor.
+  std::list<std::pair<std::string, attrValue> > obs;
   
   // Information that describes the class that derives from this on. 
   /*class derivInfo {
@@ -497,6 +511,17 @@ class module: public sightObj, public common::module
   
   public:
   ~module();
+  
+  protected:
+  // Records whether we've completed measuring this module's behavior
+  bool measurementCompleted;
+  
+  public:
+  // Called to complete the measurement of this module's execution. This measurement may be completed before
+  // the module itself completes to enable users to separate the portion of the module's execution that 
+  // represents its core behavior (and thus should be measured) from the portion where the module's outputs
+  // are computed.
+  virtual void completeMeasurement();
   
   // Directly calls the destructor of this object. This is necessary because when an application crashes
   // Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 

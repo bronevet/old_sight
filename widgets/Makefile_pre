@@ -8,7 +8,7 @@ WIDGETS := ${WIDGETS_O} ${WIDGETS_H}
 
 MAKE_DEFINES = ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" CC=${CC} CCC=${CCC} KULFI_ENABLED=${KULFI_ENABLED} LLVM32_SRC_PATH=${LLVM32_SRC_PATH} LLVM32_BUILD_PATH=${LLVM32_BUILD_PATH} LLVM32_INSTALL_PATH=${LLVM32_INSTALL_PATH}
 
-all: gsl papi \
+all: gsl papi synoptic \
      ${WIDGETS_COMMON_O} ${WIDGETS_COMMON_H} ${WIDGETS_STRUCTURE_O} ${WIDGETS_STRUCTURE_H} ${WIDGETS_LAYOUT_O} ${WIDGETS_LAYOUT_H}  \
      kulfi \
      shellinabox/bin/shellinaboxd${EXE} mongoose/mongoose${EXE} graphviz/bin/dot${EXE} \
@@ -201,6 +201,11 @@ papi:
 	tar -xf papi-5.3.0.tar.gz 
 	cd papi-5.3.0/src; export CC=${CC}; export F77=gfortran; ./configure -prefix=${ROOT_PATH}/widgets/papi; make; make install
 	rm -fr papi-5.3.0 papi-5.3.0.tar.gz
+
+synoptic:
+	wget http://synoptic.googlecode.com/files/synoptic-0.1.tar.gz
+	tar -xf synoptic-0.1.tar.gz
+	mv synoptic-0.1 synoptic
 
 # JavaScript files from standard JS libraries that we wish to keep local copies of
 
