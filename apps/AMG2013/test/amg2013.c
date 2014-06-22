@@ -1822,6 +1822,7 @@ main( int   argc,
          arg_index++;
    }
    
+   runCfg.add("numprocs", num_procs);
    runCfg.add("mtx", mtxName);
    runCfg.add("solve", solverName);
    runCfg.add("Px", P[0]); runCfg.add("Py", P[1]); runCfg.add("Pz", P[2]);
@@ -1834,7 +1835,8 @@ main( int   argc,
    runCfg.add("tol", tol);
    runCfg.add("MPIRank", myid);
    //if(myid == 0)
-     SightInit(argc, argv, "AMG2013", txt()<<"dbg.AMG2013.mtx_"<<mtxName<<
+     SightInit(argc, argv, "AMG2013", txt()<<"dbg.AMG2013.numprocs_"<<num_procs<<
+                                                        ".mtx_"<<mtxName<<
                                                         ".solver_"<<solverName<<
                                                         ".P_"<<P[0]<<"_"<<P[1]<<"_"<<P[2]<<
                                                         ".r_"<<r[0]<<"_"<<r[1]<<"_"<<r[2]<<

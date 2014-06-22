@@ -2066,6 +2066,8 @@ SynopticModuleObsLogger::SynopticModuleObsLogger(std::string outFName) : outFNam
   string fName = txt()<<outFName<<".synoptic";
   out.open(fName.c_str(), std::ofstream::out);
   if(!out.is_open()) { cerr << "SynopticModuleObsLogger::SynopticModuleObsLogger() ERROR opening file \""<<fName<<"\" for writing! "<<strerror(errno)<<endl; assert(0); }
+
+  numObservations=0;
 }
 
 // Interface implemented by objects that listen for observations a traceStream reads. Such objects
@@ -2088,13 +2090,14 @@ void SynopticModuleObsLogger::observe(int traceID,
   map<string, string>::const_iterator startO = obs.find("module:measure:timestamp:Start");
   if(startO != obs.end()) {
     out << "\"" << esLabel.escape() << "-Start\" "<<attrValue(startO->second, attrValue::unknownT).getAsStr()<<endl;
-    //cout << "\"" << esLabel.escape() << "-Start\" "<<attrValue(startO->second, attrValue::unknownT).getAsStr()<<endl;
+    cout << "\"" << esLabel.escape() << "-Start\" "<<attrValue(startO->second, attrValue::unknownT).getAsStr()<<endl;
   }
   
   map<string, string>::const_iterator endO = obs.find("module:measure:timestamp:End");
   if(endO != obs.end()) {
     out << "\"" << esLabel.escape() << "-End\" "<<attrValue(endO->second, attrValue::unknownT).getAsStr()<<endl;
-    //cout << "\"" << esLabel.escape() << "-End\" "<<attrValue(endO->second, attrValue::unknownT).getAsStr()<<endl;
+    cout << "\"" << esLabel.escape() << "-End\" "<<attrValue(endO->second, attrValue::unknownT).getAsStr()<<endl;
+    numObservations++;
   }
 }
   
@@ -2107,29 +2110,32 @@ SynopticModuleObsLogger::~SynopticModuleObsLogger() {
   assert(out.is_open());
   out.close();
 
-  // Run synoptic on the log to produce its output file
-  
-  // First, write out a file that contains the arguments to Synoptic, if it does not already exist
-  string argsFName = txt()<<outFName<<".args";
-  //cout << "argsFName="<<argsFName<<endl;
-  struct stat s;
-  int ret;
-  if((ret=stat(argsFName.c_str(), &s)) != 0) {
-    if(errno==ENOENT) {
-      ofstream out(argsFName.c_str(), ios::out);
-      out << "-o "<<outFName<<endl;
-      out << "-r \"(?<TYPE>.+)\" (?<DTIME>.+)"<<endl;
+  // If we've seen any observations run synoptic on the log to produce its output file
+  if(numObservations>0) {
+    // First, write out a file that contains the arguments to Synoptic, if it does not already exist
+    string argsFName = txt()<<outFName<<".args";
+    //cout << "argsFName="<<argsFName<<endl;
+    struct stat s;
+    int ret;
+    if((ret=stat(argsFName.c_str(), &s)) != 0) {
+      if(errno==ENOENT) {
+        ofstream out(argsFName.c_str(), ios::out);
+        out << "-o "<<outFName<<endl;
+        out << "-r \"(?<TYPE>.+)\" (?<DTIME>.+)"<<endl;
+      }
     }
+    
+    // Next run Synoptic on these files
+    ostringstream cmd; cmd << "cd "<<ROOT_PATH << "/widgets/synoptic; "<<ROOT_PATH << "/widgets/synoptic/synoptic-jar.sh -q -c "<<argsFName<<" "<<outFName<<".synoptic";
+    //cout << "cmd="<<cmd.str()<<endl;
+    system(cmd.str().c_str());
+    
+    // Remove the temporary args file
+    //remove(argsFName.c_str());
   }
-  
-  // Next run Synoptic on these files
-  ostringstream cmd; cmd << "cd "<<ROOT_PATH << "/widgets/synoptic; "<<ROOT_PATH << "/widgets/synoptic/synoptic-jar.sh -q -c "<<argsFName<<" "<<outFName<<".synoptic";
-  //cout << "cmd="<<cmd.str()<<endl;
-  system(cmd.str().c_str());
-  
-  // Remove the temporary files
-  remove(argsFName.c_str());
-  remove(string(txt()<<outFName<<".synoptic").c_str());
+
+  // Remove the temporary data file
+  //remove(string(txt()<<outFName<<".synoptic").c_str());
 }
 
 }; // namespace layout

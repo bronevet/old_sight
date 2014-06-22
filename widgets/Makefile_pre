@@ -8,7 +8,7 @@ WIDGETS := ${WIDGETS_O} ${WIDGETS_H}
 
 MAKE_DEFINES = ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" CC=${CC} CCC=${CCC} KULFI_ENABLED=${KULFI_ENABLED} LLVM32_SRC_PATH=${LLVM32_SRC_PATH} LLVM32_BUILD_PATH=${LLVM32_BUILD_PATH} LLVM32_INSTALL_PATH=${LLVM32_INSTALL_PATH}
 
-all: gsl papi synoptic \
+all: gsl papi libmsr synoptic \
      ${WIDGETS_COMMON_O} ${WIDGETS_COMMON_H} ${WIDGETS_STRUCTURE_O} ${WIDGETS_STRUCTURE_H} ${WIDGETS_LAYOUT_O} ${WIDGETS_LAYOUT_H}  \
      kulfi \
      shellinabox/bin/shellinaboxd${EXE} mongoose/mongoose${EXE} graphviz/bin/dot${EXE} \
@@ -144,21 +144,21 @@ mongoose/mongoose${EXE}:
 
 graphviz/bin/dot${EXE}: expat
 ifeq (${OS},Cygwin)
-	rm -rf graphviz-2.32.zip release
-	wget http://www.graphviz.org/pub/graphviz/stable/windows/graphviz-2.32.zip
-	unzip graphviz-2.32.zip
+	rm -rf graphviz-2.24.zip release
+	wget http://www.graphviz.org/pub/graphviz/stable/windows/graphviz-2.24.zip
+	unzip graphviz-2.24.zip
 	mkdir graphviz
 	mv release/* graphviz
-	rm -r graphviz-2.32.zip release
+	rm -r graphviz-2.24.zip release
 	chmod 755 graphviz/bin/*
 else
-	wget http://www.graphviz.org/pub/graphviz/stable/SOURCES/graphviz-2.32.0.tar.gz
-	tar -xf graphviz-2.32.0.tar.gz
-	cd graphviz-2.32.0; export CC=${CC}; export CXX=${CCC}; ./configure --prefix=${ROOT_PATH}/widgets/graphviz --disable-swig --disable-sharp --disable-go --disable-io --disable-java --disable-lua --disable-ocaml --disable-perl --disable-php --disable-python --disable-r --disable-ruby --disable-tcl --without-pic --without-efence --with-expat=yes --with-expatlibdir=${ROOT_PATH}/widgets/expat/lib --with-expatincludedir=${ROOT_PATH}/widgets/expat/include --without-devil --without-webp --without-poppler --without-ghostscript --without-visio --without-pangocairo --without-lasi --without-glitz --without-freetype2 --without-fontconfig --without-gdk-pixbuf --without-gtk --without-gtkgl --without-gtkglext --without-gts --without-glade --without-ming --without-qt --without-quartz --without-gdiplus --without-libgd --without-glut --without-sfdp --without-smyrna --without-ortho --without-digcola --without-ipsepcola --enable-static --disable-shared
-	cd graphviz-2.32.0; ${MAKE}
-	cd graphviz-2.32.0; ${MAKE} install
+	wget http://www.graphviz.org/pub/graphviz/stable/SOURCES/graphviz-2.24.0.tar.gz
+	tar -xf graphviz-2.24.0.tar.gz
+	cd graphviz-2.24.0; export CC=gcc; export CXX=g++; ./configure --prefix=${ROOT_PATH}/widgets/graphviz --disable-swig --disable-sharp --disable-go --disable-io --disable-java --disable-lua --disable-ocaml --disable-perl --disable-php --disable-python --disable-r --disable-ruby --disable-tcl --without-pic --without-efence --with-expat=yes --with-expatlibdir=${ROOT_PATH}/widgets/expat/lib --with-expatincludedir=${ROOT_PATH}/widgets/expat/include --without-devil --without-webp --without-poppler --without-ghostscript --without-visio --without-pangocairo --without-lasi --without-glitz --without-freetype2 --without-fontconfig --without-gdk-pixbuf --without-gtk --without-gtkgl --without-gtkglext --without-gts --without-glade --without-ming --without-qt --without-quartz --without-gdiplus --without-libgd --without-glut --without-sfdp --without-smyrna --without-ortho --without-digcola --without-ipsepcola --enable-static --disable-shared
+	cd graphviz-2.24.0; ${MAKE}
+	cd graphviz-2.24.0; ${MAKE} install
 	mv graphviz/bin/dot_static graphviz/bin/dot
-	rm -r graphviz-2.32.0 graphviz-2.32.0.tar.gz
+	rm -r graphviz-2.24.0 graphviz-2.24.0.tar.gz
 endif
 
 expat:
@@ -205,8 +205,13 @@ papi:
 	rm -f papi-5.3.0.tar.gz
 	wget http://icl.cs.utk.edu/projects/papi/downloads/papi-5.3.0.tar.gz
 	tar -xf papi-5.3.0.tar.gz 
-	cd papi-5.3.0/src; export CC=${CC}; export F77=gfortran; ./configure -prefix=${ROOT_PATH}/widgets/papi; make; make install
+	cd papi-5.3.0/src; export CC=${CC}; export F77=gfortran; ./configure -prefix=${ROOT_PATH}/widgets/papi; make LDCONFIG=true; make install
 	rm -fr papi-5.3.0 papi-5.3.0.tar.gz
+
+libmsr: libmsr/lib/libmsr.so
+
+libmsr/lib/libmsr.so:
+	cd libmsr/src; make CC=${CC}
 
 synoptic:
 	wget http://synoptic.googlecode.com/files/synoptic-0.1.tar.gz

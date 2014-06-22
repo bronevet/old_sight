@@ -512,6 +512,9 @@ class SynopticModuleObsLogger: public traceObserver {
   
   // The root file name that this instance will use to write output to
   std::string outFName;
+
+  // The number of observations seen
+  int numObservations;
   
   public: 
   SynopticModuleObsLogger(std::string outFName);

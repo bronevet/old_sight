@@ -34,8 +34,8 @@ SIGHT_LINKFLAGS += ${ROOT_PATH}/widgets/libmsr/lib/libmsr.so \
 endif
 	                
 	                #-Wl,-rpath ${ROOT_PATH}/widgets/papi/lib \
-override CC=gcc
-override CCC=g++
+override CC=icc
+override CCC=icpc
 MPICC = mpi${CC}
 MPICCC = mpi${CCC}
 
@@ -46,11 +46,7 @@ endif
 
 all: core allExamples
 	
-<<<<<<< HEAD
-core: sightDefines.pl gdbLineNum.pl Makefile.extern definitions.h maketools libsight_common.a libsight_structure.a slayout${EXE} hier_merge${EXE} widgets_post script/taffydb 
-=======
-core: sightDefines.pl gdbLineNum.pl Makefile.extern maketools libsight_common.a libsight_structure.so slayout${EXE} libsight_layout.so hier_merge${EXE} widgets_post script/taffydb 
->>>>>>> a4cd2a98688b44dd57b24f050cc92a0d1a57976c
+core: sightDefines.pl gdbLineNum.pl Makefile.extern definitions.h maketools libsight_common.a libsight_structure.so slayout${EXE} libsight_layout.so hier_merge${EXE} widgets_post script/taffydb 
 	chmod 755 html img script
 	chmod 644 html/* img/* script/*
 	chmod 755 script/taffydb
@@ -160,7 +156,7 @@ slayout.o: slayout.C process.C process.h
 	${CCC} ${SIGHT_CFLAGS} slayout.C -I. -c -o slayout.o
 
 slayout${EXE}: mfem libsight_layout.so widgets_post
-	${CCC} -Wl,--whole-archive libsight_layout.so apps/mfem/mfem_layout.o -Wl,-no-whole-archive -o slayout${EXE}
+	${CCC} -Wl,-rpath ${ROOT_PATH} -Wl,--whole-archive libsight_layout.so apps/mfem/mfem_layout.o -Wl,-no-whole-archive -o slayout${EXE}
 #slayout${EXE}: mfem libsight_layout.so
 #	${CCC} libsight_layout.so -Wl,-rpath ${ROOT_PATH} -Wl,-rpath ${ROOT_PATH}/widgets/gsl/lib -Lwidgets/gsl/lib -lgsl -lgslcblas apps/mfem/mfem_layout.o -o slayout${EXE}
 #slayout${EXE}: mfem libsight_layout.a

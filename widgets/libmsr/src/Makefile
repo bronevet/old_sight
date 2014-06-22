@@ -1,10 +1,13 @@
-include ../../../Makefile.extern
+#include ../../../Makefile.extern
 
 CFLAGS=-fPIC -Wall -O3 -I../include ${SIGHT_CFLAGS}
 all: libmsr
 
 libmsr: msr_core.o msr_rapl.o msr_thermal.o msr_clocks.o cpuid.o msr_counters.o profile.o msr_misc.o 
-	mpicc -DPIC -fPIC -g -shared  -Wl,-soname,libmsr.so -o ../lib/libmsr.so $^
+	mpi${CC} -DPIC -fPIC -g -shared  -Wl,-soname,libmsr.so -o ../lib/libmsr.so $^
+
+%.o: %c
+	${CC} ${CFLAGS} $< -c -o $@
 
 msr_core.o:   		Makefile msr_core.c       ../include/msr_core.h 
 msr_rapl.o:   		Makefile msr_rapl.c       ../include/msr_rapl.h

@@ -31,6 +31,10 @@ std::string list2str(const std::list<std::string>& l);
 // Returns the human-readable representation of the given set of strings
 std::string set2str(const std::set<std::string>& l);
 
+// Adapted from http://stackoverflow.com/questions/675039/how-can-i-create-directory-tree-in-c-linux
+// Returns the directory and file name portion of the given path
+std::pair<std::string, std::string> path2filedir(std::string s);
+
 // Creates the directory with the given path, creating any sub-directories within it
 // If isDir is true, s is a directory. Otherwise, it is a file and thus, we need to create its parent directory.
 int mkpath(std::string s, mode_t mode, bool isDir=true);

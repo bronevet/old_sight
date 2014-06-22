@@ -9,8 +9,9 @@ import re
 import math
 import argparse
 
-SIGHT_ROOT = "/g/g15/bronevet/code/tmp/sight"
+SIGHT_ROOT = "/nfs/tmp2/bronevet/sight/sight"
 CODE_ROOT = SIGHT_ROOT+"/apps/AMG2013"
+procsPerNode = 16
 
 def main(argv):
   parser = argparse.ArgumentParser(description='Experiments with AMG2013 configurations')
@@ -21,15 +22,20 @@ def main(argv):
   
   runFI = True
   if(args.mtx and len(args.mtx)>0) : mtx = args.mtx
-  elif(os.environ["AMG_MTX"]) : mtx = os.environ["AMG_MTX"].split()
-  else :                mtx = ["default"]#, "laplace", "27pt", "jumps"];
+  elif("AMG_MTX" in os.environ) : mtx = os.environ["AMG_MTX"].split()
+  else :                          mtx = ["default"]#, "laplace", "27pt", "jumps"];
   print "mtx="+str(mtx)
   solver = ["PCG_AMG", "PCG_Diag", "GMRES_AMG", "GMRES_Diag"];
-  pooldist = ["0"]#, "1"];
+  pooldist = ["0", "1"];
   power = ["25", "50", "75", "100"];
   refine = ["1", "6", "12"];
   ncube = ["10", "40", "100"];
   tol = ["1e-06", "1e-05", "1e-04"]
+  # The distribution of processors among the x, y z dimensions. The last entry must correspond to 
+  # the distribution with the largest values in each dimension. The problem size is pMult*px*py*pz of the largest entry.
+  # px, py and pz must be powers of 2.
+  pSize = [4,2,2]
+  numprocs = [[2,2,2], [4,2,2], [4,4,2]]
   
   #os.system("rm -rf data")
   os.system("rm -rf data/*.core dbg.AMG2013* *.core")
@@ -45,16 +51,17 @@ def main(argv):
     for pd in pooldist :
      for pw in power :
       for t in tol :
+       for np in numprocs :
         if(m == "default") :
             n = "10"
             for r in refine :
-                runApp(m, s, pd, pw, t, r, n, idx)
-                merge (m, s, pd, pw, t, r, n, idx)
+                runApp(m, s, pd, pw, t, np, pSize, r, n, idx)
+                merge (m, s, pd, pw, t, np, pSize, r, n, idx)
         else :
             r = "1"
             for n in ncube :
-                runApp(m, s, pd, pw, t, r, n, idx)
-                merge (m, s, pd, pw, t, r, n, idx)
+                runApp(m, s, pd, pw, t, np, pSize, r, n, idx)
+                merge (m, s, pd, pw, t, np, pSize, r, n, idx)
   
   os.chdir("..")
   
@@ -111,23 +118,31 @@ def syscall(command, verbose=True) :
     os.system(command);
     return
   
-def configuration(m, s, pd, pw, t, r, n) :
+def configuration(m, s, pd, pw, t, np, pSize, r, n) :
       args = []
       if(m != "default") :
           args = ["-"+m]
       args += ["-solver", s, "-pooldist", pd, "-r", r, r, r, "-n", n, n, n, "-tol", t]
-      if(pd=="0") :
-        part = "2"
-        args += ["-P", "2", "2", "2"]
-      else :
-        part = "1"
+     
+      # Compute the total number of processors 
+      numprocs = 1;
+      for i in range(0, 3): numprocs *= np[i]
   
-      path="dbg.AMG2013.mtx_"+m+".solver_"+s+".P_"+part+"_"+part+"_"+part+".r_"+r+"_"+r+"_"+r+".b_1_1_1.n_"+n+"_"+n+"_"+n+".pooldist_"+pd+".rhs_default.powercap_"+pw+".tol_"+t;
+      # We choose px, py, pz so that the total amount of work is the same for all choices of np
+      part = [0]*3;
+      print "pSize="+str(pSize)+", np="+str(np)
+      for i in range(0, 3): part[i] = np[i]
+      # If pool_distribution is 0 we specify the allocation to be 8x larger (*2 in each dimension)
+      if(pd=="1") : 
+        for i in range(0, 3) : part[i] /= 2
+      args += ["-P", str(part[0]), str(part[1]), str(part[2])]
+
+      path="dbg.AMG2013.numprocs_"+str(numprocs)+".mtx_"+m+".solver_"+s+".P_"+str(part[0])+"_"+str(part[1])+"_"+str(part[2])+".r_"+r+"_"+r+"_"+r+".b_1_1_1.n_"+n+"_"+n+"_"+n+".pooldist_"+pd+".rhs_default.powercap_"+pw+".tol_"+t;
   
-      return (path, args)
+      return (path, args, numprocs)
   
-def runApp(m, s, pd, pw, t, r, n, idx) :
-      (path, args) = configuration(m, s, pd, pw, t, r, n)
+def runApp(m, s, pd, pw, t, np, pSize, r, n, idx) :
+      (path, args, numprocs) = configuration(m, s, pd, pw, t, np, pSize, r, n)
       print "path="+path
       if(not os.path.exists(path+".rank_0")) : 
           print "Path \""+path+".rank_0\" does not exit"
@@ -136,16 +151,16 @@ def runApp(m, s, pd, pw, t, r, n, idx) :
               with open("rapl_config", "w") as f:
                 f.write("[rapl numProperties=\"4\" key_0=\"CPUWatts\" val_0=\""+str(pw)+"\" key_1=\"CPUSeconds\" val_1=\"0.1\" key_2=\"DRAMWatts\" val_2=\""+str(pw)+"\" val_3=\"DRAMSeconds\" val_3=\"0.1\"][/rapl]")
               os.environ["SIGHT_STRUCTURE_CONFIG"] = "rapl_config"
-  
-          syscall("mpirun -n 8 "+CODE_ROOT+"/test/amg2013 "+" ".join(args)+" >"+path+".out", True);
+           
+          syscall("mpirun -n "+str(numprocs)+" "+CODE_ROOT+"/test/amg2013 "+" ".join(args)+" >"+path+".out", True);
 
           if(pw != 0) :
               del os.environ['SIGHT_STRUCTURE_CONFIG']
       idx+=1
       return;
   
-def merge(m, s, pd, pw, t, r, n, idx) :
-      (path, args) = configuration(m, s, pd, pw, t, r, n)
+def merge(m, s, pd, pw, t, np, pSize, r, n, idx) :
+      (path, args, numprocs) = configuration(m, s, pd, pw, t, np, pSize, r, n)
           
       # Merge data from all ranks into a single log
       if(not os.path.exists("merge/"+path)) : 

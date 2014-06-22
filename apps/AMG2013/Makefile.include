@@ -14,8 +14,8 @@ include ../../../Makefile.extern
 LLVM32_INSTALL_PATH := /g/g15/bronevet/apps/llvm
 
 # set the compiler here
-CC := ../mpi${CC} #mpicc #../mpi${CC}
-CCC := ../mpi${CCC} #mpic++ #../mpi${CCC}
+CC := mpi${CC} #mpicc #../mpi${CC}
+CCC := mpi${CCC} #mpic++ #../mpi${CCC}
 
 # set compile flags here
 # MPI only:

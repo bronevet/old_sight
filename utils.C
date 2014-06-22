@@ -115,6 +115,30 @@ std::string set2str(const std::set<std::string>& l) {
 }
 
 // Adapted from http://stackoverflow.com/questions/675039/how-can-i-create-directory-tree-in-c-linux
+// Returns the directory and file name portion of the given path
+std::pair<std::string, std::string> path2filedir(std::string s)
+{
+    size_t pre=0;
+    std::string dir;
+    int mdret;
+
+    if(s[s.size()-1]!='/'){
+        // force trailing / so we can handle everything in loop
+        s+='/';
+    }
+
+    size_t pos=s.find_first_of('/',pre);
+    size_t nextPos=s.find_first_of('/',pos+1);
+    // While another path portion is available and 
+    // either we're generating the entire path or we're omitting the last portion but we have not yet reached it
+    while(pos!=std::string::npos && nextPos !=std::string::npos){
+        pre=pos;
+        pos=nextPos+1;
+        nextPos=s.find_first_of('/',nextPos+1);
+    }
+    return make_pair(s.substr(0, pre), s.substr(pre+1, pos));
+}
+// Adapted from http://stackoverflow.com/questions/675039/how-can-i-create-directory-tree-in-c-linux
 // Creates the directory with the given path, creating any sub-directories within it
 // If isDir is true, s is a directory. Otherwise, it is a file and thus, we need to create its parent directory.
 int mkpath(std::string s,mode_t mode, bool isDir)
