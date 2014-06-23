@@ -12,9 +12,9 @@ hdr stat
 hdr stdlib
 sys stat
 typ ssize_t
+hdr malloc
 lib mallopt
 lib mallinfo
-lib mstats
 hdr alloca
 
 std	malloc note{ stuck with standard malloc }end noexecute{
