@@ -34,8 +34,8 @@ SIGHT_LINKFLAGS += ${ROOT_PATH}/widgets/libmsr/lib/libmsr.so \
 endif
 	                
 	                #-Wl,-rpath ${ROOT_PATH}/widgets/papi/lib \
-override CC=icc
-override CCC=icpc
+override CC=gcc
+override CCC=g++
 MPICC = mpi${CC}
 MPICCC = mpi${CCC}
 
