@@ -974,12 +974,15 @@ void module::completeMeasurement() {
   if(measurementCompleted) return; // { cerr << "ERROR: completing measurement of execution of module "<<g.str()<<" multiple times!"<<endl; assert(0); }
   
   // Complete measuring this instance and collect the observations into props
+  //cout << "module::completeMeasurement() "<<g.str()<<", #meas="<<meas.size()<<endl;
   int measIdx=0;
   for(namedMeasures::iterator m=meas.begin(); m!=meas.end(); m++, measIdx++) {
+    //cout << "    "<<m->second->str()<<endl;
     // Complete the m's measurement
     list<pair<string, attrValue> > curObs = m->second->endGet();
     // Push each measurement onto the observation
     for(list<pair<string, attrValue> >::iterator o=curObs.begin(); o!=curObs.end(); o++) {
+      //cout << "        "<<m->first<<": "<<o->first<<": "<<o->second.getAsStr()<<endl;
       obs.push_back(make_pair(encodeCtxtName("module", "measure", m->first, o->first), o->second));
     }
     delete m->second;

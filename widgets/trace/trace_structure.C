@@ -977,7 +977,8 @@ void PAPIMeasure::start() {
       }
       cerr << "]"<<endl;
       assert(0);
-    }
+    } else
+      PAPIOperational=true;
   }
   numMeasurers++;
   
