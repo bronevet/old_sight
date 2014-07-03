@@ -912,7 +912,7 @@ PAPIMeasure::PAPIMeasure(traceStream* ts,        std::string valLabel, const std
 { init(); }
 
 PAPIMeasure::PAPIMeasure(const PAPIMeasure& that) : 
-  measure(that), accumValues(that.accumValues), lastValues(that.lastValues), events(that.events), valLabel(that.valLabel), PAPIOperational(that.PAPIOperational)
+  measure(that), accumValues(that.accumValues), lastValues(that.lastValues), readValues(that.readValues), events(that.events), eventsToMeasure(that.eventsToMeasure), events2Idx(that.events2Idx), valLabel(that.valLabel), PAPIOperational(that.PAPIOperational)
 { }
 
 PAPIMeasure::~PAPIMeasure() {
@@ -931,6 +931,7 @@ void PAPIMeasure::init() {
   // First we collect the set of raw events that need to be measured
   set<int> rawEvents; // Set of all the raw events that need to be placed in eventsToMeasure
   for(std::vector<int>::const_iterator e=events.begin(); e!=events.end(); e++) {
+    //cout << "PAPIMeasure::init() event="<<*e<<endl;
     // If the current counter is a raw PAPI counter, add it directly to eventsToMeasure
     if(*e<PAPI_MIN_DERIVED || *e>PAPI_MAX_DERIVED)
       rawEvents.insert(*e);
@@ -980,6 +981,7 @@ void PAPIMeasure::init() {
     }
   }
 
+  //cout << "PAPIMeasure::init() #rawEvents="<<rawEvents.size()<<endl;
   // Next we add all the events in rawEvents into eventsToMeasure, recording the 
   // mapping from event ID to its index in events2Idx
   eventsToMeasure.resize(rawEvents.size());
@@ -988,6 +990,7 @@ void PAPIMeasure::init() {
     eventsToMeasure[i] = *e;
     events2Idx[*e] = i;
   }
+  //cout << "PAPIMeasure::init() measuring counters=(#"<<eventsToMeasure.size()<<")="<<list2str(getMeasuredCounterNames())<<endl;
 
   // Initialize the values arrays to contain one counter for each event, 
   accumValues.resize(eventsToMeasure.size(), 0); // Initialized to all 0's
@@ -1010,7 +1013,7 @@ void PAPIMeasure::start() {
   if(numMeasurers==0) {
     // Start measuring them
     if(PAPI_start_counters((int*)&(eventsToMeasure[0]), eventsToMeasure.size()) != PAPI_OK) { 
-      cerr << "PAPIMeasure::start() ERROR starting PAPI counters!"<<endl; 
+      cerr << "PAPIMeasure::start() ERROR starting PAPI counters! counters="<<list2str(getMeasuredCounterNames())<<endl;
       PAPIOperational=false;
       return;
     }
@@ -1049,6 +1052,7 @@ void PAPIMeasure::start() {
   // Read in the initial values of the counters
   if(PAPI_read_counters((long_long*)&(lastValues[0]), lastValues.size()) != PAPI_OK) { cerr << "PAPIMeasure::start() ERROR reading PAPI counters!"<<endl; assert(0); }
   
+  if(PAPI_read_counters((long_long*)&(readValues[0]), readValues.size()) != PAPI_OK) { cerr << "PAPIMeasure::pause() ERROR accumulating PAPI counters!"<<endl; assert(0); }
   // Start measurement
   //cout << "PAPIMeasure::start() "<<str()<<endl;
   
@@ -1115,6 +1119,18 @@ void PAPIMeasure::resume() {
 
   // Read in the initial values of the counters
   if(PAPI_read_counters((long_long*)&(lastValues[0]), lastValues.size()) != PAPI_OK) { cerr << "PAPIMeasure::resume() ERROR reading PAPI counters!"<<endl; assert(0); }
+}
+
+// Returns the string names of the counters currently being measured
+std::list<std::string> PAPIMeasure::getMeasuredCounterNames() {
+  std::list<std::string> ret;
+  int i=0;
+  for(std::vector<int>::const_iterator e=eventsToMeasure.begin(); e!=eventsToMeasure.end(); e++) {
+    char EventCodeStr[PAPI_MAX_STR_LEN];
+    if (PAPI_event_code_to_name(*e, EventCodeStr) != PAPI_OK) { cerr << "PAPIMeasure::getMeasuredCounterNames() ERROR getting name of PAPI counter "<<*e<<"!"<<endl; assert(0); }
+     ret.push_back(EventCodeStr);
+  }
+  return ret;
 }
 
 // Returns a list that maps all the raw and derived counters in events to their observed values,
