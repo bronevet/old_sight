@@ -500,6 +500,14 @@ void traceFileWriterTSV::observe(int traceID,
              const std::map<std::string, std::string>& ctxt, 
              const std::map<std::string, std::string>& obs,
              const std::map<std::string, anchor>&      obsAnchor) {
+  /*cout << "traceFileWriterTSV::observe("<<traceID<<")"<<endl;
+  cout << "    ctxt=";
+  for(map<string, string>::const_iterator c=ctxt.begin(); c!=ctxt.end(); c++) { cout << c->first << "=>"<<c->second<<" "; }
+  cout << endl;
+  cout << "    obs=";
+  for(map<string, string>::const_iterator o=obs.begin(); o!=obs.end(); o++) { cout << o->first << "=>"<<o->second<<" "; }
+  cout << endl;*/
+
   // Get the keys of ctxt and obs
   set<string> curCtxtKeys;
   for(map<string, string>::const_iterator i=ctxt.begin(); i!=ctxt.end(); i++)
@@ -537,14 +545,17 @@ void traceFileWriterTSV::observe(int traceID,
     if(i!=ctxt.begin()) out << "\t";
     attrValue val(i->second, attrValue::unknownT);
     out << val.getAsStr();
+    //cout << val.getAsStr();
   }
   if(ctxt.size()>0) out << "\t";
   for(map<string, string>::const_iterator i=obs.begin(); i!=obs.end(); i++) {
     if(i!=obs.begin()) out << "\t";
     attrValue val(i->second, attrValue::unknownT);
     out << val.getAsStr();
+    //cout << val.getAsStr();
   }
   out << endl;
+  cout << endl;
   
   numObservations++;
 }

@@ -846,6 +846,10 @@ void module::init(const std::vector<port>& ins, properties* derivedProps) {
     
     // Make sure that the input contexts have the same names across all the invocations of this module group
     modularApp::registerInOutContexts(g, ins, sight::common::module::input);
+
+    // Record any publicized inputs
+    addPublicizedInputs(ins, numPublicizedInputs, modularApp::getInstance()->publicizedInputs,
+                  modularApp::getInstance()->publicizedInputNotes);
     
     // Add edges between the modules from which this module's inputs came and this module
     for(int i=0; i<ins.size(); i++)
@@ -894,7 +898,6 @@ module::~module() {
   assert(!destroyed);
   
   //cout << "~module() props->active="<<props->active<<endl;
-
   if(ins.size() != g.numInputs()) { cerr << "WARNING: module \""<<g.name()<<"\" specifies "<<g.numInputs()<<" inputs but "<<ins.size()<<" inputs are actually provided!"<<endl; }
   
   if(outsSet.size() != g.numOutputs()) { 
@@ -941,6 +944,10 @@ module::~module() {
         obs.push_back(make_pair(encodeCtxtName("module", "output", txt()<<i, c->first), c->second));
       }
     }
+    
+    // Clear all records of publicized inputs
+    clearPublicized(numPublicizedInputs, modularApp::getInstance()->publicizedInputs,
+                    modularApp::getInstance()->publicizedInputNotes);
     
     /*cout << "obs="<<endl;
   for(list<pair<string, attrValue> >::iterator tc=obs.begin(); tc!=obs.end(); tc++)
@@ -991,6 +998,54 @@ void module::completeMeasurement() {
   // We've completed measuring this module
   measurementCompleted = true;
 }
+
+// Records any publicized inputs or options inside this module and its associated modularApp. Modules
+// executed while this module is active will inherit these inputs and options.
+void module::addPublicizedInputs(const std::vector<port>& ins, int& numPublicized,
+                           std::list<std::pair<std::string, attrValue> >& publicized,
+                           std::list<std::pair<std::string, notes> >& publicizedNotes) {
+  numPublicized=0;
+  for(int i=0; i<ins.size(); i++) {
+    addPublicized(*(ins[i].ctxt), numPublicized, publicized, publicizedNotes);
+  }
+}
+
+void module::addPublicizedOptions(const context& opts, int& numPublicized,
+                           std::list<std::pair<std::string, attrValue> >& publicized,
+                           std::list<std::pair<std::string, notes> >& publicizedNotes) {
+  numPublicized=0;
+  addPublicized(opts, numPublicized, publicized, publicizedNotes);
+}
+
+void module::addPublicized(const context& insopts, int& numPublicized,
+                           std::list<std::pair<std::string, attrValue> >& publicized,
+                           std::list<std::pair<std::string, notes> >& publicizedNotes)
+{
+  for(std::map<std::string, notes>::const_iterator cn=insopts.configNotes.begin(); cn!=insopts.configNotes.end(); cn++) {
+    for(notes::const_iterator n=cn->second.begin(); n!=cn->second.end(); n++) {
+       if(n->getName() == "publicized") {
+        numPublicized++;
+        map<string, attrValue>::const_iterator val=insopts.configuration.find(cn->first);
+        assert(val != insopts.configuration.end());
+        publicized.push_back(make_pair(cn->first, val->second));
+        publicizedNotes.push_back(make_pair(cn->first, cn->second));
+      }
+    }
+  }
+}
+
+// Clears off any records of publicized inputs or options that were set in addPublicized()
+void module::clearPublicized(int& numPublicized,
+                             std::list<std::pair<std::string, attrValue> >& publicized,
+                             std::list<std::pair<std::string, notes> >& publicizedNotes) {
+  assert(publicized.size()>=numPublicized);
+  while(numPublicized>0) {
+    publicized.pop_back();
+    publicizedNotes.pop_back();
+    numPublicized--;
+  }
+}
+
 
 // Sets the context of the given output port
 void module::setInCtxt(int idx, const context& c) {
@@ -1052,6 +1107,15 @@ port module::outPort(int idx) const {
 // by combining the context provided by the classes that this object derives from with its own unique 
 // context attributes.
 void module::setTraceCtxt() {
+  // Add to it the context of this module based on the inputs publicized by containing modules, omitting any
+  // from this module.
+  int j=0;
+  for(list<pair<string, attrValue> >::const_iterator i=modularApp::getInstance()->publicizedInputs.begin(); 
+         i!=modularApp::getInstance()->publicizedInputs.end() && 
+         j<modularApp::getInstance()->publicizedInputs.size()-numPublicizedInputs; 
+      i++, j++)
+    traceCtxt[encodeCtxtName("module", "pub_input", "", i->first)] = i->second;
+
   // Add to it the context of this module based on the contexts of its inputs
   for(int i=0; i<ins.size(); i++) {
     for(std::map<std::string, attrValue>::const_iterator c=ins[i].ctxt->configuration.begin(); c!=ins[i].ctxt->configuration.end(); c++) {
@@ -1142,6 +1206,7 @@ void compContext::add(const compContext& that) {
 std::string compContext::str() const {
   ostringstream s;
   s << "[compContext: "<<endl;
+  s << "    "<<context::str()<<endl;
   for(map<string, pair<string, string> >::const_iterator comp=comparators.begin(); comp!=comparators.end(); comp++) {
     if(comp!=comparators.begin()) s << " ";
     s << "("<<comp->second.first<<": "<<comp->second.second<<")";
@@ -1192,98 +1257,98 @@ compModule::compModule(const instance& inst, const std::vector<port>& inputs,
                        bool isReference,
                                                                          properties* props) :
             module(inst, inputs, setProperties(inst, isReference, module::context(), NULL, props)),           isReference(isReference), options(module::context())
-{ init(props); }
+{ init(context(), props); }
 
 compModule::compModule(const instance& inst, const std::vector<port>& inputs,  
                        bool isReference, 
                        const attrOp& onoffOp,                            properties* props) :
           module(inst, inputs, setProperties(inst, isReference, module::context(), &onoffOp, props)),       isReference(isReference), options(module::context())
-{ init(props); }
+{ init(context(), props); }
 
 compModule::compModule(const instance& inst, const std::vector<port>& inputs,  
                        bool isReference, 
                                               const compNamedMeasures& cMeas, properties* props) :
           module(inst, inputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, module::context(), NULL, props)),     isReference(isReference), options(module::context()), measComp(cMeas.getComparators())
-{ init(props); }
+{ init(context(), props); }
 
 compModule::compModule(const instance& inst, const std::vector<port>& inputs,  
                        bool isReference, 
                        const attrOp& onoffOp, const compNamedMeasures& cMeas, properties* props) : 
           module(inst, inputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, module::context(), &onoffOp, props)), isReference(isReference), options(module::context()), measComp(cMeas.getComparators())
-{ init(props); }
+{ init(context(), props); }
 
 compModule::compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
                        bool isReference,
                                                                          properties* props) :
             module(inst, inputs, externalOutputs, setProperties(inst, isReference, module::context(), NULL, props)),           isReference(isReference), options(module::context())
-{ init(props); }
+{ init(context(), props); }
 
 compModule::compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
                        bool isReference, 
                        const attrOp& onoffOp,                            properties* props) :
           module(inst, inputs, externalOutputs, setProperties(inst, isReference, module::context(), &onoffOp, props)),       isReference(isReference), options(module::context())
-{ init(props); }
+{ init(context(), props); }
 
 compModule::compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
                        bool isReference, 
                                               const compNamedMeasures& cMeas, properties* props) :
           module(inst, inputs, externalOutputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, module::context(), NULL, props)),     isReference(isReference), options(module::context()), measComp(cMeas.getComparators())
-{ init(props); }
+{ init(context(), props); }
 
 compModule::compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
                        bool isReference, 
                        const attrOp& onoffOp, const compNamedMeasures& cMeas, properties* props) : 
           module(inst, inputs, externalOutputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, module::context(), &onoffOp, props)), isReference(isReference), options(module::context()), measComp(cMeas.getComparators())
-{ init(props); }
+{ init(context(), props); }
 
 
 compModule::compModule(const instance& inst, const std::vector<port>& inputs,  
                        bool isReference, context options,
                                                                          properties* props) :
             module(inst, inputs, setProperties(inst, isReference, options, NULL, props)),           isReference(isReference), options(options)
-{ init(props); }
+{ init(options, props); }
 
 compModule::compModule(const instance& inst, const std::vector<port>& inputs,  
                        bool isReference, context options, 
                        const attrOp& onoffOp,                            properties* props) :
           module(inst, inputs, setProperties(inst, isReference, options, &onoffOp, props)),       isReference(isReference), options(options)
-{ init(props); }
+{ init(options, props); }
 
 compModule::compModule(const instance& inst, const std::vector<port>& inputs,  
                        bool isReference, context options, 
                                               const compNamedMeasures& cMeas, properties* props) :
           module(inst, inputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, options, NULL, props)),     isReference(isReference), options(options), measComp(cMeas.getComparators())
-{ init(props); }
+{ init(options, props); }
 
 compModule::compModule(const instance& inst, const std::vector<port>& inputs,  
                        bool isReference, context options, 
                        const attrOp& onoffOp, const compNamedMeasures& cMeas, properties* props) : 
           module(inst, inputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, options, &onoffOp, props)), isReference(isReference), options(options), measComp(cMeas.getComparators())
-{ init(props); }
+{ init(options, props); }
 
 compModule::compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
                        bool isReference, context options,
                                                                          properties* props) :
             module(inst, inputs, externalOutputs, setProperties(inst, isReference, options, NULL, props)),           isReference(isReference), options(options)
-{ init(props); }
+{ init(options, props); }
 
 compModule::compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
                        bool isReference, context options, 
                        const attrOp& onoffOp,                            properties* props) :
           module(inst, inputs, externalOutputs, setProperties(inst, isReference, options, &onoffOp, props)),       isReference(isReference), options(options)
-{ init(props); }
+{ init(options, props); }
 
 compModule::compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
                        bool isReference, context options, 
                                               const compNamedMeasures& cMeas, properties* props) :
           module(inst, inputs, externalOutputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, options, NULL, props)),     isReference(isReference), options(options), measComp(cMeas.getComparators())
-{ init(props); }
+{ init(options, props); }
 
 compModule::compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
                        bool isReference, context options, 
                        const attrOp& onoffOp, const compNamedMeasures& cMeas, properties* props) : 
           module(inst, inputs, externalOutputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, options, &onoffOp, props)), isReference(isReference), options(options), measComp(cMeas.getComparators())
-{ init(props); }
+{ init(options, props); }
 
 // Sets the properties of this object
 properties* compModule::setProperties(const instance& inst, bool isReference, context options, const attrOp* onoffOp, properties* props) {
@@ -1307,10 +1372,15 @@ properties* compModule::setProperties(const instance& inst, bool isReference, co
   return props;
 }
 
-void compModule::init(properties* props) {
+void compModule::init(const context& options, properties* props) {
   isDerived = props!=NULL; // This is an instance of an object that derives from module if its constructor sets deriv to non-NULL
   
   if(!isDerived) setTraceCtxt();
+
+  // Record any publicized options
+  addPublicizedOptions(options, numPublicizedOptions, modularApp::getInstance()->publicizedOptions,
+                       modularApp::getInstance()->publicizedOptionNotes);
+    
 }
 
 // Directly calls the destructor of this object. This is necessary because when an application crashes
@@ -1333,6 +1403,10 @@ compModule::~compModule() {
     moduleCtrl.add("moduleCtrl", map<string, string>());
     dbg.enter(moduleCtrl);
 
+    // Clear all records of publicized options
+    clearPublicized(numPublicizedOptions, modularApp::getInstance()->publicizedOptions,
+                    modularApp::getInstance()->publicizedOptionNotes);
+
     // Register a traceStream for this compModule's module group, if one has not already been registered
     if(!modularApp::isTraceStreamRegistered(g))
       modularApp::registerTraceStream(g, new compModuleTraceStream(moduleID, this, trace::lines, trace::disjMerge, modularApp::getTraceStreamID(g)));
@@ -1350,6 +1424,15 @@ void compModule::setTraceCtxt() {
 
   traceCtxt["compModule:isReference"] = attrValue((long)isReference);
   
+  // Add to it the context of this module based on the options publicized by containing modules, omitting any
+  // from this module.
+  int j=0;
+  for(list<pair<string, attrValue> >::const_iterator i=modularApp::getInstance()->publicizedOptions.begin(); 
+         i!=modularApp::getInstance()->publicizedOptions.end() && 
+         j<modularApp::getInstance()->publicizedOptions.size()-numPublicizedOptions; 
+      i++, j++)
+    traceCtxt[encodeCtxtName("compModule", "pub_option", "", i->first)] = i->second;
+
   // Add all the options to the context
   for(map<std::string, attrValue>::const_iterator o=options.getCfg().begin(); o!=options.getCfg().end(); o++)
     traceCtxt[encodeCtxtName("compModule", "option", "0", o->first)] = o->second;
