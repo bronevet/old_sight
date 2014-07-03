@@ -187,7 +187,7 @@ traceObserverQueue::traceObserverQueue() {
 }
 
 traceObserverQueue::traceObserverQueue(const std::list<traceObserver*>& observersL)/* : queue(observersL)*/ {
-cout << "traceObserverQueue::traceObserverQueue() #observersL.size="<<observersL.size()<<endl;
+//cout << "traceObserverQueue::traceObserverQueue() #observersL.size="<<observersL.size()<<endl;
   // If observersL is non-empty
   if(observersL.size()>0) {
     firstO = observersL.front();
@@ -201,10 +201,10 @@ cout << "traceObserverQueue::traceObserverQueue() #observersL.size="<<observersL
     // The traceObserver most recently encountered by the loop
     traceObserver* recentO=*o;
 
-    cout << "  firstO="<<firstO<<", lastO="<<lastO<<", queue="<<this<<endl;
+//    cout << "  firstO="<<firstO<<", lastO="<<lastO<<", queue="<<this<<endl;
     
     for(o++; o!=observersL.end(); o++) {
-      cout << "    traceObserverQueue recentO="<<recentO<<" <-- *o="<<*o<<endl;
+//      cout << "    traceObserverQueue recentO="<<recentO<<" <-- *o="<<*o<<endl;
       recentO->registerObserver(*o);
       recentO = *o;
     }
@@ -359,10 +359,10 @@ void traceObserverQueue::obsFinished() {
 externalTraceProcessor_File::externalTraceProcessor_File(std::string processorFName, std::string obsFName) : 
   processorFName(processorFName), obsFName(obsFName) 
 {
-  cout << "processorFName="<<processorFName<<endl;
-  cout << "obsFName="<<obsFName<<endl;
+  //cout << "processorFName="<<processorFName<<endl;
+  //cout << "obsFName="<<obsFName<<endl;
   traceFile.open(obsFName.c_str());
-  cout << "traceFile.is_open()="<<traceFile.is_open()<<endl;
+  //cout << "traceFile.is_open()="<<traceFile.is_open()<<endl;
   finished = false;
 }
 
@@ -555,7 +555,7 @@ void traceFileWriterTSV::observe(int traceID,
     //cout << val.getAsStr();
   }
   out << endl;
-  cout << endl;
+  //cout << endl;
   
   numObservations++;
 }
