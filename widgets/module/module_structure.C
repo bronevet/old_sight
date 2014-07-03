@@ -2615,8 +2615,10 @@ properties* CompModuleTraceStreamMerger::setProperties(
            if(comparators.find(attrName) == comparators.end())
              comparators[attrName] = make_pair(compName, compDesc);
            // Otherwise, ensure that all the comparators specified for this attribute/output are identical
-           else
+           else {
+             if(comparators[attrName] != make_pair(compName, compDesc)) { cerr << "ERROR: mismatched comparators for attribute "<<attrName<<"! Before observed "<<comparators[attrName].first<<" / "<<comparators[attrName].second<<" but now observing "<<compName<<" / "<<compDesc<<endl; }
              assert(comparators[attrName] == make_pair(compName, compDesc));
+           }
 
 /*          string key = txt()<<"out"<<outIdx<<":compare"<<compIdx;
 cout << "outIdx="<<outIdx<<", compIdx="<<compIdx<<". key="<<key<<": "<<t->second.get(txt()<<"out"<<outIdx<<":compare"<<compIdx)<<endl;
