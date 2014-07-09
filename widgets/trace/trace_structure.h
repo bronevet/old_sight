@@ -580,7 +580,7 @@ class PAPIMeasure : public measure {
   void resume();
  
   // Returns the string names of the counters currently being measured
-  std::list<std::string> PAPIMeasure::getMeasuredCounterNames();
+  std::list<std::string> getMeasuredCounterNames();
   
   // Returns a list that maps all the raw and derived counters in events to their observed values,
   // using the raw counter values in accumValues.
