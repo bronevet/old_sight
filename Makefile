@@ -27,15 +27,15 @@ SIGHT_LINKFLAGS = \
                   ${ROOT_PATH}/widgets/gsl/lib/libgslcblas.so \
                   -Wl,-rpath ${ROOT_PATH}/widgets/gsl/lib \
 	          -lpthread
-RAPL_ENABLED = 1
+RAPL_ENABLED = 0
 ifeq (${RAPL_ENABLED}, 1)
 SIGHT_LINKFLAGS += ${ROOT_PATH}/widgets/libmsr/lib/libmsr.so \
                     -Wl,-rpath ${ROOT_PATH}/widgets/libmsr/lib
 endif
 	                
-	                #-Wl,-rpath ${ROOT_PATH}/widgets/papi/lib \
-override CC=icc #gcc
-override CCC=icpc #clang++ #g++
+	                #-Wl,-rpath ${ROOT_PATH}/widgets/papi/lib 
+override CC=gcc
+override CCC=g++
 MPICC = mpi${CC}
 MPICCC = mpi${CCC}
 
@@ -76,10 +76,11 @@ ifeq (${OS}, Cygwin)
 VNC_ENABLED := 0
 else
 # Default distribution disables VNC 
-VNC_ENABLED := 0
+#VNC_ENABLED := 0
 # VNC is only enabled if remote services are enabled
-#ifeq (${REMOTE_ENABLED}, 1)
-# VNC_ENABLED := 1 
+ifeq (${REMOTE_ENABLED}, 1)
+ VNC_ENABLED := 1 
+endif
 endif
 
 # By default we disable KULFI-based fault injection since it requires LLVM
@@ -260,12 +261,12 @@ clean:
 	cd examples; make clean
 #	cd apps/mcbench; ./clean-linux-x86_64.sh
 	cd apps/mfem; make clean
-	rm -rf dbg dbg.* *.a *.o widgets/shellinabox* widgets/mongoose* widgets/graphviz* gdbLineNum.pl
+	rm -rf Makefile.extern definitions.h dbg dbg.* *.a *.so *.o widgets/shellinabox* widgets/mongoose* widgets/graphviz* gdbLineNum.pl
 	rm -rf script/taffydb sightDefines.pl gdbscript
 	rm -f slayout hier_merge
 
 clean_objects:
-	rm -f Makefile.extern definitions.h *.a *.o attributes/*.o widgets/*.o widgets/*/*.o hier_merge slayout
+	rm -f Makefile.extern definitions.h *.a *.so *.o attributes/*.o widgets/*.o widgets/*/*.o hier_merge slayout
 	cd widgets/kulfi; make clean
 
 script/taffydb:

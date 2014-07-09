@@ -4,7 +4,7 @@ EXE := .exe
 endif
 
 sight_H := ../*.h ../*/*.h ../widgets/*/*.h
-TESTERS = 8.Modules${EXE} #9.CompModules.merged${EXE} 9.CompModules.single${EXE} 5.Tracing${EXE} 0.Demo${EXE} 11.ExternTraceProcess${EXE} 10.SpringModules${EXE} \
+TESTERS = 8.Modules${EXE} 9.CompModules.merged${EXE} 9.CompModules.single${EXE} 5.Tracing${EXE} 0.Demo${EXE} 11.ExternTraceProcess${EXE} 10.SpringModules${EXE} \
           1.StructuredFormatting${EXE} 2.ConditionalFormatting${EXE} 3.Navigation${EXE} \
           4.AttributeAnnotationFiltering${EXE} 6.PerfAnalysis${EXE} \
           7.Merging${EXE} 
@@ -105,4 +105,4 @@ run: ${TESTERS}
 	${CCC} -g ${SIGHT_CFLAGS} 11.ExternTraceProcess.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 11.ExternTraceProcess${EXE}
 
 clean:
-	rm -rf ${TESTERS} dbg.*
+	rm -rf ${TESTERS} dbg.* *.core
