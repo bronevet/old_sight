@@ -1148,47 +1148,47 @@ std::list<std::pair<std::string, attrValue> > PAPIMeasure::getAccumValues() {
     } else {
       switch(*e) {
         case PAPI_L1_TC_MR: // L1 Total cache miss rate
-          ret.push_back(make_pair("PAPI_L1_TC_MR", attrValue(accumValues[events2Idx[PAPI_L1_TCA]]==0? -1:
+          ret.push_back(make_pair("PAPI_L1_TC_MR", attrValue(accumValues[events2Idx[PAPI_L1_TCA]]==0? 0:
                                                                 double(accumValues[events2Idx[PAPI_L1_TCM]])/
                                                                   accumValues[events2Idx[PAPI_L1_TCA]])));
           break;
         case PAPI_L2_TC_MR: // L2 Total cache miss rate
-          ret.push_back(make_pair("PAPI_L2_TC_MR", attrValue(accumValues[events2Idx[PAPI_L2_TCA]]==0? -1:
+          ret.push_back(make_pair("PAPI_L2_TC_MR", attrValue(accumValues[events2Idx[PAPI_L2_TCA]]==0? 0:
                                                                 double(accumValues[events2Idx[PAPI_L2_TCM]])/
                                                                    accumValues[events2Idx[PAPI_L2_TCA]])));
           break;
         case PAPI_L3_TC_MR: // L3 Total cache miss rate
-          ret.push_back(make_pair("PAPI_L3_TC_MR", attrValue(accumValues[events2Idx[PAPI_L3_TCA]]==0? -1:
+          ret.push_back(make_pair("PAPI_L3_TC_MR", attrValue(accumValues[events2Idx[PAPI_L3_TCA]]==0? 0:
                                                                 double(accumValues[events2Idx[PAPI_L3_TCM]])/
                                                                    accumValues[events2Idx[PAPI_L3_TCA]])));
           break;
         case PAPI_L1_DC_MR: // L1 Data cache miss rate
-          ret.push_back(make_pair("PAPI_L1_DC_MR", attrValue(accumValues[events2Idx[PAPI_L1_DCA]]==0? -1:
+          ret.push_back(make_pair("PAPI_L1_DC_MR", attrValue(accumValues[events2Idx[PAPI_L1_DCA]]==0? 0:
                                                                 double(accumValues[events2Idx[PAPI_L1_DCM]])/
                                                                    accumValues[events2Idx[PAPI_L1_DCA]])));
           break;
         case PAPI_L2_DC_MR: // L2 Data cache miss rate
-          ret.push_back(make_pair("PAPI_L2_DC_MR", attrValue(accumValues[events2Idx[PAPI_L2_DCA]]==0? -1: 
+          ret.push_back(make_pair("PAPI_L2_DC_MR", attrValue(accumValues[events2Idx[PAPI_L2_DCA]]==0? 0: 
                                                                 double(accumValues[events2Idx[PAPI_L2_DCM]])/
                                                                    accumValues[events2Idx[PAPI_L2_DCA]])));
           break;
         case PAPI_L3_DC_MR: // L3 Data cache miss rate
-          ret.push_back(make_pair("PAPI_L3_DC_MR", attrValue(accumValues[events2Idx[PAPI_L3_DCA]]==0? -1: 
+          ret.push_back(make_pair("PAPI_L3_DC_MR", attrValue(accumValues[events2Idx[PAPI_L3_DCA]]==0? 0: 
                                                                 double(accumValues[events2Idx[PAPI_L3_DCM]])/
                                                                    accumValues[events2Idx[PAPI_L3_DCA]])));
           break;
         case PAPI_L1_IC_MR: // L1 Instruction cache miss rate
-          ret.push_back(make_pair("PAPI_L1_IC_MR", attrValue(accumValues[events2Idx[PAPI_L1_ICA]]==0? -1:
+          ret.push_back(make_pair("PAPI_L1_IC_MR", attrValue(accumValues[events2Idx[PAPI_L1_ICA]]==0? 0:
                                                                 double(accumValues[events2Idx[PAPI_L1_ICM]])/
                                                                    accumValues[events2Idx[PAPI_L1_ICA]])));
           break;
         case PAPI_L2_IC_MR: // L2 Instruction cache miss rate
-          ret.push_back(make_pair("PAPI_L2_IC_MR", attrValue(accumValues[events2Idx[PAPI_L2_ICA]]==0? -1:
+          ret.push_back(make_pair("PAPI_L2_IC_MR", attrValue(accumValues[events2Idx[PAPI_L2_ICA]]==0? 0:
                                                                 double(accumValues[events2Idx[PAPI_L2_ICM]])/
                                                                    accumValues[events2Idx[PAPI_L2_ICA]])));
           break;
         case PAPI_L3_IC_MR: // L3 Instruction cache miss rate
-          ret.push_back(make_pair("PAPI_L3_IC_MR", attrValue(accumValues[events2Idx[PAPI_L3_ICA]]==0? -1:
+          ret.push_back(make_pair("PAPI_L3_IC_MR", attrValue(accumValues[events2Idx[PAPI_L3_ICA]]==0? 0:
                                                                 double(accumValues[events2Idx[PAPI_L3_ICM]])/
                                                                    accumValues[events2Idx[PAPI_L3_ICA]])));
           break;
