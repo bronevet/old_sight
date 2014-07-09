@@ -1872,13 +1872,13 @@ void compModule::observe(int traceID,
                          const map<string, string>& ctxt, 
                          const map<string, string>& obs,
                          const map<string, anchor>& obsAnchor) {
-  cout << "compModule::observe("<<traceID<<")"<<endl;
+  /*cout << "compModule::observe("<<traceID<<")"<<endl;
   cout << "    ctxt=";
   for(map<string, string>::const_iterator c=ctxt.begin(); c!=ctxt.end(); c++) { cout << c->first << "=>"<<c->second<<" "; }
   cout << endl;
   cout << "    obs=";
   for(map<string, string>::const_iterator o=obs.begin(); o!=obs.end(); o++) { cout << o->first << "=>"<<o->second<<" "; }
-  cout << endl;
+  cout << endl;*/
   
   // Compute the portion of the context that identifies the inputs to the modules for which no compContext was 
   // specified. For identical values of these inputs we will consider different values of options and different 
