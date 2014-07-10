@@ -754,6 +754,27 @@ kulfiModularApp::~kulfiModularApp() {
 // Maps each signal number that we've overridden to the signal handler originally mapped to it
 std::map<int, struct sigaction> kulfiModularApp::originalHandler;
 
+// Called when the application exits
+void kulfiModularApp::exit_handler ()
+{
+  cout << "Exit"<<endl; cout.flush();
+ 
+  // If the fault occured while a KULFI modular application was executing
+  if(modularApp::isInstanceActive()) {
+    const std::list<module*>& mStack = modularApp::getMStack();
+    for(list<module*>::const_reverse_iterator m=mStack.rbegin(); m!=mStack.rend(); m++) {
+      kulfiModule* km = (kulfiModule*)*m;
+      assert(km);
+
+      km->setOutCtxt(km->numOutputs()-1, compContext("outcome", (char*)"aborted", noComp()));
+   }
+ }
+
+  // Finalize the state of Sight to ensure that its output is self-consistent
+  finalizeSight();
+}
+
+// Called when the application is terminated via a signel
 void kulfiModularApp::termination_handler (int signum)
 {
   cout << "Terminated! signum="<<signum<<endl; cout.flush();
@@ -800,7 +821,16 @@ void kulfiModularApp::termination_handler (int signum)
 
     //modularApp::getInstance()->destroy();
   }
-  
+
+  // Finalize the state of Sight to ensure that its output is self-consistent
+  finalizeSight();
+
+  // Call the signal handler that was originally mapped to this signal number
+  originalHandler[signum].sa_handler(signum);
+}
+
+// Finalizes the state of Sight to ensure that its output is self-consistent
+void kulfiModularApp::finalizeSight() {
   // On Termination deallocate all the currently live sightObjs
   sightObj::destroyAll();
 
@@ -808,9 +838,6 @@ void kulfiModularApp::termination_handler (int signum)
   dbg.flush();
   if(dbg.dbgFile)
     dbg.dbgFile->close();
-
-  // Call the signal handler that was originally mapped to this signal number
-  originalHandler[signum].sa_handler(signum);
 }
 
 void kulfiModularApp::overrideSignal(int signum, struct sigaction& new_action) {
@@ -844,6 +871,8 @@ void kulfiModularApp::init() {
   overrideSignal(SIGSTOP, new_action); 
   overrideSignal(SIGKILL, new_action); 
   overrideSignal(SIGKILL, new_action); 
+
+  atexit(kulfiModularApp::exit_handler);
   
   // This is the last piece of code before control returns back to the application
   EnableKulfi();

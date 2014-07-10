@@ -45,11 +45,12 @@ class tagGroup {
 
   string str() const {
     ostringstream s;
-    s << "[tagGroup: objName="<<objName<<", key=";
+    s << "[tagGroup: objName="<<objName<<", type="<<(type==properties::enterTag? "enter": "exit")<<", key=";
     for(list<string>::const_iterator k=key.begin(); k!=key.end(); k++) {
       if(k!=key.begin()) s << ", ";
       s << *k;
     }
+    s << "]";
     return s.str();
   }
 }; // class tagGroup

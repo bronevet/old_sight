@@ -40,8 +40,15 @@ class kulfiModularApp : public compModularApp
   // Maps each signal number that we've overridden to the signal handler originally mapped to it
   static std::map<int, struct sigaction> originalHandler;
 
+  // Called when the application exits
+  static void exit_handler ();
+  
+  // Called when the application is terminated via a signel
   static void termination_handler (int signum);
 
+  // Finalizes the state of Sight to ensure that its output is self-consistent
+  static void finalizeSight();
+  
   static void overrideSignal(int signum, struct sigaction& new_action);
 
   // Returns a pointer to the current instance of modularApp
@@ -54,9 +61,10 @@ class kulfiModularApp : public compModularApp
   // Returns whether fault injection is currently enabled
   static bool isFIEnabled() {
     //return KulfiRuntime::next_fault_countdown >= 0;
-    if(getenv("NEXT_FAULT_COUNTDOWN"))
+    if(getenv("NEXT_FAULT_COUNTDOWN")) {
+      //cout << "isFIEnabled="<<(atoi(getenv("NEXT_FAULT_COUNTDOWN")) >= 0) << endl;
       return atoi(getenv("NEXT_FAULT_COUNTDOWN")) >= 0;
-    else
+    } else
       return false;
   }
 

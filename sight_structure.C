@@ -268,6 +268,8 @@ location::location()
 
 location::~location()
 {
+  // If Sight has already been destroyed, skip out of the destructor
+  if(sightObj::SightDestroyed) return;
   assert(l.size()==1);
   l.pop_back();
 }
@@ -349,6 +351,9 @@ std::map<dbgStream*, std::list<sightObj*> >& soStackAllStreams() {
 // the case of Sight doing the destruction and of the runtime system destroying all objects
 // at process termination
 bool sightObj::SightDestruction=false;
+
+// Records whether we've completed the process of destroying all objects
+bool sightObj::SightDestroyed=false;
 
 // Records whether we've started processing static destructors. In this case
 // the sight object stack may not be valid anymore and thus should not be accessed.
@@ -505,6 +510,9 @@ void sightObj::destroyAll() {
     }
   }
   stack.clear();
+
+  // Sight has now been destroyed
+  SightDestroyed = true;
 }
 
 // Returns whether this object is active or not
@@ -1936,6 +1944,9 @@ void dbgStream::destroy() {
 }
 
 dbgStream::~dbgStream() {
+  // If Sight has already been destroyed, skip out of the destructor
+  if(SightDestroyed) return;
+
   assert(!destroyed);
   
   if (!initialized)

@@ -334,12 +334,17 @@ class sightObj {
   
   // Records whether we should remove this object from the sight object stack
   bool removeFromStack;
-  
+ 
+  public: 
   // Records whether we've begun the process of destroying all objects. This is to differentiate`
   // the case of Sight doing the destruction and of the runtime system destroying all objects
   // at process termination
   static bool SightDestruction;
-  
+
+  // Records whether we've completed the process of destroying all objects
+  static bool SightDestroyed;
+ 
+  protected: 
   // Records whether we've started processing static destructors. In this case
   // the sight object stack may not be valid anymore and thus should not be accessed.
   static bool stackMayBeInvalidFlag;

@@ -2063,6 +2063,8 @@ void ModularAppMerger::mergeKey(properties::tagType type, properties::iterator t
   if(type==properties::enterTag) {
     info.add(tag.get("appName"));
   }
+  // These tags encode the skeleton of modularApps and must be aligned across all streams
+  info.setUniversal(true);
 }
 
 /*************************************
@@ -2110,6 +2112,9 @@ void ModularAppStructureMerger::mergeKey(properties::tagType type, properties::i
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; assert(0); }
   if(type==properties::enterTag) {
   }
+
+  // These tags encode the skeleton of modularApps and must be aligned across all streams
+  info.setUniversal(true);
 }
 
 /************************
@@ -2164,6 +2169,7 @@ properties* ModuleMerger::setProperties(std::vector<std::pair<properties::tagTyp
                            inStreamRecords);*/
       
       // We must have previously assigned a streamID in the outgoing stream to this module group
+      dbg << "g="<<g.str()<<", observed="<<((ModuleStreamRecord*)(outStreamRecords)["module"])->isModuleObserved(g)<<endl;
       assert(((ModuleStreamRecord*)(outStreamRecords)["module"])->isModuleObserved(g));
       pMap["moduleID"] = txt() << ((ModuleStreamRecord*)(outStreamRecords)["module"])->getModuleID(g);
       //pMap["moduleID"] = txt()<<streamRecord::mergeIDs("module", "moduleID", pMap, tags, outStreamRecords, inStreamRecords);
@@ -2514,6 +2520,7 @@ properties* ModuleTraceStreamMerger::setProperties(
       int traceID = streamRecord::mergeIDs("traceStream", "traceID", pMap, TraceStreamTags, outStreamRecords, inStreamRecords);
       
       // Associate the new moduleID and traceID with the module group
+      dbg << "g="<<g.str()<<", obserbing module"<<endl;
       ((ModuleStreamRecord*)(outStreamRecords)["module"])->setModuleID(g, moduleID, traceID);
       
       pMap["moduleID"] = txt() << moduleID;
