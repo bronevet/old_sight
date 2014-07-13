@@ -725,7 +725,17 @@ kulfiConfHandlerInstantiator::kulfiConfHandlerInstantiator() {
 }
 kulfiConfHandlerInstantiator kulfiConfHandlerInstance;
 
-	
+/**************************
+ ***** Abort Handling *****
+ **************************/
+
+kulfiAbortHandlerInstantiator::kulfiAbortHandlerInstantiator() { 
+  (*ExitHandlers   )["kulfiModularApp"]     = kulfiModularApp::ExitHandler;
+  (*KillSignalHandlers)["kulfiModularApp"]  = kulfiModularApp::KillSignalHandler;
+}
+kulfiAbortHandlerInstantiator kulfiAbortHandlerInstance;
+
+
 /*****************************
  ***** kulfiModularApp  *****
  *****************************/
@@ -752,10 +762,10 @@ kulfiModularApp::~kulfiModularApp() {
 }
 
 // Maps each signal number that we've overridden to the signal handler originally mapped to it
-std::map<int, struct sigaction> kulfiModularApp::originalHandler;
+//std::map<int, struct sigaction> kulfiModularApp::originalHandler;
 
 // Called when the application exits
-void kulfiModularApp::exit_handler ()
+void kulfiModularApp::ExitHandler ()
 {
   cout << "Exit"<<endl; cout.flush();
  
@@ -771,16 +781,16 @@ void kulfiModularApp::exit_handler ()
  }
 
   // Finalize the state of Sight to ensure that its output is self-consistent
-  finalizeSight();
+  //finalizeSight();
 }
 
 // Called when the application is terminated via a signel
-void kulfiModularApp::termination_handler (int signum)
+void kulfiModularApp::KillSignalHandler(int signum)
 {
   cout << "Terminated! signum="<<signum<<endl; cout.flush();
   //dbg.ownerAccessing();
  
-  // If the fault occured while a KULFI modular application was executing
+  // If the fault occurred while a KULFI modular application was executing
   if(modularApp::isInstanceActive()) {
     const std::list<module*>& mStack = modularApp::getMStack();
     //cout << "traceContexts: #mStack="<<mStack.size()<<"\n";
@@ -821,15 +831,15 @@ void kulfiModularApp::termination_handler (int signum)
 
     //modularApp::getInstance()->destroy();
   }
-
+/*
   // Finalize the state of Sight to ensure that its output is self-consistent
   finalizeSight();
 
   // Call the signal handler that was originally mapped to this signal number
-  originalHandler[signum].sa_handler(signum);
+  originalHandler[signum].sa_handler(signum);*/
 }
 
-// Finalizes the state of Sight to ensure that its output is self-consistent
+/* // Finalizes the state of Sight to ensure that its output is self-consistent
 void kulfiModularApp::finalizeSight() {
   // On Termination deallocate all the currently live sightObjs
   sightObj::destroyAll();
@@ -847,13 +857,12 @@ void kulfiModularApp::overrideSignal(int signum, struct sigaction& new_action) {
   originalHandler[signum] = old_action;
   if (old_action.sa_handler != SIG_IGN)
     sigaction (signum, &new_action, NULL);
-
-}
+}*/
 
 void kulfiModularApp::init() {
-  struct sigaction new_action;
+/*  struct sigaction new_action;
      
-  /* Set up the structure to specify the new action. */
+  / * Set up the structure to specify the new action. * /
   new_action.sa_handler = kulfiModularApp::termination_handler;
   sigemptyset (&new_action.sa_mask);
   new_action.sa_flags = 0;
@@ -872,7 +881,7 @@ void kulfiModularApp::init() {
   overrideSignal(SIGKILL, new_action); 
   overrideSignal(SIGKILL, new_action); 
 
-  atexit(kulfiModularApp::exit_handler);
+  atexit(kulfiModularApp::exit_handler);*/
   
   // This is the last piece of code before control returns back to the application
   EnableKulfi();
@@ -922,14 +931,7 @@ void* kulfiModularApp::timeoutWatcher(void*) {
     }
   }
   
-  // On Termination deallocate all the currently live sightObjs
-  sightObj::destroyAll();
-
-  // Flush the file used to output the structure log and close the file to make sure it is flushed.
-  dbg.flush();
-  if(dbg.dbgFile)
-    dbg.dbgFile->close();
-
+  // Exit the application. Sight will ensure that all data structures are finalized correctly.
   exit(0);
 }
 

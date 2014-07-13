@@ -2394,5 +2394,118 @@ int dbgprintf(const char * format, ... )
   return 0;// Before return you can redefine it back if you want...
 }
 
+// -------------------------------------------------------------------------------------------
+// ----- Support for finalizing the state of Sight when the application exits or crashes -----
+// -------------------------------------------------------------------------------------------
+
+
+/************************************
+ ***** AbortHandlerInstantiator *****
+ ************************************/
+
+// Maps each signal number that we've overridden to the signal handler originally mapped to it
+std::map<int, struct sigaction> AbortHandlerInstantiator::originalHandler;
+
+std::map<std::string, ExitHandler>*       AbortHandlerInstantiator::ExitHandlers;
+std::map<std::string, KillSignalHandler>* AbortHandlerInstantiator::KillSignalHandlers;
+AbortHandlerInstantiator::AbortHandlerInstantiator() :
+  sight::common::LoadTimeRegistry("AbortHandlerInstantiator", 
+                                  AbortHandlerInstantiator::init)
+{ 
+}
+
+void AbortHandlerInstantiator::init() {
+  ExitHandlers       = new map<std::string, ExitHandler>();
+  KillSignalHandlers = new map<std::string, KillSignalHandler>();
+  
+  struct sigaction new_action;
+     
+  // Register AbortHandlerInstantiator::appExited to be called when the application calls exit
+  atexit(AbortHandlerInstantiator::appExited);
+  
+  // Register AbortHandlerInstantiator::killSignal() to be called when the application receives a kill signal
+  new_action.sa_handler = AbortHandlerInstantiator::killSignal;
+  sigemptyset (&new_action.sa_mask);
+  new_action.sa_flags = 0;
+  
+  overrideSignal(SIGINT, new_action); 
+  overrideSignal(SIGHUP, new_action); 
+  overrideSignal(SIGTERM, new_action); 
+  overrideSignal(SIGSEGV, new_action); 
+  overrideSignal(SIGABRT, new_action); 
+  overrideSignal(SIGBUS, new_action); 
+  overrideSignal(SIGQUIT, new_action); 
+  overrideSignal(SIGFPE, new_action); 
+  overrideSignal(SIGILL, new_action); 
+  overrideSignal(SIGKILL, new_action); 
+  overrideSignal(SIGSTOP, new_action); 
+  overrideSignal(SIGKILL, new_action); 
+  overrideSignal(SIGKILL, new_action); 
+}
+
+// Sets the given action to be called when the application receives a signal telling it to abort
+void AbortHandlerInstantiator::overrideSignal(int signum, struct sigaction& new_action) {
+  struct sigaction old_action;
+
+  // Record the original action assigned to this signal
+  sigaction (signum, NULL, &old_action);
+  originalHandler[signum] = old_action;
+  
+  //if (old_action.sa_handler != SIG_IGN)
+  // Set the new action to respond to this signal
+  sigaction (signum, &new_action, NULL);
+}
+
+// Invoked when the application has called exit()
+void AbortHandlerInstantiator::appExited() {
+  // Call all the functions registered to listen for the application's exit
+  for(map<string, ExitHandler>::iterator h=ExitHandlers->begin(); h!=ExitHandlers->end(); h++)
+    (h->second)();
+  
+  finalizeSight();
+}
+
+// Invoked when the application is sent a kill signal
+void AbortHandlerInstantiator::killSignal(int signum) {
+  // Call all the functions registered to listen for the application's exit
+  for(map<string, KillSignalHandler>::iterator h=KillSignalHandlers->begin(); h!=KillSignalHandlers->end(); h++)
+    (h->second)(signum);
+  
+  finalizeSight();
+  
+  // Call the signal handler that was originally mapped to this signal number
+  originalHandler[signum].sa_handler(signum);
+}
+
+
+// Finalizes the state of Sight to ensure that its output is self-consistent
+void AbortHandlerInstantiator::finalizeSight() {
+  // On Termination deallocate all the currently live sightObjs
+  sightObj::destroyAll();
+
+  // Flush the file used to output the structure log and close the file to make sure it is flushed.
+  dbg.flush();
+  if(dbg.dbgFile)
+    dbg.dbgFile->close();
+}
+
+std::string AbortHandlerInstantiator::str() {
+  std::ostringstream s;
+  s << "[AbortHandlerInstantiator:"<<endl;
+  s << "    ExitHandlers=(#"<<ExitHandlers->size()<<"): ";
+  for(std::map<std::string, ExitHandler>::const_iterator i=ExitHandlers->begin(); i!=ExitHandlers->end(); i++) {
+    if(i!=ExitHandlers->begin()) s << ", ";
+    s << i->first;
+  }
+  s << endl;
+  s << "    KillSignalHandlers=(#"<<KillSignalHandlers->size()<<"): ";
+  for(std::map<std::string, KillSignalHandler>::const_iterator i=KillSignalHandlers->begin(); i!=KillSignalHandlers->end(); i++) {
+    if(i!=KillSignalHandlers->begin()) s << ", ";
+    s << i->first;
+  }
+  s << "]"<<endl;
+  return s.str();
+}
+
 }; // namespace structure
 }; // namespace sight

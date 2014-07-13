@@ -15,6 +15,7 @@
 #include "utils.h"
 #include "tools/callpath/include/Callpath.h"
 #include "tools/callpath/include/CallpathRuntime.h"
+#include <signal.h>
 
 namespace sight {
 namespace structure{
@@ -1375,8 +1376,48 @@ class IndentMerger : public Merger {
   }
 }; // class IndentMerger
 
-
+// Wrapper of the printf function that emits text to the dbg stream
 int dbgprintf(const char * format, ... );
+
+// -------------------------------------------------------------------------------------------
+// ----- Support for finalizing the state of Sight when the application exits or crashes -----
+// -------------------------------------------------------------------------------------------
+
+// Type of function to be called to notify a code module that the application has called exit())
+typedef void (*ExitHandler)();
+// Type of function to be called to notify a code module that the a kill signal of some type 
+// (e.g. SIGKILL or SIGSEGV) has been received by the application
+typedef void (*KillSignalHandler)(int signum);
+
+class AbortHandlerInstantiator : public sight::common::LoadTimeRegistry {
+  // Maps each signal number that we've overridden to the signal handler originally mapped to it
+  static std::map<int, struct sigaction> originalHandler;
+  
+  public:
+  static std::map<std::string, ExitHandler>*       ExitHandlers;
+  static std::map<std::string, KillSignalHandler>* KillSignalHandlers;
+
+  AbortHandlerInstantiator();
+  
+  // Called exactly once for each class that derives from LoadTimeRegistry to initialize its static data structures.
+  static void init();
+  
+  // Sets the given action to be called when the application receives a signal telling it to abort
+  static void overrideSignal(int signum, struct sigaction& new_action);
+
+  // Invoked when the application has called exit()
+  static void appExited();
+
+  // Invoked when the application is sent a kill signal
+  static void killSignal(int signum);
+
+  // Finalizes the state of Sight to ensure that its output is self-consistent
+  static void finalizeSight();
+  
+  static std::string str();
+};
+
+
 
 } // namespace structure
 } // namespace sight

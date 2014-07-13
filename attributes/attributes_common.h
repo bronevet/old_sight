@@ -762,6 +762,15 @@ class sightArray : public customAttrValue {
   sightArray(const dims& d, int* array/*,         bool arrayOwner=false*/);
   sightArray(const dims& d, double* array/*,      bool arrayOwner=false*/);
   sightArray(const dims& d, float* array/*,       bool arrayOwner=false*/);
+  
+  sightArray(const dims& d, const void* array, attrValue::valueType type/*, bool arrayOwner=false*/);
+  sightArray(const dims& d, const std::string* array/*, bool arrayOwner=false*/);
+  sightArray(const dims& d, const char** array/*,       bool arrayOwner=false*/);
+  sightArray(const dims& d, const void** array/*,       bool arrayOwner=false*/);
+  sightArray(const dims& d, const long* array/*,        bool arrayOwner=false*/);
+  sightArray(const dims& d, const int* array/*,         bool arrayOwner=false*/);
+  sightArray(const dims& d, const double* array/*,      bool arrayOwner=false*/);
+  sightArray(const dims& d, const float* array/*,       bool arrayOwner=false*/);
 
   sightArray(const dims& d, boost::shared_ptr<void> array, attrValue::valueType type);
   sightArray(const dims& d, boost::shared_ptr<std::string> array);

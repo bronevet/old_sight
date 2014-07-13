@@ -20,6 +20,13 @@ class kulfiConfHandlerInstantiator : common::confHandlerInstantiator {
 };
 extern kulfiConfHandlerInstantiator kulfiConfHandlerInstance;
 
+class kulfiAbortHandlerInstantiator: public AbortHandlerInstantiator {
+  public:
+  kulfiAbortHandlerInstantiator();
+};
+extern kulfiAbortHandlerInstantiator kulfiAbortHandlerInstance;
+
+
 class kulfiModularApp : public compModularApp
 {
   friend class kulfiModule;
@@ -38,18 +45,18 @@ class kulfiModularApp : public compModularApp
   ~kulfiModularApp();
 
   // Maps each signal number that we've overridden to the signal handler originally mapped to it
-  static std::map<int, struct sigaction> originalHandler;
+  //static std::map<int, struct sigaction> originalHandler;
 
   // Called when the application exits
-  static void exit_handler ();
+  static void ExitHandler ();
   
   // Called when the application is terminated via a signel
-  static void termination_handler (int signum);
+  static void KillSignalHandler (int signum);
 
   // Finalizes the state of Sight to ensure that its output is self-consistent
-  static void finalizeSight();
+  //static void finalizeSight();
   
-  static void overrideSignal(int signum, struct sigaction& new_action);
+  //static void overrideSignal(int signum, struct sigaction& new_action);
 
   // Returns a pointer to the current instance of modularApp
   static kulfiModularApp* getInstance() {
