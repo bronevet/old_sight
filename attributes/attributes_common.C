@@ -433,6 +433,30 @@ double attrValue::getAsFloat() const {
   }
 }
 
+// Encodes the JavaScript representation of this attrValue into a string and returns the result.
+std::string attrValue::getAsJS() const {
+       if(type == strT)   return txt() << "'"<<*((string*)store)<<"'";
+  else if(type == ptrT)   return txt() << *((void**)store);
+  else if(type == intT)   return txt() << *((long*)store);
+  else if(type == floatT) return txt() << std::setprecision(16) << *((double*)store);
+  else if(type == customT || type == customSerT) { 
+    cerr << "attrValue::getAsJS() ERROR: custom attributes not currently supported!"<<endl; assert(0);
+  } else  {
+    cerr << "attrValue::getAsJS() ERROR: unknown attribute value type: "<<type2str(type)<<"!"<<endl;assert(0);
+  }
+}
+
+// Returns a JavaScript function that compares instances of the type of this attrValue
+std::string attrValue::getComparatorJS() const {
+  if(type == strT || type == ptrT || type == intT || type == floatT) { 
+    return "function(a,b) { return (a<b: -1: (a==b? 0: 1)); }";
+  } else if(type == customT || type == customSerT) { 
+    cerr << "attrValue::getComparatorJS() ERROR: custom attributes not currently supported!"<<endl; assert(0);
+  } else  {
+    cerr << "attrValue::getComparatorJS() ERROR: unknown attribute value type: "<<type2str(type)<<"!"<<endl;assert(0);
+  }
+}
+
 // Encodes the contents of this attrValue into a string that can be decoded by providing it to the
 // attrValue(const std::string& strV, attrValue::valueType type) constructor
 std::string attrValue::serialize() const {
@@ -795,7 +819,6 @@ const generalComparator& generalComparator::castTo(const comparator& comp) {
 /************************
  ***** LkComparator *****
  ************************/
-
 // Returns a comparator that can be used to compare objects of the given valueType
 comparator* LkComp::generate(std::string description) {
   int kEnd = description.find(":");

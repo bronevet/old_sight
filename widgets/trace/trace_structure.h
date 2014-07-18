@@ -94,7 +94,7 @@ class trace: public block, public common::trace
   traceStream* stream;
   
   // Maps the names of all the currently active traces to their trace objects
-  static std::map<std::string, trace*> active;
+  static ThreadLocalStorageMap<std::string, trace*> active;
   
   public:
   trace(std::string label, const std::list<std::string>& contextAttrs,                        showLocT showLoc=showBegin, vizT viz=table, mergeT merge=disjMerge, properties* props=NULL);
@@ -174,7 +174,7 @@ class traceStream: public attrObserver, public common::trace, public sightObj
   int traceID;
   
   // Maximum ID assigned to any trace object
-  static int maxTraceID;
+  static ThreadLocalStorage1<int, int> maxTraceID;
   
   // Names of attributes to be used as context when visualizing the values of trace observations
   std::list<std::string> contextAttrs;
@@ -534,10 +534,10 @@ class PAPIMeasure : public measure {
   std::string valLabel;
   
   // Indicates the number of PAPIMeasure objects that are currently measuring the counters
-  static int numMeasurers;
+  static ThreadLocalStorage1<int, int> numMeasurers;
   
   // Records the set of PAPI counters currently being measured (non-empty iff numMeasurers>0)
-  static std::vector<int> curMeasuredEvents;
+  static ThreadLocalStorageVector<int> curMeasuredEvents;
 
   // Records whether we were able to successfully start PAPI counting of the selected counters
   bool PAPIOperational;
@@ -602,7 +602,7 @@ class PAPIMeasure : public measure {
 // Base class of measurement objects that measure MSRs 
 class MSRMeasure {
   protected:
-  static int numMeasurers;
+  static ThreadLocalStorage1<int, int> numMeasurers;
   MSRMeasure();
   ~MSRMeasure();
 };

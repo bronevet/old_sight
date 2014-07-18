@@ -470,7 +470,7 @@ class attributesC : public common::attributesC, public sightObj
   bool query();
 };
 
-extern structure::attributesC attributes;
+extern ThreadLocalStorage0<structure::attributesC> attributes;
 
 // *******************************
 // ***** Attribute Interface *****
@@ -576,8 +576,8 @@ void attr_exit(void* a);
 class attrAnd: public attrSubQueryAnd {
   public:
   attrAnd(attrOp* op) : attrSubQueryAnd(op)
-  { attributes.push(this); }
-  ~attrAnd() { attributes.pop(); }
+  { attributes->push(this); }
+  ~attrAnd() { attributes->pop(); }
   
   // Directly calls the destructor of this object. This is necessary because when an application crashes
   // Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
@@ -597,8 +597,8 @@ void attrAnd_exit(void* subQ);
 class attrOr: public attrSubQueryOr {
   public:
   attrOr(attrOp* op) : attrSubQueryOr(op)
-  { attributes.push(this); }
-  ~attrOr() { attributes.pop(); }
+  { attributes->push(this); }
+  ~attrOr() { attributes->pop(); }
   
   // Directly calls the destructor of this object. This is necessary because when an application crashes
   // Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
@@ -638,8 +638,8 @@ void attrIf_exit(void* subQ);
 class attrTrue: public attrSubQueryTrue {
   public:
   attrTrue() : attrSubQueryTrue()
-  { attributes.push(this); }
-  ~attrTrue() { attributes.pop(); }
+  { attributes->push(this); }
+  ~attrTrue() { attributes->pop(); }
 };
 
 // C interface
@@ -651,8 +651,8 @@ void attrTrue_exit(void* subQ);
 class attrFalse: public attrSubQueryFalse {
   public:
   attrFalse() : attrSubQueryFalse()
-  { attributes.push(this); }
-  ~attrFalse() { attributes.pop(); }
+  { attributes->push(this); }
+  ~attrFalse() { attributes->pop(); }
 };
 
 // C interface

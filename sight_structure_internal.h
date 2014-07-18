@@ -15,34 +15,48 @@
 #include "utils.h"
 #include "tools/callpath/include/Callpath.h"
 #include "tools/callpath/include/CallpathRuntime.h"
+#include "thread_local_storage.h"
 #include <signal.h>
 
 namespace sight {
 namespace structure{
 
 // Records the information needed to call the application
-extern bool saved_appExecInfo; // Indicates whether the application execution info has been saved
-extern int saved_argc;
-extern char** saved_argv;
-extern char* saved_execFile;
+extern ThreadLocalStorage1<bool, bool> saved_appExecInfo; // Indicates whether the application execution info has been saved
+extern ThreadLocalStorage1<int, int> saved_argc;
+extern ThreadLocalStorage1<char**, char**> saved_argv;
+extern ThreadLocalStorage1<char*, char*> saved_execFile;
 
 // The name of the host that this application is currently executing on
-extern char hostname[];
+extern ThreadLocalStorage1<char, char> hostname[];
 
 // The current user's user name
-extern char username[10000];
+extern ThreadLocalStorage1<char, char> username[10000];
 
 // The unique ID of this process' output stream
-extern int outputStreamID;
+extern ThreadLocalStorage1<int, int> outputStreamID;
 
-extern bool initializedDebug;
+// Keeps track whether we've initialized Sight for the main thread
+extern bool initializedDebugMainThread;
+// Keeps track of whether we've initialized Sight in each individual thread
+extern ThreadLocalStorage1<bool, bool> initializedDebugThisThread;
+
+// Cached copy of Sight properties set for the main thread, which may be reused
+// to initialize the Sight properties in other subsequently-created threads.
+extern std::map<std::string, std::string> mainThreadSightProps;
 
 class dbgStream;
 
 // Provides the output directory and run title as well as the arguments that are required to rerun the application
 void SightInit(int argc, char** argv, std::string title="Debug Output", std::string workDir="dbg");
+
 // Provides the output directory and run title as well but does not provide enough info to rerun the application
 void SightInit(std::string title, std::string workDir);
+
+// Called from within Sight when some code region discovers that it is being invoked
+// before Sight has been initialized on the current thread.
+void SightInit_NewThread();
+
 // Low-level initialization of Sight that sets up some basics but does not allow users to use the dbg
 // output stream to emit their debug output, meaning that other widgets cannot be used directly.
 // Users that using this type of initialization must create their own dbgStreams and emit enter/exit
@@ -52,6 +66,26 @@ void SightInit(std::string title, std::string workDir);
 void SightInit_LowLevel();
 
 void SightInit_internal(properties* props);
+
+// Generic check to perform before emitting objects to the Sight log to ensure that
+// Sight is correctly initialized 
+
+// Version for functions that return void
+#define INIT_CHECK                                                                    \
+  /* If Sight has already been initialized on the main thread */                      \
+  /* but not on this thread, initialize it now */                                     \
+  if(initializedDebugMainThread && !initializedDebugThisThread) SightInit_NewThread(); \
+  /* Skip this if Sight has not yet been initialized on the main thread */            \
+  if(!initializedDebugMainThread) return;
+
+// Version for functions that return non-void
+#define INIT_CHECK_RET(retVal)                                                        \
+  /* If Sight has already been initialized on the main thread */                      \
+  /* but not on this thread, initialize it now */                                     \
+  if(initializedDebugMainThread && !initializedDebugThisThread) SightInit_NewThread(); \
+  /* Skip this if Sight has not yet been initialized on the main thread */            \
+  if(!initializedDebugMainThread) return retVal;
+
 // Creates a new dbgStream based on the given properties of a "sight" tag and returns a pointer to it.
 // storeProps: if true, the given properties object is emitted into this dbgStream's output file
 structure::dbgStream* createDbgStream(properties* props, bool storeProps);
@@ -123,7 +157,7 @@ class streamID {
 }; // class streamID
 
 // Support for call paths
-extern CallpathRuntime CPRuntime;
+extern ThreadLocalStorage0<CallpathRuntime> CPRuntime;
 std::string cp2str(const Callpath& cp);
 
 //Callpath str2cp(std::string str);
@@ -190,43 +224,13 @@ it calls the setProperties methods of all the currently registered clocks, which
 of themselves to the provided properties object. Clocks unregister themselves using 
 sightObj::remClock().
 
-When reading logs Sight need to decode the tags that encode the different clocks. Each clock creates
+When merging or laying out logs Sight need to decode the tags that encode the different clocks. Each clock creates
 a mapping between the names of clocks and functions that map their encodings to clock objects. This
-is done by creating class that inherits from clockHandlerInstantiator. Each clock widget must create
-a static instance of this class and in the constructor of this class must map the name of its clock
-to a function called when a sightObj is entered and one called when it is exited. The entry function
-takes as input a properties::iterator and returns a reference to a newly-allocated clock object denoted
-by the encoding. The exit function deallocated the created object.
-Examples:
-  (*clockExitHandlers )["clockName"] = &clockExitHandler;
-  (*clockEnterHandlers)["clockName"] = &clockTraceStream;
-
+is done by creating class that inherits from MergeHandlerInstantiator or layoutHandlerInstantiator. Each 
+clock widget must create a static instance of this class and in the constructor of this class must map 
+the name of its clock to a function called when a clock update is observed during either merge or layout.
+widgets/clock_structure.C and widgets/clock_layout.C provide examples of how this mechanism is used.
 ############################################################ */
-
-// Maps the names of various clocks that may be read to the functions
-// that instantiate the objects they encode.
-// An clock entry handler is called when we read a sightObject's clocks within its tag. It 
-//   takes as input the properties of the object to be laid out and returns a pointer 
-//   to a sightClock object the tag encodes. NULL may not be returned.
-// An clock exit handler is called when the object's exit tag is encountered and takes as 
-//   input a pointer to the object so that it can be deallocated.
-typedef void* (*clockEnterHandler)(properties::iterator props);
-typedef void (*clockExitHandler)(void*);
-class clockHandlerInstantiator {
-  public:
-  static std::map<std::string, clockEnterHandler>* clockEnterHandlers;
-  static std::map<std::string, clockExitHandler>*  clockExitHandlers;
-
-  clockHandlerInstantiator() {
-    // Initialize the handlers mappings, using environment variables to make sure that
-    // only the first instance of this clockHandlerInstantiator creates these objects.
-    if(!getenv("SIGHT_CLOCK_HANDLERS_INSTANTIATED")) {
-      clockEnterHandlers = new std::map<std::string, clockEnterHandler>();
-      clockExitHandlers  = new std::map<std::string, clockExitHandler>();
-      setenv("SIGHT_CLOCK_HANDLERS_INSTANTIATED", "1", 1);
-    }
-  }
-};
 
 class sightClock
 {
@@ -340,15 +344,15 @@ class sightObj {
   // Records whether we've begun the process of destroying all objects. This is to differentiate`
   // the case of Sight doing the destruction and of the runtime system destroying all objects
   // at process termination
-  static bool SightDestruction;
+  static ThreadLocalStorage1<bool, bool> SightDestruction;
 
   // Records whether we've completed the process of destroying all objects
-  static bool SightDestroyed;
+  static ThreadLocalStorage1<bool, bool> SightDestroyed;
  
   protected: 
   // Records whether we've started processing static destructors. In this case
   // the sight object stack may not be valid anymore and thus should not be accessed.
-  static bool stackMayBeInvalidFlag;
+  static ThreadLocalStorage1<bool, bool> stackMayBeInvalidFlag;
   // Records that the stack may not be valid
   void stackMayBeInvalid() { stackMayBeInvalidFlag=true; }
   
@@ -400,7 +404,8 @@ class sightObj {
   private:
   // The of clocks currently being used, mapping the name of each clock class to the set of active 
   // clock objects of this class.
-  static std::map<std::string, std::set<sightClock*> > clocks;
+  //static ThreadLocalStorage0<std::map<std::string, std::set<sightClock*> > > 
+  static ThreadLocalStorageMap<std::string, std::set<sightClock*> > clocks;
   
   public:
   const properties& getProps() const { return *props; }
@@ -805,7 +810,7 @@ class TextMerger : public Merger {
 class anchor
 {
   protected:
-  static int maxAnchorID;
+  static ThreadLocalStorage1<int, int> maxAnchorID;
   int anchorID;
   
   // Maps all anchor IDs to their locations, if known. When we establish forward links we create
@@ -814,12 +819,14 @@ class anchor
   // This map maintains the canonical anchor ID for each location. Other anchors are resynched to used this ID 
   // whenever they are copied. This means that data structures that index based on anchors may need to be 
   // reconstructed after we're sure that their targets have been reached to force all anchors to use their canonical IDs.
-  static std::map<int, location> anchorLocs;
+  //static ThreadLocalStorage0<std::map<int, location> > anchorLocs;
+  static ThreadLocalStorageMap<int, location> anchorLocs;
 
   // Associates each anchor with a unique anchor ID. Useful for connecting multiple anchors that were created
   // independently but then ended up referring to the same location. We'll record the ID of the first one to reach
   // this location on locAnchorIDs and the others will be able to adjust themselves by adopting this ID.
-  static std::map<location, int> locAnchorIDs;
+  //static ThreadLocalStorage0<std::map<location, int> > locAnchorIDs;
+  static ThreadLocalStorageMap<location, int> locAnchorIDs;
 
   // Itentifies this anchor's location in the file and region hierarchies
   location loc;
@@ -845,6 +852,9 @@ class anchor
   bool isLocated() const { return located; }
   
   public:
+  // Denotes a default anchor that does not refer to anything. This static variable
+  // is not kep in thread-local storage since it is the same for all threads.
+  //static ThreadLocalStorage1<anchor, anchor> noAnchor;
   static anchor noAnchor;
   
   void operator=(const anchor& that);
@@ -991,7 +1001,7 @@ class block : public sightObj
   int blockID;
   // maxBlockID also counts the number of times that the block constructor was called, which makes it possible
   // to set conditional breakpoints to run a debugger to the entry into a specific block in the debug output.
-  static int maxBlockID;
+  static ThreadLocalStorage1<int, int> maxBlockID;
   
   // The anchor that denotes the starting point of this scope
   anchor startA;
@@ -1048,6 +1058,11 @@ class BlockMerger : public Merger {
               std::map<std::string, streamRecord*>& outStreamRecords,
               std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
               properties* props=NULL);
+
+  static properties* setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+                          map<string, streamRecord*>& outStreamRecords,
+                          vector<map<string, streamRecord*> >& inStreamRecords,
+                          properties* props);
   
   // Sets a list of strings that denotes a unique ID according to which instances of this merger's 
   // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
@@ -1253,13 +1268,48 @@ public:
   std::string tagStr(const properties& props);
 }; // dbgStream
 
-extern dbgStream dbg;
+// Extension of ThreadLocalStorage to opaquely wrap dbgStream
+/*class ThreadLocalDbgStream: public ThreadLocalStorageOStream<dbgStream>/ *, public ThreadLocalStorage0<dbgStream>* / {
+  dbgStream* allocate() { return new dbgStream(); }
+};*/
+
+// Specialized type of ThreadLocalStorage that is focused on transparently wrapping
+// C++ output streams
+class ThreadLocalStorageDbgStream : public ThreadLocalStorage<dbgStream>
+{
+  public:
+  ThreadLocalStorageDbgStream() {}
+  dbgStream* allocate() { return new dbgStream(); }
+  
+  template <typename T>
+  ThreadLocalStorageDbgStream& operator<<(T const& obj )
+  {
+    INIT_CHECK_RET(*this) // Ensure that Sight is correctly initialized
+    if(ThreadLocalStorage<dbgStream>::get())
+      (*((dbgStream*)ThreadLocalStorage<dbgStream>::get())) << obj;
+    return *this;
+  }
+  
+  ThreadLocalStorageDbgStream& operator<<(std::ostream& (*pf)(std::ostream&)) {
+    INIT_CHECK_RET(*this) // Ensure that Sight is correctly initialized
+    if(ThreadLocalStorage<dbgStream>::get())
+      (*((dbgStream*)ThreadLocalStorage<dbgStream>::get())) << pf;
+    return *this;
+  }
+};
+
+
+// Declaration of dbgStream to which all structure output will be written
+//extern ThreadLocalDbgStream dbg;
+extern ThreadLocalStorageDbgStream dbg;
+//__thread extern dbgStream dbg;
+
 
 class dbgStreamMerger : public Merger {
   public:
   // The directory into which the merged will be written. This directory must be explicitly set before
   // an instance of the dbgStreamMerger class is created
-  static std::string workDir;
+  static ThreadLocalStorage1<std::string, std::string> workDir;
   
   dbgStreamMerger(//std::string workDir, 
                   std::vector<std::pair<properties::tagType, properties::iterator> > tags,
@@ -1376,6 +1426,49 @@ class IndentMerger : public Merger {
   }
 }; // class IndentMerger
 
+// Denotes a region of output in one log that should be directly compared to regions
+// in other logs with the same ID. The IDs used in comparison tags are considered to be 
+// global across multiple logs.
+class comparison: public sightObj
+{
+  int ID;
+  public:
+  comparison(int ID,                        properties* props=NULL);
+  comparison(int ID, const attrOp& onoffOp, properties* props=NULL);
+  static properties* setProperties(int ID, const attrOp* onoffOp, properties* props);
+  
+  // Directly calls the destructor of this object. This is necessary because when an application crashes
+  // Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+  // there is no way to directly call the destructor of a given object when it may have several levels
+  // of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+  // it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+  // an object will invoke the destroy() method of the most-derived class.
+  virtual void destroy();
+
+  ~comparison();
+}; // comparison
+
+class ComparisonMerger : public Merger {
+  public:
+  ComparisonMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+               std::map<std::string, streamRecord*>& outStreamRecords,
+               std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+               properties* props=NULL);
+  
+  static Merger* create(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
+                        std::map<std::string, streamRecord*>& outStreamRecords,
+                        std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                        properties* props)
+  { return new ComparisonMerger(tags, outStreamRecords, inStreamRecords, props); }
+  
+  // Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+  // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
+  // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
+  // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
+  static void mergeKey(properties::tagType type, properties::iterator tag, 
+                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
+}; // class ComparisonMerger
+
 // Wrapper of the printf function that emits text to the dbg stream
 int dbgprintf(const char * format, ... );
 
@@ -1417,6 +1510,10 @@ class AbortHandlerInstantiator : public sight::common::LoadTimeRegistry {
   static std::string str();
 };
 
+// Initial instance of AbortHandlerInstantiator that ensures that the proper 
+// exit/signal handlers are set up. Individual widgets may set up their own 
+// instances as well.
+extern AbortHandlerInstantiator defaultAbortHandlerInstance;
 
 
 } // namespace structure

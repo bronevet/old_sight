@@ -221,10 +221,10 @@ class instanceTree {
   std::string str() const;
   
   // The depth of the recursion in instanceTree::str()
-  static int instanceTreeStrDepth;
+  static ThreadLocalStorage0<int> instanceTreeStrDepth;
 
   // The ostringstream into which the output of instanceTree::str() is accumulated
-  static std::ostringstream oss;
+  static ThreadLocalStorageOStream<std::ostringstream> oss;
 }; // class instanceTree
 
 class modularApp;
@@ -477,47 +477,47 @@ class modularApp: public block
   
   protected:
   // Points to the currently active instance of modularApp. There can be only one.
-  static modularApp* activeMA;
+  static ThreadLocalStorage1<modularApp*, modularApp*> activeMA;
     
   // The maximum ID ever assigned to any modular application
-  static int maxModularAppID;
+  static ThreadLocalStorage1<int, int> maxModularAppID;
   
   // The maximum ID ever assigned to any module group
-  static int maxModuleGroupID;
+  static ThreadLocalStorage1<int, int> maxModuleGroupID;
 
   // Records all the known contexts, mapping each context to its unique ID
-  static std::map<group, int> group2ID;
+  static ThreadLocalStorageMap<group, int> group2ID;
   	
   // Maps each context to the number of times it was ever observed
-  static std::map<group, int> group2Count;
+  static ThreadLocalStorageMap<group, int> group2Count;
   
   // The trace that records performance observations of different modules and contexts
-  static std::map<group, traceStream*> moduleTrace;
-  static std::map<group, int>          moduleTraceID;
+  static ThreadLocalStorageMap<group, traceStream*> moduleTrace;
+  static ThreadLocalStorageMap<group, int>          moduleTraceID;
   
   // Tree that records the hierarchy of module instances that were observed during the execution of this
   // modular application. Each path from the tree's root to a leaf is a stack of module instances that
   // corresponds to some observed module group.
-  static instanceTree tree;
+  static ThreadLocalStorage0<instanceTree> tree;
   
   // Maps each module to the list of the names of its input and output context attributes. 
   // This enables us to verify that all the modules are used consistently.
-  static std::map<group, std::vector<std::list<std::string> > > moduleInCtxtNames;
-  static std::map<group, std::vector<std::list<std::string> > > moduleOutCtxtNames;
+   static ThreadLocalStorageMap<group, std::vector<std::list<std::string> > > moduleInCtxtNames;
+   static ThreadLocalStorageMap<group, std::vector<std::list<std::string> > > moduleOutCtxtNames;
   
   // The properties object that describes each module group. This object is created by calling each group's
   // setProperties() method and each call to this method for the same module group must return the same properties.
-  static std::map<group, properties*> moduleProps;
+   static ThreadLocalStorageMap<group, properties*> moduleProps;
     
   // Records all the edges ever observed, mapping them to the number of times each edge was observed
-  static std::map<std::pair<port, port>, int> edges;
+   static ThreadLocalStorageMap<std::pair<port, port>, int> edges;
   
   // Stack of the modules that are currently in scope
-  static std::list<module*> mStack;
+  static ThreadLocalStorageList<module*> mStack;
   
   public:
   // Returns a constant reference to the current stack of modules
-  static const std::list<module*>& getMStack() { return mStack; }
+  static const std::list<module*>& getMStack() { return *mStack.get(); }
   
   // The unique ID of this application
   int appID;
@@ -542,7 +542,7 @@ class modularApp: public block
   
   // Stack used while we're emitting the nesting hierarchy of module groups to keep each module group's 
   // sightObject between the time the group is entered and exited
-  static std::list<sightObj*> moduleEmitStack;
+  static ThreadLocalStorageList<sightObj*> moduleEmitStack;
 
   // Emits the entry tag for a module group during the execution of ~modularApp()
   static void enterModuleGroup(const group& g);
@@ -574,7 +574,7 @@ class modularApp: public block
   static bool isInstanceActive();
 
   // Returns a pointer to the current instance of modularApp
-  static modularApp* getInstance() { assert(activeMA); return activeMA; }
+  static modularApp* getInstance() { assert(*activeMA.get()); return *activeMA.get(); }
   
   // Assigns a unique ID to the given module group, as needed and returns this ID
   static int addModuleGroup(const group& g);
@@ -961,7 +961,7 @@ class compModule: public structure::module
   // -------------------------
   // We can configure the values that modifiable options take within each module
   // module name -> modifiable option name -> option value
-  static std::map<std::string, std::map<std::string, attrValue> > modOptValue;
+  static ThreadLocalStorageMap<std::string, std::map<std::string, attrValue> > modOptValue;
   
   public:
   class CompModuleConfiguration : public ModuleConfiguration {

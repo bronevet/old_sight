@@ -16,8 +16,8 @@ namespace common {
 
 // Returns whether log generation has been enabled or explicitly disabled
 bool isEnabled() {
-  static bool checked=false;
-  static bool enabledDebug; // Records whether log generation has been enabled or explicitly disabled
+  __thread static bool checked=false;
+  __thread static bool enabledDebug; // Records whether log generation has been enabled or explicitly disabled
   if(!checked) {
     checked = true;
     enabledDebug = (getenv("DISABLE_SIGHT") == NULL);
@@ -233,7 +233,7 @@ int nullBuf::sync()
  **********************/
 
 // An instance of nullStream that apps can write to with low overhead when they do not wish to emit output
-nullStream nullS;
+__thread nullStream nullS;
 
 /*********************
  ***** dbgStream *****

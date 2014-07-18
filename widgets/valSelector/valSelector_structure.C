@@ -11,7 +11,7 @@ namespace structure {
  ***** valSelector *****
  ***********************/
 
-int valSelector::maxSelID=0;
+__thread int valSelector::maxSelID=0;
 
 valSelector::valSelector(properties* props) : sightObj(props) {
   attrKeyKnown = false;
@@ -111,9 +111,9 @@ string colorSelector::observeSelection(const attrValue& val) {
 // Returns the string reprentation of the current value.
 string colorSelector::observeSelection() {
   if(!attrKeyKnown) { cerr << "colorSelector::observeSelection() ERROR: calling version of function that expects that the colorSelector knows the attribute to look up to choose the color but no attribute name was provided!"<<endl; exit(-1); }
-  if(!attributes.exists(attrKey)) { cerr << "colorSelector::observeSelection() ERROR: attribute "<<attrKey<<" is not currently mapped to any values!!"<<endl; exit(-1); }
+  if(!attributes->exists(attrKey)) { cerr << "colorSelector::observeSelection() ERROR: attribute "<<attrKey<<" is not currently mapped to any values!!"<<endl; exit(-1); }
   
-  const std::set<attrValue>& values = attributes.get(attrKey);
+  const std::set<attrValue>& values = attributes->get(attrKey);
   assert(values.size()>0);
   return values.begin()->getAsStr();
 }
@@ -130,10 +130,10 @@ list<sightObj*> activeFormats;
 void start_internal(valSelector& sel, const attrValue* val, string name) { 
   // Each text-colored region is given a different uniqueID to make it possible to apply formatting to each one 
   // independently. Region identities are assigned using the instanceID counter, which is continually incremented
-  static int instanceID=0;
+  __thread static int instanceID=0;
   
   // Only bother if this text will be emitted
-  if(!attributes.query()) return;
+  if(!attributes->query()) return;
   
   string valueStr;
   if(val) valueStr = sel.observeSelection(*val);
@@ -151,7 +151,7 @@ void start_internal(valSelector& sel, const attrValue* val, string name) {
 
 void end_internal(string name) {
   // Only bother if this text will be emitted
-  if(!attributes.query()) return;
+  if(!attributes->query()) return;
   
   // Pop the most recent formatting annotation from activeFormats
   assert(activeFormats.size()>0);

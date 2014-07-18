@@ -216,10 +216,10 @@ void instanceTree::clear() {
 }
 
 // The depth of the recursion in instanceTree::str()
-int instanceTree::instanceTreeStrDepth;
+ThreadLocalStorage0<int> instanceTree::instanceTreeStrDepth;
 
 // The ostringstream into which the output of instanceTree::str() is accumulated
-std::ostringstream instanceTree::oss;
+ThreadLocalStorageOStream<std::ostringstream> instanceTree::oss;
 
 // The entry and exit functions used in instanceTree::str()
 void instanceTree::strEnterFunc(const group& g) {
@@ -237,12 +237,12 @@ void instanceTree::strExitFunc(const group& g)
 std::string instanceTree::str() const {
   // Reset the recursion depth and the ostringstream
   instanceTreeStrDepth=0;
-  oss.str("");
-  oss.clear();
+  oss->str("");
+  oss->clear();
   
   iterate(strEnterFunc, strExitFunc);
   
-  return oss.str();
+  return oss->str();
 }
 
 /**********************
@@ -250,43 +250,43 @@ std::string instanceTree::str() const {
  **********************/
 
 // Points to the currently active instance of modularApp. There can be only one.
-modularApp* modularApp::activeMA = NULL;
+ThreadLocalStorage1<modularApp*, modularApp*> modularApp::activeMA(NULL);
 
 // The maximum ID ever assigned to any modular application
-int modularApp::maxModularAppID=0;
+ThreadLocalStorage1<int, int> modularApp::maxModularAppID(0);
 
 // The maximum ID ever assigned to any module group
-int modularApp::maxModuleGroupID=0;
+ThreadLocalStorage1<int, int> modularApp::maxModuleGroupID(0);
 
 // Records all the known contexts, mapping each context to its unique ID
-std::map<group, int> modularApp::group2ID;
+ThreadLocalStorageMap<group, int> modularApp::group2ID;
 
 // Maps each context to the number of times it was ever observed
-std::map<group, int> modularApp::group2Count;
+ThreadLocalStorageMap<group, int> modularApp::group2Count;
 
 // The trace that records performance observations of different modules and contexts
-std::map<group, traceStream*> modularApp::moduleTrace;
-std::map<group, int>          modularApp::moduleTraceID;
+ThreadLocalStorageMap<group, traceStream*> modularApp::moduleTrace;
+ThreadLocalStorageMap<group, int>          modularApp::moduleTraceID;
 
 // Tree that records the hierarchy of module instances that were observed during the execution of this
 // modular application. Each path from the tree's root to a leaf is a stack of module instances that
 // corresponds to some observed module group.
-instanceTree modularApp::tree;
+ThreadLocalStorage0<instanceTree> modularApp::tree;
 
 // Maps each module to the list of the names of its input and output context attributes. 
 // This enables us to verify that all the modules are used consistently.
-std::map<group, std::vector<std::list<std::string> > > modularApp::moduleInCtxtNames;
-std::map<group, std::vector<std::list<std::string> > > modularApp::moduleOutCtxtNames;
+ThreadLocalStorageMap<group, std::vector<std::list<std::string> > > modularApp::moduleInCtxtNames;
+ThreadLocalStorageMap<group, std::vector<std::list<std::string> > > modularApp::moduleOutCtxtNames;
 
 // The properties object that describes each module group. This object is created by calling each group's
 // setProperties() method and each call to this method for the same module group must return the same properties.
-std::map<group, properties*> modularApp::moduleProps;
+ThreadLocalStorageMap<group, properties*> modularApp::moduleProps;
 
 // Records all the edges ever observed, mapping them to the number of times each edge was observed
-std::map<std::pair<port, port>, int> modularApp::edges;
+ThreadLocalStorageMap<std::pair<port, port>, int> modularApp::edges;
 
 // Stack of the module graphs that are currently in scope
-std::list<module*> modularApp::mStack;
+ThreadLocalStorageList<module*> modularApp::mStack;
 
 modularApp::modularApp(const std::string& appName,                                                   properties* props) :
     block(appName, setProperties(appName, NULL, props)), appName(appName)
@@ -324,12 +324,12 @@ void modularApp::init() {
   map<string, string> pMapMABody;
   properties propsMABody;
   propsMABody.add("modularAppBody", pMapMABody);
-  dbg.enter(propsMABody);
+  dbg->enter(propsMABody);
 }
 
 // Stack used while we're emitting the nesting hierarchy of module groups to keep each module group's 
 // sightObj between the time the group is entered and exited
-list<sightObj*> modularApp::moduleEmitStack;
+ThreadLocalStorageList<sightObj*> modularApp::moduleEmitStack;
 
 // Emits the entry tag for a module group during the execution of ~modularApp()
 void modularApp::enterModuleGroup(const group& g) {
@@ -340,7 +340,7 @@ void modularApp::enterModuleGroup(const group& g) {
   pMap["name"]       = g.name();
   pMap["numInputs"]  = txt()<<g.numInputs();
   pMap["numOutputs"] = txt()<<g.numOutputs();
-  assert(modularApp::group2Count.find(g) != modularApp::group2Count.end());
+  assert(modularApp::group2Count->find(g) != modularApp::group2Count->end());
   pMap["count"] = txt()<<modularApp::group2Count[g];
   props->add("module", pMap);*/
   
@@ -359,7 +359,7 @@ void modularApp::exitModuleGroup(const group& g) {
   
   // Erase this group from moduleProps to clearly keep track of the properties objects that are currently allocated
   // (the sightObj destructor will deallocate them)
-  moduleProps.erase(g);
+  moduleProps->erase(g);
 }
 
 // Directly calls the destructor of this object. This is necessary because when an application crashes
@@ -376,7 +376,7 @@ modularApp::~modularApp() {
   assert(!destroyed);
   
   // Unregister this modularApp instance (there can be only one)
-  assert(activeMA);
+  assert(activeMA.get());
   activeMA = NULL;
   
   // All the modules that were entered inside this modularApp instance must have already been exited
@@ -384,7 +384,7 @@ modularApp::~modularApp() {
   
   if(props->active) {
     /*cout << "group2ID="<<endl;
-    for(std::map<context, int>::iterator c=group2ID.begin(); c!=group2ID.end(); c++)
+    for(std::map<context, int>::iterator c=group2ID->begin(); c!=group2ID->end(); c++)
       cout << "    "<<c->first.UID()<<" ==> "<<c->second<<endl;
     */
     
@@ -392,16 +392,16 @@ modularApp::~modularApp() {
     map<string, string> pMapMABody;
     properties propsMABody;
     propsMABody.add("modularAppBody", pMapMABody);
-    dbg.exit(propsMABody);
+    dbg->exit(propsMABody);
     
     // Emit the tag that starts the description of the modularApp's structure
     map<string, string> pMapMAStructure;
     properties propsMAStructure;
     propsMAStructure.add("modularAppStructure", pMapMAStructure);
-    dbg.enter(propsMAStructure);
+    dbg->enter(propsMAStructure);
     
     // Delete the moduleTraces associated with each module group, forcing them to emit their respective end tags
-    for(map<group, traceStream*>::iterator m=moduleTrace.begin(); m!=moduleTrace.end(); m++) {
+    for(map<group, traceStream*>::iterator m=moduleTrace->begin(); m!=moduleTrace->end(); m++) {
       delete m->second;
     }
     
@@ -410,11 +410,11 @@ modularApp::~modularApp() {
     // -------------------------------------------------------
     
     // Emit the hierarchy of module groups observed during this modularApp's execution
-    tree.iterate(enterModuleGroup, exitModuleGroup);
+    tree->iterate(enterModuleGroup, exitModuleGroup);
     
     // Emit all the edges between module groups collected while this modularApp was live.
     // Note that this guarantees that edges are guaranteed to be placed after or inside the modules they connect.
-    for(std::map<pair<port, port>, int>::iterator e=edges.begin(); e!=edges.end(); e++) {
+    for(std::map<pair<port, port>, int>::iterator e=edges->begin(); e!=edges->end(); e++) {
       // If either group is NULL, don't generate an edge. Users can specify a NULL group if they don't want to bother
       // documenting where a given input came from
       if(e->first.first.g.isNULL() || e->first.second.g.isNULL()) continue;
@@ -432,15 +432,15 @@ modularApp::~modularApp() {
       pMap["fromCount"] = txt()<<group2Count[e->first.first.g];
       
       // Fraction of times that we've entered the edge's source module group and took this outgoing edge
-      assert(group2Count.find(e->first.first.g) != group2Count.end());
+      assert(group2Count->find(e->first.first.g) != group2Count->end());
       pMap["prob"]    = txt()<<(e->second / group2Count[e->first.first.g]);
       
       edgeP.add("moduleEdge", pMap);
-      dbg.tag(edgeP);
+      dbg->tag(edgeP);
     }
     
     // Emit the exit tag that denotes the end of the description of the modularApp's structure
-    dbg.exit(propsMAStructure);
+    dbg->exit(propsMAStructure);
     
     // ------------------------
     // Clean up sata structures
@@ -453,28 +453,28 @@ modularApp::~modularApp() {
     // We do not deallocate all the module group properties because these are deallocated in the destructors
     // of the sightObjs created in modularApp::enterModuleGroup(). Further, moduleProps should be completely 
     // emptied by all our calls to modularApp::exitModuleGroup().
-    assert(moduleProps.size()==0);
-    /*for(std::map<group, properties*>::iterator p=moduleProps.begin(); p!=moduleProps.end(); p++)
+    assert(moduleProps->size()==0);
+    /*for(std::map<group, properties*>::iterator p=moduleProps->begin(); p!=moduleProps->end(); p++)
       delete p->second;*/
     
     // Clear out all of the static datastructures of modularApp
-    group2ID.clear();
-    group2Count.clear();
-    moduleTrace.clear();
-    tree.clear();
-    moduleInCtxtNames.clear();
-    moduleOutCtxtNames.clear();
-    edges.clear();
+    group2ID->clear();
+    group2Count->clear();
+    moduleTrace->clear();
+    tree->clear();
+    moduleInCtxtNames->clear();
+    moduleOutCtxtNames->clear();
+    edges->clear();
     meas.clear();
   } else {
     // If this modularApp instance is inactive, all the static datastructures must be empty
-    assert(group2ID.size()==0);
-    assert(group2Count.size()==0);
-    assert(moduleTrace.size()==0);
-    assert(moduleInCtxtNames.size()==0);
-    assert(moduleOutCtxtNames.size()==0);
-    assert(moduleProps.size()==0);
-    assert(edges.size()==0);
+    assert(group2ID->size()==0);
+    assert(group2Count->size()==0);
+    assert(moduleTrace->size()==0);
+    assert(moduleInCtxtNames->size()==0);
+    assert(moduleOutCtxtNames->size()==0);
+    assert(moduleProps->size()==0);
+    assert(edges->size()==0);
     assert(meas.size()==0);
   }
 }
@@ -486,7 +486,7 @@ properties* modularApp::setProperties(const std::string& appName, const attrOp* 
   if(props->active && props->emitTag) {
     // If the current attribute query evaluates to true (we're emitting debug output) AND
     // either onoffOp is not provided or it evaluates to true
-    if(attributes.query() && (onoffOp? onoffOp->apply(): true)) {
+    if(attributes->query() && (onoffOp? onoffOp->apply(): true)) {
     	props->active = true;
       
       if(props->emitTag) {
@@ -507,13 +507,13 @@ properties* modularApp::setProperties(const std::string& appName, const attrOp* 
 // Returns the module ID of the given module group, generating a fresh one if one has not yet been assigned
 int modularApp::genModuleID(const group& g) {
   // If this module group doesn't yet have an ID, set one
-  if(group2ID.find(g) == group2ID.end()) {
+  if(group2ID->find(g) == group2ID->end()) {
     group2ID[g] = maxModuleGroupID;
     maxModuleGroupID++;
     group2Count[g] = 1;
     
     // Add this group to the instance tree
-    tree.add(g);
+    tree->add(g);
   } else
     // Increment the number of times this group has been executed.
     group2Count[g]++;
@@ -523,8 +523,8 @@ int modularApp::genModuleID(const group& g) {
 
 // Returns whether the current instance of modularApp is active
 bool modularApp::isInstanceActive() {
-  //assert(activeMA);
-  return activeMA!=NULL && activeMA->isActive();
+  //assert(*activeMA);
+  return activeMA!=NULL && (*activeMA)->isActive();
 }
 
 // Assigns a unique ID to the given module group, as needed and returns this ID
@@ -541,8 +541,8 @@ int modularApp::addModuleGroup(const group& g) {
 void modularApp::registerInOutContexts(const group& g, const std::vector<port>& inouts, sight::common::module::ioT io)
 {
   // Exactly one modularAppInstance must be active
-  assert(activeMA);
-  assert(activeMA->isActive());
+  assert(*activeMA);
+  assert((*activeMA)->isActive());
   
   // Refers to either moduleInCtxtNames or moduleOutCtxtNames, depending on the value of io;
   map<group, vector<list<string> > >& moduleCtxtNames = (io==sight::common::module::input? moduleInCtxtNames: moduleOutCtxtNames);
@@ -584,22 +584,22 @@ void modularApp::registerInOutContexts(const group& g, const std::vector<port>& 
 // Add an edge between one module's output port and another module's input port
 void modularApp::addEdge(port from, port to) {
   // Exactly one modularAppInstance must be active
-  assert(activeMA);
-  assert(activeMA->isActive());
+  assert(*activeMA);
+  assert((*activeMA)->isActive());
   
   // Clear the contexts of from and to since edges is not sensitive to contexts
   from.clearContext();
   to.clearContext();
   
   pair<port, port> edge(from, to);
-  if(edges.find(edge) == edges.end())
+  if(edges->find(edge) == edges->end())
     edges[edge] = 1;
   else
     edges[edge]++;
   
   /*cout << "    module::addEdge()"<<endl;
   cout << "      edge="<<from.str()<<" => "<<to.str()<<endl;
-  for(map<pair<port, port>, int>::iterator e=edges.begin(); e!=edges.end(); e++) {
+  for(map<pair<port, port>, int>::iterator e=edges->begin(); e!=edges->end(); e++) {
     cout << "        "<<e->first.first.str()<<" => "<<e->first.second.str()<<" : "<<e->second<<endl;
   }*/
 }
@@ -624,7 +624,7 @@ void modularApp::enterModule(module* m, int moduleID, properties* props) {
   mStack.push_back(m);
   
   // If we have not yet recorded the properties of this module group, do so now
-  if(moduleProps.find(m->g) == moduleProps.end())
+  if(moduleProps->find(m->g) == moduleProps->end())
     moduleProps[m->g] = props;
   // Otherwise, make sure that every module within the same group has the same properties
   else {
@@ -642,13 +642,13 @@ void modularApp::enterModule(module* m, int moduleID, properties* props) {
 
 // Returns whether a traceStream has been registered for the given module group
 bool modularApp::isTraceStreamRegistered(const group& g) {
-  return moduleTrace.find(g) != moduleTrace.end();
+  return moduleTrace->find(g) != moduleTrace->end();
 }
 
 // Registers the given traceStream for the given module group
 void modularApp::registerTraceStream(const group& g, traceStream* ts) {
   // No other traceStream may be currently registered for this module group;
-  assert(moduleTrace.find(g) == moduleTrace.end());
+  assert(moduleTrace->find(g) == moduleTrace->end());
   moduleTrace[g] = ts;
 }
 
@@ -786,7 +786,7 @@ properties* module::setProperties(const instance& inst, properties* props, const
   group g(modularApp::mStack, inst);
   bool isDerived = (props!=NULL); // This is an instance of an object that derives from module if its constructor sets props to non-NULL
  
-  if(attributes.query() && (onoffOp? onoffOp->apply(): true)) {
+  if(attributes->query() && (onoffOp? onoffOp->apply(): true)) {
     if(!modularApp::isInstanceActive()) {
       cerr << "ERROR: module "<<inst.str()<<" entered while there no instance of modularApp is active!"<<endl;
       assert(0);
@@ -866,7 +866,7 @@ void module::init(const std::vector<port>& ins, properties* derivedProps) {
     }
     
     // Add the default measurements recored in modularApp to meas
-    for(namedMeasures::iterator m=modularApp::activeMA->meas.begin(); m!=modularApp::activeMA->meas.end(); m++) {
+    for(namedMeasures::iterator m=(*modularApp::activeMA)->meas.begin(); m!=(*modularApp::activeMA)->meas.end(); m++) {
       // If the name of the current measurement in modularApp isn't already specified for the given module group, add it
       if(meas.find(m->first) == meas.end())
         meas[m->first] = m->second->copy();
@@ -915,7 +915,7 @@ module::~module() {
       properties moduleCtrl;
       moduleCtrl.add("moduleCtrl", map<string, string>());
 
-      dbg.enter(moduleCtrl);
+      dbg->enter(moduleCtrl);
 
       // Register a traceStream for this module's group, if one has not already been registered
       if(!modularApp::isTraceStreamRegistered(g)) {
@@ -967,7 +967,7 @@ module::~module() {
     // Close the tag that wraps the control section of this module
     properties moduleCtrl;
     moduleCtrl.add("moduleCtrl", map<string, string>());
-    dbg.exit(moduleCtrl);
+    dbg->exit(moduleCtrl);
   }
 }
 
@@ -1358,7 +1358,7 @@ properties* compModule::setProperties(const instance& inst, bool isReference, co
  /* 
   // If the current attribute query evaluates to true (we're emitting debug output) AND
   // either onoffOp is not provided or its evaluates to true
-  if(attributes.query() && (onoffOp? onoffOp->apply(): true)) {
+  if(attributes->query() && (onoffOp? onoffOp->apply(): true)) {
     / * // Initialize pMap to contain the properties of options
     map<string, string> pMap;// = options.getProperties("op");
     //pMap["isReference"]   = txt()<<isReference;
@@ -1401,7 +1401,7 @@ compModule::~compModule() {
     // in its own tag to make them easier to match across different streams
     properties moduleCtrl;
     moduleCtrl.add("moduleCtrl", map<string, string>());
-    dbg.enter(moduleCtrl);
+    dbg->enter(moduleCtrl);
 
     // Clear all records of publicized options
     clearPublicized(numPublicizedOptions, modularApp::getInstance()->publicizedOptions,
@@ -1462,7 +1462,7 @@ void compModule::setOutCtxt(int idx, const compContext& c) {
 
 // We can configure the values that modifiable options take within each module
 // module name -> modifiable option name -> option value
-std::map<std::string, std::map<std::string, attrValue> > compModule::modOptValue;
+ThreadLocalStorageMap<std::string, std::map<std::string, attrValue> > compModule::modOptValue;
 
 // Checks whether a modifiable option with the given name was specified for this module. 
 // This option may be set in a configuration file and then applications may use this 
@@ -1733,7 +1733,7 @@ module::derivInfo* processedModule::setProperties(const instance& inst, const pr
   
   // If the current attribute query evaluates to true (we're emitting debug output) AND
   // either onoffOp is not provided or its evaluates to true
-  if(attributes.query() && (onoffOp? onoffOp->apply(): true)) {
+  if(attributes->query() && (onoffOp? onoffOp->apply(): true)) {
     deriv->props->active = true;
     
     map<string, string> pMap;

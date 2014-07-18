@@ -59,7 +59,7 @@ void traceAttr(trace* t,
  *****************/
 
 // Maps the names of all the currently active traces to their trace objects
-std::map<std::string, trace*> trace::active;  
+ThreadLocalStorageMap<std::string, trace*> trace::active;  
 
 trace::trace(std::string label, const std::list<std::string>& contextAttrs, showLocT showLoc, vizT viz, mergeT merge, properties* props) : 
   block(label, setProperties(NULL, showLoc, props))
@@ -107,7 +107,7 @@ properties* trace::setProperties(const attrOp* onoffOp, showLocT showLoc, proper
   
   // If the current attribute query evaluates to true (we're emitting debug output) AND
   // either onoffOp is not provided or its evaluates to true
-  if(attributes.query() && (onoffOp? onoffOp->apply(): true)) {
+  if(attributes->query() && (onoffOp? onoffOp->apply(): true)) {
     props->active = true;
     map<string, string> pMap;
     pMap["showLoc"] = txt()<<showLoc;
@@ -193,7 +193,7 @@ properties* processedTrace::setProperties(const attrOp* onoffOp, const std::list
   
   // If the current attribute query evaluates to true (we're emitting debug output) AND
   // either onoffOp is not provided or its evaluates to true
-  if(attributes.query() && (onoffOp? onoffOp->apply(): true)) {
+  if(attributes->query() && (onoffOp? onoffOp->apply(): true)) {
     props->active = true;
     // Don't add anything to the properties. processedTraces behave just like normal traces
     // but will use processedTraceStreams instead of regular traceStreams
@@ -236,7 +236,7 @@ processedTrace::~processedTrace() {
  ***********************/
 
 // Maximum ID assigned to any trace object
-int traceStream::maxTraceID=0;
+ThreadLocalStorage1<int, int> traceStream::maxTraceID(0);
   
 // Callers can optionally provide a traceID that this traceStream will use. This is useful for cases where 
 // the ID of the trace used within a given host object needs to be known before the traceStream is actually
@@ -264,7 +264,7 @@ properties* traceStream::setProperties(const std::list<std::string>& contextAttr
   
   if(props->active && props->emitTag) {
     map<string, string> pMap;
-    pMap["traceID"] = txt()<<(traceID<0? maxTraceID: traceID);
+    pMap["traceID"] = txt()<<(traceID<0? int(maxTraceID): traceID);
     pMap["viz"]     = txt()<<viz;
     pMap["merge"]   = txt()<<merge;
     
@@ -296,7 +296,7 @@ void traceStream::init(int traceID) {
   
   // Add this trace object as a change listener to all the context variables
   for(list<string>::iterator ca=contextAttrs.begin(); ca!=contextAttrs.end(); ca++)
-    attributes.addObs(*ca, this);
+    attributes->addObs(*ca, this);
     
   //cout << "traceStream::init(), emitExitTag="<<emitExitTag<<endl;
 }
@@ -320,7 +320,7 @@ traceStream::~traceStream() {
   // Stop this object's observations of changes in context variables
   for(list<string>::iterator ca=contextAttrs.begin(); ca!=contextAttrs.end(); ca++) {
     //cout << "    *ca="<<*ca<<endl;
-    attributes.remObs(*ca, this);
+    attributes->remObs(*ca, this);
   }
 }
 
@@ -382,7 +382,7 @@ void traceStream::emitObservations(const std::list<std::string>& contextAttrs,
   // Read out the current values of the context attributes and store them in a map
   std::map<std::string, attrValue> contextAttrsMap;
   for(std::list<std::string>::const_iterator a=contextAttrs.begin(); a!=contextAttrs.end(); a++) {
-    const std::set<attrValue>& vals = attributes.get(*a);
+    const std::set<attrValue>& vals = attributes->get(*a);
     assert(vals.size()>0);
     if(vals.size()>1) { cerr << "traceStream::traceAttr() ERROR: context attribute "<<*a<<" has multiple values!"; }
     contextAttrsMap[*a] = *vals.begin();
@@ -427,7 +427,7 @@ void traceStream::emitObservations(const std::map<std::string, attrValue>& conte
   }
   
   props.add("traceObs", pMap);
-  dbg.tag(props);
+  dbg->tag(props);
   
   // Reset the obs[] map since we've just emitted all these observations
   obs.clear();
@@ -873,10 +873,10 @@ std::string timeStampMeasure::str() const {
  ***********************/
 
 // Indicates the number of PAPIMeasure objects that are currently measuring the counters
-int PAPIMeasure::numMeasurers=0;
+ThreadLocalStorage1<int, int> PAPIMeasure::numMeasurers(0);
 
 // Records the set of PAPI counters currently being measured (non-empty iff numMeasurers>0)
-std::vector<int> PAPIMeasure::curMeasuredEvents;
+ThreadLocalStorageVector<int> PAPIMeasure::curMeasuredEvents;
 
 PAPIMeasure::PAPIMeasure(const papiEvents& events) : measure(), events(events)
 { init(); }
@@ -1318,7 +1318,7 @@ std::list<std::pair<std::string, attrValue> > endGetMeasure(measure* m, bool add
  ***** MSRMeasure *****
  **********************/
 
-int MSRMeasure::numMeasurers=0;
+ThreadLocalStorage1<int, int> MSRMeasure::numMeasurers(0);
 
 MSRMeasure::MSRMeasure() {
   // If the MSRs are not currently being measured, initialize the MSR library
@@ -1950,7 +1950,7 @@ TraceObsMerger::TraceObsMerger(std::vector<std::pair<properties::tagType, proper
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
 void TraceObsMerger::mergeKey(properties::tagType type, properties::iterator tag, 
                               std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
-  static long maxObsID=0;
+  static ThreadLocalStorage1<long, long> maxObsID(0);
   
   Merger::mergeKey(type, tag.next(), inStreamRecords, info);
   

@@ -19,7 +19,7 @@ class valSelector: public sightObj
 {
   protected:
   
-  static int maxSelID;
+  __thread static int maxSelID;
   int selID;
     
   // If an attribute key was provided to this selector, records it here
