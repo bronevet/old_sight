@@ -7,6 +7,7 @@
 #include "widgets/module/module_structure.h"
 #include "widgets/source/source_structure.h"
 #include "widgets/clock/clock_structure.h"
+//#include "widgets/mpiclock/clock_structure.h"
 
 using namespace sight::structure;
 

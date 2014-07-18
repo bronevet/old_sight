@@ -26,6 +26,7 @@ SIGHT_LINKFLAGS = \
                   ${ROOT_PATH}/widgets/gsl/lib/libgsl.so \
                   ${ROOT_PATH}/widgets/gsl/lib/libgslcblas.so \
                   -Wl,-rpath ${ROOT_PATH}/widgets/gsl/lib \
+                  -L ${ROOT_PATH}/../../INSTALL/pnmpi/lib/ -lpnmpi -Wl,-rpath,${ROOT_PATH}/../../INSTALL/pnmpi/lib \
 	          -lpthread
 RAPL_ENABLED = 1
 ifeq (${RAPL_ENABLED}, 1)
@@ -45,7 +46,7 @@ EXE := .exe
 endif
 
 all: core allExamples
-	
+
 core: sightDefines.pl gdbLineNum.pl Makefile.extern definitions.h maketools libsight_common.a libsight_structure.so slayout${EXE} libsight_layout.so hier_merge${EXE} widgets_post script/taffydb 
 	chmod 755 html img script
 	chmod 644 html/* img/* script/*

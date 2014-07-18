@@ -823,16 +823,27 @@ Merger::Merger(std::vector<std::pair<properties::tagType, properties::iterator> 
   
   if(props==NULL) props = new properties();
   
+  //** cout << "Merger starting props="<<props->str()<<endl;
+
   // Iterate through the properties of any clocks associated with this object
   while(!isIterEnd(tags)) {
     properties::tagType type = streamRecord::getTagType(tags);
+
     if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging!"<<endl; exit(-1); }
     if(type==properties::enterTag) {
       vector<string> names = getNames(tags); assert(allSame<string>(names));
       //assert(*names.begin() == "text");
+      //** cout << "    current enter tag="<<*(names.begin())<<endl;
       
       // Create a Merger object for the current clock, using it to update props with the clock's merged properties
+      if((*MergeHandlerInstantiator::MergeHandlers)[*names.begin()]==NULL)
+	{
+	  printf("Error: MergeHandlers ");
+	  cout << *names.begin() << endl;
+	  exit(-1);
+	}
       Merger* m = (*MergeHandlerInstantiator::MergeHandlers)[*names.begin()](tags, outStreamRecords, inStreamRecords, props);
+      //** cout << "    tag props="<<props->str()<<endl;
       // Reset this Merger's properties pointer to NULL so that props doesn't get deallocated when we deallocate m
       m->resetProps();
       // Deallocate m since we no longer need it
@@ -841,6 +852,7 @@ Merger::Merger(std::vector<std::pair<properties::tagType, properties::iterator> 
     
     tags = advance(tags);
   }
+  //** cout << "Merger props="<<props->str()<<endl;
 }
 
 Merger::~Merger() {
@@ -858,6 +870,11 @@ void Merger::mergeKey(properties::tagType type, properties::iterator tag,
     if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging keys!"<<endl; exit(-1); }
     if(type==properties::enterTag) {
       // Call the current clock's mergeKey method
+      if((*MergeHandlerInstantiator::MergeKeyHandlers)[tag.name()]==NULL)
+	{
+          printf("Error MergeKeyHandlers: tag name \n");
+          exit(-1);
+        }
       (*MergeHandlerInstantiator::MergeKeyHandlers)[tag.name()](type, tag, inStreamRecords, info);
     } else { }
     
@@ -1612,7 +1629,14 @@ BlockMerger::BlockMerger(std::vector<std::pair<properties::tagType, properties::
                          map<string, streamRecord*>& outStreamRecords,
                          vector<map<string, streamRecord*> >& inStreamRecords,
                          properties* props) : 
-                                     Merger(advance(tags), outStreamRecords, inStreamRecords, props)
+                                     Merger(advance(tags), outStreamRecords, inStreamRecords, 
+                                            setProperties(tags, outStreamRecords, inStreamRecords, props))
+{}
+
+properties* BlockMerger::setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+                         map<string, streamRecord*>& outStreamRecords,
+                         vector<map<string, streamRecord*> >& inStreamRecords,
+                         properties* props)
 {
   assert(tags.size()>0);
   assert(inStreamRecords.size() == tags.size());
@@ -1620,6 +1644,7 @@ BlockMerger::BlockMerger(std::vector<std::pair<properties::tagType, properties::
   if(props==NULL) props = new properties();
 
   map<string, string> pMap;
+  //** cout << "BlockMerger starting props="<<props->str()<<endl;
   properties::tagType type = streamRecord::getTagType(tags);
   //cout << "type="<<(type==properties::enterTag? "enterTag": (type==properties::exitTag? "exitTag": "unknownTag"))<<endl;
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Block!"<<endl; assert(0); }
@@ -1697,6 +1722,8 @@ BlockMerger::BlockMerger(std::vector<std::pair<properties::tagType, properties::
     dbgStreamStreamRecord::exitBlock(inStreamRecords);
     dbgStreamStreamRecord::exitBlock(outStreamRecords);
   }
+
+  return props;
 }
 
 // Sets a list of strings that denotes a unique ID according to which instances of this merger's 
@@ -1709,7 +1736,7 @@ void BlockMerger::mergeKey(properties::tagType type, properties::iterator tag,
   
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; assert(0); }
   if(type==properties::enterTag) {
-    info.add(properties::get(tag, "callPath"));
+    info.add(properties::getInt(tag, "callPath"));
   }
 }
 

@@ -1,6 +1,9 @@
 # Makefile for src-parallel
+include ../../../Makefile.extern 
 
 SHELL = /bin/bash
+
+MPICCC=mpig++
 
 ### CoMD can be built in either double or single precision and with or
 ### without MPI.  Select desired precision and MPI here.
@@ -77,7 +80,8 @@ OBJECTS_DISTILLMODULES=$(SOURCES:.c=.distillmodules.o)
 OBJECTS_TRACEPOS=$(SOURCES:.c=.tracepos.o)
 OBJECTS_TRACEPATH=$(SOURCES:.c=.tracepath.o)
 	
-DEFAULT: ${CoMD_EXE}.modules ${CoMD_EXE}.compmodules ${CoMD_EXE}.distillmodules ${CoMD_EXE}.tracepos ${CoMD_EXE}.tracepath
+DEFAULT = ${CoMD_EXE}.tracepos
+#DEFAULT: ${CoMD_EXE}.modules ${CoMD_EXE}.compmodules ${CoMD_EXE}.distillmodules ${CoMD_EXE}.tracepos ${CoMD_EXE}.tracepath
 
 %.modules.o: %.c
 	${MPICCC} ${CFLAGS} -DMODULES -c $< -o $@

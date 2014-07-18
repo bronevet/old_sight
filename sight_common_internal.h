@@ -66,6 +66,35 @@ class printable
 // Call the print method of the given printable object
 //std::ofstream& operator<<(std::ofstream& ofs, const printable& p);
 
+
+/*
+class comparable
+{
+  public:
+  virtual bool operator==(const comparable& that)=0;
+  virtual bool operator<(const comparable& that)=0;
+};
+
+class IntComparable: public comparable {
+  int val;
+  public:
+  
+
+  bool operator==(const comparable& that_arg) {
+    try {
+      const IntComparable& that = dynamic_cast<const IntComparable&>(that_arg);
+      return val==that.val;
+    } catch(std::bad_cast e) {
+      assert(0);
+    }
+  }
+  bool operator<(const comparable& that)
+};
+
+
+*/
+
+
 // Records the properties of a given object
 class properties
 {

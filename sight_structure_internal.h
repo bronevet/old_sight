@@ -476,7 +476,7 @@ class Merger;
  */
 class MergeInfo {
   public:
-  typedef std::list<std::string> mergeKey;
+  typedef std::list<int> mergeKey;
   
   private:
   mergeKey key;
@@ -485,7 +485,7 @@ class MergeInfo {
   public:  
   MergeInfo() : universal(false) {}
   
-  void add(std::string subKey) { key.push_back(subKey); }
+  void add(int subKey) { key.push_back(subKey); }
   void setUniversal(bool newVal=true) { universal = universal || newVal; }
   bool getUniversal() const { return universal; }
   const mergeKey& getKey() const { return key; }
@@ -493,7 +493,7 @@ class MergeInfo {
   std::string str() const {
     std::ostringstream s;
     s << "[MergeInfo: universal="<<universal<<", key=[";
-    for(std::list<std::string>::const_iterator k=key.begin(); k!=key.end(); k++) {
+    for(std::list<int>::const_iterator k=key.begin(); k!=key.end(); k++) {
       if(k!=key.begin()) s << ", ";
       s << *k;
     }
@@ -1042,6 +1042,12 @@ class BlockMerger : public Merger {
               std::map<std::string, streamRecord*>& outStreamRecords,
               std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
               properties* props=NULL);
+  
+  // Sets the properties of the merged object
+  properties* setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+                            std::map<std::string, streamRecord*>& outStreamRecords,
+                            std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                            properties* props);
   
   // Sets a list of strings that denotes a unique ID according to which instances of this merger's 
   // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
