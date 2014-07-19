@@ -56,10 +56,11 @@ function SLNode(level, key, value) {
   this.pointer = new Array(level); // Array used for working .length
 }
 
-function SkipList(maxLevel, P) {
+function SkipList(maxLevel, P, compareFunc) {
   // Properties
   this.maxLevel = maxLevel ? maxLevel : 8;
   this.P = P ? P : 0.25;
+  this.compareFunc = compareFunc;
 
   // Init
   this.currentLevel = 0;
@@ -93,7 +94,7 @@ function SkipList(maxLevel, P) {
     for(var i=this.currentLevel; i>=0; i--) {
       // Search through each level to the end of the linked list
       // while the node's key is less than the inserted key
-      while(cursor.pointer[i].key < key) {
+      while(this.compareFunc(cursor.pointer[i].key, key)<0) {
         cursor = cursor.pointer[i];
       }
       // keep track of where the next element points to (------->)
@@ -104,7 +105,7 @@ function SkipList(maxLevel, P) {
     cursor = cursor.pointer[0];
 
     // dup handling - overwrite the sucker
-    if(cursor.key == key) {
+    if(this.compareFunc(cursor.key, key)==0) {
       cursor.value = value;
     }
 
@@ -136,14 +137,14 @@ function SkipList(maxLevel, P) {
 
     for(var i=this.currentLevel; i>=0; i--) {
       var x = cursor.pointer[i];
-      while(x.key < key) {
+      while(this.compareFunc(x.key, key)<0) {
         cursor = x;
         x = cursor.pointer[i];
       }
     }
     cursor = cursor.pointer[0];
 
-    if(cursor.key == key) {
+    if(this.compareFunc(cursor.key, key)==0) {
       return cursor.value // WINNER
     } else {
       return undefined;
@@ -156,7 +157,7 @@ function SkipList(maxLevel, P) {
 
     for(var i=this.currentLevel; i>=0; i--) {
       var x = cursor.pointer[i];
-      while(x.key < key) {
+      while(this.compareFunc(x.key, key)<0) {
         cursor = x;
         x = cursor.pointer[i];
       }
@@ -164,7 +165,7 @@ function SkipList(maxLevel, P) {
     }
     cursor = cursor.pointer[0];
 
-    if(cursor.key == key) {
+    if(this.compareFunc(cursor.key, key)==0) {
       // found, lets drop it from the list
       for(i=0; i<=this.currentLevel; i++) {
         if(next[i].pointer[i] == cursor) {
@@ -191,3 +192,5 @@ function SkipList(maxLevel, P) {
     return level;
   }
 }
+
+

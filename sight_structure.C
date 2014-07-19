@@ -691,6 +691,8 @@ std::string MergeHandlerInstantiator::str() {
 SightMergeHandlerInstantiator::SightMergeHandlerInstantiator() { 
   (*MergeHandlers   )["sight"]      = dbgStreamMerger::create;
   (*MergeKeyHandlers)["sight"]      = dbgStreamMerger::mergeKey;
+  (*MergeHandlers   )["block"]      = BlockMerger::create;
+  (*MergeKeyHandlers)["block"]      = BlockMerger::mergeKey;
   (*MergeHandlers   )["indent"]     = IndentMerger::create;
   (*MergeKeyHandlers)["indent"]     = IndentMerger::mergeKey;
   (*MergeHandlers   )["comparison"] = ComparisonMerger::create;

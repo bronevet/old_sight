@@ -66,6 +66,7 @@ void lock(pthread_mutex_t& mutex, scalarCausalClock& threadCausality) {
 }
 
 void unlock(pthread_mutex_t& mutex, scalarCausalClock& threadCausality) {
+  block b("");
   int rc = pthread_mutex_unlock(&mutex);
 } 
 
@@ -98,19 +99,21 @@ void* work(void* data) {
   for(int i=0; i<4; i++) {
     //comparison comp_bar(i);
     cout << pthread_self()<<": i="<<i<<endl;
-    dbg << "<h1>"<<pthread_self()<<":"<<i<<"</h1>"<<endl;
+    {
+    scope sIter(txt()<< pthread_self()<<":"<<i);
     for(int j=0; j<3; j++) {
-      scope s(txt()<<"iteration "<<j);
       
       lock(mutex, threadCausality);
+      { scope s(txt()<<"iteration "<<j);
       shared_counter++;
-      dbg << "Counter="<<shared_counter<<endl;
+      dbg << "Counter="<<shared_counter<<", clock="<<threadCausality.send()<<endl;
       cout << pthread_self()<<" j="<<j<<" grabbed lock\n";
+      }
       unlock(mutex, threadCausality);
 
       usleep(rand()%2? 100: 100000);
     }
-    
+    }
     // Synchronization point
     barrier(barr, threadCausality);
   }

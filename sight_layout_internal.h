@@ -108,6 +108,9 @@ class sightClock
   
   // Records whether the clock has been modified since the last time it was read
   static bool modified;
+
+  // Records the JavaScript comparison functions to be used for all the clocks
+  static std::map<std::string, std::string> compFuncs;
   
   public:
   // Called by the handlers of the individual clocks to update their current time
@@ -125,6 +128,9 @@ class sightClock
   // all the individual clocks as a JavaScript hash that maps the name of each clock to 
   // its comparator function
   static std::string getComparatorsJS();
+
+  // Returns a mapping from clock names to their respective comparison functions
+  //const std::map<std::string, std::string>& getCompFuncs() { return compFuncs; }
 }; // class sightClock
 
 
@@ -238,6 +244,13 @@ class anchor
     
   std::string str(std::string indent="") const;
 }; // class anchor
+
+/*****************
+ ***** block *****
+ *****************/
+
+void* blockEnterHandler(properties::iterator props);
+void  blockExitHandler(void* obj);
 
 // A block out debug output, which may be filled by various visual elements
 class block: public sightObj

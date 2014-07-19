@@ -56,6 +56,9 @@ sightLayoutHandlerInstantiator::sightLayoutHandlerInstantiator() {
   (*layoutEnterHandlers)["sight"]  = &SightInit;
   (*layoutExitHandlers )["sight"]  = &defaultExitHandler;
 
+  (*layoutEnterHandlers)["block"] = &blockEnterHandler;
+  (*layoutExitHandlers )["block"] = &blockExitHandler;
+
   (*layoutEnterHandlers)["indent"] = &indentEnterHandler;
   (*layoutExitHandlers )["indent"] = &indentExitHandler;
 
@@ -271,9 +274,20 @@ std::map<std::string, attrValue> sightClock::curTime;
 // Records whether the clock has been modified since the last time it was read
 bool sightClock::modified=false;
 
+// Records the JavaScript comparison functions to be used for all the clocks
+std::map<std::string, std::string> sightClock::compFuncs;
+  
 // Called by the handlers of the individual clocks to update their current time
 void sightClock::updateTime(const std::string& clockName, const attrValue& time) { 
   curTime[clockName] = time;
+
+  // Record the comparison function for this clock, if we have not yet done this
+  if(compFuncs.find(clockName) == compFuncs.end()) {
+    compFuncs[clockName] = time.getComparatorJS();
+    // Emit the registration to the Javascript output to make it available to the clock-based 
+    // layout mechanisms
+    dbg.widgetScriptPrologCommand(txt()<<"registerComparator('"<<clockName<<"', "<<time.getComparatorJS()<<");");
+  }
 
   // Record that the clock has been modified (i.e. now) since the last time it was read
   modified = true;
@@ -317,11 +331,11 @@ std::string sightClock::getComparatorsJS() {
 int sightObj::maxClockID=0;
 
 sightObj::sightObj(properties::iterator props) {
-  // After all the clock insertions are complete, perform the order-sensitive div layout
   if(maxClockID==0) {
+    // After all the clock insertions are complete, perform the order-sensitive div layout
     dbg.widgetScriptEpilogCommand("layoutOrderedDivs();");
   }
-  
+
   // The sightObj constructor is called with the props iterator set immediately
   // after the record that describes the class that inherits from sightObj.
   // The remaining records must belong to the clocks that are associated with
@@ -609,6 +623,10 @@ std::string anchor::str(std::string indent) const {
 /*****************
  ***** block *****
  *****************/
+
+void* blockEnterHandler(properties::iterator props) { return new block(props); }
+void  blockExitHandler(void* obj) { block* b = static_cast<block*>(obj); delete b; }
+
 
 int block::blockCount=0;
 

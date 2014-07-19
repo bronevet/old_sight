@@ -1064,6 +1064,12 @@ class BlockMerger : public Merger {
                           vector<map<string, streamRecord*> >& inStreamRecords,
                           properties* props);
   
+  static Merger* create(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
+                        std::map<std::string, streamRecord*>& outStreamRecords,
+                        std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                        properties* props)
+  { return new BlockMerger(tags, outStreamRecords, inStreamRecords, props); }
+
   // Sets a list of strings that denotes a unique ID according to which instances of this merger's 
   // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
