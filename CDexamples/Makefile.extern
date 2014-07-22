@@ -1,0 +1,69 @@
+SHELL = /bin/sh
+
+#mkfile_path := $(abspath $(lastword $(MAKEFILE_LIST)))
+#CD_ROOT     := $(notdir $(patsubst %/,%,$(dir $(mkfile_path))))
+CD_ROOT     = $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
+
+SIGHT_ROOT  = ${CD_ROOT}/..
+
+CD_APP      = ${CD_ROOT}/app
+CD_PROFILER = ${CD_ROOT}/profiler
+CD_TOOLS    = ${CD_ROOT}/tools
+CD_RUNTIME  = ${CD_ROOT}/runtime
+CD_AUTOTUNER= ${CD_ROOT}/autotuner
+
+
+CD_PROFILER_CFLAGS = -I${CD_PROFILER}/src 
+#CD_PROFILER_CFLAGS =
+
+CD_PROFILER_LINKFLAGS = -Wl,-rpath ${CD_PROFILER}/lib \
+                        ${CD_PROFILER}/lib/libcd_profiler.so \
+                        -L${CD_PROFILER}/lib -lcd_profiler 
+#                        ${CD_PROFILER}/lib/libcd_profiler.so \
+#                        -Wl,-rpath ${CD_PROFILER}/src \
+
+
+SIGHT_CFLAGS = -I${SIGHT_ROOT} \
+               -I${SIGHT_ROOT}/tools/callpath/src -I${SIGHT_ROOT}/tools/adept-utils/include \
+               -I${SIGHT_ROOT}/widgets/papi/include\
+               -I${SIGHT_ROOT}/widgets/libmsr/include \
+               -I${SIGHT_ROOT}/tools/boost_1_55_0
+SIGHT_LINKFLAGS_NORPATH = -L${SIGHT_ROOT} -lsight_structure \
+                  -L${SIGHT_ROOT}/tools/adept-utils/lib -ladept_cutils -ladept_timing -ladept_utils \
+                  -L${SIGHT_ROOT}/tools/callpath/src/src -lcallpath \
+                  -L${SIGHT_ROOT}/widgets/papi/lib -lpapi \
+                  -L${SIGHT_ROOT}/widgets/gsl/lib -lgsl -lgslcblas \
+                  -L${SIGHT_ROOT}/widgets/libmsr/lib -lmsr \
+                  -lpthread
+SIGHT_LINKFLAGS = \
+                  -Wl,-rpath ${SIGHT_ROOT} \
+                  -L${SIGHT_ROOT} -lsight_structure \
+                  -L${SIGHT_ROOT}/tools/adept-utils/lib -ladept_cutils -ladept_timing -ladept_utils \
+                  -Wl,-rpath ${SIGHT_ROOT}/tools/adept-utils/lib \
+                  -L${SIGHT_ROOT}/tools/callpath/src/src -lcallpath \
+                  -Wl,-rpath ${SIGHT_ROOT}/tools/callpath/src/src \
+                  -L${SIGHT_ROOT}/widgets/papi/lib -lpapi \
+                  -Wl,-rpath ${SIGHT_ROOT}/widgets/papi/lib \
+                  ${SIGHT_ROOT}/widgets/gsl/lib/libgsl.so \
+                  ${SIGHT_ROOT}/widgets/gsl/lib/libgslcblas.so \
+                  -Wl,-rpath ${SIGHT_ROOT}/widgets/gsl/lib \
+                  ${SIGHT_ROOT}/widgets/libmsr/lib/libmsr.so \
+                  -Wl,-rpath ${SIGHT_ROOT}/widgets/libmsr/lib \
+                  -lpthread
+ 
+# Flags to use when linking a version of slayout that include object files
+# for additional widgets and capabilities
+
+# Dynamic linking
+SIGHT_LAYOUT_DYNAMIC_LINKFLAGS = \
+                  -Wl,-rpath ${SIGHT_ROOT} \
+                  ${SIGHT_ROOT}/libsight_layout.so \
+                  -Wl,-rpath ${SIGHT_ROOT}/widgets/gsl/lib -L${SIGHT_ROOT}/widgets/gsl/lib -lgsl -lgslcblas \
+                  ${SIGHT_ROOT}/tools/adept-utils/lib/libadept_cutils.so \
+                  ${SIGHT_ROOT}/tools/adept-utils/lib/libadept_timing.so \
+                  ${SIGHT_ROOT}/tools/adept-utils/lib/libadept_utils.so \
+                  -Wl,-rpath ${SIGHT_ROOT}/tools/adept-utils/lib \
+                  ${SIGHT_ROOT}/tools/callpath/src/src/libcallpath.so \
+                  -Wl,-rpath ${SIGHT_ROOT}/tools/callpath/src/src \
+                  ${SIGHT_ROOT}/widgets/papi/lib/libpapi.a \
+                 -lpthread
