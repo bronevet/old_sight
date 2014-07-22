@@ -59,7 +59,7 @@ void traceAttr(trace* t,
  *****************/
 
 // Maps the names of all the currently active traces to their trace objects
-std::map<std::string, trace*> trace::active;  
+ThreadLocalStorageMap<std::string, trace*> trace::active;  
 
 trace::trace(std::string label, const std::list<std::string>& contextAttrs, showLocT showLoc, vizT viz, mergeT merge, properties* props) : 
   block(label, setProperties(NULL, showLoc, props))
@@ -107,7 +107,7 @@ properties* trace::setProperties(const attrOp* onoffOp, showLocT showLoc, proper
   
   // If the current attribute query evaluates to true (we're emitting debug output) AND
   // either onoffOp is not provided or its evaluates to true
-  if(attributes.query() && (onoffOp? onoffOp->apply(): true)) {
+  if(attributes->query() && (onoffOp? onoffOp->apply(): true)) {
     props->active = true;
     map<string, string> pMap;
     pMap["showLoc"] = txt()<<showLoc;
@@ -193,7 +193,7 @@ properties* processedTrace::setProperties(const attrOp* onoffOp, const std::list
   
   // If the current attribute query evaluates to true (we're emitting debug output) AND
   // either onoffOp is not provided or its evaluates to true
-  if(attributes.query() && (onoffOp? onoffOp->apply(): true)) {
+  if(attributes->query() && (onoffOp? onoffOp->apply(): true)) {
     props->active = true;
     // Don't add anything to the properties. processedTraces behave just like normal traces
     // but will use processedTraceStreams instead of regular traceStreams
@@ -236,7 +236,7 @@ processedTrace::~processedTrace() {
  ***********************/
 
 // Maximum ID assigned to any trace object
-int traceStream::maxTraceID=0;
+ThreadLocalStorage1<int, int> traceStream::maxTraceID(0);
   
 // Callers can optionally provide a traceID that this traceStream will use. This is useful for cases where 
 // the ID of the trace used within a given host object needs to be known before the traceStream is actually
@@ -264,7 +264,7 @@ properties* traceStream::setProperties(const std::list<std::string>& contextAttr
   
   if(props->active && props->emitTag) {
     map<string, string> pMap;
-    pMap["traceID"] = txt()<<(traceID<0? maxTraceID: traceID);
+    pMap["traceID"] = txt()<<(traceID<0? int(maxTraceID): traceID);
     pMap["viz"]     = txt()<<viz;
     pMap["merge"]   = txt()<<merge;
     
@@ -296,7 +296,7 @@ void traceStream::init(int traceID) {
   
   // Add this trace object as a change listener to all the context variables
   for(list<string>::iterator ca=contextAttrs.begin(); ca!=contextAttrs.end(); ca++)
-    attributes.addObs(*ca, this);
+    attributes->addObs(*ca, this);
     
   //cout << "traceStream::init(), emitExitTag="<<emitExitTag<<endl;
 }
@@ -320,7 +320,7 @@ traceStream::~traceStream() {
   // Stop this object's observations of changes in context variables
   for(list<string>::iterator ca=contextAttrs.begin(); ca!=contextAttrs.end(); ca++) {
     //cout << "    *ca="<<*ca<<endl;
-    attributes.remObs(*ca, this);
+    attributes->remObs(*ca, this);
   }
 }
 
@@ -382,7 +382,7 @@ void traceStream::emitObservations(const std::list<std::string>& contextAttrs,
   // Read out the current values of the context attributes and store them in a map
   std::map<std::string, attrValue> contextAttrsMap;
   for(std::list<std::string>::const_iterator a=contextAttrs.begin(); a!=contextAttrs.end(); a++) {
-    const std::set<attrValue>& vals = attributes.get(*a);
+    const std::set<attrValue>& vals = attributes->get(*a);
     assert(vals.size()>0);
     if(vals.size()>1) { cerr << "traceStream::traceAttr() ERROR: context attribute "<<*a<<" has multiple values!"; }
     contextAttrsMap[*a] = *vals.begin();
@@ -427,7 +427,7 @@ void traceStream::emitObservations(const std::map<std::string, attrValue>& conte
   }
   
   props.add("traceObs", pMap);
-  dbg.tag(props);
+  dbg->tag(props);
   
   // Reset the obs[] map since we've just emitted all these observations
   obs.clear();
@@ -873,10 +873,10 @@ std::string timeStampMeasure::str() const {
  ***********************/
 
 // Indicates the number of PAPIMeasure objects that are currently measuring the counters
-int PAPIMeasure::numMeasurers=0;
+ThreadLocalStorage1<int, int> PAPIMeasure::numMeasurers(0);
 
 // Records the set of PAPI counters currently being measured (non-empty iff numMeasurers>0)
-papiEvents PAPIMeasure::curEvents;
+ThreadLocalStorageVector<int> PAPIMeasure::curMeasuredEvents;
 
 PAPIMeasure::PAPIMeasure(const papiEvents& events) : measure(), events(events)
 { init(); }
@@ -912,7 +912,7 @@ PAPIMeasure::PAPIMeasure(traceStream* ts,        std::string valLabel, const std
 { init(); }
 
 PAPIMeasure::PAPIMeasure(const PAPIMeasure& that) : 
-  measure(that), accumValues(that.accumValues), lastValues(that.lastValues), events(that.events), valLabel(that.valLabel), PAPIOperational(that.PAPIOperational)
+  measure(that), accumValues(that.accumValues), lastValues(that.lastValues), readValues(that.readValues), events(that.events), eventsToMeasure(that.eventsToMeasure), events2Idx(that.events2Idx), valLabel(that.valLabel), PAPIOperational(that.PAPIOperational)
 { }
 
 PAPIMeasure::~PAPIMeasure() {
@@ -920,15 +920,82 @@ PAPIMeasure::~PAPIMeasure() {
 
 // Common initialization code
 void PAPIMeasure::init() {
-  /*cout << "PAPIMeasure::init() events=";
-  for(int i=0; i<events.size(); i++)
-    cout << events[i] << " ";
+  /*cout << "PAPIMeasure::init() eventsToMeasure=";
+  for(int i=0; i<eventsToMeasure.size(); i++)
+    cout << eventsToMeasure[i] << " ";
   cout << endl;*/
-  
+
+  // events may contain both raw and derived PAPI counters. We now initialize eventsToMeasure to contain
+  // the exact raw counters that we need to measure.
+  //
+  // First we collect the set of raw events that need to be measured
+  set<int> rawEvents; // Set of all the raw events that need to be placed in eventsToMeasure
+  for(std::vector<int>::const_iterator e=events.begin(); e!=events.end(); e++) {
+    //cout << "PAPIMeasure::init() event="<<*e<<endl;
+    // If the current counter is a raw PAPI counter, add it directly to eventsToMeasure
+    if(*e<PAPI_MIN_DERIVED || *e>PAPI_MAX_DERIVED)
+      rawEvents.insert(*e);
+    // Else, if it is a derived counter, add the raw counters that need to be measured to eventsToMeasure
+    else {
+      switch(*e) {
+        case PAPI_L1_TC_MR: // L1 Total cache miss rate
+          rawEvents.insert(PAPI_L1_TCA);
+          rawEvents.insert(PAPI_L1_TCM);
+          break;
+        case PAPI_L2_TC_MR: // L2 Total cache miss rate
+          rawEvents.insert(PAPI_L2_TCA);
+          rawEvents.insert(PAPI_L2_TCM);
+          break;
+        case PAPI_L3_TC_MR: // L3 Total cache miss rate
+          rawEvents.insert(PAPI_L3_TCA);
+          rawEvents.insert(PAPI_L3_TCM);
+          break;
+        case PAPI_L1_DC_MR: // L1 Data cache miss rate
+          rawEvents.insert(PAPI_L1_DCA);
+          rawEvents.insert(PAPI_L1_DCM);
+          break;
+        case PAPI_L2_DC_MR: // L2 Data cache miss rate
+          rawEvents.insert(PAPI_L1_DCA);
+          rawEvents.insert(PAPI_L1_DCM);
+          break;
+        case PAPI_L3_DC_MR: // L3 Data cache miss rate
+          rawEvents.insert(PAPI_L1_DCA);
+          rawEvents.insert(PAPI_L1_DCM);
+          break;
+        case PAPI_L1_IC_MR: // L1 Instruction cache miss rate
+          rawEvents.insert(PAPI_L1_ICA);
+          rawEvents.insert(PAPI_L1_ICM);
+          break;
+        case PAPI_L2_IC_MR: // L2 Instruction cache miss rate
+          rawEvents.insert(PAPI_L2_ICA);
+          rawEvents.insert(PAPI_L2_ICM);
+          break;
+        case PAPI_L3_IC_MR: // L3 Instruction cache miss rate
+          rawEvents.insert(PAPI_L3_ICA);
+          rawEvents.insert(PAPI_L3_ICM);
+          break;
+        default:
+          cerr << "ERROR: Unknown derived PAPI event "<<*e<<endl;
+          assert(0);
+      }
+    }
+  }
+
+  //cout << "PAPIMeasure::init() #rawEvents="<<rawEvents.size()<<endl;
+  // Next we add all the events in rawEvents into eventsToMeasure, recording the 
+  // mapping from event ID to its index in events2Idx
+  eventsToMeasure.resize(rawEvents.size());
+  int i=0;
+  for(set<int>::const_iterator e=rawEvents.begin(); e!=rawEvents.end(); e++, i++) {
+    eventsToMeasure[i] = *e;
+    events2Idx[*e] = i;
+  }
+  //cout << "PAPIMeasure::init() measuring counters=(#"<<eventsToMeasure.size()<<")="<<list2str(getMeasuredCounterNames())<<endl;
+
   // Initialize the values arrays to contain one counter for each event, 
-  accumValues.resize(events.size(), 0); // Initialized to all 0's
-  lastValues.resize(events.size());
-  readValues.resize(events.size());
+  accumValues.resize(eventsToMeasure.size(), 0); // Initialized to all 0's
+  lastValues.resize(eventsToMeasure.size());
+  readValues.resize(eventsToMeasure.size());
 
   PAPIOperational = false;
 }
@@ -945,45 +1012,47 @@ void PAPIMeasure::start() {
   // If no other PAPIMeasure objects are currently trying to measure counters, 
   if(numMeasurers==0) {
     // Start measuring them
-    if(PAPI_start_counters((int*)&(events[0]), events.size()) != PAPI_OK) { 
-      cerr << "PAPIMeasure::start() ERROR starting PAPI counters!"<<endl; 
+    if(PAPI_start_counters((int*)&(eventsToMeasure[0]), eventsToMeasure.size()) != PAPI_OK) { 
+      cerr << "PAPIMeasure::start() ERROR starting PAPI counters! counters="<<list2str(getMeasuredCounterNames())<<endl;
       PAPIOperational=false;
       return;
     }
     PAPIOperational=true;
     
-    // Record the events that are currently being measured
-    curEvents = events;
+    // Record the eventsToMeasure that are currently being measured
+    curMeasuredEvents = eventsToMeasure;
   } else {
     // If we're currently measuring counters, confirm that the currently measured counter set is the
     // same as the set we wish to measure
-    if(events != curEvents) {
+    if(eventsToMeasure != curMeasuredEvents) {
       cerr << "ERROR: PAPIMeasure is asked to simultaneously measure different counter sets!"<<endl;
       cerr << "    Currently measuring: [";
-      for(int i=0; i<curEvents.size(); i++) {
+      for(int i=0; i<curMeasuredEvents.size(); i++) {
         if(i>0) cerr << ", ";
         char EventCodeStr[PAPI_MAX_STR_LEN];
-        if (PAPI_event_code_to_name(curEvents[i], EventCodeStr) != PAPI_OK) { cerr << "PAPIMeasure::start() ERROR getting name of PAPI counter "<<curEvents[i]<<"!"<<endl; assert(0); }
+        if (PAPI_event_code_to_name(curMeasuredEvents[i], EventCodeStr) != PAPI_OK) { cerr << "PAPIMeasure::start() ERROR getting name of PAPI counter "<<curMeasuredEvents[i]<<"!"<<endl; assert(0); }
         cerr << EventCodeStr;
       }
       cerr << "]"<<endl;
 
       cerr << "   New measurement request: [";
-      for(int i=0; i<events.size(); i++) {
+      for(int i=0; i<eventsToMeasure.size(); i++) {
         if(i>0) cerr << ", ";
         char EventCodeStr[PAPI_MAX_STR_LEN];
-        if (PAPI_event_code_to_name(events[i], EventCodeStr) != PAPI_OK) { cerr << "PAPIMeasure::start() ERROR getting name of PAPI counter "<<events[i]<<"!"<<endl; assert(0); }
+        if (PAPI_event_code_to_name(eventsToMeasure[i], EventCodeStr) != PAPI_OK) { cerr << "PAPIMeasure::start() ERROR getting name of PAPI counter "<<eventsToMeasure[i]<<"!"<<endl; assert(0); }
         cerr << EventCodeStr;
       }
       cerr << "]"<<endl;
       assert(0);
-    }
+    } else
+      PAPIOperational=true;
   }
   numMeasurers++;
   
   // Read in the initial values of the counters
   if(PAPI_read_counters((long_long*)&(lastValues[0]), lastValues.size()) != PAPI_OK) { cerr << "PAPIMeasure::start() ERROR reading PAPI counters!"<<endl; assert(0); }
   
+  if(PAPI_read_counters((long_long*)&(readValues[0]), readValues.size()) != PAPI_OK) { cerr << "PAPIMeasure::pause() ERROR accumulating PAPI counters!"<<endl; assert(0); }
   // Start measurement
   //cout << "PAPIMeasure::start() "<<str()<<endl;
   
@@ -1008,9 +1077,9 @@ void PAPIMeasure::start() {
   for(int i=0; i<1000000; i++) {}
   long long e = PAPI_get_real_cyc();
 /cout << "cycles = "<<(e-s)<<endl;
-  int eventsArray[] = {PAPI_TOT_INS};
-  if(PAPI_start_counters(eventsArray, 1) != PAPI_OK) { cerr << "PAPIMeasure::start() ERROR starting PAPI counters!"<<endl; assert(0); }*/
-  //if(PAPI_start_counters((int*)&(events[0]), events.size()) != PAPI_OK) { cerr << "PAPIMeasure::start() ERROR starting PAPI counters!"<<endl; assert(0); }
+  int eventsToMeasureArray[] = {PAPI_TOT_INS};
+  if(PAPI_start_counters(eventsToMeasureArray, 1) != PAPI_OK) { cerr << "PAPIMeasure::start() ERROR starting PAPI counters!"<<endl; assert(0); }*/
+  //if(PAPI_start_counters((int*)&(eventsToMeasure[0]), eventsToMeasure.size()) != PAPI_OK) { cerr << "PAPIMeasure::start() ERROR starting PAPI counters!"<<endl; assert(0); }
 }
 
 // Pauses the measurement so that time elapsed between this call and resume() is not counted.
@@ -1024,11 +1093,13 @@ bool PAPIMeasure::pause() {
   // Add the counts since the last call to start or resume to values
   if(PAPI_read_counters((long_long*)&(readValues[0]), readValues.size()) != PAPI_OK) { cerr << "PAPIMeasure::pause() ERROR accumulating PAPI counters!"<<endl; assert(0); }
 
-  for(int i=0; i<events.size(); i++)
-    accumValues[i] += readValues[i] - lastValues[i];
+  for(int i=0; i<eventsToMeasure.size(); i++) {
+    if(readValues[i] > lastValues[i])
+      accumValues[i] += readValues[i] - lastValues[i];
+  }
   
   // Stop the counters, placing the current values into the dummy vector
-  //vector<long_long> dummy; dummy.resize(events.size());
+  //vector<long_long> dummy; dummy.resize(eventsToMeasure.size());
   //if(PAPI_stop_counters((long_long*)&(dummy[0]), dummy.size()) != PAPI_OK) { cerr << "PAPIMeasure::pause() ERROR stopping PAPI counters!"<<endl; assert(0); }
 
   return modified;  
@@ -1044,10 +1115,102 @@ void PAPIMeasure::resume() {
 
   
   // Restart measurement
-  //if(PAPI_start_counters((int*)&events[0], events.size()) != PAPI_OK) { cerr << "PAPIMeasure::resume() ERROR starting PAPI counters!"<<endl; assert(0); }
+  //if(PAPI_start_counters((int*)&eventsToMeasure[0], eventsToMeasure.size()) != PAPI_OK) { cerr << "PAPIMeasure::resume() ERROR starting PAPI counters!"<<endl; assert(0); }
 
   // Read in the initial values of the counters
   if(PAPI_read_counters((long_long*)&(lastValues[0]), lastValues.size()) != PAPI_OK) { cerr << "PAPIMeasure::resume() ERROR reading PAPI counters!"<<endl; assert(0); }
+}
+
+// Returns the string names of the counters currently being measured
+std::list<std::string> PAPIMeasure::getMeasuredCounterNames() {
+  std::list<std::string> ret;
+  int i=0;
+  for(std::vector<int>::const_iterator e=eventsToMeasure.begin(); e!=eventsToMeasure.end(); e++) {
+    char EventCodeStr[PAPI_MAX_STR_LEN];
+    if (PAPI_event_code_to_name(*e, EventCodeStr) != PAPI_OK) { cerr << "PAPIMeasure::getMeasuredCounterNames() ERROR getting name of PAPI counter "<<*e<<"!"<<endl; assert(0); }
+     ret.push_back(EventCodeStr);
+  }
+  return ret;
+}
+
+// Returns a list that maps all the raw and derived counters in events to their observed values,
+// using the raw counter values in accumValues.
+std::list<std::pair<std::string, attrValue> > PAPIMeasure::getAccumValues() {
+  std::list<std::pair<std::string, attrValue> > ret;
+  int i=0;
+ for(std::vector<int>::const_iterator e=events.begin(); e!=events.end(); e++, i++) {
+    // If the current counter is a raw PAPI counter, add it directly to ret
+    if(*e<PAPI_MIN_DERIVED || *e>PAPI_MAX_DERIVED) {
+      char EventCodeStr[PAPI_MAX_STR_LEN];
+      if (PAPI_event_code_to_name(*e, EventCodeStr) != PAPI_OK) { cerr << "PAPIMeasure::getAccumValues() ERROR getting name of PAPI counter "<<*e<<"!"<<endl; assert(0); }
+      ret.push_back(make_pair(string(EventCodeStr), attrValue(long(accumValues[events2Idx[*e]]))));
+    // Else, if it is a derived counter, compute the derived metric based on the values of the raw counters
+    } else {
+      switch(*e) {
+        case PAPI_L1_TC_MR: // L1 Total cache miss rate
+          ret.push_back(make_pair("PAPI_L1_TC_MR", attrValue(accumValues[events2Idx[PAPI_L1_TCA]]==0? 0:
+                                                                double(accumValues[events2Idx[PAPI_L1_TCM]])/
+                                                                  accumValues[events2Idx[PAPI_L1_TCA]])));
+          break;
+        case PAPI_L2_TC_MR: // L2 Total cache miss rate
+          ret.push_back(make_pair("PAPI_L2_TC_MR", attrValue(accumValues[events2Idx[PAPI_L2_TCA]]==0? 0:
+                                                                double(accumValues[events2Idx[PAPI_L2_TCM]])/
+                                                                   accumValues[events2Idx[PAPI_L2_TCA]])));
+          break;
+        case PAPI_L3_TC_MR: // L3 Total cache miss rate
+          ret.push_back(make_pair("PAPI_L3_TC_MR", attrValue(accumValues[events2Idx[PAPI_L3_TCA]]==0? 0:
+                                                                double(accumValues[events2Idx[PAPI_L3_TCM]])/
+                                                                   accumValues[events2Idx[PAPI_L3_TCA]])));
+          break;
+        case PAPI_L1_DC_MR: // L1 Data cache miss rate
+          ret.push_back(make_pair("PAPI_L1_DC_MR", attrValue(accumValues[events2Idx[PAPI_L1_DCA]]==0? 0:
+                                                                double(accumValues[events2Idx[PAPI_L1_DCM]])/
+                                                                   accumValues[events2Idx[PAPI_L1_DCA]])));
+          break;
+        case PAPI_L2_DC_MR: // L2 Data cache miss rate
+          ret.push_back(make_pair("PAPI_L2_DC_MR", attrValue(accumValues[events2Idx[PAPI_L2_DCA]]==0? 0: 
+                                                                double(accumValues[events2Idx[PAPI_L2_DCM]])/
+                                                                   accumValues[events2Idx[PAPI_L2_DCA]])));
+          break;
+        case PAPI_L3_DC_MR: // L3 Data cache miss rate
+          ret.push_back(make_pair("PAPI_L3_DC_MR", attrValue(accumValues[events2Idx[PAPI_L3_DCA]]==0? 0: 
+                                                                double(accumValues[events2Idx[PAPI_L3_DCM]])/
+                                                                   accumValues[events2Idx[PAPI_L3_DCA]])));
+          break;
+        case PAPI_L1_IC_MR: // L1 Instruction cache miss rate
+          ret.push_back(make_pair("PAPI_L1_IC_MR", attrValue(accumValues[events2Idx[PAPI_L1_ICA]]==0? 0:
+                                                                double(accumValues[events2Idx[PAPI_L1_ICM]])/
+                                                                   accumValues[events2Idx[PAPI_L1_ICA]])));
+          break;
+        case PAPI_L2_IC_MR: // L2 Instruction cache miss rate
+          ret.push_back(make_pair("PAPI_L2_IC_MR", attrValue(accumValues[events2Idx[PAPI_L2_ICA]]==0? 0:
+                                                                double(accumValues[events2Idx[PAPI_L2_ICM]])/
+                                                                   accumValues[events2Idx[PAPI_L2_ICA]])));
+          break;
+        case PAPI_L3_IC_MR: // L3 Instruction cache miss rate
+          ret.push_back(make_pair("PAPI_L3_IC_MR", attrValue(accumValues[events2Idx[PAPI_L3_ICA]]==0? 0:
+                                                                double(accumValues[events2Idx[PAPI_L3_ICM]])/
+                                                                   accumValues[events2Idx[PAPI_L3_ICA]])));
+          break;
+        default:
+          cerr << "ERROR: Unknown derived PAPI event "<<*e<<endl;
+          assert(0);
+      }
+    }
+  }
+
+/*  cout << "Raw:"<<endl;
+  for(std::map<int, int>::iterator i=events2Idx.begin(); i!=events2Idx.end(); i++) {
+      char EventCodeStr[PAPI_MAX_STR_LEN];
+      if (PAPI_event_code_to_name(i->first, EventCodeStr) != PAPI_OK) { cerr << "PAPIMeasure::getAccumValues() ERROR getting name of PAPI counter "<<i->first<<"!"<<endl; assert(0); }
+      cout << EventCodeStr << " => "<<accumValues[i->second]<<endl;
+  }
+ 
+  cout << "Final:"<<endl;
+  for(std::list<std::pair<std::string, attrValue> >::iterator i=ret.begin(); i!=ret.end(); i++)
+    cout << "    "<<i->first<<" => "<<i->second.getAsStr()<<endl;*/
+
+  return ret;
 }
 
 // Complete the measurement
@@ -1066,22 +1229,20 @@ void PAPIMeasure::end() {
   // If no instance of PAPIMeasure needs to read performance counters, 
   if(numMeasurers==0) {
     // Stop the counters, placing the current values into the dummy vector
-    vector<long_long> dummy; dummy.resize(events.size());
+    vector<long_long> dummy; dummy.resize(eventsToMeasure.size());
     if(PAPI_stop_counters((long_long*)&(dummy[0]), dummy.size()) != PAPI_OK) { cerr << "PAPIMeasure::end() ERROR stopping PAPI counters!"<<endl; assert(0); }
     
-    curEvents.clear();
+    curMeasuredEvents.clear();
   }
   
   assert(ts);
-  // Iterate over all the PAPI counters being measured
-  for(int i=0; i<events.size(); i++) {
-    char EventCodeStr[PAPI_MAX_STR_LEN];
-    if (PAPI_event_code_to_name(events[i], EventCodeStr) != PAPI_OK) { cerr << "PAPIMeasure::end() ERROR getting name of PAPI counter "<<events[i]<<"!"<<endl; assert(0); }
-    
+  // Compute the counter measurements and emit them to the trace
+  list<pair<string, attrValue> > values = getAccumValues();
+  for(list<pair<string, attrValue> >::iterator v=values.begin(); v!=values.end(); v++) {
     if(fullMeasure)
-      ts->traceFullObservation(fullMeasureCtxt, trace::observation((string)(txt()<<valLabel<<":"<<EventCodeStr), attrValue((long)accumValues[i])), anchor::noAnchor);
+      ts->traceFullObservation(fullMeasureCtxt, trace::observation((string)(txt()<<valLabel<<":"<<v->first), v->second), anchor::noAnchor);
     else
-      ts->traceAttrObserved(txt()<<valLabel<<":"<<EventCodeStr, attrValue((long)accumValues[i]), anchor::noAnchor);
+      ts->traceAttrObserved(txt()<<valLabel<<":"<<v->first, v->second, anchor::noAnchor);
   }
 }
 
@@ -1102,48 +1263,34 @@ std::list<std::pair<std::string, attrValue> > PAPIMeasure::endGet(bool addToTrac
   // If no instance of PAPIMeasure needs to read performance counters, 
   if(numMeasurers==0) {
     // Stop the counters, placing the current values into the dummy vector
-    vector<long_long> dummy; dummy.resize(events.size());
+    vector<long_long> dummy; dummy.resize(eventsToMeasure.size());
     if(PAPI_stop_counters((long_long*)&(dummy[0]), dummy.size()) != PAPI_OK) { cerr << "PAPIMeasure::end() ERROR stopping PAPI counters!"<<endl; assert(0); }
     
-    curEvents.clear();
+    curMeasuredEvents.clear();
   }
-  
-  if(addToTrace)
-    assert(ts);
   
   // Iterate over all the PAPI counters being measured
-  std::list<std::pair<std::string, attrValue> > ret;
-  
-  for(int i=0; i<events.size(); i++) {
-    char EventCodeStr[PAPI_MAX_STR_LEN];
-    if (PAPI_event_code_to_name(events[i], EventCodeStr) != PAPI_OK) { cerr << "PAPIMeasure::end() ERROR getting name of PAPI counter "<<events[i]<<"!"<<endl; assert(0); }
-    
-    // If a value label was not provided, the label of the observation is just the name of the PAPI counter
-    if(valLabel == "")
-      ret.push_back(make_pair(string(EventCodeStr), attrValue((long)accumValues[i])));
-    // If a value label was provided, the label of the observation combines it and the name of the PAPI counter
-    else 
-      ret.push_back(make_pair((string)(txt()<<valLabel<<":"<<string(EventCodeStr)), attrValue((long)accumValues[i])));
-    
-    if(addToTrace) {
+  list<pair<string, attrValue> > values = getAccumValues();
+  if(addToTrace) {
+    assert(ts);
+    for(list<pair<string, attrValue> >::iterator v=values.begin(); v!=values.end(); v++) {
       if(fullMeasure)
-        ts->traceFullObservation(fullMeasureCtxt, trace::observation((string)(txt()<<valLabel<<":"<<EventCodeStr), attrValue((long)accumValues[i])), anchor::noAnchor);
+        ts->traceFullObservation(fullMeasureCtxt, trace::observation((string)(txt()<<valLabel<<":"<<v->first), v->second), anchor::noAnchor);
       else
-        ts->traceAttrObserved(txt()<<valLabel<<":"<<EventCodeStr, attrValue((long)accumValues[i]), anchor::noAnchor);
+        ts->traceAttrObserved(txt()<<valLabel<<":"<<v->first, v->second, anchor::noAnchor);
     }
   }
-  
-  return ret;
+  return values;
 }
 
 std::string PAPIMeasure::str() const { 
   ostringstream s;
   s<<"[PAPIMeasure: ";
-  for(int i=0; i<events.size(); i++) {
+  for(int i=0; i<eventsToMeasure.size(); i++) {
     if(i>0) s << ", ";
     
     char EventCodeStr[PAPI_MAX_STR_LEN];
-    if (PAPI_event_code_to_name(events[i], EventCodeStr) != PAPI_OK) { cerr << "PAPIMeasure::end() ERROR getting name of PAPI counter "<<events[i]<<"!"<<endl; assert(0); }
+    if (PAPI_event_code_to_name(eventsToMeasure[i], EventCodeStr) != PAPI_OK) { cerr << "PAPIMeasure::end() ERROR getting name of PAPI counter "<<eventsToMeasure[i]<<"!"<<endl; assert(0); }
     s << EventCodeStr;
   }
   s<<" "<<measure::str();
@@ -1171,7 +1318,7 @@ std::list<std::pair<std::string, attrValue> > endGetMeasure(measure* m, bool add
  ***** MSRMeasure *****
  **********************/
 
-int MSRMeasure::numMeasurers=0;
+ThreadLocalStorage1<int, int> MSRMeasure::numMeasurers(0);
 
 MSRMeasure::MSRMeasure() {
   // If the MSRs are not currently being measured, initialize the MSR library
@@ -1803,7 +1950,7 @@ TraceObsMerger::TraceObsMerger(std::vector<std::pair<properties::tagType, proper
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
 void TraceObsMerger::mergeKey(properties::tagType type, properties::iterator tag, 
                               std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
-  static long maxObsID=0;
+  static ThreadLocalStorage1<long, long> maxObsID(0);
   
   Merger::mergeKey(type, tag.next(), inStreamRecords, info);
   

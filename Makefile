@@ -27,16 +27,16 @@ SIGHT_LINKFLAGS = \
                   ${ROOT_PATH}/widgets/gsl/lib/libgslcblas.so \
                   -Wl,-rpath ${ROOT_PATH}/widgets/gsl/lib \
                   -L ${ROOT_PATH}/../../INSTALL/pnmpi/lib/ -lpnmpi -Wl,-rpath,${ROOT_PATH}/../../INSTALL/pnmpi/lib \
-	          -lpthread
+                  -lpthread
 RAPL_ENABLED = 1
 ifeq (${RAPL_ENABLED}, 1)
 SIGHT_LINKFLAGS += ${ROOT_PATH}/widgets/libmsr/lib/libmsr.so \
                     -Wl,-rpath ${ROOT_PATH}/widgets/libmsr/lib
 endif
 	                
-	                #-Wl,-rpath ${ROOT_PATH}/widgets/papi/lib \
-override CC=gcc
-override CCC=g++
+	                #-Wl,-rpath ${ROOT_PATH}/widgets/papi/lib
+override CC=gcc	#clang #icc 
+override CCC=g++ #icpc #clang++ #g++
 MPICC = mpi${CC}
 MPICCC = mpi${CCC}
 
@@ -247,7 +247,7 @@ sightDefines.pl:
 
 Makefile.extern: initMakefile.extern
 	chmod 755 initMakefile.extern
-	./initMakefile.extern ${CC} ${CCC} ${RAPL_ENABLED}
+	./initMakefile.extern ${CC} ${CCC} ${RAPL_ENABLED} ${LLVM32_SRC_PATH} ${LLVM32_BUILD_PATH} ${LLVM32_INSTALL_PATH}
 
 definitions.h: initDefinitionsH
 	chmod 755 initDefinitionsH
@@ -266,7 +266,8 @@ clean:
 	rm -f slayout hier_merge
 
 clean_objects:
-	rm -f *.a *.o attributes/*.o widgets/*.o widgets/*/*.o hier_merge slayout
+	rm -f Makefile.extern definitions.h *.a *.o attributes/*.o widgets/*.o widgets/*/*.o hier_merge slayout
+	cd widgets/kulfi; make clean
 
 script/taffydb:
 	#cd script; wget --no-check-certificate https://github.com/typicaljoe/taffydb/archive/master.zip

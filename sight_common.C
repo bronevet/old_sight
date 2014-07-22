@@ -16,8 +16,8 @@ namespace common {
 
 // Returns whether log generation has been enabled or explicitly disabled
 bool isEnabled() {
-  static bool checked=false;
-  static bool enabledDebug; // Records whether log generation has been enabled or explicitly disabled
+	static __thread bool checked=false;
+	static __thread bool enabledDebug; // Records whether log generation has been enabled or explicitly disabled
   if(!checked) {
     checked = true;
     enabledDebug = (getenv("DISABLE_SIGHT") == NULL);

@@ -16,7 +16,7 @@ namespace structure {
 
 // Records all the currently active instance of timeClock. Since all instances of timeClock
 // correspond to the same real clock, we register the clock once for all currently active instances of timeClock.
-std::set<timeClock*> timeClock::active;
+ThreadLocalStorageSet<timeClock*> timeClock::active;
 
 timeClock::timeClock() {
   // Only register this clock with sightObj if a timeClock is not already registered with it
@@ -74,7 +74,7 @@ std::string timeClock::str() const {
  ***** stepClock *****
  *********************/
 
-int stepClock::maxStepClockID=0;
+ThreadLocalStorage1<int, int> stepClock::maxStepClockID(0);
 
 // Create a step clock with the given number of dimensions in its steps
 stepClock::stepClock(int numDim) {   
@@ -151,17 +151,13 @@ std::string stepClock::str() const {
    if(active.size()==0)
      {
        sightObj::addClock("mpiClock", this);
-   //   active.insert(this);
 
-       //  static bool initialized=false;
-       // if(!initialized) {
-       // initialized = true;
        PNMPI_modHandle_t handle;
 
       int err=PNMPI_Service_GetModuleByName("SClock-module",&handle);
       if (err!=MPI_SUCCESS){
-	printf("error loading SClock-module \n");
-	return;
+		printf("error loading SClock-module \n");
+		return;
       }
 
       PNMPIMOD_SClock_getSTime_t r_get;
@@ -169,8 +165,8 @@ std::string stepClock::str() const {
 
       err=PNMPI_Service_GetServiceByName(handle,"getSTime","p",&s_get);
       if (err!=MPI_SUCCESS){
-	printf("error loading getSTime \n");
-	return;
+    	  printf("error loading getSTime \n");
+    	  return;
       }
       r_get=(PNMPIMOD_SClock_getSTime_t) s_get.fct;
 
@@ -218,6 +214,79 @@ std::string stepClock::str() const {
     return txt() << "[mpiClock: time="<<curTime<<"]";
   }
 
+/*****************************
+ ***** scalarCausalClock *****
+ *****************************/
+
+// Records all the currently active instances of scalarCausalClock. Since all instances of scalarCausalClock
+// correspond to the same real clock, we register the clock once for all currently active instances of scalarCausalClock.
+ThreadLocalStorageSet<scalarCausalClock*> scalarCausalClock::active;
+
+scalarCausalClock::scalarCausalClock() {
+  // Only register this clock with sightObj if a scalarCausalClock is not already registered with it
+  if(active.size()==0)
+    sightObj::addClock("scalarCausalClock", this);
+  active.insert(this);
+  
+  time=0;
+  lastTime=-1;
+}
+
+scalarCausalClock::~scalarCausalClock() {
+  active.erase(this);
+  
+  // If this was the instance of scalarCausalClock that was registered with sightObj
+  if(sightObj::isActiveClock("scalarCausalClock", this)) {
+    // If there are other active instances, update the record to point to one of them
+    if(active.size() > 0) sightObj::updClock("scalarCausalClock", *active.begin());
+    // Otherwise, unregister this clock
+    else                  sightObj::remClock("scalarCausalClock");
+  }
+}
+
+properties* scalarCausalClock::setProperties(properties* props) {
+  assert(props);
+  
+  // Update the clock
+  modified();
+  
+  // Store the current time in props
+  map<string, string> pMap;
+  pMap["time"] = txt()<<time;
+  props->add("scalarCausalClock", pMap);
+  return props;
+}
+
+// Called when information/causality is sent from one thread to another.
+// Returns the current local scalar clock, enabling the calling sender to propagate it to the receiver.
+long long scalarCausalClock::send()
+{
+  return time;
+}
+
+// Called when information/causality is received from one thread to another.
+// Takes as an argument the sender's clock at the time of the send operation.
+void scalarCausalClock::recv(const long long& sendTime)
+{
+  // Update time to be the maximum of the local time and sendTime+1
+  time = (sendTime+1 > time? sendTime+1 : time);
+}
+
+// Returns true if the clock has been modified since the time of its registration or the last time modified() was called.
+bool scalarCausalClock::modified() { 
+  // If time has not changed, report so
+  if(time == lastTime) return false;
+  // If it has changed, update lastTime to it and report the change
+  else {
+    lastTime = time;
+    return true;
+  }
+}
+
+std::string scalarCausalClock::str() const {
+  return txt() << "[scalarCausalClock: time="<<time<<"]";
+}
+
 
 
 /*****************
@@ -260,7 +329,9 @@ ClockMergeHandlerInstantiator::ClockMergeHandlerInstantiator() {
   (*MergeHandlers   )["mpiClock"]  = MpiClockMerger::create;
   (*MergeKeyHandlers)["mpiClock"]  = MpiClockMerger::mergeKey;                                                      
 
-  //  MergeGetStreamRecords->insert(&MpiClockGetMergeStreamRecord);
+  (*MergeHandlers   )["scalarCausalClock"]  = ScalarCausalClockMerger::create;
+  (*MergeKeyHandlers)["scalarCausalClock"]  = ScalarCausalClockMerger::mergeKey;
+
   MergeGetStreamRecords->insert(&StepClockGetMergeStreamRecord);
 }
 ClockMergeHandlerInstantiator ClockMergeHandlerInstance;
@@ -270,13 +341,7 @@ ClockMergeHandlerInstantiator ClockMergeHandlerInstance;
     mergeMap["stepClock"] = new StepClockStreamRecord(streamID);
     return mergeMap;
   }
-  /*
-  std::map<std::string, streamRecord*> MpiClockGetMergeStreamRecord(int streamID) {
-    std::map<std::string, streamRecord*> mergeMap; 
-    mergeMap["mpiClock"] = new MpiClockStreamRecord(streamID);
-    return mergeMap;              
-  }
-  */
+
 
   /*************************** 
    ***** TimeClockMerger *****  
@@ -329,7 +394,6 @@ void TimeClockMerger::mergeKey(properties::tagType type, properties::iterator ta
     info.add(properties::getInt(tag, "time"));
   }
 }
-
 
 /***************************
  ***** StepClockMerger *****
@@ -449,6 +513,60 @@ void StepClockMerger::mergeKey(properties::tagType type, properties::iterator ta
       info.add(properties::getInt(tag, "time"));
     }
   }
+
+/***********************************
+ ***** ScalarCausalClockMerger *****
+ ***********************************/
+
+ScalarCausalClockMerger::ScalarCausalClockMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+                         std::map<std::string, streamRecord*>& outStreamRecords,
+                         std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                         properties* props) : 
+        Merger(advance(tags), outStreamRecords, inStreamRecords, 
+                    setProperties(tags, outStreamRecords, inStreamRecords, props))
+{ }
+
+
+// Sets the properties of the merged object
+properties* ScalarCausalClockMerger::setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+                                       map<string, streamRecord*>& outStreamRecords,
+                                       vector<map<string, streamRecord*> >& inStreamRecords,
+                                       properties* props) {
+  if(props==NULL) props = new properties();
+  
+  assert(tags.size()>0);
+  vector<string> names = getNames(tags); assert(allSame<string>(names));
+  assert(*names.begin() == "scalarCausalClock");
+  
+  map<string, string> pMap;
+  properties::tagType type = streamRecord::getTagType(tags); 
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Clock!"<<endl; exit(-1); }
+  if(type==properties::enterTag) {
+    // Emit the local and global clock ID, which must be the same for all tags
+    vector<string> t = getValues(tags, "time");
+    assert(allSame<string>(t));
+    pMap["time"] = txt()<<*t.begin();
+  }
+  props->add("scalarCausalClock", pMap);
+  
+  return props;
+}
+
+// Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+// tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
+// Each level of the inheritance hierarchy may add zero or more elements to the given list and 
+// call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
+void ScalarCausalClockMerger::mergeKey(properties::tagType type, properties::iterator tag, 
+                               std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+  properties::iterator blockTag = tag;
+    
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
+  if(type==properties::enterTag) {
+    // Differentiate clocks according to their time
+    info.add(properties::get(tag, "time"));
+  }
+}
+
 
 }; // namespace structure 
 }; // namespace sight

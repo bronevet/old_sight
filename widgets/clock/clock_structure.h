@@ -20,22 +20,22 @@ namespace structure {
 // A clock based on the current system time
 class timeClock: public sightClock {
   private:
-  struct timeval curTime;
+	struct timeval curTime;
   
-  // Records all the currently active instance of timeClock. Since all instances of timeClock
-  // correspond to the same real clock, we register the clock once for all currently active instances of timeClock.
-  static std::set<timeClock*> active;
+	// Records all the currently active instance of timeClock. Since all instances of timeClock
+	// correspond to the same real clock, we register the clock once for all currently active instances of timeClock.
+	static ThreadLocalStorageSet<timeClock*> active;
   
-  timeClock();
+	timeClock();
   
-  ~timeClock();
+	~timeClock();
   
-  properties* setProperties(properties* props);
+	properties* setProperties(properties* props);
   
-  // Returns true if the clock has been modified since the time of its registration or the last time modified() was called.
-  bool modified();
+	// Returns true if the clock has been modified since the time of its registration or the last time modified() was called.
+	bool modified();
   
-  std::string str() const;
+	std::string str() const;
 }; // class timeClock
 
 
@@ -43,33 +43,33 @@ class timeClock: public sightClock {
 // or iterations of a loop nest.
 class stepClock: public sightClock {
   private:
-  // This stepClock's uniqueID
-  static int maxStepClockID;
-  int stepClockID;
+	// This stepClock's uniqueID
+	static ThreadLocalStorage1<int, int> maxStepClockID;
+  	int stepClockID;
   
-  // The current step of this clock
-  std::vector<int> curStep;
+  	// The current step of this clock
+  	std::vector<long> curStep;
     
-  // Records whether this clock has been modified since its creation or the last time modified() was called;
-  bool isModified;
+  	// Records whether this clock has been modified since its creation or the last time modified() was called;
+  	bool isModified;
   
   public:
-  // Create a step clock with the given number of dimensions in its steps
-  stepClock(int numDim);
+  	// Create a step clock with the given number of dimensions in its steps
+  	stepClock(int numDim);
   
-  ~stepClock();
+  	~stepClock();
   
-  properties* setProperties(properties* props);
+  	properties* setProperties(properties* props);
   
-  // Indicates that we've taken a step in the given dimension. This causes the clock's value at the given
-  // dimension to be incremented and for all the subsequent dimensions to be set to 0
-  void step(int dim);
+	// Indicates that we've taken a step in the given dimension. This causes the clock's value at the given
+	// dimension to be incremented and for all the subsequent dimensions to be set to 0
+  	void step(int dim);
   
-  // Returns true if the clock has been modified since the time of its registration or the last time modified() was called.
-  bool modified();
+  	// Returns true if the clock has been modified since the time of its registration or the last time modified() was called.
+  	bool modified();
   
-  std::string str() const;
-}; // class phaseClock
+  	std::string str() const;
+}; // class stepClock
 
   // Scalar Clock for mpi programs
   class mpiClock: public sightClock {
@@ -84,6 +84,7 @@ class stepClock: public sightClock {
     // Records all the currently active instance of timeClock. Since all instances of timeClock
     // correspond to the same real clock, we register the clock once for all currently active instances of timeClocK.
     static std::set<mpiClock*> active;
+
   public:
     mpiClock();
 
@@ -98,35 +99,37 @@ class stepClock: public sightClock {
   }; // class mpiClock   
 
 
+// A scalar clock for tracking causal order in concurrent applications
+class scalarCausalClock: public sightClock {
+  private:
+	  long long time;
+	  // The time value that was most recently reported
+	  long long lastTime;
+  
+	  // Records all the currently active instance of timeClock. Since all instances of timeClock
+	  // correspond to the same real clock, we register the clock once for all currently active instances of timeClock.
+	  static ThreadLocalStorageSet<scalarCausalClock*> active;
+ 
+  public: 
+	  scalarCausalClock();
+  
+	  ~scalarCausalClock();
+  
+	  properties* setProperties(properties* props);
+  
+	  // Called when information/causality is sent from one thread to another.
+	  // Returns the current local scalar clock, enabling the calling sender to propagate it to the receiver.
+	  long long send();
 
+	  // Called when information/causality is received from one thread to another.
+	  // Takes as an argument the sender's clock at the time of the send operation.
+	  void recv(const long long& sendTime);
 
+	  // Returns true if the clock has been modified since the time of its registration or the last time modified() was called.
+	  bool modified();
 
-/*class clock: public sightObj
-{
-  protected:
-  
-  // Unique ID of this clock object, based on an ever-increasing counter within the calling process
-  static int maxClockID;
-  int clockID;
-  
-  // A unique ID that is provided by the calling process that may differentiate this process' clock from the clocks of others
-  int globalID;
-    
-  // If an attribute key was provided to this selector, records it here
-  std::string attrKey;
-  // Records whether the key was provided
-  bool attrKeyKnown;
-  
-  public:
-  
-  clock(int globalID=0, properties* props=NULL);
-  
-  // Returns the properties of this object
-  static properties* setProperties(int globalID, properties* props);
-  
-  int getClockID()  const { return clockID; }
-  int getGlobalID() const { return globalID; }
-};*/
+	  std::string str() const;
+}; // class scalarCausalClock
 
 class ClockMergeHandlerInstantiator: public MergeHandlerInstantiator {
   public:
@@ -139,6 +142,8 @@ std::map<std::string, streamRecord*> ClockGetMergeStreamRecord(int streamID);
 std::map<std::string, streamRecord*> StepClockGetMergeStreamRecord(int streamID);
 
 std::map<std::string, streamRecord*> MpiClockGetMergeStreamRecord(int streamID);
+
+std::map<std::string, streamRecord*> ScalarCausalClockGetMergeStreamRecord(int streamID);
 
 
 // Merger for timeClock tag
@@ -220,16 +225,40 @@ class StepClockStreamRecord: public streamRecord {
 // Merger for mpiClock tag
  class MpiClockMerger : public Merger {
  public:
-  MpiClockMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
-		 std::map<std::string, streamRecord*>& outStreamRecords,
-		 std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
-		 properties* props=NULL);
+	MpiClockMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+			std::map<std::string, streamRecord*>& outStreamRecords,
+			std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+			properties* props=NULL);
+	static Merger* create(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
+							std::map<std::string, streamRecord*>& outStreamRecords,
+							std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+							properties* props)
+	  { return new MpiClockMerger(tags, outStreamRecords, inStreamRecords, props); }
+	  // Sets the properties of the merged object
+	  static properties* setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+	                                   std::map<std::string, streamRecord*>& outStreamRecords,
+	                                   std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+	                                   properties* props);
+	// Sets a list of strings that denotes a unique ID according to which instances of this merger's
+	// tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
+	// Each level of the inheritance hierarchy may add zero or more elements to the given list and
+	// call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
+	static void mergeKey(properties::tagType type, properties::iterator tag,
+                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
+}; // class MpiClockMerger
 
+// Merger for scalarCausalClock tag
+class ScalarCausalClockMerger : public Merger {
+  public:
+  ScalarCausalClockMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+              std::map<std::string, streamRecord*>& outStreamRecords,
+              std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+              properties* props=NULL);
   static Merger* create(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
-                        std::map<std::string, streamRecord*>& outStreamRecords,
-                        std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
-                        properties* props)
-  { return new MpiClockMerger(tags, outStreamRecords, inStreamRecords, props); }
+  							std::map<std::string, streamRecord*>& outStreamRecords,
+  							std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+  							properties* props)
+  { return new ScalarCausalClockMerger(tags, outStreamRecords, inStreamRecords, props); }
 
   // Sets the properties of the merged object
   static properties* setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
@@ -237,35 +266,13 @@ class StepClockStreamRecord: public streamRecord {
                                    std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
                                    properties* props);
 
-  // Sets a list of strings that denotes a unique ID according to which instances of this merger's
+  // Sets a list of strings that denotes a unique ID according to which instances of this merger's 
   // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
-  // Each level of the inheritance hierarchy may add zero or more elements to the given list and  
+  // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
-  static void mergeKey(properties::tagType type, properties::iterator tag,
+  static void mergeKey(properties::tagType type, properties::iterator tag, 
                        std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
-}; // class MpiClockMerger
-
-
-
- class MpiClockStreamRecord: public streamRecord {
-  friend class MpiClockMerger;
-
- public:
- MpiClockStreamRecord(int vID)              : streamRecord(vID, "mpiClock") { }
- MpiClockStreamRecord(const variantID& vID) : streamRecord(vID, "mpiClock") { }
- MpiClockStreamRecord(const MpiClockStreamRecord& that, int vSuffixID) : streamRecord(that, vSuffixID) {}
-  
-  // Returns a dynamically-allocated copy of this streamRecord, specialized to the given variant ID,
-  // which is appended to the new stream's variant list.
-  streamRecord* copy(int vSuffixID) { return new MpiClockStreamRecord(*this, vSuffixID); }
-  std::string str(std::string indent="") const {
-    std::ostringstream s;
-    s << "[MpiClockStreamRecord: ";
-    s << streamRecord::str(indent+"    ") << "]";
-    return s.str();
-  }
-}; // class MpiClockStreamRecord   
-
+}; // class ScalarCausalClockMerger
 
 } // namespace structure
 } // namespace sight

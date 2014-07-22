@@ -66,7 +66,7 @@ void valSelector::observeSelection(properties::iterator props, string fieldName,
  ***** colorSelector *****
  *************************/
 
-colorSelector::colorSelector(properties::iterator props) : valSelector()
+colorSelector::colorSelector(properties::iterator props) : valSelector(props)
 {
   static bool initialized=false;
   if(!initialized) {

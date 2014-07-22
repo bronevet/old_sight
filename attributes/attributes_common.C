@@ -433,6 +433,30 @@ double attrValue::getAsFloat() const {
   }
 }
 
+// Encodes the JavaScript representation of this attrValue into a string and returns the result.
+std::string attrValue::getAsJS() const {
+       if(type == strT)   return txt() << "'"<<*((string*)store)<<"'";
+  else if(type == ptrT)   return txt() << *((void**)store);
+  else if(type == intT)   return txt() << *((long*)store);
+  else if(type == floatT) return txt() << std::setprecision(16) << *((double*)store);
+  else if(type == customT || type == customSerT) { 
+    cerr << "attrValue::getAsJS() ERROR: custom attributes not currently supported!"<<endl; assert(0);
+  } else  {
+    cerr << "attrValue::getAsJS() ERROR: unknown attribute value type: "<<type2str(type)<<"!"<<endl;assert(0);
+  }
+}
+
+// Returns a JavaScript function that compares instances of the type of this attrValue
+std::string attrValue::getComparatorJS() const {
+  if(type == strT || type == ptrT || type == intT || type == floatT) { 
+    return "function(a,b) { return (a<b: -1: (a==b? 0: 1)); }";
+  } else if(type == customT || type == customSerT) { 
+    cerr << "attrValue::getComparatorJS() ERROR: custom attributes not currently supported!"<<endl; assert(0);
+  } else  {
+    cerr << "attrValue::getComparatorJS() ERROR: unknown attribute value type: "<<type2str(type)<<"!"<<endl;assert(0);
+  }
+}
+
 // Encodes the contents of this attrValue into a string that can be decoded by providing it to the
 // attrValue(const std::string& strV, attrValue::valueType type) constructor
 std::string attrValue::serialize() const {
@@ -795,7 +819,6 @@ const generalComparator& generalComparator::castTo(const comparator& comp) {
 /************************
  ***** LkComparator *****
  ************************/
-
 // Returns a comparator that can be used to compare objects of the given valueType
 comparator* LkComp::generate(std::string description) {
   int kEnd = description.find(":");
@@ -882,6 +905,17 @@ baseAttrValueComparatorInstantiator baseAttrValueComparatorInstance;
  ***** sightArray *****
  **********************/
 
+// Copies the contents of fromArray (type fromT) to toArray (type toT)
+// and sets toArray to point to the new array.
+template<typename toT, typename fromT>
+void copyArray(toT** toArray, fromT* fromArray, int numElements)
+{
+  *toArray = new toT[numElements];
+  for(int i=0; i<numElements; i++) {
+    (*toArray)[i] = toT(fromArray[i]);
+  }
+}
+
 /*sightArray::sightArray(const dims& d, void* array, attrValue::valueType type, bool arrayOwner) :
       array(array), d(d), type(type),              arrayOwner(arrayOwner)
 { init(); }
@@ -910,9 +944,17 @@ sightArray::sightArray(const dims& d, float* array,                           bo
 sightArray::sightArray(const dims& d, void* array, attrValue::valueType type) :
       array(array), d(d), type(type),              arrayOwner(false)
 { init(); }
+sightArray::sightArray(const dims& d, const void* array, attrValue::valueType type) :
+      array((void*)array), d(d), type(type),              arrayOwner(false)
+{ init(); }
+
 sightArray::sightArray(const dims& d, std::string* array) :
       array(array), d(d), type(attrValue::strT),   arrayOwner(false)
 { init(); }
+sightArray::sightArray(const dims& d, const std::string* array) :
+      array((string*)array), d(d), type(attrValue::strT),   arrayOwner(false)
+{ init(); }
+
 sightArray::sightArray(const dims& d, char** array) :
                    d(d), type(attrValue::strT),   arrayOwner(true)
 {
@@ -921,19 +963,33 @@ sightArray::sightArray(const dims& d, char** array) :
 
   // Since we maintain string data internally as a string type, create
   // a new array that holds the original string data using this representation
-  string* newArray = new string[numElements];
-  for(int i=0; i<numElements; i++) {
-    newArray[i] = string(array[i]);
-  }
-  this->array = newArray;
+  copyArray((string**)&(this->array), array, numElements);
+}
+sightArray::sightArray(const dims& d, const char** array) :
+                   d(d), type(attrValue::strT),   arrayOwner(true)
+{
+  // Initialize numElements
+  init();
+
+  // Since we maintain string data internally as a string type, create
+  // a new array that holds the original string data using this representation
+  copyArray((string**)&(this->array), array, numElements);
 }
 
 sightArray::sightArray(const dims& d, void** array) :
       array(array), d(d), type(attrValue::ptrT),   arrayOwner(false)
 { init(); }
+sightArray::sightArray(const dims& d, const void** array) :
+      array((void**)array), d(d), type(attrValue::ptrT),   arrayOwner(false)
+{ init(); }
+
 sightArray::sightArray(const dims& d, long* array) :
       array(array), d(d), type(attrValue::intT),   arrayOwner(false)
 { init(); }
+sightArray::sightArray(const dims& d, const long* array) :
+      array((long*)array), d(d), type(attrValue::intT),   arrayOwner(false)
+{ init(); }
+
 sightArray::sightArray(const dims& d, int* array) :
                     d(d), type(attrValue::intT),   arrayOwner(true)
 {
@@ -942,16 +998,26 @@ sightArray::sightArray(const dims& d, int* array) :
 
   // Since we maintain integral data internally using long precision, create
   // a new array that holds the original integral data using this precision
-  long* newArray = new long[numElements];
-  for(int i=0; i<numElements; i++) {
-    newArray[i] = long(array[i]);
-  }
-  this->array = newArray;
+  copyArray((long**)&(this->array), array, numElements);
+}
+sightArray::sightArray(const dims& d, const int* array) :
+                    d(d), type(attrValue::intT),   arrayOwner(true)
+{
+  // Initialize numElements
+  init();
+
+  // Since we maintain integral data internally using long precision, create
+  // a new array that holds the original integral data using this precision
+  copyArray((long**)&(this->array), array, numElements);
 }
 
 sightArray::sightArray(const dims& d, double* array) :
       array(array), d(d), type(attrValue::floatT), arrayOwner(false)
 { init(); }
+sightArray::sightArray(const dims& d, const double* array) :
+      array((double*)array), d(d), type(attrValue::floatT), arrayOwner(false)
+{ init(); }
+
 sightArray::sightArray(const dims& d, float* array) :
                     d(d), type(attrValue::floatT), arrayOwner(true)
 {
@@ -960,11 +1026,17 @@ sightArray::sightArray(const dims& d, float* array) :
 
   // Since we maintain floating-point data internally using double precision, create
   // a new array that holds the original float data using this precision
-  double* newArray = new double[numElements];
-  for(int i=0; i<numElements; i++) {
-    newArray[i] = double(array[i]);
-  }
-  this->array = newArray;
+  copyArray((double**)&(this->array), array, numElements);
+}
+sightArray::sightArray(const dims& d, const float* array) :
+                    d(d), type(attrValue::floatT), arrayOwner(true)
+{
+  // Initialize numElements
+  init();
+
+  // Since we maintain floating-point data internally using double precision, create
+  // a new array that holds the original float data using this precision
+  copyArray((double**)&(this->array), array, numElements);
 }
 
 sightArray::sightArray(const dims& d, shared_ptr<void> sharray, attrValue::valueType type) :

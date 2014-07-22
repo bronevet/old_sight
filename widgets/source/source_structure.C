@@ -44,7 +44,7 @@ properties* source::setProperties(std::string label, const source::regions& r, c
     
   // If the current attribute query evaluates to true (we're emitting debug output) AND
   // either onoffOp is not provided or its evaluates to true
-  if(attributes.query() && (onoffOp? onoffOp->apply(): true)) {
+  if(attributes->query() && (onoffOp? onoffOp->apply(): true)) {
     props->active = true;
     map<string, string> pMap;
     pMap["numRegions"] = txt() << r.size();

@@ -105,7 +105,7 @@ class attrValue {
   double           getFloat() const;
   customAttrValue* getCustom() const;
   std::string      getCustomSer() const;
-
+  
   // Parse the given string as one of the scalar types that can be stored in an attrValue
   static void*  parsePtr  (std::string s);
   static long   parseInt  (std::string s);
@@ -113,9 +113,15 @@ class attrValue {
 
   // Encodes the contents of this attrValue into a string and returns the result.
   std::string getAsStr() const;
-
+  
   // Encodes the contents of this attrValue into a floating point number and returns the result.
   double getAsFloat() const;
+  
+  // Encodes the JavaScript representation of this attrValue into a string and returns the result.
+  std::string  getAsJS() const;
+  
+  // Returns a JavaScript function that compares instances of the type of this attrValue
+  std::string  getComparatorJS() const;
 
   // Encodes the contents of this attrValue into a string that can be decoded by providing it to the
   // attrValue(const std::string& strV, attrValue::valueType type) constructor
@@ -476,10 +482,6 @@ template<typename EltType, // The type of elements this comparator operates on
                          // before computing the norm (relevant for k=0 and odd k).
 class LkComparator: public scalarComparator {
   protected:
-
-  // Presents infinity to refer to k=0
-  static int infinity;
-
   // The total number of comparison observations
   int count;
 
@@ -762,6 +764,15 @@ class sightArray : public customAttrValue {
   sightArray(const dims& d, int* array/*,         bool arrayOwner=false*/);
   sightArray(const dims& d, double* array/*,      bool arrayOwner=false*/);
   sightArray(const dims& d, float* array/*,       bool arrayOwner=false*/);
+  
+  sightArray(const dims& d, const void* array, attrValue::valueType type/*, bool arrayOwner=false*/);
+  sightArray(const dims& d, const std::string* array/*, bool arrayOwner=false*/);
+  sightArray(const dims& d, const char** array/*,       bool arrayOwner=false*/);
+  sightArray(const dims& d, const void** array/*,       bool arrayOwner=false*/);
+  sightArray(const dims& d, const long* array/*,        bool arrayOwner=false*/);
+  sightArray(const dims& d, const int* array/*,         bool arrayOwner=false*/);
+  sightArray(const dims& d, const double* array/*,      bool arrayOwner=false*/);
+  sightArray(const dims& d, const float* array/*,       bool arrayOwner=false*/);
 
   sightArray(const dims& d, boost::shared_ptr<void> array, attrValue::valueType type);
   sightArray(const dims& d, boost::shared_ptr<std::string> array);
