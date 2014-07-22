@@ -1235,7 +1235,7 @@ void dbgStream::subBlockEnterNotify(block* subBlock)
   for(list<pair<block*, list<block*> > >::const_reverse_iterator fb=blocks.rbegin(); fb!=blocks.rend(); fb++) {
     // Iterate through the sub-blocks of this file
     for(list<block*>::const_reverse_iterator sb=fb->second.rbegin(); sb!=fb->second.rend(); sb++) {
-      //cout << "  Informing"<<(*sb)->getLabel()<<endl;
+      //cout << "  Informing "<<(*sb)->getLabel()<<endl;
       if(!(*sb)->subBlockEnterNotify(subBlock)) return;
     }
     
@@ -1473,6 +1473,7 @@ void dbgStream::printSummaryFileContainerHTML(string absoluteFileName, string re
   sum << "\t<script src=\"script/attributes.js\"></script>\n";
   sum << "\t<script src=\"script/core.js\"></script>\n";
   sum << "\t<script src=\"script/orderedDivs.js\"></script>\n";
+  sum << "\t<script src=\"script/uniqueMark.js\"></script>\n";
   sum << "\t<script type=\"text/javascript\">\n";
   sum << "\tfunction loadURLIntoDiv(doc, url, divName) {\n";
   sum << "\t\tvar xhr= new XMLHttpRequest();\n";
@@ -1515,6 +1516,7 @@ void dbgStream::printDetailFileContainerHTML(string absoluteFileName, string tit
   det << "\t<script src=\"script/attributes.js\"></script>\n";
   det << "\t<script src=\"script/core.js\"></script>\n";
   det << "\t<script src=\"script/orderedDivs.js\"></script>\n";
+  det << "\t<script src=\"script/uniqueMark.js\"></script>\n";
   det << "\t<STYLE TYPE=\"text/css\">\n";
   det << "\tBODY\n";
   det << "\t\t{\n";
@@ -1584,6 +1586,7 @@ void dbgStream::printDetailFileContainerHTML(string absoluteFileName, string tit
 //    the start of this major block and the next setting of an attribute.
 string dbgStream::enterBlock(block* b, bool newFileEntered, bool addSummaryEntry, bool recursiveEnterBlock)
 {
+  //cout <<"dbgStream::enterBlock() recursiveEnterBlock="<<recursiveEnterBlock<<", label="<<b->getLabel()<<endl;
   //cout << "<<<enter(newFileEntered="<<newFileEntered<<", addSummaryEntry="<<addSummaryEntry<<", recursiveEnterBlock="<<recursiveEnterBlock<<") b="<<b<<"="<<(b? b->getLabel(): "NULL")<<endl;
 //!!!  dbg << "<<<enter() fileBufs.size()="<<fileBufs.size()<<" && #blocks="<<blocks.size()<<", #blocks.back().second="<<blocks.back().second.size()<<", #fileBufs.back()->blocks="<<(fileBufs.size()==0? -1: fileBufs.back()->blocks.size())<<endl;
 /*  if(!recursiveEnterBlock)
@@ -1625,7 +1628,7 @@ string dbgStream::enterBlock(block* b, bool newFileEntered, bool addSummaryEntry
                "top.summary.document, 'summary."<<fileID<<".body', 'sumdiv"<<blockID<<"', "<<
                "'script/script."<<fileID<<"'";
   }
-  
+
   if(!recursiveEnterBlock) b->printEntry(loadCmd.str());
   dbg.ownerAccessing();  
   dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"<div id=\"div"<<b->getBlockID()<<"\" class=\"unhidden\">\n"; dbg.flush();
@@ -1833,7 +1836,62 @@ comparison::~comparison() {
   dbg.userAccessing();  
 }
 
+/**********************
+ ***** uniqueMark *****
+ **********************/
 
+// Record the layout handlers in this file
+uniqueMarkLayoutHandlerInstantiator::uniqueMarkLayoutHandlerInstantiator() { 
+/*  (*layoutEnterHandlers)["uniqueMark"] = &uniqueMarkEnterHandler;
+  (*layoutExitHandlers) ["uniqueMark"] = &uniqueMarkExitHandler;*/
+}
+uniqueMarkLayoutHandlerInstantiator uniqueMarkLayoutHandlerInstance;
+
+uniqueMark::uniqueMark(properties::iterator props) : block(properties::next(props))
+{
+  /*static bool initialized=false;
+  // Load uniqueMark-specific JavaScript files into the final document
+  if(!initialized) {
+    // Create the directory that holds the parallel-specific scripts
+    dbg.createWidgetDir("parallel");
+    
+    dbg.includeFile("parallel/uniqueMark.js");
+    dbg.includeWidgetScript("parallel/uniqueMark.js", "text/javascript");
+    initialized=true;
+  }*/
+
+  // Read all the unique IDs from props and register them in JavaScript
+  int numIDs = props.getInt("numIDs");
+  // At least one ID must have been specified
+  assert(numIDs > 0);
+  ostringstream allIDsS;
+  allIDsS << "[";
+  for(int i=0; i<numIDs; i++) {
+    if(i>0) allIDsS << ",";
+    allIDsS << "'"<<props.get(txt()<<"ID"<<i)<<"'";
+  }
+  allIDsS << "]";
+  allIDs = allIDsS.str();
+}
+
+uniqueMark::~uniqueMark()
+{ 
+}
+
+// Called to enable the block to print its entry and exit text
+void uniqueMark::printEntry(string loadCmd) {
+  //cout << "uniqueMark::printEntry("<<loadCmd<<")"<<endl;
+  // At least one ID must have been specified
+  assert(allIDs!="");
+  dbg.widgetScriptCommand(txt()<<"registerUniqueMark('"<<getBlockID()<<"',"<<allIDs<<");");
+}
+
+void uniqueMark::printExit() {
+}
+
+/*void* uniqueMarkEnterHandler(properties::iterator props) { return new uniqueMark(props); }
+void  uniqueMarkExitHandler(void* obj) { uniqueMark* s = static_cast<uniqueMark*>(obj); delete s; }*/
+ 
 
 // Given a string, returns a version of the string with all the control characters that may appear in the 
 // string escaped to that the string can be written out to Dbg::dbg with no formatting issues.

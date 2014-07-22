@@ -11,7 +11,7 @@ namespace structure {
  ***** valSelector *****
  ***********************/
 
-__thread int valSelector::maxSelID=0;
+ThreadLocalStorage1<int, int> valSelector::maxSelID(0);
 
 valSelector::valSelector(properties* props) : sightObj(props) {
   attrKeyKnown = false;
@@ -129,8 +129,8 @@ list<sightObj*> activeFormats;
 // by the given value selector
 void start_internal(valSelector& sel, const attrValue* val, string name) { 
   // Each text-colored region is given a different uniqueID to make it possible to apply formatting to each one 
-  // independently. Region identities are assigned using the instanceID counter, which is continually incremented
-  __thread static int instanceID=0;
+  // independently. Region identities are assi)gned using the instanceID counter, which is continually incremented
+  static ThreadLocalStorage1<int, int> instanceID(0);
   
   // Only bother if this text will be emitted
   if(!attributes->query()) return;

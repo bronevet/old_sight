@@ -1,3 +1,49 @@
+// Add the given eventHandle function to listen to events of the given type (e.g., click, mouseover)
+// on the given DOM element elem
+function addEvent(elem, type, eventHandle) {
+    if (elem == null || typeof(elem) == 'undefined') return;
+    if ( elem.addEventListener ) {
+        elem.addEventListener( type, eventHandle, false );
+    } else if ( elem.attachEvent ) {
+        elem.attachEvent( "on" + type, eventHandle );
+    } else {
+        elem["on"+type]=eventHandle;
+    }
+};
+
+// Add the given eventHandle function to listen for resize events on the document window.
+// Unlike regular resize event handlers, which are called continuously as the user
+// is dragging the window boundaries, this function ensures that eventHandle() is called
+// only after the resize is complete, which is defined as delta milliseconds after the 
+// most recent resize event. delta defaults to 200ms.
+// Based on http://forum.jquery.com/topic/the-resizeend-event
+function addLazyWindowResizeEvent(eventHandle, delta) {
+  var data = {rtime: new Date(1, 1, 2000, 12,00,00),
+              calledHandle: false,
+              delta: (delta == undefined? 200: delta),
+              eventHandle: eventHandle};
+              
+  addEvent(window, "resize", function() {
+    data.rtime = new Date();
+    if (data.calledHandle === false) {
+      setTimeout(function() { addLazyWindowResizeEventEnd(data); }, data.delta);
+    }
+  });
+}
+
+function addLazyWindowResizeEventEnd(data) {
+  if((new Date() - data.rtime) < data.delta) {
+    setTimeout(function() { addLazyWindowResizeEventEnd(data); }, data.delta);
+  } else {
+    if(data.calledHandle === false) {
+      data.eventHandle();
+      data.calledHandle = true;
+    }
+  }
+}
+
+// Switch a given block's visibility state between hidden and unhidden. In hidden state
+// the block becomes very small, pulling subsequent text up in the page.
 function unhide(blockID) {
   var parentDiv = document.getElementById("div"+blockID);
   if (parentDiv) {
@@ -14,6 +60,16 @@ function unhide(blockID) {
       }
     }
   }
+  layoutOrderedDivs();
+  refreshParallelArrows();
+}
+
+// Returns whether the given div is hidden by looking at the chain of ancestor divs this div is
+// inside and checking if they've been hidden
+function isHidden(div) {
+  if(div == document.body) return false;
+  if(div.className=='hidden') return true;
+  else return isHidden(div.parentElement);  
 }
 
 // Toggle's the visibility of a div and the table it contains.
@@ -349,7 +405,7 @@ function focusLinkSummary(blockID, e) {
 }
 
 function focusLinkDetail(blockID) {
-	top.detail.location = "detail.0.html#anchor"+blockID;
+  top.detail.location = "detail.0.html#anchor"+blockID;
 }
 
 
@@ -462,4 +518,5 @@ if(!getFile([1, 2], 'loaded')) {
 } 
 else if(typeof next !== 'undefined') { next(); } 
 undefined;*/
+
 

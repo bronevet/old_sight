@@ -8,7 +8,7 @@ sight := ${sight_O} ${sight_H} gdbLineNum.pl sightDefines.pl
 
 ROOT_PATH = ${CURDIR}
 
-SIGHT_CFLAGS = -g -fPIC -I${ROOT_PATH} -I${ROOT_PATH}/attributes -I${ROOT_PATH}/widgets/* \
+SIGHT_CFLAGS = -g -fPIC -I${ROOT_PATH} -I${ROOT_PATH}/attributes -I${ROOT_PATH}/widgets/parallel \
                 -I${ROOT_PATH}/tools/callpath/src -I${ROOT_PATH}/tools/adept-utils/include \
                 -I${ROOT_PATH}/tools/boost_1_55_0 \
                 -I${ROOT_PATH}/widgets/papi/include \
@@ -244,7 +244,7 @@ gdbLineNum.pl: setupGDBWrap.pl sight_structure.C
 sightDefines.pl:
 	printf "\$$main::sightPath = \"${ROOT_PATH}\"; return 1;" > sightDefines.pl
 
-Makefile.extern: initMakefile.extern
+Makefile.extern: initMakefile.extern Makefile
 	chmod 755 initMakefile.extern
 	./initMakefile.extern ${CC} ${CCC} ${RAPL_ENABLED} ${LLVM32_SRC_PATH} ${LLVM32_BUILD_PATH} ${LLVM32_INSTALL_PATH}
 

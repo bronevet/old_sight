@@ -1,9 +1,9 @@
 WIDGETS_COMMON_O := scope/scope_common.o graph/graph_common.o valSelector/valSelector_common.o trace/trace_common.o module/module_common.o source/source_common.o
 WIDGETS_COMMON_H := scope/scope_common.h graph/graph_common.h valSelector/valSelector_common.h trace/trace_common.h module/module_common.h source/source_common.h
-WIDGETS_STRUCTURE_O := scope/scope_structure.o graph/graph_structure.o valSelector/valSelector_structure.o trace/trace_structure.o module/module_structure.o source/source_structure.o clock/clock_structure.o
-WIDGETS_STRUCTURE_H := scope/scope_structure.h graph/graph_structure.h valSelector/valSelector_structure.h trace/trace_structure.h module/module_structure.h source/source_structure.h clock/clock_structure.h
-WIDGETS_LAYOUT_O := scope/scope_layout.o graph/graph_layout.o valSelector/valSelector_layout.o trace/trace_layout.o module/module_layout.o source/source_layout.o clock/clock_layout.o
-WIDGETS_LAYOUT_H := scope/scope_layout.h graph/graph_layout.h valSelector/valSelector_layout.h trace/trace_layout.h module/module_layout.h source/source_layout.o clock/clock_layout.h
+WIDGETS_STRUCTURE_O := scope/scope_structure.o graph/graph_structure.o valSelector/valSelector_structure.o trace/trace_structure.o module/module_structure.o source/source_structure.o clock/clock_structure.o parallel/parallel_structure.o
+WIDGETS_STRUCTURE_H := scope/scope_structure.h graph/graph_structure.h valSelector/valSelector_structure.h trace/trace_structure.h module/module_structure.h source/source_structure.h clock/clock_structure.h parallel/parallel_structure.h
+WIDGETS_LAYOUT_O := scope/scope_layout.o graph/graph_layout.o valSelector/valSelector_layout.o trace/trace_layout.o module/module_layout.o source/source_layout.o clock/clock_layout.o parallel/parallel_layout.o
+WIDGETS_LAYOUT_H := scope/scope_layout.h graph/graph_layout.h valSelector/valSelector_layout.h trace/trace_layout.h module/module_layout.h source/source_layout.o clock/clock_layout.h parallel/parallel_layout.h
 WIDGETS := ${WIDGETS_O} ${WIDGETS_H}
 
 MAKE_DEFINES = ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" CC=${CC} CCC=${CCC} KULFI_ENABLED=${KULFI_ENABLED} LLVM32_SRC_PATH=${LLVM32_SRC_PATH} LLVM32_BUILD_PATH=${LLVM32_BUILD_PATH} LLVM32_INSTALL_PATH=${LLVM32_INSTALL_PATH}
@@ -92,6 +92,12 @@ clock/clock_structure.o: clock/clock_structure.C clock/clock_structure.h
 
 clock/clock_layout.o: clock/clock_layout.C clock/clock_layout.h
 	${CCC} ${SIGHT_CFLAGS} clock/clock_layout.C -I.. -Igsl/include -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o clock/clock_layout.o
+
+parallel/parallel_structure.o: parallel/parallel_structure.C parallel/parallel_structure.h
+	${CCC} ${SIGHT_CFLAGS} parallel/parallel_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o parallel/parallel_structure.o
+
+parallel/parallel_layout.o: parallel/parallel_layout.C parallel/parallel_layout.h
+	${CCC} ${SIGHT_CFLAGS} parallel/parallel_layout.C -I.. -Igsl/include -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o parallel/parallel_layout.o
 
 
 ifeq (${KULFI_ENABLED}, 1)

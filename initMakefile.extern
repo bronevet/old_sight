@@ -19,7 +19,7 @@ f = open('Makefile.extern', 'w')
 
 f.write("ROOT_PATH = "+curDir+"\n");
 
-f.write("""SIGHT_CFLAGS = -I${ROOT_PATH} \\
+f.write("""SIGHT_CFLAGS = -I${ROOT_PATH} -I${ROOT_PATH}/widgets/parallel \\
                -I${ROOT_PATH}/tools/callpath/src -I${ROOT_PATH}/tools/adept-utils/include \\
                -I${ROOT_PATH}/widgets/papi/include\\
                -I${ROOT_PATH}/widgets/libmsr/include\n""");

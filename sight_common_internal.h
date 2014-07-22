@@ -297,7 +297,7 @@ class nullStream : public std::ostream
 }; // nullStream
 
 // An instance of nullStream that apps can write to with low overhead when they do not wish to emit output
-__thread extern nullStream nullS;
+extern nullStream nullS;
 
 // Stream that uses dbgBuf
 class dbgStream : public std::ostream

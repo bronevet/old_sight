@@ -1,9 +1,10 @@
+// Returns the absolute x/y position of the given element on the page
+// as a {x:, y:} hash
 function getPos(el) {
-    // yay readability
     for (var lx=0, ly=0;
          el != null;
          lx += el.offsetLeft, ly += el.offsetTop, el = el.offsetParent);
-    return ly;
+    return {x:lx, y:ly};
 }
 
 // Maps clock names to the comparators to be used with each one
@@ -94,7 +95,16 @@ function insertOrderedDiv(divRef, ID) {
 
 // Spatially lays out the ordered divs such that if one div causally follows another,
 // it is placed lower down the page
-function layoutOrderedDivs() {
+// startID - the ID from which the layout process should start. Useful for redrawing the layout
+//           after some piece of the output gets resized.
+function layoutOrderedDivs(startID) {
+    orderedDivs.Map(function(ID, cur) { 
+      var newWatermark = watermark;
+      for(var i=0; i<cur['divs'].length; i++) {
+        cur['divs'][i].style.height = 0;
+      }
+    });
+  
   //orderedDivs.Map(function(key, value) { alert(key+" => "+value); });
   var watermark=0;
   orderedDivs.Map(function(ID, cur) { 
@@ -105,15 +115,17 @@ function layoutOrderedDivs() {
       var newWatermark = watermark;
       for(var i=0; i<cur['divs'].length; i++) {
         var curPos = getPos(cur['divs'][i]);
-        if(curPos < watermark) {
-          cur['divs'][i].style.height = watermark - curPos;//cur['locs'][i];
-          console.log(i+": ID="+ID["scalarCausalClock"]+", Setting height of "+cur['divs'][i]+" to "+(watermark - curPos));
+        if(curPos.y < watermark) {
+          cur['divs'][i].style.height = watermark - curPos.y+10;
+          //if(!(i in cur['origPos'])) { cur['origPos'][i] = curPos.y; }
+          //console.log(i+": ID="+ID["scalarCausalClock"]+", Setting height of "+cur['divs'][i]+" to "+(watermark - curPos.y));
         } else
-          newWatermark = Math.max(newWatermark, curPos);
+          newWatermark = Math.max(newWatermark, curPos.y);
       }
       
       watermark = newWatermark;
     });
 }
+
 
 

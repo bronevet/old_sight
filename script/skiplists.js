@@ -74,11 +74,27 @@ function SkipList(maxLevel, P, compareFunc) {
     this.Head.pointer[i] = this.Nil;
   }
 
-  // Iterates this list in order, applying the given function mapFunc to each key and value pair
-  this.Map = function(mapFunc) {
-    var cursor = this.Head;
-    cursor = cursor.pointer[0];
-    while(cursor != this.Nil) {
+  // Iterates this list in order, applying the given function mapFunc to each key and value pair.
+  // bounds: optional hash that may have fields startNode and endNode
+  //   If startNode and/or endNode !== undefined, iteration starts at startNode and proceeds upto 
+  //   but not including endNode
+  //     - if endNode precedes startNode, mapping wraps around
+  //     - startNode or endNode must be in the list
+  //   If they are not defined, startNode=Head, endNode=Tail
+  this.Map = function(mapFunc, bounds) {
+    var cursor;
+    if(bounds==undefined || bounds.startNode==undefined) {
+      cursor = this.Head;
+      cursor = cursor.pointer[0];
+    } else
+      cursor = bounds.startNode;
+    
+    if(bounds==undefined || bounds.endNode==undefined)
+      endNode = this.Nil;
+    else
+      endNode = bounds.endNode;
+    
+    while(cursor != endNode) {
       mapFunc(cursor.key, cursor.value);
       
       cursor = cursor.pointer[0];
@@ -192,5 +208,6 @@ function SkipList(maxLevel, P, compareFunc) {
     return level;
   }
 }
+
 
 
