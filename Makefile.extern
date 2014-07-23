@@ -1,0 +1,46 @@
+ROOT_PATH = /g/g90/lee1031/Sight/sight
+SIGHT_CFLAGS = -I${ROOT_PATH} \
+               -I${ROOT_PATH}/tools/callpath/src -I${ROOT_PATH}/tools/adept-utils/include \
+               -I${ROOT_PATH}/widgets/papi/include\
+               -I${ROOT_PATH}/widgets/libmsr/include
+SIGHT_LINKFLAGS_NORPATH = -L${ROOT_PATH} -lsight_structure \
+                  -L${ROOT_PATH}/tools/adept-utils/lib -ladept_cutils -ladept_timing -ladept_utils \
+                  -L${ROOT_PATH}/tools/callpath/src/src -lcallpath \
+                  -L${ROOT_PATH}/widgets/papi/lib -lpapi \
+                  -L${ROOT_PATH}/widgets/gsl/lib -lgsl -lgslcblas \
+                  -L${ROOT_PATH}/widgets/libmsr/lib -lmsr \
+                  -lpthread
+SIGHT_LINKFLAGS = \
+                  -Wl,-rpath ${ROOT_PATH} \
+                  -L${ROOT_PATH} -lsight_structure \
+                  -L${ROOT_PATH}/tools/adept-utils/lib -ladept_cutils -ladept_timing -ladept_utils \
+                  -Wl,-rpath ${ROOT_PATH}/tools/adept-utils/lib \
+                  -L${ROOT_PATH}/tools/callpath/src/src -lcallpath \
+                  -Wl,-rpath ${ROOT_PATH}/tools/callpath/src/src \
+                  -L${ROOT_PATH}/widgets/papi/lib -lpapi \
+                  -Wl,-rpath ${ROOT_PATH}/widgets/papi/lib \
+                  ${ROOT_PATH}/widgets/gsl/lib/libgsl.so \
+                  ${ROOT_PATH}/widgets/gsl/lib/libgslcblas.so \
+                  -Wl,-rpath ${ROOT_PATH}/widgets/gsl/lib \
+                  ${ROOT_PATH}/widgets/libmsr/lib/libmsr.so \
+                  -Wl,-rpath ${ROOT_PATH}/widgets/libmsr/lib \
+                  -lpthread
+ 
+# Flags to use when linking a version of slayout that include object files
+# for additional widgets and capabilities
+
+# Dynamic linking
+SIGHT_LAYOUT_DYNAMIC_LINKFLAGS = \
+                  -Wl,-rpath ${ROOT_PATH} \
+                  ${ROOT_PATH}/libsight_layout.so \
+                  -Wl,-rpath ${ROOT_PATH}/widgets/gsl/lib -L${ROOT_PATH}/widgets/gsl/lib -lgsl -lgslcblas \
+                  ${ROOT_PATH}/tools/adept-utils/lib/libadept_cutils.so \
+                  ${ROOT_PATH}/tools/adept-utils/lib/libadept_timing.so \
+                  ${ROOT_PATH}/tools/adept-utils/lib/libadept_utils.so \
+                  -Wl,-rpath ${ROOT_PATH}/tools/adept-utils/lib \
+                  ${ROOT_PATH}/tools/callpath/src/src/libcallpath.so \
+                  -Wl,-rpath ${ROOT_PATH}/tools/callpath/src/src \
+                  ${ROOT_PATH}/widgets/papi/lib/libpapi.a \
+                 -lpthread
+CC = gcc
+CCC = g++

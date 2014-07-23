@@ -267,6 +267,8 @@ clean:
 clean_objects:
 	rm -f Makefile.extern definitions.h *.a *.o attributes/*.o widgets/*.o widgets/*/*.o hier_merge slayout
 	cd widgets/kulfi; make clean
+	rm ./libsight_structure.so
+	rm ./libsight_layout.so
 
 script/taffydb:
 	#cd script; wget --no-check-certificate https://github.com/typicaljoe/taffydb/archive/master.zip
