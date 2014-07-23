@@ -2,8 +2,8 @@ include ./../../Makefile.extern
 SHELL = /bin/sh
 .SUFFIXES: .cc .o
 
-CXX=mpic++ -DCDNODE_VIZ=1 -D_PROFILER=1
-CXXFLAGS = -g -fPIC -std=c++11 -Wall ${SIGHT_CFLAGS}
+CXX=mpig++ -DCDNODE_VIZ=1 -D_PROFILER=1
+CXXFLAGS = -g -fPIC -std=gnu++0x -Wall ${SIGHT_CFLAGS}
 
 LDFLAGS  = ${SIGHT_LINKFLAGS}
 SOURCE_CD_PROFILER= $(wildcard *.cc)

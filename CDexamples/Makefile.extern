@@ -4,7 +4,7 @@ SHELL = /bin/sh
 #CD_ROOT     := $(notdir $(patsubst %/,%,$(dir $(mkfile_path))))
 CD_ROOT     = $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 
-SIGHT_ROOT  = ${CD_ROOT}/tools/sight
+SIGHT_ROOT  = ${CD_ROOT}/..
 
 CD_APP      = ${CD_ROOT}/app
 CD_PROFILER = ${CD_ROOT}/profiler

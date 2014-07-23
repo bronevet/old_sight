@@ -551,7 +551,7 @@ CDErrT CDHandle::Complete (bool collective, bool update_preservations)
 
 //  dbg << " >>> Scope  Test -- "<<this->this_cd_->cd_id_<<", #sStack="<<sStack.size()<<endl;
   assert(this->sStack.size()>0);
-  assert(this->sStack.back() != nullptr);
+  assert(this->sStack.back() != NULL);
   delete this->sStack.back();
   this->sStack.pop_back();
 

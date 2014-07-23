@@ -7,10 +7,10 @@ LULESH_EXEC   = lulesh_cd_profile
 TEST_EXEC     = test_mpi_profiler
 EXEC_PROFILED = $(LULESH_EXEC)
 
-SERCXX   = c++ -DUSE_MPI=0 
-MPICXX   = mpic++ -DUSE_MPI=1 
+SERCXX   = g++ -DUSE_MPI=0 
+MPICXX   = mpig++ -DUSE_MPI=1 
 CXX      = $(MPICXX)
-CXXFLAGS = -g -std=c++11 -openmp -I${SILO_INCDIR} -Wall -Wno-pragmas ${CD_PROFILER_CFLAGS} ${SIGHT_CFLAGS}
+CXXFLAGS = -g -std=gnu++0x -openmp -I${SILO_INCDIR} -Wall -Wno-pragmas ${CD_PROFILER_CFLAGS} ${SIGHT_CFLAGS}
 LDFLAGS  = ${CD_PROFILER_LINKFLAGS} ${SIGHT_LINKFLAGS}
 
 #SILO_INCDIR = /usr/gapps/silo/current/chaos_5_x86_64/include
