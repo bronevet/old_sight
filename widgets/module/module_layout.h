@@ -201,6 +201,10 @@ class polyFitObserver: public traceObserver
   // Returns the formatted text representation of the fits, to be included in the HTML table 
   // that encodes each module's graph node
   std::string getFitText() const;
+
+  // hoa edit
+  // Returns the formatted text representation of the fits, not include html table
+  std::string saveFitText() const;
 }; // polyFitObserver
 
 class modularApp: public block, public common::module
@@ -242,6 +246,13 @@ class modularApp: public block, public common::module
   // The dot file that will hold the representation of the module interaction graph
   std::ofstream dotFile;
   
+  // hoa edit
+  // The txt file that will hold the representation of the module graph
+  std::ofstream tFile;
+  std::ofstream inouFile;
+  std::ofstream datFile;
+  std::ofstream ioInfoFile;
+
   public:
   
   modularApp(properties::iterator props);

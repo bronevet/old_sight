@@ -92,13 +92,43 @@ modularApp::modularApp(properties::iterator props) : block(properties::next(prop
   appID = properties::getInt(props, "appID");
   
   dbg.ownerAccessing();
+
+  // hoa edit
+  //dbg << "<div> <canvas id=\"flGra\" data-processing-sources=\"widgets/module/flGra.pde\" width=\"1200\" height=\"900\"> </canvas> </div>\n";
+  //dbg << "<a href=\"widgets/module/index.html\">Flow Graph</a>\n";
+  dbg << "<iframe id=\"flGrFrame\" src=\"widgets/module/index.html\" width=\"1300\" height=\"1200\"></iframe>\n";
+
   dbg << "<div id=\"module_container_"<<appID<<"\"></div>\n";
+
   dbg.userAccessing();
   
-  ostringstream origDotFName;   origDotFName   << outDir << "/orig."   << appID << ".dot";
+  ostringstream origDotFName;
+  origDotFName   << outDir << "/orig."   << appID << ".dot";
   dotFile.open(origDotFName.str().c_str());
   dotFile << "digraph G {"<<endl;
   dotFile << "\tcompound=true;"<<endl;
+
+  // hoa edit
+  // node file
+  ostringstream tFName;
+  //tFName   << outDir << "/node."   << appID << ".txt";
+  tFName   << outDir << "/node.txt";
+  tFile.open(tFName.str().c_str());
+  // input_output file
+  ostringstream inouFName;
+  //inouFName << outDir << "/inout." << appID << ".txt";
+  inouFName << outDir << "/inout.txt";
+  inouFile.open(inouFName.str().c_str());
+  // data for statistic visualization
+  ostringstream datFName;
+  //datFName << outDir << "/inout." << appID << ".txt";
+  datFName << outDir << "/dat.txt";
+  datFile.open(datFName.str().c_str());
+  // data for input and output variable information of modules
+  ostringstream ioInfoFName;
+  ioInfoFName << outDir << "/ioInfo.txt";
+  ioInfoFile.open(ioInfoFName.str().c_str());
+
 }
 
 // Initialize the environment within which generated graphs will operate, including
@@ -128,6 +158,12 @@ void modularApp::initEnvironment() {
   //dbg.includeWidgetScript("canviz-0.1/graphs/layoutlist.js", "text/javascript");
   
   dbg.includeFile("module/module.js"); dbg.includeWidgetScript("module/module.js", "text/javascript"); 
+
+  // hoa edit
+  dbg.includeFile("module/processing.js"); dbg.includeWidgetScript("module/processing.js", "text/javascript");
+  dbg.includeFile("module/flgr.js"); dbg.includeWidgetScript("module/flgr.js", "text/javascript");
+  dbg.includeFile("module/flGra.pde");
+  dbg.includeFile("module/index.html");
 }
 
 modularApp::~modularApp() {
@@ -138,6 +174,12 @@ modularApp::~modularApp() {
   dotFile << "}"<<endl;
   dotFile.close();
   
+  // hoa edit
+  tFile.close();
+  inouFile.close();
+  datFile.close();
+  ioInfoFile.close();
+
   dbg.exitBlock();
 
   // Lay out the dot graph   
@@ -166,6 +208,12 @@ string portName(common::module::ioT type, int index)
 // Given the name of a trace attribute, the string representation of its polynomial fit and a line width 
 // emits to dotFile HTML where line breaks are inserted at approximately every lineWidth characters.
 void printPolyFitStr(ostream& dotFile, std::string traceName, std::string polyFit, unsigned int lineWidth) {
+//void printPolyFitStr(ostream& tFile, std::string traceName, std::string polyFit, unsigned int lineWidth) {
+
+  // hoa edit
+  //tFile << "printPolyFitStr"<< endl;
+  //tFile << "traceName : " << traceName << endl;
+
   unsigned int i=0;
   dotFile << "\t\t<TR><TD><TABLE BORDER=\"0\"  CELLBORDER=\"0\">"<<endl;
   dotFile << "\t\t\t<TR><TD>:"<<traceName<<"</TD>";
@@ -244,6 +292,12 @@ int maxButtonID=0; // The maximum ID that has ever been assigned to a button
 // numInputs/numOutputs - the number of inputs/outputs of this module node
 // ID - the unique ID of this module node
 void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int numOutputs, int count) {
+
+  // hoa edit
+  tFile << moduleID <<":"<< moduleName << ":" << numInputs << ":"<<numOutputs <<endl;
+  //tFile << moduleName << ":" << numInputs << ":"<<numOutputs <<endl;
+  //ioInfoFile << moduleID <<":"<< numInputs << ":"<<numOutputs<< endl;
+
   //cout << "modularApp::enterModule("<<moduleName<<") numInputs="<<numInputs<<", #modules["<<moduleID<<"]->ctxtNames="<<modules[moduleID]->ctxtNames.size()<<endl;
   
   // Inform the traceStream associated with this module that it is finished. We need this stream to wrap up
@@ -320,7 +374,7 @@ void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int
                     ">"<<
                         "<FONT POINT-SIZE=\"20\">:"<<ctxtGrouping<<" "<<ctxtSubGrouping<<" "<<attrName<<"</FONT>"<<
                    "</TD>";
-        
+
         maxCtxt = (maxCtxt > c->second.size()? maxCtxt: c->second.size());
       }
       dotFile << "</TR>"<<endl;
@@ -393,12 +447,27 @@ void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int
     //hoa edit
     list<string> vizList;
     vizList.push_back("scatter3d");
-    vizList.push_back("ccp");
-    vizList.push_back("pcp");
 
+    // getDisplayJSCmd(contextAttrs, traceAttrs, hostDiv, vizList, inwin, showFresh, showLabels, refreshView)
     cmd << "registerModuleButtonCmd("<<maxButtonID<<", \""<<
                              moduleTraces[moduleID]->getDisplayJSCmd(contextAttrs, traceAttrs, "", vizList,true, true, false, true)<<
                            "\");"<<endl;
+    vizList.clear();
+    vizList.push_back("ccp");
+    cmd << "registerModuleButtonCmd("<<(maxButtonID+100)<<", \""<<
+                                 moduleTraces[moduleID]->getDisplayJSCmd(contextAttrs, traceAttrs, "", vizList,true, true, false, true)<<
+                               "\");"<<endl;
+
+    vizList.clear();
+	vizList.push_back("pcp");
+	cmd << "registerModuleButtonCmd("<<(maxButtonID+200)<<", \""<<
+								 moduleTraces[moduleID]->getDisplayJSCmd(contextAttrs, traceAttrs, "", vizList,true, true, false, true)<<
+							   "\");"<<endl;
+
+    string vizl = "scatter3d:ccp:pcp";
+    //datFile << "nodeid="<< moduleID << ",buttonID = " << maxButtonID << ",vizList =" << vizl << endl;
+    datFile << moduleID << "," << maxButtonID << "," << vizl << endl;
+
     /*
     cmd << "registerModuleButtonCmd("<<maxButtonID<<", \""<<
                              moduleTraces[moduleID]->getDisplayJSCmd(contextAttrs, traceAttrs, "", trace::scatter3d, true, false, true)<<
@@ -426,8 +495,17 @@ void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int
         //dotFile << "\t\t<TR><TD>:"<<modules[moduleID]->traceAttrNames[i]<< ": "<<wrapStr(polynomials[i], 50)<<"</TD></TR>"<<endl;
     }*/
     //cout << "polyFits[moduleID]="<<polyFits[moduleID]<<", polyFits[moduleID]->numFits()="<<polyFits[moduleID]->numFits()<<endl;
+
+	// hoa edit
+	//ioInfoFile << moduleID << ":"<<polyFits[moduleID]->numFits()<< endl;
+
     if(polyFits[moduleID] && polyFits[moduleID]->numFits()>0)
+    {
       dotFile << "\t\t"<<polyFits[moduleID]->getFitText()<<""<<endl;
+
+      //ioInfoFile <<"numFits="<<polyFits[moduleID]->numFits()<<endl;
+      ioInfoFile <<moduleID << ";"<<polyFits[moduleID]->numFits() << ";"<< polyFits[moduleID]->saveFitText()<<endl;
+    }
     
     
     //cout << "#modules[moduleID]->traceAttrNames="<<modules[moduleID]->traceAttrNames.size()<<endl;
@@ -438,6 +516,12 @@ void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int
       exitEmitted = true;
     }
   }
+  else
+  {
+	  // hoa edit
+	  ioInfoFile << moduleID << ";0"<< endl;
+  }
+
   if(!exitEmitted)
     dotFile << "\t\t<TR><TD PORT=\"EXIT\"></TD></TR>"<<endl;
   
@@ -476,6 +560,9 @@ void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int
     dotFile << "\tnode"<<moduleID<<"_Out      -> node"<<containerModuleID<<"_Out [weight=150, style=invis];"<<endl;
     //dotFile << "\tnode"<<containerModuleID<<" -> node"<<moduleID<<"         [ltail=cluster"<<containerModuleID<<", lhead=cluster"<<moduleID<<", weight=5];"<<endl;
     //dotFile << "\tnode"<<moduleID<<"_Out -> node"<<containerModuleID<<"_Out [ltail=cluster"<<moduleID<<", lhead=cluster"<<containerModuleID<<", weight=5];"<<endl;
+
+    // hoa edit
+    //tFile<<"ContainerModuleID="<<containerModuleID<<endl;
   }
   
   dotFile << "{rank=source;node"<<moduleID<<";}"<<endl;
@@ -535,6 +622,17 @@ void modularApp::registerModule(int moduleID, sight::layout::module* m, polyFitO
 void modularApp::addEdge(int fromCID, common::module::ioT fromT, int fromP, 
                          int toCID,   common::module::ioT toT,   int toP,
                          double prob) {
+
+  // hoa edit
+  /*
+  tFile << "adEdge" << endl;
+  tFile << "fromCID="<<fromCID<<"_Out:"<<portName(fromT, fromP)<<":s"<<
+          " -> "<<
+            "toCID="<<toCID  <<":"<<portName(toT,   toP  )<<":n "<<
+          "and penwidth="<<(1+prob*3)<<endl;
+  */
+  inouFile << fromCID <<"_"<< portName(fromT, fromP)<<":"<<toCID<<"_"<<portName(toT, toP)<< endl;
+
   dotFile << "\tnode"<<fromCID<<"_Out:"<<portName(fromT, fromP)<<":s"<<
              " -> "<<
                "node"<<toCID  <<":"<<portName(toT,   toP  )<<":n "<<
@@ -1399,6 +1497,27 @@ std::string polyFitObserver::getFitText() const
   }
   ret += "\t</TABLE></TD></TR>\n";
   
+  return ret;
+}
+
+// hoa edit
+// Returns the formatted text representation of the fits, not include the HTML table
+// that encodes each module's graph node
+std::string polyFitObserver::saveFitText() const
+{
+  string ret;
+
+  for(map<string, list<string> >::const_iterator f=fits.begin(); f!=fits.end(); f++)
+  {
+    ret += f->first + "=";
+    for(list<string>::const_iterator t=f->second.begin(); t!=f->second.end(); t++)
+    {
+      // Connect the terms with +'s
+      if(t!=f->second.begin()) ret += " + ";
+      ret += *t;
+    }
+    ret += ",";
+  }
   return ret;
 }
   

@@ -43,6 +43,7 @@ class trace: public block, public common::trace
   ~trace();
   
   static void *enterTraceStream(properties::iterator props);
+
 }; // class trace
 
 
@@ -289,8 +290,8 @@ class traceStream: public attrObserver, public common::trace, public traceObserv
   //      to them (false)
   // showLabels: boolean that indicates whether we should show a label that annotates a data plot (true) or whether
   //      we should just show the plot (false)
-  // hoa edit
 
+  // hoa edit
   std::string getDisplayJSCmd(const std::list<std::string>& contextAttrs, const std::list<std::string>& traceAttrs, std::string hostDiv, const std::list<std::string>& vizList, bool inwin,
                                 bool showFresh, bool showLabels, bool refreshView);
 

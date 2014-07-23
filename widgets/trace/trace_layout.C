@@ -47,7 +47,7 @@ trace::~trace() {
   
   assert(stream);
   delete(stream);
-  
+
   dbg.exitBlock();
   
   assert(tStack.size()>0);

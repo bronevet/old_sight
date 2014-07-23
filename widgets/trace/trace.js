@@ -28,7 +28,9 @@ function isNumber(n) {
   return !isNaN(parseFloat(n)) && isFinite(n);
 }
 
-function traceRecord(traceLabel, traceVals, traceValLinks, contextVals, viz) {
+// hoa edit
+function traceRecord(traceLabel, traceVals, traceValLinks, contextVals, viz) 
+{
   // If this is the first time we've added a record to this trace
   if(!traceDataList.hasOwnProperty(traceLabel)) {
     traceDataList[traceLabel] = [];
@@ -245,8 +247,9 @@ var displayTraceCalled = {};
   }
 }*/
 
+// hoa edit
 function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, vizList, inwin, showFresh, showLabels, refreshView)
-{
+{  
   var numContextAttrs=0;
   for(var i in ctxtAttrs) { if(ctxtAttrs.hasOwnProperty(i)) { numContextAttrs++; } }
   
@@ -254,6 +257,9 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, vizList, inw
   for(var i in traceAttrs) { if(traceAttrs.hasOwnProperty(i)) { numTraceAttrs++; } }
   
   var hostDiv = document.getElementById(hostDivID);
+  
+  //alert("traceLabel="+traceLabel+" hostDivID = " + hostDivID + "hostDiv = " + hostDiv);
+  //alert("ctxtAttrs="+ ctxtAttrs+" traceAttrs="+traceAttrs+" vizList="+vizList);
   
   // Create a version of traceList[traceLabel] where observations with different values for the context keys
   // in splitCtxtAttrs is placed in separate lists
@@ -275,8 +281,8 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, vizList, inw
         // start rendering a visualization method
      if(viz == 'table')
      {
-         met.push(new LertButton(viz, function()
-         {
+         //met.push(new LertButton(viz, function()
+         //{
             // NOTE: we always overwrite prior contents regardless of the value of showFresh, although this can be fixed in the future
             
             showTable(traceDataList[traceLabel], hostDivID, ctxtAttrs[0]);
@@ -311,12 +317,12 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, vizList, inw
              //traceTable.render("#div"+blockID);
              traceTable.render("#"+hostDivID+"-Table");
              });*/
-         }));
+        // }));
      }
      else if(viz == 'lines')
      {
-         met.push(new LertButton(viz, function()
-         {
+         //met.push(new LertButton(viz, function()
+         //{
             if(numContextAttrs!=1) { alert("Line visualizations require requre exactly one context variable for each chart"); return; }
             
             var cStr=ctxtAttrs[0].replace(/:/g, "-");
@@ -368,14 +374,14 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, vizList, inw
              render: "#"+hostDivID+"_"+ctxtAttrs[0]
              });
              });*/
-        }));
+        //}));
     }
         
         // start scatter3d
     else if(viz == 'scatter3d')
     {
-        met.push(new LertButton(viz, function()
-        {
+        //met.push(new LertButton(viz, function()
+        //{
             var ctxtStr="";
             for(var c in ctxtAttrs) { if(ctxtAttrs.hasOwnProperty(c)) {
                 ctxtStr += ctxtAttrs[c].replace(/:/g, "-")+"_";
@@ -444,8 +450,8 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, vizList, inw
                showScatter3D(data, attrNames, minVals, maxVals, numContextAttrs, numTraceAttrs, hostDivID, 1);
             else
             // open in new window
-            newwindow = window.open("widgets/trace/scatter3d.html?data="+data+"&attrNames="+attrNames+"&minVals="+minVals+"&maxVals="+maxVals+"&numContextAttrs="+numContextAttrs+"&numTraceAttrs="+numTraceAttrs+"&hostDivID="+hostDivID, "sc3d", "width=1000,                                                           height=1000, scrollbars=1, dependent=yes");
-        }));
+            newwindow = window.open("../trace/scatter3d.html?data="+data+"&attrNames="+attrNames+"&minVals="+minVals+"&maxVals="+maxVals+"&numContextAttrs="+numContextAttrs+"&numTraceAttrs="+numTraceAttrs+"&hostDivID="+hostDivID, "sc3d", "width=1000,                                                           height=1000, scrollbars=1, dependent=yes");
+        //}));
      }
      // end scatter 3d
         
@@ -453,8 +459,8 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, vizList, inw
      // start correlation coordinate plots
      else if(viz == 'ccp')
      {
-         met.push(new LertButton(viz, function()
-         {
+         //met.push(new LertButton(viz, function()
+         //{
             var ctxtStr="";
             for(var c in ctxtAttrs)
             {
@@ -536,8 +542,8 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, vizList, inw
             if(inwin == true)
             {
                var newDiv = "";
-               newDiv += "<div id=\"vizFrameBut\" style=\"font-size:15pt; text-decoration:underline;\"><img src=\"img/close.png\" onclick=\"removeIFrame('vizFrame');\"></div>\n";
-               newDiv += "<iframe id=\"vizFrame\" src=\"widgets/trace/web-export/index.html?data="+data+ "&attrNames="+attrNames+"&minVals="+minVals+"&maxVals="+maxVals+"&numContextAttrs="+numContextAttrs+"&numTraceAttrs="+numTraceAttrs+"&hostDivID="+hostDivID +"\" width=\"900\" height=\"900\"></iframe>\n";
+               newDiv += "<div id=\"vizFrameBut\" style=\"font-size:15pt; text-decoration:underline;\"><img src=\"../../img/close.png\" onclick=\"removeIFrame('vizFrame');\"></div>\n";
+               newDiv += "<iframe id=\"vizFrame\" src=\"../trace/web-export/index.html?data="+data+ "&attrNames="+attrNames+"&minVals="+minVals+"&maxVals="+maxVals+"&numContextAttrs="+numContextAttrs+"&numTraceAttrs="+numTraceAttrs+"&hostDivID="+hostDivID +"\" width=\"900\" height=\"900\"></iframe>\n";
             
                hostDiv.innerHTML += newDiv;
             
@@ -551,8 +557,8 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, vizList, inw
             }
             else
             // open in new window
-            newwindow=window.open("widgets/trace/web-export/index.html?data="+data+"&attrNames="+attrNames+"&minVals="+minVals+"&maxVals="+maxVals+"&numContextAttrs="+numContextAttrs+"&numTraceAttrs="+numTraceAttrs+"&hostDivID="+hostDivID,"CCP",'height=900,width=900');
-        }));
+            newwindow=window.open("../trace/web-export/index.html?data="+data+"&attrNames="+attrNames+"&minVals="+minVals+"&maxVals="+maxVals+"&numContextAttrs="+numContextAttrs+"&numTraceAttrs="+numTraceAttrs+"&hostDivID="+hostDivID,"CCP",'height=900,width=900');
+        //}));
     }
     // end correlation coordinate plots
         
@@ -560,8 +566,8 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, vizList, inw
     // start parallel coordinates plots
     else if(viz == 'pcp')
     {
-        met.push(new LertButton(viz, function()
-        {
+        //met.push(new LertButton(viz, function()
+        //{
             var ctxtStr="";
             for(var c in ctxtAttrs)
             {
@@ -646,8 +652,8 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, vizList, inw
             if(inwin == true)
             {
                var newDiv = "";
-               newDiv += "<div id=\"vizFrameBut\" style=\"font-size:15pt; text-decoration:underline;\"><img src=\"img/close.png\" onclick=\"removeIFrame('vizFrame');\"></div>\n";
-               newDiv += "<iframe id=\"vizFrame\" src=\"widgets/trace/pcp/web-export/index.html?data="+data+"&attrNames="+attrNames+"&minVals="+minVals+"&maxVals="+maxVals+"&numContextAttrs="+numContextAttrs+"&numTraceAttrs="+numTraceAttrs+"&hostDivID="+hostDivID +"\" width=\"1220\" height=\"320\"></iframe>\n";
+               newDiv += "<div id=\"vizFrameBut\" style=\"font-size:15pt; text-decoration:underline;\"><img src=\"../../img/close.png\" onclick=\"removeIFrame('vizFrame');\"></div>\n";
+               newDiv += "<iframe id=\"vizFrame\" src=\"../trace/pcp/web-export/index.html?data="+data+"&attrNames="+attrNames+"&minVals="+minVals+"&maxVals="+maxVals+"&numContextAttrs="+numContextAttrs+"&numTraceAttrs="+numTraceAttrs+"&hostDivID="+hostDivID +"\" width=\"1220\" height=\"320\"></iframe>\n";
             
                hostDiv.innerHTML += newDiv;
             
@@ -661,16 +667,16 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, vizList, inw
             }
             else
             // open in new window
-            newwindow=window.open("widgets/trace/pcp/web-export/index.html?data="+data+"&attrNames="+attrNames+"&minVals="+minVals+"&maxVals="+maxVals+"&numContextAttrs="+numContextAttrs+"&numTraceAttrs="+numTraceAttrs+"&hostDivID="+hostDivID,"PCP",'height=300,width=1200');
-       }));
+            newwindow=window.open("../trace/pcp/web-export/index.html?data="+data+"&attrNames="+attrNames+"&minVals="+minVals+"&maxVals="+maxVals+"&numContextAttrs="+numContextAttrs+"&numTraceAttrs="+numTraceAttrs+"&hostDivID="+hostDivID,"PCP",'height=300,width=1200');
+       //}));
     }
     // end parallel coordinates plots
         
     // start three methods - Correlation Coordinate Plots/Parallel Coordinate Plots/Scatter3D
     else if(viz == 'ccp_pcp_sc3d')
     {
-        met.push(new LertButton(viz, function()
-        {
+        //met.push(new LertButton(viz, function()
+        //{
             var ctxtStr="";
             for(var c in ctxtAttrs)
             {
@@ -771,14 +777,14 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, vizList, inw
                                  });
             
             eLert.display();
-        }));
+       // }));
     }
     // end three methods - Correlation Coordinate Plots/Parallel Coordinate Plots/Scatter3D
         
     else if(viz == 'decTree')
     {
-        met.push(new LertButton(viz, function()
-        {
+        //met.push(new LertButton(viz, function()
+        //{
             if(numContextAttrs==0) { alert("Decision Tree visualizations require one or more context variables"); return; }
             
             for(t in traceAttrs) { if(traceAttrs.hasOwnProperty(t)) {
@@ -805,12 +811,12 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, vizList, inw
                 var model= id3(data, traceAttrs[t], ctxtAttrs, "", 2);
                 showDecisionTree(model, hostDivID);
             } }
-        }));
+        //}));
     }
     else if(viz == 'boxplot')
     {
-        met.push(new LertButton(viz, function()
-        {
+        //met.push(new LertButton(viz, function()
+        //{
             var margin = {top: 10, right: 50, bottom: 20, left: 50},
             width = 120 - margin.left - margin.right,
             height = 500 - margin.top - margin.bottom;
@@ -859,12 +865,12 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, vizList, inw
                     } }
                 }
             }
-        }));
+        //}));
     }
     else if(viz == 'heatmap')
     {
-        met.push(new LertButton(viz, function()
-        {
+        //met.push(new LertButton(viz, function()
+        //{
             if(numContextAttrs!=2) { alert("Heatmap visualizations require exactly two context variables"); return; }
             
             var newDiv = "<div id=\""+hostDivID+"-Heatmap\"></div>";
@@ -1000,10 +1006,13 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, vizList, inw
                 .duration(500)
                 .style("opacity", 0);
                 });
-         }));
+         //}));
       }
       // end rendering a visualization method
   }
+  
+  // box alert for multiple visualization methods
+  /*
   var message = "Please select the visualization method:";
   var eLert = new Lert(
                          message,
@@ -1014,6 +1023,7 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, vizList, inw
                          });
     
   eLert.display();
+  */
     
    
     

@@ -976,7 +976,7 @@ function setUpHostDiv(attrNames, minVals, maxVals,
   
   // hoa edited
   if(inwin == 1)
-      controlHTML += "<td style=\"font-size:22pt; text-decoration:underline;\"><img src=\"img/close.png\" onclick=\"hide3DViz('"+hostDivID+"'); event.stopPropagation();\"></td>\n";
+      controlHTML += "<td style=\"font-size:22pt; text-decoration:underline;\"><img src=\"../../img/close.png\" onclick=\"hide3DViz('"+hostDivID+"'); event.stopPropagation();\"></td>\n";
   else
       controlHTML += "<td style=\"font-size:22pt; text-decoration:underline;\"><img src=\"../../img/close.png\" onclick=\"hide3DViz('"+hostDivID+"'); event.stopPropagation();\"></td>\n";
     
