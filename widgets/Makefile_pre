@@ -1,9 +1,9 @@
-WIDGETS_COMMON_O := scope/scope_common.o graph/graph_common.o valSelector/valSelector_common.o trace/trace_common.o module/module_common.o source/source_common.o cdnode/cdnode_common.o
-WIDGETS_COMMON_H := scope/scope_common.h graph/graph_common.h valSelector/valSelector_common.h trace/trace_common.h module/module_common.h source/source_common.h cdnode/cdnode_common.h
-WIDGETS_STRUCTURE_O := scope/scope_structure.o graph/graph_structure.o valSelector/valSelector_structure.o trace/trace_structure.o module/module_structure.o source/source_structure.o clock/clock_structure.o cdnode/cdnode_structure.o
-WIDGETS_STRUCTURE_H := scope/scope_structure.h graph/graph_structure.h valSelector/valSelector_structure.h trace/trace_structure.h module/module_structure.h source/source_structure.h clock/clock_structure.h cdnode/cdnode_structure.h
-WIDGETS_LAYOUT_O := scope/scope_layout.o graph/graph_layout.o valSelector/valSelector_layout.o trace/trace_layout.o module/module_layout.o source/source_layout.o clock/clock_layout.o cdnode/cdnode_layout.o
-WIDGETS_LAYOUT_H := scope/scope_layout.h graph/graph_layout.h valSelector/valSelector_layout.h trace/trace_layout.h module/module_layout.h source/source_layout.o clock/clock_layout.h cdnode/cdnode_layout.h
+WIDGETS_COMMON_O := scope/scope_common.o graph/graph_common.o valSelector/valSelector_common.o trace/trace_common.o module/module_common.o source/source_common.o
+WIDGETS_COMMON_H := scope/scope_common.h graph/graph_common.h valSelector/valSelector_common.h trace/trace_common.h module/module_common.h source/source_common.h
+WIDGETS_STRUCTURE_O := scope/scope_structure.o graph/graph_structure.o valSelector/valSelector_structure.o trace/trace_structure.o module/module_structure.o source/source_structure.o clock/clock_structure.o parallel/parallel_structure.o
+WIDGETS_STRUCTURE_H := scope/scope_structure.h graph/graph_structure.h valSelector/valSelector_structure.h trace/trace_structure.h module/module_structure.h source/source_structure.h clock/clock_structure.h parallel/parallel_structure.h
+WIDGETS_LAYOUT_O := scope/scope_layout.o graph/graph_layout.o valSelector/valSelector_layout.o trace/trace_layout.o module/module_layout.o source/source_layout.o clock/clock_layout.o parallel/parallel_layout.o
+WIDGETS_LAYOUT_H := scope/scope_layout.h graph/graph_layout.h valSelector/valSelector_layout.h trace/trace_layout.h module/module_layout.h source/source_layout.o clock/clock_layout.h parallel/parallel_layout.h
 WIDGETS := ${WIDGETS_O} ${WIDGETS_H}
 
 MAKE_DEFINES = ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" CC=${CC} CCC=${CCC} KULFI_ENABLED=${KULFI_ENABLED} LLVM32_SRC_PATH=${LLVM32_SRC_PATH} LLVM32_BUILD_PATH=${LLVM32_BUILD_PATH} LLVM32_INSTALL_PATH=${LLVM32_INSTALL_PATH}
@@ -93,6 +93,12 @@ clock/clock_structure.o: clock/clock_structure.C clock/clock_structure.h
 
 clock/clock_layout.o: clock/clock_layout.C clock/clock_layout.h
 	${CCC} ${SIGHT_CFLAGS} clock/clock_layout.C -I.. -Igsl/include -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o clock/clock_layout.o
+
+parallel/parallel_structure.o: parallel/parallel_structure.C parallel/parallel_structure.h
+	${CCC} ${SIGHT_CFLAGS} parallel/parallel_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o parallel/parallel_structure.o
+
+parallel/parallel_layout.o: parallel/parallel_layout.C parallel/parallel_layout.h
+	${CCC} ${SIGHT_CFLAGS} parallel/parallel_layout.C -I.. -Igsl/include -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o parallel/parallel_layout.o
 
 
 ifeq (${KULFI_ENABLED}, 1)
@@ -201,19 +207,21 @@ gsl:
 	tar -xf gsl-1.9.tar.gz 
 	cd gsl-1.9; CC=${CC}; ./configure --prefix=${ROOT_PATH}/widgets/gsl
 	cd gsl-1.9; make; make install
-	rm -r gsl-1.9
+	rm -r gsl-1.9 gsl-1.9.tar.gz
 
 papi:
 	rm -f papi-5.3.0.tar.gz
 	wget http://icl.cs.utk.edu/projects/papi/downloads/papi-5.3.0.tar.gz
 	tar -xf papi-5.3.0.tar.gz 
 	cd papi-5.3.0/src; ./configure -prefix=${ROOT_PATH}/widgets/papi CC=gcc F77=gfortran; 
-	cd papi-5.3.0/src; export CC=gcc; export F77=gfortran; make LDCONFIG=true; make install
+	cd papi-5.3.0/src; export CC=gcc; export F77=gfortran; make LDCONFIG=true CC=gcc F77=gfortran; make install
 	rm -fr papi-5.3.0 papi-5.3.0.tar.gz
 
 libmsr: libmsr/lib/libmsr.so
 
 libmsr/lib/libmsr.so:
+	../getGithub https://github.com/scalability-llnl/libmsr/archive/master.zip zip unzip
+	mv libmsr-master libmsr
 	cd libmsr/src; make CC=${CC}
 
 synoptic:
@@ -277,6 +285,7 @@ clean:
 #	rm -rf ID3-Decision-Tree
 	../killP mongoose/mongoose
 	../killP shellinabox/bin/shellinaboxd
-	rm -rf *.o shellinabox* mongoose* noVNC graphviz papi
+	rm -rf *.o shellinabox* mongoose* noVNC graphviz papi gsl synoptic libmsr
 	rm -f yui-min.js jquery-1.8.1.min.js underscore-min.js d3.v3.min.js d3.v3.js
+	rm -f jquery-1.9.1.min.js jquery-ui.css jquery-ui.js
 	rm -f Three.js Detector.js OrbitControls.js THREEx.WindowResize.js Stats.js

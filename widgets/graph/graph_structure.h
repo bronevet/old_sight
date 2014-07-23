@@ -31,10 +31,10 @@ class graph: public structure::block
   int graphID;
   
   // Maximum ID assigned to any graph object
-  static int maxGraphID;
+  static ThreadLocalStorage1<int, int> maxGraphID;
 
   // Maximum ID assigned to any graph node
-  static int maxNodeID;
+  static ThreadLocalStorage1<int, int> maxNodeID;
   
   // Records whether this scope is included in the emitted output (true) or not (false)
   bool active;

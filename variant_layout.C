@@ -46,7 +46,7 @@ variant::variant(properties::iterator props) :
         false, // labelShown
         true)  // summaryEntry
 {
-  numVariants = props.getNumKeys();
+  numVariants = props.getInt("numSubDirs");
 
   dbg.ownerAccessing();
   dbg << "<table border=1 width=\"100\%\"><tr><td colspan=\""<<numVariants<<"\">Variants</td></tr>"<<endl;

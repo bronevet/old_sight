@@ -9,7 +9,8 @@ using namespace sight;
 namespace sight {
 namespace structure{
   
-structure::attributesC attributes;
+ThreadLocalStorage0<structure::attributesC> attributes;
+//ThreadLocalStorage0<attrNullOp> NullOp;
 attrNullOp NullOp;
 
 /******************
@@ -19,7 +20,7 @@ attrNullOp NullOp;
 // Applies the given functor to this given value. Throws an exception if the functor
 // is not applicable to this value type.
 bool attrOp::apply() const {
-  const set<attrValue>& vals = attributes.get(key);
+  const set<attrValue>& vals = attributes->get(key);
   if(vals.size() == 0) {
     cerr << "attrOp::apply() ERROR: applying operation to empty set of values!"<<endl;
     exit(-1);
@@ -240,24 +241,24 @@ attr::attr(std::string key, double      val, properties* props) : sightObj(setPr
 
 template<typename T>
 void attr::init(std::string key, T val, properties* props) {
-//cout << "attr::init("<<key<<", "<<val<<"), attributes.exists(key)="<<attributes.exists(key)<<"\n"; cout.flush();
+//cout << "attr::init("<<key<<", "<<val<<"), attributes->exists(key)="<<attributes->exists(key)<<"\n"; cout.flush();
   // Register the new value for the given key
-  if(attributes.exists(key)) {
+  if(attributes->exists(key)) {
     keyPreviouslySet = true;
-    const std::set<attrValue>& curValues = attributes.get(key);
+    const std::set<attrValue>& curValues = attributes->get(key);
     assert(curValues.size()==1);
     
     oldVal = *(curValues.begin());
-    attributes.replace(key, this->val); 
+    attributes->replace(key, this->val); 
   } else {
     keyPreviouslySet = false;
-    attributes.add(key, this->val); 
+    attributes->add(key, this->val); 
   }
 }
 
 template<typename T>
 properties* attr::setProperties(std::string key, T val, properties* props) {
-//cout << "attr::init("<<key<<", "<<val<<"), attributes.exists(key)="<<attributes.exists(key)<<"\n"; cout.flush();
+//cout << "attr::init("<<key<<", "<<val<<"), attributes->exists(key)="<<attributes->exists(key)<<"\n"; cout.flush();
   if(props==NULL) props = new properties();
   
   map<string, string> pMap;
@@ -287,10 +288,10 @@ attr::~attr() {
 //cout << "attr::~attr("<<key<<", "<<val.str()<<"), keyPreviouslySet="<<keyPreviouslySet<<"\n"; cout.flush();
   // If this mapping replaced some prior mapping, return key to its original state
   if(keyPreviouslySet)
-    attributes.replace(key, oldVal);
+    attributes->replace(key, oldVal);
   // Otherwise, just remove the entire mapping
   else
-    attributes.remove(key);
+    attributes->remove(key);
 }
 // Returns the key of this attribute
 string attr::getKey() const
@@ -370,8 +371,8 @@ void attrOr_exit(void* subQ) { delete (attrOr*)subQ; }
 }
 
 attrIf::attrIf(attrOp* op) : attrSubQueryIf(op)
-{ attributes.push(this); }
-attrIf::~attrIf() { attributes.pop(); }
+{ attributes->push(this); }
+attrIf::~attrIf() { attributes->pop(); }
 
 // Directly calls the destructor of this object. This is necessary because when an application crashes
 // Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since
@@ -510,9 +511,9 @@ void andFunc(bool cond, int depth, string indent) {
   bool nextCond = rand()%2;
   attr a(vname.str(), (long)nextCond);
   attrAnd aAnd(vname.str(), new attrEQ((long)1, attrOp::any));
-  //cout << indent << "andFunc(cond="<<cond<<"): nextCond="<<nextCond<<", depth="<<depth<<", query="<<attributes.query()<<endl;
+  //cout << indent << "andFunc(cond="<<cond<<"): nextCond="<<nextCond<<", depth="<<depth<<", query="<<attributes->query()<<endl;
  
-  assert(verbA(attributes.query() == (cond && nextCond)));
+  assert(verbA(attributes->query() == (cond && nextCond)));
   nextFunc(cond && nextCond, depth+1, indent+"    ");
 }
 
@@ -521,9 +522,9 @@ void orFunc(bool cond, int depth, string indent) {
   bool nextCond = rand()%2;
   attr a(vname.str(), (long)nextCond);
   attrOr aOr(vname.str(), new attrEQ((long)1, attrOp::any));
-  //cout << indent << "orFunc(cond="<<cond<<"): nextCond="<<nextCond<<", depth="<<depth<<", query="<<attributes.query()<<endl;
+  //cout << indent << "orFunc(cond="<<cond<<"): nextCond="<<nextCond<<", depth="<<depth<<", query="<<attributes->query()<<endl;
  
-  assert(verbA(attributes.query() == (cond || nextCond))); 
+  assert(verbA(attributes->query() == (cond || nextCond))); 
   nextFunc(cond || nextCond, depth+1, indent+"    ");
 } 
 
@@ -532,9 +533,9 @@ void ifFunc(bool cond, int depth, string indent) {
   bool nextCond = rand()%2;
   attr a(vname.str(), (long)nextCond);
   attrIf aIf(vname.str(), new attrEQ((long)1, attrOp::any));
-  //cout << indent << "ifFunc(cond="<<cond<<"): nextCond="<<nextCond<<", depth="<<depth<<", query="<<attributes.query()<<endl;
+  //cout << indent << "ifFunc(cond="<<cond<<"): nextCond="<<nextCond<<", depth="<<depth<<", query="<<attributes->query()<<endl;
  
-  assert(verbA(attributes.query() == nextCond)); 
+  assert(verbA(attributes->query() == nextCond)); 
   nextFunc(nextCond, depth+1, indent+"    ");
 } 
 
@@ -542,7 +543,7 @@ void ifFunc(bool cond, int depth, string indent) {
   cout << indent << "fib("<<x<<")\n";
   attr a("x", (long)x);
   attrIf aif("x", new attrEQ((long)x, attrOp::any));
-  cout << indent << "x="<<x<<", query="<<attributes.query()<<endl;
+  cout << indent << "x="<<x<<", query="<<attributes->query()<<endl;
   if(x<=1) {
     cout << indent << "return 1\n";
     return 1;

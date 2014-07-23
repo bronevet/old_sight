@@ -216,10 +216,10 @@ void instanceTree::clear() {
 }
 
 // The depth of the recursion in instanceTree::str()
-int instanceTree::instanceTreeStrDepth;
+ThreadLocalStorage0<int> instanceTree::instanceTreeStrDepth;
 
 // The ostringstream into which the output of instanceTree::str() is accumulated
-std::ostringstream instanceTree::oss;
+ThreadLocalStorageOStream<std::ostringstream> instanceTree::oss;
 
 // The entry and exit functions used in instanceTree::str()
 void instanceTree::strEnterFunc(const group& g) {
@@ -237,12 +237,12 @@ void instanceTree::strExitFunc(const group& g)
 std::string instanceTree::str() const {
   // Reset the recursion depth and the ostringstream
   instanceTreeStrDepth=0;
-  oss.str("");
-  oss.clear();
+  oss->str("");
+  oss->clear();
   
   iterate(strEnterFunc, strExitFunc);
   
-  return oss.str();
+  return oss->str();
 }
 
 /**********************
@@ -250,43 +250,43 @@ std::string instanceTree::str() const {
  **********************/
 
 // Points to the currently active instance of modularApp. There can be only one.
-modularApp* modularApp::activeMA = NULL;
+ThreadLocalStorage1<modularApp*, modularApp*> modularApp::activeMA(NULL);
 
 // The maximum ID ever assigned to any modular application
-int modularApp::maxModularAppID=0;
+ThreadLocalStorage1<int, int> modularApp::maxModularAppID(0);
 
 // The maximum ID ever assigned to any module group
-int modularApp::maxModuleGroupID=0;
+ThreadLocalStorage1<int, int> modularApp::maxModuleGroupID(0);
 
 // Records all the known contexts, mapping each context to its unique ID
-std::map<group, int> modularApp::group2ID;
+ThreadLocalStorageMap<group, int> modularApp::group2ID;
 
 // Maps each context to the number of times it was ever observed
-std::map<group, int> modularApp::group2Count;
+ThreadLocalStorageMap<group, int> modularApp::group2Count;
 
 // The trace that records performance observations of different modules and contexts
-std::map<group, traceStream*> modularApp::moduleTrace;
-std::map<group, int>          modularApp::moduleTraceID;
+ThreadLocalStorageMap<group, traceStream*> modularApp::moduleTrace;
+ThreadLocalStorageMap<group, int>          modularApp::moduleTraceID;
 
 // Tree that records the hierarchy of module instances that were observed during the execution of this
 // modular application. Each path from the tree's root to a leaf is a stack of module instances that
 // corresponds to some observed module group.
-instanceTree modularApp::tree;
+ThreadLocalStorage0<instanceTree> modularApp::tree;
 
 // Maps each module to the list of the names of its input and output context attributes. 
 // This enables us to verify that all the modules are used consistently.
-std::map<group, std::vector<std::list<std::string> > > modularApp::moduleInCtxtNames;
-std::map<group, std::vector<std::list<std::string> > > modularApp::moduleOutCtxtNames;
+ThreadLocalStorageMap<group, std::vector<std::list<std::string> > > modularApp::moduleInCtxtNames;
+ThreadLocalStorageMap<group, std::vector<std::list<std::string> > > modularApp::moduleOutCtxtNames;
 
 // The properties object that describes each module group. This object is created by calling each group's
 // setProperties() method and each call to this method for the same module group must return the same properties.
-std::map<group, properties*> modularApp::moduleProps;
+ThreadLocalStorageMap<group, properties*> modularApp::moduleProps;
 
 // Records all the edges ever observed, mapping them to the number of times each edge was observed
-std::map<std::pair<port, port>, int> modularApp::edges;
+ThreadLocalStorageMap<std::pair<port, port>, int> modularApp::edges;
 
 // Stack of the module graphs that are currently in scope
-std::list<module*> modularApp::mStack;
+ThreadLocalStorageList<module*> modularApp::mStack;
 
 modularApp::modularApp(const std::string& appName,                                                   properties* props) :
     block(appName, setProperties(appName, NULL, props)), appName(appName)
@@ -324,12 +324,12 @@ void modularApp::init() {
   map<string, string> pMapMABody;
   properties propsMABody;
   propsMABody.add("modularAppBody", pMapMABody);
-  dbg.enter(propsMABody);
+  dbg->enter(propsMABody);
 }
 
 // Stack used while we're emitting the nesting hierarchy of module groups to keep each module group's 
 // sightObj between the time the group is entered and exited
-list<sightObj*> modularApp::moduleEmitStack;
+ThreadLocalStorageList<sightObj*> modularApp::moduleEmitStack;
 
 // Emits the entry tag for a module group during the execution of ~modularApp()
 void modularApp::enterModuleGroup(const group& g) {
@@ -340,7 +340,7 @@ void modularApp::enterModuleGroup(const group& g) {
   pMap["name"]       = g.name();
   pMap["numInputs"]  = txt()<<g.numInputs();
   pMap["numOutputs"] = txt()<<g.numOutputs();
-  assert(modularApp::group2Count.find(g) != modularApp::group2Count.end());
+  assert(modularApp::group2Count->find(g) != modularApp::group2Count->end());
   pMap["count"] = txt()<<modularApp::group2Count[g];
   props->add("module", pMap);*/
   
@@ -359,7 +359,7 @@ void modularApp::exitModuleGroup(const group& g) {
   
   // Erase this group from moduleProps to clearly keep track of the properties objects that are currently allocated
   // (the sightObj destructor will deallocate them)
-  moduleProps.erase(g);
+  moduleProps->erase(g);
 }
 
 // Directly calls the destructor of this object. This is necessary because when an application crashes
@@ -376,7 +376,7 @@ modularApp::~modularApp() {
   assert(!destroyed);
   
   // Unregister this modularApp instance (there can be only one)
-  assert(activeMA);
+  assert(activeMA.get());
   activeMA = NULL;
   
   // All the modules that were entered inside this modularApp instance must have already been exited
@@ -384,7 +384,7 @@ modularApp::~modularApp() {
   
   if(props->active) {
     /*cout << "group2ID="<<endl;
-    for(std::map<context, int>::iterator c=group2ID.begin(); c!=group2ID.end(); c++)
+    for(std::map<context, int>::iterator c=group2ID->begin(); c!=group2ID->end(); c++)
       cout << "    "<<c->first.UID()<<" ==> "<<c->second<<endl;
     */
     
@@ -392,16 +392,16 @@ modularApp::~modularApp() {
     map<string, string> pMapMABody;
     properties propsMABody;
     propsMABody.add("modularAppBody", pMapMABody);
-    dbg.exit(propsMABody);
+    dbg->exit(propsMABody);
     
     // Emit the tag that starts the description of the modularApp's structure
     map<string, string> pMapMAStructure;
     properties propsMAStructure;
     propsMAStructure.add("modularAppStructure", pMapMAStructure);
-    dbg.enter(propsMAStructure);
+    dbg->enter(propsMAStructure);
     
     // Delete the moduleTraces associated with each module group, forcing them to emit their respective end tags
-    for(map<group, traceStream*>::iterator m=moduleTrace.begin(); m!=moduleTrace.end(); m++) {
+    for(map<group, traceStream*>::iterator m=moduleTrace->begin(); m!=moduleTrace->end(); m++) {
       delete m->second;
     }
     
@@ -410,11 +410,11 @@ modularApp::~modularApp() {
     // -------------------------------------------------------
     
     // Emit the hierarchy of module groups observed during this modularApp's execution
-    tree.iterate(enterModuleGroup, exitModuleGroup);
+    tree->iterate(enterModuleGroup, exitModuleGroup);
     
     // Emit all the edges between module groups collected while this modularApp was live.
     // Note that this guarantees that edges are guaranteed to be placed after or inside the modules they connect.
-    for(std::map<pair<port, port>, int>::iterator e=edges.begin(); e!=edges.end(); e++) {
+    for(std::map<pair<port, port>, int>::iterator e=edges->begin(); e!=edges->end(); e++) {
       // If either group is NULL, don't generate an edge. Users can specify a NULL group if they don't want to bother
       // documenting where a given input came from
       if(e->first.first.g.isNULL() || e->first.second.g.isNULL()) continue;
@@ -432,15 +432,15 @@ modularApp::~modularApp() {
       pMap["fromCount"] = txt()<<group2Count[e->first.first.g];
       
       // Fraction of times that we've entered the edge's source module group and took this outgoing edge
-      assert(group2Count.find(e->first.first.g) != group2Count.end());
+      assert(group2Count->find(e->first.first.g) != group2Count->end());
       pMap["prob"]    = txt()<<(e->second / group2Count[e->first.first.g]);
       
       edgeP.add("moduleEdge", pMap);
-      dbg.tag(edgeP);
+      dbg->tag(edgeP);
     }
     
     // Emit the exit tag that denotes the end of the description of the modularApp's structure
-    dbg.exit(propsMAStructure);
+    dbg->exit(propsMAStructure);
     
     // ------------------------
     // Clean up sata structures
@@ -453,28 +453,28 @@ modularApp::~modularApp() {
     // We do not deallocate all the module group properties because these are deallocated in the destructors
     // of the sightObjs created in modularApp::enterModuleGroup(). Further, moduleProps should be completely 
     // emptied by all our calls to modularApp::exitModuleGroup().
-    assert(moduleProps.size()==0);
-    /*for(std::map<group, properties*>::iterator p=moduleProps.begin(); p!=moduleProps.end(); p++)
+    assert(moduleProps->size()==0);
+    /*for(std::map<group, properties*>::iterator p=moduleProps->begin(); p!=moduleProps->end(); p++)
       delete p->second;*/
     
     // Clear out all of the static datastructures of modularApp
-    group2ID.clear();
-    group2Count.clear();
-    moduleTrace.clear();
-    tree.clear();
-    moduleInCtxtNames.clear();
-    moduleOutCtxtNames.clear();
-    edges.clear();
+    group2ID->clear();
+    group2Count->clear();
+    moduleTrace->clear();
+    tree->clear();
+    moduleInCtxtNames->clear();
+    moduleOutCtxtNames->clear();
+    edges->clear();
     meas.clear();
   } else {
     // If this modularApp instance is inactive, all the static datastructures must be empty
-    assert(group2ID.size()==0);
-    assert(group2Count.size()==0);
-    assert(moduleTrace.size()==0);
-    assert(moduleInCtxtNames.size()==0);
-    assert(moduleOutCtxtNames.size()==0);
-    assert(moduleProps.size()==0);
-    assert(edges.size()==0);
+    assert(group2ID->size()==0);
+    assert(group2Count->size()==0);
+    assert(moduleTrace->size()==0);
+    assert(moduleInCtxtNames->size()==0);
+    assert(moduleOutCtxtNames->size()==0);
+    assert(moduleProps->size()==0);
+    assert(edges->size()==0);
     assert(meas.size()==0);
   }
 }
@@ -486,7 +486,7 @@ properties* modularApp::setProperties(const std::string& appName, const attrOp* 
   if(props->active && props->emitTag) {
     // If the current attribute query evaluates to true (we're emitting debug output) AND
     // either onoffOp is not provided or it evaluates to true
-    if(attributes.query() && (onoffOp? onoffOp->apply(): true)) {
+    if(attributes->query() && (onoffOp? onoffOp->apply(): true)) {
     	props->active = true;
       
       if(props->emitTag) {
@@ -507,13 +507,13 @@ properties* modularApp::setProperties(const std::string& appName, const attrOp* 
 // Returns the module ID of the given module group, generating a fresh one if one has not yet been assigned
 int modularApp::genModuleID(const group& g) {
   // If this module group doesn't yet have an ID, set one
-  if(group2ID.find(g) == group2ID.end()) {
+  if(group2ID->find(g) == group2ID->end()) {
     group2ID[g] = maxModuleGroupID;
     maxModuleGroupID++;
     group2Count[g] = 1;
     
     // Add this group to the instance tree
-    tree.add(g);
+    tree->add(g);
   } else
     // Increment the number of times this group has been executed.
     group2Count[g]++;
@@ -523,8 +523,8 @@ int modularApp::genModuleID(const group& g) {
 
 // Returns whether the current instance of modularApp is active
 bool modularApp::isInstanceActive() {
-  //assert(activeMA);
-  return activeMA!=NULL && activeMA->isActive();
+  //assert(*activeMA);
+  return activeMA!=NULL && (*activeMA)->isActive();
 }
 
 // Assigns a unique ID to the given module group, as needed and returns this ID
@@ -541,8 +541,8 @@ int modularApp::addModuleGroup(const group& g) {
 void modularApp::registerInOutContexts(const group& g, const std::vector<port>& inouts, sight::common::module::ioT io)
 {
   // Exactly one modularAppInstance must be active
-  assert(activeMA);
-  assert(activeMA->isActive());
+  assert(*activeMA);
+  assert((*activeMA)->isActive());
   
   // Refers to either moduleInCtxtNames or moduleOutCtxtNames, depending on the value of io;
   map<group, vector<list<string> > >& moduleCtxtNames = (io==sight::common::module::input? moduleInCtxtNames: moduleOutCtxtNames);
@@ -584,22 +584,22 @@ void modularApp::registerInOutContexts(const group& g, const std::vector<port>& 
 // Add an edge between one module's output port and another module's input port
 void modularApp::addEdge(port from, port to) {
   // Exactly one modularAppInstance must be active
-  assert(activeMA);
-  assert(activeMA->isActive());
+  assert(*activeMA);
+  assert((*activeMA)->isActive());
   
   // Clear the contexts of from and to since edges is not sensitive to contexts
   from.clearContext();
   to.clearContext();
   
   pair<port, port> edge(from, to);
-  if(edges.find(edge) == edges.end())
+  if(edges->find(edge) == edges->end())
     edges[edge] = 1;
   else
     edges[edge]++;
   
   /*cout << "    module::addEdge()"<<endl;
   cout << "      edge="<<from.str()<<" => "<<to.str()<<endl;
-  for(map<pair<port, port>, int>::iterator e=edges.begin(); e!=edges.end(); e++) {
+  for(map<pair<port, port>, int>::iterator e=edges->begin(); e!=edges->end(); e++) {
     cout << "        "<<e->first.first.str()<<" => "<<e->first.second.str()<<" : "<<e->second<<endl;
   }*/
 }
@@ -624,7 +624,7 @@ void modularApp::enterModule(module* m, int moduleID, properties* props) {
   mStack.push_back(m);
   
   // If we have not yet recorded the properties of this module group, do so now
-  if(moduleProps.find(m->g) == moduleProps.end())
+  if(moduleProps->find(m->g) == moduleProps->end())
     moduleProps[m->g] = props;
   // Otherwise, make sure that every module within the same group has the same properties
   else {
@@ -642,13 +642,13 @@ void modularApp::enterModule(module* m, int moduleID, properties* props) {
 
 // Returns whether a traceStream has been registered for the given module group
 bool modularApp::isTraceStreamRegistered(const group& g) {
-  return moduleTrace.find(g) != moduleTrace.end();
+  return moduleTrace->find(g) != moduleTrace->end();
 }
 
 // Registers the given traceStream for the given module group
 void modularApp::registerTraceStream(const group& g, traceStream* ts) {
   // No other traceStream may be currently registered for this module group;
-  assert(moduleTrace.find(g) == moduleTrace.end());
+  assert(moduleTrace->find(g) == moduleTrace->end());
   moduleTrace[g] = ts;
 }
 
@@ -786,7 +786,7 @@ properties* module::setProperties(const instance& inst, properties* props, const
   group g(modularApp::mStack, inst);
   bool isDerived = (props!=NULL); // This is an instance of an object that derives from module if its constructor sets props to non-NULL
  
-  if(attributes.query() && (onoffOp? onoffOp->apply(): true)) {
+  if(attributes->query() && (onoffOp? onoffOp->apply(): true)) {
     if(!modularApp::isInstanceActive()) {
       cerr << "ERROR: module "<<inst.str()<<" entered while there no instance of modularApp is active!"<<endl;
       assert(0);
@@ -846,6 +846,10 @@ void module::init(const std::vector<port>& ins, properties* derivedProps) {
     
     // Make sure that the input contexts have the same names across all the invocations of this module group
     modularApp::registerInOutContexts(g, ins, sight::common::module::input);
+
+    // Record any publicized inputs
+    addPublicizedInputs(ins, numPublicizedInputs, modularApp::getInstance()->publicizedInputs,
+                  modularApp::getInstance()->publicizedInputNotes);
     
     // Add edges between the modules from which this module's inputs came and this module
     for(int i=0; i<ins.size(); i++)
@@ -862,7 +866,7 @@ void module::init(const std::vector<port>& ins, properties* derivedProps) {
     }
     
     // Add the default measurements recored in modularApp to meas
-    for(namedMeasures::iterator m=modularApp::activeMA->meas.begin(); m!=modularApp::activeMA->meas.end(); m++) {
+    for(namedMeasures::iterator m=(*modularApp::activeMA)->meas.begin(); m!=(*modularApp::activeMA)->meas.end(); m++) {
       // If the name of the current measurement in modularApp isn't already specified for the given module group, add it
       if(meas.find(m->first) == meas.end())
         meas[m->first] = m->second->copy();
@@ -894,7 +898,6 @@ module::~module() {
   assert(!destroyed);
   
   //cout << "~module() props->active="<<props->active<<endl;
-
   if(ins.size() != g.numInputs()) { cerr << "WARNING: module \""<<g.name()<<"\" specifies "<<g.numInputs()<<" inputs but "<<ins.size()<<" inputs are actually provided!"<<endl; }
   
   if(outsSet.size() != g.numOutputs()) { 
@@ -912,7 +915,7 @@ module::~module() {
       properties moduleCtrl;
       moduleCtrl.add("moduleCtrl", map<string, string>());
 
-      dbg.enter(moduleCtrl);
+      dbg->enter(moduleCtrl);
 
       // Register a traceStream for this module's group, if one has not already been registered
       if(!modularApp::isTraceStreamRegistered(g)) {
@@ -942,6 +945,10 @@ module::~module() {
       }
     }
     
+    // Clear all records of publicized inputs
+    clearPublicized(numPublicizedInputs, modularApp::getInstance()->publicizedInputs,
+                    modularApp::getInstance()->publicizedInputNotes);
+    
     /*cout << "obs="<<endl;
   for(list<pair<string, attrValue> >::iterator tc=obs.begin(); tc!=obs.end(); tc++)
     cout << "    "<<tc->first << ": "<<tc->second.serialize()<<endl;*/
@@ -960,7 +967,7 @@ module::~module() {
     // Close the tag that wraps the control section of this module
     properties moduleCtrl;
     moduleCtrl.add("moduleCtrl", map<string, string>());
-    dbg.exit(moduleCtrl);
+    dbg->exit(moduleCtrl);
   }
 }
 
@@ -974,12 +981,15 @@ void module::completeMeasurement() {
   if(measurementCompleted) return; // { cerr << "ERROR: completing measurement of execution of module "<<g.str()<<" multiple times!"<<endl; assert(0); }
   
   // Complete measuring this instance and collect the observations into props
+  //cout << "module::completeMeasurement() "<<g.str()<<", #meas="<<meas.size()<<endl;
   int measIdx=0;
   for(namedMeasures::iterator m=meas.begin(); m!=meas.end(); m++, measIdx++) {
+    //cout << "    "<<m->second->str()<<endl;
     // Complete the m's measurement
     list<pair<string, attrValue> > curObs = m->second->endGet();
     // Push each measurement onto the observation
     for(list<pair<string, attrValue> >::iterator o=curObs.begin(); o!=curObs.end(); o++) {
+      //cout << "        "<<m->first<<": "<<o->first<<": "<<o->second.getAsStr()<<endl;
       obs.push_back(make_pair(encodeCtxtName("module", "measure", m->first, o->first), o->second));
     }
     delete m->second;
@@ -988,6 +998,54 @@ void module::completeMeasurement() {
   // We've completed measuring this module
   measurementCompleted = true;
 }
+
+// Records any publicized inputs or options inside this module and its associated modularApp. Modules
+// executed while this module is active will inherit these inputs and options.
+void module::addPublicizedInputs(const std::vector<port>& ins, int& numPublicized,
+                           std::list<std::pair<std::string, attrValue> >& publicized,
+                           std::list<std::pair<std::string, notes> >& publicizedNotes) {
+  numPublicized=0;
+  for(int i=0; i<ins.size(); i++) {
+    addPublicized(*(ins[i].ctxt), numPublicized, publicized, publicizedNotes);
+  }
+}
+
+void module::addPublicizedOptions(const context& opts, int& numPublicized,
+                           std::list<std::pair<std::string, attrValue> >& publicized,
+                           std::list<std::pair<std::string, notes> >& publicizedNotes) {
+  numPublicized=0;
+  addPublicized(opts, numPublicized, publicized, publicizedNotes);
+}
+
+void module::addPublicized(const context& insopts, int& numPublicized,
+                           std::list<std::pair<std::string, attrValue> >& publicized,
+                           std::list<std::pair<std::string, notes> >& publicizedNotes)
+{
+  for(std::map<std::string, notes>::const_iterator cn=insopts.configNotes.begin(); cn!=insopts.configNotes.end(); cn++) {
+    for(notes::const_iterator n=cn->second.begin(); n!=cn->second.end(); n++) {
+       if(n->getName() == "publicized") {
+        numPublicized++;
+        map<string, attrValue>::const_iterator val=insopts.configuration.find(cn->first);
+        assert(val != insopts.configuration.end());
+        publicized.push_back(make_pair(cn->first, val->second));
+        publicizedNotes.push_back(make_pair(cn->first, cn->second));
+      }
+    }
+  }
+}
+
+// Clears off any records of publicized inputs or options that were set in addPublicized()
+void module::clearPublicized(int& numPublicized,
+                             std::list<std::pair<std::string, attrValue> >& publicized,
+                             std::list<std::pair<std::string, notes> >& publicizedNotes) {
+  assert(publicized.size()>=numPublicized);
+  while(numPublicized>0) {
+    publicized.pop_back();
+    publicizedNotes.pop_back();
+    numPublicized--;
+  }
+}
+
 
 // Sets the context of the given output port
 void module::setInCtxt(int idx, const context& c) {
@@ -1049,6 +1107,15 @@ port module::outPort(int idx) const {
 // by combining the context provided by the classes that this object derives from with its own unique 
 // context attributes.
 void module::setTraceCtxt() {
+  // Add to it the context of this module based on the inputs publicized by containing modules, omitting any
+  // from this module.
+  int j=0;
+  for(list<pair<string, attrValue> >::const_iterator i=modularApp::getInstance()->publicizedInputs.begin(); 
+         i!=modularApp::getInstance()->publicizedInputs.end() && 
+         j<modularApp::getInstance()->publicizedInputs.size()-numPublicizedInputs; 
+      i++, j++)
+    traceCtxt[encodeCtxtName("module", "pub_input", "", i->first)] = i->second;
+
   // Add to it the context of this module based on the contexts of its inputs
   for(int i=0; i<ins.size(); i++) {
     for(std::map<std::string, attrValue>::const_iterator c=ins[i].ctxt->configuration.begin(); c!=ins[i].ctxt->configuration.end(); c++) {
@@ -1139,6 +1206,7 @@ void compContext::add(const compContext& that) {
 std::string compContext::str() const {
   ostringstream s;
   s << "[compContext: "<<endl;
+  s << "    "<<context::str()<<endl;
   for(map<string, pair<string, string> >::const_iterator comp=comparators.begin(); comp!=comparators.end(); comp++) {
     if(comp!=comparators.begin()) s << " ";
     s << "("<<comp->second.first<<": "<<comp->second.second<<")";
@@ -1189,98 +1257,98 @@ compModule::compModule(const instance& inst, const std::vector<port>& inputs,
                        bool isReference,
                                                                          properties* props) :
             module(inst, inputs, setProperties(inst, isReference, module::context(), NULL, props)),           isReference(isReference), options(module::context())
-{ init(props); }
+{ init(context(), props); }
 
 compModule::compModule(const instance& inst, const std::vector<port>& inputs,  
                        bool isReference, 
                        const attrOp& onoffOp,                            properties* props) :
           module(inst, inputs, setProperties(inst, isReference, module::context(), &onoffOp, props)),       isReference(isReference), options(module::context())
-{ init(props); }
+{ init(context(), props); }
 
 compModule::compModule(const instance& inst, const std::vector<port>& inputs,  
                        bool isReference, 
                                               const compNamedMeasures& cMeas, properties* props) :
           module(inst, inputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, module::context(), NULL, props)),     isReference(isReference), options(module::context()), measComp(cMeas.getComparators())
-{ init(props); }
+{ init(context(), props); }
 
 compModule::compModule(const instance& inst, const std::vector<port>& inputs,  
                        bool isReference, 
                        const attrOp& onoffOp, const compNamedMeasures& cMeas, properties* props) : 
           module(inst, inputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, module::context(), &onoffOp, props)), isReference(isReference), options(module::context()), measComp(cMeas.getComparators())
-{ init(props); }
+{ init(context(), props); }
 
 compModule::compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
                        bool isReference,
                                                                          properties* props) :
             module(inst, inputs, externalOutputs, setProperties(inst, isReference, module::context(), NULL, props)),           isReference(isReference), options(module::context())
-{ init(props); }
+{ init(context(), props); }
 
 compModule::compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
                        bool isReference, 
                        const attrOp& onoffOp,                            properties* props) :
           module(inst, inputs, externalOutputs, setProperties(inst, isReference, module::context(), &onoffOp, props)),       isReference(isReference), options(module::context())
-{ init(props); }
+{ init(context(), props); }
 
 compModule::compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
                        bool isReference, 
                                               const compNamedMeasures& cMeas, properties* props) :
           module(inst, inputs, externalOutputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, module::context(), NULL, props)),     isReference(isReference), options(module::context()), measComp(cMeas.getComparators())
-{ init(props); }
+{ init(context(), props); }
 
 compModule::compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
                        bool isReference, 
                        const attrOp& onoffOp, const compNamedMeasures& cMeas, properties* props) : 
           module(inst, inputs, externalOutputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, module::context(), &onoffOp, props)), isReference(isReference), options(module::context()), measComp(cMeas.getComparators())
-{ init(props); }
+{ init(context(), props); }
 
 
 compModule::compModule(const instance& inst, const std::vector<port>& inputs,  
                        bool isReference, context options,
                                                                          properties* props) :
             module(inst, inputs, setProperties(inst, isReference, options, NULL, props)),           isReference(isReference), options(options)
-{ init(props); }
+{ init(options, props); }
 
 compModule::compModule(const instance& inst, const std::vector<port>& inputs,  
                        bool isReference, context options, 
                        const attrOp& onoffOp,                            properties* props) :
           module(inst, inputs, setProperties(inst, isReference, options, &onoffOp, props)),       isReference(isReference), options(options)
-{ init(props); }
+{ init(options, props); }
 
 compModule::compModule(const instance& inst, const std::vector<port>& inputs,  
                        bool isReference, context options, 
                                               const compNamedMeasures& cMeas, properties* props) :
           module(inst, inputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, options, NULL, props)),     isReference(isReference), options(options), measComp(cMeas.getComparators())
-{ init(props); }
+{ init(options, props); }
 
 compModule::compModule(const instance& inst, const std::vector<port>& inputs,  
                        bool isReference, context options, 
                        const attrOp& onoffOp, const compNamedMeasures& cMeas, properties* props) : 
           module(inst, inputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, options, &onoffOp, props)), isReference(isReference), options(options), measComp(cMeas.getComparators())
-{ init(props); }
+{ init(options, props); }
 
 compModule::compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
                        bool isReference, context options,
                                                                          properties* props) :
             module(inst, inputs, externalOutputs, setProperties(inst, isReference, options, NULL, props)),           isReference(isReference), options(options)
-{ init(props); }
+{ init(options, props); }
 
 compModule::compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
                        bool isReference, context options, 
                        const attrOp& onoffOp,                            properties* props) :
           module(inst, inputs, externalOutputs, setProperties(inst, isReference, options, &onoffOp, props)),       isReference(isReference), options(options)
-{ init(props); }
+{ init(options, props); }
 
 compModule::compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
                        bool isReference, context options, 
                                               const compNamedMeasures& cMeas, properties* props) :
           module(inst, inputs, externalOutputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, options, NULL, props)),     isReference(isReference), options(options), measComp(cMeas.getComparators())
-{ init(props); }
+{ init(options, props); }
 
 compModule::compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
                        bool isReference, context options, 
                        const attrOp& onoffOp, const compNamedMeasures& cMeas, properties* props) : 
           module(inst, inputs, externalOutputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, options, &onoffOp, props)), isReference(isReference), options(options), measComp(cMeas.getComparators())
-{ init(props); }
+{ init(options, props); }
 
 // Sets the properties of this object
 properties* compModule::setProperties(const instance& inst, bool isReference, context options, const attrOp* onoffOp, properties* props) {
@@ -1290,7 +1358,7 @@ properties* compModule::setProperties(const instance& inst, bool isReference, co
  /* 
   // If the current attribute query evaluates to true (we're emitting debug output) AND
   // either onoffOp is not provided or its evaluates to true
-  if(attributes.query() && (onoffOp? onoffOp->apply(): true)) {
+  if(attributes->query() && (onoffOp? onoffOp->apply(): true)) {
     / * // Initialize pMap to contain the properties of options
     map<string, string> pMap;// = options.getProperties("op");
     //pMap["isReference"]   = txt()<<isReference;
@@ -1304,10 +1372,15 @@ properties* compModule::setProperties(const instance& inst, bool isReference, co
   return props;
 }
 
-void compModule::init(properties* props) {
+void compModule::init(const context& options, properties* props) {
   isDerived = props!=NULL; // This is an instance of an object that derives from module if its constructor sets deriv to non-NULL
   
   if(!isDerived) setTraceCtxt();
+
+  // Record any publicized options
+  addPublicizedOptions(options, numPublicizedOptions, modularApp::getInstance()->publicizedOptions,
+                       modularApp::getInstance()->publicizedOptionNotes);
+    
 }
 
 // Directly calls the destructor of this object. This is necessary because when an application crashes
@@ -1328,7 +1401,11 @@ compModule::~compModule() {
     // in its own tag to make them easier to match across different streams
     properties moduleCtrl;
     moduleCtrl.add("moduleCtrl", map<string, string>());
-    dbg.enter(moduleCtrl);
+    dbg->enter(moduleCtrl);
+
+    // Clear all records of publicized options
+    clearPublicized(numPublicizedOptions, modularApp::getInstance()->publicizedOptions,
+                    modularApp::getInstance()->publicizedOptionNotes);
 
     // Register a traceStream for this compModule's module group, if one has not already been registered
     if(!modularApp::isTraceStreamRegistered(g))
@@ -1347,6 +1424,15 @@ void compModule::setTraceCtxt() {
 
   traceCtxt["compModule:isReference"] = attrValue((long)isReference);
   
+  // Add to it the context of this module based on the options publicized by containing modules, omitting any
+  // from this module.
+  int j=0;
+  for(list<pair<string, attrValue> >::const_iterator i=modularApp::getInstance()->publicizedOptions.begin(); 
+         i!=modularApp::getInstance()->publicizedOptions.end() && 
+         j<modularApp::getInstance()->publicizedOptions.size()-numPublicizedOptions; 
+      i++, j++)
+    traceCtxt[encodeCtxtName("compModule", "pub_option", "", i->first)] = i->second;
+
   // Add all the options to the context
   for(map<std::string, attrValue>::const_iterator o=options.getCfg().begin(); o!=options.getCfg().end(); o++)
     traceCtxt[encodeCtxtName("compModule", "option", "0", o->first)] = o->second;
@@ -1376,7 +1462,7 @@ void compModule::setOutCtxt(int idx, const compContext& c) {
 
 // We can configure the values that modifiable options take within each module
 // module name -> modifiable option name -> option value
-std::map<std::string, std::map<std::string, attrValue> > compModule::modOptValue;
+ThreadLocalStorageMap<std::string, std::map<std::string, attrValue> > compModule::modOptValue;
 
 // Checks whether a modifiable option with the given name was specified for this module. 
 // This option may be set in a configuration file and then applications may use this 
@@ -1647,7 +1733,7 @@ module::derivInfo* processedModule::setProperties(const instance& inst, const pr
   
   // If the current attribute query evaluates to true (we're emitting debug output) AND
   // either onoffOp is not provided or its evaluates to true
-  if(attributes.query() && (onoffOp? onoffOp->apply(): true)) {
+  if(attributes->query() && (onoffOp? onoffOp->apply(): true)) {
     deriv->props->active = true;
     
     map<string, string> pMap;
@@ -1977,6 +2063,8 @@ void ModularAppMerger::mergeKey(properties::tagType type, properties::iterator t
   if(type==properties::enterTag) {
     info.add(tag.get("appName"));
   }
+  // These tags encode the skeleton of modularApps and must be aligned across all streams
+  info.setUniversal(true);
 }
 
 /*************************************
@@ -2024,6 +2112,9 @@ void ModularAppStructureMerger::mergeKey(properties::tagType type, properties::i
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; assert(0); }
   if(type==properties::enterTag) {
   }
+
+  // These tags encode the skeleton of modularApps and must be aligned across all streams
+  info.setUniversal(true);
 }
 
 /************************
@@ -2078,6 +2169,7 @@ properties* ModuleMerger::setProperties(std::vector<std::pair<properties::tagTyp
                            inStreamRecords);*/
       
       // We must have previously assigned a streamID in the outgoing stream to this module group
+      dbg << "g="<<g.str()<<", observed="<<((ModuleStreamRecord*)(outStreamRecords)["module"])->isModuleObserved(g)<<endl;
       assert(((ModuleStreamRecord*)(outStreamRecords)["module"])->isModuleObserved(g));
       pMap["moduleID"] = txt() << ((ModuleStreamRecord*)(outStreamRecords)["module"])->getModuleID(g);
       //pMap["moduleID"] = txt()<<streamRecord::mergeIDs("module", "moduleID", pMap, tags, outStreamRecords, inStreamRecords);
@@ -2428,6 +2520,7 @@ properties* ModuleTraceStreamMerger::setProperties(
       int traceID = streamRecord::mergeIDs("traceStream", "traceID", pMap, TraceStreamTags, outStreamRecords, inStreamRecords);
       
       // Associate the new moduleID and traceID with the module group
+      dbg << "g="<<g.str()<<", obserbing module"<<endl;
       ((ModuleStreamRecord*)(outStreamRecords)["module"])->setModuleID(g, moduleID, traceID);
       
       pMap["moduleID"] = txt() << moduleID;
@@ -2615,8 +2708,10 @@ properties* CompModuleTraceStreamMerger::setProperties(
            if(comparators.find(attrName) == comparators.end())
              comparators[attrName] = make_pair(compName, compDesc);
            // Otherwise, ensure that all the comparators specified for this attribute/output are identical
-           else
+           else {
+             if(comparators[attrName] != make_pair(compName, compDesc)) { cerr << "ERROR: mismatched comparators for attribute "<<attrName<<"! Before observed "<<comparators[attrName].first<<" / "<<comparators[attrName].second<<" but now observing "<<compName<<" / "<<compDesc<<endl; }
              assert(comparators[attrName] == make_pair(compName, compDesc));
+           }
 
 /*          string key = txt()<<"out"<<outIdx<<":compare"<<compIdx;
 cout << "outIdx="<<outIdx<<", compIdx="<<compIdx<<". key="<<key<<": "<<t->second.get(txt()<<"out"<<outIdx<<":compare"<<compIdx)<<endl;

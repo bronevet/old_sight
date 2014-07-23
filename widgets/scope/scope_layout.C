@@ -118,7 +118,7 @@ void scope::init() {
   blockIndex = dbg.blockIndex();
   
   if(ownFile) /*loadCmd = */dbg.enterFileLevel(this);
-  else        dbg.enterBlock(this, false, summaryEntry);
+  else        dbg.enterBlock(this, /*newFileEntered*/ false, summaryEntry);
 }
 
 scope::~scope()
