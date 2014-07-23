@@ -94,14 +94,6 @@ clock/clock_structure.o: clock/clock_structure.C clock/clock_structure.h
 clock/clock_layout.o: clock/clock_layout.C clock/clock_layout.h
 	${CCC} ${SIGHT_CFLAGS} clock/clock_layout.C -I.. -Igsl/include -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o clock/clock_layout.o
 
-cdnode/cdnode_common.o: cdnode/cdnode_common.C cdnode/cdnode_common.h ../attributes/attributes_common.h ../sight_common.h
-	${CCC} -std=gnu++0x ${SIGHT_CFLAGS} cdnode/cdnode_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o cdnode/cdnode_common.o
-
-cdnode/cdnode_structure.o: cdnode/cdnode_structure.C cdnode/cdnode_structure.h ../attributes/attributes_structure.h ../sight_structure.h
-	${CCC} -std=gnu++0x ${SIGHT_CFLAGS} cdnode/cdnode_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o cdnode/cdnode_structure.o
-
-cdnode/cdnode_layout.o: cdnode/cdnode_layout.C cdnode/cdnode_layout.h ../attributes/attributes_layout.h ../sight_layout.h
-	${CCC} -std=gnu++0x ${SIGHT_CFLAGS} cdnode/cdnode_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o cdnode/cdnode_layout.o
 
 ifeq (${KULFI_ENABLED}, 1)
 .PHONY: kulfi
