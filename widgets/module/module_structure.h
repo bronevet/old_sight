@@ -221,184 +221,13 @@ class instanceTree {
   std::string str() const;
   
   // The depth of the recursion in instanceTree::str()
-  static int instanceTreeStrDepth;
+  static ThreadLocalStorage0<int> instanceTreeStrDepth;
 
   // The ostringstream into which the output of instanceTree::str() is accumulated
-  static std::ostringstream oss;
+  static ThreadLocalStorageOStream<std::ostringstream> oss;
 }; // class instanceTree
 
-class module;
-
-// Base class for functors that generate traceStreams that are specific to different sub-types of module.
-// We need this so that we can pass a reference to the correct genTS() method to modularApp::enterModule(). Since this
-// call is made inside the constructor of module, we can't use virtual methods to ensure that the correct version
-// of genTS will be called by just passing a reference to the current module-derived object
-//typedef traceStream* (*generateTraceStream)(int moduleID, const group& g);
-class generateTraceStream {
-  public:
-  virtual traceStream* operator()(int moduleID)=0;
-}; // class generateTraceStream
-
-// Represents a modular application, which may contain one or more modules. Only one modular application may be
-// in-scope at any given point in time.
-class modularApp: public block
-{
-  friend class group;
-  friend class module;
-  
-  protected:
-  // Points to the currently active instance of modularApp. There can be only one.
-  static modularApp* activeMA;
-    
-  // The maximum ID ever assigned to any modular application
-  static int maxModularAppID;
-  
-  // The maximum ID ever assigned to any module group
-  static int maxModuleGroupID;
-
-  // Records all the known contexts, mapping each context to its unique ID
-  static std::map<group, int> group2ID;
-  	
-  // Maps each context to the number of times it was ever observed
-  static std::map<group, int> group2Count;
-  
-  // The trace that records performance observations of different modules and contexts
-  static std::map<group, traceStream*> moduleTrace;
-  static std::map<group, int>          moduleTraceID;
-  
-  // Tree that records the hierarchy of module instances that were observed during the execution of this
-  // modular application. Each path from the tree's root to a leaf is a stack of module instances that
-  // corresponds to some observed module group.
-  static instanceTree tree;
-  
-  // Maps each module to the list of the names of its input and output context attributes. 
-  // This enables us to verify that all the modules are used consistently.
-  static std::map<group, std::vector<std::list<std::string> > > moduleInCtxtNames;
-  static std::map<group, std::vector<std::list<std::string> > > moduleOutCtxtNames;
-  
-  // The properties object that describes each module group. This object is created by calling each group's
-  // setProperties() method and each call to this method for the same module group must return the same properties.
-  static std::map<group, properties*> moduleProps;
-    
-  // Records all the edges ever observed, mapping them to the number of times each edge was observed
-  static std::map<std::pair<port, port>, int> edges;
-  
-  // Stack of the modules that are currently in scope
-  static std::list<module*> mStack;
-  
-  public:
-  // Returns a constant reference to the current stack of modules
-  static const std::list<module*>& getMStack() { return mStack; }
-  
-  // The unique ID of this application
-  int appID;
-  
-  // The name of this application
-  std::string appName;
-  
-  // The set of measurements that will be collected for all the modules within this modular app
-  namedMeasures meas;
-
-  public:
-  modularApp(const std::string& appName,                                                   properties* props=NULL);
-  modularApp(const std::string& appName, const attrOp& onoffOp,                            properties* props=NULL);
-  modularApp(const std::string& appName,                        const namedMeasures& meas, properties* props=NULL);
-  modularApp(const std::string& appName, const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
-  
-  // Stack used while we're emitting the nesting hierarchy of module groups to keep each module group's 
-  // sightObject between the time the group is entered and exited
-  static std::list<sightObj*> moduleEmitStack;
-
-  // Emits the entry tag for a module group during the execution of ~modularApp()
-  static void enterModuleGroup(const group& g);
-  // Emits the exit tag for a module group during the execution of ~modularApp()
-  static void exitModuleGroup(const group& g);
-  
-  ~modularApp();
-
-  // Directly calls the destructor of this object. This is necessary because when an application crashes
-  // Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
-  // there is no way to directly call the destructor of a given object when it may have several levels
-  // of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
-  // it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
-  // an object will invoke the destroy() method of the most-derived class.
-  virtual void destroy();
-  
-  private:
-  // Common initialization logic
-  void init();
-    
-  // Sets the properties of this object
-  static properties* setProperties(const std::string& appName, const attrOp* onoffOp, properties* props);
-  
-  public:
-  // Returns the module ID of the given module group, generating a fresh one if one has not yet been assigned
-  static int genModuleID(const group& g);
-  
-  // Returns whether the current instance of modularApp is active
-  static bool isInstanceActive();
-
-  // Returns a pointer to the current instance of modularApp
-  static modularApp* getInstance() { assert(activeMA); return activeMA; }
-  
-  // Assigns a unique ID to the given module group, as needed and returns this ID
-  static int addModuleGroup(const group& g);
-  
-  // Registers the names of the contexts of the given module's inputs or outputs and if this is not the first time this module is called, 
-  // verifies that these context names are consistent across different calls.
-  // g - the module group for which we're registering inputs/outputs
-  // inouts - the vector of input or output ports
-  // toT - identifies whether inouts is the vector of inputs or outputs
-  static void registerInOutContexts(const group& g, const std::vector<port>& inouts, sight::common::module::ioT io);
-  
-  // Add an edge between one module's output port and another module's input port
-  static void addEdge(port from, port to);
-
-  // Add an edge between one module's output port and another module's input port
-  static void addEdge(group fromG, sight::common::module::ioT fromT, int fromP, 
-                      group toG,   sight::common::module::ioT toT,   int toP);
-
-  // Returns the current module on the stack and NULL if the stack is empty
-  static module* getCurModule();
-  
-  // Adds the given module object to the modules stack
-  static void enterModule(module* m, int moduleID, properties* props/*, generateTraceStream& tsGenerator*/);
-  
-    // Returns whether a traceStream has been registered for the given module group
-  static bool isTraceStreamRegistered(const group& g);
-
-  // Registers the given traceStream for the given module group
-  static void registerTraceStream(const group& g, traceStream* ts);
-  
-  // Registers the ID of the traceStream that will be used for the given module group
-  static void registerTraceStreamID(const group& g, int traceID);
-  
-  // Returns the currently registered the ID of the traceStream that will be used for the given module group
-  static int getTraceStreamID(const group& g);
-
-  // Removes the given module object from the modules stack
-  static void exitModule(module* m);
-
-  // -------------------------
-  // ----- Configuration -----
-  // -------------------------
-  // Currently there isn't anything that can be configured but in the future we may wish to
-  // add measurements that will be taken on all modules
-  public:
-  class ModularAppConfiguration : public common::Configuration{
-    public:
-    ModularAppConfiguration(properties::iterator props) : common::Configuration(props.next()) {
-    }
-  };
-
-  static common::Configuration* configure(properties::iterator props) {
-    // Create a ModuleConfiguration object, using the invocation of the constructor hierarchy to
-    // record the configuration details with the respective widgets from which modules inherit
-    ModularAppConfiguration* c = new ModularAppConfiguration(props);
-    delete c;
-    return NULL;
-  }
-}; // class modularApp
+class modularApp;
 
 class module: public sightObj, public common::module
 {
@@ -438,6 +267,10 @@ class module: public sightObj, public common::module
   // List of all the measurements that should be taken during the execution of this module. This is a list of pointers to
   // measure objects. When the module instance is deleted, its measure objects are automatically deleted as well.
   namedMeasures meas;
+
+  // Number of inputs/options that this module has publicized for use by modules that it contains
+  int numPublicizedInputs;
+  int numPublicizedOptions;
   
   // Records the observation made during the execution of this module. obs may be filled in
   // all at once in the destructor. Alternately, if users call completeMeasurement() directly,
@@ -504,7 +337,7 @@ class module: public sightObj, public common::module
   properties* setProperties(const instance& inst, properties* props, const attrOp* onoffOp, module* me);
 
   void init(const std::vector<port>& in, properties* props);
-  
+
   private:
   // Sets the properties of this object
   //static properties* setProperties(const instance& inst, const std::vector<port>& inputs, const attrOp* onoffOp, properties* props);
@@ -531,7 +364,26 @@ class module: public sightObj, public common::module
   // an object will invoke the destroy() method of the most-derived class.
   virtual void destroy();
   
-  // The variant of the generateTraceStream functor specialized to generating moduleTraceStreams
+  // Records any publicized inputs or options inside this module and its associated modularApp. Modules
+  // executed while this module is active will inherit these inputs and options.
+  void addPublicizedInputs(const std::vector<port>& ins, int& numPublicized,
+                           std::list<std::pair<std::string, attrValue> >& publicized,
+                           std::list<std::pair<std::string, notes> >& publicizedNotes);
+
+  void addPublicizedOptions(const context& opts, int& numPublicized,
+                            std::list<std::pair<std::string, attrValue> >& publicized,
+                            std::list<std::pair<std::string, notes> >& publicizedNotes);
+
+  void addPublicized(const context& insopts, int& numPublicized,
+                     std::list<std::pair<std::string, attrValue> >& publicized,
+                     std::list<std::pair<std::string, notes> >& publicizedNotes);
+
+  // Clears off any records of publicized inputs or options that were set in addPublicized()
+  void clearPublicized(int& numPublicized,
+                       std::list<std::pair<std::string, attrValue> >& publicized,
+                       std::list<std::pair<std::string, notes> >& publicizedNotes);
+
+   // The variant of the generateTraceStream functor specialized to generating moduleTraceStreams
   /*class generateModuleTraceStream : public generateTraceStream {
     protected:
     const group* g;
@@ -604,6 +456,184 @@ class module: public sightObj, public common::module
     return NULL;
   }
 }; // module
+
+
+// Base class for functors that generate traceStreams that are specific to different sub-types of module.
+// We need this so that we can pass a reference to the correct genTS() method to modularApp::enterModule(). Since this
+// call is made inside the constructor of module, we can't use virtual methods to ensure that the correct version
+// of genTS will be called by just passing a reference to the current module-derived object
+//typedef traceStream* (*generateTraceStream)(int moduleID, const group& g);
+class generateTraceStream {
+  public:
+  virtual traceStream* operator()(int moduleID)=0;
+}; // class generateTraceStream
+
+// Represents a modular application, which may contain one or more modules. Only one modular application may be
+// in-scope at any given point in time.
+class modularApp: public block
+{
+  friend class group;
+  friend class module;
+  
+  protected:
+  // Points to the currently active instance of modularApp. There can be only one.
+  static ThreadLocalStorage1<modularApp*, modularApp*> activeMA;
+    
+  // The maximum ID ever assigned to any modular application
+  static ThreadLocalStorage1<int, int> maxModularAppID;
+  
+  // The maximum ID ever assigned to any module group
+  static ThreadLocalStorage1<int, int> maxModuleGroupID;
+
+  // Records all the known contexts, mapping each context to its unique ID
+  static ThreadLocalStorageMap<group, int> group2ID;
+  	
+  // Maps each context to the number of times it was ever observed
+  static ThreadLocalStorageMap<group, int> group2Count;
+  
+  // The trace that records performance observations of different modules and contexts
+  static ThreadLocalStorageMap<group, traceStream*> moduleTrace;
+  static ThreadLocalStorageMap<group, int>          moduleTraceID;
+  
+  // Tree that records the hierarchy of module instances that were observed during the execution of this
+  // modular application. Each path from the tree's root to a leaf is a stack of module instances that
+  // corresponds to some observed module group.
+  static ThreadLocalStorage0<instanceTree> tree;
+  
+  // Maps each module to the list of the names of its input and output context attributes. 
+  // This enables us to verify that all the modules are used consistently.
+   static ThreadLocalStorageMap<group, std::vector<std::list<std::string> > > moduleInCtxtNames;
+   static ThreadLocalStorageMap<group, std::vector<std::list<std::string> > > moduleOutCtxtNames;
+  
+  // The properties object that describes each module group. This object is created by calling each group's
+  // setProperties() method and each call to this method for the same module group must return the same properties.
+   static ThreadLocalStorageMap<group, properties*> moduleProps;
+    
+  // Records all the edges ever observed, mapping them to the number of times each edge was observed
+   static ThreadLocalStorageMap<std::pair<port, port>, int> edges;
+  
+  // Stack of the modules that are currently in scope
+  static ThreadLocalStorageList<module*> mStack;
+  
+  public:
+  // Returns a constant reference to the current stack of modules
+  static const std::list<module*>& getMStack() { return *mStack.get(); }
+  
+  // The unique ID of this application
+  int appID;
+  
+  // The name of this application
+  std::string appName;
+  
+  // The set of measurements that will be collected for all the modules within this modular app
+  namedMeasures meas;
+
+  // The input/option attributes that have been publicized by modules currently on the stack
+  std::list<std::pair<std::string, attrValue> > publicizedInputs;
+  std::list<std::pair<std::string, module::notes> > publicizedInputNotes;
+  std::list<std::pair<std::string, attrValue> > publicizedOptions;
+  std::list<std::pair<std::string, module::notes> > publicizedOptionNotes;
+
+  public:
+  modularApp(const std::string& appName,                                                   properties* props=NULL);
+  modularApp(const std::string& appName, const attrOp& onoffOp,                            properties* props=NULL);
+  modularApp(const std::string& appName,                        const namedMeasures& meas, properties* props=NULL);
+  modularApp(const std::string& appName, const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
+  
+  // Stack used while we're emitting the nesting hierarchy of module groups to keep each module group's 
+  // sightObject between the time the group is entered and exited
+  static ThreadLocalStorageList<sightObj*> moduleEmitStack;
+
+  // Emits the entry tag for a module group during the execution of ~modularApp()
+  static void enterModuleGroup(const group& g);
+  // Emits the exit tag for a module group during the execution of ~modularApp()
+  static void exitModuleGroup(const group& g);
+  
+  ~modularApp();
+
+  // Directly calls the destructor of this object. This is necessary because when an application crashes
+  // Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+  // there is no way to directly call the destructor of a given object when it may have several levels
+  // of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+  // it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+  // an object will invoke the destroy() method of the most-derived class.
+  virtual void destroy();
+  
+  private:
+  // Common initialization logic
+  void init();
+    
+  // Sets the properties of this object
+  static properties* setProperties(const std::string& appName, const attrOp* onoffOp, properties* props);
+  
+  public:
+  // Returns the module ID of the given module group, generating a fresh one if one has not yet been assigned
+  static int genModuleID(const group& g);
+  
+  // Returns whether the current instance of modularApp is active
+  static bool isInstanceActive();
+
+  // Returns a pointer to the current instance of modularApp
+  static modularApp* getInstance() { assert(*activeMA.get()); return *activeMA.get(); }
+  
+  // Assigns a unique ID to the given module group, as needed and returns this ID
+  static int addModuleGroup(const group& g);
+  
+  // Registers the names of the contexts of the given module's inputs or outputs and if this is not the first time this module is called, 
+  // verifies that these context names are consistent across different calls.
+  // g - the module group for which we're registering inputs/outputs
+  // inouts - the vector of input or output ports
+  // toT - identifies whether inouts is the vector of inputs or outputs
+  static void registerInOutContexts(const group& g, const std::vector<port>& inouts, sight::common::module::ioT io);
+  
+  // Add an edge between one module's output port and another module's input port
+  static void addEdge(port from, port to);
+
+  // Add an edge between one module's output port and another module's input port
+  static void addEdge(group fromG, sight::common::module::ioT fromT, int fromP, 
+                      group toG,   sight::common::module::ioT toT,   int toP);
+
+  // Returns the current module on the stack and NULL if the stack is empty
+  static module* getCurModule();
+  
+  // Adds the given module object to the modules stack
+  static void enterModule(module* m, int moduleID, properties* props/*, generateTraceStream& tsGenerator*/);
+  
+    // Returns whether a traceStream has been registered for the given module group
+  static bool isTraceStreamRegistered(const group& g);
+
+  // Registers the given traceStream for the given module group
+  static void registerTraceStream(const group& g, traceStream* ts);
+  
+  // Registers the ID of the traceStream that will be used for the given module group
+  static void registerTraceStreamID(const group& g, int traceID);
+  
+  // Returns the currently registered the ID of the traceStream that will be used for the given module group
+  static int getTraceStreamID(const group& g);
+
+  // Removes the given module object from the modules stack
+  static void exitModule(module* m);
+
+  // -------------------------
+  // ----- Configuration -----
+  // -------------------------
+  // Currently there isn't anything that can be configured but in the future we may wish to
+  // add measurements that will be taken on all modules
+  public:
+  class ModularAppConfiguration : public common::Configuration{
+    public:
+    ModularAppConfiguration(properties::iterator props) : common::Configuration(props.next()) {
+    }
+  };
+
+  static common::Configuration* configure(properties::iterator props) {
+    // Create a ModuleConfiguration object, using the invocation of the constructor hierarchy to
+    // record the configuration details with the respective widgets from which modules inherit
+    ModularAppConfiguration* c = new ModularAppConfiguration(props);
+    delete c;
+    return NULL;
+  }
+}; // class modularApp
 
 // Extends the normal context by allowing the caller to specify a description of the comparator to be used
 // for each key
@@ -898,7 +928,7 @@ class compModule: public structure::module
   // Sets the properties of this object
   properties* setProperties(const instance& inst, bool isReference, context options, const attrOp* onoffOp, properties* props=NULL);
   
-  void init(properties* props);
+  void init(const context& options, properties* props);
   
   ~compModule();
 
@@ -931,7 +961,7 @@ class compModule: public structure::module
   // -------------------------
   // We can configure the values that modifiable options take within each module
   // module name -> modifiable option name -> option value
-  static std::map<std::string, std::map<std::string, attrValue> > modOptValue;
+  static ThreadLocalStorageMap<std::string, std::map<std::string, attrValue> > modOptValue;
   
   public:
   class CompModuleConfiguration : public ModuleConfiguration {

@@ -23,6 +23,12 @@
 
 #include "sight.h"
 using namespace sight;
+using namespace sight::structure;
+#if defined(KULFI)
+#include "kulfi_structure.h"
+#endif
+using namespace std;
+
 
 #if defined(KULFI)
    #define sightModularApp kulfiModularApp
@@ -627,11 +633,16 @@ Real_t CalcElemVolume( const Real_t x[8],
 // lulesh-util
 void ParseCommandLineOptions(int argc, char *argv[],
                              Int_t myRank, struct cmdLineOpts *opts);
-void VerifyAndWriteFinalOutput(Real_t elapsed_time,
+#if defined(COMP) || defined(KULFI)
+compContext
+#else
+context
+#endif
+     VerifyAndWriteFinalOutput(Real_t elapsed_time,
                                Domain& locDom,
                                Int_t nx,
                                Int_t numRanks,
-                               sightModule* mod, int outputNum, bool verbose);
+                               bool verbose);
 
 // lulesh-viz
 void DumpToVisit(Domain& domain, int numFiles, int myRank, int numRanks, std::vector<int>& nodeDiscretizationBasis, std::vector<int>& edgeDiscretizationOrigin, std::vector<int>& edgeDiscretizationBasis);
@@ -653,7 +664,7 @@ void CommMonoQ(Domain& domain);
 void InitMeshDecomp(Int_t numRanks, Int_t myRank,
                     Int_t *col, Int_t *row, Int_t *plane, Int_t *side);
 
-#ifdef COMP
+#if defined(COMP) || defined(KULFI)
 compNamedMeasures getMeasures();
 #else // not COMP
 namedMeasures getMeasures();

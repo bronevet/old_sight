@@ -52,18 +52,26 @@ void layoutHandlerInstantiator::init() {
 void* defaultEntryHandler(properties::iterator props) { return NULL; }
 void  defaultExitHandler(void* obj) { }
 
-void* indentEnterHandler(properties::iterator props) { return new indent(props); }
-void  indentExitHandler(void* obj) { indent* i = static_cast<indent*>(obj); delete i; }
-
 sightLayoutHandlerInstantiator::sightLayoutHandlerInstantiator() { 
   (*layoutEnterHandlers)["sight"]  = &SightInit;
   (*layoutExitHandlers )["sight"]  = &defaultExitHandler;
+
+  (*layoutEnterHandlers)["block"] = &blockEnterHandler;
+  (*layoutExitHandlers )["block"] = &blockExitHandler;
+
   (*layoutEnterHandlers)["indent"] = &indentEnterHandler;
   (*layoutExitHandlers )["indent"] = &indentExitHandler;
+
+  // Called when a group of comparison logs are entered or exited
+  (*layoutEnterHandlers)["comparison"] = &comparisonEnterHandler;
+  (*layoutExitHandlers) ["comparison"] = &comparisonExitHandler;
+  // Called between individual comparison logs within a group
+  (*layoutEnterHandlers)["inter_comparison"] = &interComparisonHandler;
+
   (*layoutEnterHandlers)["link"]   = &anchor::link;
   (*layoutExitHandlers )["link"]   = &defaultExitHandler;
 }
-sightLayoutHandlerInstantiator sightLayoutHandlerInstantance;
+sightLayoutHandlerInstantiator sightLayoutHandlerInstance;
 
 // Call the entry handler of the most recently-entered object with name objName
 // and push the object it returns onto the stack dedicated to objects of this type.
@@ -74,7 +82,23 @@ void invokeEnterHandler(map<string, list<void*> >& stack, string objName, proper
   #endif
   if(layoutHandlerInstantiator::layoutEnterHandlers->find(objName) == layoutHandlerInstantiator::layoutEnterHandlers->end()) { cerr << "ERROR: no entry handler for \""<<objName<<"\" tags!" << endl; }
   assert(layoutHandlerInstantiator::layoutEnterHandlers->find(objName) != layoutHandlerInstantiator::layoutEnterHandlers->end());
+  
   stack[objName].push_back((*layoutHandlerInstantiator::layoutEnterHandlers)[objName](iter));
+}
+
+// Call the entry handler of the most recently-entered object with name objName but do not
+// push the object it returns onto any stack and instead (to avoid memory leaks) verify
+// that the returned value is NULL.
+void invokeEnterHandlerNoStack(string objName, properties::iterator iter) {
+  #ifdef VERBOSE
+  cout << "<<<"<<stack[objName].size()<<": "<<objName<<endl;
+  cout << "    "<<iter.str()<<endl;
+  #endif
+  if(layoutHandlerInstantiator::layoutEnterHandlers->find(objName) == layoutHandlerInstantiator::layoutEnterHandlers->end()) { cerr << "ERROR: no entry handler for \""<<objName<<"\" tags!" << endl; }
+  assert(layoutHandlerInstantiator::layoutEnterHandlers->find(objName) != layoutHandlerInstantiator::layoutEnterHandlers->end());
+  
+  void* obj = (*layoutHandlerInstantiator::layoutEnterHandlers)[objName](iter);
+  if(obj!=NULL) { cerr << "invokeEnterHandlerNoStack() ERROR: caller requested that entry for a "<<objName<<" object not be recorded on the stack but its entry handler returned a non-NULL pointer!"<<endl; assert(0); }
 }
 
 // Call the exit handler of the most recently-entered object with name objName
@@ -116,15 +140,15 @@ void layoutStructure(structureParser& parser) {
         invokeEnterHandler(stack, props.second->name(), props.second->begin());
                   
         // If this tag denotes one or more variants of the log
-        if(props.second->name() == "variants") {
+        if(props.second->name() == "variants" || props.second->name() == "comparison") {
           // Iterate through the structure files of all the variants, adding their layout to the log
-          int numVariants = props.second->begin().getNumKeys();
+          int numVariants = props.second->begin().getInt("numSubDirs");
           for(int i=0; i<numVariants; i++) {
-            string variantDir = properties::get(props.second->begin(), txt()<<"var_"<<i);
+            string variantDir = properties::get(props.second->begin(), txt()<<"sub_"<<i);
             //cout << "variantDir="<<variantDir<<"\n";
             FILEStructureParser parser(variantDir+"/structure", 10000);
             layoutStructure(parser);
-            if(i!=numVariants-1) invokeEnterHandler(stack, "inter_variants", props.second->begin());
+            if(i!=numVariants-1) invokeEnterHandler(stack, "inter_"+props.second->name(), props.second->begin());
           }
         }
       }
@@ -237,6 +261,102 @@ void* SightInit(properties::iterator props) {
   return NULL;
 }
 
+/**********************
+ ***** sightClock *****
+ **********************/
+
+// Maps the unique name of each currently active clock to the current time that it 
+// reports (represented as an attrValue). A clock's name may combine the name of 
+// its class with any additional info needed to differentiate multiple clocks of 
+// the same type (e.g. stepClocks)
+std::map<std::string, attrValue> sightClock::curTime;
+  
+// Records whether the clock has been modified since the last time it was read
+bool sightClock::modified=false;
+
+// Records the JavaScript comparison functions to be used for all the clocks
+std::map<std::string, std::string> sightClock::compFuncs;
+  
+// Called by the handlers of the individual clocks to update their current time
+void sightClock::updateTime(const std::string& clockName, const attrValue& time) { 
+  curTime[clockName] = time;
+
+  // Record the comparison function for this clock, if we have not yet done this
+  if(compFuncs.find(clockName) == compFuncs.end()) {
+    compFuncs[clockName] = time.getComparatorJS();
+    // Emit the registration to the Javascript output to make it available to the clock-based 
+    // layout mechanisms
+    dbg.widgetScriptPrologCommand(txt()<<"registerComparator('"<<clockName<<"', "<<time.getComparatorJS()<<");");
+  }
+
+  // Record that the clock has been modified (i.e. now) since the last time it was read
+  modified = true;
+}
+
+// Returns the current time across all the individual clocks as a JavaScript hash that
+// maps the name of each clock to its value
+std::string sightClock::getCurTimeJS() {
+  // Record that the clock has NOT been modified since the last time it was read (i.e. now)
+  modified = false;
+
+  ostringstream s;
+  s << "{";
+  for(map<string, attrValue>::const_iterator c=curTime.begin(); c!=curTime.end(); c++) {
+    if(c!=curTime.begin()) s << ", ";
+    s << c->first << ": " << c->second.getAsJS();
+  }
+  s << "}";
+  return s.str();
+}
+
+// Returns the JavaScript functions that establish a partial order among the values of
+// all the individual clocks as a JavaScript hash that maps the name of each clock to 
+// its comparator function
+std::string sightClock::getComparatorsJS() {
+  ostringstream s;
+  s << "{";
+  for(map<string, attrValue>::const_iterator c=curTime.begin(); c!=curTime.end(); c++) {
+    if(c!=curTime.begin()) s << ", ";
+    s << c->first << ": " << c->second.getComparatorJS();
+  }
+  s << "}";
+  return s.str();
+}
+
+
+/********************
+ ***** sightObj *****
+ ********************/
+// Counts the number of clock divs we've placed so that we can give them unique IDs
+int sightObj::maxClockID=0;
+
+sightObj::sightObj(properties::iterator props) {
+  if(maxClockID==0) {
+    // After all the clock insertions are complete, perform the order-sensitive div layout
+    dbg.widgetScriptEpilogCommand("layoutOrderedDivs();");
+  }
+
+  // The sightObj constructor is called with the props iterator set immediately
+  // after the record that describes the class that inherits from sightObj.
+  // The remaining records must belong to the clocks that are associated with
+  // this object. Iterate over these clocks and call their handlers. 
+  while(!props.isEnd()) {
+    invokeEnterHandlerNoStack(props.name(), props);
+    props = props.next();
+  }
+  
+  // If we've updated the clock, emit a div to the html output that keeps track
+  // of the clock at that spot in the log
+  if(sightClock::isModified()) {
+    dbg.ownerAccessing();  
+    dbg << "<div id=\"clock_"<<maxClockID<<"\"></div>"<<endl;
+    dbg.userAccessing();  
+    //dbg << "<script type=\"text/javascript\">insertOrderedDiv(document.getElementById('clock_"<<maxClockID<<"'), "<<sightClock::getCurTimeJS()<<");</script>"<<endl;
+    dbg.widgetScriptCommand(txt()<<"insertOrderedDiv(document.getElementById('clock_"<<maxClockID<<"'), "<<sightClock::getCurTimeJS()<<")");
+    
+    maxClockID++;
+  }
+}
 
 /***************
  ***** dbg *****
@@ -500,15 +620,18 @@ std::string anchor::str(std::string indent) const {
   return oss.str();
 }
 
-
 /*****************
  ***** block *****
  *****************/
 
+void* blockEnterHandler(properties::iterator props) { return new block(props); }
+void  blockExitHandler(void* obj) { block* b = static_cast<block*>(obj); delete b; }
+
+
 int block::blockCount=0;
 
 // Initializes this block with the given properties
-block::block(properties::iterator props) : startA(/*false,*/ -1) /*=noAnchor, except that noAnchor may not yet be initialized)*/ {
+block::block(properties::iterator props) : sightObj(props.next()), startA(/*false,*/ -1) /*=noAnchor, except that noAnchor may not yet be initialized)*/ {
   assert(initializedDebug);
   label = properties::get(props, "label");
   // Record the ID assigned to this block in the structure layer
@@ -527,8 +650,9 @@ block::block(properties::iterator props) : startA(/*false,*/ -1) /*=noAnchor, ex
   blockCount++;
 }
 
-// Initializes this block with the given label, used for creating additional blocks that were not listed in the structure file
-block::block(string label) : label(label), startA(/*false,*/ -1) /*=noAnchor, except that noAnchor may not yet be initialized)*/ {
+// Initializes this block with the given label, used for creating additional 
+// blocks that were not listed in the structure file
+block::block(string label) : sightObj(), label(label), startA(/*false,*/ -1) /*=noAnchor, except that noAnchor may not yet be initialized)*/ {
   scriptFile       = dbg.getCurScriptFile();      // assert(scriptFile);
   scriptPrologFile = dbg.getCurScriptPrologFile();// assert(scriptPrologFile);
   scriptEpilogFile = dbg.getCurScriptEpilogFile();// assert(scriptEpilogFile); 
@@ -1111,7 +1235,7 @@ void dbgStream::subBlockEnterNotify(block* subBlock)
   for(list<pair<block*, list<block*> > >::const_reverse_iterator fb=blocks.rbegin(); fb!=blocks.rend(); fb++) {
     // Iterate through the sub-blocks of this file
     for(list<block*>::const_reverse_iterator sb=fb->second.rbegin(); sb!=fb->second.rend(); sb++) {
-      //cout << "  Informing"<<(*sb)->getLabel()<<endl;
+      //cout << "  Informing "<<(*sb)->getLabel()<<endl;
       if(!(*sb)->subBlockEnterNotify(subBlock)) return;
     }
     
@@ -1344,9 +1468,12 @@ void dbgStream::printSummaryFileContainerHTML(string absoluteFileName, string re
   sum << "\t<head>\n";
   sum << "\t<title>"<<title<<"</title>\n";
   sum << "\t<script src=\"script/hashtable.js\"></script>\n";
+  sum << "\t<script src=\"script/skiplists.js\"></script>\n";
   sum << "\t<script src=\"script/placement.js\"></script>\n";
   sum << "\t<script src=\"script/attributes.js\"></script>\n";
   sum << "\t<script src=\"script/core.js\"></script>\n";
+  sum << "\t<script src=\"script/orderedDivs.js\"></script>\n";
+  sum << "\t<script src=\"script/uniqueMark.js\"></script>\n";
   sum << "\t<script type=\"text/javascript\">\n";
   sum << "\tfunction loadURLIntoDiv(doc, url, divName) {\n";
   sum << "\t\tvar xhr= new XMLHttpRequest();\n";
@@ -1383,10 +1510,13 @@ void dbgStream::printDetailFileContainerHTML(string absoluteFileName, string tit
   det << "\t<title>"<<title<<"</title>\n";
   //det << "\t<script type='text/javascript' src='https://www.google.com/jsapi?autoload={\"modules\":[{\"name\":\"visualization\",\"version\":\"1\",\"packages\":[\"orgchart\"]}]}'></script>\n";
   det << "\t<script src=\"script/hashtable.js\"></script>\n";
+  det << "\t<script src=\"script/skiplists.js\"></script>\n";
   det << "\t<script src=\"script/taffydb/taffy.js\"></script>\n";
   det << "\t<script src=\"script/placement.js\"></script>\n";
   det << "\t<script src=\"script/attributes.js\"></script>\n";
   det << "\t<script src=\"script/core.js\"></script>\n";
+  det << "\t<script src=\"script/orderedDivs.js\"></script>\n";
+  det << "\t<script src=\"script/uniqueMark.js\"></script>\n";
   det << "\t<STYLE TYPE=\"text/css\">\n";
   det << "\tBODY\n";
   det << "\t\t{\n";
@@ -1456,6 +1586,7 @@ void dbgStream::printDetailFileContainerHTML(string absoluteFileName, string tit
 //    the start of this major block and the next setting of an attribute.
 string dbgStream::enterBlock(block* b, bool newFileEntered, bool addSummaryEntry, bool recursiveEnterBlock)
 {
+  //cout <<"dbgStream::enterBlock() recursiveEnterBlock="<<recursiveEnterBlock<<", label="<<b->getLabel()<<endl;
   //cout << "<<<enter(newFileEntered="<<newFileEntered<<", addSummaryEntry="<<addSummaryEntry<<", recursiveEnterBlock="<<recursiveEnterBlock<<") b="<<b<<"="<<(b? b->getLabel(): "NULL")<<endl;
 //!!!  dbg << "<<<enter() fileBufs.size()="<<fileBufs.size()<<" && #blocks="<<blocks.size()<<", #blocks.back().second="<<blocks.back().second.size()<<", #fileBufs.back()->blocks="<<(fileBufs.size()==0? -1: fileBufs.back()->blocks.size())<<endl;
 /*  if(!recursiveEnterBlock)
@@ -1497,7 +1628,7 @@ string dbgStream::enterBlock(block* b, bool newFileEntered, bool addSummaryEntry
                "top.summary.document, 'summary."<<fileID<<".body', 'sumdiv"<<blockID<<"', "<<
                "'script/script."<<fileID<<"'";
   }
-  
+
   if(!recursiveEnterBlock) b->printEntry(loadCmd.str());
   dbg.ownerAccessing();  
   dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"<div id=\"div"<<b->getBlockID()<<"\" class=\"unhidden\">\n"; dbg.flush();
@@ -1649,7 +1780,10 @@ void dbgStream::remIndent()
  ***** indent *****
  ******************/
 
-indent::indent(properties::iterator props)
+void* indentEnterHandler(properties::iterator props) { return new indent(props); }
+void  indentExitHandler(void* obj) { indent* i = static_cast<indent*>(obj); delete i; }
+
+indent::indent(properties::iterator props): sightObj(props.next())
 {
   int repeatCnt = properties::getInt(props, "repeatCnt");
   string prefix = properties::get(props, "prefix");
@@ -1666,6 +1800,98 @@ indent::~indent() {
   //cout << "Exiting indent"<<std::endl;
   dbg.remIndent();
 }
+
+/**********************
+ ***** comparison *****
+ **********************/
+
+void* comparisonEnterHandler(properties::iterator props) { comparison* v=new comparison(props); return v; }
+void  comparisonExitHandler(void* obj) { comparison* v = static_cast<comparison*>(obj); delete v; }
+
+comparison::comparison(properties::iterator props) : 
+  block("Comparison")
+{
+  dbg.ownerAccessing();
+  // Comparisons are visualized as a table with a single column for each sub-log
+  
+  // Start the table and the first column
+  dbg << "<table border=1 width=\"100\%\"><tr><td style=\"vertical-align:top\">"<<endl;
+  dbg.flush();
+  dbg.userAccessing();  
+}
+
+void* interComparisonHandler(properties::iterator props) { 
+  // Complete the last column and start the next one
+  dbg.ownerAccessing();
+  dbg << endl << "</td><td style=\"vertical-align:top\">" << endl;
+  dbg.userAccessing();
+  return NULL;
+}
+ 
+
+comparison::~comparison() { 
+  // Complete the last column and the table
+  dbg.ownerAccessing();
+  dbg << "</td></tr></table>"<<endl;
+  dbg.userAccessing();  
+}
+
+/**********************
+ ***** uniqueMark *****
+ **********************/
+
+// Record the layout handlers in this file
+uniqueMarkLayoutHandlerInstantiator::uniqueMarkLayoutHandlerInstantiator() { 
+/*  (*layoutEnterHandlers)["uniqueMark"] = &uniqueMarkEnterHandler;
+  (*layoutExitHandlers) ["uniqueMark"] = &uniqueMarkExitHandler;*/
+}
+uniqueMarkLayoutHandlerInstantiator uniqueMarkLayoutHandlerInstance;
+
+uniqueMark::uniqueMark(properties::iterator props) : block(properties::next(props))
+{
+  /*static bool initialized=false;
+  // Load uniqueMark-specific JavaScript files into the final document
+  if(!initialized) {
+    // Create the directory that holds the parallel-specific scripts
+    dbg.createWidgetDir("parallel");
+    
+    dbg.includeFile("parallel/uniqueMark.js");
+    dbg.includeWidgetScript("parallel/uniqueMark.js", "text/javascript");
+    initialized=true;
+  }*/
+
+  // Read all the unique IDs from props and register them in JavaScript
+  int numIDs = props.getInt("numIDs");
+  // At least one ID must have been specified
+  assert(numIDs > 0);
+  ostringstream allIDsS;
+  allIDsS << "[";
+  for(int i=0; i<numIDs; i++) {
+    if(i>0) allIDsS << ",";
+    allIDsS << "'"<<props.get(txt()<<"ID"<<i)<<"'";
+  }
+  allIDsS << "]";
+  allIDs = allIDsS.str();
+}
+
+uniqueMark::~uniqueMark()
+{ 
+}
+
+// Called to enable the block to print its entry and exit text
+void uniqueMark::printEntry(string loadCmd) {
+  //cout << "uniqueMark::printEntry("<<loadCmd<<")"<<endl;
+  // At least one ID must have been specified
+  assert(allIDs!="");
+  dbg.widgetScriptCommand(txt()<<"registerUniqueMark('"<<getBlockID()<<"',"<<allIDs<<");");
+}
+
+void uniqueMark::printExit() {
+}
+
+/*void* uniqueMarkEnterHandler(properties::iterator props) { return new uniqueMark(props); }
+void  uniqueMarkExitHandler(void* obj) { uniqueMark* s = static_cast<uniqueMark*>(obj); delete s; }*/
+ 
 
 // Given a string, returns a version of the string with all the control characters that may appear in the 
 // string escaped to that the string can be written out to Dbg::dbg with no formatting issues.

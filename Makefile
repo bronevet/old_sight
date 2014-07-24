@@ -8,7 +8,7 @@ sight := ${sight_O} ${sight_H} gdbLineNum.pl sightDefines.pl
 
 ROOT_PATH = ${CURDIR}
 
-SIGHT_CFLAGS = -g -fPIC -I${ROOT_PATH} -I${ROOT_PATH}/attributes -I${ROOT_PATH}/widgets/* \
+SIGHT_CFLAGS = -g -fPIC -I${ROOT_PATH} -I${ROOT_PATH}/attributes -I${ROOT_PATH}/widgets/parallel \
                 -I${ROOT_PATH}/tools/callpath/src -I${ROOT_PATH}/tools/adept-utils/include \
                 -I${ROOT_PATH}/tools/boost_1_55_0 \
                 -I${ROOT_PATH}/widgets/papi/include \
@@ -34,8 +34,8 @@ SIGHT_LINKFLAGS += ${ROOT_PATH}/widgets/libmsr/lib/libmsr.so \
 endif
 	                
 	                #-Wl,-rpath ${ROOT_PATH}/widgets/papi/lib \
-override CC=gcc
-override CCC=g++
+override CC=clang #icc #gcc
+override CCC=clang++ #icpc #clang++ #g++
 MPICC = mpi${CC}
 MPICCC = mpi${CCC}
 
@@ -83,7 +83,7 @@ VNC_ENABLED := 0
 endif
 
 # By default we disable KULFI-based fault injection since it requires LLVM
-KULFI_ENABLED := 0
+KULFI_ENABLED := 1
 	
 ifeq (${KULFI_ENABLED}, 1)
 # Sight must use the same LLVM Clang compiler as KULFI does
@@ -244,9 +244,9 @@ gdbLineNum.pl: setupGDBWrap.pl sight_structure.C
 sightDefines.pl:
 	printf "\$$main::sightPath = \"${ROOT_PATH}\"; return 1;" > sightDefines.pl
 
-Makefile.extern: initMakefile.extern
+Makefile.extern: initMakefile.extern Makefile
 	chmod 755 initMakefile.extern
-	./initMakefile.extern ${CC} ${CCC} ${RAPL_ENABLED}
+	./initMakefile.extern ${CC} ${CCC} ${RAPL_ENABLED} ${LLVM32_SRC_PATH} ${LLVM32_BUILD_PATH} ${LLVM32_INSTALL_PATH}
 
 definitions.h: initDefinitionsH
 	chmod 755 initDefinitionsH
@@ -265,7 +265,8 @@ clean:
 	rm -f slayout hier_merge
 
 clean_objects:
-	rm -f *.a *.o attributes/*.o widgets/*.o widgets/*/*.o hier_merge slayout
+	rm -f Makefile.extern definitions.h *.a *.o attributes/*.o widgets/*.o widgets/*/*.o hier_merge slayout
+	cd widgets/kulfi; make clean
 	rm ./libsight_structure.so
 	rm ./libsight_layout.so
 

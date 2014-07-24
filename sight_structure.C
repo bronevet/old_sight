@@ -52,33 +52,63 @@ string mergeText(const string& a, const string& b) {
  ***** dbg *****
  ***************/
 
-dbgStream dbg;
+// Declaration of dbgStream to which all structure output will be written
+//ThreadLocalDbgStream dbg;
+ThreadLocalStorageDbgStream dbg;
+//__thread dbgStream dbg;
 
-bool initializedDebug=false;
+// Keeps track whether we've initialized Sight for the main thread
+bool initializedDebugMainThread=false;
+// Keeps track of whether we've initialized Sight in each individual thread
+ThreadLocalStorage1<bool, bool> initializedDebugThisThread(false);
 
-void SightInit_internal(int argc, char** argv, string title, string workDir);
+// Cached copy of Sight properties set for the main thread, which may be reused
+// to initialize the Sight properties in other subsequently-created threads.
+std::map<std::string, std::string> mainThreadSightProps;
+
+// mainThread: Set to true if this function is being called from the main thread directly by the other.
+//             Set to false if it is called inside some other, subsequently-created thread from within Sight
+void SightInit_internal(int argc, char** argv, string title, string workDir, bool mainThread);
 
 // Records the information needed to call the application
-bool saved_appExecInfo=false; // Indicates whether the application execution info has been saved
-int saved_argc = 0;
-char** saved_argv = NULL;
-char* saved_execFile = NULL;
+ThreadLocalStorage1<bool, bool> saved_appExecInfo(false); // Indicates whether the application execution info has been saved
+ThreadLocalStorage1<int, int> saved_argc(0);
+ThreadLocalStorage1<char**, char**> saved_argv(NULL);
+ThreadLocalStorage1<char*, char*> saved_execFile(NULL);
 
 // The unique ID of this process' output stream
-int outputStreamID=0;
+ThreadLocalStorage1<int, int> outputStreamID(0);
 
 // Provides the output directory and run title as well as the arguments that are required to rerun the application
 void SightInit(int argc, char** argv, string title, string workDir)
 {
-  if(initializedDebug) return;
-  SightInit_internal(argc, argv, title, workDir);
+  //cout << pthread_self() << ": SightInit() initializedDebugMainThread="<<initializedDebugMainThread<<", initializedDebugThisThread="<<initializedDebugThisThread<<endl;
+  // If Sight has already been initialized in the main thread, abort since main thread initialization can only be done directly by the user
+  if(initializedDebugMainThread) { cerr << "ERROR: Sight has been initialized multiple times!"<<endl; assert(0); }
+  // If Sight has been implicitly initialized in this thread, emit a warning since the parameters from explicit initialization are not being used
+  if(initializedDebugThisThread) { cerr << "WARNING: Sight has been initialized multiple times within this thread!"<<endl; }
+  SightInit_internal(argc, argv, title, workDir, true);
 }
 
 // Provides the output directory and run title as well but does not provide enough info to rerun the application
 void SightInit(string title, string workDir)
 {
-  if(initializedDebug) return; 
-  SightInit_internal(0, NULL, title, workDir);
+  // If Sight has already been initialized in the main thread, abort since main thread initialization can only be done directly by the user
+  if(initializedDebugMainThread) { cerr << "ERROR: Sight has been initialized multiple times!"<<endl; assert(0); }
+  // If Sight has been implicitly initialized in this thread, emit a warning since the parameters from explicit initialization are not being used
+  if(initializedDebugThisThread) { cerr << "WARNING: Sight has been initialized multiple times within this thread!"<<endl; }
+  SightInit_internal(0, NULL, title, workDir, true);
+}
+
+// Called from within Sight when some code region discovers that it is being invoked
+// before Sight has been initialized on the current thread.
+void SightInit_NewThread() {
+  //cout << pthread_self() << ": SightInit_NewThread() initializedDebugMainThread="<<initializedDebugMainThread<<", initializedDebugThisThread="<<initializedDebugThisThread<<endl;
+  SightInit_internal(0, NULL, "", "", false);
+  /*// If Sight has already been initialized in the main thread
+  if(initializedDebugMainThread) SightInit_Internal(0, NULL, "", "", false);
+  // Else, if Sight has not yet been initialized, we'll treat this thread as main
+  else                           SightInit_Internal(0, NULL, "dbg", "dbg", true);*/
 }
 
 // Low-level initialization of Sight that sets up some basics but does not allow users to use the dbg
@@ -89,95 +119,112 @@ void SightInit_LowLevel()
 {
   loadSightConfig(configFileEnvVars("SIGHT_STRUCTURE_CONFIG", "SIGHT_CONFIG"));
   
-  initializedDebug = true;
+  initializedDebugMainThread = true;
+  initializedDebugThisThread = true;
 }
 
-void SightInit_internal(int argc, char** argv, string title, string workDir)
+// mainThread: Set to true if this function is being called from the main thread directly by the other.
+//             Set to false if it is called inside some other, subsequently-created thread from within Sight
+void SightInit_internal(int argc, char** argv, string title, string workDir, bool mainThread)
 {
-  map<string, string> newProps;
+  //cout << pthread_self()<<": SightInit_internal("+title+")"<<endl;
   
   loadSightConfig(configFileEnvVars("SIGHT_STRUCTURE_CONFIG", "SIGHT_CONFIG"));
   
-  newProps["title"] = title;
-  newProps["workDir"] = workDir;
-  // Records whether we know the application's command line, which would enable us to call it
-  newProps["commandLineKnown"] = (argv!=NULL? "1": "0");
-  // If the command line is known, record it in newProps
-  if(argv!=NULL) {
-    newProps["argc"] = txt()<<argc;
-    for(int i=0; i<argc; i++)
-      newProps[txt()<<"argv_"<<i] = string(argv[i]);
+  // If this is the main thread, set the Sight properties to be used for serialization
+  if(mainThread) {
+    mainThreadSightProps["title"] = title;
+    mainThreadSightProps["workDir"] = workDir;
+    // Records whether we know the application's command line, which would enable us to call it
+    mainThreadSightProps["commandLineKnown"] = (argv!=NULL? "1": "0");
+    // If the command line is known, record it in mainThreadSightProps
+    if(argv!=NULL) {
+      mainThreadSightProps["argc"] = txt()<<argc;
+      for(int i=0; i<argc; i++)
+        mainThreadSightProps[txt()<<"argv_"<<i] = string(argv[i]);
 
-    BrInitError error;
-    int ret = br_init(&error);
-    if(!ret) { 
-      cerr << "ERROR reading application's executable name! "<<
-                   (error==BR_INIT_ERROR_NOMEM?     "Cannot allocate memory." :
-                   (error==BR_INIT_ERROR_OPEN_MAPS? "Cannot open /proc/self/maps "+string(strerror(errno)) :
-                   (error==BR_INIT_ERROR_READ_MAPS? "The file format of /proc/self/maps is invalid; kernel bug?" :
-                   (error==BR_INIT_ERROR_DISABLED?  "BinReloc is disabled (the ENABLE_BINRELOC macro is not defined)" :
-                    "???"
-              ))))<<endl;
-      assert(0);
+      BrInitError error;
+      int ret = br_init(&error);
+      if(!ret) { 
+        cerr << "ERROR reading application's executable name! "<<
+                     (error==BR_INIT_ERROR_NOMEM?     "Cannot allocate memory." :
+                     (error==BR_INIT_ERROR_OPEN_MAPS? "Cannot open /proc/self/maps "+string(strerror(errno)) :
+                     (error==BR_INIT_ERROR_READ_MAPS? "The file format of /proc/self/maps is invalid; kernel bug?" :
+                     (error==BR_INIT_ERROR_DISABLED?  "BinReloc is disabled (the ENABLE_BINRELOC macro is not defined)" :
+                      "???"
+                ))))<<endl;
+        assert(0);
+      }
+      char* execFile = br_find_exe(NULL);
+      if(execFile==NULL) { cerr << "ERROR reading application's executable name after successful initialization!"<<endl; assert(0); }
+      mainThreadSightProps["execFile"] = execFile;
+
+      char cwd[FILENAME_MAX];
+      getcwd(cwd, FILENAME_MAX);
+      mainThreadSightProps["cwd"] = cwd;
+
+      // Record the names and values of all the environment variables
+      char** e = environ;
+      int numEnvVars=0;
+      while(*e) {
+        string var = *e;
+        int splitPoint = var.find("=");
+        //cout << *e << ": " << var.substr(0, splitPoint) << " => "<<var.substr(splitPoint+1)<<endl;
+        mainThreadSightProps[txt()<<"envName_"<<numEnvVars] = var.substr(0, splitPoint);
+        mainThreadSightProps[txt()<<"envVal_"<<numEnvVars] = var.substr(splitPoint+1);
+        numEnvVars++; 
+        e++;
+      }
+      mainThreadSightProps["numEnvVars"] = txt()<<numEnvVars;
     }
-    char* execFile = br_find_exe(NULL);
-    if(execFile==NULL) { cerr << "ERROR reading application's executable name after successful initialization!"<<endl; assert(0); }
-    newProps["execFile"] = execFile;
-    
-    char cwd[FILENAME_MAX];
-    getcwd(cwd, FILENAME_MAX);
-    newProps["cwd"] = cwd;
-   
-    // Record the names and values of all the environment variables
-    char** e = environ;
-    int numEnvVars=0;
-    while(*e) {
-      string var = *e;
-      int splitPoint = var.find("=");
-      //cout << *e << ": " << var.substr(0, splitPoint) << " => "<<var.substr(splitPoint+1)<<endl;
-      newProps[txt()<<"envName_"<<numEnvVars] = var.substr(0, splitPoint);
-      newProps[txt()<<"envVal_"<<numEnvVars] = var.substr(splitPoint+1);
-      numEnvVars++; 
-      e++;
+
+    // Get all the aliases of the current host's name
+    //char hostname[10000]; // The name of the host that this application is currently executing on
+    //int ret = gethostname(hostname, 10000);
+    list<string> hostnames = getAllHostnames();
+    mainThreadSightProps["numHostnames"] = txt()<<hostnames.size();
+    { int i=0;
+      for(list<string>::iterator h=hostnames.begin(); h!=hostnames.end(); h++, i++)
+      mainThreadSightProps[txt()<<"hostname_"<<i] = *h;
     }
-    newProps["numEnvVars"] = txt()<<numEnvVars;
+
+    // Get the current user's username, using the environment if possible
+    char username[10000]; // The current user's user name 
+    if(getenv("USER")) 
+      strncpy(username, getenv("USER"), sizeof(username));
+    else if(getenv("USERNAME"))
+      strncpy(username, getenv("USERNAME"), sizeof(username));
+    else {
+      // If the username is not available from the environment, use the id command
+      ostringstream cmd;
+      cmd << "id --user --name";
+      FILE* fp = popen(cmd.str().c_str(), "r");
+      if(fp == NULL) { cerr << "Failed to run command \""<<cmd.str()<<"\"!"<<endl; assert(0); }
+
+      if(fgets(username, sizeof(username), fp) == NULL) { cerr << "Failed to read output of \""<<cmd.str()<<"\"!"<<endl; assert(0); }
+      pclose(fp);
+    }
+    mainThreadSightProps["username"] = string(username);
+
+    // Set the unique ID of this process' output stream
+    outputStreamID = getpid();
+    mainThreadSightProps["outputStreamID"] = txt()<<outputStreamID;
   }
   
-  // Get all the aliases of the current host's name
-  //char hostname[10000]; // The name of the host that this application is currently executing on
-  //int ret = gethostname(hostname, 10000);
-  list<string> hostnames = getAllHostnames();
-  newProps["numHostnames"] = txt()<<hostnames.size();
-  { int i=0;
-    for(list<string>::iterator h=hostnames.begin(); h!=hostnames.end(); h++, i++)
-    newProps[txt()<<"hostname_"<<i] = *h;
+  // Record the properties of this Sight object. We use the base mainThreadSightProps
+  // object but add this thread's unique ID to it.
+  map<string, string> thisThreadSightProps = mainThreadSightProps;
+  thisThreadSightProps["threadID"] = txt() << pthread_self();
+  // If this is not the main thread, append this thread's ID to the main thread's workDir
+  if(!mainThread) {
+    workDir = txt()<<mainThreadSightProps["workDir"]<<".thread_"<<pthread_self();
+    thisThreadSightProps["workDir"] = workDir;
   }
-
-  // Get the current user's username, using the environment if possible
-  char username[10000]; // The current user's user name 
-  if(getenv("USER")) 
-    strncpy(username, getenv("USER"), sizeof(username));
-  else if(getenv("USERNAME"))
-    strncpy(username, getenv("USERNAME"), sizeof(username));
-  else {
-    // If the username is not available from the environment, use the id command
-    ostringstream cmd;
-    cmd << "id --user --name";
-    FILE* fp = popen(cmd.str().c_str(), "r");
-    if(fp == NULL) { cerr << "Failed to run command \""<<cmd.str()<<"\"!"<<endl; assert(0); }
-    
-    if(fgets(username, sizeof(username), fp) == NULL) { cerr << "Failed to read output of \""<<cmd.str()<<"\"!"<<endl; assert(0); }
-    pclose(fp);
-  }
-  newProps["username"] = string(username);
-
-  // Set the unique ID of this process' output stream
-  outputStreamID = getpid();
-  newProps["outputStreamID"] = txt()<<outputStreamID;
   
   properties* props = new properties();
-  props->add("sight", newProps);
-  
+  props->add("sight", thisThreadSightProps);
+
+  //cout << pthread_self()<<": SightInit_internal("+title+") workDir="<<workDir<<endl;  
   // Create the directory structure for the structural information
   // Main output directory
   createDir(workDir, "");
@@ -187,10 +234,14 @@ void SightInit_internal(int argc, char** argv, string title, string workDir)
   
   // Directory that widgets can use as temporary scratch space
   string tmpDir = createDir(workDir, "html/tmp");
+
+  // Record that we've initialized Sight on the current thread
+  if(mainThread) initializedDebugMainThread = true;
+  initializedDebugThisThread = true;
   
-  initializedDebug = true;
-  
-  dbg.init(props, title, workDir, imgDir, tmpDir);
+  //cout << pthread_self() << " &dbg="<<&dbg<<endl;
+
+  dbg->init(props, title, workDir, imgDir, tmpDir);
 }
 
 void SightInit_internal(properties* props, bool storeProps)
@@ -208,9 +259,12 @@ void SightInit_internal(properties* props, bool storeProps)
   // Directory that widgets can use as temporary scratch space
   string tmpDir = createDir(properties::get(sightIt, "workDir"), "html/tmp");
   
-  initializedDebug = true;
+  // Record that we've initialized the main thread as well as this thread.
+  // This function is used during merging, so there should only be one thread.
+  initializedDebugMainThread = true;
+  initializedDebugThisThread = true;
   
-  dbg.init(storeProps? props: NULL, properties::get(sightIt, "title"), properties::get(sightIt, "workDir"), imgDir, tmpDir);
+  dbg->init(storeProps? props: NULL, properties::get(sightIt, "title"), properties::get(sightIt, "workDir"), imgDir, tmpDir);
 }
 
 // Creates a new dbgStream based on the given properties of a "sight" tag and returns a pointer to it.
@@ -236,11 +290,12 @@ structure::dbgStream* createDbgStream(properties* props, bool storeProps) {
 void NullSightInit(std::string title, std::string workDir) {}
 void NullSightInit(int argc, char** argv, std::string title, std::string workDir) {}
 
+
 /**********************
  ***** Call Paths *****
  **********************/
 
-CallpathRuntime CPRuntime;
+ThreadLocalStorage0<CallpathRuntime> CPRuntime;
 string cp2str(const Callpath& cp) {
   ostringstream s;
   //const_cast<Callpath&>(cp).write_out(s);
@@ -268,6 +323,8 @@ location::location()
 
 location::~location()
 {
+  // If Sight has already been destroyed, skip out of the destructor
+  if(sightObj::SightDestroyed) return;
   assert(l.size()==1);
   l.pop_back();
 }
@@ -336,30 +393,36 @@ std::string location::str(std::string indent) const {
 // to make it possible to ensure that the global soStack is constructed before it is used and therefore
 // destructed after all of its user objects are destructed.
 // There is a separate stack for each outgoing stream.
-std::map<dbgStream*, std::list<sightObj*> > staticSoStack;
+//ThreadLocalStorage0<std::map<dbgStream*, std::list<sightObj*> > > staticSoStack;
+ThreadLocalStorageMap<dbgStream*, std::list<sightObj*> > staticSoStack;
 std::list<sightObj*>& soStack(dbgStream* outStream) {
   return staticSoStack[outStream];
 }
 
 std::map<dbgStream*, std::list<sightObj*> >& soStackAllStreams() {
-  return staticSoStack;
+  //return staticSoStack;
+  return *(staticSoStack.get());
 }
 
 // Records whether we've begun the process of destroying all objects. This is to differentiate`
 // the case of Sight doing the destruction and of the runtime system destroying all objects
 // at process termination
-bool sightObj::SightDestruction=false;
+ThreadLocalStorage1<bool, bool> sightObj::SightDestruction(false);
+
+// Records whether we've completed the process of destroying all objects
+ThreadLocalStorage1<bool, bool> sightObj::SightDestroyed(false);
 
 // Records whether we've started processing static destructors. In this case
 // the sight object stack may not be valid anymore and thus should not be accessed.
-bool sightObj::stackMayBeInvalidFlag=false;
+ThreadLocalStorage1<bool, bool> sightObj::stackMayBeInvalidFlag(false);
 
 // The of clocks currently being used, mapping the name of each clock class to the set of active 
 // clock objects of this class.
-std::map<std::string, std::set<sightClock*> > sightObj::clocks;
+//ThreadLocalStorage0<std::map<std::string, std::set<sightClock*> > > sightObj::clocks;
+ThreadLocalStorageMap<std::string, std::set<sightClock*> > sightObj::clocks;
 
 sightObj::sightObj(dbgStream* outStream) : 
-    props(NULL), emitExitTag(false), destroyed(false), outStream(outStream?outStream:&structure::dbg) {
+    props(NULL), emitExitTag(false), destroyed(false), outStream(outStream?outStream:structure::dbg.get()) {
   // Push this sightObj onto the stack
   //if(initializedDebug) soStack.push_back(this);
   // Don't push this sightObj onto the stack because emitExitTag is initialized to false
@@ -368,11 +431,14 @@ sightObj::sightObj(dbgStream* outStream) :
 
 // isTag - if true, we emit a single enter/exit tag combo in the constructor and nothing in the destructor
 sightObj::sightObj(properties* props, bool isTag, dbgStream* outStream) : 
-      props(props), destroyed(false), outStream(outStream?outStream:&structure::dbg) {
+      props(props), destroyed(false), outStream(outStream?outStream:structure::dbg.get()) {
   init(props, isTag);
 }
 
 void sightObj::init(properties* props, bool isTag) {
+  // If Sight has already been initialized on the main thread but not on this thread, initialize it now
+  if(initializedDebugMainThread && !initializedDebugThisThread) SightInit_NewThread();
+  
   assert(outStream);
 //  cout << "sightObj::sightObj isTag="<<isTag<<" props="<<(props? props->str(): "NULL")<<endl;
   if(props && props->active && props->emitTag) {
@@ -394,15 +460,15 @@ void sightObj::init(properties* props, bool isTag) {
   } else
     emitExitTag = false;
   
-  // Push this sightObj onto the stack
-  if(initializedDebug && emitExitTag) {
+  // Push this sightObj onto the stack if Sight has already been initialized on the main thread
+  if(initializedDebugMainThread && emitExitTag) {
 //    cout << "[[[ "<<(props? props->str(): "NULL")<<endl;
     soStack(outStream).push_back(this);
   }
   
   // If Sight was not initialized at the time this object was created, record that
   // this object does not emit an exit tag since this object should be left invisible to Sight.
-  if(!initializedDebug) emitExitTag = false;
+  if(!initializedDebugMainThread) emitExitTag = false;
   
   // Initially removeFromStack is identical to emitExitTag but if we call emitTag()
   // before the object is destructed, it will become true while emitExitTag is set to false.
@@ -505,6 +571,9 @@ void sightObj::destroyAll() {
     }
   }
   stack.clear();
+
+  // Sight has now been destroyed
+  SightDestroyed = true;
 }
 
 // Returns whether this object is active or not
@@ -620,14 +689,18 @@ std::string MergeHandlerInstantiator::str() {
  *****************************************/
 
 SightMergeHandlerInstantiator::SightMergeHandlerInstantiator() { 
-  (*MergeHandlers   )["sight"]  = dbgStreamMerger::create;
-  (*MergeKeyHandlers)["sight"]  = dbgStreamMerger::mergeKey;
-  (*MergeHandlers   )["indent"] = IndentMerger::create;
-  (*MergeKeyHandlers)["indent"] = IndentMerger::mergeKey;
-  (*MergeHandlers   )["text"]   = TextMerger::create;
-  (*MergeKeyHandlers)["text"]   = TextMerger::mergeKey;
-  (*MergeHandlers   )["link"]   = LinkMerger::create;
-  (*MergeKeyHandlers)["link"]   = LinkMerger::mergeKey;
+  (*MergeHandlers   )["sight"]      = dbgStreamMerger::create;
+  (*MergeKeyHandlers)["sight"]      = dbgStreamMerger::mergeKey;
+  (*MergeHandlers   )["block"]      = BlockMerger::create;
+  (*MergeKeyHandlers)["block"]      = BlockMerger::mergeKey;
+  (*MergeHandlers   )["indent"]     = IndentMerger::create;
+  (*MergeKeyHandlers)["indent"]     = IndentMerger::mergeKey;
+  (*MergeHandlers   )["comparison"] = ComparisonMerger::create;
+  (*MergeKeyHandlers)["comparison"] = ComparisonMerger::mergeKey;
+  (*MergeHandlers   )["text"]       = TextMerger::create;
+  (*MergeKeyHandlers)["text"]       = TextMerger::mergeKey;
+  (*MergeHandlers   )["link"]       = LinkMerger::create;
+  (*MergeKeyHandlers)["link"]       = LinkMerger::mergeKey;
     
   MergeGetStreamRecords->insert(&SightGetMergeStreamRecord);
 }
@@ -1057,7 +1130,10 @@ TextMerger::TextMerger(std::vector<std::pair<properties::tagType, properties::it
 /******************
  ***** anchor *****
  ******************/
-int anchor::maxAnchorID=0;
+ThreadLocalStorage1<int, int> anchor::maxAnchorID(0);
+// Denotes a default anchor that does not refer to anything. This static variable
+// is not kep in thread-local storage since it is the same for all threads.
+//ThreadLocalStorage1<anchor, anchor> anchor::noAnchor(-1);
 anchor anchor::noAnchor(-1);
 
 // Maps all anchor IDs to their locations, if known. When we establish forward links we create
@@ -1066,12 +1142,14 @@ anchor anchor::noAnchor(-1);
 // This map maintains the canonical anchor ID for each location. Other anchors are resynched to used this ID
 // whenever they are copied. This means that data structures that index based on anchors may need to be
 // reconstructed after we're sure that their targets have been reached to force all anchors to use their canonical IDs.
-map<int, location> anchor::anchorLocs;
+//ThreadLocalStorage0<map<int, location> > anchor::anchorLocs;
+ThreadLocalStorageMap<int, location> anchor::anchorLocs;
 
 // Associates each anchor with a unique anchor ID. Useful for connecting multiple anchors that were created
 // independently but then ended up referring to the same location. We'll record the ID of the first one to reach
 // this location on locAnchorIDs and the others will be able to adjust themselves by adopting this ID.
-std::map<location, int> anchor::locAnchorIDs;
+//ThreadLocalStorage0<std::map<location, int> > anchor::locAnchorIDs;
+ThreadLocalStorageMap<location, int> anchor::locAnchorIDs;
 
 anchor::anchor()                   : anchorID(maxAnchorID++), located(false) {
 }
@@ -1095,8 +1173,8 @@ anchor::~anchor() {
 // Records that this anchor's location is the current spot in the output
 void anchor::reachedLocation() {
   // If this anchor has already been set to point to its target location, emit a warning
-  if(located && loc != dbg.getLocation()) {
-    cerr << "Warning: anchor "<<anchorID<<" is being set to multiple target locations! current location="<<loc.str()<<", new location="<<dbg.getLocation().str()<< endl;
+  if(located && loc != dbg->getLocation()) {
+    cerr << "Warning: anchor "<<anchorID<<" is being set to multiple target locations! current location="<<loc.str()<<", new location="<<dbg->getLocation().str()<< endl;
     cerr << "noAnchor="<<noAnchor.str()<<endl;
     if(anchorLocs.find(anchorID) != anchorLocs.end())
       cerr << "anchorLocs[anchorID]="<<anchorLocs[anchorID].str()<<endl;
@@ -1104,7 +1182,7 @@ void anchor::reachedLocation() {
       cerr << "    "<<i->first<<" => "<<i->second.str()<<endl;
   } else {
     located = true;
-    loc = dbg.getLocation();
+    loc = dbg->getLocation();
     anchorLocs[anchorID] = loc;
 
     update();
@@ -1186,10 +1264,10 @@ void anchor::link(string text) const {
   newProps["anchorID"] = txt()<<anchorID;
   newProps["text"] = text;
   newProps["img"] = "0";
-  newProps["callPath"] = cp2str(CPRuntime.doStackwalk());
+  newProps["callPath"] = cp2str(CPRuntime->doStackwalk());
   p.add("link", newProps);
   
-  dbg.tag(p);
+  dbg->tag(p);
 }
 
 // Emits to the output an html tag that denotes a link to this anchor, using the default link image, which is followed by the given text.
@@ -1199,10 +1277,10 @@ void anchor::linkImg(string text) const {
   newProps["anchorID"] = txt()<<anchorID;
   newProps["text"] = text;
   newProps["img"] = "1";
-  newProps["callPath"] = cp2str(CPRuntime.doStackwalk());
+  newProps["callPath"] = cp2str(CPRuntime->doStackwalk());
   p.add("link", newProps);
   
-  dbg.tag(p);
+  dbg->tag(p);
 }
 
 std::string anchor::str(std::string indent) const {
@@ -1436,7 +1514,7 @@ std::string streamAnchor::str(std::string indent) const {
 // The unique ID of this block as well as the static global counter of the maximum ID assigned to any block.
 // Unlike the rendering module, these blockIDs are integers since all we need from them is uniqueness and not
 // any structural information.
-int block::maxBlockID;
+ThreadLocalStorage1<int, int> block::maxBlockID(0);
 
 // Initializes this block with the given label
 block::block(string label, properties* props) : label(label), sightObj(setProperties(label, props)) {
@@ -1445,13 +1523,14 @@ block::block(string label, properties* props) : label(label), sightObj(setProper
     // Connect startA and pointsTo anchors to the current location (pointsTo is not modified);
     startA.reachedLocation();
     
-    dbg.enterBlock(this);
+    dbg->enterBlock(this);
   }
 }
 
 // Sets the properties of this object
 properties* block::setProperties(string label, properties* props) {
-  if(!initializedDebug) SightInit("Debug Output", "dbg");
+  INIT_CHECK_RET(props) // Ensure that Sight is correctly initialized
+  //if(!initializedDebug) SightInit("Debug Output", "dbg");
     
   if(props==NULL) props = new properties();
   
@@ -1463,7 +1542,8 @@ properties* block::setProperties(string label, properties* props) {
     
     map<string, string> newProps;
     newProps["label"] = label;
-    newProps["callPath"] = cp2str(CPRuntime.doStackwalk());
+//cout << pthread_self()<<": CPRuntime="<<CPRuntime.get()<<endl;
+    newProps["callPath"] = "";//cp2str(CPRuntime->doStackwalk());
     newProps["ID"] = txt()<<(maxBlockID+1);
     newProps["anchorID"] = txt()<<startA.getID();
     newProps["numAnchors"] = "0";
@@ -1486,13 +1566,14 @@ block::block(string label, anchor& pointsTo, properties* props) : label(label), 
     anchor pointsToCopy(pointsTo);
     if(pointsToCopy!=anchor::noAnchor) pointsToCopy.reachedLocation();
     
-    dbg.enterBlock(this);
+    dbg->enterBlock(this);
   }
 }
 
 // Sets the properties of this object
 properties* block::setProperties(string label, anchor& pointsTo, properties* props) {
-  if(!initializedDebug) SightInit("Debug Output", "dbg");
+  INIT_CHECK_RET(props) // Ensure that Sight is correctly initialized
+  //if(!initializedDebug) SightInit("Debug Output", "dbg");
   
   if(props==NULL) props = new properties();
   
@@ -1504,7 +1585,7 @@ properties* block::setProperties(string label, anchor& pointsTo, properties* pro
     
     map<string, string> newProps;
     newProps["label"] = label;
-    newProps["callPath"] = cp2str(CPRuntime.doStackwalk());
+    newProps["callPath"] = cp2str(CPRuntime->doStackwalk());
     newProps["ID"] = txt()<<(maxBlockID+1);
     newProps["anchorID"] = txt()<<startA.getID();
     if(pointsTo != anchor::noAnchor) {
@@ -1537,13 +1618,14 @@ block::block(string label, set<anchor>& pointsTo, properties* props) : label(lab
       }
     }
     
-    dbg.enterBlock(this);
+    dbg->enterBlock(this);
   }
 }
   
 // Sets the properties of this object
 properties* block::setProperties(string label, set<anchor>& pointsTo, properties* props) {
-  if(!initializedDebug) SightInit("Debug Output", "dbg");
+  INIT_CHECK_RET(props) // Ensure that Sight is correctly initialized
+  //if(!initializedDebug) SightInit("Debug Output", "dbg");
 
   if(props==NULL) props = new properties();
   
@@ -1555,7 +1637,7 @@ properties* block::setProperties(string label, set<anchor>& pointsTo, properties
     
     map<string, string> newProps;
     newProps["label"] = label;
-    newProps["callPath"] = cp2str(CPRuntime.doStackwalk());
+    newProps["callPath"] = cp2str(CPRuntime->doStackwalk());
     newProps["ID"] = txt()<<(maxBlockID+1);
     newProps["anchorID"] = txt()<<startA.getID();
     
@@ -1590,7 +1672,7 @@ block::~block() {
   
   assert(props);
   if(props->active && props->emitTag)
-    dbg.exitBlock();
+    dbg->exitBlock();
 }
 
 // Increments blockD. This function serves as the one location that we can use to target conditional
@@ -1612,7 +1694,14 @@ BlockMerger::BlockMerger(std::vector<std::pair<properties::tagType, properties::
                          map<string, streamRecord*>& outStreamRecords,
                          vector<map<string, streamRecord*> >& inStreamRecords,
                          properties* props) : 
-                                     Merger(advance(tags), outStreamRecords, inStreamRecords, props)
+                                     Merger(advance(tags), outStreamRecords, inStreamRecords, 
+                                            setProperties(tags, outStreamRecords, inStreamRecords, props))
+{}
+
+properties* BlockMerger::setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+                                       map<string, streamRecord*>& outStreamRecords,
+                                       vector<map<string, streamRecord*> >& inStreamRecords,
+                                       properties* props)
 {
   assert(tags.size()>0);
   assert(inStreamRecords.size() == tags.size());
@@ -1697,6 +1786,8 @@ BlockMerger::BlockMerger(std::vector<std::pair<properties::tagType, properties::
     dbgStreamStreamRecord::exitBlock(inStreamRecords);
     dbgStreamStreamRecord::exitBlock(outStreamRecords);
   }
+
+  return props;
 }
 
 // Sets a list of strings that denotes a unique ID according to which instances of this merger's 
@@ -1759,7 +1850,7 @@ void dbgBuf::init(std::streambuf* baseBuf)
 int dbgBuf::overflow(int c)
 {
   // Only emit text if the current query on attributes evaluates to true
-  if(!attributes.query()) return c;
+  if(!attributes->query()) return c;
   
   //cerr << "overflow\n";
   if (c == EOF)
@@ -1783,10 +1874,10 @@ int dbgBuf::printString(string s)
 
 streamsize dbgBuf::xsputn(const char * s, streamsize n)
 {
-  //cerr << "xputn() << ownerAccess="<<ownerAccess<<" n="<<n<<" s=\""<<string(s)<<"\" query="<<attributes.query()<<"\n";
+  //cerr << "xputn() << ownerAccess="<<ownerAccess<<" n="<<n<<" s=\""<<string(s)<<"\" query="<<attributes->query()<<"\n";
   
   // Only emit text if the current query on attributes evaluates to true
-  if(!attributes.query()) return n;
+  if(!attributes->query()) return n;
   
   // If the owner is printing, output their text exactly
   if(ownerAccess) {
@@ -1822,11 +1913,11 @@ streamsize dbgBuf::xsputn(const char * s, streamsize n)
 int dbgBuf::sync()
 {
   // Only emit text if the current query on attributes evaluates to true
-  //  if(!attributes.query()) return 0;
-  //cerr << "dbgBuf::sync() attributes.query()="<<attributes.query()<<"\n";
+  //  if(!attributes->query()) return 0;
+  //cerr << "dbgBuf::sync() attributes->query()="<<attributes->query()<<"\n";
   
   // Only emit text if the current query on attributes evaluates to true
-  if(!attributes.query()) return 0;
+  if(!attributes->query()) return 0;
   
   int r = baseBuf->pubsync();
   if(r!=0) return -1;
@@ -1855,6 +1946,8 @@ dbgStream::dbgStream() : common::dbgStream(&defaultFileBuf), sightObj(this), ini
   //buf = new dbgBuf(cout.rdbuf());
   buf = new dbgBuf(preInitStream.rdbuf());
   ostream::init(buf);
+  
+  //cout << pthread_self() << " dbgStream::dbgStream() this="<<this<<endl;
 }
 
 dbgStream::dbgStream(properties* props, string title, string workDir, string imgDir, std::string tmpDir)
@@ -1865,6 +1958,8 @@ dbgStream::dbgStream(properties* props, string title, string workDir, string img
 
 void dbgStream::init(properties* props, string title, string workDir, string imgDir, std::string tmpDir)
 {
+  //cout << pthread_self() << " dbgStream::init() this="<<this<<endl;
+
   this->title   = title;
   this->workDir = workDir;
   this->imgDir  = imgDir;
@@ -1936,6 +2031,9 @@ void dbgStream::destroy() {
 }
 
 dbgStream::~dbgStream() {
+  // If Sight has already been destroyed, skip out of the destructor
+  if(SightDestroyed) return;
+
   assert(!destroyed);
   
   if (!initialized)
@@ -1967,6 +2065,7 @@ dbgStream::~dbgStream() {
 // Called when a block is entered.
 // b: The block that is being entered
 void dbgStream::enterBlock(block* b) {
+  INIT_CHECK // Ensure that Sight is correctly initialized
   subBlockEnterNotify(b);
 
   blocks.push_back(b);
@@ -1975,6 +2074,7 @@ void dbgStream::enterBlock(block* b) {
 
 // Called when a block is exited. Returns the block that was exited.
 block* dbgStream::exitBlock() {
+  INIT_CHECK_RET(NULL) // Ensure that Sight is correctly initialized
   assert(blocks.size()>0);
  
   loc.exitBlock();
@@ -1990,6 +2090,7 @@ block* dbgStream::exitBlock() {
 // Called to inform the blocks that contain the given block that it has been entered
 void dbgStream::subBlockEnterNotify(block* subBlock)
 {
+  INIT_CHECK // Ensure that Sight is correctly initialized
   // Walk up the block stack, informing each block about the new arrival until the block's
   // subBlockEnterNotify() function returns false to indicate that the notification should not be propagated further.
   for(list<block*>::const_reverse_iterator b=blocks.rbegin(); b!=blocks.rend(); b++)
@@ -2001,6 +2102,7 @@ void dbgStream::subBlockEnterNotify(block* subBlock)
 // Called to inform the blocks that contain the given block that it has been exited
 void dbgStream::subBlockExitNotify(block* subBlock)
 {
+  INIT_CHECK // Ensure that Sight is correctly initialized
   // Walk up the block stack, informing each block about the new exit until the block's
   // subBlockExitNotify() function returns false to indicate that the notification should not be propagated further.
   for(list<block*>::const_reverse_iterator b=blocks.rbegin(); b!=blocks.rend(); b++)
@@ -2020,14 +2122,15 @@ void dbgStream::ownerAccessing()  {
 // so that the caller can write to it.
 string dbgStream::addImage(string ext)
 {
-  if(!initializedDebug) SightInit("Debug Output", "dbg");
+  INIT_CHECK_RET("") // Ensure that Sight is correctly initialized
+  //if(!initializedDebug) SightInit("Debug Output", "dbg");
   
   ostringstream imgFName; imgFName << imgDir << "/image_" << numImages << "." << ext;
   
   properties p;
   map<string, string> newProps;
   newProps["path"] = imgFName.str();
-  newProps["callPath"] = cp2str(CPRuntime.doStackwalk());
+  newProps["callPath"] = cp2str(CPRuntime->doStackwalk());
   p.add("image", newProps);
   
   tag(p);
@@ -2037,12 +2140,14 @@ string dbgStream::addImage(string ext)
 // Emit the entry into a tag to the structured output file. The tag is set to the given property key/value pairs
 //void dbgStream::enter(std::string name, const std::map<std::string, std::string>& properties, bool inheritedFrom) {
 void dbgStream::enter(sightObj* obj) {
+  INIT_CHECK // Ensure that Sight is correctly initialized
   ownerAccessing();
   *this << enterStr(*(obj->props));
   userAccessing();
 }
 
 void dbgStream::enter(const properties& props) {
+  INIT_CHECK // Ensure that Sight is correctly initialized
   ownerAccessing();
   *this << enterStr(props);
   userAccessing();
@@ -2074,6 +2179,7 @@ string dbgStream::enterStr(const properties& props) {
 // Emit the exit from a given tag to the structured output file
 //void dbgStream::exit(std::string name) {
 void dbgStream::exit(sightObj* obj) {
+  INIT_CHECK // Ensure that Sight is correctly initialized
   ownerAccessing();
 /*cout << "props="<<obj->props->str()<<endl;
 cout << exitStr(*(obj->props)) << endl;*/
@@ -2082,6 +2188,7 @@ cout << exitStr(*(obj->props)) << endl;*/
 }
 
 void dbgStream::exit(const properties& props) {
+  INIT_CHECK // Ensure that Sight is correctly initialized
   ownerAccessing();
   *this << exitStr(props);
   userAccessing();
@@ -2099,11 +2206,13 @@ std::string dbgStream::exitStr(const properties& props) {
 //void dbgStream::tag(std::string name, const std::map<std::string, std::string>& properties, bool inheritedFrom)
 void dbgStream::tag(sightObj* obj)
 {
+  INIT_CHECK // Ensure that Sight is correctly initialized
   enter(obj);
   exit(obj);
 }
 
 void dbgStream::tag(const properties& props) {
+  INIT_CHECK // Ensure that Sight is correctly initialized
   enter(props);
   exit(props);
 }
@@ -2121,7 +2230,7 @@ std::string dbgStream::tagStr(const properties& props) {
 
 // The directory into which the merged will be written. This directory must be explicitly set before
 // an instance of the dbgStreamMerger class is created
-std::string dbgStreamMerger::workDir;
+ThreadLocalStorage1<std::string, std::string> dbgStreamMerger::workDir("");
 
 dbgStreamMerger::dbgStreamMerger(//std::string workDir, 
                                  std::vector<std::pair<properties::tagType, properties::iterator> > tags,
@@ -2314,12 +2423,12 @@ indent::indent(                                                          propert
 properties* indent::setProperties(std::string prefix, int repeatCnt, const attrOp* onoffOp, properties* props) {
   if(props==NULL) props = new properties();
     
-  if(repeatCnt>0 && attributes.query() && (onoffOp? onoffOp->apply(): true)) {
+  if(repeatCnt>0 && attributes->query() && (onoffOp? onoffOp->apply(): true)) {
     props->active = true;
     map<string, string> newProps;
     newProps["prefix"] = prefix;
     newProps["repeatCnt"] = txt()<<repeatCnt;
-    //newProps["callPath"] = cp2str(CPRuntime.doStackwalk());
+    //newProps["callPath"] = cp2str(CPRuntime->doStackwalk());
     props->add("indent", newProps);
   } else
     props->active = false;
@@ -2369,8 +2478,195 @@ IndentMerger::IndentMerger(std::vector<std::pair<properties::tagType, properties
   props->add("indent", pMap);
 }
 
+/**********************
+ ***** comparison *****
+ **********************/
 
-char printbuf[100000];
+comparison::comparison(int ID,                        properties* props) : sightObj(setProperties(ID, NULL,     props)) {}
+comparison::comparison(int ID, const attrOp& onoffOp, properties* props) : sightObj(setProperties(ID, &onoffOp, props)) {}
+
+properties* comparison::setProperties(int ID, const attrOp* onoffOp, properties* props) {
+  if(props==NULL) props = new properties();
+    
+  if(attributes->query() && (onoffOp? onoffOp->apply(): true)) {
+    props->active = true;
+    map<string, string> newProps;
+    newProps["ID"] = txt()<<ID;
+    props->add("comparison", newProps);
+  } else
+    props->active = false;
+    
+  return props;
+}
+
+// Directly calls the destructor of this object. This is necessary because when an application crashes
+// Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+// there is no way to directly call the destructor of a given object when it may have several levels
+// of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+// it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+// an object will invoke the destroy() method of the most-derived class.
+void comparison::destroy() {
+  this->~comparison();
+}
+
+comparison::~comparison() {
+  assert(!destroyed);
+}
+
+ComparisonMerger::ComparisonMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+                           map<string, streamRecord*>& outStreamRecords,
+                           vector<map<string, streamRecord*> >& inStreamRecords,
+                           properties* props) : 
+                                      Merger(advance(tags), outStreamRecords, inStreamRecords, props) {
+  assert(tags.size()>0);
+  
+  if(props==NULL) props = new properties();
+  this->props = props;
+  
+  vector<string> names = getNames(tags); assert(allSame<string>(names));
+
+  assert(*names.begin() == "comparison");
+  
+  map<string, string> pMap;
+  properties::tagType type = streamRecord::getTagType(tags); 
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Comparison!"<<endl; assert(0); }
+  if(type==properties::enterTag) {
+    pMap["ID"] = getMergedValue(tags, "ID");
+  }
+  
+  props->add("comparison", pMap);
+}
+
+// Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+// tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
+// Each level of the inheritance hierarchy may add zero or more elements to the given list and 
+// call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
+void ComparisonMerger::mergeKey(properties::tagType type, properties::iterator tag, 
+                                std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+  Merger::mergeKey(type, tag.next(), inStreamRecords, info);
+  if(type==properties::enterTag) {
+    // Comparison tags with the same ID must be perfectly aligned in all logs
+    info.setUniversal(true);
+    info.add(tag.get("ID"));
+  }
+}
+
+/**********************
+ ***** uniqueMark *****
+ **********************/
+
+uniqueMark::uniqueMark(const std::string& ID,                        properties* props) : 
+  block("uniqueMark", setProperties(ID, NULL,     props))
+{}
+
+uniqueMark::uniqueMark(const std::string& ID, const attrOp& onoffOp, properties* props) : 
+  block("uniqueMark", setProperties(ID, &onoffOp, props))
+{}
+
+// Sets the properties of this object
+properties* uniqueMark::setProperties(const std::string& ID, const attrOp* onoffOp, properties* props)
+{
+  if(props==NULL) props = new properties();
+    
+  // If the current attribute query evaluates to true (we're emitting debug output) AND
+  // either onoffOp is not provided or its evaluates to true
+  if(attributes->query() && (onoffOp? onoffOp->apply(): true)) {
+    props->active = true;
+    map<string, string> newProps;
+    newProps["numIDs"] = "1";
+    newProps["ID0"] = ID;
+    props->add("uniqueMark", newProps);
+  }
+  else
+    props->active = false;
+  return props;
+}
+
+// Directly calls the destructor of this object. This is necessary because when an application crashes
+// Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+// there is no way to directly call the destructor of a given object when it may have several levels
+// of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+// it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+// an object will invoke the destroy() method of the most-derived class.
+void uniqueMark::destroy() {
+  this->~uniqueMark();
+}
+
+uniqueMark::~uniqueMark() {
+  assert(!destroyed);
+}
+
+/**********************************************
+ ***** UniqueMarkMergeHandlerInstantiator *****
+ **********************************************/
+
+UniqueMarkMergeHandlerInstantiator::UniqueMarkMergeHandlerInstantiator() { 
+  (*MergeHandlers   )["uniqueMark"] = UniqueMarkMerger::create;
+  (*MergeKeyHandlers)["uniqueMark"] = UniqueMarkMerger::mergeKey;
+}
+UniqueMarkMergeHandlerInstantiator UniqueMarkMergeHandlerInstance;
+                                                    
+/****************************
+ ***** UniqueMarkMerger *****
+ ****************************/
+
+UniqueMarkMerger::UniqueMarkMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+                         map<string, streamRecord*>& outStreamRecords,
+                         vector<map<string, streamRecord*> >& inStreamRecords,
+                         properties* props) : 
+		BlockMerger(advance(tags), outStreamRecords, inStreamRecords, 
+			    setProperties(tags, outStreamRecords, inStreamRecords, props)) { }
+
+// Sets the properties of the merged object
+properties* UniqueMarkMerger::setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+				       map<string, streamRecord*>& outStreamRecords,
+				       vector<map<string, streamRecord*> >& inStreamRecords,
+				       properties* props) {
+  if(props==NULL) props = new properties();
+  
+  map<string, string> pMap;
+  properties::tagType type = streamRecord::getTagType(tags); 
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging UniqueMark!"<<endl; exit(-1); }
+  if(type==properties::enterTag) {
+    assert(tags.size()>0);
+
+    vector<string> names = getNames(tags); assert(allSame<string>(names));
+    assert(*names.begin() == "uniqueMark");
+
+    // Collect all the IDs from all the incoming streams, while using the allIDs
+    // set to remove duplicates.
+    set<string> allIDs;
+    for(std::vector<std::pair<properties::tagType, properties::iterator> >::const_iterator t=tags.begin();
+	t!=tags.end(); t++) {
+      int numIDs = t->second.getInt("numIDs");
+      for(int i=0; i<numIDs; i++)
+	allIDs.insert(t->second.get(txt()<<"ID"<<i));
+    }
+
+    // Add allIDs to pMap
+    pMap["numIDs"] = txt()<<allIDs.size();
+    int j=0;
+    for(set<string>::const_iterator i=allIDs.begin(); i!=allIDs.end(); i++, j++)
+      pMap[txt()<<"ID"<<j] = *i;
+    
+    props->add("uniqueMark", pMap);
+  } else {
+    props->add("uniqueMark", pMap);
+  }
+  
+  return props;
+}
+
+// Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+// tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
+// Each level of the inheritance hierarchy may add zero or more elements to the given list and 
+// call their parents so they can add any info,
+void UniqueMarkMerger::mergeKey(properties::tagType type, properties::iterator tag, 
+				   std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+  BlockMerger::mergeKey(type, tag.next(), inStreamRecords, info);
+}
+// Wrapper of the printf function that emits text to the dbg stream
+ThreadLocalStorageArray<char> printbuf(100000);
 int dbgprintf(const char * format, ... )    
 {
   va_list args;
@@ -2382,6 +2678,124 @@ int dbgprintf(const char * format, ... )
   
   return 0;// Before return you can redefine it back if you want...
 }
+
+// -------------------------------------------------------------------------------------------
+// ----- Support for finalizing the state of Sight when the application exits or crashes -----
+// -------------------------------------------------------------------------------------------
+
+
+/************************************
+ ***** AbortHandlerInstantiator *****
+ ************************************/
+
+// Maps each signal number that we've overridden to the signal handler originally mapped to it
+std::map<int, struct sigaction> AbortHandlerInstantiator::originalHandler;
+
+std::map<std::string, ExitHandler>*       AbortHandlerInstantiator::ExitHandlers;
+std::map<std::string, KillSignalHandler>* AbortHandlerInstantiator::KillSignalHandlers;
+AbortHandlerInstantiator::AbortHandlerInstantiator() :
+  sight::common::LoadTimeRegistry("AbortHandlerInstantiator", 
+                                  AbortHandlerInstantiator::init)
+{ 
+}
+
+void AbortHandlerInstantiator::init() {
+  ExitHandlers       = new map<std::string, ExitHandler>();
+  KillSignalHandlers = new map<std::string, KillSignalHandler>();
+  
+  struct sigaction new_action;
+     
+  // Register AbortHandlerInstantiator::appExited to be called when the application calls exit
+  atexit(AbortHandlerInstantiator::appExited);
+  
+  // Register AbortHandlerInstantiator::killSignal() to be called when the application receives a kill signal
+  new_action.sa_handler = AbortHandlerInstantiator::killSignal;
+  sigemptyset (&new_action.sa_mask);
+  new_action.sa_flags = 0;
+  
+  overrideSignal(SIGINT, new_action); 
+  overrideSignal(SIGHUP, new_action); 
+  overrideSignal(SIGTERM, new_action); 
+  overrideSignal(SIGSEGV, new_action); 
+  overrideSignal(SIGABRT, new_action); 
+  overrideSignal(SIGBUS, new_action); 
+  overrideSignal(SIGQUIT, new_action); 
+  overrideSignal(SIGFPE, new_action); 
+  overrideSignal(SIGILL, new_action); 
+  overrideSignal(SIGKILL, new_action); 
+  overrideSignal(SIGSTOP, new_action); 
+  overrideSignal(SIGKILL, new_action); 
+  overrideSignal(SIGKILL, new_action); 
+}
+
+// Sets the given action to be called when the application receives a signal telling it to abort
+void AbortHandlerInstantiator::overrideSignal(int signum, struct sigaction& new_action) {
+  struct sigaction old_action;
+
+  // Record the original action assigned to this signal
+  sigaction (signum, NULL, &old_action);
+  originalHandler[signum] = old_action;
+  
+  //if (old_action.sa_handler != SIG_IGN)
+  // Set the new action to respond to this signal
+  sigaction (signum, &new_action, NULL);
+}
+
+// Invoked when the application has called exit()
+void AbortHandlerInstantiator::appExited() {
+  // Call all the functions registered to listen for the application's exit
+  for(map<string, ExitHandler>::iterator h=ExitHandlers->begin(); h!=ExitHandlers->end(); h++)
+    (h->second)();
+  
+  finalizeSight();
+}
+
+// Invoked when the application is sent a kill signal
+void AbortHandlerInstantiator::killSignal(int signum) {
+  // Call all the functions registered to listen for the application's exit
+  for(map<string, KillSignalHandler>::iterator h=KillSignalHandlers->begin(); h!=KillSignalHandlers->end(); h++)
+    (h->second)(signum);
+  
+  finalizeSight();
+  
+  // Call the signal handler that was originally mapped to this signal number
+  originalHandler[signum].sa_handler(signum);
+}
+
+
+// Finalizes the state of Sight to ensure that its output is self-consistent
+void AbortHandlerInstantiator::finalizeSight() {
+  // On Termination deallocate all the currently live sightObjs
+  sightObj::destroyAll();
+
+  // Flush the file used to output the structure log and close the file to make sure it is flushed.
+  dbg->flush();
+  if(dbg->dbgFile)
+    dbg->dbgFile->close();
+}
+
+std::string AbortHandlerInstantiator::str() {
+  std::ostringstream s;
+  s << "[AbortHandlerInstantiator:"<<endl;
+  s << "    ExitHandlers=(#"<<ExitHandlers->size()<<"): ";
+  for(std::map<std::string, ExitHandler>::const_iterator i=ExitHandlers->begin(); i!=ExitHandlers->end(); i++) {
+    if(i!=ExitHandlers->begin()) s << ", ";
+    s << i->first;
+  }
+  s << endl;
+  s << "    KillSignalHandlers=(#"<<KillSignalHandlers->size()<<"): ";
+  for(std::map<std::string, KillSignalHandler>::const_iterator i=KillSignalHandlers->begin(); i!=KillSignalHandlers->end(); i++) {
+    if(i!=KillSignalHandlers->begin()) s << ", ";
+    s << i->first;
+  }
+  s << "]"<<endl;
+  return s.str();
+}
+
+// Initial instance of AbortHandlerInstantiator that ensures that the proper 
+// exit/signal handlers are set up. Individual widgets may set up their own 
+// instances as well.
+AbortHandlerInstantiator defaultAbortHandlerInstance;
 
 }; // namespace structure
 }; // namespace sight
