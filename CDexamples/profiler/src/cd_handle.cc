@@ -34,6 +34,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 */
 #include <assert.h>
 #include <utility>
+#include <math.h>
 #include "cd_handle.h"
 
 //#include "util.h"
@@ -115,16 +116,14 @@ CDHandle* cd::CD_Init(int numproc, int myrank)
   dbg << "Some explanation on CD runtime "<<endl<<endl;
 
   /// modularApp exists only one, and is created at init stage
-  root_cd->ma = new modularApp("CD Modular App");
-//                   namedMeasures("time",      new timeMeasure(),
-//                                 "timestamp", new timeStampMeasure()));
-//  module* m   = new module(instance("Root", 1, 1), 
+//  root_cd->ma = new modularApp("CD Modular App");
+//  module* m   = new module(instance("Root", 1, 0), 
 //                           inputs(port(context("sequential_id", (int)(root_cd->node_id().task_)))),
 //                           namedMeasures("time", new timeMeasure()));
 //  root_cd->mStack.push_back(m);
 
     /// graph exists only one. It is created at init stage
-//    root_cd->scopeGraph = new graph();
+    root_cd->scopeGraph = new graph();
 #endif
 
   return root_cd;
@@ -233,6 +232,7 @@ CDHandle::CDHandle( CDHandle* parent,
   }
   
 }
+
 CDHandle::CDHandle(CDHandle* parent, const char* name, NodeID&& node_id, CDModeT cd_type, uint64_t sys_bit_vector)
 {
   // Design decision when we are receiving ptr_cd, do we assume that pointer is usable? 
@@ -322,8 +322,8 @@ CDHandle* CDHandle::Create( const char* name,
 }
 
 // Collective
-CDHandle* CDHandle::Create( uint32_t color, 
-                            uint32_t num_tasks_in_color, 
+CDHandle* CDHandle::Create( int color, 
+                            uint32_t num_children, 
                             const char* name, 
                             CDModeT type, 
                             uint32_t error_name_mask, 
@@ -354,13 +354,40 @@ CDHandle* CDHandle::Create( uint32_t color,
   //  Essentially, making the key value zero for all processes of a given color means that 
   //  one doesn't really care about the rank-order of the processes in the new communicator.  
   Sync();
-
   uint64_t sys_bit_vec = SetSystemBitVector(error_name_mask, error_loc_mask);
+
+
+  // Split the node
+  uint32_t num_children_per_dim = (uint32_t)pow(num_children, 1/3.);
+  double scale_k = pow(GetRootCD()->GetTaskSize(), 1/3.);
+  uint32_t scale_j = (uint32_t)scale_k;
+  uint32_t scale_i = (uint32_t)pow(scale_k, 2);
+  std::cout << "num_children_per_dim = "<< num_children_per_dim << std::cout;
+  for(int i=0; i < num_children_per_dim; ++i) {
+    
+    for(int j=0; j < num_children_per_dim; ++j) {
+      
+      for(int k=0; k < num_children_per_dim; ++k) {
+
+
+//    if(i*GetTaskSize()/num_children =< GetTaskID()
+//      && GetTaskID() < (i+1)*GetTaskSize()/num_children)
+//    {
+        new_node.color_ = i*scale_i + j*scale_j + k;
+        new_node.size_  = GetTaskSize() / num_children;
+        new_node.task_  = GetTaskID() % new_node.size_;;
+//    }
+
+
+      }
+    }
+  }
+
   
   // Create CDHandle for multiple tasks (MPI rank or threads)
   NodeID new_node(MPI_UNDEFINED, 0, 0, 0);
 
-  MPI_Comm_split(node_id_.color_, color, num_tasks_in_color, &(new_node.color_));
+  MPI_Comm_split(node_id_.color_, color, num_children, &(new_node.color_));
   MPI_Comm_size(new_node.color_, &(new_node.size_));
   MPI_Comm_rank(new_node.color_, &(new_node.task_));
   // Then children CD get new MPI rank ID. (task ID) I think level&taskID should be also pair.
@@ -459,14 +486,13 @@ CDErrT CDHandle::Destroy (bool collective)
 
   } 
   else {
-    cout<<"--- Root CD is begin destroyed!!!"<<endl;
-    getchar();
-#if _PROFILER 
-    assert(ma);
-    delete ma;
 
-//    assert(scopeGraph);
-//    delete scopeGraph;
+#if _PROFILER 
+//    assert(this->ma);
+//    delete this->ma;
+
+    assert(this->scopeGraph);
+    delete this->scopeGraph;
 #endif
   }
 
@@ -491,23 +517,23 @@ CDErrT CDHandle::Begin (bool collective, const char* label)
 //  comparison* comp = new comparison(node_id().color_);
 //  compStack.push_back(comp);
 
-  module* m = new module( instance(txt()<<label, 1, 1), 
-                          inputs(port(context("cd_id", txt()<<node_id().task_, 
-                                              "sequential_id", (int)(node_id().task_)))),
-                          namedMeasures("time", new timeMeasure()) );
-
-  this->mStack.push_back(m);
+//  module* m = new module( instance(txt()<<label, 1, 1), 
+//                          inputs(port(context("cd_id", txt()<<this->node_id().task_, 
+//                                              "sequential_id", (int)(this->node_id().task_)))),
+//                          namedMeasures("time", new timeMeasure()) );
+//
+//  this->mStack.push_back(m);
 //  dbg << "[[[ Module Test -- "<<this->this_cd_->cd_id_<<", #mStack="<<mStack.size()<<endl;
 
   /// create a new scope at each Begin() call
-//  scope* s = new scope(txt()<<label<<", cd_id="<<node_id().task_);
+  scope* s = new scope(txt()<<label<<", cd_id="<<node_id().task_);
 
-//  /// Connect edge between previous node to newly created node
-//  if(sStack.size()>0)
-//    scopeGraph->addDirEdge(sStack.back()->getAnchor(), s->getAnchor());
-//
-//  /// push back this node into sStack to manage scopes
-//  sStack.push_back(s);
+  /// Connect edge between previous node to newly created node
+  if(this->sStack.size()>0)
+    this->scopeGraph->addDirEdge(this->sStack.back()->getAnchor(), s->getAnchor());
+
+  /// push back this node into sStack to manage scopes
+  this->sStack.push_back(s);
 //  dbg << "<<< Scope  Test -- "<<this->this_cd_->cd_id_<<", #sStack="<<sStack.size()<<endl;
 //------------------------------------------------------------------------------------------------
 #endif
@@ -556,25 +582,26 @@ CDErrT CDHandle::Complete (bool collective, bool update_preservations)
 
 
 //  dbg << " >>> Scope  Test -- "<<this->this_cd_->cd_id_<<", #sStack="<<sStack.size()<<endl;
-//  assert(sStack.size()>0);
-//  assert(sStack.back() != NULL);
-//  delete sStack.back();
-//  sStack.pop_back();
-
+  assert(sStack.size()>0);
+  assert(sStack.back() != NULL);
+  delete sStack.back();
+  sStack.pop_back();
 
 //  dbg << " ]]] Module Test -- "<<this->this_cd_->cd_id_<<", #mStack="<<mStack.size()<<endl;
-  assert(mStack.size()>0);
-  assert(mStack.back() != NULL);
-  mStack.back()->setOutCtxt(0, context("data_copy=", (long)profile_data_[PRV_COPY_DATA],
-                                       "data_overlapped=", (long)profile_data_[OVERLAPPED_DATA],
-                                       "data_ref=" , (long)profile_data_[PRV_REF_DATA]));
-  delete mStack.back();
-  mStack.pop_back();
+//  assert(mStack.size()>0);
+//  assert(mStack.back() != nullptr);
+//  mStack.back()->setOutCtxt(0, context("data_copy", (long)profile_data_[PRV_COPY_DATA],
+//                                       "data_overlapped=", (long)profile_data_[OVERLAPPED_DATA],
+//                                       "data_ref=" , (long)profile_data_[PRV_REF_DATA]));
+//  delete mStack.back();
+//  mStack.pop_back();
 
 //  assert(compStack.size()>0);
 //  assert(compStack.back() != NULL);
 //  delete compStack.back();
 //  compStack.pop_back();
+
+
 //  dbg << " }}} CDNode Test -- "<<this->this_cd_->cd_id_<<", #cdStack="<<cdStack.size()<<endl;
 //  assert(cdStack.size()>0);
 //  assert(cdStack.back() != nullptr);
@@ -636,6 +663,31 @@ CDErrT CDHandle::Preserve ( void *data_ptr,
                             const RegenObject *regen_object, 
                             PreserveUseT data_usage )
 {
+
+
+  /// Preserve meta-data
+  /// Accumulated volume of data to be preserved for Sequential CDs. 
+  /// It will be averaged out with the number of seq. CDs.
+  if(preserve_mask == kCopy){
+
+    profile_data_[PRV_COPY_DATA] += len;
+//    if( (this->parent_ != nullptr) && check_overlap(this->parent_, ref_name) ){
+      /// Sequential overlapped accumulated data. It will be calculated to OVERLAPPED_DATA/PRV_COPY_DATA
+      /// overlapped data: overlapped data that is preserved only via copy method.
+//      profile_data_[OVERLAPPED_DATA] += len_in_bytes;
+//      cout<<"something is weird  "<<"level is "<<this->this_cd_->level_ << "length : "<<len_in_bytes<<endl;
+
+  } else if(preserve_mask == kRef) {
+
+    profile_data_[PRV_REF_DATA] += len;
+
+  } else {
+                                                                                                                                  
+    cout<<"prvTy is not supported currently : "<< preserve_masky<<endl;          
+    exit(-1);
+
+  }
+
   if( IsMaster() ) {
     assert(ptr_cd_ != 0);
     return ptr_cd_->Preserve(data_ptr, len, preserve_mask, my_name, ref_name, ref_offset, regen_object, data_usage);
