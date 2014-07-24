@@ -598,7 +598,6 @@ class PAPIMeasure : public measure {
 
 #ifdef RAPL
 #include "msr_rapl.h"
-
 // Base class of measurement objects that measure MSRs 
 class MSRMeasure {
   protected:

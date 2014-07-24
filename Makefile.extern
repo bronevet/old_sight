@@ -1,5 +1,5 @@
-ROOT_PATH = /g/g90/lee1031/Sight/sight
-SIGHT_CFLAGS = -I${ROOT_PATH} \
+ROOT_PATH = /g/g90/lee1031/work/Sight/sight_after_merge
+SIGHT_CFLAGS = -I${ROOT_PATH} -I${ROOT_PATH}/widgets/parallel \
                -I${ROOT_PATH}/tools/callpath/src -I${ROOT_PATH}/tools/adept-utils/include \
                -I${ROOT_PATH}/widgets/papi/include\
                -I${ROOT_PATH}/widgets/libmsr/include
@@ -22,8 +22,6 @@ SIGHT_LINKFLAGS = \
                   ${ROOT_PATH}/widgets/gsl/lib/libgsl.so \
                   ${ROOT_PATH}/widgets/gsl/lib/libgslcblas.so \
                   -Wl,-rpath ${ROOT_PATH}/widgets/gsl/lib \
-                  ${ROOT_PATH}/widgets/libmsr/lib/libmsr.so \
-                  -Wl,-rpath ${ROOT_PATH}/widgets/libmsr/lib \
                   -lpthread
  
 # Flags to use when linking a version of slayout that include object files
@@ -42,5 +40,5 @@ SIGHT_LAYOUT_DYNAMIC_LINKFLAGS = \
                   -Wl,-rpath ${ROOT_PATH}/tools/callpath/src/src \
                   ${ROOT_PATH}/widgets/papi/lib/libpapi.a \
                  -lpthread
-CC = gcc
+CC = cc
 CCC = g++

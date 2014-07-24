@@ -102,7 +102,10 @@ class cd::CDHandle {
     /// All modules that are currently live
     static std::list<module*> mStack;
     static modularApp* ma;
-  
+ 
+
+    static std::list<comparison*> compStack;
+ 
     /// All modules that are currently live
 //    static std::list<CDNode*> cdStack;
 #endif

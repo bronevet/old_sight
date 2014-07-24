@@ -189,9 +189,15 @@ int main(int argc, char* argv[])
       cd2->Complete();
       cd2->Destroy();
 
+    getchar();
+    cout<< "before cd1 destroyed"<<endl;
+
 		cd1->Detect();
     cd1->Complete();
     cd1->Destroy();
+
+  getchar();
+  cout<<"before root destoryed"<<endl;
 
   cd_root->Detect();
   cd_root->Complete();

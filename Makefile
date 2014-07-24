@@ -27,15 +27,15 @@ SIGHT_LINKFLAGS = \
                   ${ROOT_PATH}/widgets/gsl/lib/libgslcblas.so \
                   -Wl,-rpath ${ROOT_PATH}/widgets/gsl/lib \
 	          -lpthread
-RAPL_ENABLED = 1
+RAPL_ENABLED = 0
 ifeq (${RAPL_ENABLED}, 1)
 SIGHT_LINKFLAGS += ${ROOT_PATH}/widgets/libmsr/lib/libmsr.so \
                     -Wl,-rpath ${ROOT_PATH}/widgets/libmsr/lib
 endif
 	                
 	                #-Wl,-rpath ${ROOT_PATH}/widgets/papi/lib \
-override CC=clang #icc #gcc
-override CCC=clang++ #icpc #clang++ #g++
+override CC=gcc #clang #icc #gcc
+override CCC=g++ #clang++ #icpc #clang++ #g++
 MPICC = mpi${CC}
 MPICCC = mpi${CCC}
 
@@ -83,7 +83,7 @@ VNC_ENABLED := 0
 endif
 
 # By default we disable KULFI-based fault injection since it requires LLVM
-KULFI_ENABLED := 1
+KULFI_ENABLED := 0
 	
 ifeq (${KULFI_ENABLED}, 1)
 # Sight must use the same LLVM Clang compiler as KULFI does
@@ -248,7 +248,7 @@ Makefile.extern: initMakefile.extern Makefile
 	chmod 755 initMakefile.extern
 	./initMakefile.extern ${CC} ${CCC} ${RAPL_ENABLED} ${LLVM32_SRC_PATH} ${LLVM32_BUILD_PATH} ${LLVM32_INSTALL_PATH}
 
-definitions.h: initDefinitionsH
+definitions.h: initDefinitionsH Makefile
 	chmod 755 initDefinitionsH
 	./initDefinitionsH ${RAPL_ENABLED}
 

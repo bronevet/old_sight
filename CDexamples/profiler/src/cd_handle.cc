@@ -85,6 +85,7 @@ void cd::SetStatus(int flag)
 list<scope*>  CDHandle::sStack;
 list<module*> CDHandle::mStack;
 //list<CDNode*> CDHandle::cdStack;
+list<comparison*> CDHandle::compStack;
 
 modularApp*   CDHandle::ma;
 graph*        CDHandle::scopeGraph;
@@ -114,14 +115,16 @@ CDHandle* cd::CD_Init(int numproc, int myrank)
   dbg << "Some explanation on CD runtime "<<endl<<endl;
 
   /// modularApp exists only one, and is created at init stage
-//  root_cd->ma = new modularApp("CD Modular App");
-//  module* m   = new module(instance("Root", 1, 0), 
+  root_cd->ma = new modularApp("CD Modular App");
+//                   namedMeasures("time",      new timeMeasure(),
+//                                 "timestamp", new timeStampMeasure()));
+//  module* m   = new module(instance("Root", 1, 1), 
 //                           inputs(port(context("sequential_id", (int)(root_cd->node_id().task_)))),
 //                           namedMeasures("time", new timeMeasure()));
 //  root_cd->mStack.push_back(m);
 
     /// graph exists only one. It is created at init stage
-    root_cd->scopeGraph = new graph();
+//    root_cd->scopeGraph = new graph();
 #endif
 
   return root_cd;
@@ -456,13 +459,14 @@ CDErrT CDHandle::Destroy (bool collective)
 
   } 
   else {
-
+    cout<<"--- Root CD is begin destroyed!!!"<<endl;
+    getchar();
 #if _PROFILER 
-//    assert(this->ma);
-//    delete this->ma;
+    assert(ma);
+    delete ma;
 
-    assert(this->scopeGraph);
-    delete this->scopeGraph;
+//    assert(scopeGraph);
+//    delete scopeGraph;
 #endif
   }
 
@@ -484,24 +488,26 @@ CDErrT CDHandle::Begin (bool collective, const char* label)
 //  this->cdStack.push_back(cdn);
 //  dbg << "{{{ CDNode Test -- "<<this->this_cd_->cd_id_<<", #cdStack="<<cdStack.size()<<endl;
 
+//  comparison* comp = new comparison(node_id().color_);
+//  compStack.push_back(comp);
 
-//  module* m = new module( instance(txt()<<label, 1, 1), 
-//                          inputs(port(context("cd_id", txt()<<this->node_id().task_, 
-//                                              "sequential_id", (int)(this->node_id().task_)))),
-//                          namedMeasures("time", new timeMeasure()) );
-//
-//  this->mStack.push_back(m);
+  module* m = new module( instance(txt()<<label, 1, 1), 
+                          inputs(port(context("cd_id", txt()<<node_id().task_, 
+                                              "sequential_id", (int)(node_id().task_)))),
+                          namedMeasures("time", new timeMeasure()) );
+
+  this->mStack.push_back(m);
 //  dbg << "[[[ Module Test -- "<<this->this_cd_->cd_id_<<", #mStack="<<mStack.size()<<endl;
 
   /// create a new scope at each Begin() call
-  scope* s = new scope(txt()<<label<<", cd_id="<<node_id().task_);
+//  scope* s = new scope(txt()<<label<<", cd_id="<<node_id().task_);
 
-  /// Connect edge between previous node to newly created node
-  if(this->sStack.size()>0)
-    this->scopeGraph->addDirEdge(this->sStack.back()->getAnchor(), s->getAnchor());
-
-  /// push back this node into sStack to manage scopes
-  this->sStack.push_back(s);
+//  /// Connect edge between previous node to newly created node
+//  if(sStack.size()>0)
+//    scopeGraph->addDirEdge(sStack.back()->getAnchor(), s->getAnchor());
+//
+//  /// push back this node into sStack to manage scopes
+//  sStack.push_back(s);
 //  dbg << "<<< Scope  Test -- "<<this->this_cd_->cd_id_<<", #sStack="<<sStack.size()<<endl;
 //------------------------------------------------------------------------------------------------
 #endif
@@ -550,20 +556,25 @@ CDErrT CDHandle::Complete (bool collective, bool update_preservations)
 
 
 //  dbg << " >>> Scope  Test -- "<<this->this_cd_->cd_id_<<", #sStack="<<sStack.size()<<endl;
-  assert(this->sStack.size()>0);
-  assert(this->sStack.back() != NULL);
-  delete this->sStack.back();
-  this->sStack.pop_back();
+//  assert(sStack.size()>0);
+//  assert(sStack.back() != NULL);
+//  delete sStack.back();
+//  sStack.pop_back();
+
 
 //  dbg << " ]]] Module Test -- "<<this->this_cd_->cd_id_<<", #mStack="<<mStack.size()<<endl;
-//  assert(mStack.size()>0);
-//  assert(mStack.back() != nullptr);
-//  mStack.back()->setOutCtxt(0, context("data_copy", (long)profile_data_[PRV_COPY_DATA],
-//                                       "data_overlapped=", (long)profile_data_[OVERLAPPED_DATA],
-//                                       "data_ref=" , (long)profile_data_[PRV_REF_DATA]));
-//  delete mStack.back();
-//  mStack.pop_back();
+  assert(mStack.size()>0);
+  assert(mStack.back() != NULL);
+  mStack.back()->setOutCtxt(0, context("data_copy=", (long)profile_data_[PRV_COPY_DATA],
+                                       "data_overlapped=", (long)profile_data_[OVERLAPPED_DATA],
+                                       "data_ref=" , (long)profile_data_[PRV_REF_DATA]));
+  delete mStack.back();
+  mStack.pop_back();
 
+//  assert(compStack.size()>0);
+//  assert(compStack.back() != NULL);
+//  delete compStack.back();
+//  compStack.pop_back();
 //  dbg << " }}} CDNode Test -- "<<this->this_cd_->cd_id_<<", #cdStack="<<cdStack.size()<<endl;
 //  assert(cdStack.size()>0);
 //  assert(cdStack.back() != nullptr);

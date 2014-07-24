@@ -51,4 +51,5 @@ clean:
 	rm -rf ${CD_APP}/lulesh_v2/*.dSYM ./lulesh_v2/*.o;
 	rm -rf test_cd_profile; rm -rf lulesh_cd_profile;  
 	rm -rf ${CD_APP}/dbg*; 
+	rm -rf ${CD_APP}/*.core; 
 	rm -rf ${CD_APP}/profile_data/*; rm -rf ${CD_APP}/test_mpi_profiler/*.o;
