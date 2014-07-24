@@ -93,7 +93,7 @@ function showParallelArrows() {
   // Initialize the canvas
   if(parArrowCanvas === undefined) parArrowCanvas = createCanvasOverlay();
   // Grab a drawing context for the canvas
-  var ctx = parArrowCanvas.getContext('2d');
+  var ctx = parArrowCanvas.canvas.getContext('2d');
   
   mapParArrows(parArrowsFrom, 
                function(sourceCenter, targetCenter) {
@@ -116,12 +116,17 @@ function showParallelArrows() {
 // Refreshes the positions of the arrows between causally-related events based on the current
 // locations of their source/target divs
 function refreshParallelArrows() {
-  console.log("refreshParallelArrows");
+  //console.log("refreshParallelArrows parArrowCanvas="+parArrowCanvas);
   // Only refresh if the canvas has been created
   if(parArrowCanvas !== undefined) { 
+    // Since the browser window size may have changed, create a fresh canvas
+    deleteCanvasOverlay(parArrowCanvas);
+    parArrowCanvas = createCanvasOverlay();
+    //console.log("parArrowCanvas: "+parArrowCanvas.canvas.width+", "+parArrowCanvas.canvas.height);
+    
     // Grab a drawing context for the canvas
-    var ctx = parArrowCanvas.getContext('2d');
-    ctx.clearRect(0, 0, parArrowCanvas.width, parArrowCanvas.height);
+    var ctx = parArrowCanvas.canvas.getContext('2d');
+    ctx.clearRect(0, 0, parArrowCanvas.canvas.width, parArrowCanvas.canvas.height);
     showParallelArrows();
   }
 }

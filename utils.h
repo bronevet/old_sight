@@ -5,6 +5,7 @@
 #include <iostream>
 #include <sstream>
 #include <list>
+#include <vector>
 #include <set>
 #include <sys/types.h>
 
@@ -27,6 +28,9 @@ std::string wrapStr(std::string str, unsigned int lineWidth);
 
 // Returns the human-readable representation of the given list of strings
 std::string list2str(const std::list<std::string>& l);
+
+// Returns the human-readable representation of the given vector of strings
+std::string vector2str(const std::vector<std::string>& v);
 
 // Returns the human-readable representation of the given set of strings
 std::string set2str(const std::set<std::string>& l);

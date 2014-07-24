@@ -123,6 +123,11 @@ void SightInit_LowLevel()
   initializedDebugThisThread = true;
 }
 
+// Comparison tag for the main thread that will live for the entire duration of the application.
+// It must be aligned to the same comparison tag in the logs of other processes (set in 
+// SightInit_internal) and the non-main threads within this process (set in sight_pthread_create).
+//comparison* mainThreadComp=NULL;
+
 // mainThread: Set to true if this function is being called from the main thread directly by the other.
 //             Set to false if it is called inside some other, subsequently-created thread from within Sight
 void SightInit_internal(int argc, char** argv, string title, string workDir, bool mainThread)
@@ -242,9 +247,13 @@ void SightInit_internal(int argc, char** argv, string title, string workDir, boo
   //cout << pthread_self() << " &dbg="<<&dbg<<endl;
 
   dbg->init(props, title, workDir, imgDir, tmpDir);
+  
+  // Create a comparison object for the main thread
+  /*if(mainThread)
+    mainThreadComp = new comparison(0);*/
 }
 
-void SightInit_internal(properties* props, bool storeProps)
+/*void SightInit_internal(properties* props, bool storeProps)
 {
   properties::iterator sightIt = props->find("sight");
   assert(!sightIt.isEnd());
@@ -265,7 +274,7 @@ void SightInit_internal(properties* props, bool storeProps)
   initializedDebugThisThread = true;
   
   dbg->init(storeProps? props: NULL, properties::get(sightIt, "title"), properties::get(sightIt, "workDir"), imgDir, tmpDir);
-}
+}*/
 
 // Creates a new dbgStream based on the given properties of a "sight" tag and returns a pointer to it.
 // storeProps: if true, the given properties object is emitted into this dbgStream's output file
@@ -1969,6 +1978,7 @@ void dbgStream::init(properties* props, string title, string workDir, string img
   
   // Version 1: write output to a file 
   // Create the output file to which the debug log's structure will be written
+  //cout << pthread_self() << ": SIGHT_FILE_OUT="<<getenv("SIGHT_FILE_OUT")<<endl;
   if(getenv("SIGHT_FILE_OUT")) {
     dbgFile = &(createFile(txt()<<workDir<<"/structure"));
     // Call the parent class initialization function to connect it dbgBuf of the output file
@@ -2141,6 +2151,7 @@ string dbgStream::addImage(string ext)
 //void dbgStream::enter(std::string name, const std::map<std::string, std::string>& properties, bool inheritedFrom) {
 void dbgStream::enter(sightObj* obj) {
   INIT_CHECK // Ensure that Sight is correctly initialized
+  
   ownerAccessing();
   *this << enterStr(*(obj->props));
   userAccessing();
@@ -2523,7 +2534,8 @@ ComparisonMerger::ComparisonMerger(std::vector<std::pair<properties::tagType, pr
   if(props==NULL) props = new properties();
   this->props = props;
   
-  vector<string> names = getNames(tags); assert(allSame<string>(names));
+  vector<string> names = getNames(tags); 
+  if(!allSame<string>(names)) { cerr << "ComparisonMerger::ComparisonMerger ERROR: all names must be the same but they are "<<vector2str(names)<<"!"; assert(allSame<string>(names)); }
 
   assert(*names.begin() == "comparison");
   
@@ -2768,10 +2780,13 @@ void AbortHandlerInstantiator::finalizeSight() {
   // On Termination deallocate all the currently live sightObjs
   sightObj::destroyAll();
 
-  // Flush the file used to output the structure log and close the file to make sure it is flushed.
-  dbg->flush();
-  if(dbg->dbgFile)
-    dbg->dbgFile->close();
+  // If a copy of dbg has been allocated for this thread
+  if(dbg.isValueMappedForThread()) {
+    // Flush the file used to output the structure log and close the file to make sure it is flushed.
+    dbg->flush();
+    if(dbg->dbgFile)
+      dbg->dbgFile->close();
+  }
 }
 
 std::string AbortHandlerInstantiator::str() {

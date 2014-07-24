@@ -76,7 +76,7 @@ void SightInit_internal(properties* props);
   /* but not on this thread, initialize it now */                                     \
   if(initializedDebugMainThread && !initializedDebugThisThread) SightInit_NewThread(); \
   /* Skip this if Sight has not yet been initialized on the main thread */            \
-  if(!initializedDebugMainThread) return;
+  if(!initializedDebugMainThread) { cout << "INIT_CHECK Skipping\n"; return; }
 
 // Version for functions that return non-void
 #define INIT_CHECK_RET(retVal)                                                        \
@@ -84,7 +84,7 @@ void SightInit_internal(properties* props);
   /* but not on this thread, initialize it now */                                     \
   if(initializedDebugMainThread && !initializedDebugThisThread) SightInit_NewThread(); \
   /* Skip this if Sight has not yet been initialized on the main thread */            \
-  if(!initializedDebugMainThread) return retVal;
+  if(!initializedDebugMainThread) { cout << "INIT_CHECK Skipping\n"; return retVal; }
 
 // Creates a new dbgStream based on the given properties of a "sight" tag and returns a pointer to it.
 // storeProps: if true, the given properties object is emitted into this dbgStream's output file

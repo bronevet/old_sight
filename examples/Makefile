@@ -8,8 +8,10 @@ TESTERS = 0.Demo${EXE} #8.Modules${EXE} 9.CompModules.merged${EXE} 9.CompModules
           1.StructuredFormatting${EXE} 2.ConditionalFormatting${EXE} 3.Navigation${EXE} \
           4.AttributeAnnotationFiltering${EXE} 6.PerfAnalysis${EXE} \
           7.Merging${EXE} 
+PTHREAD_TESTERS = pthreadMutexEx${EXE} pthreadCondEx${EXE} pthreadThreadsEx${EXE}
 
-all: ${TESTERS}
+all: ${PTHREAD_TESTERS} 
+#${TESTERS}
 
 run: ${TESTERS}
 	# 0.Demo
@@ -103,6 +105,29 @@ run: ${TESTERS}
 11.ExternTraceProcess${EXE}: 11.ExternTraceProcess.C ../libsight_structure.so ${sight_H}
 	${CCC} -g 11.ExternTraceProcess.windowing.C -I.. -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 11.ExternTraceProcess.windowing${EXE}
 	${CCC} -g ${SIGHT_CFLAGS} 11.ExternTraceProcess.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 11.ExternTraceProcess${EXE}
+
+runPthread: ${PTHREAD_TESTERS}
+	export SIGHT_FILE_OUT=1; ./pthreadThreadsEx 5
+	export SIGHT_FILE_OUT=1; export SIGHT_MERGE_SEPARATE=1; ../hier_merge dbg.pthreadThreadsEx common dbg.pthreadThreadsEx.individual*
+	rm -r dbg.pthreadThreadsEx.individual*
+	../slayout dbg.pthreadThreadsEx
+	export SIGHT_FILE_OUT=1; ./pthreadMutexEx 5
+	export SIGHT_FILE_OUT=1; export SIGHT_MERGE_SEPARATE=1; ../hier_merge dbg.pthreadMutexEx common dbg.pthreadMutexEx.individual*
+	rm -r dbg.pthreadMutexEx.individual*
+	../slayout dbg.pthreadMutexEx
+	export SIGHT_FILE_OUT=1; ./pthreadCondEx 5
+	export SIGHT_FILE_OUT=1; export SIGHT_MERGE_SEPARATE=1; ../hier_merge dbg.pthreadCondEx common dbg.pthreadCondEx.individual*
+	rm -r dbg.pthreadCondEx.individual*
+	../slayout dbg.pthreadCondEx
+
+pthreadThreadsEx${EXE}: pthreadThreadsEx.C ../libsight_structure.so ${sight_H}
+	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
+
+pthreadMutexEx${EXE}: pthreadMutexEx.C ../libsight_structure.so ${sight_H}
+	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
+
+pthreadCondEx${EXE}: pthreadCondEx.C ../libsight_structure.so ${sight_H}
+	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
 
 clean:
 	rm -rf ${TESTERS} dbg.*

@@ -101,6 +101,19 @@ std::string list2str(const std::list<std::string>& l) {
   return s.str();
 }
 
+// Returns the human-readable representation of the given vector of strings
+std::string vector2str(const std::vector<std::string>& v) {
+  ostringstream s;
+  s << "[";
+  for(vector<string>::const_iterator i=v.begin(); i!=v.end(); i++) {
+    if(i!=v.begin()) s << ", ";
+    s << *i;
+  }
+    
+  s << "]";
+  return s.str();
+}
+
 // Returns the human-readable representation of the given set of strings
 std::string set2str(const std::set<std::string>& l) {
   ostringstream s;

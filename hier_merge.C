@@ -143,6 +143,21 @@ int merge(vector<FILEStructureParser*>& parsers,
 #endif
                    string indent);
 
+// After the merging process enters some tag on some incoming stream it may call
+// this function to directly copy the entire contents of this tag to the given 
+// outgoing stream out. These contents are not merged with any other stream but
+// any updates recorded in outStreamRecords will subsequently be incorporated by 
+// the calling function.
+// Returns whether the parser was active at the end of the log region.
+bool emitLogRegion(FILEStructureParser* parsers, 
+                  std::map<std::string, streamRecord*>& outStreamRecords,
+                  std::map<std::string, streamRecord*>& inStreamRecords,
+                  structure::dbgStream& out, 
+#ifdef VERBOSE
+                  graph& g, anchor incomingA, anchor& outgoingA,
+#endif
+                  string indent);
+
 // Given a vector of entities and a list of indexes within the vector,
 // fills groupVec with just the entities at the indexes in selIdxes.
 template<class EltType>
@@ -156,6 +171,10 @@ void collectGroupVectorBool(std::vector<EltType>& vec, const std::vector<bool>& 
 void printStreamRecords(ostream& out, 
                         std::map<std::string, streamRecord*>& outStreamRecords,
                         std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                        string indent);
+void printStreamRecords(ostream& out, 
+                        std::map<std::string, streamRecord*>& outStreamRecords,
+                        std::map<std::string, streamRecord*>& inStreamRecords,
                         string indent);
 void printTags(ostream& out,
                std::vector<bool>& activeParser,
@@ -437,6 +456,140 @@ void completeSubLogProcessing(structure::dbgStream* parentStream,
   dbgStreamStreamRecord::exitBlock(outStreamRecords);
 }
 
+// Function called when it is necessary to generate a separate log for a set of incoming streams.
+// This may happen when we encounter 
+//   - the entry to a "sight" tag and are explicitly asked to not merge logs
+//   - a "comparable" tag, which explicitly indicates that the portion of the logs 
+//     inside the tag should shown separately rather than merged
+// This function calls merge() on each log separately and places pointers in the original
+// log to the files generated for each sub-log.
+void separateMergeForEachParser(vector<FILEStructureParser*>& parsers, 
+                                vector<pair<properties::tagType, const properties*> >& nextTag, 
+                                std::map<std::string, streamRecord*>& outStreamRecords,
+                                std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                                std::vector<bool>  readyForTag,
+                                std::vector<bool>& activeParser,
+                                // This call must be focused on a single key->value pair in the
+                                // caller's instance of tag2stream (organizes the current tags on the 
+                                // incoming streams according to their structural similarity)
+                                // sepGroup: the key in tag2stream that describes the commonality between these tags
+                                const tagGroup& sepGroup, 
+                                // sepTags: identifies how they should be merged
+                                const StreamTags& sepTags,
+                                int numTextTags,
+                                int variantStackDepth,
+                                structure::dbgStream* out, 
+                                mergeType mt,
+                                int& numActive,
+                                int& subDirCount,
+                                const std::string& tagName, const std::map<std::string, std::string>& initialPMap,
+#ifdef VERBOSE
+                                graph& g, anchor incomingA, anchor& outgoingA,
+#endif
+                                string indent) {
+  // The processing of the comparison tag on each incoming stream group gets a separate copy of 
+  // outStreamRecords. This list stores them all so that we can later merge them.
+  vector<std::map<std::string, streamRecord*> > allGroupOutStreamRecords;
+
+  // Sub-directories that hold the contents of all the comparison sub-logs
+  vector<string> compSubDirs;
+
+  dbgStreamStreamRecord::enterBlock(outStreamRecords);
+  
+  // Iterate over all the active parsers
+  for(list<int>::const_iterator p=sepTags.parserIndexes.begin();
+      p!=sepTags.parserIndexes.end(); p++) {
+#ifdef VERBOSE
+    scope sepS(txt()<<"Separate merge for parser "<<*p);
+#endif
+    
+    // Create a sub-directory and stream for the comparable log segment from the current incoming stream
+    pair<structure::dbgStream*, string> ret = createStructSubDir(out, "comparable", subDirCount);
+    dbgStream* groupStream = ret.first;
+    string subDir = ret.second;
+
+    /* // Contains just the current parser
+    vector<FILEStructureParser*> groupParsers(1, parsers[*p]);
+    // Contains the next read tag on the current parser
+    vector<pair<properties::tagType, const properties*> > groupNextTag(1, nextTag[*p]);
+    // Create a copy of outStreamRecords for this parser and add it to allGroupOutStreamRecords
+    std::map<std::string, streamRecord*> groupOutStreamRecords = 
+              createOutSRCopy(outStreamRecords, *p, allGroupOutStreamRecords);
+    // The streamRecords of the incoming streams from the current parser
+    std::vector<std::map<std::string, streamRecord*> > groupInStreamRecords(1, inStreamRecords[*p]);
+    // The activeParser record for just the current parser (must be true)
+    std::vector<bool> groupActiveParser(1, activeParser[*p]);
+    // We are ready for another tag on any stream within this parser.
+    std::vector<bool> groupNotReadyForTag(1, true);
+
+    // The tag2stream map of this parser, which maps all the group's streams to the
+    // common tag
+    map<tagGroup, StreamTags > groupTag2stream;
+    //groupTag2stream[sepGroup] = StreamTags(*p, true);
+
+    //dbg << "start outLocation="<<((dbgStreamStreamRecord*)groupOutStreamRecords["sight"])->getLocation().str()<<endl;
+    int numVariantTagsEmitted = 
+      merge(groupParsers, groupNextTag, 
+            groupOutStreamRecords, groupInStreamRecords, 
+            groupNotReadyForTag, groupActiveParser,
+            groupTag2stream,
+            numTextTags,
+            variantStackDepth+1, groupStream, 
+            mt, 
+#ifdef VERBOSE
+            g, incomingA, outgoingA,
+#endif
+            txt()<<indent<<"| "<<*p);
+    */
+    
+    assert(activeParser[*p]);
+    
+    std::map<std::string, streamRecord*> groupOutStreamRecords = 
+              createOutSRCopy(outStreamRecords, *p, allGroupOutStreamRecords);
+    
+    // Returns whether the parser was active at the end of the log region
+    activeParser[*p] = 
+            emitLogRegion(parsers[*p], 
+                          groupOutStreamRecords, inStreamRecords[*p],
+                          *groupStream, 
+#ifdef VERBOSE
+                          g, incomingA, outgoingA,
+#endif
+                          indent+"    ");
+
+    // If we emitted at least one tag within this variant, we record this variant 
+    // to include it in the [variants] tag that points to it.
+    //if(numVariantTagsEmitted>0) {
+      compSubDirs.push_back(subDir);
+    /*  //subDirCount++;
+    // Otherwise, if this variant is empty, we delete it
+    } else {
+      rmdir(subDir.c_str());
+    }*/
+
+    delete groupStream;
+/*
+    // Update activeParsers[] based on the reading activity that occurred inside the merge() call.
+    // If entry/exit tags were balanced we'd be guaranteed that all of the group's parsers would
+    // be active but since the log generating application may terminate prematurely, we may hit
+    // the end of its log inside this merge call.
+    // If the current parser was previously active and has now terminated, update state
+    if(groupActiveParser[0]==false) {
+      activeParser[*p]=false;
+      numActive--;
+    }*/
+    if(activeParser[*p]==false)
+      numActive--;
+  } // foreach tags2stream.begin()->parserIndexes
+  
+  // Complete processing of sub-logs to be compared, merging their outgoing stream records into one
+  // and emitting the comparison tag that refers to their sub-directories
+
+  // Then use the properties of the merged object to emit the merged comparison tag
+  completeSubLogProcessing(out, outStreamRecords, allGroupOutStreamRecords, compSubDirs, 
+                           tagName, initialPMap);
+}
+
 #ifdef VERBOSE
 #define ITER_ACTION(text)  \
     scope actionS(text);   \
@@ -499,10 +652,13 @@ int merge(vector<FILEStructureParser*>& parsers,
   assert((variantStackDepth==0 && nextTag.size()==0) ||
          (variantStackDepth>0  && nextTag.size()==parsers.size()));
   
-  // The current depth of the nesting stack of tags that have been entered but not yet exited. If nextTag
+  /* // The current depth of the nesting stack of tags that have been entered but not yet exited. If nextTag
   // is not empty, stackDepth is set to 1 to account for the entry tag read by the caller of merge(). 
   // Otherwise stackDepth is set to 0.
-  //int stackDepth=(variantStackDepth==0? 0: 1);
+  // ?!?!?! This was previously commented out. Why? What bug does this cause?
+  // ?!?!?! We need it to account for cases where merge() is called from 
+  // ?!?!?! separateMergeForEachParser() and we have log regions 
+  int stackDepth=(variantStackDepth==0? 0: 1);*/
   int stackDepth=0;
   
   int numActive = 0;
@@ -521,7 +677,7 @@ int merge(vector<FILEStructureParser*>& parsers,
     #ifdef VERBOSE
     //dbg << "=================================, numActive="<<numActive<<"\n";
     scope loopS(txt()<<"Loop depth="<<variantStackDepth<<", numActive="<<numActive);
-    { scope streamS("streamRecords", scope::medium); printStreamRecords(dbg, outStreamRecords, inStreamRecords, ""); }
+    { scope streamS("streamRecords", scope::high); printStreamRecords(dbg, outStreamRecords, inStreamRecords, ""); }
     #endif
     
     // Read the next item from each parser
@@ -541,9 +697,9 @@ int merge(vector<FILEStructureParser*>& parsers,
       if(readyForTag[parserIdx] && activeParser[parserIdx]) {
         pair<properties::tagType, const properties*> props = (*p)->next();
         #ifdef VERBOSE
-        {scope s(txt()<<indent << "| "<<parserIdx << ": "<<
+        {scope s(txt()<</*indent << "| "<<*/parserIdx << ": "<<
                        (props.first==properties::enterTag? "enter": "exit")<<" "<<
-                       (props.second->size()>0? props.second->name(): "???"), scope::medium);
+                       (props.second->size()>0? props.second->name(): "???"), scope::high);
         dbg << const_cast<properties*>(props.second)->str()<<endl;}
         #endif
         
@@ -611,7 +767,7 @@ for(vector<pair<properties::tagType, const properties*> >::iterator i=nextTag.be
   cout << "    <"<<(i->first==properties::enterTag?"enter":"exit")<<"|"<<i->second<<">"<<i->second->str()<<endl;*/
     if(numActive==0) break;
     #ifdef VERBOSE
-    { scope s("Tags", scope::medium); 
+    { scope s("Tags", scope::high); 
       printTags(dbg, activeParser, nextTag, ""); }
     #endif
     
@@ -637,6 +793,21 @@ for(vector<pair<properties::tagType, const properties*> >::iterator i=nextTag.be
       // Merger and the dbgStream to have and ultimately deallocate their own copies 
       // (optimization opportunity to use smart pointers and avoid the extra allocation)
       out = createDbgStream(new properties(m->getProps()), true);
+
+      // If the user has indicated that the logs should be separated rather than merged, do so
+      if(getenv("SIGHT_MERGE_SEPARATE"))
+        separateMergeForEachParser(parsers, nextTag, 
+                             outStreamRecords, inStreamRecords,
+                             readyForTag, activeParser,
+                             tag2stream.begin()->first, tag2stream.begin()->second,
+                             numTextTags,
+                             variantStackDepth,
+                             out, mt, numActive, subDirCount,
+                             "comparison", map<string, string>(),
+#ifdef VERBOSE
+                             g, curIterA, lastRecurA,
+#endif
+                             txt()<<indent<<"|sep ");
 
       // The merger is no longer needed
       delete m;
@@ -767,14 +938,14 @@ for(vector<pair<properties::tagType, const properties*> >::iterator i=nextTag.be
           if(tag2stream.begin()->first.objName=="comparison") {
             // Case for multiple comparison tags
             if(tag2stream.begin()->second.parserIndexes.size()>1) {
-              // The processing of the comparison tag on each incoming stream group gets a separate copy of 
-              // outStreamRecords. This list stores them all so that we can later merge them.
-              vector<std::map<std::string, streamRecord*> > allGroupOutStreamRecords;
-
-              // Sub-directories that hold the contents of all the comparison sub-logs
-              vector<string> compSubDirs;
-
-              dbgStreamStreamRecord::enterBlock(outStreamRecords);
+//              // The processing of the comparison tag on each incoming stream group gets a separate copy of 
+//              // outStreamRecords. This list stores them all so that we can later merge them.
+//              vector<std::map<std::string, streamRecord*> > allGroupOutStreamRecords;
+//
+//              // Sub-directories that hold the contents of all the comparison sub-logs
+//              vector<string> compSubDirs;
+//
+//              dbgStreamStreamRecord::enterBlock(outStreamRecords);
 /*  dbg << "comparison merging #"<<beginTags(nextTag).size()<<endl; 
   dbg << "nextTag="<<endl;
   for(vector<pair<properties::tagType, const properties*> >::iterator i=nextTag.begin(); i!=nextTag.end(); i++)
@@ -789,85 +960,97 @@ for(vector<pair<properties::tagType, const properties*> >::iterator i=nextTag.be
                                                                    outStreamRecords, 
                                                                    inStreamRecords, NULL));
 
-              // Iterate over all the active parsers
-              for(list<int>::iterator p=tag2stream.begin()->second.parserIndexes.begin();
-                  p!=tag2stream.begin()->second.parserIndexes.end(); p++) {
-                // Create a sub-directory and stream for the comparable log segment from the current incoming stream
-                pair<structure::dbgStream*, string> ret = createStructSubDir(out, "comparable", subDirCount);
-                dbgStream* groupStream = ret.first;
-                string subDir = ret.second;
-
-                // Contains just the current parser
-                vector<FILEStructureParser*> groupParsers(1, parsers[*p]);
-                // Contains the next read tag on the current parser
-                vector<pair<properties::tagType, const properties*> > groupNextTag(1, nextTag[*p]);
-                // Create a copy of outStreamRecords for this parser and add it to allGroupOutStreamRecords
-                std::map<std::string, streamRecord*> groupOutStreamRecords = 
-                          createOutSRCopy(outStreamRecords, *p, allGroupOutStreamRecords);
-                // The streamRecords of the incoming streams from the current parser
-                std::vector<std::map<std::string, streamRecord*> > groupInStreamRecords(1, inStreamRecords[*p]);
-                // The activeParser record for just the current parser (must be true)
-                std::vector<bool> groupActiveParser(1, activeParser[*p]);
-                // We are not ready for another tag on any stream within this parser.
-                std::vector<bool> groupNotReadyForTag(1, false);
-
-                // The tag2stream map of this parser, which maps all the group's streams to the
-                // common tag
-                map<tagGroup, StreamTags > groupTag2stream;
-                groupTag2stream[tag2stream.begin()->first] = StreamTags(*p, true);
-
-                #ifdef VERBOSE
-                dbg << "<<<<<<<<<<<<<<<<<<<<<<"<<endl;
-                #endif
-                //dbg << "start outLocation="<<((dbgStreamStreamRecord*)groupOutStreamRecords["sight"])->getLocation().str()<<endl;
-                int numVariantTagsEmitted = 
-                  merge(groupParsers, groupNextTag, 
-                        groupOutStreamRecords, groupInStreamRecords, 
-                        groupNotReadyForTag, groupActiveParser,
-                        groupTag2stream,
-                        numTextTags,
-                        variantStackDepth+1, groupStream, 
-                        mt, 
-  #ifdef VERBOSE
-                        g, curIterA, lastRecurA,
-  #endif
-                        txt()<<indent<<"| "<<*p);
-                //dbg << "end outLocation="<<((dbgStreamStreamRecord*)groupOutStreamRecords["sight"])->getLocation().str()<<endl;
-                //dbg << "end numVariantTagsEmitted="<<numVariantTagsEmitted<<endl;
-                #ifdef VERBOSE
-                dbg << ">>>>>>>>>>>>>>>>>>>>>>"<<endl;
-                #endif
-  //cout << "nextTag["<<*p<<"]=;"<<(nextTag[*p].first==properties::enterTag?"enter":"exit")<<";i"<<nextTag[*p].second<<"; "<<nextTag[*p].second->str()<<endl;
-
-                // If we emitted at least one tag within this variant, we record this variant 
-                // to include it in the [variants] tag that points to it.
-                if(numVariantTagsEmitted>0) {
-                  compSubDirs.push_back(subDir);
-                  //subDirCount++;
-                // Otherwise, if this variant is empty, we delete it
-                } else {
-                  rmdir(subDir.c_str());
-                }
-
-                delete groupStream;
-
-                // Update activeParsers[] based on the reading activity that occurred inside the merge() call.
-                // If entry/exit tags were balanced we'd be guaranteed that all of the group's parsers would
-                // be active but since the log generating application may terminate prematurely, we may hit
-                // the end of its log inside this merge call.
-                // If the current parser was previously active and has now terminated, update state
-                if(groupActiveParser[0]==false) {
-                  activeParser[*p]=false;
-                  numActive--;
-                }
-              } // foreach tags2stream.begin()->parserIndexes
-
-              // Complete processing of sub-logs to be compared, merging their outgoing stream records into one
-              // and emitting the comparison tag that refers to their sub-directories
-
-              // Then use the properties of the merged object to emit the merged comparison tag
-              completeSubLogProcessing(out, outStreamRecords, allGroupOutStreamRecords, compSubDirs, 
-                                       "comparison", cm->getProps().find("comparison").getMap());
+              separateMergeForEachParser(parsers, nextTag, 
+                                         outStreamRecords, inStreamRecords,
+                                         readyForTag, activeParser,
+                                         tag2stream.begin()->first, tag2stream.begin()->second,
+                                         numTextTags,
+                                         variantStackDepth,
+                                         out, mt, numActive, subDirCount,
+                                         "comparison", cm->getProps().find("comparison").getMap(),
+#ifdef VERBOSE
+                                         g, curIterA, lastRecurA,
+#endif
+                                         txt()<<indent<<"|sep ");
+//              // Iterate over all the active parsers
+//              for(list<int>::iterator p=tag2stream.begin()->second.parserIndexes.begin();
+//                  p!=tag2stream.begin()->second.parserIndexes.end(); p++) {
+//                // Create a sub-directory and stream for the comparable log segment from the current incoming stream
+//                pair<structure::dbgStream*, string> ret = createStructSubDir(out, "comparable", subDirCount);
+//                dbgStream* groupStream = ret.first;
+//                string subDir = ret.second;
+//
+//                // Contains just the current parser
+//                vector<FILEStructureParser*> groupParsers(1, parsers[*p]);
+//                // Contains the next read tag on the current parser
+//                vector<pair<properties::tagType, const properties*> > groupNextTag(1, nextTag[*p]);
+//                // Create a copy of outStreamRecords for this parser and add it to allGroupOutStreamRecords
+//                std::map<std::string, streamRecord*> groupOutStreamRecords = 
+//                          createOutSRCopy(outStreamRecords, *p, allGroupOutStreamRecords);
+//                // The streamRecords of the incoming streams from the current parser
+//                std::vector<std::map<std::string, streamRecord*> > groupInStreamRecords(1, inStreamRecords[*p]);
+//                // The activeParser record for just the current parser (must be true)
+//                std::vector<bool> groupActiveParser(1, activeParser[*p]);
+//                // We are not ready for another tag on any stream within this parser.
+//                std::vector<bool> groupNotReadyForTag(1, false);
+//
+//                // The tag2stream map of this parser, which maps all the group's streams to the
+//                // common tag
+//                map<tagGroup, StreamTags > groupTag2stream;
+//                groupTag2stream[tag2stream.begin()->first] = StreamTags(*p, true);
+//
+//                #ifdef VERBOSE
+//                dbg << "<<<<<<<<<<<<<<<<<<<<<<"<<endl;
+//                #endif
+//                //dbg << "start outLocation="<<((dbgStreamStreamRecord*)groupOutStreamRecords["sight"])->getLocation().str()<<endl;
+//                int numVariantTagsEmitted = 
+//                  merge(groupParsers, groupNextTag, 
+//                        groupOutStreamRecords, groupInStreamRecords, 
+//                        groupNotReadyForTag, groupActiveParser,
+//                        groupTag2stream,
+//                        numTextTags,
+//                        variantStackDepth+1, groupStream, 
+//                        mt, 
+//  #ifdef VERBOSE
+//                        g, curIterA, lastRecurA,
+//  #endif
+//                        txt()<<indent<<"| "<<*p);
+//                //dbg << "end outLocation="<<((dbgStreamStreamRecord*)groupOutStreamRecords["sight"])->getLocation().str()<<endl;
+//                //dbg << "end numVariantTagsEmitted="<<numVariantTagsEmitted<<endl;
+//                #ifdef VERBOSE
+//                dbg << ">>>>>>>>>>>>>>>>>>>>>>"<<endl;
+//                #endif
+//  //cout << "nextTag["<<*p<<"]=;"<<(nextTag[*p].first==properties::enterTag?"enter":"exit")<<";i"<<nextTag[*p].second<<"; "<<nextTag[*p].second->str()<<endl;
+//
+//                // If we emitted at least one tag within this variant, we record this variant 
+//                // to include it in the [variants] tag that points to it.
+//                if(numVariantTagsEmitted>0) {
+//                  compSubDirs.push_back(subDir);
+//                  //subDirCount++;
+//                // Otherwise, if this variant is empty, we delete it
+//                } else {
+//                  rmdir(subDir.c_str());
+//                }
+//
+//                delete groupStream;
+//
+//                // Update activeParsers[] based on the reading activity that occurred inside the merge() call.
+//                // If entry/exit tags were balanced we'd be guaranteed that all of the group's parsers would
+//                // be active but since the log generating application may terminate prematurely, we may hit
+//                // the end of its log inside this merge call.
+//                // If the current parser was previously active and has now terminated, update state
+//                if(groupActiveParser[0]==false) {
+//                  activeParser[*p]=false;
+//                  numActive--;
+//                }
+//              } // foreach tags2stream.begin()->parserIndexes
+//
+//              // Complete processing of sub-logs to be compared, merging their outgoing stream records into one
+//              // and emitting the comparison tag that refers to their sub-directories
+//
+//              // Then use the properties of the merged object to emit the merged comparison tag
+//              completeSubLogProcessing(out, outStreamRecords, allGroupOutStreamRecords, compSubDirs, 
+//                                       "comparison", cm->getProps().find("comparison").getMap());
 
               // Comparison tags for a single log are skipped. The only thing we do is update stackDepth
             } else {
@@ -1125,6 +1308,90 @@ for(vector<pair<properties::tagType, const properties*> >::iterator i=nextTag.be
   return numTagsEmitted;
 }
 
+// After the merging process enters some tag on some incoming stream it may call
+// this function to directly copy the entire contents of this tag to the given 
+// outgoing stream out. These contents are not merged with any other stream but
+// any updates recorded in outStreamRecords will subsequently be incorporated by 
+// the calling function.
+// Returns whether the parser was active at the end of the log region.
+bool emitLogRegion(FILEStructureParser* parser, 
+                  std::map<std::string, streamRecord*>& outStreamRecords,
+                  std::map<std::string, streamRecord*>& inStreamRecords,
+                  structure::dbgStream& out, 
+#ifdef VERBOSE
+                  graph& g, anchor incomingA, anchor& outgoingA,
+#endif
+                  string indent) {
+  
+#ifdef VERBOSE
+  scope s("emitLogRegion");
+  dbg << "dir="<<out.workDir<<endl;
+#endif
+  
+  // The current depth of the nesting stack of tags that have been entered but not yet exited.
+  int stackDepth=0;
+ 
+  anchor lastIterA  = anchor::noAnchor;
+  anchor curIterA   = anchor::noAnchor;
+  anchor lastRecurA = anchor::noAnchor;
+  
+  // Keep iterating until the stack depth reaches below 0. This means that we'll pass through
+  // as many balanced enters/exits as possible until we see an unbalanced exit. This exit
+  // will not be visible to the caller but this is ok since emitLogRegion() is specifically 
+  // used in cases where we enter a tag, need to emit all of its contents all the way until 
+  // this initial tag container is exited.
+  while(stackDepth>=0) {
+    #ifdef VERBOSE
+    //dbg << "=================================, numActive="<<numActive<<"\n";
+    scope loopS(txt()<<"Loop");
+    { scope streamS("streamRecords", scope::high); printStreamRecords(dbg, outStreamRecords, inStreamRecords, ""); }
+    dbg << "stackDepth="<<stackDepth<<endl;
+    #endif
+    
+    // Read the next tag
+    pair<properties::tagType, const properties*> props = parser->next();
+    #ifdef VERBOSE
+    {scope s(txt()<<(props.first==properties::enterTag? "enter": "exit")<<" "<<
+                   (props.second->size()>0? props.second->name(): "???"), scope::medium);
+     dbg << const_cast<properties*>(props.second)->str()<<endl;}
+    #endif
+        
+    // If we've reached the end of this parser's data
+    if(props.second->size()==0) {
+      ITER_ACTION("Parser Inactive");
+      // Return, indicating that the parser is no longer active
+      return false;
+    }
+    // We read a valid tag
+    
+    // If we read a text tag, emit the text into the output log
+    if(props.second->name() == "text") {
+      ITER_ACTION("Read text");
+      out << props.second->find("text").get("text");
+    // If this is a generic widget tag
+    } else {
+      // If it is an entry tag
+      if(props.first == properties::enterTag) {
+        ITER_ACTION(txt()<<"Read entry to "<<props.second->name());
+        stackDepth++;
+        out.enter(*(props.second));
+      // If it is an exit tag
+      } else {
+        ITER_ACTION(txt()<<"Read exit from "<<props.second->name());
+        stackDepth--;
+        // If we've reached the exit of the tag that contains the current log region
+        // return without emitting the exit to the log, while indicating to the 
+        // caller that the parser is still active
+        if(stackDepth<0) return true;
+        out.exit(*(props.second));
+      }
+    }
+  }
+  
+  // Return, indicating that the parser is still active
+  return true;
+}
+
 // Given a vector of entities and a list of indexes within the vector,
 // fills groupVec with just the entities at the indexes in selIdxes.
 template<class EltType>
@@ -1160,6 +1427,21 @@ void printStreamRecords(ostream& out,
   for(std::vector<std::map<std::string, streamRecord*> >::iterator i=inStreamRecords.begin(); i!=inStreamRecords.end(); i++, idx++)
     for(std::map<std::string, streamRecord*>::iterator j=i->begin(); j!=i->end(); j++)
       out << indent << "    "<<idx<<": "<<j->first<<": "<<j->second->str(indent+"    ")<<endl;
+  }
+}
+
+void printStreamRecords(ostream& out, 
+                        std::map<std::string, streamRecord*>& outStreamRecords,
+                        std::map<std::string, streamRecord*>& inStreamRecords,
+                        string indent) {
+  {scope sout("outStreamRecords");
+  for(std::map<std::string, streamRecord*>::iterator o=outStreamRecords.begin(); o!=outStreamRecords.end(); o++)
+    out << indent << "    "<<o->first<<": "<<o->second->str(indent+"    ")<<endl;
+  }
+  
+  {scope sin("inStreamRecords");
+    for(std::map<std::string, streamRecord*>::iterator j=inStreamRecords.begin(); j!=inStreamRecords.end(); j++)
+      out << indent << "    "<<j->first<<": "<<j->second->str(indent+"    ")<<endl;
   }
 }
 
