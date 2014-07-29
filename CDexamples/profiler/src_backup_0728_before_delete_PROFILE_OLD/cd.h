@@ -106,6 +106,52 @@ class cd::CD {
     //	pthread_mutex_t mutex_;			//
     //	pthread_mutex_t log_directory_mutex_;
 
+#if _PROFILER
+  public:
+    uint64_t  sibling_id_;
+    uint64_t  level_;
+  
+    /// Profile-related meta data
+    std::map<std::string, std::array<uint64_t, MAX_PROFILE_DATA> profile_data_;
+    bool     is_child_destroyed;
+    bool     collect_profile_;
+
+    bool usr_profile_enable;
+//    std::vector<std::pair<std::string, long>>  usr_profile;
+    context usr_profile_input;
+    context usr_profile_output;
+    /// Timer-related meta data
+    uint64_t this_point_;
+    uint64_t that_point_;
+  
+    /// sight-related member data
+    /// All scopes that are currently live
+    static std::list<scope*> sStack;
+    static graph* scopeGraph;
+    
+    /// All modules that are currently live
+    static std::list<module*> mStack;
+    static modularApp* ma;
+ 
+
+    static std::list<comparison*> compStack;
+ 
+    /// All modules that are currently live
+//    static std::list<CDNode*> cdStack;
+
+    virtual void GetProfile(void *data, 
+                            uint64_t len_in_bytes,
+                            uint32_t preserve_mask, 
+                            const char *my_name, 
+                            const char *ref_name, 
+                            uint64_t ref_offset, 
+                            const RegenObject * regen_object, 
+                            PreserveUseT data_usage);
+
+    virtual void AddUsrProfile(std::string key, long val, int mode);
+
+    virtual void SetViz();
+#endif
 
   public:
     CD();
@@ -186,6 +232,11 @@ class cd::CD {
   
     virtual  int Stop();
     virtual  int Resume();
+//    int StopAllChildren();
+//    int StartAllChildren(); // Does this make any sense?
+//  
+//    int AddChild(CDHandle cd_child); 
+//    int RemoveChild(CDHandle cd_child); 
   
     CDInternalErrT InternalPreserve(void *data, 
                                     uint64_t len_in_bytes,
@@ -217,13 +268,10 @@ class cd::CD {
     virtual int AddChild(CD* cd_child);
     virtual int RemoveChild(CD* cd_child);
     
-    virtual void StartProfile(void);
-    virtual void FinishProfile(void);
-    virtual void Internal_Destroy(void);
-#if _PROFILER
-    //void InitProfile(std::string label="");
-    virtual void GetLocalAvg(void);
-    virtual void GetPrvData(void *data, 
+    virtual void Internal_Begin(void);
+    virtual void Internal_Complete(void);
+#if _PROFILER_FIXME
+    virtual void GetProfile(void *data, 
                             uint64_t len_in_bytes,
                             uint32_t preserve_mask, 
                             const char *my_name, 
@@ -233,21 +281,9 @@ class cd::CD {
                             PreserveUseT data_usage);
 
     virtual void AddUsrProfile(std::string key, long val, int mode);
-    virtual void InitViz();
-
-// FIXME
-    virtual bool CheckCollectProfile(void);
-    virtual void SetCollectProfile(bool flag);
+    virtual void SetViz();
 #endif
  };
-
-
-
-
-
-
-
-
 
 class cd::MasterCD : public cd::CD {
   public:
@@ -264,15 +300,14 @@ class cd::MasterCD : public cd::CD {
     cd::CDHandle*            cd_parent_;
 
 
-#if _PROFILER
-
+#if _PROFILER_FIXME
     uint64_t  sibling_id_;
     uint64_t  level_;
   
     /// Profile-related meta data
     std::map<std::string, std::array<uint64_t, MAX_PROFILE_DATA> profile_data_;
     bool     is_child_destroyed;
-    bool     collect_profile_;
+
     bool usr_profile_enable;
 //    std::vector<std::pair<std::string, long>>  usr_profile;
     context usr_profile_input;
@@ -289,16 +324,16 @@ class cd::MasterCD : public cd::CD {
     /// All modules that are currently live
     static std::list<module*> mStack;
     static modularApp* ma;
+ 
 
     static std::list<comparison*> compStack;
  
     /// All modules that are currently live
-    static std::list<CDNode*> cdStack;
+//    static std::list<CDNode*> cdStack;
+#endif
 
-    void InitProfile(std::string label="");
-
-    virtual void GetLocalAvg(void);
-    virtual void GetPrvData(void *data, 
+#if _PROFILER
+    virtual void GetProfile(void *data, 
                             uint64_t len_in_bytes,
                             uint32_t preserve_mask, 
                             const char *my_name, 
@@ -309,10 +344,7 @@ class cd::MasterCD : public cd::CD {
 
     virtual void AddUsrProfile(std::string key, long val, int mode);
 
-    virtual void InitViz();
-// FIXME
-    virtual bool CheckCollectProfile(void);
-    virtual void SetCollectProfile(bool flag);
+    virtual void SetViz();
 #endif
 
 
@@ -330,13 +362,13 @@ class cd::MasterCD : public cd::CD {
               uint64_t sys_bit_vector);
     virtual ~MasterCD();
    
-    virtual void StartProfile(void);
-    virtual void FinishProfile(void);
-    virtual void Internal_Destroy(void);
-    virtual int Stop(CDHandle cd);
-    virtual int Resume(); // Does this make any sense?
-    virtual int AddChild(CDHandle* cd_child); 
-    virtual int RemoveChild(CDHandle* cd_child); 
+    virtual void Internal_Begin(void);
+    virtual void Internal_Complete(void);
+    int Stop(CDHandle cd);
+    int Resume(); // Does this make any sense?
+  
+    int AddChild(CDHandle* cd_child); 
+    int RemoveChild(CDHandle* cd_child); 
     CDHandle* cd_parent();
     void set_cd_parent(CDHandle* cd_parent);
 };

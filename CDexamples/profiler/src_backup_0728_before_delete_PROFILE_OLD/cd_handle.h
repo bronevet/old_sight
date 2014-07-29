@@ -64,11 +64,69 @@ class cd::CDHandle {
 
   private:
     CD*  ptr_cd_;
-    NodeID node_id_;
-    int  master_; 
+
+    // FIXME
+    // In MPI context,
+    // first : Communicator ID
+    // second: ID in the current Communicator
+    NodeID node_id_; 
     bool IsMaster_; 
+    /// CD hierarchy information (level_ is important)
+    /// We should think about why we put level_ here.
+//    CDHandle* parent_cd_;
+//    int task_id_;
+//    int process_id_; 
+//    int current_task_id_;
+//    int current_process_id_;
+    // pid_t is OS dependent. So let's use int instead
+    //pid_t process_id_; 
+  
   public:
 
+#if _PROFILER_OLD
+    uint64_t  sibling_id_;
+    uint64_t  level_;
+  
+    /// Profile-related meta data
+    uint64_t profile_data_[MAX_PROFILE_DATA];
+    bool     is_child_destroyed;
+
+    bool usr_profile_enable;
+//    std::vector<std::pair<std::string, long>>  usr_profile;
+    context usr_profile_input;
+    context usr_profile_output;
+    /// Timer-related meta data
+    uint64_t this_point_;
+    uint64_t that_point_;
+  
+    /// sight-related member data
+    /// All scopes that are currently live
+    static std::list<scope*> sStack;
+    static graph* scopeGraph;
+    
+    /// All modules that are currently live
+    static std::list<module*> mStack;
+    static modularApp* ma;
+ 
+
+    static std::list<comparison*> compStack;
+ 
+    /// All modules that are currently live
+//    static std::list<CDNode*> cdStack;
+    void SetUsrProfileInput(std::initializer_list<std::pair<std::string, long>> name_list);
+    void SetUsrProfileInput(std::pair<std::string, long> name_list);
+    void SetUsrProfileOutput(std::initializer_list<std::pair<std::string, long>> name_list);
+    void SetUsrProfileOutput(std::pair<std::string, long> name_list);
+
+#else
+
+#if _PROFILER
+    void SetUsrProfileInput(std::initializer_list<std::pair<std::string, long>> name_list);
+    void SetUsrProfileInput(std::pair<std::string, long> name_list);
+    void SetUsrProfileOutput(std::initializer_list<std::pair<std::string, long>> name_list);
+    void SetUsrProfileOutput(std::pair<std::string, long> name_list);
+#endif
+#endif
 
     //TODO copy these to CD async 
     ucontext_t context_;
@@ -209,10 +267,11 @@ class cd::CDHandle {
                         uint64_t len, 
                         CDPGASUsageT region_type=kShared);
   
-  protected:  // Internal use -------------------------------------------------------------
+// Internal use -------------------------------------------------------------
 //    cd::CDEntry* InternalGetEntry(std::string entry_name);
-    void CommitPreserveBuff(void);
-    void InternalReexecute (void);
+    void CommitPreserveBuff();
+  protected:
+    void InternalReexecute ();
     void InternalEscalate ( uint32_t error_name_mask, 
                             uint32_t error_loc_mask, 
                             std::vector< SysErrT > errors);
@@ -221,6 +280,7 @@ class cd::CDHandle {
     CDErrT AddChild(CD* cd_child);
     CDErrT RemoveChild(CD* cd_child);	
 
+//    int StopAllChildren();
     int Stop();
   
     /// Synchronize the CD object in every task of that CD.
@@ -233,32 +293,23 @@ class cd::CDHandle {
 
     /// Check if this CD object (*ptr_cd_) is the MASTER CD object
     bool IsMaster(void);
+
     void SetMaster(int task);
-
     // Accessors
-    CDHandle* GetParent(void);
-    CD*       ptr_cd(void); 
-    NodeID&   node_id(void);  
-    void      SetCD(CD* ptr_cd);
-    char*     GetName(void); 
-    int       GetSeqID(void);
-    int&      GetNodeID(void);
-    int       GetTaskID(void);
-    int       GetTaskSize(void);
-    int       context_preservation_mode(void);
-    bool      operator==(const CDHandle &other) const ;
+    CDHandle* GetParent();
+    CD*     ptr_cd(); 
+    NodeID& node_id();  
+    void    SetCD(CD* ptr_cd);
+
+    char*   GetName(); 
+    int     GetSeqID();
+    int&    GetNodeID();
+    int     GetTaskID();
+    int     GetTaskSize();
 
 
-#if _PROFILER
-    bool CheckCollectProfile(void);
-    void SetCollectProfile(bool flag);
-
-    void SetUsrProfileInput(std::initializer_list<std::pair<std::string, long>> name_list);
-    void SetUsrProfileInput(std::pair<std::string, long> name_list);
-    void SetUsrProfileOutput(std::initializer_list<std::pair<std::string, long>> name_list);
-    void SetUsrProfileOutput(std::pair<std::string, long> name_list);
-#endif
-
+    int    context_preservation_mode();
+    bool   operator==(const CDHandle &other) const ;
 };
 
 namespace cd {

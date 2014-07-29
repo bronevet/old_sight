@@ -45,26 +45,147 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 
 #include <mpi.h>
 
+#if _PROFILER_OLD
+#include "rdtsc.h"
+#include "sight.h"
+using namespace sight;
+#endif
 
 //#include "cd_name_t.h"
 using namespace cd;
 using namespace std;
 
-std::map<uint64_t, int> cd::nodeMap;  // Unique CD Node ID - Communicator
-std::vector<CDHandle*>  cd::CDPath;
-int cd::status = 0;
-
-// Global functions -------------------------------------------------------
 ostream& cd::operator<<(ostream& str, const NodeID& node_id)
 {
-  return str << '(' 
-             << node_id.color_ << ", " 
-             << node_id.task_ << "/" << node_id.size_ 
-             << ')';
+  return str<< '(' << node_id.color_ << ", " << node_id.task_ << "/" << node_id.size_ << ')';
+}
+
+std::map<uint64_t, int> cd::nodeMap;
+std::vector<CDHandle*> cd::CDPath;
+int cd::status = 0;
+
+int&    CDHandle::GetNodeID(void)  { return node_id_.color_; }
+int     CDHandle::GetTaskID(void)  { return node_id_.task_;  }
+int     CDHandle::GetTaskSize(void){ return node_id_.size_;  }
+CD*     CDHandle::ptr_cd(void)     { return ptr_cd_;         }
+NodeID& CDHandle::node_id(void)    { return node_id_;        }
+void    CDHandle::SetCD(CD* ptr_cd){ ptr_cd_=ptr_cd;         }
+
+bool CDHandle::operator==(const CDHandle &other) const 
+{
+  bool ptr_cd = (other.ptr_cd_ == this->ptr_cd_);
+  bool color  = (other.node_id_.color_  == this->node_id_.color_);
+  bool task   = (other.node_id_.task_   == this->node_id_.task_);
+  bool size   = (other.node_id_.size_   == this->node_id_.size_);
+  return (ptr_cd && color && task && size);
 }
 
 void cd::SetStatus(int flag)
-{ cd::status = flag; }
+{
+  cd::status = flag;
+}
+
+#if _PROFILER_OLD
+list<scope*>      CDHandle::sStack;
+list<module*>     CDHandle::mStack;
+//list<CDNode*>   CDHandle::cdStack;
+list<comparison*> CDHandle::compStack;
+
+modularApp*       CDHandle::ma;
+graph*            CDHandle::scopeGraph;
+#endif
+
+CDHandle* cd::CD_Init(int numproc, int myrank)
+{
+  /// Create the data structure that CD object and CDHandle object are going to use.
+  /// For example, CDEntry object or CDHandle object or CD object itself.
+  /// These objects are very important data for CDs and 
+  /// managed separately from the user-level data structure
+  /// All the meta data objects and preserved data are managed internally.
+  /// Register Root CD
+ 
+  cout<<"CD_Init, MPI_COMM_WORLD : "<<MPI_COMM_WORLD<<endl;
+ 
+  CDHandle* root_cd = new CDHandle(NULL, "Root", NodeID(MPI_COMM_WORLD, myrank, numproc, 0), kStrict, 0);
+
+  CDPath.push_back(root_cd);
+//  if(CDPath.empty())
+//    cout<<"huh??empty?"<<endl;
+//  else
+//    cout<<"not empty but ?"<<endl;
+
+#if _PROFILER
+  SightInit(txt()<<"CDs", txt()<<"dbg_CDs_"<<myrank);
+
+  /// Title
+  dbg << "<h1>Containment Domains Profiling and Visualization</h1>" << endl;
+
+  /// Explanation
+  dbg << "Some explanation on CD runtime "<<endl<<endl;
+
+  /// modularApp exists only one, and is created at init stage
+    root_cd->ptr_cd()->SetViz();
+//    root_cd->ptr_cd()->ma = new modularApp("CD Modular App");
+//  module* m   = new module(instance("Root", 1, 0), 
+//                           inputs(port(context("sequential_id", (int)(root_cd->node_id().task_)))),
+//                           namedMeasures("time", new timeMeasure()));
+//  root_cd->mStack.push_back(m);
+
+    /// graph exists only one. It is created at init stage
+//    root_cd->scopeGraph = new graph();
+#else
+#if _PROFILER_OLD
+
+  SightInit(txt()<<"CDs", txt()<<"dbg_CDs_"<<myrank);
+
+  /// Title
+  dbg << "<h1>Containment Domains Profiling and Visualization</h1>" << endl;
+
+  /// Explanation
+  dbg << "Some explanation on CD runtime "<<endl<<endl;
+
+  /// modularApp exists only one, and is created at init stage
+  root_cd->ma = new modularApp("CD Modular App");
+//  module* m   = new module(instance("Root", 1, 0), 
+//                           inputs(port(context("sequential_id", (int)(root_cd->node_id().task_)))),
+//                           namedMeasures("time", new timeMeasure()));
+//  root_cd->mStack.push_back(m);
+
+    /// graph exists only one. It is created at init stage
+//    root_cd->scopeGraph = new graph();
+#endif
+
+#endif
+
+  return root_cd;
+
+}
+
+
+
+void cd::CD_Finalize(void)
+{
+
+//    std::cout << "Finalize call" << std::endl;
+//    for(auto it = cd_info.begin(); it != cd_info.end(); ++it) {
+//      cout << "level (map size) : "
+//           << cd_info.size() 
+//           << "\tsibling (map size) : "
+//           << it->second.size() << endl;
+//    }
+
+#if _PROFILER
+//    assert(this->ma);
+//    delete this->ma;
+
+//      assert(this->scopeGraph);
+//      delete this->scopeGraph;
+//    GetRootCD()->Print_Profile();
+//    GetRootCD()->Print_Graph();
+#endif
+
+}
+
 
 CDHandle* cd::GetCurrentCD(void) 
 {
@@ -78,53 +199,24 @@ CDHandle* cd::GetCurrentCD(void)
 CDHandle* cd::GetRootCD(void)    
 { return cd::CDPath.front(); }
 
-CDHandle* cd::CD_Init(int numproc, int myrank)
-{
-  /// Create the data structure that CD object and CDHandle object are going to use.
-  /// For example, CDEntry object or CDHandle object or CD object itself.
-  /// These objects are very important data for CDs and 
-  /// managed separately from the user-level data structure
-  /// All the meta data objects and preserved data are managed internally.
-  /// Register Root CD
- 
-  cout<<"CD_Init, MPI_COMM_WORLD : "<<MPI_COMM_WORLD<<endl;
-  CDHandle* root_cd = new CDHandle(NULL, "Root", NodeID(MPI_COMM_WORLD, myrank, numproc, 0), kStrict, 0);
-  CDPath.push_back(root_cd);
-
-#if _PROFILER
-  SightInit(txt()<<"CDs", txt()<<"dbg_CDs_"<<myrank);
-
-  /// Title
-  dbg << "<h1>Containment Domains Profiling and Visualization</h1>" << endl;
-
-  /// Explanation
-  dbg << "Some explanation on CD runtime "<<endl<<endl;
-
-  /// Create modularApp and graph. Those objects should be unique in the program.
-  root_cd->ptr_cd()->InitViz();
-#endif
-
-  return root_cd;
-
-}
-
-void cd::CD_Finalize(void)
-{
-
-#if _PROFILER
-//    GetRootCD()->Print_Profile();
-//    GetRootCD()->Print_Graph();
-#endif
-
-}
-
-// CDHandle Member Methods ------------------------------------------------------------
 
 CDHandle::CDHandle()
   : ptr_cd_(0), node_id_()
 { 
+#if _PROFILER_OLD
+  sibling_id_ = 0;
+  level_      = 0;
 
-  IsMaster_ = false;
+  profile_data_[MAX_PROFILE_DATA] = {0, };
+  is_child_destroyed = false;
+  usr_profile_enable = false;
+
+  this_point_ = 0;
+  that_point_ = 0;
+
+#endif
+
+  IsMaster_ = true;
   
 }
 
@@ -144,14 +236,22 @@ CDHandle::CDHandle( CDHandle* parent,
   // clear children list
   // request to add me as a children to parent (to MASTER CD object)
 
+#if _PROFILER_OLD
+  sibling_id_ = 0;
+  level_      = 0;
+
+  profile_data_[MAX_PROFILE_DATA] = {0, };
+  is_child_destroyed = false;
+  usr_profile_enable = false;
+
+  this_point_ = 0;
+  that_point_ = 0;
+#endif
   IsMaster_ = false;
   cout<<"My task is : " <<node_id.task_<<endl;
   //getchar();
   node_id_ = node_id;
   SetMaster(node_id.task_);
-
-
-
   if(parent != NULL) { 
     CDID new_cd_id(parent->ptr_cd_->GetCDID().level_ + 1, node_id);
 
@@ -194,6 +294,16 @@ CDHandle::CDHandle( CDHandle* parent,
   // clear children list
   // request to add me as a children to parent (to MASTER CD object)
 
+#if _PROFILER_OLD
+  sibling_id_ = 0;
+  level_      = 0;
+
+  profile_data_[MAX_PROFILE_DATA] = {0, };
+  is_child_destroyed = false;
+
+  this_point_ = 0;
+  that_point_ = 0;
+#endif
 
   IsMaster_ = false;
 
@@ -212,11 +322,9 @@ CDHandle::CDHandle( CDHandle* parent,
       ptr_cd_  = new MasterCD(parent, name, new_cd_id, cd_type, sys_bit_vector);
   }
   else { // Root CD
-    cout<<"-------------- Root CD is created -----------"<<endl;
+    cout<<"-------------- This is wrong for this app -----------"<<endl;
     getchar();
-
     CDID new_cd_id(0, node_id);
-
     if( !IsMaster() )
       ptr_cd_  = new CD(NULL, name, new_cd_id, cd_type, sys_bit_vector);
     else
@@ -433,6 +541,13 @@ CDErrT CDHandle::Destroy (bool collective)
   } 
   else {
 
+#if _PROFILER_OLD 
+    assert(this->ma);
+    delete this->ma;
+
+//    assert(this->scopeGraph);
+//    delete this->scopeGraph;
+#endif
   }
 
 
@@ -453,7 +568,6 @@ void CDHandle::SetUsrProfileInput(std::pair<std::string, long> name_list)
 {
   ptr_cd_->AddUsrProfile(name_list.first, name_list.second, 0);
 }
-
 void CDHandle::SetUsrProfileInput(std::initializer_list<std::pair<std::string, long>> name_list)
 {
   for(auto il = name_list.begin() ;
@@ -466,7 +580,6 @@ void CDHandle::SetUsrProfileOutput(std::pair<std::string, long> name_list)
 {
   ptr_cd_->AddUsrProfile(name_list.first, name_list.second, 1);
 }
-
 void CDHandle::SetUsrProfileOutput(std::initializer_list<std::pair<std::string, long>> name_list)
 {
   for(auto il = name_list.begin() ;
@@ -476,12 +589,101 @@ void CDHandle::SetUsrProfileOutput(std::initializer_list<std::pair<std::string, 
   }
 }
 
+#else
+#if _PROFILER_OLD
+
+void CDHandle::SetUsrProfileInput(std::pair<std::string, long> name_list)
+{
+if(IsMaster()) {
+  usr_profile_input.add(name_list.first, name_list.second);
+  usr_profile_enable = true;
+}
+}
+void CDHandle::SetUsrProfileInput(std::initializer_list<std::pair<std::string, long>> name_list)
+{
+
+if(IsMaster()) {
+  for(auto il = name_list.begin() ;
+      il != name_list.end(); ++il) {
+    usr_profile_input.add(il->first, il->second);
+  }
+  usr_profile_enable = true;
+}
+}
+
+void CDHandle::SetUsrProfileOutput(std::pair<std::string, long> name_list)
+{
+
+if(IsMaster()) {
+  usr_profile_output.add(name_list.first, name_list.second);
+  usr_profile_enable = true;
+}
+}
+void CDHandle::SetUsrProfileOutput(std::initializer_list<std::pair<std::string, long>> name_list)
+{
+{
+  for(auto il = name_list.begin() ;
+      il != name_list.end(); ++il) {
+    usr_profile_output.add(il->first, il->second);
+  }
+
+  usr_profile_enable = true;
+}
+}
+#endif
 #endif
 
 CDErrT CDHandle::Begin (bool collective, const char* label)
 {
   SetStatus(1);
 
+#if _PROFILER_OLD
+  /// Timer on
+  this->this_point_ = rdtsc();
+
+  //-- Sight-related -------------------------------------------------------------------------------
+
+//  CDNode* cdn = new CDNode(txt()<<label, txt()<<this->this_cd_->GetCDID()); 
+//  this->cdStack.push_back(cdn);
+//  dbg << "{{{ CDNode Test -- "<<this->this_cd_->cd_id_<<", #cdStack="<<cdStack.size()<<endl;
+
+//  comparison* comp = new comparison(node_id().color_);
+//  compStack.push_back(comp);
+
+
+//  if(usr_profile_enable) {
+    module* m = new module( instance(txt()<<label, 1, 1), 
+                            inputs(port(context("cd_id", txt()<<this->node_id().task_, 
+                                                "sequential_id", (int)(GetSeqID())))),
+                            namedMeasures("time", new timeMeasure()) );
+    this->mStack.push_back(m);
+//  }
+//  else {
+//  
+//    module* m = new module( instance(txt()<<label, 2, 2), 
+//                            inputs(port(context("cd_id", txt()<<this->node_id().task_, 
+//                                                "sequential_id", (int)(GetSeqID()))),
+//                                   port(usr_profile_input)),
+//                            namedMeasures("time", new timeMeasure()) );
+//    this->mStack.push_back(m);
+//  }
+
+
+
+//  dbg << "[[[ Module Test -- "<<this->this_cd_->cd_id_<<", #mStack="<<mStack.size()<<endl;
+
+//  /// create a new scope at each Begin() call
+//  scope* s = new scope(txt()<<label<<", cd_id="<<node_id().task_);
+//
+//  /// Connect edge between previous node to newly created node
+//  if(this->sStack.size()>0)
+//    this->scopeGraph->addDirEdge(this->sStack.back()->getAnchor(), s->getAnchor());
+//
+//  /// push back this node into sStack to manage scopes
+//  this->sStack.push_back(s);
+//  dbg << "<<< Scope  Test -- "<<this->this_cd_->cd_id_<<", #sStack="<<sStack.size()<<endl;
+//------------------------------------------------------------------------------------------------
+#endif
 
   //TODO It is illegal to call a collective Begin() on a CD that was created without a collective Create()??
   if ( collective ) {
@@ -507,79 +709,79 @@ CDErrT CDHandle::Complete (bool collective, bool update_preservations)
 {
   SetStatus(0);
 
-  // Call internal Complete routine
-  assert(ptr_cd_ != 0);
-
-#if _PROFILER
-
-  if( CheckCollectProfile() ) {
-    // After acquiring the profile data, 
-    // aggregate the data to master task
-    // Only master task will call sight APIs.
-    // Aggregated data from every task belonging to one CD node
-    // will be averaged out, and avg value with std will be shown.
-    //    
-    // <PROFILE_NAME>   | <SEND?>
-    // LOOP_COUNT       |   X
-    // EXEC_CYCLE       |   O
-    // PRV_COPY_DATA    |   O
-    // PRV_REF_DATA     |   O
-    // OVERLAPPED_DATA  |   O
-    // SYSTEM_BIT_VECTOR|   X
-
-    //Dynamic Method Selection
-    ptr_cd_->FinishProfile();
-
-/* FIXME
-    uint64_t sendBuf[MAX_PROFILE_DATA-2]={0,};
-    uint64_t recvBuf[MAX_PROFILE_DATA-2]={0,};
- 
-//    uint64_t profile[MAX_PROFILE_DATA];
-//    profile = ptr_cd_->GetLocalAvg();
-    ptr_cd_->GetLocalAvg();
-
-
-    cout << "Collect Profile -------------------\n" << endl;
-    getchar();
-    
-
-    if( IsMaster() == false) {
-      for(int i=0; i<MAX_PROFILE_DATA-2; ++i) {
-        recvBuf[i] = (ptr_cd_->profile_data_)[i+1];
-      }
-    }
-
-    MPI_Reduce(&sendBuf, &recvBuf, MAX_PROFILE_DATA-2, MPI_INTEGER, MPI_SUM, master_, node_id_.color_);
-
-    if(IsMaster()) {  // Master gets Avg.
-      for(int i=1; i<MAX_PROFILE_DATA-1; ++i) {
-         profile_data[i] = (uint64_t)((double)recvBuf[i-1] / node_id_.size_);
-      }
-    }
-*/
-/*  
-    MPI_Bcast();  // sends avg val to every task in the current CD
-      // Get dist. from each task
-    MPI_Reduce(); // aggregate dist. to Master
-  
-    if(IsMaster()) {  // Master gets Standard dist.
-      
-    }
-*/
-    
-    SetCollectProfile(false); // initialize this flag for the next Begin
-  }
-//  else {
-//    // Aggregate profile locally
-//    GetLocalProfile();
+#if _PROFILER_OLD
+  // outputs the preservation / detection info
+//  if(cdStack.back() != nullptr){
+//    cout<<"add new info"<<endl;
+///*
+//    cdStack.back()->setStageNode( "preserve", "data_copy", profile_data_[PRV_COPY_DATA]    );
+//    cdStack.back()->setStageNode( "preserve", "data_overlapped", profile_data_[OVERLAPPED_DATA]  );
+//    cdStack.back()->setStageNode( "preserve", "data_ref", profile_data_[PRV_REF_DATA]     );
+//*/
+//    
+//    //scope s("Preserved Stats");
+//    PreserveStageNode psn(txt()<<"Preserve Stage");
+//    dbg << "data_copy="<<profile_data_[PRV_COPY_DATA]<<endl;
+//    dbg << "data_overlapped="<<profile_data_[OVERLAPPED_DATA]<<endl;
+//    dbg << "data_ref="<<profile_data_[PRV_REF_DATA]<<endl;
+//
 //  }
-    
+
+
+//  dbg << " >>> Scope  Test -- "<<this->this_cd_->cd_id_<<", #sStack="<<sStack.size()<<endl;
+//  assert(sStack.size()>0);
+//  assert(sStack.back() != NULL);
+//  delete sStack.back();
+//  sStack.pop_back();
+
+//  dbg << " ]]] Module Test -- "<<this->this_cd_->cd_id_<<", #mStack="<<mStack.size()<<endl;
+  assert(mStack.size()>0);
+  assert(mStack.back() != NULL);
+  mStack.back()->setOutCtxt(0, context("data_copy=", (long)profile_data_[PRV_COPY_DATA],
+                                       "data_overlapped=", (long)profile_data_[OVERLAPPED_DATA],
+                                       "data_ref=" , (long)profile_data_[PRV_REF_DATA]));
+//  if(usr_profile_enable) {
+//    mStack.back()->setOutCtxt(1, usr_profile_output);
+//  }
+/*
+  mStack.back()->setOutCtxt(1, context("sequential id =" , (long)profile_data_[PRV_REF_DATA],
+                                       "execution cycle=", (long)profile_data_[PRV_COPY_DATA],
+                                       "estimated error rate=", (long)profile_data_[OVERLAPPED_DATA]));
+*/
+  delete mStack.back();
+  mStack.pop_back();
+
+//  assert(compStack.size()>0);
+//  assert(compStack.back() != NULL);
+//  delete compStack.back();
+//  compStack.pop_back();
+
+
+//  dbg << " }}} CDNode Test -- "<<this->this_cd_->cd_id_<<", #cdStack="<<cdStack.size()<<endl;
+//  assert(cdStack.size()>0);
+//  assert(cdStack.back() != nullptr);
+//  delete cdStack.back();
+//  cdStack.pop_back();
+
+  /// Timer off
+  uint64_t tmp_point = rdtsc();
+  that_point_ = tmp_point;
+
+  /// Loop Count (# of seq. CDs) + 1
+//  (this->profile_data_)[LOOP_COUNT] += 1;
+  (profile_data_)[LOOP_COUNT] = ptr_cd_->GetCDID().sequential_id_;
+
+  /// Calcualate the execution time
+  (profile_data_)[EXEC_CYCLE] += (that_point_) - (this_point_);
+
 #endif
 
-
 //FIXME
+
   CDErrT ret;
 
+  // Call internal Complete routine
+  assert(ptr_cd_ != 0);
   // Profile will be acquired inside CD::Complete()
   ret = ptr_cd_->Complete();
 
@@ -595,19 +797,71 @@ CDErrT CDHandle::Complete (bool collective, bool update_preservations)
 
   }
 
-  return ret;
-}
+#if _PROFILER
+  if( CheckCollectProfile() ) {
+    // After acquiring the profile data, 
+    // aggregate the data to master task
+    // Only master task will call sight APIs.
+    // Aggregated data from every task belonging to one CD node
+    // will be averaged out, and avg value with std will be shown.
+    MPI_Reduce();
+    if(IsMaster()) {  // Master gets Avg.
+      
+    }
+  
+    MPI_Bcast();  // sends avg val to every task in the current CD
+      // Get dist. from each task
+    MPI_Reduce(); // aggregate dist. to Master
+  
+    if(IsMaster()) {  // Master gets Standard dist.
+      
+    }
+    
+    SetCollectProfile(false); // initialize this flag for the next Begin
+  }
+  else {
+    // Aggregate profile locally
+  }
+    
 
+#endif
+
+
+
+  return ret;
+
+}
 bool CDHandle::CheckCollectProfile(void)
 {
-  return ptr_cd_->CheckCollectProfile();;
+  return ptr_cd_->collect_profile_;
 }
 
 void CDHandle::SetCollectProfile(bool flag)
 {
-  ptr_cd_->SetCollectProfile(flag);
+  ptr_cd_->collect_profile_ = flag;
 }
 
+int GetAvg()
+{
+  
+}
+
+int GetDev()
+{
+
+}
+
+int GetReduceProfile(int count, int profile)
+{
+
+}
+
+int GetProfile()
+{
+  GetAvg();
+  GetDev();
+
+}
 CDErrT CDHandle::Preserve ( void *data_ptr, 
                             uint64_t len, 
                             uint32_t preserve_mask, 
@@ -622,6 +876,27 @@ CDErrT CDHandle::Preserve ( void *data_ptr,
   /// Preserve meta-data
   /// Accumulated volume of data to be preserved for Sequential CDs. 
   /// It will be averaged out with the number of seq. CDs.
+#if _PROFILER_OLD
+  if(preserve_mask == kCopy){
+
+    profile_data_[PRV_COPY_DATA] += len;
+//    if( (this->parent_ != nullptr) && check_overlap(this->parent_, ref_name) ){
+      /// Sequential overlapped accumulated data. It will be calculated to OVERLAPPED_DATA/PRV_COPY_DATA
+      /// overlapped data: overlapped data that is preserved only via copy method.
+//      profile_data_[OVERLAPPED_DATA] += len_in_bytes;
+//      cout<<"something is weird  "<<"level is "<<this->this_cd_->level_ << "length : "<<len_in_bytes<<endl;
+
+  } else if(preserve_mask == kReference) {
+
+    profile_data_[PRV_REF_DATA] += len;
+
+  } else {
+                                                                                                                                  
+    cout<<"prvTy is not supported currently : "<< preserve_mask<<endl;          
+    exit(-1);
+
+  }
+#endif
   if( IsMaster() ) {
     assert(ptr_cd_ != 0);
     return ptr_cd_->Preserve(data_ptr, len, preserve_mask, my_name, ref_name, ref_offset, regen_object, data_usage);
@@ -658,117 +933,6 @@ CDErrT CDHandle::Preserve ( CDEvent &cd_event,
 
   return kError;
 }
-
-
-CD*     CDHandle::ptr_cd(void)     { return ptr_cd_;         }
-NodeID& CDHandle::node_id(void)    { return node_id_;        }
-void    CDHandle::SetCD(CD* ptr_cd){ ptr_cd_=ptr_cd;         }
-int&    CDHandle::GetNodeID(void)  { return node_id_.color_; }
-int     CDHandle::GetTaskID(void)  { return node_id_.task_;  }
-int     CDHandle::GetTaskSize(void){ return node_id_.size_;  }
-
-int CDHandle::GetSeqID() 
-{ return ptr_cd_->GetCDID().sequential_id_; }
-
-bool CDHandle::operator==(const CDHandle &other) const 
-{
-  bool ptr_cd = (other.ptr_cd_ == this->ptr_cd_);
-  bool color  = (other.node_id_.color_  == this->node_id_.color_);
-  bool task   = (other.node_id_.task_   == this->node_id_.task_);
-  bool size   = (other.node_id_.size_   == this->node_id_.size_);
-  return (ptr_cd && color && task && size);
-}
-
-char* CDHandle::GetName(void)
-{
-  if(ptr_cd_ != NULL)
-    return ptr_cd_->name_;	
-  else
-    assert(0);
-}
-
-CDHandle* CDHandle::GetParent()
-{
-  if(ptr_cd_ != NULL) {
-    cout<<"level : " <<ptr_cd_->GetCDID().level_<<endl;
-    //getchar();
-    
-    return CDPath.at(ptr_cd_->GetCDID().level_ - 1);
-  }
-  else {
-    cout<< "ERROR in GetParent" <<endl;
-    assert(0);
-  }
-}
-
-
-// FIXME
-bool CDHandle::IsMaster(void)
-{
-  return IsMaster_;
-}
-
-// FIXME
-// For now task_id_==0 is always MASTER which is not good!
-void CDHandle::SetMaster(int task)
-{
-  cout<<"In SetMaster, Newly born CDHandle's Task# is "<<task<<endl;
-  if(task == 0)
-    IsMaster_ = true;
-  else
-    IsMaster_ = false;
-}
-
-/// Synchronize the CD object in every task of that CD.
-bool CDHandle::Sync() 
-{
-  int err;
-#if _CD_MPI
-  err = MPI_Barrier(node_id_.color_);
-#endif
-  return err;
-}
-
-int CDHandle::Stop()
-{ return ptr_cd_->Stop(); }
-
-CDErrT CDHandle::AddChild(CD* cd_child)
-{
-  CDErrT err;
-  ptr_cd_->AddChild(cd_child);
-  return err;
-}
-
-CDErrT CDHandle::RemoveChild(CD* cd_child)	
-{
-  CDErrT err;
-  ptr_cd_->RemoveChild(cd_child);
-  return err;
-}
-
-
-
-
-
-
-
-bool CDHandle::IsLocalObject()
-{
-/* RELEASE
-  // Check whether we already have this current node info, if not then get one.
-  if( current_task_id_ == -1 || current_process_id_ == -1 ) {
-    current_task_id_    = cd::Util::GetCurrentTaskID(); 
-    current_process_id_ = cd::Util::GetCurrentProcessID();
-  }
-
-  if( current_task_id_ == task_id_ && current_process_id_ == process_id_ )
-    return true;
-  else 
-    return false;
-*/
-return true;
-}
-
 
 CDErrT CDHandle::CDAssert (bool test_true, const SysErrT *error_to_report)
 {
@@ -854,12 +1018,119 @@ float CDHandle::RequireErrorProbability (SysErrT error_type, uint32_t error_num,
   return 0;
 }
 
+char* CDHandle::GetName(void)
+{
+  if(ptr_cd_ != NULL)
+    return ptr_cd_->name_;	
+  else
+    assert(0);
+}
 
+CDHandle* CDHandle::GetParent()
+{
+  if(ptr_cd_ != NULL) {
+    cout<<"level : " <<ptr_cd_->GetCDID().level_<<endl;
+    //getchar();
+    
+    return CDPath.at(ptr_cd_->GetCDID().level_ - 1);
+  }
+  else {
+    cout<< "ERROR in GetParent" <<endl;
+    assert(0);
+  }
+}
 
+int CDHandle::GetSeqID()
+{
+  return ptr_cd_->GetCDID().sequential_id_;
 
+}
 
+// FIXME
+// For now task_id_==0 is always MASTER which is not good!
+bool CDHandle::IsMaster(void)
+{
+  return IsMaster_;
+/*
+  if( node_id_.second == 0 )
+    return true;
+  else 
+    return false;
+*/
+}
 
+// FIXME
+// For now task_id_==0 is always MASTER which is not good!
+void CDHandle::SetMaster(int task)
+{
+  cout<<"In SetMaster, Newly born CDHandle's Task# is "<<task<<endl;
+  if(task == 0)
+    IsMaster_ = true;
+  else
+    IsMaster_ = false;
+}
 
+bool CDHandle::IsLocalObject()
+{
+/* RELEASE
+  // Check whether we already have this current node info, if not then get one.
+  if( current_task_id_ == -1 || current_process_id_ == -1 ) {
+    current_task_id_    = cd::Util::GetCurrentTaskID(); 
+    current_process_id_ = cd::Util::GetCurrentProcessID();
+  }
+
+  if( current_task_id_ == task_id_ && current_process_id_ == process_id_ )
+    return true;
+  else 
+    return false;
+*/
+return true;
+}
+
+/// Synchronize the CD object in every task of that CD.
+bool CDHandle::Sync() 
+{
+  int err;
+#if _CD_MPI
+  err = MPI_Barrier(node_id_.color_);
+#endif
+  return err;
+}
+
+CDErrT CDHandle::AddChild(CD* cd_child)
+{
+  CDErrT err;
+  ptr_cd_->AddChild(cd_child);
+  return err;
+}
+
+CDErrT CDHandle::RemoveChild(CD* cd_child)	
+{
+  CDErrT err;
+  ptr_cd_->RemoveChild(cd_child);
+  return err;
+}
+
+/*
+int CDHandle::StopAllChildren()
+{
+  if( IsMaster() ) {
+    ptr_cd_->StopAllChildren();
+  }
+  else {
+
+  }
+  //FIXME return value should be taken care of 
+  return kOK; 
+}
+*/
+
+int CDHandle::Stop()
+{
+  return ptr_cd_->Stop();
+
+  //FIXME return value should be taken care of 
+}
 
 /* RELEASE
 CDEntry* CDHandle::InternalGetEntry(std::string entry_name)
@@ -877,7 +1148,8 @@ void CDHandle::Recover (uint32_t error_name_mask,
 
 CDErrT CDHandle::SetPGASType (void *data_ptr, uint64_t len, CDPGASUsageT region_type)
 {
-   // STUB
+
+
   return kOK;
 }
 
