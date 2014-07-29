@@ -8,7 +8,7 @@
 #include "lulesh.h"
 
 
-#ifdef COMP
+#if defined(COMP) || defined(KULFI)
 compNamedMeasures getMeasures() {
    return compNamedMeasures(
 #ifdef RAPL
@@ -259,11 +259,16 @@ void ParseCommandLineOptions(int argc, char *argv[],
 
 /////////////////////////////////////////////////////////////////////
 
-void VerifyAndWriteFinalOutput(Real_t elapsed_time,
+#if defined(COMP) || defined(KULFI)
+compContext
+#else
+context
+#endif
+     VerifyAndWriteFinalOutput(Real_t elapsed_time,
                                Domain& locDom,
                                Int_t nx,
                                Int_t numRanks,
-                               sightModule* mod, int outputNum, bool verbose)
+                               bool verbose)
 {
    // GrindTime1 only takes a single domain into account, and is thus a good way to measure
    // processor speed indepdendent of MPI parallelism.
@@ -325,13 +330,15 @@ void VerifyAndWriteFinalOutput(Real_t elapsed_time,
       #endif
    }
 
-   if(mod) {
-       mod->setOutCtxt(outputNum,
-                       compContext("MaxAbsDiff",   (double)MaxAbsDiff,          noComp(),
-                                   "TotalAbsDiff", (double)TotalAbsDiff,        noComp(),
-                                   "MaxRelDiff",   (double)MaxRelDiff,          noComp(),
-                                   "FOM",          (double)(1000.0/grindTime2), noComp()));
-   }
-
-   return ;
+#if defined(COMP) || defined(KULFI)
+   return compContext("MaxAbsDiff",   (double)MaxAbsDiff,          noComp(),
+                      "TotalAbsDiff", (double)TotalAbsDiff,        noComp(),
+                      "MaxRelDiff",   (double)MaxRelDiff,          noComp(),
+                      "FOM",          (double)(1000.0/grindTime2), noComp());
+#else
+   return context("MaxAbsDiff",   (double)MaxAbsDiff,          noComp(),
+                  "TotalAbsDiff", (double)TotalAbsDiff,        noComp(),
+                  "MaxRelDiff",   (double)MaxRelDiff,          noComp(),
+                  "FOM",          (double)(1000.0/grindTime2), noComp());
+#endif
 }

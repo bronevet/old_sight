@@ -13,16 +13,29 @@ CODE_ROOT = SIGHT_ROOT+"/apps/lulesh"
 os.environ["SIGHT_FILE_OUT"] = "1"
 
 prec = [4, 8, 16]
-spatial = [3, 7, 15, 31]
-dtime = [1]
-power = [25, 50, 100, 1000]
-mem = ["soa", "aos"]
+spatial = [3, 7, 15, 31, 63]
+dtime = ["-1e-6"]
+power = [100]#[30, 40, 50, 75, 100]
+mem = ["soa"] #["soa", "aos"]
 numExperiments=1
+
+precStr = []
+for p in prec: precStr.append(str(p))
+spatialStr = []
+for s in spatial: spatialStr.append(str(s))
+powerStr = []
+for p in power: powerStr.append(str(p))
+experimentName = "prec-"   +"_".join(precStr)   +"."+ \
+                 "spatial-"+"_".join(spatialStr)+"."+ \
+                 "dtime-"  +"_".join(dtime)     +"."+ \
+                 "power-"  +"_".join(powerStr)  +"."+ \
+                 "mem-"    +"_".join(mem);
+print "experimentName="+experimentName
 
 print "host="+os.environ["HOSTNAME"]
 
 #os.system("rm -rf data")
-os.system("rm -rf data dbg.Lulesh* *.core")
+os.system("rm -rf dbg.Lulesh* *.core")
 os.system("mkdir -p data")
 os.system("mkdir -p data/merge");
 cmdPrefix = ". /usr/local/tools/dotkit/init.sh; use silo-4.8; use hdf5-gnu-serial-1.8.10"
@@ -59,12 +72,12 @@ def configuration(expID, p, s, d, pw, m, ref, idx) :
 
 def runApp(expID, p, s, d, pw, m, ref, idx) :
     (execName, outPath, args) = configuration(expID, p, s, d, pw, m, ref, idx)
-    if(not os.path.exists(outPath+".rank_0")) : 
-        print "Path \""+outPath+".rank_0\" does not exit"
+    if(not os.path.exists(outPath+".rank_0.exp_"+str(expID))) : 
+        print "Path \""+outPath+".rank_0.exp_"+str(expID)+"\" in directory "+os.getcwd()+" does not exist"
         sys(cmdPrefix + "; " + CODE_ROOT+"/"+execName+" "+" ".join(args)+" >out."+outPath, True);
     idx+=1
     del os.environ["SIGHT_STRUCTURE_CONFIG"]
-    return;
+    return outPath+".rank_0.exp_"+str(expID);
 
 #def merge(m, s, pd, pw, r, n, idx) :
 #    (path, args) = configuration(m, s, pd, pw, r, n)
@@ -79,6 +92,8 @@ def runApp(expID, p, s, d, pw, m, ref, idx) :
 
 idx = 0
 
+allPaths = [];
+
 for expID in range(numExperiments) :
  for ip in range(len(prec)) :
   p = prec[ip]
@@ -92,25 +107,24 @@ for expID in range(numExperiments) :
          m = mem[im]
          if (expID == 0) and (p == max(prec)) and (s == max(spatial)) and (d == min(dtime)) and (ipw==0) and (im==0): ref=1
          else : ref=0
-         runApp(expID, p, s, d, pw, m, ref, idx)
+         outPath = runApp(expID, p, s, d, pw, m, ref, idx)
+         allPaths.append("data/"+outPath)
 #        merge (p, s, d, pw, m, idx)
 
 os.chdir("..")
 
 # Merge all the runs
-sys(SIGHT_ROOT+"/hier_merge dbg.Lulesh zipper data/dbg.Lulesh.*", True)
+sys(SIGHT_ROOT+"/hier_merge dbg.Lulesh."+experimentName+" zipper "+" ".join(allPaths), True)
 
 # Lay out the html output
 print "SLAYOUT"
-print SIGHT_ROOT+"/slayout dbg.Lulesh\n"
 os.environ["SIGHT_LAYOUT_CONFIG"] = SIGHT_ROOT+"/examples/emitObsDataTable.conf"
-os.system(SIGHT_ROOT+"/slayout dbg.Lulesh")
+sys(SIGHT_ROOT+"/slayout dbg.Lulesh."+experimentName, True)
 
 print "PACKAGING"
-#sys("rm -f dbg.AMG2013.tar.gz", True);
-#sys("rm -f dbg.AMG2013/structure data/merge/dbg.AMG2013.*/structure", True);
-#sys("tar -cf dbg.AMG2013.tar dbg.AMG2013 data/merge/dbg.AMG2013.*", True);
-#sys("gzip dbg.AMG2013.tar", True);
+sys("rm -f dbg.Lulesh."+experimentName, True)
+sys("tar -cf dbg.Lulesh."+experimentName+".tar dbg.Lulesh."+experimentName, True)
+sys("gzip dbg.Lulesh."+experimentName+".tar", True)
 
 # Remove the core files
 os.system("rm -f data/*.core");

@@ -1817,10 +1817,11 @@ std::map<std::string, std::string> compModule::compareObservations(
       
       // Get the comparator for this property of this output and compare the two attrValues
       if(measComparators.find(traceSubGrouping) == measComparators.end()) {
-        cerr << "ERROR: no comparator found for trace attribute "<<traceSubGrouping<<"!"<<endl;
-        assert(0);
-      }
-      comp = measComparators[traceSubGrouping];
+        cerr << "WARNING: no comparator found for trace attribute "<<traceSubGrouping<<"! Assuming that no comparison is to be performed!"<<endl;
+        //assert(0);
+        comp = NULL;
+      } else
+        comp = measComparators[traceSubGrouping];
     
     // If the current attribute is an option, do not perform a comparison on it
     } else if(traceGrouping == "option")
@@ -1912,7 +1913,7 @@ void compModule::observe(int traceID,
     }
   }
   
-/*  cout << "    inputCtxt=";
+  /*cout << "    inputCtxt=";
   for(map<string, string>::const_iterator o=inputCtxt.begin(); o!=inputCtxt.end(); o++) { cout << o->first << (o->second.length()>300? "=> LARGE": string("=>")+o->second)<<" "; }
   cout << endl;
   cout << "    referenceObs[inputCtxt] (#"<<referenceObs.size()<<") : "<<(referenceObs.find(inputCtxt) != referenceObs.end())<<endl;
