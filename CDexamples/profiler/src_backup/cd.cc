@@ -89,9 +89,8 @@ CD::CD()
   sibling_id_ = 0;
   level_      = 0;
 
-  profile_data_[label_][MAX_PROFILE_DATA] = {0, };
+  profile_data_[MAX_PROFILE_DATA] = {0, };
   is_child_destroyed = false;
-  collect_profile_ = false;
   usr_profile_enable = false;
 
   this_point_ = 0;
@@ -120,9 +119,8 @@ CD::CD( CDHandle* cd_parent,
   sibling_id_ = 0;
   level_      = 0;
 
-  profile_data_[label_][MAX_PROFILE_DATA] = {0, };
+  profile_data_[MAX_PROFILE_DATA] = {0, };
   is_child_destroyed = false;
-  collect_profile_ = false;
   usr_profile_enable = false;
 
   this_point_ = 0;
@@ -286,26 +284,10 @@ CDErrT CD::Destroy()
 
 // Here we don't need to follow the exact CD API this is more like internal thing. 
 // CDHandle will follow the standard interface. 
-CDErrT CD::Begin(bool collective, std::string label)
+CDErrT CD::Begin(bool collective, const char* label)
 {
+  label_ = const_cast<char*>(label);
 
-  if(label != 0) {
-    label_ = const_cast<char*>(label);
-  }
-  else {
-    label_ = name;
-  }
-
-
-  if(label_ != label) { 
-    // diff
-    collect_profile_ = true;
-  }
-  else {
-    // the same exec
-    collect_profile_ = false;
-  }
- 
   Internal_Begin();
 
   //  setjmp(jump_buffer_);
@@ -339,8 +321,6 @@ CDErrT CD::Complete(bool collective, bool update_preservations)
   // Increase sequential ID by one
   cd_id_.sequential_id_++;
 
-  /// It deletes entry directory in the CD (for every Complete() call). 
-  /// We might modify this in the profiler to support the overlapped data among sequential CDs.
   DeleteEntryDirectory();
 
   // TODO ASSERT( cd_execution_mode_  != kSuspension );
@@ -715,9 +695,8 @@ MasterCD::MasterCD()
   sibling_id_ = 0;
   level_      = 0;
 
-  profile_data_[label_][MAX_PROFILE_DATA] = {0, };
+  profile_data_[MAX_PROFILE_DATA] = {0, };
   is_child_destroyed = false;
-  collect_profile_ = false;
   usr_profile_enable = false;
 
   this_point_ = 0;
@@ -737,9 +716,8 @@ MasterCD::MasterCD( CDHandle* cd_parent,
   sibling_id_ = 0;
   level_      = 0;
 
-  profile_data_[label_][MAX_PROFILE_DATA] = {0, };
+  profile_data_[MAX_PROFILE_DATA] = {0, };
   is_child_destroyed = false;
-  collect_profile_ = false;
   usr_profile_enable = false;
 
   this_point_ = 0;
@@ -847,16 +825,16 @@ void CD::GetProfile(void *data,
 
   if(preserve_mask == kCopy){
 
-    profile_data_[label_][PRV_COPY_DATA] += len_in_bytes;
+    profile_data_[PRV_COPY_DATA] += len_in_bytes;
 //    if( (this->parent_ != nullptr) && check_overlap(this->parent_, ref_name) ){
       /// Sequential overlapped accumulated data. It will be calculated to OVERLAPPED_DATA/PRV_COPY_DATA
       /// overlapped data: overlapped data that is preserved only via copy method.
-//      profile_data_[label_][OVERLAPPED_DATA] += len_in_bytes;
+//      profile_data_[OVERLAPPED_DATA] += len_in_bytes;
 //      cout<<"something is weird  "<<"level is "<<this->this_cd_->level_ << "length : "<<len_in_bytes<<endl;
 
   } else if(preserve_mask == kReference) {
 
-    profile_data_[label_][PRV_REF_DATA] += len_in_bytes;
+    profile_data_[PRV_REF_DATA] += len_in_bytes;
 
   } else {
                                                                                                                                   
@@ -879,16 +857,16 @@ void MasterCD::GetProfile(void *data,
 {
   if(preserve_mask == kCopy){
 
-    profile_data_[label_][PRV_COPY_DATA] += len_in_bytes;
+    profile_data_[PRV_COPY_DATA] += len_in_bytes;
 //    if( (this->parent_ != nullptr) && check_overlap(this->parent_, ref_name) ){
       /// Sequential overlapped accumulated data. It will be calculated to OVERLAPPED_DATA/PRV_COPY_DATA
       /// overlapped data: overlapped data that is preserved only via copy method.
-//      profile_data_[label_][OVERLAPPED_DATA] += len_in_bytes;
+//      profile_data_[OVERLAPPED_DATA] += len_in_bytes;
 //      cout<<"something is weird  "<<"level is "<<this->this_cd_->level_ << "length : "<<len_in_bytes<<endl;
 
   } else if(preserve_mask == kReference) {
 
-    profile_data_[label_][PRV_REF_DATA] += len_in_bytes;
+    profile_data_[PRV_REF_DATA] += len_in_bytes;
 
   } else {
                                                                                                                                   
@@ -941,28 +919,72 @@ void MasterCD::SetViz()
 void CD::Internal_Complete(void)
 {
 
-#if _PROFILER // Profile starts  
-
+#if _PROFILER
   // outputs the preservation / detection info
+//  if(cdStack.back() != nullptr){
+//    cout<<"add new info"<<endl;
+///*
+//    cdStack.back()->setStageNode( "preserve", "data_copy", profile_data_[PRV_COPY_DATA]    );
+//    cdStack.back()->setStageNode( "preserve", "data_overlapped", profile_data_[OVERLAPPED_DATA]  );
+//    cdStack.back()->setStageNode( "preserve", "data_ref", profile_data_[PRV_REF_DATA]     );
+//*/
+//    
+//    //scope s("Preserved Stats");
+//    PreserveStageNode psn(txt()<<"Preserve Stage");
+//    dbg << "data_copy="<<profile_data_[PRV_COPY_DATA]<<endl;
+//    dbg << "data_overlapped="<<profile_data_[OVERLAPPED_DATA]<<endl;
+//    dbg << "data_ref="<<profile_data_[PRV_REF_DATA]<<endl;
+//
+//  }
+
+
+//  dbg << " >>> Scope  Test -- "<<this->this_cd_->cd_id_<<", #sStack="<<sStack.size()<<endl;
+//  assert(sStack.size()>0);
+//  assert(sStack.back() != NULL);
+//  delete sStack.back();
+//  sStack.pop_back();
+
+//  dbg << " ]]] Module Test -- "<<this->this_cd_->cd_id_<<", #mStack="<<mStack.size()<<endl;
+  assert(mStack.size()>0);
+  assert(mStack.back() != NULL);
+  mStack.back()->setOutCtxt(0, context("data_copy=", (long)profile_data_[PRV_COPY_DATA],
+                                       "data_overlapped=", (long)profile_data_[OVERLAPPED_DATA],
+                                       "data_ref=" , (long)profile_data_[PRV_REF_DATA]));
+//  if(usr_profile_enable) {
+//    mStack.back()->setOutCtxt(1, usr_profile_output);
+//  }
+/*
+  mStack.back()->setOutCtxt(1, context("sequential id =" , (long)profile_data_[PRV_REF_DATA],
+                                       "execution cycle=", (long)profile_data_[PRV_COPY_DATA],
+                                       "estimated error rate=", (long)profile_data_[OVERLAPPED_DATA]));
+*/
+  delete mStack.back();
+  mStack.pop_back();
+
+//  assert(compStack.size()>0);
+//  assert(compStack.back() != NULL);
+//  delete compStack.back();
+//  compStack.pop_back();
+
+
+//  dbg << " }}} CDNode Test -- "<<this->this_cd_->cd_id_<<", #cdStack="<<cdStack.size()<<endl;
+//  assert(cdStack.size()>0);
+//  assert(cdStack.back() != nullptr);
+//  delete cdStack.back();
+//  cdStack.pop_back();
+
   /// Timer off
   uint64_t tmp_point = rdtsc();
   that_point_ = tmp_point;
 
   /// Loop Count (# of seq. CDs) + 1
-//  (this->profile_data_)[label_][LOOP_COUNT] += 1;
-  (profile_data_)[label_][LOOP_COUNT] = GetCDID().sequential_id_;
+//  (this->profile_data_)[LOOP_COUNT] += 1;
+  (profile_data_)[LOOP_COUNT] = GetCDID().sequential_id_;
 
   /// Calcualate the execution time
-  (profile_data_)[label_][EXEC_CYCLE] += (that_point_) - (this_point_);
+  (profile_data_)[EXEC_CYCLE] += (that_point_) - (this_point_);
 
-  // After acquiring the profile data, 
-  // aggregate the data to master task
-  // Only master task will call sight APIs.
-  // Aggregated data from every task belonging to one CD node
-  // will be averaged out, and avg value with std will be shown.
-//  MPI_Reduce();
-  
-#endif // Profile ends 
+#endif
 
 }
 
@@ -970,157 +992,177 @@ void CD::Internal_Complete(void)
 void MasterCD::Internal_Complete(void)
 {
 
-#if _PROFILER // Profile starts -- COMP | MODULE | SCOPE | CDNODE -- 
-
+#if _PROFILER
   // outputs the preservation / detection info
+//  if(cdStack.back() != nullptr){
+//    cout<<"add new info"<<endl;
+///*
+//    cdStack.back()->setStageNode( "preserve", "data_copy", profile_data_[PRV_COPY_DATA]    );
+//    cdStack.back()->setStageNode( "preserve", "data_overlapped", profile_data_[OVERLAPPED_DATA]  );
+//    cdStack.back()->setStageNode( "preserve", "data_ref", profile_data_[PRV_REF_DATA]     );
+//*/
+//    
+//    //scope s("Preserved Stats");
+//    PreserveStageNode psn(txt()<<"Preserve Stage");
+//    dbg << "data_copy="<<profile_data_[PRV_COPY_DATA]<<endl;
+//    dbg << "data_overlapped="<<profile_data_[OVERLAPPED_DATA]<<endl;
+//    dbg << "data_ref="<<profile_data_[PRV_REF_DATA]<<endl;
+//
+//  }
+
+
+//  dbg << " >>> Scope  Test -- "<<this->this_cd_->cd_id_<<", #sStack="<<sStack.size()<<endl;
+//  assert(sStack.size()>0);
+//  assert(sStack.back() != NULL);
+//  delete sStack.back();
+//  sStack.pop_back();
+
+//  dbg << " ]]] Module Test -- "<<this->this_cd_->cd_id_<<", #mStack="<<mStack.size()<<endl;
+  assert(mStack.size()>0);
+  assert(mStack.back() != NULL);
+  mStack.back()->setOutCtxt(0, context("data_copy=", (long)profile_data_[PRV_COPY_DATA],
+                                       "data_overlapped=", (long)profile_data_[OVERLAPPED_DATA],
+                                       "data_ref=" , (long)profile_data_[PRV_REF_DATA]));
+//  if(usr_profile_enable) {
+//    mStack.back()->setOutCtxt(1, usr_profile_output);
+//  }
+/*
+  mStack.back()->setOutCtxt(1, context("sequential id =" , (long)profile_data_[PRV_REF_DATA],
+                                       "execution cycle=", (long)profile_data_[PRV_COPY_DATA],
+                                       "estimated error rate=", (long)profile_data_[OVERLAPPED_DATA]));
+*/
+  delete mStack.back();
+  mStack.pop_back();
+
+//  assert(compStack.size()>0);
+//  assert(compStack.back() != NULL);
+//  delete compStack.back();
+//  compStack.pop_back();
+
+
+//  dbg << " }}} CDNode Test -- "<<this->this_cd_->cd_id_<<", #cdStack="<<cdStack.size()<<endl;
+//  assert(cdStack.size()>0);
+//  assert(cdStack.back() != nullptr);
+//  delete cdStack.back();
+//  cdStack.pop_back();
+
   /// Timer off
   uint64_t tmp_point = rdtsc();
   that_point_ = tmp_point;
 
   /// Loop Count (# of seq. CDs) + 1
-//  (this->profile_data_)[label_][LOOP_COUNT] += 1;
-  (profile_data_)[label_][LOOP_COUNT] = GetCDID().sequential_id_;
+//  (this->profile_data_)[LOOP_COUNT] += 1;
+  (profile_data_)[LOOP_COUNT] = GetCDID().sequential_id_;
 
   /// Calcualate the execution time
-  (profile_data_)[label_][EXEC_CYCLE] += (that_point_) - (this_point_);
+  (profile_data_)[EXEC_CYCLE] += (that_point_) - (this_point_);
 
-#if _ENABLE_CDNODE  // -----------------------------------------------------------------------------
-//  if(cdStack.back() != nullptr){
-//    cout<<"add new info"<<endl;
-///*
-//    cdStack.back()->setStageNode( "preserve", "data_copy", profile_data_[label_]PRV_COPY_DATA]    );
-//    cdStack.back()->setStageNode( "preserve", "data_overlapped", profile_data_[label_][OVERLAPPED_DATA]  );
-//    cdStack.back()->setStageNode( "preserve", "data_ref", profile_data_[label_][PRV_REF_DATA]     );
-//*/
-//    
-//    //scope s("Preserved Stats");
-//    PreserveStageNode psn(txt()<<"Preserve Stage");
-//    dbg << "data_copy="<<profile_data_[label_][PRV_COPY_DATA]<<endl;
-//    dbg << "data_overlapped="<<profile_data_[label_][OVERLAPPED_DATA]<<endl;
-//    dbg << "data_ref="<<profile_data_[label_][PRV_REF_DATA]<<endl;
-//
-//  }
-
-//  dbg << " }}} CDNode Test -- "<<this->this_cd_->cd_id_<<", #cdStack="<<cdStack.size()<<endl;
-  assert(cdStack.size()>0);
-  assert(cdStack.back() != nullptr);
-  delete cdStack.back();
-  cdStack.pop_back();
 #endif
-
-#if _ENABLE_SCOPE  // -----------------------------------------------------------------------------
-//  dbg << " >>> Scope  Test -- "<<this->this_cd_->cd_id_<<", #sStack="<<sStack.size()<<endl;
-  assert(sStack.size()>0);
-  assert(sStack.back() != NULL);
-  delete sStack.back();
-  sStack.pop_back();
-#endif
-
-#if _ENABLE_MODULE  // -----------------------------------------------------------------------------
-//  dbg << " ]]] Module Test -- "<<this->this_cd_->cd_id_<<", #mStack="<<mStack.size()<<endl;
-  assert(mStack.size()>0);
-  assert(mStack.back() != NULL);
-  mStack.back()->setOutCtxt(0, context("data_copy=", (long)profile_data_[label_][PRV_COPY_DATA],
-                                       "data_overlapped=", (long)profile_data_[label_][OVERLAPPED_DATA],
-                                       "data_ref=" , (long)profile_data_[label_][PRV_REF_DATA]));
-  if(usr_profile_enable) {
-    mStack.back()->setOutCtxt(1, usr_profile_output);
-  }
-/*
-  mStack.back()->setOutCtxt(1, context("sequential id =" , (long)profile_data_[label_][PRV_REF_DATA],
-                                       "execution cycle=", (long)profile_data_[label_][PRV_COPY_DATA],
-                                       "estimated error rate=", (long)profile_data_[label_][OVERLAPPED_DATA]));
-*/
-  delete mStack.back();
-  mStack.pop_back();
-#endif
-
-
-#if _ENABLE_COMP   // -----------------------------------------------------------------------------
-  assert(compStack.size()>0);
-  assert(compStack.back() != NULL);
-  delete compStack.back();
-  compStack.pop_back();
-#endif
-
-
-#endif // Profile ends 
-
-
-
-
 
 }
 
 void CD::Internal_Begin(void)
 {
 
-#if _PROFILER  // Profile starts 
-  /// Timer on
-  this->this_point_ = rdtsc();
-#endif  //Profile ends
-
-}
-
-void MasterCD::Internal_Begin(void)
-{
-
-#if _PROFILER // Profile starts -- COMP | MODULE | SCOPE | CDNODE -- 
+#if _PROFILER
   /// Timer on
   this->this_point_ = rdtsc();
 
+  //-- Sight-related -------------------------------------------------------------------------------
 
-#if _ENABLE_COMP   // -----------------------------------------------------------------------------
+//  CDNode* cdn = new CDNode(txt()<<label_, txt()<<this->this_cd_->GetCDID()); 
+//  this->cdStack.push_back(cdn);
+//  dbg << "{{{ CDNode Test -- "<<this->this_cd_->cd_id_<<", #cdStack="<<cdStack.size()<<endl;
 
-  comparison* comp = new comparison(node_id().color_);
-  compStack.push_back(comp);
-#endif
+//  comparison* comp = new comparison(node_id().color_);
+//  compStack.push_back(comp);
 
 
-#if _ENABLE_MODULE   // -----------------------------------------------------------------------------
-  if(usr_profile_enable) {
+//  if(usr_profile_enable) {
     module* m = new module( instance(txt()<<label_, 1, 1), 
                             inputs(port(context("cd_id", txt()<<GetCDID().node_id_.task_, 
                                                 "sequential_id", (int)(GetCDID().sequential_id_)))),
                             namedMeasures("time", new timeMeasure()) );
     mStack.push_back(m);
-  }
-  else {
-  
-    module* m = new module( instance(txt()<<label_, 2, 2), 
-                            inputs(port(context("cd_id", txt()<<this->node_id().task_, 
-                                                "sequential_id", (int)(GetCDID().sequential_id_))),
-                                   port(usr_profile_input)),
-                            namedMeasures("time", new timeMeasure()) );
-    this->mStack.push_back(m);
-  }
+//  }
+//  else {
+//  
+//    module* m = new module( instance(txt()<<label_, 2, 2), 
+//                            inputs(port(context("cd_id", txt()<<this->node_id().task_, 
+//                                                "sequential_id", (int)(GetCDID().sequential_id_))),
+//                                   port(usr_profile_input)),
+//                            namedMeasures("time", new timeMeasure()) );
+//    this->mStack.push_back(m);
+//  }
 
 
 
 //  dbg << "[[[ Module Test -- "<<this->this_cd_->cd_id_<<", #mStack="<<mStack.size()<<endl;
-#endif
 
-#if _ENABLE_SCOPE   // -----------------------------------------------------------------------------
-  /// create a new scope at each Begin() call
-  scope* s = new scope(txt()<<label_<<", cd_id="<<node_id().task_);
-
-  /// Connect edge between previous node to newly created node
-  if(this->sStack.size()>0)
-    this->scopeGraph->addDirEdge(this->sStack.back()->getAnchor(), s->getAnchor());
-
-  /// push back this node into sStack to manage scopes
-  this->sStack.push_back(s);
+//  /// create a new scope at each Begin() call
+//  scope* s = new scope(txt()<<label_<<", cd_id="<<node_id().task_);
+//
+//  /// Connect edge between previous node to newly created node
+//  if(this->sStack.size()>0)
+//    this->scopeGraph->addDirEdge(this->sStack.back()->getAnchor(), s->getAnchor());
+//
+//  /// push back this node into sStack to manage scopes
+//  this->sStack.push_back(s);
 //  dbg << "<<< Scope  Test -- "<<this->this_cd_->cd_id_<<", #sStack="<<sStack.size()<<endl;
-#endif 
-
-#if _ENABLE_CDNODE   // -----------------------------------------------------------------------------
-  CDNode* cdn = new CDNode(txt()<<label_, txt()<<this->this_cd_->GetCDID()); 
-  this->cdStack.push_back(cdn);
-//  dbg << "{{{ CDNode Test -- "<<this->this_cd_->cd_id_<<", #cdStack="<<cdStack.size()<<endl;
+//------------------------------------------------------------------------------------------------
 #endif
+}
+
+void MasterCD::Internal_Begin(void)
+{
+
+#if _PROFILER
+  /// Timer on
+  this->this_point_ = rdtsc();
+
+  //-- Sight-related -------------------------------------------------------------------------------
+
+//  CDNode* cdn = new CDNode(txt()<<label_, txt()<<this->this_cd_->GetCDID()); 
+//  this->cdStack.push_back(cdn);
+//  dbg << "{{{ CDNode Test -- "<<this->this_cd_->cd_id_<<", #cdStack="<<cdStack.size()<<endl;
+
+//  comparison* comp = new comparison(node_id().color_);
+//  compStack.push_back(comp);
 
 
-#endif // Profile ends
+//  if(usr_profile_enable) {
+    module* m = new module( instance(txt()<<label_, 1, 1), 
+                            inputs(port(context("cd_id", txt()<<GetCDID().node_id_.task_, 
+                                                "sequential_id", (int)(GetCDID().sequential_id_)))),
+                            namedMeasures("time", new timeMeasure()) );
+    mStack.push_back(m);
+//  }
+//  else {
+//  
+//    module* m = new module( instance(txt()<<label_, 2, 2), 
+//                            inputs(port(context("cd_id", txt()<<this->node_id().task_, 
+//                                                "sequential_id", (int)(GetCDID().sequential_id_))),
+//                                   port(usr_profile_input)),
+//                            namedMeasures("time", new timeMeasure()) );
+//    this->mStack.push_back(m);
+//  }
+
+
+
+//  dbg << "[[[ Module Test -- "<<this->this_cd_->cd_id_<<", #mStack="<<mStack.size()<<endl;
+
+//  /// create a new scope at each Begin() call
+//  scope* s = new scope(txt()<<label_<<", cd_id="<<node_id().task_);
+//
+//  /// Connect edge between previous node to newly created node
+//  if(this->sStack.size()>0)
+//    this->scopeGraph->addDirEdge(this->sStack.back()->getAnchor(), s->getAnchor());
+//
+//  /// push back this node into sStack to manage scopes
+//  this->sStack.push_back(s);
+//  dbg << "<<< Scope  Test -- "<<this->this_cd_->cd_id_<<", #sStack="<<sStack.size()<<endl;
+//------------------------------------------------------------------------------------------------
+#endif
 }
 
 

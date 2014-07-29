@@ -777,91 +777,30 @@ CDErrT CDHandle::Complete (bool collective, bool update_preservations)
 #endif
 
 //FIXME
+  /// It deletes entry directory in the CD (for every Complete() call). 
+  /// We might modify this in the profiler to support the overlapped data among sequential CDs.
+  ptr_cd_->DeleteEntryDirectory();
 
-  CDErrT ret;
-
-  // Call internal Complete routine
+  if ( collective ) {
+    int ret = Sync();
+//    if( ret != 0 ) {
+    if( true ) {
+      printf("------------------ Sync Success in Complete %d (%d) ------------------\n", node_id_.task_, ret);
+      //getchar();
+    }
+    else {
+      //printf("------------------ Sync Failure in Complete %d (%d) ------------------\n", node_id_.task_, ret);
+      //getchar();
+      //exit(-1);
+    }
+  }
   assert(ptr_cd_ != 0);
-  // Profile will be acquired inside CD::Complete()
-  ret = ptr_cd_->Complete();
 
-
-  if ( collective == true ) {
-
-    int sync_ret = Sync();
-    // sync_ret check, go to error routine if it fails.
-
-  }
-  else {  // Non-collective Begin()
-
-
-  }
-
-#if _PROFILER
-  if( CheckCollectProfile() ) {
-    // After acquiring the profile data, 
-    // aggregate the data to master task
-    // Only master task will call sight APIs.
-    // Aggregated data from every task belonging to one CD node
-    // will be averaged out, and avg value with std will be shown.
-    MPI_Reduce();
-    if(IsMaster()) {  // Master gets Avg.
-      
-    }
-  
-    MPI_Bcast();  // sends avg val to every task in the current CD
-      // Get dist. from each task
-    MPI_Reduce(); // aggregate dist. to Master
-  
-    if(IsMaster()) {  // Master gets Standard dist.
-      
-    }
-    
-    SetCollectProfile(false); // initialize this flag for the next Begin
-  }
-  else {
-    // Aggregate profile locally
-  }
-    
-
-#endif
-
-
-
-  return ret;
-
-}
-bool CDHandle::CheckCollectProfile(void)
-{
-  return ptr_cd_->collect_profile_;
-}
-
-void CDHandle::SetCollectProfile(bool flag)
-{
-  ptr_cd_->collect_profile_ = flag;
-}
-
-int GetAvg()
-{
-  
-}
-
-int GetDev()
-{
+  return ptr_cd_->Complete();
 
 }
 
-int GetReduceProfile(int count, int profile)
-{
 
-}
-
-int GetProfile()
-{
-  GetAvg();
-  GetDev();
-
-}
 CDErrT CDHandle::Preserve ( void *data_ptr, 
                             uint64_t len, 
                             uint32_t preserve_mask, 

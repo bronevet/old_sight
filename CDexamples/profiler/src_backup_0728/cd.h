@@ -67,7 +67,7 @@ class cd::CD {
     
   public:
     char* name_;
-    std::string label_;
+    char* label_;
     ucontext_t context_;
     jmp_buf jump_buffer_;
     ContextPreservationMode context_preservation_mode_;
@@ -112,9 +112,8 @@ class cd::CD {
     uint64_t  level_;
   
     /// Profile-related meta data
-    std::map<std::string, std::array<uint64_t, MAX_PROFILE_DATA> profile_data_;
+    uint64_t profile_data_[MAX_PROFILE_DATA];
     bool     is_child_destroyed;
-    bool     collect_profile_;
 
     bool usr_profile_enable;
 //    std::vector<std::pair<std::string, long>>  usr_profile;
@@ -305,7 +304,7 @@ class cd::MasterCD : public cd::CD {
     uint64_t  level_;
   
     /// Profile-related meta data
-    std::map<std::string, std::array<uint64_t, MAX_PROFILE_DATA> profile_data_;
+    uint64_t profile_data_[MAX_PROFILE_DATA];
     bool     is_child_destroyed;
 
     bool usr_profile_enable;
