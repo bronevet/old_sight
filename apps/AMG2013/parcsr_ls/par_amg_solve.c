@@ -31,7 +31,7 @@ hypre_BoomerAMGSolve( void               *amg_vdata,
                    hypre_ParCSRMatrix *A,
                    hypre_ParVector    *f,
                    hypre_ParVector    *u, context& runCfg, graph& AMGVCycleGraph, anchor& lastAnchor,
-                   context& solverCtxt)
+                   context& solverCtxt, int& num_precond_calls)
 {
 
    MPI_Comm 	      comm = hypre_ParCSRMatrixComm(A);   
@@ -256,7 +256,7 @@ hypre_BoomerAMGSolve( void               *amg_vdata,
 #endif
   
 
-      hypre_BoomerAMGCycle(amg_data, F_array, U_array, runCfg, AMGVCycleGraph, lastAnchor, solverCtxt); 
+      hypre_BoomerAMGCycle(amg_data, F_array, U_array, runCfg, AMGVCycleGraph, lastAnchor, solverCtxt, num_precond_calls); 
 
 #if MPIP_SOLVE_ON
       MPI_Pcontrol(3); 

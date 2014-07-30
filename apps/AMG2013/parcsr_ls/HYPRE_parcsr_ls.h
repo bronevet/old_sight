@@ -132,7 +132,7 @@ int HYPRE_BoomerAMGSolve(HYPRE_Solver       solver,
                          context& runCfg,
                          graph& AMGVCycleGraph, 
                          anchor& lastAnchor,
-                         context& solverCtxt);
+                         context& solverCtxt, int& num_precond_calls);
 
 /**
  * Solve the transpose system $A^T x = b$ or apply AMG as a preconditioner
@@ -708,7 +708,7 @@ int HYPRE_ParCSRPCGSetup(HYPRE_Solver       solver,
                          HYPRE_ParCSRMatrix A,
                          HYPRE_ParVector    b,
                          HYPRE_ParVector    x,
-                         context& runCfg);
+                         context& runCfg, int& num_precond_calls);
 
 /**
  * Solve the system.
@@ -717,7 +717,7 @@ int HYPRE_ParCSRPCGSolve(HYPRE_Solver       solver,
                          HYPRE_ParCSRMatrix A,
                          HYPRE_ParVector    b,
                          HYPRE_ParVector    x,
-                         context& runCfg);
+                         context& runCfg, int& num_precond_calls);
 
 /**
  * (Optional) Set the convergence tolerance.

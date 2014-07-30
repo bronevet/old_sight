@@ -39,7 +39,7 @@ hypre_BoomerAMGCycle( void              *amg_vdata,
                    context& runCfg, 
                    graph& AMGVCycleGraph,
                    anchor& lastAnchor, 
-                   context& solverCtxt
+                   context& solverCtxt, int& num_precond_calls
          )
 {
    hypre_ParAMGData *amg_data = (hypre_ParAMGData*)amg_vdata;
@@ -282,7 +282,7 @@ hypre_BoomerAMGCycle( void              *amg_vdata,
                            runCfg,
                            AMGVCycleGraph,
                            lastAnchor,
-                           solverCtxt);
+                           solverCtxt, num_precond_calls);
          
 
 
@@ -369,13 +369,15 @@ hypre_BoomerAMGCycle( void              *amg_vdata,
                }
                else if (relax_type == 13 || relax_type == 14)
                {
-                  if (j ==0) /* do num sweep iterations of CG */
+                  if (j ==0) { /* do num sweep iterations of CG */
+                     int tmp_num_precond_calls=0;
                      hypre_ParCSRRelax_CG( smoother[level],
                                            A_array[level], 
                                            Aux_F,      
                                            Aux_U,
                                            num_sweep,
-                                           runCfg, solveModule, solveModOutput);
+                                           runCfg,/* solveModule, solveModOutput*/ tmp_num_precond_calls);
+                  }
                }
                else if (relax_type == 8)
                {

@@ -294,7 +294,7 @@ int maxButtonID=0; // The maximum ID that has ever been assigned to a button
 void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int numOutputs, int count) {
 
   // hoa edit
-  tFile << moduleID <<":"<< moduleName << ":" << numInputs << ":"<<numOutputs <<endl;
+  //tFile << moduleID <<":"<< moduleName << ":" << numInputs << ":"<<numOutputs <<endl;
   //tFile << moduleName << ":" << numInputs << ":"<<numOutputs <<endl;
   //ioInfoFile << moduleID <<":"<< numInputs << ":"<<numOutputs<< endl;
 
@@ -305,9 +305,12 @@ void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int
   moduleTraces[moduleID]->obsFinished();
 
   // Get the ID of the module that contains this one, if any.
-  int containerModuleID=-1;
+  int containerModuleID = -1;
   if(mStack.size()>0) containerModuleID = mStack.back().moduleID;
   
+  // hoa edit
+  tFile << moduleID <<":"<< moduleName <<":"<< numInputs <<":"<<numOutputs<<":"<<containerModuleID<<endl;
+
   // Start a subgraph for the current module
   dotFile << "subgraph cluster"<<moduleID<<" {"<<endl;
   //dotFile << "\tstyle=filled;"<<endl;

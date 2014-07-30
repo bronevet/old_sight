@@ -71,7 +71,7 @@ typedef int (*HYPRE_PtrToSolverFcn)(HYPRE_Solver,
                                     HYPRE_Vector,
                                     HYPRE_Vector, 
                                     context& runCfg, graph& AMGVCycleGraph, anchor& lastAnchor,
-                                    context& solverIter);
+                                    context& solverIter, int& num_precond_calls);
 
 #endif
 
@@ -424,8 +424,8 @@ hypre_GMRESFunctions *hypre_GMRESFunctionsCreate ( char *(*CAlloc )(int count ,i
 void *hypre_GMRESCreate ( hypre_GMRESFunctions *gmres_functions );
 int hypre_GMRESDestroy ( void *gmres_vdata );
 int hypre_GMRESGetResidual ( void *gmres_vdata , void **residual );
-int hypre_GMRESSetup ( void *gmres_vdata , void *A , void *b , void *x, context& runCfg );
-int hypre_GMRESSolve ( void *gmres_vdata , void *A , void *b , void *x, context& runCfg, sightModule& solveModule, int solveModOutput );
+int hypre_GMRESSetup ( void *gmres_vdata , void *A , void *b , void *x, context& runCfg, int& num_precond_calls );
+int hypre_GMRESSolve ( void *gmres_vdata , void *A , void *b , void *x, context& runCfg/*, sightModule* solveModule, int solveModOutput*/, int& num_precond_calls );
 int hypre_GMRESSetKDim ( void *gmres_vdata , int k_dim );
 int hypre_GMRESGetKDim ( void *gmres_vdata , int *k_dim );
 int hypre_GMRESSetTol ( void *gmres_vdata , double tol );
@@ -451,8 +451,8 @@ int hypre_GMRESGetConverged ( void *gmres_vdata , int *converged );
 int hypre_GMRESGetFinalRelativeResidualNorm ( void *gmres_vdata , double *relative_residual_norm );
 
 /* HYPRE_gmres.c */
-int HYPRE_GMRESSetup ( HYPRE_Solver solver , HYPRE_Matrix A , HYPRE_Vector b , HYPRE_Vector x, context& runCfg );
-int HYPRE_GMRESSolve ( HYPRE_Solver solver , HYPRE_Matrix A , HYPRE_Vector b , HYPRE_Vector x, context& runCfg, sightModule& solveModule, int solveModOutput );
+int HYPRE_GMRESSetup ( HYPRE_Solver solver , HYPRE_Matrix A , HYPRE_Vector b , HYPRE_Vector x, context& runCfg, int& num_precond_calls );
+int HYPRE_GMRESSolve ( HYPRE_Solver solver , HYPRE_Matrix A , HYPRE_Vector b , HYPRE_Vector x, context& runCfg/*, sightModule* solveModule, int solveModOutput*/, int& num_precond_calls );
 int HYPRE_GMRESSetKDim ( HYPRE_Solver solver , int k_dim );
 int HYPRE_GMRESGetKDim ( HYPRE_Solver solver , int *k_dim );
 int HYPRE_GMRESSetTol ( HYPRE_Solver solver , double tol );
@@ -479,8 +479,8 @@ int HYPRE_GMRESGetFinalRelativeResidualNorm ( HYPRE_Solver solver , double *norm
 int HYPRE_GMRESGetResidual ( HYPRE_Solver solver , void **residual );
 
 /* HYPRE_pcg.c */
-int HYPRE_PCGSetup ( HYPRE_Solver solver , HYPRE_Matrix A , HYPRE_Vector b , HYPRE_Vector x, context& runCfg );
-int HYPRE_PCGSolve ( HYPRE_Solver solver , HYPRE_Matrix A , HYPRE_Vector b , HYPRE_Vector x, context& runCfg, sightModule& solveModule, int solveModOutput);
+int HYPRE_PCGSetup ( HYPRE_Solver solver , HYPRE_Matrix A , HYPRE_Vector b , HYPRE_Vector x, context& runCfg, int& num_precond_calls );
+int HYPRE_PCGSolve ( HYPRE_Solver solver , HYPRE_Matrix A , HYPRE_Vector b , HYPRE_Vector x, context& runCfg/*, sightModule* solveModule, int solveModOutput*/, int& num_precond_calls);
 int HYPRE_PCGSetTol ( HYPRE_Solver solver , double tol );
 int HYPRE_PCGGetTol ( HYPRE_Solver solver , double *tol );
 int HYPRE_PCGSetAbsoluteTolFactor ( HYPRE_Solver solver , double abstolf );
@@ -511,8 +511,8 @@ hypre_PCGFunctions *hypre_PCGFunctionsCreate ( char *(*CAlloc )(int count ,int e
 void *hypre_PCGCreate ( hypre_PCGFunctions *pcg_functions );
 int hypre_PCGDestroy ( void *pcg_vdata );
 int hypre_PCGGetResidual ( void *pcg_vdata , void **residual );
-int hypre_PCGSetup ( void *pcg_vdata , void *A , void *b , void *x, context& runCfg );
-int hypre_PCGSolve ( void *pcg_vdata , void *A , void *b , void *x, context& runCfg, sightModule& solveModule, int solveModOutput );
+int hypre_PCGSetup ( void *pcg_vdata , void *A , void *b , void *x, context& runCfg, int& num_precond_calls );
+int hypre_PCGSolve ( void *pcg_vdata , void *A , void *b , void *x, context& runCfg/*, sightModule* solveModule, int solveModOutput*/, int& num_precond_calls );
 int hypre_PCGSetTol ( void *pcg_vdata , double tol );
 int hypre_PCGGetTol ( void *pcg_vdata , double *tol );
 int hypre_PCGSetAbsoluteTolFactor ( void *pcg_vdata , double atolf );

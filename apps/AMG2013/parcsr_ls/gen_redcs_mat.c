@@ -9,7 +9,7 @@
 
 int hypre_seqAMGSetup( hypre_ParAMGData *amg_data,
                       int p_level,
-                      int coarse_threshold, context& runCfg)
+                      int coarse_threshold, context& runCfg/*, int& num_precond_calls*/)
 
 
 {
@@ -257,7 +257,7 @@ int hypre_seqAMGSetup( hypre_ParAMGData *amg_data,
             hypre_ParVectorInitialize(F_seq);
             hypre_ParVectorInitialize(U_seq);
 
-            hypre_BoomerAMGSetup(coarse_solver,A_seq,F_seq,U_seq, runCfg);
+            hypre_BoomerAMGSetup(coarse_solver,A_seq,F_seq,U_seq, runCfg/*, num_precond_calls*/);
 
             hypre_ParAMGDataCoarseSolver(amg_data) = coarse_solver;
             hypre_ParAMGDataACoarse(amg_data) = A_seq;
@@ -284,7 +284,7 @@ hypre_seqAMGCycle( hypre_ParAMGData *amg_data,
                    context& runCfg,
                    graph& AMGVCycleGraph,
                    anchor& lastAnchor,
-                   context& solverCtxt   )
+                   context& solverCtxt, int& num_precond_calls   )
 {
    
    hypre_ParVector    *Aux_U;
@@ -393,7 +393,7 @@ hypre_seqAMGCycle( hypre_ParAMGData *amg_data,
       /* clean up */
       if (redundant || my_id ==0)
       {
-         hypre_BoomerAMGSolve(coarse_solver, A_coarse, F_coarse, U_coarse, runCfg, AMGVCycleGraph, lastAnchor, solverCtxt);
+         hypre_BoomerAMGSolve(coarse_solver, A_coarse, F_coarse, U_coarse, runCfg, AMGVCycleGraph, lastAnchor, solverCtxt, num_precond_calls);
       }
 
       /*copy my part of U to parallel vector */

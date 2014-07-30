@@ -8,465 +8,420 @@ import java.io.Writer;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 
-String[] nodf;
-//String[] lnodes;
-String[] lconn;
 String[] fontList;
 PFont aFont;
+int font_size = 10;
+int statistic_viz = 0;
+int iorel_info = 0;
 
-// position of nodes
-float[] pnode = new float[50];
-// x coordinate of nodes
-float[] xcnode = new float[50];
-// width of nodes
-float[] wnode = new float[50];
-String[] names = new String[50];
+// size of node
+int nsi = 100;
+// list of nodes with input and output information
+String[] nodf;
+String[] lnodes = new String[nsi];
+// length of node
+int lnodes_length = 5;
+int cur_lnodes_length = 5;
+// connection between nodes
+String[] lconn;
+// node relation (recursion or not)
+String[] node_relation = new String[nsi];
+// depth of nodes for graph layout
+int[] node_depth = new int[nsi];
+String[] depthList = new String[nsi];
+int[] nodrel_len = new int[nsi];
+int depth_width;
+// visualization methods: sc3d, ccp, pcp, ... 
+String[] vizMeth = new String[nsi];
+// detail information of input and output relationship text
+String[] ioInfo = new String[nsi];
+String[] nVi;
+// depth distance
+float depth_distance;
+int current_depth_length;
+
+// node id
+int[] nodeID = new int[nsi];
+// names of node
+String[] names = new String[nsi];
 // number of inputs for each node
-int[] numin = new int[50];
-int[] numout = new int[50];
+int[] numin = new int[nsi];
+// number of outputs for each node
+int[] numout = new int[nsi];
+// containerID (parent)
+int[] containerID = new int[nsi];
 // number of connections for each node
-int[] numconn = new int[50];
-// nested loop array
-int[] nest = new int[50];
-int numnest = 0;
-float nestdis = 10.0;
-
+int[] numconn = new int[nsi];
+// io relation information for each node if has
+String[] ionodeInfo = new String[nsi];
+int[] ionodeInfo_height = new int[nsi];
+// y coordinate of nodes
+float[] xcnode = new float[nsi];
+float[] ycnode = new float[nsi];
+// width, height of nodes
+float[] wnode = new float[nsi];
+float[] hnode = new float[nsi];
+float[] nodedepth_height = new float[nsi];
 float xnode;
+float ynode;
 float nodeheight;
 float nodewidth;
 // to process the connections bewteen nodes 
 int node_st, node_en;
 int inp_st, out_en;
+// depth of recursion
+int depth_length = 0;
+// rec = 1: tree view, rec = 2 for nest view
+int rec_view = 0;
+// meth = 1 for recursion tree, meth = 2 for nested loop, meth = 3 for sequence
+int viewMeth = 3;
 // to process for recursion
-float xrec_bf, yrec_bf;
-float xrec_st, yrec_st, xrec_en, yrec_en;
-float rec_height, rec_width;
 float recdis = 2.0;
-PrintWriter outfile;
-String[] outf = new String[100];
-String[] lnodes = new String[100];
-String[] vizMeth = new String[100];
-String[] ioInfo = new String[100];
-int lnodes_length = 5;
-int cur_lnodes_length = 5;
-int[] outn = new int[100];
-int depth = 0;
-int curDepth = 0;
-int rec = 0;
-// meth = 0 for recursion tree, meth = 1 for nested loop
-int meth = 0;
-// collapse: cola = 0: no collapse, cola = 1: collapse
-int[][] cola = new int[100][100];
-int i_redraw = -1, j_redraw = -1, k_redraw = -1;
+// collapse: colap = 0: no collapse, colap = 1: collapse
+int[] collapse = new int[nsi];
+int node_col = -1;
+// scaleFactor for zooming (1 for 100%)
 float scaleFactor;
 float updateWinsize;
-String[] nVi;
-
+int[] temp = new int[nsi];
+  
 void setup() 
 { 
   // size of window
-  //size(1800, 800);
   size(1200, 1100);
-  
+  //e8
+  //size(1500, 800);
   background(255);
   smooth();
   // font size
   fontList = PFont.list();
-  aFont = createFont(fontList[0], 10, true);
+  aFont = createFont(fontList[0], font_size, true);
   textFont(aFont);
   
-   // read and write new file
-  nodf = loadStrings("node.txt");
+  // initialize parameters
+  scaleFactor = 1;
+  // x,y coordinate for root node
+  // for border
+  //ynode = 50;
+  viewMeth = 3;
+  
+  // node information: ModuleID:ModuleName:num_input:num_output:ContainterModuleID(parent)
+  lnodes = loadStrings("node.txt");
+  lnodes_length = lnodes.length;
   // connection between input and output of nodes   
   lconn = loadStrings("inout.txt");
+  // visualization methods: sc3d, ccp, pcp, ... 
+  vizMeth = loadStrings("dat.txt");
+  if(vizMeth.length>0)
+    statistic_viz = 1;
+  // detail information of input and output relationship text
+  ioInfo = loadStrings("ioInfo.txt");
+  if(ioInfo.length>0)
+    iorel_info = 1;
   
-  String[] nfun0 = split(nodf[nodf.length-1],':');
-  // modules data
-  if(nfun0.length < 5)
-  {
-    meth = 3;
-    // sequence data
-    lnodes_length = nodf.length;
-    for(int i=0; i< lnodes_length; i++)
-    {
-      String[] nfun = split(nodf[i],':');
-      lnodes[int(nfun[0])] = nfun[1]+":"+nfun[2]+":"+nfun[3];
-    }
-    vizMeth = loadStrings("dat.txt");
-    String[] vizInf = split(vizMeth[0],','); 
-    String[] nVi = split(vizInf[2],':');
-    
-    /*
-    for(int k=0; k<nVi.length(); k++)
-    {
-      addvizMeth(nVi[k]);
-    }
-    */
-    ioInfo = loadStrings("ioInfo.txt");
-  }
-  else
-  {
-    //String[] nfun0 = split(nodf[nodf.length-1],':');
-    depth = int(nfun0[2]);
-    lnodes_length = depth+1;
-    
-    for(int i=(nodf.length-1); i>=0; i--)
-    {
-      String[] nfun = split(nodf[i],':');
-      int dep = int(nfun[2]);
-      int fu = int(nfun[1])+1;
-      //nodf[i] = nfun[1]+":"+nfun[3]+":"+nfun[4]+":"+nfun[2];
-      
-      if(outf[dep] == null)
-         outf[dep] = "";
-      
-      outn[dep] += 1;
-         
-      if((outn[dep]%2) == 0 && (outn[dep]>0))
-        outf[dep]+=",";
-      else
-        outf[dep]+=":";  
-       
-      if(fu<3)
-        for(int m=1; m<(depth-dep); m++)
-          for (int l=1; l<=m; l++)
-            outf[dep+m] += ":0,0";
- 
-      outf[dep] += fu;
-    }
-    // recursion 
-    if(meth == 0)
-      for(int j=0; j<= depth; j++)
-        lnodes[j] = "R"+outf[j]; 
-    // nested loop
-    else
-      for(int j=0; j<= depth; j++)
-        lnodes[j] = "NR"+outf[j];
-  }
-  
- for(int i=0; i<lnodes_length; i++)
+  // compoute node information 
+  for(int i=0; i< lnodes_length; i++)
   {
     String[] inode = split(lnodes[i],':');
-    if(nfun0.length < 5)
+    // id of nodes
+    nodeID[i] = int(inode[0]);
+    // name of nodes
+    names[i] = inode[1];
+    // number of input
+    numin[i] = int(inode[2]);
+    // number of output
+    numout[i] = int(inode[3]);
+    // container id
+    containerID[i] = int(inode[4]);
+    // initialize depth node data
+    //node_relation[i] = nodeID[i]+":"; 
+    node_relation[i] = i+":"; 
+    node_depth[i] = ""; 
+    depthList[i] = "";
+    temp[i] = 0;
+    hnode[i] = 0;
+    wnode[i] = 0;
+    ycnode[i] = 0;
+    xcnode[i] = 0;
+    // if has recursion data - use default nest method
+    if(containerID[i] >= 0)
+      viewMeth = 2;
+     
+    collapse[i] = 0;  
+    // compute io information 
+    if(iorel_info == 1)
     {
-      // name of nodes
-      names[i] = inode[0];
-      // number of input
-      numin[i] = int(inode[1]);
-      // number of output
-      numout[i] = int(inode[2]);
+      String[] ioMod = split(ioInfo[i],';'); 
+      int numInf = int(ioMod[1]);
+      if(numInf > 0)
+      {
+        if(lnodes_length > 8)
+          ionodeInfo_height[i] = numInf+2;
+        else
+          ionodeInfo_height[i] = numInf+4;
+        
+        String[] io_Inf = split(ioMod[2],',');
+        ionodeInfo[i] = "";
+        for(int k=0; k<numInf; k++)
+          ionodeInfo[i] += io_Inf[k]+"\n";
+      }
     }
   }
+  // compute node relation data
+  // compute depth node data and depth_length
+  
+  for(int i=0; i< lnodes_length; i++)
+    // recursion data
+    if(containerID[i] > 0)
+      for(int j=0; j< lnodes_length; j++)
+        if(containerID[i] == nodeID[j])
+          node_relation[j] += i+":"; 
+  int nuDep = 0;
+  depth_length = 0;
+  depth_width = 0;
   
   for(int i=0; i<lnodes_length; i++)
   {
-    rec = 0;
-    int nodr = 0;
-    String[] inode = split(lnodes[i],':');
+    String[] depnod = split(node_relation[i],":");
+    nodrel_len[i] = depnod.length - 1;
+    if(depth_width < nodrel_len[i])
+      depth_width = nodrel_len[i];
     
-    for(int m=1; m<numnest; m++)
-      if(i == nest[m])
-        nodr = 1;
-    
-    if(nodr == 0)
-      numnest = 0;
-    
-    for(int j=0; j<inode.length; j++)
+    // recursion data
+    if(containerID[i] < 0)
     {
-      // if it is nested loop
-      if(inode[j].equals("N") == true)
-      {
-        numnest = 1;
-        nest[numnest-1] = i;
-        j += 1;
-        if(j>2)
+      depth_length = nuDep+1;
+      node_depth[i] = nuDep; 
+      nuDep += 1;      
+    }
+    else
+    {
+      for(int j=0; j<lnodes_length; j++)
+        if(containerID[i] == nodeID[j])
         {
-          numnest += 1;
-          if (numnest != 0)
-            nest[numnest-1] = int(inode[j]);
+          node_depth[i] = node_depth[j]+1;
+          if(depth_length < (node_depth[i]+1))
+            depth_length = node_depth[i]+1;
         }
-      }
-       
-      if(inode[j].equals("R") == true)
-      {
-        numnest = -1;
-        rec = 1;
-        cola[i][j] = 0;
-        cola[i][inode.length+j] = 0;
-      }
-      if(inode[j].equals("NR") == true)
-      {
-        numnest = -1;
-        rec = 2;
-        cola[i][j] = 0;
-        cola[i][inode.length+j] = 0;
-      }
     }
   }
-  
-  scaleFactor = 1;
-  
-  if(rec == 1 || rec == 2)
+ 
+  for(int i=0; i<lnodes_length; i++)
   {
-    // definde node width and height
-    nodeheight = 32;
-    nodewidth = 120;
-    int newWid = int(nodewidth*pow(2,lnodes_length-3)+nodewidth);
-    int newHei = int(3*nodeheight*depth);
-    size(newWid, newHei);
+    String[] depnod = split(node_relation[i],":");
+      
+    for(int k=0; k<nodrel_len[i]; k++)
+      int ino = int(depnod[k]);
+      if(containerID[ino]>0 && nodrel_len[ino]<2 && node_depth[ino]<(depth_length-2))
+        temp[ino] = 1;
   }
-   
+  
+  for(int m=0; m<lnodes_length; m++)
+  { 
+    if(containerID[m] < 0 && nodrel_len[m] < 2)
+    {
+     depthList[node_depth[m]] += m+ ":";  
+    }
+    else
+    {
+      if(containerID[m] <= 0)
+        depthList[node_depth[m]] += m+ ":";
+      String[] dep = split(node_relation[m],":");
+      for(int k=1; k<nodrel_len[m]; k++)
+      {
+        int deno = int(dep[k]);
+        depthList[node_depth[deno]] += deno+ ":"; 
+        if(temp[deno] == 1)
+        {
+          for(int t=node_depth[deno]+1; t<depth_length; t++)
+            depthList[t] += "-1:";
+        }
+      }
+    }
+    nodedepth_height[node_depth[m]] = 0;
+  }
+  // set up current depth length
+  current_depth_length = depth_length;
+  
   noLoop();
 }
  
 void draw() 
 {
   background(255);
-  
-  cur_lnodes_length = lnodes_length;
-  
-  int tcur_lnodes_length = lnodes_length;
- if(rec ==1 || rec ==2)
- { 
-  for(int i=0; i<lnodes_length; i++)
+  nodeheight = 1.8*font_size;
+  //nodeheight = height/(8*depth_length);
+  //nodewidth = width/(depth_width + 1);
+  if(lnodes_length > 8)
   {
-    int changelen = 1;
-    String[] inode = split(lnodes[i],':');
-    
-    for(int j=1; j<inode.length; j++)
-    {  
-      String[] recnod = split(inode[j],',');
-      
-      if(rec == 1 || rec == 2)
-      {
-        int mt;
-        if(i_redraw == 0)
-        {
-           mt = 2*j;
-           j_redraw = j;
-        }
-        else
-           mt = 2*j+k_redraw;
-        
-        if(i_redraw == i && j_redraw == j && cola[i][mt] == 1)
-        {
-          // expand
-          cola[i][mt] = 0;
-          int pre_a = mt;
-          pre_a = 2*pre_a-1;     
-          
-          if(int(recnod[k_redraw])== 4)
-          {
-            cola[i+1][pre_a-1] = 1;
-            cola[i+1][pre_a] = 0;
-          }
-          else if(int(recnod[k_redraw]) > 4)
-          {
-            cola[i+1][pre_a-1] = 1;
-            cola[i+1][pre_a] = 1;
-          }
-          else 
-          {
-            cola[i+1][pre_a-1] = 0;
-            cola[i+1][pre_a] = 0;
-          }
-            
-          if((i+2)<lnodes_length)  
-          {
-            for(int a=i+2; a<lnodes_length; a++)
-            {  
-              pre_a = 2*pre_a-1;      
-              for(int b=0;b<pow(2,a-i); b++)
-                //if((pre_a-b) < (lnodes_length)*inode.length)
-                  cola[a][pre_a-b] = 2;
-            }
-          }
-        }
-        else if(i_redraw == i && j_redraw == j && cola[i][mt] == 0)
-        {
-          // collapse
-          cola[i][mt] = 1;  
-          int pre_a = mt;
-          for(int a=i+1; a<lnodes_length; a++)
-          {  
-            pre_a = 2*pre_a-1;      
-            for(int b=0;b<pow(2,a-i); b++)
-              //if((pre_a-b) < (lnodes_length+1)*(inode.length+1))
-                cola[a][pre_a-b] = 2;
-          }
-        }
-        else if(cola[i][mt] == 1)
-          cola[i][mt] = 1;
-        else if(cola[i][mt] == 2)
-          cola[i][mt] = 2;
-        else
-          cola[i][mt] = 0;
-        // het thu tam  
-          
-        if(int(recnod[0])>2)
-        {
-          if(cola[i][2*j] == 0)
-            changelen = 0;
-          //println("cola["+i+"]["+2*j+"]="+cola[i][2*j]);
-        }
-        if(i>0)
-        {
-          if(int(recnod[1])>2)
-          {
-            if(cola[i][2*j+1] == 0)
-              changelen = 0;
-            //println("cola["+i+"]["+(2*j+1)+"]="+cola[i][2*j+1]);
-          }
-        }
-      }
-    }
-    if(changelen == 1)
-    {
-      tcur_lnodes_length = i+1;
-      i = lnodes_length;
-    }
-    //println("i="+i+" and changelen="+changelen);
-  }
-  //println("tcur_lnodes_length="+tcur_lnodes_length);
- } 
-  // ket thuc thu
-  if(rec == 1 || rec == 2)
-  {
-    int newWid = int(nodewidth*pow(2,tcur_lnodes_length-3)+nodewidth);
-    int newHei = int(3*nodeheight*depth);
-    if(scaleFactor == 1)
-      size(newWid, newHei);
-    //println("width="+width);
-  }
-  
-  // modules data
-  String[] nfun0 = split(nodf[nodf.length-1],':');
-  if(nfun0.length < 5)
-  {
-    xnode = 60;
-    nodeheight = 24;
-    nodewidth = width/1.5;
+    nodewidth = 28*font_size;
+    depth_distance = 2*font_size;
   }
   else
   {
-    // recursion/nested data 
-    xnode = width;
-    //nodeheight = 32;
-    //nodewidth = 120;
+    nodewidth = 40*font_size;
+    depth_distance = 6*font_size;
   }
   
-  for(int i=0; i<tcur_lnodes_length; i++)
+  //depth_distance = height/60;
+  xnode = depth_distance;
+  // update the lnodes_length here for resize window 
+  //nodeheight = 1.8*font_size;
+
+  // update depth length
+  int changedep = 1;
+  for(int j=depth_length-1; j>=0; j--)
   {
-    // position, width of nodes
-    pnode[i] = height*i/(tcur_lnodes_length+1)+nodeheight;  
-    wnode[i] = nodewidth;
-    xcnode[i] = xnode;
+    String[] depli = split(depthList[j], ":");
+    for(int k=0; k<(depli.length-1);k++)
+    {
+      if(int(depli[k])>=0)
+      {
+        // update current depth length
+        if(collapse[int(depli[k])] != 2)
+        {
+          changedep = 0;
+        }
+      }
+    }
+    
+    if(changedep == 0)
+    {
+      current_depth_length = j+2;
+      j = -1;
+    }
   }
+  depth_length = current_depth_length;
   
-  rec_height = nodeheight;
-  rec_width = nodewidth/6;
-  xrec_bf = xnode/2;
-  yrec_bf = rec_height;
-  
-  // if data has recursion
-  if(rec == 1 || rec == 2)
-  {
-    draw_methButton(rec);
-  }
-  
-  // Draw input and output of each node
+  // update depth width
+  depth_width = 0;
   for(int i=0; i<lnodes_length; i++)
   {
+    String[] depnod = split(node_relation[i],":");
+    if((depnod.length-1) < (depth_length-2))
+      if(depth_width < (depnod.length-1))
+        depth_width = (depnod.length-1);
+  }
+  
+  // width, height of nodes
+  for(int i=0; i<lnodes_length; i++)
+  { 
+    // compute height of node
+    hnode[i] = nodeheight + depth_distance;
+    if(numin[i]>0 || numout[i]>0)
+      hnode[i] += nodeheight;
+    if(statistic_viz == 1)
+      hnode[i] += nodeheight;
+    if(iorel_info==1)
+      hnode[i] += ionodeInfo_height[i]*font_size;
+    
+    // update nodedepth_height
+    if(nodedepth_height[node_depth[i]] < hnode[i])
+      nodedepth_height[node_depth[i]] = hnode[i];
+     
+    // compute wide of node
+    wnode[i] = nodewidth;
+  }
+  
+  for(int i=0; i<lnodes_length; i++)
+  {   
+    // position of nodes
+    if(containerID[i] < 0)
+    {
+      if(viewMeth == 2)
+        xcnode[i] = xnode+depth_length*font_size;
+      else
+        xcnode[i] = xnode + (width-xnode)/(depth_width+3);
+    }
+    else
+    {
+      for(int j=0; j<depth_length; j++)
+      {
+        String[] delis = split(depthList[j], ":");
+        for(int k=0;k<(delis.length-1);k++)
+          if(i == int(delis[k]))
+          {
+            if(viewMeth == 2)
+              xcnode[i] = xnode + k*(width-xnode)/(delis.length-1) + j*font_size;
+            else
+              xcnode[i] = xnode + k*(width-xnode)/(delis.length-1);
+          }
+      }
+    }
+    if(node_depth[i]==0)
+      ycnode[i] = 2*depth_distance;
+    else
+    {
+      float ytmp=0;
+      for(int m=0; m<(node_depth[i]-1);m++)
+        ytmp += nodedepth_height[m];
+      ycnode[i] = ytmp + nodedepth_height[node_depth[i]-1]+2*depth_distance;
+    }
+  }
+    
+  if(viewMeth == 2)
+  {
+    // update xcnode
+    for(int i=0; i<lnodes_length; i++)
+    {
+      // update xcnode
+      if(nodrel_len[i]>2)
+      {
+        String[] depnod = split(node_relation[i],":");
+        xcnode[i] = xcnode[int(depnod[1])] - font_size;
+      }
+    }
+    // update width of node
+    for(int j=depth_length-3; j>=0; j--)
+    {
+      String[] depli = split(depthList[j], ":");
+      for(int k=0; k<(depli.length-1);k++)
+      {
+        if(int(depli[k])>=0)
+        {
+          for(int i=0; i<lnodes_length; i++)
+          {
+            if(i == int(depli[k]))
+            {
+              String[] depnod = split(node_relation[i],":");
+              if(nodrel_len[i]>2)
+                wnode[i] =  xcnode[int(depnod[depnod.length-2])] - xcnode[int(depnod[1])] + wnode[int(depnod[depnod.length-2])] + font_size;
+              else if(nodrel_len[i] == 2)
+                wnode[i] = wnode[int(depnod[1])] + font_size;
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  int newWid, newHei;
+  if(lnodes_length > 8)
+  {
+    newWid = int(100+nodewidth*(depth_width+1));
+    newHei = depth_distance;
+  }
+  else
+  {
+    newWid = int(100+nodewidth*(depth_width+2));
+    newHei = depth_distance;
+  }
+  for(int k=0; k< (depth_length); k++)
+  {
+     newHei += int(hnode[k]);
+  }
+ 
+  
+  if(scaleFactor == 1)
+    size(newWid, newHei);
+ 
+  if(viewMeth == 1 || viewMeth == 2)
+    draw_methButton(viewMeth);
+  // Draw nodes
+  for(int i=(lnodes_length -1); i>=0; i--)
+  {
     // draw nodes
-    if (rec == 0)
-        draw_nodes(i, numnest);
-    // recursion
-    else if(rec == 1)
-    {
-      float nn = pow(2,i);
-      String[] ino = split(lnodes[i],':');
-      int po = 1;
-        
-      for(int j=1; j<ino.length; j++)
-      {
-        String[] recnod = split(ino[j],',');
-        
-        if(i==0)
-        {
-            // draw first node
-            draw_recnode(int(recnod[0]), xrec_bf, pnode[i], rec_width, rec_height, i, cola[i][2*j]);
-            
-            if(lconn.length > 0)
-              draw_curvearrow(xrec_bf+rec_width, pnode[i]+rec_height/2, xnode+nodewidth/2, pnode[int(recnod[0])-1]+nodeheight/2, 2);
-        }
-        else
-        {
-            // draw other nodes
-            if(int(recnod[0])>0)
-            {
-              xrec_st = po*2*xrec_bf/(nn+1);
-              yrec_st = pnode[i];
-              
-              draw_recnode(int(recnod[0]), xrec_st, yrec_st, rec_width, rec_height, i, cola[i][2*j]);
-              
-              float pp = 1;
-              if(po>1)
-                pp = po-(j-1);
-              
-              if(int(recnod[0])>1 && cola[i][2*j]!=2)
-                draw_arrow(pp*2*xrec_bf/(pow(2,i-1)+1)+rec_width/2,pnode[i-1]+rec_height, xrec_st+rec_width/2, pnode[i]); 
-        
-              xrec_en = ((po+1)*2*xrec_bf)/(nn+1);
-              yrec_en = pnode[i];
-                
-              draw_recnode(int(recnod[1]), xrec_en, yrec_en, rec_width, rec_height, i, cola[i][2*j+1]);
-              //cola = 0;
-              if(int(recnod[1])>0 && cola[i][2*j+1]!=2)
-                draw_arrow(pp*2*xrec_bf/(pow(2,i-1)+1)+rec_width/2,pnode[i-1]+rec_height, xrec_en+rec_width/2, pnode[i]); 
-            }
-            po += 2;
-        }
-      }
-    }
-    // nested loop
-    else if(rec == 2)
-    {
-      float nn = pow(2,i);
-      String[] ino = split(lnodes[i],':');
-      int po = 1;
-        
-      for(int j=1; j<ino.length; j++)
-      {
-        String[] recnod = split(ino[j],',');
-        if(i==0)
-        {
-            // draw frist node
-            draw_nestrec(int(recnod[0]), recdis, pnode[i], 2*xrec_bf-2*recdis, rec_height, i, cola[i][2*j]);
-            if(lconn.length > 0)
-              draw_curvearrow(xrec_bf+rec_width, pnode[i]+rec_height/2, xnode+nodewidth/2, pnode[int(recnod[0])-1]+nodeheight/2, 2);
-        }
-        else
-        {
-            if(int(recnod[0])!=0)
-            {
-              // position (x,y) of start node - left side              
-              xrec_st = (po-1)*2*xrec_bf/nn + (i+1)*recdis;
-              yrec_st = pnode[i];
-              // position (x,y) of end node - right side
-              xrec_en = (po*2*xrec_bf)/nn + (i-1)*recdis;
-              yrec_en = pnode[i];
-              // previous po   
-                
-              // left side
-              draw_nestrec(int(recnod[0]), xrec_st, yrec_st, (2*xrec_bf)/nn - (i+2)*recdis, rec_height, i, cola[i][2*j]);
-              
-              // right side
-              draw_nestrec(int(recnod[1]), xrec_en, yrec_en, (2*xrec_bf)/nn - (i+2)*recdis, rec_height, i, cola[i][2*j+1]);
-            }
-            po += 2;
-        }
-      }
-    }
+    draw_nodes(i, xcnode[i], ycnode[i], wnode[i], hnode[i]);
   }
   
   // Draw connection between input and output of nodes
@@ -483,248 +438,115 @@ void draw()
         
         // Node start
         String[] con_st = split(tconn[0],'_');  
-        node_st = int(con_st[0]);
-        inp_st = int(con_st[2]);
-          
         // Node end
         String[] con_en = split(tconn[1],'_');
-        node_en = int(con_en[0]);
+        for(int k=0; k<lnodes_length; k++)
+        {
+          if(nodeID[k] == int(con_st[0]))
+            node_st = k;
+          if(nodeID[k] == int(con_en[0]))
+            node_en = k;
+        }
+        
+        inp_st = int(con_st[2]);
         out_en = int(con_en[2]);
-        //println("node_st="+node_st+"inp_st="+inp_st+"node_en="+node_en+"out_en="+out_en + "numnest ="+numnest );
+        
+        float xtmp_st = xcnode[node_st] + (inp_st+0.5)*wnode[node_st]/(numin[node_st]+numout[node_st]);
+        float xtmp_en = xcnode[node_en] + (numin[node_en]+out_en-0.5)*wnode[node_en]/(numin[node_en]+numout[node_en]);
         
         // Draw connection bewteen two nodes
-        // straight arrow connection
-        if(node_en == (node_st + 1) && inp_st == out_en)
-          draw_arrow(xcnode[node_st]+wnode[node_st]/2, pnode[node_st]+((numin[node_st]+1)*nodeheight), xcnode[node_en]+wnode[node_en]/2, pnode[node_en]); 
-        // left curve
-        else if(node_en == node_st)
-          draw_curvearrow(xcnode[node_st], pnode[node_st]+(numin[node_st]*nodeheight + nodeheight/2), xcnode[node_en], pnode[node_en]+(out_en*nodeheight+nodeheight/2), 1);
-        // right curve
-        else
-          draw_curvearrow(xcnode[node_st]+wnode[node_st], pnode[node_st]+(numin[node_st]*nodeheight + nodeheight/2), xcnode[node_en]+wnode[node_en], pnode[node_en]+(out_en*nodeheight+nodeheight/2), 0);
+        if(collapse[node_st]!=2 && collapse[node_en]!=2)
+        {
+           // straight arrow connection
+          if(node_depth[node_st] != node_depth[node_en])
+            //draw_arrow(xtmp_st, ycnode[node_st]+nodeheight, xtmp_en, ycnode[node_en]); 
+               draw_curvearrow(xtmp_st, ycnode[node_st]+nodeheight, xtmp_en, ycnode[node_en],3);
+         
+          // curve
+          else if(node_en == node_st)
+          {
+            xtmp_en = xcnode[node_en] + (numin[node_en]+out_en+0.5)*wnode[node_en]/(numin[node_en]+numout[node_en]);
+            draw_curvearrow(xtmp_st, ycnode[node_st], xtmp_en, ycnode[node_en],2);
+          }
+          else
+          {
+            if(xtmp_st < xtmp_en)
+               xtmp_en = xcnode[node_en] + (numin[node_en]+out_en+0.5)*wnode[node_en]/(numin[node_en]+numout[node_en]);
+            draw_curvearrow(xtmp_st, ycnode[node_st], xtmp_en, ycnode[node_en],2);
+          }
+        }
        }  
      }
    }
 }
 
-void updateNum()
-{
-  
-  // thu
-  int tcur_lnodes_length = lnodes_length;
-  for(int i=0; i<lnodes_length; i++)
-  {
-    int changelen = 1;
-    String[] inode = split(lnodes[i],':');
-    
-    for(int j=1; j<inode.length; j++)
-    {  
-      String[] recnod = split(inode[j],',');
-      if(rec == 1)
-      {
-        if(int(recnod[0])>0)
-        {
-          if(cola[i][2*j] == 0)
-            changelen = 0;
-          println("cola["+i+"]["+2*j+"]="+cola[i][2*j]);
-        }
-        if(i>0)
-        {
-          if(int(recnod[1])>0)
-          {
-            if(cola[i][2*j+1] == 0)
-              changelen = 0;
-            println("cola["+i+"]["+(2*j+1)+"]="+cola[i][2*j+1]);
-          }
-        }
-      }
-      if(rec == 2)
-      {
-        //cola[i][j] = 0;
-        //cola[i][inode.length+j] = 0;
-      }
-    }
-    if(changelen == 1)
-    {
-      tcur_lnodes_length = i;
-      i = lnodes_length;
-    }
-    //println("i="+i+" and changelen="+changelen);
-  }
-  
-  println("tcur_lnodes_length="+tcur_lnodes_length);
-  
-  // ket thuc thu
-}
 void mousePressed() 
 { 
-  if(meth == 3)
+  for(int i=0; i<lnodes_length; i++)
   {
-    //println("meth"+meth);
-  
-    for(int i=0; i<lnodes_length; i++)
+    String[] vizInf = split(vizMeth[i],','); 
+    String[] nVi = split(vizInf[2],':');
+    int nvi_len = nVi.length;
+    for(int k=0; k<nvi_len; k++)
     {
-      String[] vizInf = split(vizMeth[i],','); 
-      String[] nVi = split(vizInf[2],':');
+      float stY, enY, stX, enX;
+      stY = ycnode[i]+2*nodeheight;
+      enY = ycnode[i]+3*nodeheight;
+      stX = (xcnode[i] + k*wnode[i]/nvi_len);
+      enX = (xcnode[i] + (k+1)*wnode[i]/nvi_len);
+      if(mouseX >= stX && mouseX <= enX && mouseY >= stY && mouseY <= enY)
+        clickModule(vizInf[0], int(vizInf[1])+k*100, names[i], (100*mouseX/width+10), 100*mouseY/height);
+    }
     
-      for(int k=0; k<nVi.length(); k++)
+    if(viewMeth == 1 || viewMeth == 2)
+    {
+      String[] depno = split(node_relation[i], ":");
+          
+      if(mouseX >= (xcnode[i]) && mouseX <= (xcnode[i]+wnode[i]) && mouseY >= ycnode[i] && mouseY <= (ycnode[i]+2*nodeheight))
       {
-        float stY, enY;
-        if(numout[i] > 0)
+        // collapse
+        if(collapse[i] == 0)
         {
-          stY = pnode[i]+(numin[i]*nodeheight)+nodeheight;
-          enY = pnode[i]+(numin[i]*nodeheight)+2*nodeheight;
+          if(i == int(depno[0]))
+          {
+            collapse[i] = 1;
+            for(int m=1; m<(depno.length-1); m++)
+              collapse[int(depno[m])] = 2;
+          }
         }
-        else
+        // expand
+        else if(collapse[i] == 1)
         {
-          stY = pnode[i]+(numin[i]*nodeheight);
-          enY = pnode[i]+(numin[i]*nodeheight)+nodeheight;
+          collapse[i] = 0;
+            for(int m=1; m<(depno.length-1); m++)
+            {
+              if(nodrel_len[int(depno[m])]>1)
+                collapse[int(depno[m])] = 1;
+              else
+                collapse[int(depno[m])] = 0;
+            }
         }
-        if(mouseX >= (xnode + k*nodewidth/nVi.length()) && mouseX <= (xnode + k*nodewidth/nVi.length()+nodewidth/nVi.length()) && mouseY >= stY && mouseY <= enY)
-        {
-          //println("k="+k+":"+nVi[k]+"vizInf[0]="+vizInf[0]+"vizInf[1]"+vizInf[1]);
-          //println(int(vizInf[1])+k*100);
-          clickModule(vizInf[0], int(vizInf[1])+k*100, names[i], (100*mouseX/width+10), 100*mouseY/height);
-        }  
+        redraw();
+      }
+      // hidden
+      if(collapse[i] == 2)
+      {
+        for(int m=1; m<(depno.length-1); m++)
+          collapse[int(depno[m])] = 2;
+        redraw();
       }
     }
   }
-  // recursion - tree
-  if(rec == 1)
-  {
-    for(int i=0; i<lnodes_length; i++)
-    {
-      String[] ino = split(lnodes[i],':');
-      int po = 1;
-      float nn = pow(2,i);
-      
-      for(int j=1; j<ino.length; j++)
-      {
-        String[] recnod = split(ino[j],',');
-            
-        if(i==0)
-        {
-            // draw first node
-            if(mouseX >= xrec_bf && mouseX <= (xrec_bf+rec_width) && mouseY >= pnode[i] && mouseY <= (pnode[i]+rec_height))
-            {
-              //cola = 1;
-              i_redraw = i; 
-              j_redraw = j;
-              k_redraw = 0;
-              redraw();
-            }
-        }
-        else
-        {
-            // draw other nodes
-            if(int(recnod[0])!=0)
-            {
-              xrec_st = po*2*xrec_bf/(nn+1);
-              yrec_st = pnode[i];
-              //draw_recnode(int(recnod[0]), xrec_st, yrec_st, rec_width, rec_height, i);
-              float pp = 1;
-              if(po>1)
-                pp = po-(j-1);
-             
-              xrec_en = ((po+1)*2*xrec_bf)/(nn+1);
-              yrec_en = pnode[i];
-              
-              if(mouseX >= xrec_st && mouseX <= (xrec_st+rec_width) && mouseY >= yrec_st && mouseY <= (yrec_st+rec_height))
-              {
-                //cola = 1;
-                i_redraw = i; 
-                j_redraw = j;
-                k_redraw = 0;
-                redraw();
-              }
-              if(mouseX >= xrec_en && mouseX <= (xrec_en+rec_width) && mouseY >= yrec_en && mouseY <= (yrec_en+rec_height))
-              {
-                //cola = 1;
-                i_redraw = i; 
-                j_redraw = j;
-                k_redraw = 1;
-                redraw();
-              }
-            }
-            po += 2;
-        }
-      }
-    }  
-  }
-  // nested loop
-  else if (rec == 2)
-  {
-    for(int i=0; i<lnodes_length; i++)
-    {
-      String[] ino = split(lnodes[i],':');
-      int po = 1;
-      float nn = pow(2,i);
-      
-      for(int j=1; j<ino.length; j++)
-      {
-        String[] recnod = split(ino[j],',');
-            
-        if(i==0)
-        {
-            // draw first node
-            if(mouseX >= xrec_bf && mouseX <= (xrec_bf+2*xrec_bf-2*recdis) && mouseY >= pnode[i] && mouseY <= (pnode[i]+rec_height))
-            {
-              //cola = 1;
-              i_redraw = i; 
-              j_redraw = j;
-              k_redraw = 0;
-              redraw();
-            }
-        }
-        else
-        {
-            // draw other nodes
-            if(int(recnod[0])!=0)
-            {
-              // position (x,y) of start node - left side              
-              xrec_st = (po-1)*2*xrec_bf/nn + (i+1)*recdis;
-              yrec_st = pnode[i];
-              // position (x,y) of end node - right side
-              xrec_en = (po*2*xrec_bf)/nn + (i-1)*recdis;
-              yrec_en = pnode[i];
-
-              if(mouseX >= xrec_st && mouseX <= (xrec_st+ (2*xrec_bf)/nn - (i+2)*recdis) && mouseY >= yrec_st && mouseY <= (yrec_st+rec_height))
-              {
-                //cola = 1;
-                i_redraw = i; 
-                j_redraw = j;
-                k_redraw = 0;
-                redraw();
-              }
-              if(mouseX >= xrec_en && mouseX <= (xrec_en+ (2*xrec_bf)/nn - (i+2)*recdis) && mouseY >= yrec_en && mouseY <= (yrec_en+rec_height))
-              {
-                //cola = 1;
-                i_redraw = i; 
-                j_redraw = j;
-                k_redraw = 1;
-                redraw();
-              }
-            }
-            po += 2;
-        }
-      }
-    }  
-  }
-  
+ 
   // check what method is selected for recursion visualization
   if(mouseX >= 10 && mouseX <= 90 && mouseY >= 5 && mouseY <= 25)
   {
-    if(rec == 1)
-    {
-      rec = 2;
-    }
+    if(viewMeth == 1)
+      viewMeth = 2;
     else
-    {
-      rec = 1;
-    }
+      viewMeth = 1;
     redraw();
   }
-  
 }
 
 void mouseDragged() 
@@ -742,10 +564,12 @@ void keyPressed()
 {
   if (key == 'i' || key == UP)
   {
-    scaleFactor += 10;
+    scaleFactor += 20;
+    font_size += 1;
     if(width+int(scaleFactor)>100 && height+int(scaleFactor/10) > 100)
     {
-      size(width+int(scaleFactor), height+int(scaleFactor/10));
+      //size(width+int(scaleFactor), height+int(scaleFactor/10));
+      size(width+int(scaleFactor), height+int(scaleFactor/5));
       background(255);
       smooth();
       redraw();
@@ -758,10 +582,12 @@ void keyPressed()
   }
   if (key == 'o'|| key == DOWN)
   {
-    scaleFactor -= 10;
+    scaleFactor -= 20;
+    font_size -= 1;
     if(width+int(scaleFactor)>100 && height+int(scaleFactor/10) > 100)
     {
-      size(width+int(scaleFactor), height+int(scaleFactor/10));
+      //size(width+int(scaleFactor), height+int(scaleFactor/10));
+      size(width+int(scaleFactor), height+int(scaleFactor/5));
       background(255);
       smooth();
       redraw();
@@ -776,7 +602,7 @@ void keyPressed()
   if (key == 27)
   {
     scaleFactor = 1;
-    size(1800, 800);
+    size(1500, 1200);
     background(255);
     smooth();
     redraw();
@@ -801,10 +627,10 @@ void draw_methButton(int metho)
 {
     stroke(0);
     strokeWeight(1);
-      
     fill(255, 100, 255);  
     rect(10, 5, 80, 20);
-    textSize(15);
+    //textSize(15);
+    textSize(font_size*1.5);
     fill(50);
     textAlign(CENTER);
     if(metho == 1)
@@ -813,260 +639,131 @@ void draw_methButton(int metho)
       text("Tree Viz", 50, 22);
 }
 
-void draw_recnode(int inod, float xn, float yn, float nw, float nh, int de, int col)
-{
-    if(col != 2)
-    {
-      stroke(0);
-      strokeWeight(1);
-        
-      colorMode(HSB);
-      fill(de*255/(depth+1), 150, 255);  
-      rect(xn, yn, nw, nh);
-      textSize(10);
-      fill(50);
-      textAlign(CENTER);
-      text("M"+(inod-1), xn + nw/2, yn + nh/3);
-    } 
-    if(col == 1)
-    {
-      textSize(20);
-      text("+", xn + nw/2, yn + 4*nh/5);  
-    }
-}
 
-void draw_nestrec(int inod, float xn, float yn, float nw, float nh, int de, int col)
-{
-    if(col != 2)
-    {
-      // draw node
-      stroke(0);
-      strokeWeight(1);
-      //fill(255);
-      colorMode(HSB);
-      fill(de*255/(depth+1), 150, 255);
-      rect(xn, yn, nw, nh);
-     
-      
-      textSize(10);
-      fill(50);
-      textAlign(CENTER);
-      text("M"+(inod-1), xn + nw/2, yn + nh/1.5);    
-    }
-    if(col == 0)
-    {
-       // draw nested box
-      if(inod > 2)
-      {
-        noFill();
-        rect(xn, yn+nh, nw, pnode[depth] - yn + nh + inod*recdis);
-      }
-    }
-    if(col == 1)
-    {
-      textSize(20);
-      text("+", xn + 3*nw/4, yn + nh/1.5); 
-    }
-}
-
-void draw_nodes(int inod, int nonest)
+void draw_nodes(int inod, float xc, float yc, float wn, float hn)
 { 
-  //println("inod = "+inod+" numnest="+numnest);
-  // no nested loop
-  if(nonest == 0)
+  int numio = numin[inod] + numout[inod];
+ 
+  // start draw node box
+  textAlign(CENTER);
+  textSize(font_size);
+ 
+  if(collapse[inod] != 2)
   {
-    // draw inputs
+     // 1.1 draw inputs
     if(numin[inod] > 0)
     {
       for(int i=0; i<numin[inod]; i++)
       {
         stroke(0);
         strokeWeight(1);
-        //fill(255);
-        colorMode(HSB);
-        fill(inod*255/lnodes_length, 150, 255);
-        rect(xnode, pnode[inod]+(i*nodeheight), nodewidth, nodeheight);
+        //colorMode(HSB);
+        //fill(node_depth[inod]*255/(depth_length+1), 150, 255);
+        fill(230);
+        rect(xc+i*wn/numio, yc, wn/numio, nodeheight);
         
-        textAlign(CENTER);
-        textSize(10);
         fill(50);
-        
-        text(names[inod]+"_In"+i, xnode + nodewidth/2, pnode[inod]+(i*nodeheight)+nodeheight/1.5);
+        text("In"+i, xc + (i+0.5)*wn/numio, yc+nodeheight/1.5);
       }
     }
     
-    // draw outputs
-    // draw visualization methods box
-    String[] vizInf = split(vizMeth[0],','); 
-    String[] nVi = split(vizInf[2],':');
-    
+    // 1.2 draw outputs
     if(numout[inod] > 0)
     {
-      // draw outputs
-      stroke(0);
-      strokeWeight(1);
-      //fill(255);
-      colorMode(HSB);
-      fill(inod*255/lnodes_length, 250, 255);
-        
-      rect(xnode, pnode[inod]+(numin[inod]*nodeheight), nodewidth, nodeheight);
-      
-      textSize(10);
-      fill(50);
-      textAlign(CENTER);
-      text(names[inod]+"_Out0", xnode + nodewidth/2, pnode[inod]+(numin[inod]*nodeheight)+nodeheight/1.5);
-      
-      // draw visualization methods box
-      for(int k=0; k<nVi.length(); k++)
+      for(int i=numin[inod]; i<numio; i++)
       {
+        // draw outputs
         stroke(0);
         strokeWeight(1);
-        //fill(255);
-        colorMode(HSB);
-        fill(k*255/nVi.length(), 20, 250);
+        //colorMode(HSB);
+        //fill(node_depth[inod]*255/(depth_length+1), 150, 255);
+        fill(200);
+        rect(xc+i*wn/numio, yc, wn/numio, nodeheight);
         
-        rect(xnode + k*nodewidth/nVi.length(), pnode[inod]+(numin[inod]*nodeheight)+nodeheight, nodewidth/nVi.length(), nodeheight);
-       
-        textSize(10);
         fill(50);
-        textAlign(CENTER);
-        text(nVi[k], xnode + (k+1/2)*nodewidth/nVi.length(), pnode[inod]+(numin[inod]*nodeheight)+nodeheight+nodeheight/1.5);
+        text("Out"+(i-numin[inod]), xc + (i+0.5)*wn/numio, yc+nodeheight/1.5);
       }
     }
-    else
-    {
-      // draw visualization methods box
-      for(int k=0; k<nVi.length(); k++)
-      {
-        stroke(0);
-        strokeWeight(1);
-        //fill(255);
-        colorMode(HSB);
-        fill(k*255/nVi.length(), 20, 250);
-        rect(xnode + k*nodewidth/nVi.length(), pnode[inod]+(numin[inod]*nodeheight), nodewidth/nVi.length(), nodeheight);
-       
-        textSize(10);
-        fill(50);
-        textAlign(CENTER);
-        text(nVi[k], xnode + (k+1/2)*nodewidth/nVi.length(), pnode[inod]+(numin[inod]*nodeheight)+nodeheight/1.5);
-      }
-    }
-    
-    // draw input, output information
-      int nodi = inod;
-      for(int m=0; m<ioInfo.length();m++)
-      {
-        String[] ioi = split(ioInfo[m],';'); 
-        if(int(ioi[0]) == inod)
-          nodi = m;
-      }
-      String[] ioMod = split(ioInfo[inod],';'); 
-      int numInf = int(ioMod[1]);
-      if(numInf > 0)
-      {
-        String[] ioInf = split(ioMod[2],',');
-        String inf = "";
-        for(int k=0; k<numInf; k++)
-        {
-          inf += ioInf[k]+"\n";
-        }
-        if(numout[nodi] > 0)
-        {
-          stroke(0);
-          strokeWeight(1);
-          fill(255);
-          rect(xnode, pnode[nodi]+(numin[nodi]*nodeheight)+2*nodeheight, nodewidth, numInf*nodeheight/1.5);
-         
-          textSize(10);
-          fill(50);
-          textAlign(CENTER);
-          text(inf, xnode + nodewidth/2, pnode[nodi]+(numin[nodi]*nodeheight)+2*nodeheight+nodeheight/1.5);
-          }
-        else
-        { 
-          stroke(0);
-          strokeWeight(1);
-          fill(255);
-          rect(xnode, pnode[nodi]+(numin[nodi]*nodeheight)+nodeheight, nodewidth, numInf*nodeheight/1.5);
-         
-          textSize(10);
-          fill(50);
-          textAlign(CENTER);
-          text(inf, xnode + nodewidth/2, pnode[nodi]+(numin[nodi]*nodeheight)+nodeheight+nodeheight/1.5);          
-        }
-      }
-  }
-  // nested loop
-  else if (nonest > 0)
-  {
-    int nnest = 0;
-    float nheight = 0.0;
-    float nwidth = 0.0;
-    
-    for(int m=0; m<numnest; m++)
-      if(inod == nest[m])
-        nnest = m;
-    
-    for(int k=0; k<nnest; k++)
-    {
-        int ino = nest[k];
-        nheight += (numin[ino]+1)*nodeheight + nestdis;
-    }
-    
-    float xnestnode = 3*xnode/4 + nnest*2*nestdis;
-    float pnestnode = pnode[nest[0]] + nheight;
-    float nodenestwidth = 3*nodewidth/2 - 2*nnest*nestdis;
-    
-    // update position node array
-    pnode[inod] = pnestnode;
-    // update width node array
-    wnode[inod] = nodenestwidth;
-    // update x coordinate node array;
-    xcnode[inod] = xnestnode;
-    
-    // draw inputs
-    for(int i=0; i<numin[inod]; i++)
-    {
-      stroke(0);
-      strokeWeight(1);
-      fill(255);
-      rect(xnestnode, pnestnode+(i*nodeheight), nodenestwidth, nodeheight);
-      
-      textAlign(CENTER);
-      textSize(10);
-      fill(50);
-      text("M"+(inod+1)+"_In"+i, xnestnode + nodenestwidth/2, pnestnode+(i*nodeheight)+nodeheight/1.5);
-    }
-    // draw outputs
+   
+    // 2. draw name of module
     stroke(0);
     strokeWeight(1);
-    fill(255);
-    rect(xnestnode, pnestnode+(numin[inod]*nodeheight), nodenestwidth, nodeheight);
+    colorMode(HSB);
+    fill(node_depth[inod]*255/(depth_length+1), 150, 255);
+    rect(xc, yc+nodeheight, wn, nodeheight);
     
-    textSize(10);
     fill(50);
-    textAlign(CENTER);
-    text("M"+(inod+1)+"_Out0", xnestnode + nodenestwidth/2, pnestnode+(numin[inod]*nodeheight)+nodeheight/1.5);
+    text(names[inod], xc+wn/2, yc+nodeheight+nodeheight/1.5);
     
-    // draw nest box
-    if(nnest == (numnest - 1))
+    // 3. draw visualization methods box
+    String[] vizInf = split(vizMeth[0],','); 
+    String[] nVi = split(vizInf[2],':');
+    int nvilen = nVi.length;
+    for(int k=0; k<nvilen; k++)
     {
-      stroke(25);
+      stroke(0);
       strokeWeight(1);
-      noFill();
-      float nhei = 0.0;
-      for(int k=nnest; k<numnest; k++)
-      {
-          int ino = nest[k];
-          nhei += (numin[ino]+1)*nodeheight + nestdis;
-          //println("k = "+ k+" nhei = " + nhei);
-      }
-      
-      rect(xnestnode - 2*nestdis, pnestnode - nestdis, nodenestwidth + 2*nestdis, nhei);
-      
-      for(int k=1; k<(numnest-1); k++)
-          rect(xnestnode - 2*nnest*nestdis, pnestnode - (numin[nest[k]]+1)*nodeheight - 2*nestdis, nodenestwidth + nnest*2*nestdis,((numin[nest[k]]+1)*nodeheight)+nhei+nestdis);
+      colorMode(HSB);
+      fill(k*255/nvilen, 20, 250);
+      rect(xc + k*wn/nvilen, yc+2*nodeheight, wn/nvilen, nodeheight);
+     
+      fill(50);
+      text(nVi[k], xc + (k+1/2)*wn/nvilen, yc+ 2*nodeheight + nodeheight/1.5);
     }
+  
+    // 4. draw input, output information
+    if(iorel_info == 1)
+    {
+      stroke(0);
+      strokeWeight(1);
+      fill(250);
+      rect(xc, yc+3*nodeheight, wn, (ionodeInfo_height[inod])*font_size);
+     
+      fill(50);
+      text(ionodeInfo[inod], xc, yc+3*nodeheight + font_size/2, wn, (ionodeInfo_height[inod])*font_size);
+    }
+    // end of draw node box
+  }
+  
+  if(collapse[inod] == 0)
+  {
+    // draw data recursion - nest if has
+    if(viewMeth == 2)
+    {
+      if(nodrel_len[inod]>1)
+      {
+        // draw nest box
+         noFill();
+         float len = 0;
+         for(int k=node_depth[inod]; k< (current_depth_length-1);k++)
+         {
+           len += nodedepth_height[k];
+         }
+         rect(xc, yc+hn-depth_distance, wn, len-hn);
+      }
+    }
+    // draw data recursion - tree if has
+    if(viewMeth == 1)
+    {
+      if(nodrel_len[inod]>1)
+      {
+        // draw arrow connection of tree view
+        String[] depnod = split(node_relation[inod],":");
+        for(int k=1; k<nodrel_len[inod];k++)
+        {
+          fill(100, 200, 255);
+          draw_arrow(xcnode[int(depnod[0])] + wnode[int(depnod[0])]/2, ycnode[int(depnod[0])] + hnode[int(depnod[0])] - depth_distance, xcnode[int(depnod[k])]+wnode[int(depnod[k])]/2, ycnode[int(depnod[k])]);
+        }      
+      }
+    }
+    
+  }
+  if(collapse[inod] == 1)
+  {
+     // draw "+" to show that node is collapsed 
+     textSize(2*font_size);
+     fill(50);
+     text("+", xc + 2*wn/3, yc+nodeheight+nodeheight/1.5); 
   }
 }
 
@@ -1085,15 +782,17 @@ void draw_arrow(float x1, float y1, float x2, float y2)
 } 
 
 void draw_curvearrow(float x1, float y1, float x2, float y2, int leri) 
-{
-    noFill();
-    stroke(25);
-    strokeWeight(1);
-    
+{ 
     float d = dist(x1, y1, x2, y2);
     float xc1, xc2, yc1, yc2;
-    //println("leri = "+leri);
-    // if it is in left side
+   
+    noFill();
+    //colorMode(HSB);
+    //stroke(25);
+    stroke(255*2*d/width, 250, 250);
+    strokeWeight(1);
+    
+    // left side
     if(leri == 1)
     {
         xc1 = x1 - d/4;
@@ -1101,6 +800,7 @@ void draw_curvearrow(float x1, float y1, float x2, float y2, int leri)
         yc1 = y1 - d/3;
         yc2 = y1 - 2*d/3;
     }  
+    // right side
     else if(leri == 0)
     {
         xc1 = x1 + d/6;
@@ -1120,33 +820,56 @@ void draw_curvearrow(float x1, float y1, float x2, float y2, int leri)
     }
     else
     {
-      xc1 = (x1+x2)/2;
-      yc1 = y1;
-      xc2 = x2;
-      yc2 = (y1+y2)/2;
+      if(y1==y2)
+      {
+        if(x1 < x2)
+        {
+          xc1 = 2*(x1+x2)/5;
+          yc1 = y1 - d/15;
+          xc2 = 3*(x1+x2)/5;
+          yc2 = y1 - d/15;
+        }
+        else
+        {
+          xc1 = 3*(x1+x2)/5;
+          yc1 = y1 - d/15;
+          xc2 = 2*(x1+x2)/5;
+          yc2 = y1 - d/15;
+        }
+      }
+      else
+      {
+        xc1 = (x1+x2)/2;
+        yc1 = y1;
+        xc2 = x2;
+        yc2 = (y1+y2)/2;
+      }
     }
        
     // draw curve
     bezier(x1, y1, xc1, yc1, xc2, yc2, x2, y2);
+    //arc(x1, y1, x2-x1, 2*nodeheight, -PI, 0);
     
     // draw arrow
     pushMatrix();
-    translate(x2, y2);
     float a;
-    a = atan2(xc2-x2, y2-yc2);
     
-    /*
-    if(xc1 != x2 && y2 !=yc2) 
-        a = atan2(xc2-x2, y2-yc2);
+    if(leri == 2)
+    {
+      translate(x1, y1);
+      a = atan2(xc1-x1, y1-yc1);
+    }
     else
-        a = atan2(100, 100);
-    */
+    {
+      translate(x2, y2);
+      a = atan2(xc2-x2, y2-yc2);
+    }
     
     rotate(a);
     line(0, 0, -5, -5);
     line(0, 0, 5, -5);
     popMatrix();
-  
 } 
+
 
 

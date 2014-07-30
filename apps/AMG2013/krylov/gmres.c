@@ -172,7 +172,7 @@ hypre_GMRESSetup( void *gmres_vdata,
                   void *A,
                   void *b,
                   void *x,
-                  context& runCfg)
+                  context& runCfg, int& num_precond_calls)
 {
    hypre_GMRESData *gmres_data     = (hypre_GMRESData*)gmres_vdata;
    hypre_GMRESFunctions *gmres_functions = gmres_data->functions;
@@ -205,7 +205,8 @@ hypre_GMRESSetup( void *gmres_vdata,
       (gmres_data -> matvec_data) = (*(gmres_functions->MatvecCreate))(A, x);
 
    context solverCtxt("outer_i", -1, "inner_i", -1); 
-   ierr = precond_setup((HYPRE_Solver)precond_data, (HYPRE_Matrix)A, (HYPRE_Vector)b, (HYPRE_Vector)x, runCfg, AMGVCycleGraph, lastAnchor, solverCtxt);
+   ierr = precond_setup((HYPRE_Solver)precond_data, (HYPRE_Matrix)A, (HYPRE_Vector)b, (HYPRE_Vector)x, runCfg, AMGVCycleGraph, lastAnchor, solverCtxt, num_precond_calls);
+   num_precond_calls++;
  
    /*-----------------------------------------------------
     * Allocate space for log info
@@ -226,7 +227,7 @@ hypre_GMRESSetup( void *gmres_vdata,
  
 /*--------------------------------------------------------------------------
  * hypre_GMRESSolve
- *-------------------------------------------------------------------------*/
+ -------------------------------------------------------------------------*/
 
 int
 hypre_GMRESSolve(void  *gmres_vdata,
@@ -234,7 +235,7 @@ hypre_GMRESSolve(void  *gmres_vdata,
                  void  *b,
 		 void  *x,
                  context& runCfg,
-                 sightModule& solveModule, int solveModOutput)
+                 /*sightModule* solveModule, int solveModOutput*/int& num_precond_calls)
 {
    hypre_GMRESData  *gmres_data   = (hypre_GMRESData*)gmres_vdata;
    hypre_GMRESFunctions *gmres_functions = gmres_data->functions;
@@ -277,7 +278,7 @@ hypre_GMRESSolve(void  *gmres_vdata,
    double     weight;
    double     r_norm_0;
    double     relative_error;
-   int num_precond_calls = 0;
+   //int num_precond_calls = 0;
 
    graph AMGVCycleGraph;
    anchor lastAnchor;
@@ -342,7 +343,7 @@ hypre_GMRESSolve(void  *gmres_vdata,
         printf("ERROR detected by Hypre ... END\n\n\n");
       }
       ierr += 101;
-      solveModule.setOutCtxt(0, context("num_precond_calls", num_precond_calls));
+      //solveModule->setOutCtxt(solveModOutput, context("num_precond_calls", num_precond_calls));
       return ierr;
    }
 
@@ -368,7 +369,7 @@ hypre_GMRESSolve(void  *gmres_vdata,
         printf("ERROR detected by Hypre ... END\n\n\n");
       }
       ierr += 101;
-      solveModule.setOutCtxt(0, context("num_precond_calls", num_precond_calls));
+      //solveModule->setOutCtxt(solveModOutput, context("num_precond_calls", num_precond_calls));
       return ierr;
    }
 
@@ -453,7 +454,7 @@ hypre_GMRESSolve(void  *gmres_vdata,
            for (i=0; i < k_dim+1; i++) hypre_TFreeF(hh[i],gmres_functions);
            hypre_TFreeF(hh,gmres_functions); 
 	   ierr = 0;
-           solveModule.setOutCtxt(0, context("num_precond_calls", num_precond_calls));
+           //solveModule->setOutCtxt(solveModOutput, context("num_precond_calls", num_precond_calls));
 	   return ierr;
 	}
 
@@ -522,7 +523,7 @@ hypre_GMRESSolve(void  *gmres_vdata,
 		i++;
 		iter++;
 		(*(gmres_functions->ClearVector))(r);
-		precond((HYPRE_Solver)precond_data, (HYPRE_Matrix)A, (HYPRE_Vector)p[i-1], (HYPRE_Vector)r, runCfg, AMGVCycleGraph, lastAnchor, solverCtxt);
+		precond((HYPRE_Solver)precond_data, (HYPRE_Matrix)A, (HYPRE_Vector)p[i-1], (HYPRE_Vector)r, runCfg, AMGVCycleGraph, lastAnchor, solverCtxt,/* solveModule, solveModOutput*/ num_precond_calls);
                 num_precond_calls++;
 		(*(gmres_functions->Matvec))(matvec_data, 1.0, A, r, 0.0, p[i]);
 		/* modified Gram_Schmidt */
@@ -618,7 +619,7 @@ hypre_GMRESSolve(void  *gmres_vdata,
 
 	(*(gmres_functions->ClearVector))(r);
         context solverCtxt("outer_i", iter, "inner_i", -1); 
-	precond((HYPRE_Solver)precond_data, (HYPRE_Matrix)A, (HYPRE_Vector)w, (HYPRE_Vector)r, runCfg, AMGVCycleGraph, lastAnchor, solverCtxt);
+	precond((HYPRE_Solver)precond_data, (HYPRE_Matrix)A, (HYPRE_Vector)w, (HYPRE_Vector)r, runCfg, AMGVCycleGraph, lastAnchor, solverCtxt,/* solveModule, solveModOutput*/ num_precond_calls);
         num_precond_calls++;
 
 	(*(gmres_functions->Axpy))(1.0,r,x);
@@ -720,7 +721,7 @@ hypre_GMRESSolve(void  *gmres_vdata,
    }
    hypre_TFreeF(hh,gmres_functions); 
 
-   solveModule.setOutCtxt(0, context("num_precond_calls", num_precond_calls));
+   //solveModule->setOutCtxt(solveModOutput, context("num_precond_calls", num_precond_calls));
    return ierr;
 }
 
