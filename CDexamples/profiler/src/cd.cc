@@ -356,6 +356,7 @@ CDErrT CD::Begin(bool collective, std::string label)
     cout<<"label is diff"<<endl;
     //getchar();
     this->SetCollectProfile(true);
+
     // Dynamic Method Selection
     if(label_ != "INITIAL_LABEL")
       this->FinishProfile();
@@ -379,7 +380,36 @@ CDErrT CD::Begin(bool collective, std::string label)
   }
 
 #endif
+#if _PROFILER
+  if(profile_data_.find(label) != profile_data_.end()) {
+    // There already exists the label here.
+    // Do not crete a new Sight obj
+    if(label_ != label) {
+      //
+    }
+    else {
 
+    }
+
+  }
+  else {
+    // There is no this label. 
+    // Create the Sight obj
+  }
+/*
+Begin("AA")
+
+Complete()
+for(){
+Begin("BB")
+...
+Complete()
+}
+Begin("AA")
+
+Complete()
+*/
+#endif
 
   return CDErrT::kOK;
 }
