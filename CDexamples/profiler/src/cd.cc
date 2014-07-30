@@ -60,11 +60,11 @@ graph*        CD::scopeGraph;
 
 std::list<scope*>      MasterCD::sStack;
 std::list<module*>     MasterCD::mStack;
-std::list<CDNode*>     MasterCD::cdStack;
+//std::list<CDNode*>     MasterCD::cdStack;
 std::list<comparison*> MasterCD::compStack;
 
-modularApp*            MasterCD::ma;
-graph*                 MasterCD::scopeGraph;
+modularApp*            CD::ma;
+graph*                 CD::scopeGraph;
 
 #endif
 
@@ -206,6 +206,11 @@ CD* CD::Create( CDHandle* cd_parent,
 CDErrT CD::Destroy()
 {
   CDErrT err;
+  
+  cout<<"Destroy call"<<endl;
+//  getchar();
+
+  this->FinishProfile();
 
   if(GetCDID().level_ != 0) { 
 
@@ -214,8 +219,8 @@ CDErrT CD::Destroy()
 
   } 
   else {
-    cout<<"Root CD??  "<< GetCDID().level_ <<", "<<GetCDID().node_id_.task_<<endl;
-    //getchar();
+    cout<<"#######Root CD??  "<< GetCDID().level_ <<", "<<GetCDID().node_id_.task_<<endl;
+//    getchar();
 
     // Dynamic Method Selection
     this->Internal_Destroy();
@@ -231,38 +236,38 @@ void CD::Internal_Destroy(void)
 
   cout<< "Slave Internal Destroy" <<endl;
 
-/* FIXME
 #if _PROFILER 
-
-#if _ENABLE_MODULE
-    assert(ma);
-    delete ma;
-#endif
 
 #if _ENABLE_SCOPE
     assert(scopeGraph);
     delete scopeGraph;
 #endif
 
+#if _ENABLE_MODULE
+    assert(ma);
+    delete ma;
 #endif
-*/
+
+
+#endif
 
 }
 void MasterCD::Internal_Destroy(void)
 {
-  cout<< "Master Internal Destroy" <<endl;
+  cout<< "######## Master Internal Destroy" <<endl;
 
 #if _PROFILER 
+
+#if _ENABLE_SCOPE
+    assert(scopeGraph);
+    delete scopeGraph;
+#endif
 
 #if _ENABLE_MODULE
     assert(ma);
     delete ma;
 #endif
 
-#if _ENABLE_SCOPE
-    assert(scopeGraph);
-    delete scopeGraph;
-#endif
 
 #endif
 
@@ -324,14 +329,14 @@ void MasterCD::Internal_Destroy(void)
 // CDHandle will follow the standard interface. 
 CDErrT CD::Begin(bool collective, std::string label)
 {
-
-  if(label != 0) {
-    label_ = const_cast<char*>(label);
+/*
+  if(label != "INITIAL_LABEL") {
+    label_ = label;
   }
   else {
-    label_ = name;
+    label_ = name_;
   }
-
+*/
 
   //  setjmp(jump_buffer_);
   //getcontext(&context_);
@@ -348,27 +353,46 @@ CDErrT CD::Begin(bool collective, std::string label)
 #if _PROFILER
   if(label_ != label) { 
     // diff
-    collect_profile_ = true;
+    cout<<"label is diff"<<endl;
+    //getchar();
+    this->SetCollectProfile(true);
+    // Dynamic Method Selection
+    if(label_ != "INITIAL_LABEL")
+      this->FinishProfile();
+
+    // Set label. INITIAL_LABEL should be unique for one CD
+    // CD name cannot be "INITIAL_LABEL"
+    if(label != "INITIAL_LABEL") {
+      label_ = label;
+    }
+    else {
+      label_ = name_;
+    }
+
+    this->StartProfile();
   }
   else {
     // the same exec
-    collect_profile_ = false;
+    cout<<"label is the same"<<endl;
+    //getchar();
+    this->SetCollectProfile(false);
   }
 
-  // Dynamic Method Selection
-  this->StartProfile();
 #endif
+
 
   return CDErrT::kOK;
 }
 
 bool CD::CheckCollectProfile(void)
 {
+  cout<<"CheckCollectProfile at CD"<<endl;
   return false;
 }
 
 bool MasterCD::CheckCollectProfile(void)
 {
+  cout<<"CheckCollectProfile at MasterCD: "<<collect_profile_<<endl;
   return collect_profile_;
 }
 void CD::SetCollectProfile(bool flag)
@@ -990,7 +1014,6 @@ void CD::InitViz()
   cout<<"InitVizCall!!"<<endl<<endl;
   //getchar();
 
-/* FIXME
 #if _ENABLE_MODULE
   /// modularApp exists only one, and is created at init stage
   ma = new modularApp("CD Modular App");
@@ -1000,13 +1023,12 @@ void CD::InitViz()
   /// graph exists only one. It is created at init stage
   scopeGraph = new graph();
 #endif
-*/
 }
 
 void MasterCD::InitViz()
 {
 
-  cout<<"InitVizCall!!"<<endl<<endl;
+  cout<<"########Master InitVizCall------------!!"<<endl<<endl;
   //getchar();
   
 #if _ENABLE_MODULE
@@ -1076,21 +1098,22 @@ void MasterCD::StartProfile(void)
   /// Timer on
   this->this_point_ = rdtsc();
 
-#if _ENABLE_CDNODE 
-  CreateCDNode();
-#endif
-
-#if _ENABLE_SCOPE  
-  CreateScope();
+#if _ENABLE_COMP   
+  CreateComparison();
 #endif
 
 #if _ENABLE_MODULE 
   CreateModule();
 #endif
 
-#if _ENABLE_COMP   
-  CreateComparison();
+#if _ENABLE_SCOPE  
+  CreateScope();
 #endif
+
+#if _ENABLE_CDNODE 
+  CreateCDNode();
+#endif
+
 
 #endif // Profile ends
 }
@@ -1101,6 +1124,7 @@ void MasterCD::FinishProfile(void)
 {
 
   cout<< "Master Internal Complete" <<endl;
+  //getchar();
 #if _PROFILER // Profile starts -- COMP | MODULE | SCOPE | CDNODE -- 
 
   // outputs the preservation / detection info
@@ -1124,6 +1148,7 @@ void MasterCD::FinishProfile(void)
 #endif
 
 #if _ENABLE_MODULE 
+//  cout<<"Destroy Module"<<endl; getchar();
   DestroyModule();
 #endif
 
@@ -1143,8 +1168,8 @@ void MasterCD::FinishProfile(void)
 // -------------- CD Node -----------------------------------------------------------------------------
 inline void MasterCD::CreateCDNode()
 {
-  CDNode* cdn = new CDNode(txt()<<label_, txt()<<this->this_cd_->GetCDID()); 
-  this->cdStack.push_back(cdn);
+//  CDNode* cdn = new CDNode(txt()<<label_, txt()<<GetCDID()); 
+//  this->cdStack.push_back(cdn);
 //  dbg << "{{{ CDNode Test -- "<<this->this_cd_->cd_id_<<", #cdStack="<<cdStack.size()<<endl;
 }
 
@@ -1167,17 +1192,17 @@ inline void MasterCD::DestroyCDNode()
 //  }
 
 //  dbg << " }}} CDNode Test -- "<<this->this_cd_->cd_id_<<", #cdStack="<<cdStack.size()<<endl;
-  assert(cdStack.size()>0);
-  assert(cdStack.back() != nullptr);
-  delete cdStack.back();
-  cdStack.pop_back();
+//  assert(cdStack.size()>0);
+//  assert(cdStack.back() != NULL);
+//  delete cdStack.back();
+//  cdStack.pop_back();
 }
 
 // -------------- Scope -------------------------------------------------------------------------------
 inline void MasterCD::CreateScope()
 {
   /// create a new scope at each Begin() call
-  scope* s = new scope(txt()<<label_<<", cd_id="<<node_id().task_);
+  scope* s = new scope(txt()<<label_<<", cd_id="<<GetCDID().node_id_.task_);
 
   /// Connect edge between previous node to newly created node
   if(this->sStack.size()>0)
@@ -1201,7 +1226,9 @@ inline void MasterCD::DestroyScope()
 // -------------- Module ------------------------------------------------------------------------------
 inline void MasterCD::CreateModule()
 {
-  if(usr_profile_enable) {
+  cout<<"CreateModule call"<<endl;
+  if(usr_profile_enable==false) {
+//    cout<<11111<<endl<<endl; getchar();
     module* m = new module( instance(txt()<<label_, 1, 1), 
                             inputs(port(context("cd_id", txt()<<GetCDID().node_id_.task_, 
                                                 "sequential_id", (int)(GetCDID().sequential_id_)))),
@@ -1210,8 +1237,9 @@ inline void MasterCD::CreateModule()
   }
   else {
   
+//    cout<<22222<<endl<<endl; getchar();
     module* m = new module( instance(txt()<<label_, 2, 2), 
-                            inputs(port(context("cd_id", txt()<<this->node_id().task_, 
+                            inputs(port(context("cd_id", txt()<<GetCDID().node_id_.task_, 
                                                 "sequential_id", (int)(GetCDID().sequential_id_))),
                                    port(usr_profile_input)),
                             namedMeasures("time", new timeMeasure()) );
@@ -1224,12 +1252,13 @@ inline void MasterCD::CreateModule()
 
 inline void MasterCD::DestroyModule()
 {
+  cout<<"DestroyModule call"<<endl;
 //  dbg << " ]]] Module Test -- "<<this->this_cd_->cd_id_<<", #mStack="<<mStack.size()<<endl;
   assert(mStack.size()>0);
   assert(mStack.back() != NULL);
-  mStack.back()->setOutCtxt(0, context("data_copy=", (long)profile_data_[label_][PRV_COPY_DATA],
-                                       "data_overlapped=", (long)profile_data_[label_][OVERLAPPED_DATA],
-                                       "data_ref=" , (long)profile_data_[label_][PRV_REF_DATA]));
+  mStack.back()->setOutCtxt(0, context("data_copy=", (long)(profile_data_[label_][PRV_COPY_DATA]),
+                                       "data_overlapped=", (long)(profile_data_[label_][OVERLAPPED_DATA]),
+                                       "data_ref=" , (long)(profile_data_[label_][PRV_REF_DATA])));
   if(usr_profile_enable) {
     mStack.back()->setOutCtxt(1, usr_profile_output);
   }
@@ -1245,7 +1274,7 @@ inline void MasterCD::DestroyModule()
 // -------------- Comparison --------------------------------------------------------------------------
 inline void MasterCD::CreateComparison()
 {
-  comparison* comp = new comparison(node_id().color_);
+  comparison* comp = new comparison(GetCDID().node_id_.color_);
   compStack.push_back(comp);
 }
 

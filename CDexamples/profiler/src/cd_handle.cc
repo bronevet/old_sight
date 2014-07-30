@@ -166,7 +166,7 @@ CDHandle::CDHandle( CDHandle* parent,
   }
   else { // Root CD
     cout<<"-------------- This is wrong for this app -----------"<<endl;
-    getchar();
+    //getchar();
     CDID new_cd_id(0, node_id);
     if( !IsMaster() )
       ptr_cd_  = new CD(NULL, name, new_cd_id, cd_type, sys_bit_vector);
@@ -213,7 +213,7 @@ CDHandle::CDHandle( CDHandle* parent,
   }
   else { // Root CD
     cout<<"-------------- Root CD is created -----------"<<endl;
-    getchar();
+    //getchar();
 
     CDID new_cd_id(0, node_id);
 
@@ -306,33 +306,34 @@ CDHandle* CDHandle::Create( int color,
 
 
   NodeID new_node(MPI_UNDEFINED, 0, 0, 0);
-/*
+  
   // Split the node
+  new_node.size_ = (uint64_t)(GetTaskSize() / num_children);
   uint32_t num_children_per_dim = (uint32_t)pow(num_children, 1/3.);
+  uint32_t num_per_dim = (uint32_t)pow(GetTaskSize(), 1/3.);
+
   double scale_k = pow(GetRootCD()->GetTaskSize(), 1/3.);
   uint32_t scale_j = (uint32_t)scale_k;
   uint32_t scale_i = (uint32_t)pow(scale_k, 2);
   std::cout << "num_children_per_dim = "<< num_children_per_dim << std::cout;
-  for(int i=0; i < num_children_per_dim; ++i) {
+  for(int i=0; i < num_children_per_dim; ++i) {     // Z axis
     
-    for(int j=0; j < num_children_per_dim; ++j) {
+    for(int j=0; j < num_children_per_dim; ++j) {   // Y axis
       
-      for(int k=0; k < num_children_per_dim; ++k) {
+      for(int k=0; k < num_children_per_dim; ++k) { // X axis
 
 
 //    if(i*GetTaskSize()/num_children =< GetTaskID()
 //      && GetTaskID() < (i+1)*GetTaskSize()/num_children)
 //    {
-        new_node.color_ = i*scale_i + j*scale_j + k;
-        new_node.size_  = GetTaskSize() / num_children;
-        new_node.task_  = GetTaskID() % new_node.size_;;
+        new_node.color_ = scale_i + j*scale_j + k;
+        new_node.task_  = GetTaskID() %  + j*scale_j + i*scale_i;
 //    }
 
 
       }
     }
   }
-*/
   
   // Create CDHandle for multiple tasks (MPI rank or threads)
 
@@ -528,7 +529,7 @@ CDErrT CDHandle::Complete (bool collective, bool update_preservations)
     // SYSTEM_BIT_VECTOR|   X
 
     //Dynamic Method Selection
-    ptr_cd_->FinishProfile();
+//    ptr_cd_->FinishProfile();
 
 /* FIXME
     uint64_t sendBuf[MAX_PROFILE_DATA-2]={0,};
@@ -540,7 +541,7 @@ CDErrT CDHandle::Complete (bool collective, bool update_preservations)
 
 
     cout << "Collect Profile -------------------\n" << endl;
-    getchar();
+    //getchar();
     
 
     if( IsMaster() == false) {
@@ -600,7 +601,7 @@ CDErrT CDHandle::Complete (bool collective, bool update_preservations)
 
 bool CDHandle::CheckCollectProfile(void)
 {
-  return ptr_cd_->CheckCollectProfile();;
+  return ptr_cd_->CheckCollectProfile();
 }
 
 void CDHandle::SetCollectProfile(bool flag)

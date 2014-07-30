@@ -40,6 +40,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
 #include "cd_entry.h"
 #include <list>
 #include <vector>
+#include <array>
 #include <stdint.h>
 //#include "util.h"
 
@@ -131,7 +132,7 @@ class cd::CD {
                CDErrT* cd_err);
 
     CDErrT Destroy();
-    CDErrT Begin(bool collective=true, const char* label=0);
+    CDErrT Begin(bool collective=true, std::string label="");
     CDErrT Complete(bool collective=true, 
                     bool update_preservations=true);
 
@@ -221,6 +222,12 @@ class cd::CD {
     virtual void FinishProfile(void);
     virtual void Internal_Destroy(void);
 #if _PROFILER
+
+    static graph* scopeGraph;
+    static modularApp* ma;
+
+
+
     //void InitProfile(std::string label="");
     virtual void GetLocalAvg(void);
     virtual void GetPrvData(void *data, 
@@ -270,7 +277,7 @@ class cd::MasterCD : public cd::CD {
     uint64_t  level_;
   
     /// Profile-related meta data
-    std::map<std::string, std::array<uint64_t, MAX_PROFILE_DATA> profile_data_;
+    std::map<std::string, std::array<uint64_t, MAX_PROFILE_DATA>> profile_data_;
     bool     is_child_destroyed;
     bool     collect_profile_;
     bool usr_profile_enable;
@@ -284,18 +291,18 @@ class cd::MasterCD : public cd::CD {
     /// sight-related member data
     /// All scopes that are currently live
     static std::list<scope*> sStack;
-    static graph* scopeGraph;
+//    static graph* scopeGraph;
     
     /// All modules that are currently live
     static std::list<module*> mStack;
-    static modularApp* ma;
+//    static modularApp* ma;
 
     static std::list<comparison*> compStack;
  
     /// All modules that are currently live
-    static std::list<CDNode*> cdStack;
+//    static std::list<CDNode*> cdStack;
 
-    void InitProfile(std::string label="");
+    void InitProfile(std::string label="INITIAL_LABEL");
 
     virtual void GetLocalAvg(void);
     virtual void GetPrvData(void *data, 
@@ -313,6 +320,17 @@ class cd::MasterCD : public cd::CD {
 // FIXME
     virtual bool CheckCollectProfile(void);
     virtual void SetCollectProfile(bool flag);
+
+
+
+  void CreateCDNode(void);
+  void CreateScope(void);
+  void CreateModule(void);
+  void CreateComparison(void);
+  void DestroyCDNode(void);
+  void DestroyScope(void);
+  void DestroyModule(void);
+  void DestroyComparison(void);
 #endif
 
 
