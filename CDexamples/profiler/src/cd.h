@@ -220,7 +220,7 @@ class cd::CD {
     
     virtual void StartProfile(void);
     virtual void FinishProfile(void);
-    virtual void Internal_Destroy(void);
+    virtual void FinalizeViz(void);
 #if _PROFILER
 
     static graph* scopeGraph;
@@ -350,7 +350,7 @@ class cd::MasterCD : public cd::CD {
    
     virtual void StartProfile(void);
     virtual void FinishProfile(void);
-    virtual void Internal_Destroy(void);
+    virtual void FinalizeViz(void);
     virtual int Stop(CDHandle cd);
     virtual int Resume(); // Does this make any sense?
     virtual int AddChild(CDHandle* cd_child); 

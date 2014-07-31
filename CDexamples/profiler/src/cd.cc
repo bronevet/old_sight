@@ -209,8 +209,8 @@ CDErrT CD::Destroy()
   
   cout<<"Destroy call"<<endl;
 //  getchar();
-
-  this->FinishProfile();
+  
+//  this->FinishProfile();
 
   if(GetCDID().level_ != 0) { 
 
@@ -219,40 +219,41 @@ CDErrT CD::Destroy()
 
   } 
   else {
-    cout<<"#######Root CD??  "<< GetCDID().level_ <<", "<<GetCDID().node_id_.task_<<endl;
+//    cout<<"#######Root CD??  "<< GetCDID().level_ <<", "<<GetCDID().node_id_.task_<<endl;
 //    getchar();
 
     // Dynamic Method Selection
-    this->Internal_Destroy();
+    //this->FinalizeViz();
   }
 
+  
   delete this;
 
   return err;
 }
 
-void CD::Internal_Destroy(void)
+void CD::FinalizeViz(void)
 {
 
   cout<< "Slave Internal Destroy" <<endl;
 
 #if _PROFILER 
 
-#if _ENABLE_SCOPE
-    assert(scopeGraph);
-    delete scopeGraph;
-#endif
-
-#if _ENABLE_MODULE
-    assert(ma);
-    delete ma;
-#endif
+//#if _ENABLE_SCOPE
+//    assert(scopeGraph);
+//    delete scopeGraph;
+//#endif
+//
+//#if _ENABLE_MODULE
+//    assert(ma);
+//    delete ma;
+//#endif
 
 
 #endif
 
 }
-void MasterCD::Internal_Destroy(void)
+void MasterCD::FinalizeViz(void)
 {
   cout<< "######## Master Internal Destroy" <<endl;
 
@@ -351,6 +352,7 @@ CDErrT CD::Begin(bool collective, std::string label)
 
 
 #if _PROFILER
+
   if(label_ != label) { 
     // diff
     cout<<"label is diff"<<endl;
@@ -363,10 +365,10 @@ CDErrT CD::Begin(bool collective, std::string label)
 
     // Set label. INITIAL_LABEL should be unique for one CD
     // CD name cannot be "INITIAL_LABEL"
-    if(label != "INITIAL_LABEL") {
+    if(label_ != "INITIAL_LABEL") {
       label_ = label;
     }
-    else {
+    else { // label_ == "INITIAL_LABEL"
       label_ = name_;
     }
 
@@ -380,36 +382,36 @@ CDErrT CD::Begin(bool collective, std::string label)
   }
 
 #endif
-#if _PROFILER
-  if(profile_data_.find(label) != profile_data_.end()) {
-    // There already exists the label here.
-    // Do not crete a new Sight obj
-    if(label_ != label) {
-      //
-    }
-    else {
-
-    }
-
-  }
-  else {
-    // There is no this label. 
-    // Create the Sight obj
-  }
-/*
-Begin("AA")
-
-Complete()
-for(){
-Begin("BB")
-...
-Complete()
-}
-Begin("AA")
-
-Complete()
-*/
-#endif
+//#if _PROFILER
+//  if(profile_data_.find(label) != profile_data_.end()) {
+//    // There already exists the label here.
+//    // Do not crete a new Sight obj
+//    if(label_ != label) {
+//      //
+//    }
+//    else {
+//
+//    }
+//
+//  }
+//  else {
+//    // There is no this label. 
+//    // Create the Sight obj
+//  }
+///*
+//Begin("AA")
+//
+//Complete()
+//for(){
+//Begin("BB")
+//...
+//Complete()
+//}
+//Begin("AA")
+//
+//Complete()
+//*/
+//#endif
 
   return CDErrT::kOK;
 }
@@ -422,7 +424,7 @@ bool CD::CheckCollectProfile(void)
 
 bool MasterCD::CheckCollectProfile(void)
 {
-  cout<<"CheckCollectProfile at MasterCD: "<<collect_profile_<<endl;
+//  cout<<"CheckCollectProfile at MasterCD: "<<collect_profile_<<endl;
   return collect_profile_;
 }
 void CD::SetCollectProfile(bool flag)
@@ -821,6 +823,8 @@ MasterCD::MasterCD()
 #if _PROFILER
   this->InitProfile();
 #endif
+  //cout<<"\n?? MasterCD  (   )---------WRONG-----\n"<<endl;
+  //getchar();  
 }
 
 MasterCD::MasterCD( CDHandle* cd_parent, 
@@ -834,7 +838,14 @@ MasterCD::MasterCD( CDHandle* cd_parent,
 #if _PROFILER
   this->InitProfile();
 #endif
-
+//  if(!CDPath.empty()){
+//  cout<<"\nMasterCD  "<< cd_id.level_ <<" : ("<< GetRootCD()->GetNodeID() <<", "<< GetRootCD()->GetTaskID() <<")"<<endl;
+//  getchar();
+//  }
+//  else {
+//  cout<<"\nMasterCD  "<< cd_id.level_ <<" : ("<< 0 <<", "<< 0 <<")"<<endl;
+//  getchar();
+//  }
 }
 
 MasterCD::~MasterCD()
@@ -1044,15 +1055,16 @@ void CD::InitViz()
   cout<<"InitVizCall!!"<<endl<<endl;
   //getchar();
 
-#if _ENABLE_MODULE
-  /// modularApp exists only one, and is created at init stage
-  ma = new modularApp("CD Modular App");
-#endif
+//#if _ENABLE_MODULE
+//  /// modularApp exists only one, and is created at init stage
+//  ma = new modularApp("CD Modular App");
+//#endif
+//
+//#if _ENABLE_SCOPE
+//  /// graph exists only one. It is created at init stage
+//  scopeGraph = new graph();
+//#endif
 
-#if _ENABLE_SCOPE
-  /// graph exists only one. It is created at init stage
-  scopeGraph = new graph();
-#endif
 }
 
 void MasterCD::InitViz()
@@ -1061,6 +1073,29 @@ void MasterCD::InitViz()
   cout<<"########Master InitVizCall------------!!"<<endl<<endl;
   //getchar();
   
+//  if(!CDPath.empty()){
+//    cout<<"\nMasterCD  "<< GetCDID().level_ <<" : ("<< GetRootCD()->GetNodeID() <<", "<< GetRootCD()->GetTaskID() <<")"<<endl;
+//    getchar();
+//  }
+//  else {
+//    cout<<"\nMasterCD  "<< GetCDID().level_ <<" : ("<< 0 <<", "<< 0 <<")"<<endl;
+//    getchar();
+//  }
+
+#if _PROFILER
+  //SightInit(txt()<<"CDs", txt()<<"dbg_CDs_"<<GetCDID().node_id_.color_<<"_"<< GetCDID().node_id_.task_ );
+  SightInit(txt()<<"CDs", txt()<<"dbg_CDs_"<<myTaskID );
+
+  /// Title
+  dbg << "<h1>Containment Domains Profiling and Visualization</h1>" << endl;
+
+  /// Explanation
+  dbg << "Some explanation on CD runtime "<<endl<<endl;
+
+  /// Create modularApp and graph. Those objects should be unique in the program.
+//  root_cd->ptr_cd()->InitViz();
+#endif
+
 #if _ENABLE_MODULE
   /// modularApp exists only one, and is created at init stage
   ma = new modularApp("CD Modular App");

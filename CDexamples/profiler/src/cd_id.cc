@@ -21,7 +21,7 @@ CDID::CDID(uint64_t level, const NodeID& new_node_id)
   domain_id_     = 0; 
   level_         = level;
   sibling_id_    = 0;
-  node_id_.color_ = new_node_id.color_;
+  node_id_ = new_node_id;
   sequential_id_ = 0;
 }
 
@@ -31,7 +31,7 @@ CDID::CDID(const CDID& that)
   domain_id_      = that.domain_id_;
   level_         = that.level_;
   sibling_id_    = 0;
-//  node_id_       = that.node_id_;
+  node_id_       = that.node_id_;
   sequential_id_ = that.sequential_id_;
 }
 // should be in CDID.h
@@ -40,7 +40,7 @@ void CDID::UpdateCDID(uint64_t parent_level, const NodeID& new_node_id)
 {
   level_ = parent_level++;
   object_id_++;
-//  node_id_ = new_node_id;
+  node_id_ = new_node_id;
   sequential_id_ = 0;
 }
 

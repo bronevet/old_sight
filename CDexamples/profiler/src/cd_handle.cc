@@ -52,6 +52,9 @@ using namespace std;
 
 std::map<uint64_t, int> cd::nodeMap;  // Unique CD Node ID - Communicator
 std::vector<CDHandle*>  cd::CDPath;
+std::vector<MasterCD*>  cd::MasterCDPath;
+bool cd::is_visualized = false;
+int cd::myTaskID = 0;
 int cd::status = 0;
 
 // Global functions -------------------------------------------------------
@@ -86,23 +89,23 @@ CDHandle* cd::CD_Init(int numproc, int myrank)
   /// managed separately from the user-level data structure
   /// All the meta data objects and preserved data are managed internally.
   /// Register Root CD
- 
+  myTaskID = myrank; 
   cout<<"CD_Init, MPI_COMM_WORLD : "<<MPI_COMM_WORLD<<endl;
   CDHandle* root_cd = new CDHandle(NULL, "Root", NodeID(MPI_COMM_WORLD, myrank, numproc, 0), kStrict, 0);
   CDPath.push_back(root_cd);
 
-#if _PROFILER
-  SightInit(txt()<<"CDs", txt()<<"dbg_CDs_"<<myrank);
-
-  /// Title
-  dbg << "<h1>Containment Domains Profiling and Visualization</h1>" << endl;
-
-  /// Explanation
-  dbg << "Some explanation on CD runtime "<<endl<<endl;
-
-  /// Create modularApp and graph. Those objects should be unique in the program.
-  root_cd->ptr_cd()->InitViz();
-#endif
+//#if _PROFILER
+//  SightInit(txt()<<"CDs", txt()<<"dbg_CDs_"<<myrank);
+//
+//  /// Title
+//  dbg << "<h1>Containment Domains Profiling and Visualization</h1>" << endl;
+//
+//  /// Explanation
+//  dbg << "Some explanation on CD runtime "<<endl<<endl;
+//
+//  /// Create modularApp and graph. Those objects should be unique in the program.
+////  root_cd->ptr_cd()->InitViz();
+//#endif
 
   return root_cd;
 
@@ -110,11 +113,16 @@ CDHandle* cd::CD_Init(int numproc, int myrank)
 
 void cd::CD_Finalize(void)
 {
-
+  assert(CDPath.size()==1); // There should be only on CD which is root CD
+  assert(CDPath.back()!=NULL);
 #if _PROFILER
+  GetRootCD()->ptr_cd()->FinishProfile();
 //    GetRootCD()->Print_Profile();
 //    GetRootCD()->Print_Graph();
+  if(is_visualized == true)
+    GetRootCD()->ptr_cd()->FinalizeViz();
 #endif
+  GetRootCD()->Destroy();
 
 }
 
@@ -144,11 +152,18 @@ CDHandle::CDHandle( CDHandle* parent,
   // clear children list
   // request to add me as a children to parent (to MASTER CD object)
 
-  IsMaster_ = false;
-  cout<<"My task is : " <<node_id.task_<<endl;
+
+//  if(parent == NULL)
+//    IsMaster_ = parent->IsMaster();
+//  else {
+//    SetMaster(node_id.task_);
+//  }
+
+  SetMaster(node_id.task_);
+  cout<<"My CD Node is : " <<node_id<<endl;
   //getchar();
   node_id_ = node_id;
-  SetMaster(node_id.task_);
+//  SetMaster(node_id.task_);
 
 
 
@@ -161,7 +176,15 @@ CDHandle::CDHandle( CDHandle* parent,
     }
     else {
       cout<<"I am Master :-) \n"<<node_id_<<endl;
-      ptr_cd_  = new MasterCD(parent, name, new_cd_id, cd_type, sys_bit_vector);
+      MasterCD* ptr_cd  = new MasterCD(parent, name, new_cd_id, cd_type, sys_bit_vector);
+      MasterCDPath.push_back(ptr_cd);
+
+      if(is_visualized == false){
+        ptr_cd->InitViz();
+        is_visualized = true;
+      }
+
+      ptr_cd_ = ptr_cd;
     }
   }
   else { // Root CD
@@ -172,7 +195,15 @@ CDHandle::CDHandle( CDHandle* parent,
       ptr_cd_  = new CD(NULL, name, new_cd_id, cd_type, sys_bit_vector);
     else {
       cout<<"-------------- This is wrong for this app -----------"<<endl;
-      ptr_cd_  = new MasterCD(NULL, name, new_cd_id, cd_type, sys_bit_vector);
+      MasterCD* ptr_cd  = new MasterCD(NULL, name, new_cd_id, cd_type, sys_bit_vector);
+      MasterCDPath.push_back(ptr_cd);
+
+      if(is_visualized == false){
+        ptr_cd->InitViz();
+        is_visualized = true;
+      }
+
+      ptr_cd_ = ptr_cd;
     }
   }
   
@@ -194,22 +225,37 @@ CDHandle::CDHandle( CDHandle* parent,
   // clear children list
   // request to add me as a children to parent (to MASTER CD object)
 
+//  if(parent != NULL)
+//    IsMaster_ = parent->IsMaster();
+//  else {
+//    SetMaster(node_id.task_);
+//  }
 
-  IsMaster_ = false;
+  SetMaster(node_id.task_);
 
+  cout<<"My CD Node is : " <<node_id<<endl;
   //cout<<"My task is : " <<node_id.task_<<endl;
   //getchar();
 
   node_id_ = std::move(node_id);
-  SetMaster(node_id.task_);
+//  SetMaster(node_id.task_);
 
   if(parent != NULL) { 
     CDID new_cd_id(parent->ptr_cd_->GetCDID().level_ + 1, node_id);
 
     if( !IsMaster() )
       ptr_cd_  = new CD(parent, name, new_cd_id, cd_type, sys_bit_vector);
-    else
-      ptr_cd_  = new MasterCD(parent, name, new_cd_id, cd_type, sys_bit_vector);
+    else {
+      MasterCD* ptr_cd  = new MasterCD(parent, name, new_cd_id, cd_type, sys_bit_vector);
+      MasterCDPath.push_back(ptr_cd);
+
+      if(is_visualized == false){
+        ptr_cd->InitViz();
+        is_visualized = true;
+      }
+
+      ptr_cd_ = ptr_cd;
+    }
   }
   else { // Root CD
     cout<<"-------------- Root CD is created -----------"<<endl;
@@ -219,8 +265,17 @@ CDHandle::CDHandle( CDHandle* parent,
 
     if( !IsMaster() )
       ptr_cd_  = new CD(NULL, name, new_cd_id, cd_type, sys_bit_vector);
-    else
-      ptr_cd_  = new MasterCD(NULL, name, new_cd_id, cd_type, sys_bit_vector);
+    else {
+      MasterCD* ptr_cd  = new MasterCD(NULL, name, new_cd_id, cd_type, sys_bit_vector);
+      MasterCDPath.push_back(ptr_cd);
+
+      if(is_visualized == false){
+        ptr_cd->InitViz();
+        is_visualized = true;
+      }
+
+      ptr_cd_ = ptr_cd;
+    }
   }
   
 }
@@ -308,39 +363,103 @@ CDHandle* CDHandle::Create( int color,
   NodeID new_node(MPI_UNDEFINED, 0, 0, 0);
   
   // Split the node
-  new_node.size_ = (uint64_t)(GetTaskSize() / num_children);
-  uint32_t num_children_per_dim = (uint32_t)pow(num_children, 1/3.);
-  uint32_t num_per_dim = (uint32_t)pow(GetTaskSize(), 1/3.);
+  // (x,y,z)
+  // taskID = x + y * nx + z * (nx*ny)
+  // x = taskID % nx
+  // y = ( taskID % ny ) - x 
+  // z = r / (nx*ny)
+  int num_x = round(pow(node_id_.size_, 1/3.));
+  int num_y = num_x;
+  int num_z = num_x;
+  new_node.size_ = (int)(node_id_.size_ / num_children);
+//  cout<<"new node size = "<< new_node.size_<<endl;
+  int new_num_x = round(pow(new_node.size_, 1/3.));
+  int new_num_y = new_num_x;
+  int new_num_z = new_num_x;
 
-  double scale_k = pow(GetRootCD()->GetTaskSize(), 1/3.);
-  uint32_t scale_j = (uint32_t)scale_k;
-  uint32_t scale_i = (uint32_t)pow(scale_k, 2);
-  std::cout << "num_children_per_dim = "<< num_children_per_dim << std::cout;
-  for(int i=0; i < num_children_per_dim; ++i) {     // Z axis
+  int num_children_x = round(pow(num_children, 1/3.));
+  int num_children_y = num_children_x;
+  int num_children_z = num_children_x;
+
+//  cout<<"num children = "<< num_children <<endl;
+//  cout<<"new children x = "<< num_children_x <<endl;
+//
+//  cout<<"num x = "<< num_x <<endl;
+//  cout<<"new num x = "<< new_num_x <<endl;
+//  cout<<"split check"<<endl;
+  assert(num_x*num_y*num_z == node_id_.size_);
+  assert(new_num_x*new_num_y*new_num_z == new_node.size_);
+  assert(num_x != 0);
+  assert(num_y != 0);
+  assert(num_z != 0);
+  assert(new_num_x != 0);
+  assert(new_num_y != 0);
+  assert(new_num_z != 0);
+  assert(num_children_x != 0);
+  assert(num_children_y != 0);
+  assert(num_children_z != 0);
+//  uint64_t num_y = (uint64_t)pow(new_node.size_, 1/3.);
+//  uint64_t num_z = (uint64_t)pow(new_node.size_, 1/3.);
+  
+  int taskID = GetTaskID();
+  int sz = num_x*num_y;
+  int Z = taskID / sz;
+  int tmp = taskID % sz;
+  int Y = tmp / num_x;
+  int X = tmp % num_x;
+
+
+/*
+  int X = taskID % num_x;
+  int Y = (taskID % num_y) - X;
+  int Z = round((double)taskID / (num_x * num_y));
+*/
+//  cout<<"num_children_x*num_children_y = "<<num_children_x * num_children_y <<endl;
+//  cout<<"new_num_x*new_num_y = "<<new_num_x * new_num_y <<endl;
+//  cout << "(X,Y,Z) = (" << X << ","<<Y << "," <<Z <<")"<< endl;
+//  getchar();
+  new_node.color_ = (int)(X / new_num_x + (Y / new_num_y)*num_children_x + (Z / new_num_z)*(num_children_x * num_children_y));
+  new_node.task_  = (int)(X % new_num_x + (Y % new_num_y)*new_num_x      + (Z % new_num_z)*(new_num_x * new_num_y));
+
+//  cout << "(color,task,size) = (" << new_node.color_ << ","<< new_node.task_ << "," << new_node.size_ <<") <-- "
+//       <<"(X,Y,Z) = (" << X << ","<<Y << "," <<Z <<") -- (color,task,size) = (" << node_id_.color_ << ","<< node_id_.task_ << "," << node_id_.size_ <<")"
+//       << "ZZ : " << round((double)Z / new_num_z)
+//       << endl;
+//  getchar();
+
+/*
+  for(int z=0; z < new_num_z; ++z) {     // Z axis
     
-    for(int j=0; j < num_children_per_dim; ++j) {   // Y axis
+    for(int y=0; y < new_num_y; ++y) {   // Y axis
       
-      for(int k=0; k < num_children_per_dim; ++k) { // X axis
+      for(int x=0; x < new_num_x; ++x) { // X axis
 
 
 //    if(i*GetTaskSize()/num_children =< GetTaskID()
 //      && GetTaskID() < (i+1)*GetTaskSize()/num_children)
 //    {
+        X = X % new_num_x + (Y % new_num_y)*new_num_x + (Z % new_num_z)*nxny;
+        Y = (taskID % ny) - X;
+        Z = taskID / (nx*ny);
+
         new_node.color_ = scale_i + j*scale_j + k;
-        new_node.task_  = GetTaskID() %  + j*scale_j + i*scale_i;
+        new_node.task_  = taskID %  + j*scale_j + i*scale_i;
 //    }
 
 
       }
     }
   }
-  
+*/  
   // Create CDHandle for multiple tasks (MPI rank or threads)
 
-  MPI_Comm_split(node_id_.color_, color, num_children, &(new_node.color_));
+  MPI_Comm_split(node_id_.color_, new_node.color_, new_node.task_, &(new_node.color_));
   MPI_Comm_size(new_node.color_, &(new_node.size_));
   MPI_Comm_rank(new_node.color_, &(new_node.task_));
   // Then children CD get new MPI rank ID. (task ID) I think level&taskID should be also pair.
+
+//  cout<<"New CD created : " << new_node <<endl; 
+//  getchar();
 
   CDHandle* new_cd = new CDHandle(this, name, new_node, type, sys_bit_vec);
 
@@ -437,14 +556,27 @@ CDErrT CDHandle::Destroy (bool collective)
   }
 
 
-  if(CDPath.size() > 1)
+  if(CDPath.size() > 1) {
     GetParent()->RemoveChild(ptr_cd_);
-  
+#if _PROFILER
+    ptr_cd_->FinishProfile();
+#endif  
+  }
+
   assert(CDPath.size()>0);
   assert(CDPath.back() != NULL);
+//  assert(MasterCDPath.size()>0);
+//  assert(MasterCDPath.back() != NULL);
+
+  if(IsMaster()) {
+    MasterCDPath.pop_back();
+  }
+  
+
   err = ptr_cd_->Destroy();
   CDPath.pop_back();
 
+   
 
   return err;
 }

@@ -77,6 +77,9 @@ namespace cd {
 
   // Local CDHandle object and CD object are managed by CDPath (Local means the current process)
   extern std::vector<CDHandle*> CDPath;
+  extern std::vector<MasterCD*> MasterCDPath;
+  extern bool is_visualized;
+  extern int myTaskID;
   // This could be different from MPI program to PGAS program
   // key is the unique ID from 0 for each CD node.
   // value is the unique ID for mpi communication group or thread group.

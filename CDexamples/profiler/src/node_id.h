@@ -13,7 +13,7 @@ class NodeID
   int size_;
   uint64_t sibling_id_;
   NodeID() 
-    : color_(-1), task_(-1), size_(-1), sibling_id_(0) 
+    : color_(0), task_(0), size_(-1), sibling_id_(0) 
   {}
   NodeID(int color, int task, int size, uint64_t sibling_id)
     : color_(color), task_(task), size_(size), sibling_id_(sibling_id)
