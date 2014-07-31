@@ -156,7 +156,7 @@ void setup()
       if(numInf > 0)
       {
         if(lnodes_length > 8)
-          ionodeInfo_height[i] = numInf+2;
+          ionodeInfo_height[i] = numInf+3;
         else
           ionodeInfo_height[i] = numInf+4;
         
