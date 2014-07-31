@@ -1,4 +1,3 @@
-#pragma once
 #include "sight.h"
 
 namespace sight {

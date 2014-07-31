@@ -136,8 +136,7 @@ std::pair<std::string, std::string> path2filedir(std::string s)
         pos=nextPos+1;
         nextPos=s.find_first_of('/',nextPos+1);
     }
-//cout << "path2filedir() #s="<<s.size()<<" [0, "<<pre<<"] "<<s.substr(0, pre)<<" / ["<<(pre+1)<<", "<<(pos-1)<<"] "<<s.substr(pre+1, pos-1-(pre+1))<<endl;
-    return make_pair(s.substr(0, pre), s.substr(pre, pos-1-pre));
+    return make_pair(s.substr(0, pre), s.substr(pre+1, pos));
 }
 // Adapted from http://stackoverflow.com/questions/675039/how-can-i-create-directory-tree-in-c-linux
 // Creates the directory with the given path, creating any sub-directories within it

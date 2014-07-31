@@ -227,236 +227,7 @@ class instanceTree {
   static std::ostringstream oss;
 }; // class instanceTree
 
-class modularApp;
-
-class module: public sightObj, public common::module
-{
-  friend class group;
-  friend class modularApp;
-  
-  protected:
-  
-  int moduleID;
-  group g;
-  
-  // The context of this module execution, which is a combination of the contexts of all of its inputs
-  std::vector<context> ctxt;
-  
-  // The context in a format that traces can understand, set in setTraceCtxt() of the the class that
-  // ultimately derives from module.
-  std::map<std::string, attrValue> traceCtxt;
-  public:
-  const std::map<std::string, attrValue>& getTraceCtxt() { return traceCtxt; }
-
-  protected:
-  
-  // The input ports of this module
-  std::vector<port> ins;
-  
-  // The  output ports of this module
-  std::vector<port> outs;
-  
-  // Set of all the outputs that have already been set by the user. Used to issue
-  // warnings when an output has been set multiple times or has not been set.
-  std::set<int> outsSet;
-  
-  // We allow the user to provide a pointer to an output vector, which is populated by the module
-  // object. This is a pointer to this vector.
-  std::vector<port>* externalOutputs;
-  
-  // List of all the measurements that should be taken during the execution of this module. This is a list of pointers to
-  // measure objects. When the module instance is deleted, its measure objects are automatically deleted as well.
-  namedMeasures meas;
-
-  // Number of inputs/options that this module has publicized for use by modules that it contains
-  int numPublicizedInputs;
-  int numPublicizedOptions;
-  
-  // Records the observation made during the execution of this module. obs may be filled in
-  // all at once in the destructor. Alternately, if users call completeMeasurement() directly,
-  // the measurements are written to obs then and the outputs are written in the destructor.
-  std::list<std::pair<std::string, attrValue> > obs;
-  
-  // Information that describes the class that derives from this on. 
-  /*class derivInfo {
-    public:
-    
-    // A pointer to a properties object that can be used to create a tag for the derived object that 
-    // includes info about its parents.
-    properties* props;
-    
-    // Fields that must be included within the context of any trace observations made during the execution of this module.
-    std::map<std::string, attrValue> ctxt;
-    
-    // Points to a function that generates the trace stream instance specific to the given derivation of module
-    //generateTraceStream& tsGenerator;
-    
-    derivInfo(/ *generateTraceStream& tsGenerator* /)/ * : tsGenerator(tsGenerator)* / {
-      props = new properties();
-    }
-    
-    derivInfo(properties* props, const std::map<std::string, attrValue>& ctxt/ *, generateTraceStream& tsGenerator* /) :
-                  props(props), ctxt(ctxt)/ *, tsGenerator(tsGenerator)* / { }
-  }; // class derivInfo */
-  
-  // Records whether this class has been derived by another. In this case ~module() relies on the destructor of
-  // that class to create an appropriate traceStream.
-  bool isDerived;
-  
-  public:
-  // inputs - ports from other modules that are used as inputs by this module.
-  // onoffOp - We emit this scope if the current attribute query evaluates to true (i.e. we're emitting debug output) AND
-  //           either onoffOp is not provided or its evaluates to true.
-  // derivInfo: Information that describes the class that derives from this on.
-  module(const instance& inst,                                                                                                                        properties* props=NULL);
-  module(const instance& inst, const port& inputs,                                                                                                    properties* props=NULL);
-  module(const instance& inst, const std::vector<port>& inputs,                                                                                       properties* props=NULL);
-  module(const instance& inst,                                                                      const attrOp& onoffOp,                            properties* props=NULL);
-  module(const instance& inst, const port& inputs,                                                  const attrOp& onoffOp,                            properties* props=NULL);
-  module(const instance& inst, const std::vector<port>& inputs,                                     const attrOp& onoffOp,                            properties* props=NULL);
-  module(const instance& inst,                                  std::vector<port>& externalOutputs,                                                   properties* props=NULL);
-  module(const instance& inst, const port& inputs,              std::vector<port>& externalOutputs,                                                   properties* props=NULL);
-  module(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs,                                                   properties* props=NULL);
-  module(const instance& inst,                                  std::vector<port>& externalOutputs, const attrOp& onoffOp,                            properties* props=NULL);
-  module(const instance& inst, const port& inputs,              std::vector<port>& externalOutputs, const attrOp& onoffOp,                            properties* props=NULL);
-  module(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, const attrOp& onoffOp,                            properties* props=NULL);
-    
-  module(const instance& inst,                                                                                             const namedMeasures& meas, properties* props=NULL);
-  module(const instance& inst, const port& inputs,                                                                         const namedMeasures& meas, properties* props=NULL);
-  module(const instance& inst, const std::vector<port>& inputs,                                                            const namedMeasures& meas, properties* props=NULL);
-  module(const instance& inst,                                                                      const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
-  module(const instance& inst, const port& inputs,                                                  const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
-  module(const instance& inst, const std::vector<port>& inputs,                                     const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
-  module(const instance& inst,                                  std::vector<port>& externalOutputs,                        const namedMeasures& meas, properties* props=NULL);
-  module(const instance& inst, const port& inputs,              std::vector<port>& externalOutputs,                        const namedMeasures& meas, properties* props=NULL);
-  module(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs,                        const namedMeasures& meas, properties* props=NULL);
-  module(const instance& inst,                                  std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
-  module(const instance& inst, const port& inputs,              std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
-  module(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
-  
-  properties* setProperties(const instance& inst, properties* props, const attrOp* onoffOp, module* me);
-
-  void init(const std::vector<port>& in, properties* props);
-
-  private:
-  // Sets the properties of this object
-  //static properties* setProperties(const instance& inst, const std::vector<port>& inputs, const attrOp* onoffOp, properties* props);
-  
-  public:
-  ~module();
-  
-  protected:
-  // Records whether we've completed measuring this module's behavior
-  bool measurementCompleted;
-  
-  public:
-  // Called to complete the measurement of this module's execution. This measurement may be completed before
-  // the module itself completes to enable users to separate the portion of the module's execution that 
-  // represents its core behavior (and thus should be measured) from the portion where the module's outputs
-  // are computed.
-  virtual void completeMeasurement();
-  
-  // Directly calls the destructor of this object. This is necessary because when an application crashes
-  // Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
-  // there is no way to directly call the destructor of a given object when it may have several levels
-  // of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
-  // it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
-  // an object will invoke the destroy() method of the most-derived class.
-  virtual void destroy();
-  
-  // Records any publicized inputs or options inside this module and its associated modularApp. Modules
-  // executed while this module is active will inherit these inputs and options.
-  void addPublicizedInputs(const std::vector<port>& ins, int& numPublicized,
-                           std::list<std::pair<std::string, attrValue> >& publicized,
-                           std::list<std::pair<std::string, notes> >& publicizedNotes);
-
-  void addPublicizedOptions(const context& opts, int& numPublicized,
-                            std::list<std::pair<std::string, attrValue> >& publicized,
-                            std::list<std::pair<std::string, notes> >& publicizedNotes);
-
-  void addPublicized(const context& insopts, int& numPublicized,
-                     std::list<std::pair<std::string, attrValue> >& publicized,
-                     std::list<std::pair<std::string, notes> >& publicizedNotes);
-
-  // Clears off any records of publicized inputs or options that were set in addPublicized()
-  void clearPublicized(int& numPublicized,
-                       std::list<std::pair<std::string, attrValue> >& publicized,
-                       std::list<std::pair<std::string, notes> >& publicizedNotes);
-
-   // The variant of the generateTraceStream functor specialized to generating moduleTraceStreams
-  /*class generateModuleTraceStream : public generateTraceStream {
-    protected:
-    const group* g;
-    public:
-    generateModuleTraceStream() {}
-    generateModuleTraceStream(const group& g): g(&g) { }
-    
-    void init(const group& g) { this->g = &g; }
-    
-    traceStream* operator()(int moduleID);
-  }; // class generateModuleTraceStream
-*/
-  
-  // Returns the properties of this object
-  //properties* setProperties(int moduleID, properties* props=NULL);
-  
-  const std::vector<context>& getContext() const { return ctxt; }
-  std::string name() const { return g.name(); }
-  int numInputs()  const { return g.numInputs(); }
-  int numOutputs() const { return g.numOutputs(); }
-  const group& getGroup() const { return g; }
-  
-  // Sets the context of the given output port
-  virtual void setInCtxt(int idx, const context& c);
-  
-  // Adds the given key/attrValue pair to the context of the given output port
-  virtual void addInCtxt(int idx, const std::string& key, const attrValue& val);
-  
-  // Adds the given port to this module's inputs
-  virtual void addInCtxt(const port& p);
-  
-  // Sets the context of the given output port
-  virtual void setOutCtxt(int idx, const context& c);
-  
-  
-  // Returns a list of the module's input ports
-  //std::vector<port> inputPorts() const;
- 
-  // Returns a list of the module's output ports
-  std::vector<port> outPorts() const;
-  port outPort(int idx) const;
-
-  // Sets the traceCtxt map, which contains the context attributes to be used in this module's measurements 
-  // by combining the context provided by the classes that this object derives from with its own unique 
-  // context attributes.
-  void setTraceCtxt();
-  
-  // Called to notify this block that a sub-block was started/completed inside of it. 
-  // Returns true of this notification should be propagated to the blocks 
-  // that contain this block and false otherwise.
-  bool subBlockEnterNotify(block* subBlock) { return true; }
-  bool subBlockExitNotify (block* subBlock) { return true; }
-
-
-  // -------------------------
-  // ----- Configuration -----
-  // -------------------------
-  // Currently there isn't anything that can be configured but in the future we may wish to
-  // add measurements that will be taken on all modules
-  public:
-  class ModuleConfiguration : public common::Configuration{
-    public:
-    ModuleConfiguration(properties::iterator props) : common::Configuration(props.next()) {}
-  };
-  static common::Configuration* configure(properties::iterator props) { 
-    // Create a ModuleConfiguration object, using the invocation of the constructor hierarchy to
-    // record the configuration details with the respective widgets from which modules inherit
-    ModuleConfiguration* c = new ModuleConfiguration(props); 
-    delete c;
-    return NULL;
-  }
-}; // module
-
+class module;
 
 // Base class for functors that generate traceStreams that are specific to different sub-types of module.
 // We need this so that we can pass a reference to the correct genTS() method to modularApp::enterModule(). Since this
@@ -527,12 +298,6 @@ class modularApp: public block
   
   // The set of measurements that will be collected for all the modules within this modular app
   namedMeasures meas;
-
-  // The input/option attributes that have been publicized by modules currently on the stack
-  std::list<std::pair<std::string, attrValue> > publicizedInputs;
-  std::list<std::pair<std::string, module::notes> > publicizedInputNotes;
-  std::list<std::pair<std::string, attrValue> > publicizedOptions;
-  std::list<std::pair<std::string, module::notes> > publicizedOptionNotes;
 
   public:
   modularApp(const std::string& appName,                                                   properties* props=NULL);
@@ -634,6 +399,211 @@ class modularApp: public block
     return NULL;
   }
 }; // class modularApp
+
+class module: public sightObj, public common::module
+{
+  friend class group;
+  friend class modularApp;
+  
+  protected:
+  
+  int moduleID;
+  group g;
+  
+  // The context of this module execution, which is a combination of the contexts of all of its inputs
+  std::vector<context> ctxt;
+  
+  // The context in a format that traces can understand, set in setTraceCtxt() of the the class that
+  // ultimately derives from module.
+  std::map<std::string, attrValue> traceCtxt;
+  public:
+  const std::map<std::string, attrValue>& getTraceCtxt() { return traceCtxt; }
+
+  protected:
+  
+  // The input ports of this module
+  std::vector<port> ins;
+  
+  // The  output ports of this module
+  std::vector<port> outs;
+  
+  // Set of all the outputs that have already been set by the user. Used to issue
+  // warnings when an output has been set multiple times or has not been set.
+  std::set<int> outsSet;
+  
+  // We allow the user to provide a pointer to an output vector, which is populated by the module
+  // object. This is a pointer to this vector.
+  std::vector<port>* externalOutputs;
+  
+  // List of all the measurements that should be taken during the execution of this module. This is a list of pointers to
+  // measure objects. When the module instance is deleted, its measure objects are automatically deleted as well.
+  namedMeasures meas;
+  
+  // Records the observation made during the execution of this module. obs may be filled in
+  // all at once in the destructor. Alternately, if users call completeMeasurement() directly,
+  // the measurements are written to obs then and the outputs are written in the destructor.
+  std::list<std::pair<std::string, attrValue> > obs;
+  
+  // Information that describes the class that derives from this on. 
+  /*class derivInfo {
+    public:
+    
+    // A pointer to a properties object that can be used to create a tag for the derived object that 
+    // includes info about its parents.
+    properties* props;
+    
+    // Fields that must be included within the context of any trace observations made during the execution of this module.
+    std::map<std::string, attrValue> ctxt;
+    
+    // Points to a function that generates the trace stream instance specific to the given derivation of module
+    //generateTraceStream& tsGenerator;
+    
+    derivInfo(/ *generateTraceStream& tsGenerator* /)/ * : tsGenerator(tsGenerator)* / {
+      props = new properties();
+    }
+    
+    derivInfo(properties* props, const std::map<std::string, attrValue>& ctxt/ *, generateTraceStream& tsGenerator* /) :
+                  props(props), ctxt(ctxt)/ *, tsGenerator(tsGenerator)* / { }
+  }; // class derivInfo */
+  
+  // Records whether this class has been derived by another. In this case ~module() relies on the destructor of
+  // that class to create an appropriate traceStream.
+  bool isDerived;
+  
+  public:
+  // inputs - ports from other modules that are used as inputs by this module.
+  // onoffOp - We emit this scope if the current attribute query evaluates to true (i.e. we're emitting debug output) AND
+  //           either onoffOp is not provided or its evaluates to true.
+  // derivInfo: Information that describes the class that derives from this on.
+  module(const instance& inst,                                                                                                                        properties* props=NULL);
+  module(const instance& inst, const port& inputs,                                                                                                    properties* props=NULL);
+  module(const instance& inst, const std::vector<port>& inputs,                                                                                       properties* props=NULL);
+  module(const instance& inst,                                                                      const attrOp& onoffOp,                            properties* props=NULL);
+  module(const instance& inst, const port& inputs,                                                  const attrOp& onoffOp,                            properties* props=NULL);
+  module(const instance& inst, const std::vector<port>& inputs,                                     const attrOp& onoffOp,                            properties* props=NULL);
+  module(const instance& inst,                                  std::vector<port>& externalOutputs,                                                   properties* props=NULL);
+  module(const instance& inst, const port& inputs,              std::vector<port>& externalOutputs,                                                   properties* props=NULL);
+  module(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs,                                                   properties* props=NULL);
+  module(const instance& inst,                                  std::vector<port>& externalOutputs, const attrOp& onoffOp,                            properties* props=NULL);
+  module(const instance& inst, const port& inputs,              std::vector<port>& externalOutputs, const attrOp& onoffOp,                            properties* props=NULL);
+  module(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, const attrOp& onoffOp,                            properties* props=NULL);
+    
+  module(const instance& inst,                                                                                             const namedMeasures& meas, properties* props=NULL);
+  module(const instance& inst, const port& inputs,                                                                         const namedMeasures& meas, properties* props=NULL);
+  module(const instance& inst, const std::vector<port>& inputs,                                                            const namedMeasures& meas, properties* props=NULL);
+  module(const instance& inst,                                                                      const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
+  module(const instance& inst, const port& inputs,                                                  const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
+  module(const instance& inst, const std::vector<port>& inputs,                                     const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
+  module(const instance& inst,                                  std::vector<port>& externalOutputs,                        const namedMeasures& meas, properties* props=NULL);
+  module(const instance& inst, const port& inputs,              std::vector<port>& externalOutputs,                        const namedMeasures& meas, properties* props=NULL);
+  module(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs,                        const namedMeasures& meas, properties* props=NULL);
+  module(const instance& inst,                                  std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
+  module(const instance& inst, const port& inputs,              std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
+  module(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
+  
+  properties* setProperties(const instance& inst, properties* props, const attrOp* onoffOp, module* me);
+
+  void init(const std::vector<port>& in, properties* props);
+  
+  private:
+  // Sets the properties of this object
+  //static properties* setProperties(const instance& inst, const std::vector<port>& inputs, const attrOp* onoffOp, properties* props);
+  
+  public:
+  ~module();
+  
+  protected:
+  // Records whether we've completed measuring this module's behavior
+  bool measurementCompleted;
+  
+  public:
+  // Called to complete the measurement of this module's execution. This measurement may be completed before
+  // the module itself completes to enable users to separate the portion of the module's execution that 
+  // represents its core behavior (and thus should be measured) from the portion where the module's outputs
+  // are computed.
+  virtual void completeMeasurement();
+  
+  // Directly calls the destructor of this object. This is necessary because when an application crashes
+  // Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+  // there is no way to directly call the destructor of a given object when it may have several levels
+  // of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+  // it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+  // an object will invoke the destroy() method of the most-derived class.
+  virtual void destroy();
+  
+  // The variant of the generateTraceStream functor specialized to generating moduleTraceStreams
+  /*class generateModuleTraceStream : public generateTraceStream {
+    protected:
+    const group* g;
+    public:
+    generateModuleTraceStream() {}
+    generateModuleTraceStream(const group& g): g(&g) { }
+    
+    void init(const group& g) { this->g = &g; }
+    
+    traceStream* operator()(int moduleID);
+  }; // class generateModuleTraceStream
+*/
+  
+  // Returns the properties of this object
+  //properties* setProperties(int moduleID, properties* props=NULL);
+  
+  const std::vector<context>& getContext() const { return ctxt; }
+  std::string name() const { return g.name(); }
+  int numInputs()  const { return g.numInputs(); }
+  int numOutputs() const { return g.numOutputs(); }
+  const group& getGroup() const { return g; }
+  
+  // Sets the context of the given output port
+  virtual void setInCtxt(int idx, const context& c);
+  
+  // Adds the given key/attrValue pair to the context of the given output port
+  virtual void addInCtxt(int idx, const std::string& key, const attrValue& val);
+  
+  // Adds the given port to this module's inputs
+  virtual void addInCtxt(const port& p);
+  
+  // Sets the context of the given output port
+  virtual void setOutCtxt(int idx, const context& c);
+  
+  
+  // Returns a list of the module's input ports
+  //std::vector<port> inputPorts() const;
+ 
+  // Returns a list of the module's output ports
+  std::vector<port> outPorts() const;
+  port outPort(int idx) const;
+
+  // Sets the traceCtxt map, which contains the context attributes to be used in this module's measurements 
+  // by combining the context provided by the classes that this object derives from with its own unique 
+  // context attributes.
+  void setTraceCtxt();
+  
+  // Called to notify this block that a sub-block was started/completed inside of it. 
+  // Returns true of this notification should be propagated to the blocks 
+  // that contain this block and false otherwise.
+  bool subBlockEnterNotify(block* subBlock) { return true; }
+  bool subBlockExitNotify (block* subBlock) { return true; }
+
+
+  // -------------------------
+  // ----- Configuration -----
+  // -------------------------
+  // Currently there isn't anything that can be configured but in the future we may wish to
+  // add measurements that will be taken on all modules
+  public:
+  class ModuleConfiguration : public common::Configuration{
+    public:
+    ModuleConfiguration(properties::iterator props) : common::Configuration(props.next()) {}
+  };
+  static common::Configuration* configure(properties::iterator props) { 
+    // Create a ModuleConfiguration object, using the invocation of the constructor hierarchy to
+    // record the configuration details with the respective widgets from which modules inherit
+    ModuleConfiguration* c = new ModuleConfiguration(props); 
+    delete c;
+    return NULL;
+  }
+}; // module
 
 // Extends the normal context by allowing the caller to specify a description of the comparator to be used
 // for each key
@@ -928,7 +898,7 @@ class compModule: public structure::module
   // Sets the properties of this object
   properties* setProperties(const instance& inst, bool isReference, context options, const attrOp* onoffOp, properties* props=NULL);
   
-  void init(const context& options, properties* props);
+  void init(properties* props);
   
   ~compModule();
 

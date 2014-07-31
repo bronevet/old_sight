@@ -17,7 +17,7 @@ LIBS = $(MFEM_LIB) $(LAPACK_LIBS) $(OPENMP_LIBS)  ${SIGHT_LINKFLAGS}
 #${ROOT_PATH}/tools/callpath/src/src/libcallpath.so -Wl,-rpath
 
 # Parallel compiler
-MPICC = mpi${CC}
+MPICC = mpicxx
 MPIOPTS = $(OPTS) -I$(HYPRE_DIR)/include
 MPIDEBUG_OPTS = $(DEBUG_OPTS) -I$(HYPRE_DIR)/include
 MPILIBS = $(LIBS) -L$(METIS_DIR) -lmetis -L$(HYPRE_DIR)/lib -lHYPRE

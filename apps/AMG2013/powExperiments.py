@@ -97,7 +97,7 @@ def main(argv):
   #              mergeLayout(m, s, pd, r, n)
   
   # Merge all the runs
-  syscall(SIGHT_ROOT+"/hier_merge dbg.AMG2013 zipper data/merge/dbg.AMG2013.numprocs_*", True)
+  syscall(SIGHT_ROOT+"/hier_merge dbg.AMG2013 zipper data/merge/dbg.AMG2013.mtx_*", True)
   
   # Lay out the html output
   print "SLAYOUT"
@@ -145,7 +145,7 @@ def runApp(m, s, pd, pw, t, np, pSize, r, n, idx) :
       (path, args, numprocs) = configuration(m, s, pd, pw, t, np, pSize, r, n)
       print "path="+path
       if(not os.path.exists(path+".rank_0")) : 
-          print "Path \""+path+".rank_0\" does not exist"
+          print "Path \""+path+".rank_0\" does not exit"
           if(pw != 0) : 
               args += ["-powercap", str(pw)]
               with open("rapl_config", "w") as f:
