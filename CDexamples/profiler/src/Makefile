@@ -4,8 +4,8 @@ SHELL = /bin/sh
 
 APPFLAG = -D_PROFILER_OLD=0 \
 					-D_PROFILER=1 \
-					-D_ENABLE_MODULE=0 \
-					-D_ENABLE_SCOPE=1 \
+					-D_ENABLE_MODULE=1 \
+					-D_ENABLE_SCOPE=0 \
 					-D_ENABLE_COMP=0 \
 					-D_ENABLE_CDNODE=0
 CXX=mpig++ ${APPFLAG} 
