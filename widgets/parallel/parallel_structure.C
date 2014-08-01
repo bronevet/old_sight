@@ -22,12 +22,12 @@ namespace structure {
  ***** commSend *****
  ********************/
 
-commSend::commSend(const std::string& sendID, const std::string& recvID,                        properties* props) : 
-  uniqueMark(sendID, setProperties(recvID, NULL,     props))
+commSend::commSend(const std::string& label, const std::string& sendID, const std::string& recvID,                        properties* props) : 
+  uniqueMark(label, sendID, setProperties(recvID, NULL,     props))
 {}
 
-commSend::commSend(const std::string& sendID, const std::string& recvID, const attrOp& onoffOp, properties* props) : 
-  uniqueMark(sendID, setProperties(recvID, &onoffOp, props))
+commSend::commSend(const std::string& label, const std::string& sendID, const std::string& recvID, const attrOp& onoffOp, properties* props) : 
+  uniqueMark(label, sendID, setProperties(recvID, &onoffOp, props))
 {}
 
 // Sets the properties of this object
@@ -70,12 +70,12 @@ commSend::~commSend() {
  ***** commRecv *****
  ********************/
 
-commRecv::commRecv(const std::string& sendID, const std::string& recvID,                        properties* props) : 
-  uniqueMark(recvID, setProperties(sendID, NULL,     props))
+commRecv::commRecv(const std::string& label, const std::string& sendID, const std::string& recvID,                        properties* props) : 
+  uniqueMark(label, recvID, setProperties(sendID, NULL,     props))
 {}
 
-commRecv::commRecv(const std::string& sendID, const std::string& recvID, const attrOp& onoffOp, properties* props) : 
-  uniqueMark(recvID, setProperties(sendID, &onoffOp, props))
+commRecv::commRecv(const std::string& label, const std::string& sendID, const std::string& recvID, const attrOp& onoffOp, properties* props) : 
+  uniqueMark(label, recvID, setProperties(sendID, &onoffOp, props))
 {}
 
 // Sets the properties of this object
@@ -118,12 +118,12 @@ commRecv::~commRecv() {
  ***** commBar *****
  ********************/
 
-commBar::commBar(const std::string& barID,                        properties* props) : 
-  uniqueMark(barID, setProperties(NULL,     props))
+commBar::commBar(const std::string& label, const std::string& barID,                        properties* props) : 
+  uniqueMark(label, barID, setProperties(NULL,     props))
 {}
 
-commBar::commBar(const std::string& barID, const attrOp& onoffOp, properties* props) : 
-  uniqueMark(barID, setProperties(&onoffOp, props))
+commBar::commBar(const std::string& label, const std::string& barID, const attrOp& onoffOp, properties* props) : 
+  uniqueMark(label, barID, setProperties(&onoffOp, props))
 {}
 
 // Sets the properties of this object

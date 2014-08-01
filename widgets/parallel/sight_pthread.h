@@ -6,6 +6,37 @@
 #include "thread_local_storage.h"
 using namespace sight;
 
+/********************************
+ ***** Causality Management *****
+ ********************************/
+
+// Updates the causality info from the sender side
+// Returns the error code of the pthreads functions called.
+// cmHeld - indicates whether the causalityMutex is already being held by the calling thread
+// If clock!=NULL, it is set to the causal time immediately after the send operation
+int sendCausality(const std::string& sendID, const std::string& recvID, 
+                  const std::string& label,
+                  bool cmHeld, long long* clock=NULL);
+int sendCausality(const std::string& sendID,
+                  const std::string& label,
+                  bool cmHeld=false);
+
+// Updates the causality info on the receiver side
+// Returns the error code of the pthreads functions called.
+// cmHeld - indicates whether the causalityMutex is already being held by the calling thread
+int receiveCausality(const std::string& sendID, pthread_t sender,
+                     const std::string& recvID, 
+                     const std::string& label,
+                     bool cmHeld=false);
+int receiveCausality(const std::string& sendID, long long senderTime,
+                     const std::string& recvID, 
+                     const std::string& label,
+                     bool cmHeld=false);
+
+// Makes sure that causality[] is initialized.
+// cmHeld - indicates whether the causalityMutex is already being held by the calling thread
+int checkCausality(bool cmHeld);
+
 /***************************
  ***** Thread Creation *****
  ***************************/
@@ -25,6 +56,7 @@ int sight_pthread_join(pthread_t thread, void **value_ptr);
 typedef struct {
   pthread_barrier_t bar;
   int count; // counts the number of times this barrier has been reached
+  long long maxTime; // The maximum causal time reached during the most recent barrier
 } sight_pthread_barrier_t;
 
 

@@ -900,13 +900,13 @@ std::string streamRecord::str(std::string indent) const {
 Merger::Merger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                std::map<std::string, streamRecord*>& outStreamRecords,
                std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
-               properties* props): props(props) {
+               properties* props, bool ignoreClocks): props(props) {
   emitTagFlag = true;
   
   if(props==NULL) props = new properties();
   
   // Iterate through the properties of any clocks associated with this object
-  while(!isIterEnd(tags)) {
+  while(!ignoreClocks && !isIterEnd(tags)) {
     properties::tagType type = streamRecord::getTagType(tags);
     if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging!"<<endl; exit(-1); }
     if(type==properties::enterTag) {
@@ -2528,7 +2528,8 @@ ComparisonMerger::ComparisonMerger(std::vector<std::pair<properties::tagType, pr
                            map<string, streamRecord*>& outStreamRecords,
                            vector<map<string, streamRecord*> >& inStreamRecords,
                            properties* props) : 
-                                      Merger(advance(tags), outStreamRecords, inStreamRecords, props) {
+                                      Merger(advance(advance(tags)), outStreamRecords, inStreamRecords, props,
+                                             true /*ignoreClocks*/) {
   assert(tags.size()>0);
   
   if(props==NULL) props = new properties();
@@ -2555,10 +2556,12 @@ ComparisonMerger::ComparisonMerger(std::vector<std::pair<properties::tagType, pr
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
 void ComparisonMerger::mergeKey(properties::tagType type, properties::iterator tag, 
                                 std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
-  Merger::mergeKey(type, tag.next(), inStreamRecords, info);
+  // Do not call the generic merging function because we want comparisons to be 
+  // merged purely according to their IDs, not their clock order
+  //Merger::mergeKey(type, tag.next(), inStreamRecords, info);
   if(type==properties::enterTag) {
     // Comparison tags with the same ID must be perfectly aligned in all logs
-    info.setUniversal(true);
+//    info.setUniversal(true);
     info.add(tag.get("ID"));
   }
 }
@@ -2567,16 +2570,24 @@ void ComparisonMerger::mergeKey(properties::tagType type, properties::iterator t
  ***** uniqueMark *****
  **********************/
 
-uniqueMark::uniqueMark(const std::string& ID,                        properties* props) : 
-  block("uniqueMark", setProperties(ID, NULL,     props))
+uniqueMark::uniqueMark(                          const std::string& ID,                        properties* props) : 
+  block("uniqueMark", setProperties("", ID, NULL,     props))
 {}
 
-uniqueMark::uniqueMark(const std::string& ID, const attrOp& onoffOp, properties* props) : 
-  block("uniqueMark", setProperties(ID, &onoffOp, props))
+uniqueMark::uniqueMark(                          const std::string& ID, const attrOp& onoffOp, properties* props) : 
+  block("uniqueMark", setProperties("", ID, &onoffOp, props))
+{}
+
+uniqueMark::uniqueMark(const std::string& label, const std::string& ID,                        properties* props) : 
+  block("uniqueMark", setProperties(label, ID, NULL,     props))
+{}
+
+uniqueMark::uniqueMark(const std::string& label, const std::string& ID, const attrOp& onoffOp, properties* props) : 
+  block("uniqueMark", setProperties(label, ID, &onoffOp, props))
 {}
 
 // Sets the properties of this object
-properties* uniqueMark::setProperties(const std::string& ID, const attrOp* onoffOp, properties* props)
+properties* uniqueMark::setProperties(const std::string& label, const std::string& ID, const attrOp* onoffOp, properties* props)
 {
   if(props==NULL) props = new properties();
     
@@ -2585,6 +2596,12 @@ properties* uniqueMark::setProperties(const std::string& ID, const attrOp* onoff
   if(attributes->query() && (onoffOp? onoffOp->apply(): true)) {
     props->active = true;
     map<string, string> newProps;
+    if(label!="") {
+      newProps["numLabels"] = "1";
+      newProps["label0"] = label;
+    } else
+      newProps["numLabels"] = "0";
+
     newProps["numIDs"] = "1";
     newProps["ID0"] = ID;
     props->add("uniqueMark", newProps);
@@ -2645,21 +2662,33 @@ properties* UniqueMarkMerger::setProperties(std::vector<std::pair<properties::ta
     vector<string> names = getNames(tags); assert(allSame<string>(names));
     assert(*names.begin() == "uniqueMark");
 
-    // Collect all the IDs from all the incoming streams, while using the allIDs
-    // set to remove duplicates.
-    set<string> allIDs;
+    // Collect all the labels and IDs from all the incoming streams, while using the allLabels and allIDs
+    // sets to remove duplicates.
+    set<string> allLabels, allIDs;
     for(std::vector<std::pair<properties::tagType, properties::iterator> >::const_iterator t=tags.begin();
 	t!=tags.end(); t++) {
+      int numLabels = t->second.getInt("numLabels");
+      for(int i=0; i<numLabels; i++)
+	allLabels.insert(t->second.get(txt()<<"label"<<i));
+      
       int numIDs = t->second.getInt("numIDs");
       for(int i=0; i<numIDs; i++)
 	allIDs.insert(t->second.get(txt()<<"ID"<<i));
     }
 
+    // Add allLabels to pMap
+    pMap["numLabels"] = txt()<<allLabels.size();
+    { int j=0;
+    for(set<string>::const_iterator i=allLabels.begin(); i!=allLabels.end(); i++, j++)
+      pMap[txt()<<"label"<<j] = *i;
+    }
+
     // Add allIDs to pMap
     pMap["numIDs"] = txt()<<allIDs.size();
-    int j=0;
+    { int j=0;
     for(set<string>::const_iterator i=allIDs.begin(); i!=allIDs.end(); i++, j++)
       pMap[txt()<<"ID"<<j] = *i;
+    }
     
     props->add("uniqueMark", pMap);
   } else {
@@ -2678,11 +2707,12 @@ void UniqueMarkMerger::mergeKey(properties::tagType type, properties::iterator t
   BlockMerger::mergeKey(type, tag.next(), inStreamRecords, info);
 }
 // Wrapper of the printf function that emits text to the dbg stream
-ThreadLocalStorageArray<char> printbuf(100000);
+//ThreadLocalStorageArray<char> printbuf(100000);
 int dbgprintf(const char * format, ... )    
 {
   va_list args;
   va_start(args, format);
+  char printbuf[100000];
   vsnprintf(printbuf, 100000, format, args);
   va_end(args);
   

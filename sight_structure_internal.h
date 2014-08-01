@@ -657,7 +657,7 @@ class Merger {
   Merger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
          std::map<std::string, streamRecord*>& outStreamRecords,
          std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
-         properties* props);
+         properties* props, bool ignoreClocks=false);
   
   const properties& getProps() const { return *props; }
   
@@ -1482,11 +1482,13 @@ class ComparisonMerger : public Merger {
 // we can write Javascript code that visually relates these blocks.
 class uniqueMark: public block {
   public:
-  uniqueMark(const std::string& ID,                        properties* props=NULL);
-  uniqueMark(const std::string& ID, const attrOp& onoffOp, properties* props=NULL);
+  uniqueMark(                          const std::string& ID,                        properties* props=NULL);
+  uniqueMark(                          const std::string& ID, const attrOp& onoffOp, properties* props=NULL);
+  uniqueMark(const std::string& label, const std::string& ID,                        properties* props=NULL);
+  uniqueMark(const std::string& label, const std::string& ID, const attrOp& onoffOp, properties* props=NULL);
   
   // Sets the properties of this object
-  static properties* setProperties(const std::string& ID, const attrOp* onoffOp, properties* props);
+  static properties* setProperties(const std::string& label, const std::string& ID, const attrOp* onoffOp, properties* props);
 
   ~uniqueMark();
 

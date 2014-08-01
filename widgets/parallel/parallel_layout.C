@@ -32,28 +32,57 @@ parallelLayoutHandlerInstantiator::parallelLayoutHandlerInstantiator() {
 }
 parallelLayoutHandlerInstantiator parallelLayoutHandlerInstance;
 
+// Common includes for performing communication-based visualization
+void vizIncludes() {
+  static bool initialized=false;
+
+  // Load uniqueMark-specific JavaScript files into the final document
+  if(!initialized) {
+    // Create the directory that holds the parallel-specific scripts
+    dbg.createWidgetDir("parallel");
+    
+    dbg.includeFile("jsPlumb");
+    dbg.includeWidgetScript("jsPlumb/lib/jsBezier-0.6.js",            "text/javascript");
+    dbg.includeWidgetScript("jsPlumb/lib/mottle-0.3.js",              "text/javascript");
+    dbg.includeWidgetScript("jsPlumb/lib/biltong-0.2.js",             "text/javascript");
+    dbg.includeWidgetScript("jsPlumb/lib/katavorio-0.2.js",           "text/javascript");
+    dbg.includeWidgetScript("jsPlumb/src/util.js",                    "text/javascript");
+    dbg.includeWidgetScript("jsPlumb/src/dom-adapter.js",             "text/javascript");
+    dbg.includeWidgetScript("jsPlumb/src/jsPlumb.js",                 "text/javascript");
+    dbg.includeWidgetScript("jsPlumb/src/endpoint.js",                "text/javascript");
+    dbg.includeWidgetScript("jsPlumb/src/connection.js",              "text/javascript");
+    dbg.includeWidgetScript("jsPlumb/src/anchors.js",                 "text/javascript");
+    dbg.includeWidgetScript("jsPlumb/src/defaults.js",                "text/javascript");
+    dbg.includeWidgetScript("jsPlumb/src/connectors-bezier.js",       "text/javascript");
+    dbg.includeWidgetScript("jsPlumb/src/connectors-statemachine.js", "text/javascript");
+    dbg.includeWidgetScript("jsPlumb/src/connectors-flowchart.js",    "text/javascript");
+    dbg.includeWidgetScript("jsPlumb/src/connector-editors.js",       "text/javascript");
+    dbg.includeWidgetScript("jsPlumb/src/renderers-svg.js",           "text/javascript");
+    dbg.includeWidgetScript("jsPlumb/src/renderers-vml.js",           "text/javascript");
+    dbg.includeWidgetScript("jsPlumb/src/dom.jsPlumb.js",             "text/javascript");
+
+    dbg.includeFile("parallel/canvasutilities.js"); dbg.includeWidgetScript("parallel/canvasutilities.js", "text/javascript");
+    dbg.includeFile("parallel/parallel.js");        dbg.includeWidgetScript("parallel/parallel.js",        "text/javascript");
+    dbg.includeFile("parallel/parallel.css");       dbg.includeWidgetScript("parallel/parallel.css",       "text/css");
+ 
+    // Add command to show arrows once all the unique marks have been registered
+    dbg.widgetScriptEpilogCommand(txt()<<"showParallelArrows();");
+    
+    initialized=true;
+  }
+
+}
+
 /********************
  ***** commSend *****
  ********************/
 
-static bool parJSInitialized=false;
 commSend::commSend(properties::iterator props) : uniqueMark(properties::next(props))
 {
   // Load uniqueMark-specific JavaScript files into the final document
-  if(!parJSInitialized) {
-    // Create the directory that holds the parallel-specific scripts
-    dbg.createWidgetDir("parallel");
-    
-    dbg.includeFile("parallel/canvasutilities.js"); dbg.includeWidgetScript("parallel/canvasutilities.js", "text/javascript");
-    dbg.includeFile("parallel/parallel.js");        dbg.includeWidgetScript("parallel/parallel.js",        "text/javascript");
-    
-    // Add command to show arrows once all the unique marks have been registered
-    dbg.widgetScriptEpilogCommand(txt()<<"showParallelArrows();");
-    
-    parJSInitialized=true;
-  } 
-  
-   // Read all the unique IDs of the receives the match this send from props and 
+  vizIncludes();
+ 
+  // Read all the unique IDs of the receives the match this send from props and 
   // create edges from this send to these receives.
   int numIDs = props.getInt("numRecvIDs");
   if(numIDs > 0) {
@@ -102,18 +131,7 @@ void  commSendExitHandler(void* obj) { commSend* s = static_cast<commSend*>(obj)
 commRecv::commRecv(properties::iterator props) : uniqueMark(properties::next(props))
 {
   // Load uniqueMark-specific JavaScript files into the final document
-  if(!parJSInitialized) {
-    // Create the directory that holds the parallel-specific scripts
-    dbg.createWidgetDir("parallel");
-    
-    dbg.includeFile("parallel/canvasutilities.js"); dbg.includeWidgetScript("parallel/canvasutilities.js", "text/javascript");
-    dbg.includeFile("parallel/parallel.js");        dbg.includeWidgetScript("parallel/parallel.js",        "text/javascript");
-    
-    // Add command to show arrows once all the unique marks have been registered
-    dbg.widgetScriptEpilogCommand(txt()<<"showParallelArrows();");
-    
-    parJSInitialized=true;
-  }
+  vizIncludes();
 
   // Read all the unique IDs of the receives the match this send from props and 
   // create edges from this send to these receives.
@@ -164,18 +182,7 @@ void  commRecvExitHandler(void* obj) { commRecv* s = static_cast<commRecv*>(obj)
 commBar::commBar(properties::iterator props) : uniqueMark(properties::next(props))
 {
   // Load uniqueMark-specific JavaScript files into the final document
-  if(!parJSInitialized) {
-    // Create the directory that holds the parallel-specific scripts
-    dbg.createWidgetDir("parallel");
-    
-    dbg.includeFile("parallel/canvasutilities.js"); dbg.includeWidgetScript("parallel/canvasutilities.js", "text/javascript");
-    dbg.includeFile("parallel/parallel.js");        dbg.includeWidgetScript("parallel/parallel.js",        "text/javascript");
-    
-    // Add command to show arrows once all the unique marks have been registered
-    dbg.widgetScriptEpilogCommand(txt()<<"showParallelArrows();");
-    
-    parJSInitialized=true;
-  }
+  vizIncludes();
 
   dbg.enterBlock(this, /*newFileEntered*/ false, /*summaryEntry*/ false);
 }
@@ -192,7 +199,8 @@ void commBar::printEntry(string loadCmd) {
   
   // If any send IDs were provided, create an arrow from them to this receive
   assert(allIDs!="");
-  dbg.widgetScriptCommand(txt()<<"createUniqueMarkArrowTo('"<<getBlockID()<<"',"<<allIDs<<");");
+  //dbg.widgetScriptCommand(txt()<<"createUniqueMarkArrowTo('"<<getBlockID()<<"',"<<allIDs<<");");
+  dbg.widgetScriptCommand(txt()<<"createBarrierMember('"<<getBlockID()<<"',"<<allIDs<<");");
   
   /*dbg.ownerAccessing();
   dbg << "Recv blockID="<<getBlockID()<<", uniqueMark="<<allIDs<<", sendIDs="<<sendIDs;

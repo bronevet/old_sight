@@ -18,8 +18,8 @@ class commSend: public uniqueMark, public common::scope
 {
   std::string recvID;
   public:
-  commSend(const std::string& sendID, const std::string& recvID,                        properties* props=NULL);
-  commSend(const std::string& sendID, const std::string& recvID, const attrOp& onoffOp, properties* props=NULL);
+  commSend(const std::string& label, const std::string& sendID, const std::string& recvID,                        properties* props=NULL);
+  commSend(const std::string& label, const std::string& sendID, const std::string& recvID, const attrOp& onoffOp, properties* props=NULL);
 
   private:
   // Sets the properties of this object
@@ -41,8 +41,8 @@ class commRecv: public uniqueMark, public common::scope
 {
   std::string sendID;
   public:
-  commRecv(const std::string& sendID, const std::string& recvID,                        properties* props=NULL);
-  commRecv(const std::string& sendID, const std::string& recvID, const attrOp& onoffOp, properties* props=NULL);
+  commRecv(const std::string& label, const std::string& sendID, const std::string& recvID,                        properties* props=NULL);
+  commRecv(const std::string& label, const std::string& sendID, const std::string& recvID, const attrOp& onoffOp, properties* props=NULL);
 
   private:
   // Sets the properties of this object
@@ -64,8 +64,8 @@ class commBar: public uniqueMark, public common::scope
 {
   std::string sendID;
   public:
-  commBar(const std::string& barID,                        properties* props=NULL);
-  commBar(const std::string& barID, const attrOp& onoffOp, properties* props=NULL);
+  commBar(const std::string& label, const std::string& barID,                        properties* props=NULL);
+  commBar(const std::string& label, const std::string& barID, const attrOp& onoffOp, properties* props=NULL);
 
   private:
   // Sets the properties of this object

@@ -8,7 +8,7 @@ TESTERS = 0.Demo${EXE} #8.Modules${EXE} 9.CompModules.merged${EXE} 9.CompModules
           1.StructuredFormatting${EXE} 2.ConditionalFormatting${EXE} 3.Navigation${EXE} \
           4.AttributeAnnotationFiltering${EXE} 6.PerfAnalysis${EXE} \
           7.Merging${EXE} 
-PTHREAD_TESTERS = pthreadMutexEx${EXE} pthreadCondEx${EXE} pthreadThreadsEx${EXE}
+PTHREAD_TESTERS = pthreadMutexEx${EXE} pthreadCondEx${EXE} pthreadThreadsEx${EXE} pthreadFib${EXE}
 
 all: ${PTHREAD_TESTERS} 
 #${TESTERS}
@@ -107,6 +107,11 @@ run: ${TESTERS}
 	${CCC} -g ${SIGHT_CFLAGS} 11.ExternTraceProcess.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 11.ExternTraceProcess${EXE}
 
 runPthread: ${PTHREAD_TESTERS}
+	rm -r dbg.*
+	export SIGHT_FILE_OUT=1; ./pthreadFib 5
+	export SIGHT_FILE_OUT=1; ../hier_merge dbg.pthreadFib zipper dbg.pthreadFib.individual.thread_*
+	# rm -r dbg.pthreadFib.individual*
+	../slayout dbg.pthreadFib
 	export SIGHT_FILE_OUT=1; ./pthreadThreadsEx 5
 	export SIGHT_FILE_OUT=1; export SIGHT_MERGE_SEPARATE=1; ../hier_merge dbg.pthreadThreadsEx common dbg.pthreadThreadsEx.individual*
 	rm -r dbg.pthreadThreadsEx.individual*
@@ -127,6 +132,9 @@ pthreadMutexEx${EXE}: pthreadMutexEx.C ../libsight_structure.so ${sight_H}
 	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
 
 pthreadCondEx${EXE}: pthreadCondEx.C ../libsight_structure.so ${sight_H}
+	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
+
+pthreadFib${EXE}: pthreadFib.C ../libsight_structure.so ${sight_H}
 	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
 
 clean:

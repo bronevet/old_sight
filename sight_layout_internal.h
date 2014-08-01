@@ -639,6 +639,8 @@ extern uniqueMarkLayoutHandlerInstantiator uniqueMarkLayoutHandlerInstance;
 class uniqueMark: public block
 {
   protected:
+  // Strings that encode the JavaScript arrays of all labels and IDs.
+  std::string allLabels;
   std::string allIDs;
   public:
   uniqueMark(properties::iterator props);

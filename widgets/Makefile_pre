@@ -15,6 +15,7 @@ all: gsl papi libmsr synoptic \
      vnc \
      source/sh_main.js source/sh_cpp.js \
      threejs \
+     jsPlumb \
      external_scripts
 	chmod 755 canviz-0.1 
 	chmod 644 canviz-0.1/*
@@ -281,6 +282,10 @@ THREE:
 
 Stats.js:
 	wget http://stemkoski.github.io/Three.js/js/Stats.js
+
+jsPlumb:
+	../getGithub https://github.com/sporritt/jsPlumb/archive/master.zip zip unzip
+	mv jsPlumb-master jsPlumb
 
 clean:
 	rm -fr xdotool

@@ -12,49 +12,115 @@ static std::map<pthread_t, scalarCausalClock*> causality;
 
 // Updates the causality info from the sender side
 // Returns the error code of the pthreads functions called.
-// If acquireMutex==true, function acquires causalityMutex. Otherwise, it 
-// assumes that this mutex has already been acquired and does not acquire it again.
-int sendCausality(const std::string& sendID, bool acquireMutex=true) {
-  // Emit the causality info of this lock acquire, while holding on to causalityMutex
-  if(acquireMutex) {
+// cmHeld - indicates whether the causalityMutex is already being held by the calling thread
+// If clock!=NULL, it is set to the causal time immediately after the send operation
+int sendCausality(const std::string& sendID, const std::string& recvID, 
+                  const std::string& label,
+                  bool cmHeld, long long* clock) {
+ // Emit the causality info of this lock acquire, while holding on to causalityMutex
+  if(!cmHeld) {
     int rc = pthread_mutex_lock(&causalityMutex); 
     if(rc!=0) return rc;
   }
   
-  commSend(sendID, "");
+  checkCausality(true);
 
-  if(acquireMutex) {
+  //scope s(label, scope::minimum);
+  commSend(label, sendID, recvID);
+  
+  // If a pointer to a clock is provided, set it to the time of the send operation
+  if(clock)
+    *clock = causality[pthread_self()]->send();
+
+  if(!cmHeld) {
     int rc = pthread_mutex_unlock(&causalityMutex);
     if(rc!=0) return rc;
   }
   
   return 0;
+}
+
+int sendCausality(const std::string& sendID, 
+                  const std::string& label,
+                  bool cmHeld) {
+  return sendCausality(sendID, "", label, cmHeld, NULL);
 }
 
 // Updates the causality info on the receiver side
 // Returns the error code of the pthreads functions called.
-// If acquireMutex==true, function acquires causalityMutex. Otherwise, it 
-// assumes that this mutex has already been acquired and does not acquire it again.
+// caller - If provided, receiveCausality() reads the causal time directly from the caller.
+// callerTime - If provieded, takes the causal time from this argument
+// cmHeld - indicates whether the causalityMutex is already being held by the calling thread
 int receiveCausality(const std::string& sendID, pthread_t sender,
-                     const std::string& recvID, bool acquireMutex=true) {
-  if(acquireMutex) {
+                     const std::string& recvID, 
+                     const std::string& label, bool cmHeld) {
+ if(!cmHeld) {
     int rc = pthread_mutex_lock(&causalityMutex);
     if(rc!=0) return rc;
   }
 
+  checkCausality(true);
+  //scope s(label, scope::minimum);
+ 
   //cout << pthread_self()<<": lock time="<<causality[smutex->lastMutexOwner]->send()<<endl;
-  long long lastClockTime = causality[sender]->send();
   causality[pthread_self()]->recv(causality[sender]->send());
   //cout << pthread_self()<<": local time="<<causality[pthread_self()]->send()<<endl;
-  commRecv(sendID, recvID);
+  commRecv(label, sendID, recvID);
 
-  if(acquireMutex) {
+  if(!cmHeld) {
     int rc = pthread_mutex_unlock(&causalityMutex);
     if(rc!=0) return rc;
   }
   
   return 0;
 }
+
+int receiveCausality(const std::string& sendID, long long senderTime,
+                     const std::string& recvID, 
+                     const std::string& label, 
+                     bool cmHeld) {
+  if(!cmHeld) {
+    int rc = pthread_mutex_lock(&causalityMutex);
+    if(rc!=0) return rc;
+  }
+
+  checkCausality(true);
+  //scope s(label, scope::minimum);
+ 
+  //cout << pthread_self()<<": lock time="<<causality[smutex->lastMutexOwner]->send()<<endl;
+  causality[pthread_self()]->recv(senderTime);
+  //cout << pthread_self()<<": local time="<<causality[pthread_self()]->send()<<endl;
+  commRecv(label, sendID, recvID);
+
+  if(!cmHeld) {
+    int rc = pthread_mutex_unlock(&causalityMutex);
+    if(rc!=0) return rc;
+  }
+  
+  return 0;
+}
+
+// Makes sure that causality[] is initialized.
+// cmHeld - indicates whether the causalityMutex is already being held by the calling thread
+int checkCausality(bool cmHeld) {
+  int rc;
+
+  if(!cmHeld) {
+    rc = pthread_mutex_lock(&causalityMutex);
+    if(rc!=0) { cerr << pthread_self()<<": SIGHT ERROR: calling pthread_mutex_lock() "<<rc<<"="<<strerror(rc)<<endl; return rc; }
+  }
+
+  if(causality.find(pthread_self()) == causality.end())
+    causality[pthread_self()] = new scalarCausalClock();
+
+  if(!cmHeld) {
+    rc = pthread_mutex_unlock(&causalityMutex);
+    if(rc!=0) { cerr << pthread_self()<<": SIGHT ERROR: calling pthread_mutex_lock() "<<rc<<"="<<strerror(rc)<<endl; return rc; }
+  }
+
+  return 0;
+}
+
 
 /***************************
  ***** Thread Creation *****
@@ -94,7 +160,7 @@ void *sightThreadInitializer(void* data) {
   int rc = pthread_mutex_lock(&causalityMutex);
   if(rc!=0) { fprintf(stderr, "sightThreadInitializer() ERROR locking causalityMutex! %s\n", strerror(rc)); assert(0); }
   
-  causality[pthread_self()] = new scalarCausalClock();
+  //checkCausality(true);
   //cout << "causality["<<pthread_self()<<"]="<<causality[pthread_self()]->send()<<endl;
 
   // Add a causality send edge from the spawner thread to the spawnee thread
@@ -103,7 +169,8 @@ void *sightThreadInitializer(void* data) {
   
   rc = receiveCausality(txt()<<"Spawner_"<<((pthreadRoutineData*)data)->spawner<<"_"<<((pthreadRoutineData*)data)->spawnCnt,
                         ((pthreadRoutineData*)data)->spawner,
-                        txt()<<"Spawnee_"<<pthread_self(), false);
+                        txt()<<"Spawnee_"<<pthread_self(),
+                        "Spawned", true);
   
   rc = pthread_mutex_unlock(&causalityMutex);
   if(rc!=0) { fprintf(stderr, "sightThreadInitializer() ERROR unlocking causalityMutex! %s\n", strerror(rc)); assert(0); }
@@ -120,7 +187,7 @@ void *sightThreadInitializer(void* data) {
 
   // Add a causality send edge from the thread's termination to the join call
   //commSend(txt()<<"End_"<<pthread_self(), "");
-  rc = sendCausality(txt()<<"End_"<<pthread_self());
+  rc = sendCausality(txt()<<"End_"<<pthread_self(), "Terminating");
   
   return ret;
 }
@@ -144,8 +211,7 @@ int sight_pthread_create(pthread_t * thread,
     int rc = pthread_mutex_lock(&causalityMutex);
     if(rc!=0) { fprintf(stderr, "sightThreadInitializer() ERROR locking causalityMutex! %s\n", strerror(rc)); assert(0); }
 
-    if(causality.find(pthread_self())==causality.end())
-      causality[pthread_self()] = new scalarCausalClock();
+    checkCausality(true);
 
     rc = pthread_mutex_unlock(&causalityMutex);
     if(rc!=0) { fprintf(stderr, "sightThreadInitializer() ERROR unlocking causalityMutex! %s\n", strerror(rc)); assert(0); }
@@ -153,7 +219,7 @@ int sight_pthread_create(pthread_t * thread,
   
   // Add a causality send edge from the spawner thread to the spawnee thread
   //commSend(txt()<<"Spawner_"<<pthread_self()<<"_"<<data->spawnCnt, "");
-  int rc = sendCausality(txt()<<"Spawner_"<<pthread_self()<<"_"<<data->spawnCnt);
+  int rc = sendCausality(txt()<<"Spawner_"<<pthread_self()<<"_"<<data->spawnCnt, "Spawn");
   if(rc!=0) return rc;
   
   numThreadsSpawned++;
@@ -166,7 +232,7 @@ void sight_pthread_exit(void *value_ptr) {
 
   // Add a causality send edge from the thread's termination to the join call
   //commSend(txt()<<"End_"<<pthread_self(), "");
-  int rc = sendCausality(txt()<<"End_"<<pthread_self());
+  int rc = sendCausality(txt()<<"End_"<<pthread_self(), "Terminating");
   
   pthread_exit(value_ptr);
 }
@@ -177,7 +243,8 @@ int sight_pthread_join(pthread_t thread, void **value_ptr) {
   // Add a causality send edge from the thread's termination to the join call
   //commRecv(txt()<<"End_"<<thread, txt()<<"Joiner_"<<pthread_self()<<"_"<<thread);
   rc = receiveCausality(txt()<<"End_"<<thread, thread,
-                        txt()<<"Joiner_"<<pthread_self()<<"_"<<thread);
+                        txt()<<"Joiner_"<<pthread_self()<<"_"<<thread,
+                        "Join");
   
   return rc;
 }
@@ -188,6 +255,9 @@ int sight_pthread_join(pthread_t thread, void **value_ptr) {
 
 int sight_pthread_barrier_init(sight_pthread_barrier_t* sbar, const pthread_barrierattr_t * attr, unsigned count) {
   sbar->count = 0;
+
+  checkCausality(true);
+   
   //cout << pthread_self()<<": sight_pthread_barrier_init("<<sbar<<")"<<endl;
   return pthread_barrier_init(&(sbar->bar), attr, count);
 }
@@ -202,30 +272,38 @@ int sight_pthread_barrier_wait(sight_pthread_barrier_t* sbar) {
 
   int rc = pthread_barrier_wait(&(sbar->bar));
   if(rc!=0 && rc!=PTHREAD_BARRIER_SERIAL_THREAD) { cerr << pthread_self()<<": SIGHT ERROR: calling pthread_barrier_wait() "<<rc<<"="<<strerror(rc)<<endl; return rc; }
-  
+ 
   // Increment the number of times this barrier has been reached, but do
   // so only on one thread
-  if(rc==PTHREAD_BARRIER_SERIAL_THREAD)
+  if(rc==PTHREAD_BARRIER_SERIAL_THREAD) {
     sbar->count++;
 
-  // Set the local scalar clock to the maximum of each thread's scalar clock
-  rc = pthread_mutex_lock(&causalityMutex);
-  if(rc!=0) { cerr << pthread_self()<<": SIGHT ERROR: calling pthread_mutex_lock() "<<rc<<"="<<strerror(rc)<<endl; return rc; }
-
-  long long maxTime=-1;
-  for(map<pthread_t, scalarCausalClock*>::const_iterator i=causality.begin(); i!=causality.end(); i++) {
-    if(i->first != pthread_self()) 
-      maxTime = (i->second->send()>maxTime? i->second->send(): maxTime);
+    // Set the local scalar clock to the maximum of each thread's scalar clock
+    rc = pthread_mutex_lock(&causalityMutex);
+    if(rc!=0) { cerr << pthread_self()<<": SIGHT ERROR: calling pthread_mutex_lock() "<<rc<<"="<<strerror(rc)<<endl; return rc; }
+  
+    sbar->maxTime=-1;
+    for(map<pthread_t, scalarCausalClock*>::const_iterator i=causality.begin(); i!=causality.end(); i++) {
+      if(i->first != pthread_self()) 
+        sbar->maxTime = (i->second->send()>sbar->maxTime? i->second->send(): sbar->maxTime);
+    }
   }
 
+  // All threads wait for the serial thread to compute the maximum of the local causal times
+  rc = pthread_barrier_wait(&(sbar->bar));
+  if(rc!=0 && rc!=PTHREAD_BARRIER_SERIAL_THREAD) { cerr << pthread_self()<<": SIGHT ERROR: calling pthread_barrier_wait() "<<rc<<"="<<strerror(rc)<<endl; return rc; }
+  
   //cout << pthread_self() << ": maxTime="<<maxTime<<endl;
-  causality[pthread_self()]->recv(maxTime);
-
-  commBar(txt()<<"B_"<<sbar<<"_"<<sbar->count);
+  causality[pthread_self()]->recv(sbar->maxTime);
+  // Insert a dummy block before the barrier to enable the JavaScript to vertically align all the barrier instances
+  block();
+  causality[pthread_self()]->recv(sbar->maxTime+1);
+  //{ scope s("Barrier", scope::minimum); 
+  commBar("Barrier", txt()<<"B_"<<sbar<<"_"<<sbar->count);
 
   rc = pthread_mutex_unlock(&causalityMutex);
   if(rc!=0) { cerr << pthread_self()<<": SIGHT ERROR: calling pthread_mutex_unlock() "<<rc<<"="<<strerror(rc)<<endl; return rc; }
-
+  //}
   rc = pthread_barrier_wait(&(sbar->bar));
   if(rc!=0 && rc!=PTHREAD_BARRIER_SERIAL_THREAD) { cerr << pthread_self()<<": SIGHT ERROR: calling pthread_barrier_wait() "<<rc<<"="<<strerror(rc)<<endl; return rc; }
 
@@ -238,6 +316,8 @@ int sight_pthread_barrier_wait(sight_pthread_barrier_t* sbar) {
 
 int sight_pthread_mutex_init(sight_pthread_mutex_t *smutex, const pthread_mutexattr_t *attr) {
   smutex->numMutexOwners=0;
+  checkCausality(true);
+    
   return pthread_mutex_init(&(smutex->mutex), NULL);
 }
 
@@ -252,11 +332,18 @@ int sight_pthread_mutex_lock(sight_pthread_mutex_t* smutex) {
 
   // If this lock was previously owned by this or another thread, record the happens-before relationship
   if(smutex->numMutexOwners>0) {
+    rc = pthread_mutex_lock(&causalityMutex);
+    if(rc!=0) { cerr << pthread_self()<<": SIGHT ERROR: calling pthread_mutex_lock() "<<rc<<"="<<strerror(rc)<<endl; return rc; }
+    
     // Update the causality info
     long long lastClockTime = causality[smutex->lastMutexOwner]->send();
     rc = receiveCausality(txt()<<"S_"<<smutex->lastMutexOwner<<"_"<<lastClockTime, smutex->lastMutexOwner,
-                          txt()<<"R_"<<pthread_self()<<"_"<<lastClockTime);
+                          txt()<<"R_"<<pthread_self()<<"_"<<lastClockTime, 
+                          "Mutex Lock", true);
     if(rc!=0) return rc;
+    
+    rc = pthread_mutex_unlock(&causalityMutex);
+    if(rc!=0) { cerr << pthread_self()<<": SIGHT ERROR: calling pthread_mutex_lock() "<<rc<<"="<<strerror(rc)<<endl; return rc; }
   }
 
   // Record that this thread was the last owner of this lock
@@ -267,10 +354,20 @@ int sight_pthread_mutex_lock(sight_pthread_mutex_t* smutex) {
 }
 
 int sight_pthread_mutex_unlock(sight_pthread_mutex_t* smutex) {
+  int rc;
+
+  rc = pthread_mutex_lock(&causalityMutex);
+  if(rc!=0) { cerr << pthread_self()<<": SIGHT ERROR: calling pthread_mutex_lock() "<<rc<<"="<<strerror(rc)<<endl; return rc; }
+
+  checkCausality(true);
+
   // Update the causality info
-  int rc = sendCausality(txt()<<"S_"<<pthread_self()<<"_"<<causality[pthread_self()]->send());
+  rc = sendCausality(txt()<<"S_"<<pthread_self()<<"_"<<causality[pthread_self()]->send(), "Mutex Unlock", true);
   if(rc!=0) return rc;
  
+  rc = pthread_mutex_unlock(&causalityMutex);
+  if(rc!=0) { cerr << pthread_self()<<": SIGHT ERROR: calling pthread_mutex_lock() "<<rc<<"="<<strerror(rc)<<endl; return rc; }
+  
   rc = pthread_mutex_unlock(&(smutex->mutex));
   if(rc!=0) return rc;
 
@@ -286,6 +383,10 @@ int sight_pthread_cond_init(sight_pthread_cond_t *scond, const pthread_condattr_
   
   int rc = pthread_mutex_init(&(scond->signalMutex), NULL);
   if(rc!=0) return rc;
+  
+  scond->signalers.insert(pthread_self());
+
+  checkCausality(true);
   
   return pthread_cond_init(&(scond->cond), attr);
 }
@@ -310,7 +411,8 @@ int sight_pthread_cond_wait(sight_pthread_cond_t *scond, sight_pthread_mutex_t *
       s!=scond->signalers.end(); s++) {
     //cout << "sight_pthread_cond_wait() SC_"<<*s<<"_"<<scond->numAwakenings<<" => "<<"RC_"<<pthread_self()<<"_"<<scond->numAwakenings<<endl;
     int rc = receiveCausality(txt()<<"SC_"<<*s<<"_"<<scond->numAwakenings, *s,
-                              txt()<<"RC_"<<pthread_self()<<"_"<<scond->numAwakenings);
+                              txt()<<"RC_"<<pthread_self()<<"_"<<scond->numAwakenings,
+                              "Cond Awoken");
     if(rc!=0) return rc;
   }
   //cout << "sight_pthread_cond_wait() grabbed signalMutex"<<endl;
@@ -332,7 +434,8 @@ int sight_pthread_cond_timedwait(sight_pthread_cond_t * scond, sight_pthread_mut
   for(set<pthread_t>::const_iterator s=scond->signalers.begin();
       s!=scond->signalers.end(); s++) {
     int rc = receiveCausality(txt()<<"SC_"<<*s<<"_"<<scond->numAwakenings, *s,
-                              txt()<<"RC_"<<pthread_self()<<"_"<<scond->numAwakenings);
+                              txt()<<"RC_"<<pthread_self()<<"_"<<scond->numAwakenings,
+                              "Cond Timed Awoken");
     if(rc!=0) return rc;
   }
   
@@ -349,7 +452,7 @@ int sight_pthread_cond_signal(sight_pthread_cond_t *scond) {
   if(rc!=0) return rc;
   
   //cout << "sight_pthread_cond_signal() SC_"<<pthread_self()<<"_"<<scond->numAwakenings<<" => ???"<<endl;
-  rc = sendCausality(txt()<<"SC_"<<pthread_self()<<"_"<<scond->numAwakenings);
+  rc = sendCausality(txt()<<"SC_"<<pthread_self()<<"_"<<scond->numAwakenings, "Signal");
   if(rc!=0) return rc;
   scond->signalers.insert(pthread_self());
   
@@ -368,7 +471,7 @@ int sight_pthread_cond_broadcast(sight_pthread_cond_t *scond) {
   int rc = pthread_mutex_lock(&scond->signalMutex);
   if(rc!=0) return rc;
   
-  rc = sendCausality(txt()<<"SC_"<<pthread_self()<<"_"<<scond->numAwakenings);
+  rc = sendCausality(txt()<<"SC_"<<pthread_self()<<"_"<<scond->numAwakenings, "Broadcast");
   if(rc!=0) return rc;
   scond->signalers.insert(pthread_self());
   
