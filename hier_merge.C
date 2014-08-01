@@ -15,6 +15,7 @@ using namespace std;
 using namespace sight;
 using namespace sight::structure;
 
+
 //#define VERBOSE
 
 // A unique signature that differentiates tags of incompatible types from each other
@@ -167,6 +168,7 @@ int main(int argc, char** argv) {
   if(argc<3) { cerr<<"Usage: hier_merge outDir mergeType [fNames]"<<endl; exit(-1); }
   vector<FILEStructureParser*> fileParsers;
   const char* outDir = argv[1];
+
   mergeType mt = str2MergeType(string(argv[2]));
   for(int i=3; i<argc; i++) {
     fileParsers.push_back(new FILEStructureParser(argv[i], 10000));

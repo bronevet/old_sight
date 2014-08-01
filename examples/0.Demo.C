@@ -3,7 +3,8 @@
 #include <vector>
 #include <assert.h>
 #include "sight.h"
-#include <pthread.h>
+#include "sight_pthread.h"
+//#include <pthread.h>
 #include <unistd.h>
 //#include <omp.h>
 using namespace std;
@@ -25,11 +26,11 @@ double histRecurrence(int a, const vector<double>& hist);
 std::pair<int, std::vector<port> > fibModule(int a, int depth);
 
 pthread_barrier_t barr;
-long numMutexOwners=0;
-pthread_t lastMutexOwner;
+//long numMutexOwners=0;
+//pthread_t lastMutexOwner;
 pthread_mutex_t mutex;
 
-pthread_mutex_t causalitymutex;
+/*pthread_mutex_t causalitymutex;
 std::map<pthread_t, scalarCausalClock*> causality;
 //ThreadLocalStorage0<scalarCausalClock> threadCausality;
 
@@ -54,10 +55,13 @@ void lock(pthread_mutex_t& mutex, scalarCausalClock& threadCausality) {
   int rc = pthread_mutex_lock(&mutex);
 
   // If this lock was previously owned by another thread, record the happens-before relationship
-  if(numMutexOwners>0/* && lastMutexOwner!=pthread_self()*/) {
+  if(numMutexOwners>0/ * && lastMutexOwner!=pthread_self()* /) {
     cout << pthread_self()<<": lock time="<<causality[lastMutexOwner]->send()<<endl;
+    long long lastClockTime = causality[lastMutexOwner]->send();
     threadCausality.recv(causality[lastMutexOwner]->send());
     cout << pthread_self()<<": local time="<<threadCausality.send()<<endl;
+    commRecv(txt()<<"S_"<<lastMutexOwner<<"_"<<lastClockTime,
+             txt()<<"R_"<<pthread_self()<<"_"<<lastClockTime);
   }
 
   // Record that this thread was the last owner of this lock
@@ -66,8 +70,10 @@ void lock(pthread_mutex_t& mutex, scalarCausalClock& threadCausality) {
 }
 
 void unlock(pthread_mutex_t& mutex, scalarCausalClock& threadCausality) {
+  //block b("");
+  commSend(txt()<<"S_"<<pthread_self()<<"_"<<threadCausality.send(), "");
   int rc = pthread_mutex_unlock(&mutex);
-} 
+} */
 
 
 int gargc;
@@ -85,34 +91,38 @@ void* work(void* data) {
   dbg << ">>>>> Depth "<<depth<<" >>>>>"<<endl;*/
   
   // Clock that tracks causality between threads
-  scalarCausalClock threadCausality;
+  /*scalarCausalClock threadCausality;
   pthread_mutex_lock(&causalitymutex);
   causality[pthread_self()] = &threadCausality;
-  pthread_mutex_unlock(&causalitymutex);
+  pthread_mutex_unlock(&causalitymutex);*/
   
   // Wait for all threads to initialize
-  pthread_barrier_wait(&barr);
-  
-  comparison comp(-1);
+  rc = pthread_barrier_wait(&barr);
+  if(rc!=0) { cerr << pthread_self()<<": ERROR calling barrier! "<<strerror(rc)<<endl; assert(0); }
   
   for(int i=0; i<4; i++) {
     //comparison comp_bar(i);
-    cout << pthread_self()<<": i="<<i<<endl;
-    dbg << "<h1>"<<pthread_self()<<":"<<i<<"</h1>"<<endl;
+    //cout << pthread_self()<<": i="<<i<<endl;
+    {
+    scope sIter(txt()<< pthread_self()<<":"<<i);
     for(int j=0; j<3; j++) {
-      scope s(txt()<<"iteration "<<j);
       
-      lock(mutex, threadCausality);
+      rc = pthread_mutex_lock(&mutex/*, threadCausality*/);
+      if(rc!=0) { cerr << pthread_self()<<": ERROR calling pthread_mutex_lock! "<<strerror(rc)<<endl; assert(0); }
+      { scope s(txt()<<"iteration "<<j);
       shared_counter++;
       dbg << "Counter="<<shared_counter<<endl;
-      cout << pthread_self()<<" j="<<j<<" grabbed lock\n";
-      unlock(mutex, threadCausality);
+      //cout << pthread_self()<<" j="<<j<<" grabbed lock\n";
+      }
+      rc = pthread_mutex_unlock(&mutex/*, threadCausality*/);
+      if(rc!=0) { cerr << pthread_self()<<": ERROR calling pthread_mutex_unlock! "<<strerror(rc)<<endl; assert(0); }
 
       usleep(rand()%2? 100: 100000);
     }
-    
+    }
     // Synchronization point
-    barrier(barr, threadCausality);
+    pthread_barrier_wait(&barr/*, threadCausality*/);
+    if(rc!=0) { cerr << pthread_self()<<": ERROR calling barrier! "<<strerror(rc)<<endl; assert(0); }
   }
   /*#pragma omp for
   for(int i=0; i<10; i++)
@@ -144,11 +154,11 @@ int main(int argc, char** argv)
       return -1;
   }
 
-  if(pthread_mutex_init(&causalitymutex, NULL))
+/*  if(pthread_mutex_init(&causalitymutex, NULL))
   {
       printf("Unable to initialize a mutex\n");
       return -1;
-  }
+  }*/
 
   
   std::list<pthread_t> threads;

@@ -691,6 +691,8 @@ std::string MergeHandlerInstantiator::str() {
 SightMergeHandlerInstantiator::SightMergeHandlerInstantiator() { 
   (*MergeHandlers   )["sight"]      = dbgStreamMerger::create;
   (*MergeKeyHandlers)["sight"]      = dbgStreamMerger::mergeKey;
+  (*MergeHandlers   )["block"]      = BlockMerger::create;
+  (*MergeKeyHandlers)["block"]      = BlockMerger::mergeKey;
   (*MergeHandlers   )["indent"]     = IndentMerger::create;
   (*MergeKeyHandlers)["indent"]     = IndentMerger::mergeKey;
   (*MergeHandlers   )["comparison"] = ComparisonMerger::create;
@@ -1557,7 +1559,8 @@ properties* block::setProperties(string label, properties* props) {
     
     map<string, string> newProps;
     newProps["label"] = label;
-    newProps["callPath"] = cp2str(CPRuntime->doStackwalk());
+//cout << pthread_self()<<": CPRuntime="<<CPRuntime.get()<<endl;
+    newProps["callPath"] = "";//cp2str(CPRuntime->doStackwalk());
     newProps["ID"] = txt()<<(maxBlockID+1);
     newProps["anchorID"] = txt()<<startA.getID();
     newProps["numAnchors"] = "0";
@@ -2566,9 +2569,126 @@ void ComparisonMerger::mergeKey(properties::tagType type, properties::iterator t
   }
 }
 
+/**********************
+ ***** uniqueMark *****
+ **********************/
 
+uniqueMark::uniqueMark(const std::string& ID,                        properties* props) : 
+  block("uniqueMark", setProperties(ID, NULL,     props))
+{}
+
+uniqueMark::uniqueMark(const std::string& ID, const attrOp& onoffOp, properties* props) : 
+  block("uniqueMark", setProperties(ID, &onoffOp, props))
+{}
+
+// Sets the properties of this object
+properties* uniqueMark::setProperties(const std::string& ID, const attrOp* onoffOp, properties* props)
+{
+  if(props==NULL) props = new properties();
+    
+  // If the current attribute query evaluates to true (we're emitting debug output) AND
+  // either onoffOp is not provided or its evaluates to true
+  if(attributes->query() && (onoffOp? onoffOp->apply(): true)) {
+    props->active = true;
+    map<string, string> newProps;
+    newProps["numIDs"] = "1";
+    newProps["ID0"] = ID;
+    props->add("uniqueMark", newProps);
+  }
+  else
+    props->active = false;
+  return props;
+}
+
+// Directly calls the destructor of this object. This is necessary because when an application crashes
+// Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+// there is no way to directly call the destructor of a given object when it may have several levels
+// of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+// it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+// an object will invoke the destroy() method of the most-derived class.
+void uniqueMark::destroy() {
+  this->~uniqueMark();
+}
+
+uniqueMark::~uniqueMark() {
+  assert(!destroyed);
+}
+
+/**********************************************
+ ***** UniqueMarkMergeHandlerInstantiator *****
+ **********************************************/
+
+UniqueMarkMergeHandlerInstantiator::UniqueMarkMergeHandlerInstantiator() { 
+  (*MergeHandlers   )["uniqueMark"] = UniqueMarkMerger::create;
+  (*MergeKeyHandlers)["uniqueMark"] = UniqueMarkMerger::mergeKey;
+}
+UniqueMarkMergeHandlerInstantiator UniqueMarkMergeHandlerInstance;
+                                                    
+/****************************
+ ***** UniqueMarkMerger *****
+ ****************************/
+
+UniqueMarkMerger::UniqueMarkMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+                         map<string, streamRecord*>& outStreamRecords,
+                         vector<map<string, streamRecord*> >& inStreamRecords,
+                         properties* props) : 
+		BlockMerger(advance(tags), outStreamRecords, inStreamRecords, 
+			    setProperties(tags, outStreamRecords, inStreamRecords, props)) { }
+
+// Sets the properties of the merged object
+properties* UniqueMarkMerger::setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+				       map<string, streamRecord*>& outStreamRecords,
+				       vector<map<string, streamRecord*> >& inStreamRecords,
+				       properties* props) {
+  if(props==NULL) props = new properties();
+  
+  map<string, string> pMap;
+  properties::tagType type = streamRecord::getTagType(tags); 
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging UniqueMark!"<<endl; exit(-1); }
+  if(type==properties::enterTag) {
+    assert(tags.size()>0);
+
+    vector<string> names = getNames(tags); assert(allSame<string>(names));
+    assert(*names.begin() == "uniqueMark");
+
+    // Collect all the IDs from all the incoming streams, while using the allIDs
+    // set to remove duplicates.
+    set<string> allIDs;
+    for(std::vector<std::pair<properties::tagType, properties::iterator> >::const_iterator t=tags.begin();
+	t!=tags.end(); t++) {
+      int numIDs = t->second.getInt("numIDs");
+      for(int i=0; i<numIDs; i++)
+	allIDs.insert(t->second.get(txt()<<"ID"<<i));
+    }
+
+    // Add allIDs to pMap
+    pMap["numIDs"] = txt()<<allIDs.size();
+    int j=0;
+    for(set<string>::const_iterator i=allIDs.begin(); i!=allIDs.end(); i++, j++)
+      pMap[txt()<<"ID"<<j] = *i;
+    
+    props->add("uniqueMark", pMap);
+  } else {
+    props->add("uniqueMark", pMap);
+  }
+  
+  return props;
+}
+
+// Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+// tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
+// Each level of the inheritance hierarchy may add zero or more elements to the given list and 
+// call their parents so they can add any info,
+void UniqueMarkMerger::mergeKey(properties::tagType type, properties::iterator tag, 
+				   std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+  BlockMerger::mergeKey(type, tag.next(), inStreamRecords, info);
+}
+
+
+// Wrapper of the printf function that emits text to the dbg stream
 //ThreadLocalStorageArray<char> printbuf(100000);
 char printbuf[100000];
+
 int dbgprintf(const char * format, ... )    
 {
   va_list args;

@@ -56,6 +56,9 @@ sightLayoutHandlerInstantiator::sightLayoutHandlerInstantiator() {
   (*layoutEnterHandlers)["sight"]  = &SightInit;
   (*layoutExitHandlers )["sight"]  = &defaultExitHandler;
 
+  (*layoutEnterHandlers)["block"] = &blockEnterHandler;
+  (*layoutExitHandlers )["block"] = &blockExitHandler;
+
   (*layoutEnterHandlers)["indent"] = &indentEnterHandler;
   (*layoutExitHandlers )["indent"] = &indentExitHandler;
 
@@ -271,9 +274,20 @@ std::map<std::string, attrValue> sightClock::curTime;
 // Records whether the clock has been modified since the last time it was read
 bool sightClock::modified=false;
 
+// Records the JavaScript comparison functions to be used for all the clocks
+std::map<std::string, std::string> sightClock::compFuncs;
+  
 // Called by the handlers of the individual clocks to update their current time
 void sightClock::updateTime(const std::string& clockName, const attrValue& time) { 
   curTime[clockName] = time;
+
+  // Record the comparison function for this clock, if we have not yet done this
+  if(compFuncs.find(clockName) == compFuncs.end()) {
+    compFuncs[clockName] = time.getComparatorJS();
+    // Emit the registration to the Javascript output to make it available to the clock-based 
+    // layout mechanisms
+    dbg.widgetScriptPrologCommand(txt()<<"registerComparator('"<<clockName<<"', "<<time.getComparatorJS()<<");");
+  }
 
   // Record that the clock has been modified (i.e. now) since the last time it was read
   modified = true;
@@ -317,11 +331,11 @@ std::string sightClock::getComparatorsJS() {
 int sightObj::maxClockID=0;
 
 sightObj::sightObj(properties::iterator props) {
-  // After all the clock insertions are complete, perform the order-sensitive div layout
   if(maxClockID==0) {
+    // After all the clock insertions are complete, perform the order-sensitive div layout
     dbg.widgetScriptEpilogCommand("layoutOrderedDivs();");
   }
-  
+
   // The sightObj constructor is called with the props iterator set immediately
   // after the record that describes the class that inherits from sightObj.
   // The remaining records must belong to the clocks that are associated with
@@ -609,6 +623,10 @@ std::string anchor::str(std::string indent) const {
 /*****************
  ***** block *****
  *****************/
+
+void* blockEnterHandler(properties::iterator props) { return new block(props); }
+void  blockExitHandler(void* obj) { block* b = static_cast<block*>(obj); delete b; }
+
 
 int block::blockCount=0;
 
@@ -1217,7 +1235,7 @@ void dbgStream::subBlockEnterNotify(block* subBlock)
   for(list<pair<block*, list<block*> > >::const_reverse_iterator fb=blocks.rbegin(); fb!=blocks.rend(); fb++) {
     // Iterate through the sub-blocks of this file
     for(list<block*>::const_reverse_iterator sb=fb->second.rbegin(); sb!=fb->second.rend(); sb++) {
-      //cout << "  Informing"<<(*sb)->getLabel()<<endl;
+      //cout << "  Informing "<<(*sb)->getLabel()<<endl;
       if(!(*sb)->subBlockEnterNotify(subBlock)) return;
     }
     
@@ -1455,6 +1473,7 @@ void dbgStream::printSummaryFileContainerHTML(string absoluteFileName, string re
   sum << "\t<script src=\"script/attributes.js\"></script>\n";
   sum << "\t<script src=\"script/core.js\"></script>\n";
   sum << "\t<script src=\"script/orderedDivs.js\"></script>\n";
+  sum << "\t<script src=\"script/uniqueMark.js\"></script>\n";
   sum << "\t<script type=\"text/javascript\">\n";
   sum << "\tfunction loadURLIntoDiv(doc, url, divName) {\n";
   sum << "\t\tvar xhr= new XMLHttpRequest();\n";
@@ -1497,6 +1516,7 @@ void dbgStream::printDetailFileContainerHTML(string absoluteFileName, string tit
   det << "\t<script src=\"script/attributes.js\"></script>\n";
   det << "\t<script src=\"script/core.js\"></script>\n";
   det << "\t<script src=\"script/orderedDivs.js\"></script>\n";
+  det << "\t<script src=\"script/uniqueMark.js\"></script>\n";
   det << "\t<STYLE TYPE=\"text/css\">\n";
   det << "\tBODY\n";
   det << "\t\t{\n";
@@ -1566,6 +1586,7 @@ void dbgStream::printDetailFileContainerHTML(string absoluteFileName, string tit
 //    the start of this major block and the next setting of an attribute.
 string dbgStream::enterBlock(block* b, bool newFileEntered, bool addSummaryEntry, bool recursiveEnterBlock)
 {
+  //cout <<"dbgStream::enterBlock() recursiveEnterBlock="<<recursiveEnterBlock<<", label="<<b->getLabel()<<endl;
   //cout << "<<<enter(newFileEntered="<<newFileEntered<<", addSummaryEntry="<<addSummaryEntry<<", recursiveEnterBlock="<<recursiveEnterBlock<<") b="<<b<<"="<<(b? b->getLabel(): "NULL")<<endl;
 //!!!  dbg << "<<<enter() fileBufs.size()="<<fileBufs.size()<<" && #blocks="<<blocks.size()<<", #blocks.back().second="<<blocks.back().second.size()<<", #fileBufs.back()->blocks="<<(fileBufs.size()==0? -1: fileBufs.back()->blocks.size())<<endl;
 /*  if(!recursiveEnterBlock)
@@ -1607,7 +1628,7 @@ string dbgStream::enterBlock(block* b, bool newFileEntered, bool addSummaryEntry
                "top.summary.document, 'summary."<<fileID<<".body', 'sumdiv"<<blockID<<"', "<<
                "'script/script."<<fileID<<"'";
   }
-  
+
   if(!recursiveEnterBlock) b->printEntry(loadCmd.str());
   dbg.ownerAccessing();  
   dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"<div id=\"div"<<b->getBlockID()<<"\" class=\"unhidden\">\n"; dbg.flush();
@@ -1815,7 +1836,62 @@ comparison::~comparison() {
   dbg.userAccessing();  
 }
 
+/**********************
+ ***** uniqueMark *****
+ **********************/
 
+// Record the layout handlers in this file
+uniqueMarkLayoutHandlerInstantiator::uniqueMarkLayoutHandlerInstantiator() { 
+/*  (*layoutEnterHandlers)["uniqueMark"] = &uniqueMarkEnterHandler;
+  (*layoutExitHandlers) ["uniqueMark"] = &uniqueMarkExitHandler;*/
+}
+uniqueMarkLayoutHandlerInstantiator uniqueMarkLayoutHandlerInstance;
+
+uniqueMark::uniqueMark(properties::iterator props) : block(properties::next(props))
+{
+  /*static bool initialized=false;
+  // Load uniqueMark-specific JavaScript files into the final document
+  if(!initialized) {
+    // Create the directory that holds the parallel-specific scripts
+    dbg.createWidgetDir("parallel");
+    
+    dbg.includeFile("parallel/uniqueMark.js");
+    dbg.includeWidgetScript("parallel/uniqueMark.js", "text/javascript");
+    initialized=true;
+  }*/
+
+  // Read all the unique IDs from props and register them in JavaScript
+  int numIDs = props.getInt("numIDs");
+  // At least one ID must have been specified
+  assert(numIDs > 0);
+  ostringstream allIDsS;
+  allIDsS << "[";
+  for(int i=0; i<numIDs; i++) {
+    if(i>0) allIDsS << ",";
+    allIDsS << "'"<<props.get(txt()<<"ID"<<i)<<"'";
+  }
+  allIDsS << "]";
+  allIDs = allIDsS.str();
+}
+
+uniqueMark::~uniqueMark()
+{ 
+}
+
+// Called to enable the block to print its entry and exit text
+void uniqueMark::printEntry(string loadCmd) {
+  //cout << "uniqueMark::printEntry("<<loadCmd<<")"<<endl;
+  // At least one ID must have been specified
+  assert(allIDs!="");
+  dbg.widgetScriptCommand(txt()<<"registerUniqueMark('"<<getBlockID()<<"',"<<allIDs<<");");
+}
+
+void uniqueMark::printExit() {
+}
+
+/*void* uniqueMarkEnterHandler(properties::iterator props) { return new uniqueMark(props); }
+void  uniqueMarkExitHandler(void* obj) { uniqueMark* s = static_cast<uniqueMark*>(obj); delete s; }*/
+ 
 
 // Given a string, returns a version of the string with all the control characters that may appear in the 
 // string escaped to that the string can be written out to Dbg::dbg with no formatting issues.

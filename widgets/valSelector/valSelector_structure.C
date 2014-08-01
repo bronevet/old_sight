@@ -130,7 +130,7 @@ list<sightObj*> activeFormats;
 void start_internal(valSelector& sel, const attrValue* val, string name) { 
   // Each text-colored region is given a different uniqueID to make it possible to apply formatting to each one 
   // independently. Region identities are assigned using the instanceID counter, which is continually incremented
-   static ThreadLocalStorage1<int, int>  instanceID(0);
+  static ThreadLocalStorage1<int, int> instanceID(0);
   
   // Only bother if this text will be emitted
   if(!attributes->query()) return;

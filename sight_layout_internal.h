@@ -108,6 +108,9 @@ class sightClock
   
   // Records whether the clock has been modified since the last time it was read
   static bool modified;
+
+  // Records the JavaScript comparison functions to be used for all the clocks
+  static std::map<std::string, std::string> compFuncs;
   
   public:
   // Called by the handlers of the individual clocks to update their current time
@@ -125,6 +128,9 @@ class sightClock
   // all the individual clocks as a JavaScript hash that maps the name of each clock to 
   // its comparator function
   static std::string getComparatorsJS();
+
+  // Returns a mapping from clock names to their respective comparison functions
+  //const std::map<std::string, std::string>& getCompFuncs() { return compFuncs; }
 }; // class sightClock
 
 
@@ -166,7 +172,7 @@ class anchor
   static int minAnchorID;
   int anchorID;
   
-  // Associates each anchor with its location (if known). Useful for connecting anchor objects with started out
+  // Associates each anchor with its location (if known). Useful for connecting anchor objects that started out
   // unlocated (e.g. forward links) and then were located when we reached their target. Since there may be multiple
   // copies of the original unlocated anchor running around, these copies won't be automatically updated. However,
   // this map will always keep the latest information.
@@ -238,6 +244,13 @@ class anchor
     
   std::string str(std::string indent="") const;
 }; // class anchor
+
+/*****************
+ ***** block *****
+ *****************/
+
+void* blockEnterHandler(properties::iterator props);
+void  blockExitHandler(void* obj);
 
 // A block out debug output, which may be filled by various visual elements
 class block: public sightObj
@@ -612,6 +625,41 @@ class comparison: public block
   
   ~comparison();
 }; // comparison
+
+/**********************
+ ***** uniqueMark *****
+ **********************/
+
+class uniqueMarkLayoutHandlerInstantiator  : layoutHandlerInstantiator{
+  public:
+  uniqueMarkLayoutHandlerInstantiator();
+};
+extern uniqueMarkLayoutHandlerInstantiator uniqueMarkLayoutHandlerInstance;
+
+class uniqueMark: public block
+{
+  protected:
+  std::string allIDs;
+  public:
+  uniqueMark(properties::iterator props);
+  public:
+    
+  // Called to notify this block that a sub-block was started/completed inside of it. 
+  // Returns true of this notification should be propagated to the blocks 
+  // that contain this block and false otherwise.
+  bool subBlockEnterNotify(block* subBlock) { return false; }
+  bool subBlockExitNotify (block* subBlock) { return false; }
+  
+  // Called to enable the block to print its entry and exit text
+  virtual void printEntry(std::string loadCmd);
+  virtual void printExit();
+  
+  ~uniqueMark();
+}; // uniqueMark
+
+/*void* uniqueMarkEnterHandler(properties::iterator props);
+void  uniqueMarkExitHandler(void* obj);*/
+
 
 // Given a string, returns a version of the string with all the control characters that may appear in the 
 // string escaped to that the string can be written out to Dbg::dbg with no formatting issues.

@@ -125,7 +125,7 @@ class ThreadLocalStorage
     if(pthread_getspecific(key_)==NULL) {
       T* buf = const_cast<ThreadLocalStorage<T>*>(this)->allocate();
       pthread_setspecific(key_, buf);
-//      cout << "        buf="<<buf<<", key_="<<key_<<", pthread_getspecific(key_)="<<pthread_getspecific(key_)<<endl;
+      //cout << pthread_self()<<":        buf="<<buf<<", key_="<<key_<<endl;//<<", pthread_getspecific(key_)="<<pthread_getspecific(key_)<<endl;
 //      pthread_setspecific(key_, const_cast<ThreadLocalStorage<T>*>(this)->allocate());
       assert(pthread_getspecific(key_) == buf);
     }

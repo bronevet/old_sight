@@ -8,7 +8,7 @@ sight := ${sight_O} ${sight_H} gdbLineNum.pl sightDefines.pl
 
 ROOT_PATH = ${CURDIR}
 
-SIGHT_CFLAGS = -g -fPIC -I${ROOT_PATH} -I${ROOT_PATH}/attributes -I${ROOT_PATH}/widgets/* \
+SIGHT_CFLAGS = -g -fPIC -I${ROOT_PATH} -I${ROOT_PATH}/attributes -I${ROOT_PATH}/widgets/parallel \
                 -I${ROOT_PATH}/tools/callpath/src -I${ROOT_PATH}/tools/adept-utils/include \
                 -I${ROOT_PATH}/tools/boost_1_55_0 \
                 -I${ROOT_PATH}/widgets/papi/include \
@@ -167,7 +167,7 @@ slayout${EXE}: mfem libsight_layout.so widgets_post
 
 hier_merge${EXE}: hier_merge.C process.C process.h libsight_structure.so 
 	${CCC} ${SIGHT_CFLAGS} hier_merge.C -Wl,--whole-archive libsight_structure.so -Wl,-no-whole-archive \
-	                                 -DMFEM -I. ${SIGHT_LINKFLAGS} -o hier_merge${EXE}
+	-DMFEM -I. ${SIGHT_LINKFLAGS} -o hier_merge${EXE}
 
 libsight_common.a: ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre
 	ar -r libsight_common.a ${SIGHT_COMMON_O} widgets/*/*_common.o
@@ -245,7 +245,7 @@ gdbLineNum.pl: setupGDBWrap.pl sight_structure.C
 sightDefines.pl:
 	printf "\$$main::sightPath = \"${ROOT_PATH}\"; return 1;" > sightDefines.pl
 
-Makefile.extern: initMakefile.extern
+Makefile.extern: initMakefile.extern Makefile
 	chmod 755 initMakefile.extern
 	./initMakefile.extern ${CC} ${CCC} ${RAPL_ENABLED} ${LLVM32_SRC_PATH} ${LLVM32_BUILD_PATH} ${LLVM32_INSTALL_PATH}
 

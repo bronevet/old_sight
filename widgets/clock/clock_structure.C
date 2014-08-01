@@ -204,7 +204,7 @@ std::string stepClock::str() const {
   // Check the time
   // If the time has advanced since the last measurement, update it and return true                                 
     if(*curTime != lastTime) {
-    lastTime = *curTime;
+    lastTime = * curTime;
     return true;
     // If time has not advanced
     } else
@@ -253,6 +253,7 @@ properties* scalarCausalClock::setProperties(properties* props) {
   // Store the current time in props
   map<string, string> pMap;
   pMap["time"] = txt()<<time;
+  //cout << pthread_self() << ": setProperties() time="<<time<<endl;
   props->add("scalarCausalClock", pMap);
   return props;
 }
@@ -270,6 +271,8 @@ void scalarCausalClock::recv(const long long& sendTime)
 {
   // Update time to be the maximum of the local time and sendTime+1
   time = (sendTime+1 > time? sendTime+1 : time);
+
+ // cout << pthread_self() << ": recv() time="<<time<<endl;
 }
 
 // Returns true if the clock has been modified since the time of its registration or the last time modified() was called.

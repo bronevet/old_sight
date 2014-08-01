@@ -449,7 +449,7 @@ std::string attrValue::getAsJS() const {
 // Returns a JavaScript function that compares instances of the type of this attrValue
 std::string attrValue::getComparatorJS() const {
   if(type == strT || type == ptrT || type == intT || type == floatT) { 
-    return "function(a,b) { return (a<b: -1: (a==b? 0: 1)); }";
+    return "function(a,b) { return (a<b? -1: (a==b? 0: 1)); }";
   } else if(type == customT || type == customSerT) { 
     cerr << "attrValue::getComparatorJS() ERROR: custom attributes not currently supported!"<<endl; assert(0);
   } else  {
