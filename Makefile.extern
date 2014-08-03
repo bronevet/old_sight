@@ -1,4 +1,4 @@
-ROOT_PATH = /g/g90/lee1031/work/Sight/sight_after_merge
+ROOT_PATH = /work/Work/sight/sight
 SIGHT_CFLAGS = -I${ROOT_PATH} -I${ROOT_PATH}/widgets/parallel \
                -I${ROOT_PATH}/tools/callpath/src -I${ROOT_PATH}/tools/adept-utils/include \
                -I${ROOT_PATH}/widgets/papi/include\
@@ -40,5 +40,5 @@ SIGHT_LAYOUT_DYNAMIC_LINKFLAGS = \
                   -Wl,-rpath ${ROOT_PATH}/tools/callpath/src/src \
                   ${ROOT_PATH}/widgets/papi/lib/libpapi.a \
                  -lpthread
-CC = cc
+CC = gcc
 CCC = g++
