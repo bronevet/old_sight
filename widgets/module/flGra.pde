@@ -29,6 +29,7 @@ String[] node_relation = new String[nsi];
 // depth of nodes for graph layout
 int[] node_depth = new int[nsi];
 String[] depthList = new String[nsi];
+int[][] temp_depthList = new int[nsi][nsi];
 int[] nodrel_len = new int[nsi];
 int depth_width;
 // visualization methods: sc3d, ccp, pcp, ... 
@@ -88,7 +89,7 @@ int[] temp = new int[nsi];
 void setup() 
 { 
   // size of window
-  size(1200, 1100);
+  size(2500, 1500);
   //e8
   //size(1500, 800);
   background(255);
@@ -138,6 +139,8 @@ void setup()
     node_relation[i] = i+":"; 
     node_depth[i] = ""; 
     depthList[i] = "";
+    //temp_depthList[i] = "";
+    
     temp[i] = 0;
     hnode[i] = 0;
     wnode[i] = 0;
@@ -212,50 +215,95 @@ void setup()
       
     for(int k=0; k<nodrel_len[i]; k++)
       int ino = int(depnod[k]);
-      if(containerID[ino]>0 && nodrel_len[ino]<2 && node_depth[ino]<(depth_length-2))
+      if(containerID[ino]>0 && nodrel_len[ino]<2 && node_depth[ino]<(depth_length-1))
         temp[ino] = 1;
+   
+    nodedepth_height[node_depth[i]] = 0;
   }
-  
-  for(int m=0; m<lnodes_length; m++)
-  { 
-    if(containerID[m] < 0 && nodrel_len[m] < 2)
-    {
-     depthList[node_depth[m]] += m+ ":";  
-    }
-    else
-    {
-      if(containerID[m] <= 0)
-        depthList[node_depth[m]] += m+ ":";
-      String[] dep = split(node_relation[m],":");
-      for(int k=1; k<nodrel_len[m]; k++)
+ 
+ int savel = 0;
+ for(int l=0;l<depth_length;l++)
+ {
+    for(int m=0; m<lnodes_length; m++)
+    { 
+      if(node_depth[m] == l)
       {
-        int deno = int(dep[k]);
-        depthList[node_depth[deno]] += deno+ ":"; 
-        if(temp[deno] == 1)
+        if(containerID[m] < 0)
         {
-          for(int t=node_depth[deno]+1; t<depth_length; t++)
-            depthList[t] += "-1:";
+          depthList[l] += m+ ":";  
+           
+          String[] dep = split(node_relation[m],":");
+          for(int k=1; k<nodrel_len[m]; k++)
+          {
+            int deno = int(dep[k]);
+            depthList[node_depth[deno]] += deno+ ":";
+            
+            for(int t=0;t<(nodrel_len[deno]-2);t++)
+            {
+               depthList[node_depth[deno]] += "r:"; 
+            }
+            if(deno == 4)
+              depthList[node_depth[deno]] += "r:";
+            savel = l+1;
+          }
         }
       }
     }
-    nodedepth_height[node_depth[m]] = 0;
-  }
+ }
+ for(int i=savel+1; i<depth_length;i++)
+ {
+     String[] depli = split(depthList[i-1],":");
+     for(int k=0; k<(depli.length-1); k++)
+     {
+       int de = int(depli[k]);
+       
+       if(temp[de] == 1 || de == -1)
+       {
+         depthList[i] += "-1:";
+       }
+       else
+       {
+          String[] nodere = split(node_relation[de],":");
+          for(int m=1; m<(nodere.length-1); m++)
+          {
+            int den = int(nodere[m]);
+            depthList[i] += den+ ":"; 
+            // if(nodrel_len[den] > 2)
+             for(int t=0;t<(nodrel_len[den]-2);t++)
+                depthList[i] += "r:"; 
+          }
+       }
+     }
+ }
+  
   // set up current depth length
   current_depth_length = depth_length;
   
+  /*
+  for(int i=0; i<depth_length; i++)
+    println("depthList["+i+"]="+depthList[i]); 
+  for(int i=0; i<lnodes_length; i++)
+  {
+  //  println("node_depth["+i+"]="+node_depth[i]); 
+   // println("node_relation["+i+"]="+node_relation[i]); 
+   // println("temp["+i+"]="+temp[i]); 
+  }
+  */
+ 
   noLoop();
 }
  
 void draw() 
 {
   background(255);
+
   nodeheight = 1.8*font_size;
   //nodeheight = height/(8*depth_length);
   //nodewidth = width/(depth_width + 1);
   if(lnodes_length > 8)
   {
     nodewidth = 28*font_size;
-    depth_distance = 2*font_size;
+    depth_distance = 3*font_size;
   }
   else
   {
@@ -358,7 +406,8 @@ void draw()
       ycnode[i] = ytmp + nodedepth_height[node_depth[i]-1]+2*depth_distance;
     }
   }
-    
+  
+  
   if(viewMeth == 2)
   {
     // update xcnode
@@ -377,7 +426,7 @@ void draw()
       String[] depli = split(depthList[j], ":");
       for(int k=0; k<(depli.length-1);k++)
       {
-        if(int(depli[k])>=0)
+        if(int(depli[k])>0)
         {
           for(int i=0; i<lnodes_length; i++)
           {
@@ -398,7 +447,7 @@ void draw()
   int newWid, newHei;
   if(lnodes_length > 8)
   {
-    newWid = int(100+nodewidth*(depth_width+1));
+    newWid = int(100+nodewidth*(depth_width+4));
     newHei = depth_distance;
   }
   else
@@ -410,12 +459,10 @@ void draw()
   {
      newHei += int(hnode[k]);
   }
- 
-  
   if(scaleFactor == 1)
     size(newWid, newHei);
- 
-  if(viewMeth == 1 || viewMeth == 2)
+  
+ if(viewMeth == 1 || viewMeth == 2)
     draw_methButton(viewMeth);
   // Draw nodes
   for(int i=(lnodes_length -1); i>=0; i--)

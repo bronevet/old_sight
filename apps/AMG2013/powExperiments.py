@@ -27,12 +27,13 @@ def main(argv):
   elif("AMG_MTX" in os.environ) : mtx = os.environ["AMG_MTX"].split()
   else :                          mtx = ["default"]#, "laplace", "27pt", "jumps"];
   print "mtx="+str(mtx)
-  solver = ["PCG_AMG"]#, "PCG_Diag", "GMRES_AMG", "GMRES_Diag"];
+  solver = ["PCG_AMG", "GMRES_AMG"]#"PCG_Diag", "GMRES_AMG", "GMRES_Diag"];
   pooldist = ["1"]#["0", "1"];
-  power = ["1000"]#["25", "50", "75", "100"];
-  refine = ["1"]#, "6", "12"];
-  ncube = ["10"]# "40", "100"];
-  tol = ["1e-06"] #, "1e-05", "1e-04"]
+  power = ["3000"]#["1000"]#["25", "50", "75", "100"];
+  refine = ["1", "6", "12"];
+  ncube = ["100"]#["10"]# "40", "100"];
+  tol = ["1e-01", "1e-02", "1e-03","1e-04", "1e-05","1e-06"] #, "1e-05", "1e-04"]
+  #tol = ["1e-04", "1e-05","1e-06"]
   # The distribution of processors among the x, y z dimensions. The last entry must correspond to 
   # the distribution with the largest values in each dimension. The problem size is pMult*px*py*pz of the largest entry.
   # px, py and pz must be powers of 2.
