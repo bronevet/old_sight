@@ -240,10 +240,10 @@ void setup()
             
             for(int t=0;t<(nodrel_len[deno]-2);t++)
             {
-               depthList[node_depth[deno]] += "r:"; 
+               depthList[node_depth[deno]] += "-2:"; 
             }
             if(deno == 4)
-              depthList[node_depth[deno]] += "r:";
+              depthList[node_depth[deno]] += "-2:";
             savel = l+1;
           }
         }
@@ -261,16 +261,17 @@ void setup()
        {
          depthList[i] += "-1:";
        }
-       else
+       else if(de>=0)
        {
           String[] nodere = split(node_relation[de],":");
-          for(int m=1; m<(nodere.length-1); m++)
+          //for(int m=1; m<(nodere.length-1); m++)
+          for(int m=1; m<(nodrel_len[de]); m++)
           {
             int den = int(nodere[m]);
             depthList[i] += den+ ":"; 
             // if(nodrel_len[den] > 2)
              for(int t=0;t<(nodrel_len[den]-2);t++)
-                depthList[i] += "r:"; 
+                depthList[i] += "-2:"; 
           }
        }
      }
@@ -284,12 +285,12 @@ void setup()
     println("depthList["+i+"]="+depthList[i]); 
   for(int i=0; i<lnodes_length; i++)
   {
-  //  println("node_depth["+i+"]="+node_depth[i]); 
-   // println("node_relation["+i+"]="+node_relation[i]); 
+   println("node_depth["+i+"]="+node_depth[i]); 
+   //println("node_relation["+i+"]="+node_relation[i]); 
    // println("temp["+i+"]="+temp[i]); 
   }
   */
- 
+  
   noLoop();
 }
  
@@ -421,12 +422,12 @@ void draw()
       }
     }
     // update width of node
-    for(int j=depth_length-3; j>=0; j--)
+    for(int j=depth_length-1; j>=0; j--)
     {
       String[] depli = split(depthList[j], ":");
       for(int k=0; k<(depli.length-1);k++)
       {
-        if(int(depli[k])>0)
+        if(int(depli[k])>=0)
         {
           for(int i=0; i<lnodes_length; i++)
           {
@@ -444,6 +445,8 @@ void draw()
     }
   }
   
+  /*
+  // resize windows
   int newWid, newHei;
   if(lnodes_length > 8)
   {
@@ -461,7 +464,7 @@ void draw()
   }
   if(scaleFactor == 1)
     size(newWid, newHei);
-  
+ */
  if(viewMeth == 1 || viewMeth == 2)
     draw_methButton(viewMeth);
   // Draw nodes

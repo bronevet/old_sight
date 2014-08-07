@@ -158,7 +158,7 @@ int main(int argc, char** argv)
     
 #pragma sightLoc ModularStart
     modularApp modularFibonacci("Fibonacci"); 
-    fibModule(7,0);
+    fibModule(9,0);
 #pragma sightLoc ModularEnd
   }
   
