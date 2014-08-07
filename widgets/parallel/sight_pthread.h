@@ -78,6 +78,12 @@ int sight_pthread_mutex_destroy(sight_pthread_mutex_t *smutex);
 int sight_pthread_mutex_lock(sight_pthread_mutex_t* smutex);
 int sight_pthread_mutex_unlock(sight_pthread_mutex_t* smutex);
 
+typedef pthread_mutex_t pthread_orig_mutex_t;
+int pthread_orig_mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t *attr);
+int pthread_orig_mutex_destroy(pthread_mutex_t *mutex);
+int pthread_orig_mutex_lock(pthread_mutex_t* mutex);
+int pthread_orig_mutex_unlock(pthread_mutex_t* mutex);
+
 /*******************************
  ***** Condition Variables *****
  *******************************/
@@ -121,6 +127,12 @@ int sight_pthread_cond_broadcast(sight_pthread_cond_t *scond);
 #define pthread_mutex_destroy   sight_pthread_mutex_destroy
 #define pthread_mutex_lock      sight_pthread_mutex_lock
 #define pthread_mutex_unlock    sight_pthread_mutex_unlock
+
+/*#define pthread_orig_mutex_t         pthread_mutex_t
+#define pthread_orig_mutex_init      pthread_mutex_init
+#define pthread_orig_mutex_destroy   pthread_mutex_destroy
+#define pthread_orig_mutex_lock      pthread_mutex_lock
+#define pthread_orig_mutex_unlock    pthread_mutex_unlock*/
 
 #define pthread_cond_t          sight_pthread_cond_t
 #define pthread_cond_init       sight_pthread_cond_init

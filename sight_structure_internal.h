@@ -67,6 +67,10 @@ void SightInit_LowLevel();
 
 void SightInit_internal(properties* props);
 
+void SightThreadInit();
+void SightThreadFinalize();
+
+
 // Generic check to perform before emitting objects to the Sight log to ensure that
 // Sight is correctly initialized 
 
@@ -411,7 +415,7 @@ class sightObj {
   const properties& getProps() const { return *props; }
 
   // Destroys all the currently live sightObjs on the stack
-  static void destroyAll();
+  static void destroyAll(map<dbgStream*, list<sightObj*> >* stack=NULL);
     
   // Returns whether this object is active or not
   bool isActive() const;

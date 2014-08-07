@@ -8,7 +8,10 @@ TESTERS = 0.Demo${EXE} #8.Modules${EXE} 9.CompModules.merged${EXE} 9.CompModules
           1.StructuredFormatting${EXE} 2.ConditionalFormatting${EXE} 3.Navigation${EXE} \
           4.AttributeAnnotationFiltering${EXE} 6.PerfAnalysis${EXE} \
           7.Merging${EXE} 
-PTHREAD_TESTERS = pthreadMutexEx${EXE} pthreadCondEx${EXE} pthreadThreadsEx${EXE} pthreadFib${EXE}
+PTHREAD_TESTERS = pthreadBug1${EXE} #pthreadMutexEx${EXE} pthreadCondEx${EXE} pthreadThreadsEx${EXE} pthreadFib${EXE} \
+                  pthreadArrayLoops${EXE} dotprodPthreads${EXE} \
+                  pthreadBug1${EXE} pthreadBug2${EXE} pthreadBug3${EXE} \
+                  pthreadBug4${EXE} pthreadBug5${EXE} pthreadBug6${EXE}
 
 all: ${PTHREAD_TESTERS} 
 #${TESTERS}
@@ -108,22 +111,34 @@ run: ${TESTERS}
 
 runPthread: ${PTHREAD_TESTERS}
 	rm -r dbg.*
-	export SIGHT_FILE_OUT=1; ./pthreadFib 5
-	export SIGHT_FILE_OUT=1; ../hier_merge dbg.pthreadFib zipper dbg.pthreadFib.individual.thread_*
-	# rm -r dbg.pthreadFib.individual*
-	../slayout dbg.pthreadFib
-	export SIGHT_FILE_OUT=1; ./pthreadThreadsEx 5
-	export SIGHT_FILE_OUT=1; export SIGHT_MERGE_SEPARATE=1; ../hier_merge dbg.pthreadThreadsEx common dbg.pthreadThreadsEx.individual*
-	rm -r dbg.pthreadThreadsEx.individual*
-	../slayout dbg.pthreadThreadsEx
-	export SIGHT_FILE_OUT=1; ./pthreadMutexEx 5
-	export SIGHT_FILE_OUT=1; export SIGHT_MERGE_SEPARATE=1; ../hier_merge dbg.pthreadMutexEx common dbg.pthreadMutexEx.individual*
-	rm -r dbg.pthreadMutexEx.individual*
-	../slayout dbg.pthreadMutexEx
-	export SIGHT_FILE_OUT=1; ./pthreadCondEx 5
-	export SIGHT_FILE_OUT=1; export SIGHT_MERGE_SEPARATE=1; ../hier_merge dbg.pthreadCondEx common dbg.pthreadCondEx.individual*
-	rm -r dbg.pthreadCondEx.individual*
-	../slayout dbg.pthreadCondEx
+	export SIGHT_FILE_OUT=1; ./pthreadBug1 5
+#	export SIGHT_FILE_OUT=1; ./pthreadFib 5
+#	export SIGHT_FILE_OUT=1; ../hier_merge dbg.pthreadFib zipper dbg.pthreadFib.individual.thread_*
+#	rm -r dbg.pthreadFib.individual*
+#	../slayout dbg.pthreadFib
+#	./runPthreadEx pthreadThreadsEx 5
+#	./runPthreadEx pthreadMutexEx 5
+#	./runPthreadEx pthreadCondEx 5
+#	./runPthreadEx pthreadArrayLoops 5
+#	./runPthreadEx dotprodPthreads 5
+#	./runPthreadEx pthreadBug1 5
+#	./runPthreadEx pthreadBug2 5
+#	./runPthreadEx pthreadBug3 5
+#	./runPthreadEx pthreadBug4 5
+#	./runPthreadEx pthreadBug5 5
+#	./runPthreadEx pthreadBug6 5
+#	export SIGHT_FILE_OUT=1; ./pthreadThreadsEx 5
+#	export SIGHT_FILE_OUT=1; export SIGHT_MERGE_SEPARATE=1; ../hier_merge dbg.pthreadThreadsEx common dbg.pthreadThreadsEx.individual*
+#	rm -r dbg.pthreadThreadsEx.individual*
+#	../slayout dbg.pthreadThreadsEx
+#	export SIGHT_FILE_OUT=1; ./pthreadMutexEx 5
+#	export SIGHT_FILE_OUT=1; export SIGHT_MERGE_SEPARATE=1; ../hier_merge dbg.pthreadMutexEx common dbg.pthreadMutexEx.individual*
+#	rm -r dbg.pthreadMutexEx.individual*
+#	../slayout dbg.pthreadMutexEx
+#	export SIGHT_FILE_OUT=1; ./pthreadCondEx 5
+#	export SIGHT_FILE_OUT=1; export SIGHT_MERGE_SEPARATE=1; ../hier_merge dbg.pthreadCondEx common dbg.pthreadCondEx.individual*
+#	rm -r dbg.pthreadCondEx.individual*
+#	../slayout dbg.pthreadCondEx
 
 pthreadThreadsEx${EXE}: pthreadThreadsEx.C ../libsight_structure.so ${sight_H}
 	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
@@ -135,6 +150,30 @@ pthreadCondEx${EXE}: pthreadCondEx.C ../libsight_structure.so ${sight_H}
 	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
 
 pthreadFib${EXE}: pthreadFib.C ../libsight_structure.so ${sight_H}
+	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
+
+pthreadArrayLoops${EXE}: pthreadArrayLoops.C ../libsight_structure.so ${sight_H}
+	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
+
+dotprodPthreads${EXE}: dotprodPthreads.C ../libsight_structure.so ${sight_H}
+	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
+
+pthreadBug1${EXE}: pthreadBug1.C ../libsight_structure.so ${sight_H}
+	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
+
+pthreadBug2${EXE}: pthreadBug2.C ../libsight_structure.so ${sight_H}
+	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
+
+pthreadBug3${EXE}: pthreadBug3.C ../libsight_structure.so ${sight_H}
+	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
+
+pthreadBug4${EXE}: pthreadBug4.C ../libsight_structure.so ${sight_H}
+	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
+
+pthreadBug5${EXE}: pthreadBug5.C ../libsight_structure.so ${sight_H}
+	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
+
+pthreadBug6${EXE}: pthreadBug6.C ../libsight_structure.so ${sight_H}
 	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
 
 clean:

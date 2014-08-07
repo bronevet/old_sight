@@ -66,6 +66,32 @@ ThreadLocalStorage1<bool, bool> initializedDebugThisThread(false);
 // to initialize the Sight properties in other subsequently-created threads.
 std::map<std::string, std::string> mainThreadSightProps;
 
+
+/*******************
+ ***** soStack *****
+ *******************/
+
+// The stack of sightObjs that are currently in scope. We declare it as a static inside this function
+// to make it possible to ensure that the global soStack is constructed before it is used and therefore
+// destructed after all of its user objects are destructed.
+// There is a separate stack for each outgoing stream.
+ThreadLocalStorageMap<dbgStream*, std::list<sightObj*> > staticSoStack;
+// Maps each thread's ID to a pointer to their soStacks. This is useful for cleaning up the
+// states of all the different threads when the process receives an abort signal.
+std::map<pthread_t, map<dbgStream*, std::list<sightObj*> >* > threadSoStacks;
+// Mutex that controls access to threadSoStacks.
+pthread_mutex_t threadSoStacksMutex = PTHREAD_MUTEX_INITIALIZER;
+
+std::list<sightObj*>& soStack(dbgStream* outStream) {
+  return staticSoStack[outStream];
+}
+
+std::map<dbgStream*, std::list<sightObj*> >& soStackAllStreams() {
+  //return staticSoStack;
+  return *(staticSoStack.get());
+}
+
+
 // mainThread: Set to true if this function is being called from the main thread directly by the other.
 //             Set to false if it is called inside some other, subsequently-created thread from within Sight
 void SightInit_internal(int argc, char** argv, string title, string workDir, bool mainThread);
@@ -247,10 +273,61 @@ void SightInit_internal(int argc, char** argv, string title, string workDir, boo
   //cout << pthread_self() << " &dbg="<<&dbg<<endl;
 
   dbg->init(props, title, workDir, imgDir, tmpDir);
-  
+
+  cout << pthread_self()<<": staticSoStack="<<staticSoStack.get()<<endl;
+  SightThreadInit();
+
   // Create a comparison object for the main thread
   /*if(mainThread)
     mainThreadComp = new comparison(0);*/
+}
+
+void SightThreadInit() {
+  // Set this thread to be cancelable
+  pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+  pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+
+  // Register this thread's soStacks in threadSoStacks
+  pthread_mutex_lock(&threadSoStacksMutex);
+  threadSoStacks[pthread_self()] = staticSoStack.get();
+  pthread_mutex_unlock(&threadSoStacksMutex);
+}
+
+void SightThreadFinalize() {
+  // Unregister this thread's soStacks from threadSoStacks
+  pthread_mutex_lock(&threadSoStacksMutex);
+  threadSoStacks.erase(pthread_self());
+  pthread_mutex_unlock(&threadSoStacksMutex);
+}
+
+void killOtherThreads() {
+  pthread_mutex_lock(&threadSoStacksMutex);
+  static bool killPerformed=false;
+  if(!killPerformed) {
+    // Set killPerformed to true to ensure that no other thread will start killing
+    // threads and immediately give up the lock
+    killPerformed=true;
+    pthread_mutex_unlock(&threadSoStacksMutex);
+
+    for(std::map<pthread_t, map<dbgStream*, std::list<sightObj*> >* >::iterator t=threadSoStacks.begin();
+        t!=threadSoStacks.end(); t++) {
+      cout << pthread_self()<<": killOtherThreads() Killing thread "<<t->first<<endl;
+      if(t->first!=pthread_self()) {
+/*        // Let go of threadSoStacksMutex so that the thread we're about to kill may grab it.
+        // The killed thread will call killOtherThreads() but isnce killPerformed is already
+        // ==true, it will exit immediately and release threadSoStacksMutex.
+  */      
+        pthread_cancel(t->first);
+        pthread_join(t->first, NULL);
+
+        // Re-acquire 
+        //pthread_mutex_lock(&threadSoStacksMutex);
+        //sleep(1);
+        //sightObj::destroyAll(t->second);
+      }
+    }
+  } else
+    pthread_mutex_unlock(&threadSoStacksMutex);
 }
 
 /*void SightInit_internal(properties* props, bool storeProps)
@@ -398,21 +475,6 @@ std::string location::str(std::string indent) const {
 /********************
  ***** sightObj *****
  ********************/
-// The stack of sightObjs that are currently in scope. We declare it as a static inside this function
-// to make it possible to ensure that the global soStack is constructed before it is used and therefore
-// destructed after all of its user objects are destructed.
-// There is a separate stack for each outgoing stream.
-//ThreadLocalStorage0<std::map<dbgStream*, std::list<sightObj*> > > staticSoStack;
-ThreadLocalStorageMap<dbgStream*, std::list<sightObj*> > staticSoStack;
-std::list<sightObj*>& soStack(dbgStream* outStream) {
-  return staticSoStack[outStream];
-}
-
-std::map<dbgStream*, std::list<sightObj*> >& soStackAllStreams() {
-  //return staticSoStack;
-  return *(staticSoStack.get());
-}
-
 // Records whether we've begun the process of destroying all objects. This is to differentiate`
 // the case of Sight doing the destruction and of the runtime system destroying all objects
 // at process termination
@@ -562,24 +624,33 @@ sightObj::~sightObj() {
 }
 
 // Destroy all the currently live sightObjs on the stack
-void sightObj::destroyAll() {
+void sightObj::destroyAll(map<dbgStream*, list<sightObj*> >* stack) {
   // Record that we've begun the process of destroying all sight objects
   SightDestruction = true;
   
   // Call the destroy method of each object on the soStack
-  map<dbgStream*, list<sightObj*> >& stack = soStackAllStreams();
-  for(map<dbgStream*, list<sightObj*> >::iterator s=stack.begin(); s!=stack.end(); s++) {
+//  map<dbgStream*, list<sightObj*> >& stack = soStackAllStreams();
+  if(stack==NULL) stack = &soStackAllStreams();
+  assert(stack);
+  cout << pthread_self()<<": sightObj::destroyAll() <<<< stack="<<stack<<", #stack="<<stack->size()<<endl;
+  for(map<dbgStream*, list<sightObj*> >::iterator s=stack->begin(); s!=stack->end(); s++) {
     while(s->second.size()>0) {
       list<sightObj*>::reverse_iterator o=s->second.rbegin();
   //    if((*o)->emitExitTag) {
-        //cout << ">!> "<<(*o)->props->str()<<endl;
-        assert(!stackMayBeInvalidFlag);
-        (*o)->destroy();
+        if((*o)->props) {
+          cout << ">!> "<<(*o)->props->name()<<endl;
+          assert(!stackMayBeInvalidFlag);
+          (*o)->destroy();
+        } else {
+          cout << ">!> NULL"<<endl;
+          s->second.pop_back();
+        }
   //    }
       // The call to destroy will remove the last element from soStack(outStream)
     }
   }
-  stack.clear();
+  stack->clear();
+  cout << pthread_self()<<": sightObj::destroyAll() >>>>"<<endl;
 
   // Sight has now been destroyed
   SightDestroyed = true;
@@ -2785,19 +2856,23 @@ void AbortHandlerInstantiator::overrideSignal(int signum, struct sigaction& new_
 
 // Invoked when the application has called exit()
 void AbortHandlerInstantiator::appExited() {
-  // Call all the functions registered to listen for the application's exit
+  cout << pthread_self()<<": AbortHandlerInstantiator::appExited() #ExitHandlers="<<ExitHandlers->size()<<endl;
+/*  // Call all the functions registered to listen for the application's exit
   for(map<string, ExitHandler>::iterator h=ExitHandlers->begin(); h!=ExitHandlers->end(); h++)
     (h->second)();
   
-  finalizeSight();
+  killOtherThreads();
+  finalizeSight();*/
 }
 
 // Invoked when the application is sent a kill signal
 void AbortHandlerInstantiator::killSignal(int signum) {
+  cout << "AbortHandlerInstantiator::killSignal("<<signum<<") #KillHandlers="<<KillSignalHandlers->size()<<endl;
   // Call all the functions registered to listen for the application's exit
   for(map<string, KillSignalHandler>::iterator h=KillSignalHandlers->begin(); h!=KillSignalHandlers->end(); h++)
     (h->second)(signum);
   
+  killOtherThreads();
   finalizeSight();
   
   // Call the signal handler that was originally mapped to this signal number
@@ -2807,16 +2882,26 @@ void AbortHandlerInstantiator::killSignal(int signum) {
 
 // Finalizes the state of Sight to ensure that its output is self-consistent
 void AbortHandlerInstantiator::finalizeSight() {
+  cout << pthread_self()<<": <<<< AbortHandlerInstantiator::finalizeSight()"<<endl;
+  /*for(std::map<pthread_t, map<dbgStream*, std::list<sightObj*> >* >::iterator t=threadSoStacks.begin();
+      t!=threadSoStacks.end(); t++) {
+    cout << "t="<<t->first<<" / "<<t->second<<endl;
+    sightObj::destroyAll(t->second);
+    cout << "#threadSoStacks="<<threadSoStacks.size()<<endl;
+  }*/
+  //killOtherThreads();
   // On Termination deallocate all the currently live sightObjs
-  sightObj::destroyAll();
+  //sightObj::destroyAll();
 
   // If a copy of dbg has been allocated for this thread
+  cout << "AbortHandlerInstantiator::finalizeSight() dbg.isValueMappedForThread()="<<dbg.isValueMappedForThread()<<endl;
   if(dbg.isValueMappedForThread()) {
     // Flush the file used to output the structure log and close the file to make sure it is flushed.
     dbg->flush();
     if(dbg->dbgFile)
       dbg->dbgFile->close();
   }
+  cout << pthread_self()<<": >>>>"<<endl; 
 }
 
 std::string AbortHandlerInstantiator::str() {

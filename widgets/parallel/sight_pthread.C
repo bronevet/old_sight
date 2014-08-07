@@ -143,6 +143,15 @@ typedef struct {
 // longjmp() to return to it from inside the call to pthread_exit();
 //ThreadLocalStorage1<void*, void*> retVal(NULL);
 
+void threadCleanup(void * arg) {
+  cout << pthread_self()<<": threadCleanup() <<<<"<<endl;
+  /*int *ptr=NULL;
+  printf("%d\n", *ptr);*/
+  AbortHandlerInstantiator::finalizeSight(); 
+  SightThreadFinalize();
+  cout << pthread_self()<<": threadCleanup() >>>>"<<endl;
+}
+
 // Function that wraps the execution of each thread spawned using pthread_create()
 // and ensures that all appropriate initialization is performed
 void *sightThreadInitializer(void* data) {
@@ -151,10 +160,12 @@ void *sightThreadInitializer(void* data) {
 
   // Initialize Sight for this thread before we initialize its clock
   SightInit_NewThread();
-  
-  //dbg << "Starting sightThreadInitializer("<<arg<<") dbg="<<&dbg<<endl;
 
   void* ret;
+
+  pthread_cleanup_push(threadCleanup, NULL);
+  
+  //dbg << "Starting sightThreadInitializer("<<arg<<") dbg="<<&dbg<<endl;
 
   // Initialize the new thread's causality clock, while under control of causalityMutex
   int rc = pthread_mutex_lock(&causalityMutex);
@@ -188,7 +199,12 @@ void *sightThreadInitializer(void* data) {
   // Add a causality send edge from the thread's termination to the join call
   //commSend(txt()<<"End_"<<pthread_self(), "");
   rc = sendCausality(txt()<<"End_"<<pthread_self(), "Terminating");
-  
+
+  pthread_cleanup_pop(0);
+  cout << pthread_self()<<": Calling SightThreadFinalize()\n"; cout.flush();
+  SightThreadFinalize();
+  cout << pthread_self()<<": End of thread\n"; cout.flush();
+ 
   return ret;
 }
 
@@ -228,12 +244,12 @@ int sight_pthread_create(pthread_t * thread,
 }
 
 void sight_pthread_exit(void *value_ptr) {
-  //AbortHandlerInstantiator::finalizeSight();
-
   // Add a causality send edge from the thread's termination to the join call
   //commSend(txt()<<"End_"<<pthread_self(), "");
   int rc = sendCausality(txt()<<"End_"<<pthread_self(), "Terminating");
   
+  //AbortHandlerInstantiator::finalizeSight();
+
   pthread_exit(value_ptr);
 }
 
@@ -373,6 +389,15 @@ int sight_pthread_mutex_unlock(sight_pthread_mutex_t* smutex) {
 
   return 0;
 } 
+
+int pthread_orig_mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t *attr)
+{ return pthread_mutex_init(mutex, attr); }
+int pthread_orig_mutex_destroy(pthread_mutex_t *mutex)
+{ return pthread_mutex_destroy(mutex); }
+int pthread_orig_mutex_lock(pthread_mutex_t* mutex)
+{ return pthread_mutex_lock(mutex); }
+int pthread_orig_mutex_unlock(pthread_mutex_t* mutex)
+{ return pthread_mutex_unlock(mutex); }
 
 /*******************************
  ***** Condition Variables *****

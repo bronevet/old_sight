@@ -680,7 +680,11 @@ class ThreadLocalStorageMap: public ThreadLocalStorage<std::map<keyT, valT> >  {
   ThreadLocalStorageMap() {}
   
   // Allocates a new instance of an object of type T and returns it.
-  std::map<keyT, valT>* allocate() { return new std::map<keyT, valT>(); }
+  std::map<keyT, valT>* allocate() { 
+    std::map<keyT, valT>* ret = new std::map<keyT, valT>();
+    cout << "ThreadLocalStorageMap allocated "<<ret<<endl;
+    return ret;
+  }
 
   // Overload of the bracket operator for map indexing
   valT& operator[](const keyT& key)
