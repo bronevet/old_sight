@@ -89,7 +89,7 @@ int[] temp = new int[nsi];
 void setup() 
 { 
   // size of window
-  size(2500, 1500);
+  size(3500, 2000);
   //e8
   //size(1500, 800);
   background(255);
@@ -175,7 +175,7 @@ void setup()
   
   for(int i=0; i< lnodes_length; i++)
     // recursion data
-    if(containerID[i] > 0)
+    if(containerID[i] >= 0)
       for(int j=0; j< lnodes_length; j++)
         if(containerID[i] == nodeID[j])
           node_relation[j] += i+":"; 
@@ -280,16 +280,14 @@ void setup()
   // set up current depth length
   current_depth_length = depth_length;
   
-  /*
   for(int i=0; i<depth_length; i++)
     println("depthList["+i+"]="+depthList[i]); 
   for(int i=0; i<lnodes_length; i++)
   {
-   println("node_depth["+i+"]="+node_depth[i]); 
-   //println("node_relation["+i+"]="+node_relation[i]); 
+   //println("node_depth["+i+"]="+node_depth[i]); 
+   println("node_relation["+i+"]="+node_relation[i]); 
    // println("temp["+i+"]="+temp[i]); 
   }
-  */
   
   noLoop();
 }
@@ -311,6 +309,9 @@ void draw()
     nodewidth = 40*font_size;
     depth_distance = 6*font_size;
   }
+
+  depth_distance = 6*font_size;
+  
   
   //depth_distance = height/60;
   xnode = depth_distance;
@@ -352,6 +353,9 @@ void draw()
         depth_width = (depnod.length-1);
   }
   
+  //nodeheight = height/(10*depth_length);
+  //nodewidth = width/(depth_width + 7);
+    
   // width, height of nodes
   for(int i=0; i<lnodes_length; i++)
   { 
@@ -375,6 +379,7 @@ void draw()
   for(int i=0; i<lnodes_length; i++)
   {   
     // position of nodes
+    /*
     if(containerID[i] < 0)
     {
       if(viewMeth == 2)
@@ -390,13 +395,37 @@ void draw()
         for(int k=0;k<(delis.length-1);k++)
           if(i == int(delis[k]))
           {
+            //if(viewMeth == 2)
+            //  xcnode[i] = xnode + k*(width-xnode)/(delis.length-1) + j*font_size;
+            //else
+            //  xcnode[i] = xnode + k*(width-xnode)/(delis.length-1);
+            
             if(viewMeth == 2)
-              xcnode[i] = xnode + k*(width-xnode)/(delis.length-1) + j*font_size;
+              xcnode[i] = xnode + k*(width-xnode)/(depth_width+6) + j*font_size;
             else
-              xcnode[i] = xnode + k*(width-xnode)/(delis.length-1);
+              xcnode[i] = xnode + k*(width-xnode)/(depth_width+6);
           }
       }
     }
+    */
+    for(int j=0; j<depth_length; j++)
+    {
+      String[] delis = split(depthList[j], ":");
+      for(int k=0;k<(delis.length-1);k++)
+        if(i == int(delis[k]))
+        {
+          //if(viewMeth == 2)
+          //  xcnode[i] = xnode + k*(width-xnode)/(delis.length-1) + j*font_size;
+          //else
+          //  xcnode[i] = xnode + k*(width-xnode)/(delis.length-1);
+          
+          if(viewMeth == 2)
+            xcnode[i] = xnode + k*(width-xnode)/(depth_width+6) + j*font_size;
+          else
+            xcnode[i] = xnode + k*(width-xnode)/(depth_width+6);
+        }
+    }
+    
     if(node_depth[i]==0)
       ycnode[i] = 2*depth_distance;
     else
@@ -445,12 +474,11 @@ void draw()
     }
   }
   
-  /*
   // resize windows
   int newWid, newHei;
   if(lnodes_length > 8)
   {
-    newWid = int(100+nodewidth*(depth_width+4));
+    newWid = int(100+nodewidth*(depth_width+8));
     newHei = depth_distance;
   }
   else
@@ -464,8 +492,8 @@ void draw()
   }
   if(scaleFactor == 1)
     size(newWid, newHei);
- */
- if(viewMeth == 1 || viewMeth == 2)
+  
+  if(viewMeth == 1 || viewMeth == 2)
     draw_methButton(viewMeth);
   // Draw nodes
   for(int i=(lnodes_length -1); i>=0; i--)
@@ -813,7 +841,8 @@ void draw_nodes(int inod, float xc, float yc, float wn, float hn)
      // draw "+" to show that node is collapsed 
      textSize(2*font_size);
      fill(50);
-     text("+", xc + 2*wn/3, yc+nodeheight+nodeheight/1.5); 
+     //text("+", xc + 2*wn/3, yc+nodeheight+nodeheight/1.5); 
+     text("+", xc+20, yc+nodeheight+nodeheight/1.5);
   }
 }
 
