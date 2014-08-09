@@ -280,6 +280,7 @@ void setup()
   // set up current depth length
   current_depth_length = depth_length;
   
+  /*
   for(int i=0; i<depth_length; i++)
     println("depthList["+i+"]="+depthList[i]); 
   for(int i=0; i<lnodes_length; i++)
@@ -288,6 +289,7 @@ void setup()
    println("node_relation["+i+"]="+node_relation[i]); 
    // println("temp["+i+"]="+temp[i]); 
   }
+  */
   
   noLoop();
 }
