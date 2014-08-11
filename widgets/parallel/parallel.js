@@ -131,17 +131,17 @@ function mapParArrows(parArrows, mapFunc) {
     
     // Hash that contains all the divs that are the mapped to IDs in targetUIDs
     var valueBlockIDs = {};
-    for(t in parArrows[keyBlockID]) {
-      for(i in uniqueIDs2BlockID[parArrows[keyBlockID][t]]) {
+    for(t in parArrows[keyBlockID]) { if(parArrows[keyBlockID].hasOwnProperty(t)) {
+      for(i in uniqueIDs2BlockID[parArrows[keyBlockID][t]]) { if(uniqueIDs2BlockID[parArrows[keyBlockID][t]].hasOwnProperty(i)) {
         var valueBlockID = uniqueIDs2BlockID[parArrows[keyBlockID][t]][i];
         valueBlockIDs[valueBlockID]++;
-      }
-    }
+      } }
+    } }
     
     // Hash that contains all the labels that are mapped 
     
     // Create arrows from keyDiv to each div in valueBlockIDs
-    for(valueBlockID in valueBlockIDs) {
+    for(valueBlockID in valueBlockIDs) { if(valueBlockIDs.hasOwnProperty(valueBlockID)) {
       var valueDiv = document.getElementById("div"+valueBlockID);
       if(isHidden(valueDiv)) continue;
       if(valueDiv == null) continue;
@@ -155,7 +155,7 @@ function mapParArrows(parArrows, mapFunc) {
       else if(keyLabel!="")              label = keyLabel;
       else                               label = valueLabel;*/
       mapFunc(keyBlockID, valueBlockID, getUniqueIDLabelFromBlockID(keyBlockID, "_"), getUniqueIDLabelFromBlockID(valueBlockID, "_"));
-    }
+    } }
   } }
 }
 
@@ -163,13 +163,13 @@ function mapBarriers(mapFunc) {
   // Iterate over the arrow sources
   for(barUID in parBarriers) { if(parBarriers.hasOwnProperty(barUID)) {
     var centers = [];
-    for(i in parBarriers[barUID]) {
+    for(i in parBarriers[barUID]) { if(parBarriers[barUID].hasOwnProperty(i)) {
       var barDiv = document.getElementById("div"+parBarriers[barUID][i]);
       if(isHidden(barDiv)) continue;
       
       if(barDiv != null && !isHidden(barDiv))
         centers.push({blockID: parBarriers[barUID][i], center: getDivCenter(barDiv)});
-    }
+    } }
     
     mapFunc(centers, getUniqueIDLabel(barUID, "_"));
   }}
@@ -177,14 +177,14 @@ function mapBarriers(mapFunc) {
 
 // Adds the given blockID to the records for each of the visualization objects in the vizObjs array
 function addVizObj2BlockID(blockID, vizObjs) {
-  for(i in vizObjs) {
+  for(i in vizObjs) { if(vizObjs.hasOwnProperty(i)) {
     // Map the ID of this viz object to its reference
     vizID2Obj[vizObjs[i].id] = vizObjs[i];
     
     // Map the viz object's ID to blockID
     if(!(vizObjs[i] in vizObjects2BlockID)) vizObjects2BlockID[vizObjs[i].id] = {};
     vizObjects2BlockID[vizObjs[i].id][blockID] = 1;
-  }
+  } }
 }
 
 var jsPlumbInstance;
@@ -413,3 +413,4 @@ function refreshParallelArrows() {
   jsPlumbInstance.repaintEverything();
   addLazyWindowResizeEvent(refreshParallelArrows);
 }
+

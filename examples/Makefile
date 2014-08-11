@@ -4,8 +4,8 @@ EXE := .exe
 endif
 
 sight_H := ../*.h ../*/*.h ../widgets/*/*.h
-TESTERS = 0.Demo${EXE} #8.Modules${EXE} 9.CompModules.merged${EXE} 9.CompModules.single${EXE} 5.Tracing${EXE} 11.ExternTraceProcess${EXE} 10.SpringModules${EXE} \
-          1.StructuredFormatting${EXE} 2.ConditionalFormatting${EXE} 3.Navigation${EXE} \
+TESTERS = 1.StructuredFormatting${EXE} #0.Demo${EXE} #8.Modules${EXE} 9.CompModules.merged${EXE} 9.CompModules.single${EXE} 5.Tracing${EXE} 11.ExternTraceProcess${EXE} 10.SpringModules${EXE} \
+          2.ConditionalFormatting${EXE} 3.Navigation${EXE} \
           4.AttributeAnnotationFiltering${EXE} 6.PerfAnalysis${EXE} \
           7.Merging${EXE} 
 PTHREAD_TESTERS = pthreadBug1${EXE} #pthreadMutexEx${EXE} pthreadCondEx${EXE} pthreadThreadsEx${EXE} pthreadFib${EXE} \
@@ -13,8 +13,9 @@ PTHREAD_TESTERS = pthreadBug1${EXE} #pthreadMutexEx${EXE} pthreadCondEx${EXE} pt
                   pthreadBug1${EXE} pthreadBug2${EXE} pthreadBug3${EXE} \
                   pthreadBug4${EXE} pthreadBug5${EXE} pthreadBug6${EXE}
 
-all: ${PTHREAD_TESTERS} 
-#${TESTERS}
+all: ${TESTERS}
+#${PTHREAD_TESTERS} 
+#
 
 run: ${TESTERS}
 	# 0.Demo

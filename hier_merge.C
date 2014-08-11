@@ -15,7 +15,7 @@ using namespace std;
 using namespace sight;
 using namespace sight::structure;
 
-//#define VERBOSE
+#define VERBOSE
 
 // Records all the relevant information about how a group of tags should be merged
 class StreamTags {

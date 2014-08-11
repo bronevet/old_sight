@@ -274,7 +274,7 @@ void SightInit_internal(int argc, char** argv, string title, string workDir, boo
 
   dbg->init(props, title, workDir, imgDir, tmpDir);
 
-  cout << pthread_self()<<": staticSoStack="<<staticSoStack.get()<<endl;
+  //cout << pthread_self()<<": staticSoStack="<<staticSoStack.get()<<endl;
   SightThreadInit();
 
   // Create a comparison object for the main thread
@@ -311,7 +311,7 @@ void killOtherThreads() {
 
     for(std::map<pthread_t, map<dbgStream*, std::list<sightObj*> >* >::iterator t=threadSoStacks.begin();
         t!=threadSoStacks.end(); t++) {
-      cout << pthread_self()<<": killOtherThreads() Killing thread "<<t->first<<endl;
+      //cout << pthread_self()<<": killOtherThreads() Killing thread "<<t->first<<endl;
       if(t->first!=pthread_self()) {
 /*        // Let go of threadSoStacksMutex so that the thread we're about to kill may grab it.
         // The killed thread will call killOtherThreads() but isnce killPerformed is already
@@ -632,17 +632,17 @@ void sightObj::destroyAll(map<dbgStream*, list<sightObj*> >* stack) {
 //  map<dbgStream*, list<sightObj*> >& stack = soStackAllStreams();
   if(stack==NULL) stack = &soStackAllStreams();
   assert(stack);
-  cout << pthread_self()<<": sightObj::destroyAll() <<<< stack="<<stack<<", #stack="<<stack->size()<<endl;
+  //cout << pthread_self()<<": sightObj::destroyAll() <<<< stack="<<stack<<", #stack="<<stack->size()<<endl;
   for(map<dbgStream*, list<sightObj*> >::iterator s=stack->begin(); s!=stack->end(); s++) {
     while(s->second.size()>0) {
       list<sightObj*>::reverse_iterator o=s->second.rbegin();
   //    if((*o)->emitExitTag) {
         if((*o)->props) {
-          cout << ">!> "<<(*o)->props->name()<<endl;
+          //cout << ">!> "<<(*o)->props->name()<<endl;
           assert(!stackMayBeInvalidFlag);
           (*o)->destroy();
         } else {
-          cout << ">!> NULL"<<endl;
+          //cout << ">!> NULL"<<endl;
           s->second.pop_back();
         }
   //    }
@@ -650,7 +650,7 @@ void sightObj::destroyAll(map<dbgStream*, list<sightObj*> >* stack) {
     }
   }
   stack->clear();
-  cout << pthread_self()<<": sightObj::destroyAll() >>>>"<<endl;
+  //cout << pthread_self()<<": sightObj::destroyAll() >>>>"<<endl;
 
   // Sight has now been destroyed
   SightDestroyed = true;
@@ -2564,16 +2564,19 @@ IndentMerger::IndentMerger(std::vector<std::pair<properties::tagType, properties
  ***** comparison *****
  **********************/
 
-comparison::comparison(int ID,                        properties* props) : sightObj(setProperties(ID, NULL,     props)) {}
-comparison::comparison(int ID, const attrOp& onoffOp, properties* props) : sightObj(setProperties(ID, &onoffOp, props)) {}
+comparison::comparison(const std::string& ID,                        properties* props) : sightObj(setProperties(ID, NULL,     props)) {}
+comparison::comparison(const std::string& ID, const attrOp& onoffOp, properties* props) : sightObj(setProperties(ID, &onoffOp, props)) {}
 
-properties* comparison::setProperties(int ID, const attrOp* onoffOp, properties* props) {
+comparison::comparison(int ID,                                       properties* props) : sightObj(setProperties(txt()<<ID, NULL,     props)) {}
+comparison::comparison(int ID,                const attrOp& onoffOp, properties* props) : sightObj(setProperties(txt()<<ID, &onoffOp, props)) {}
+
+properties* comparison::setProperties(const std::string& ID, const attrOp* onoffOp, properties* props) {
   if(props==NULL) props = new properties();
     
   if(attributes->query() && (onoffOp? onoffOp->apply(): true)) {
     props->active = true;
     map<string, string> newProps;
-    newProps["ID"] = txt()<<ID;
+    newProps["ID"] = ID;
     props->add("comparison", newProps);
   } else
     props->active = false;
@@ -2856,18 +2859,18 @@ void AbortHandlerInstantiator::overrideSignal(int signum, struct sigaction& new_
 
 // Invoked when the application has called exit()
 void AbortHandlerInstantiator::appExited() {
-  cout << pthread_self()<<": AbortHandlerInstantiator::appExited() #ExitHandlers="<<ExitHandlers->size()<<endl;
-/*  // Call all the functions registered to listen for the application's exit
+  //cout << pthread_self()<<": AbortHandlerInstantiator::appExited() #ExitHandlers="<<ExitHandlers->size()<<endl;
+  // Call all the functions registered to listen for the application's exit
   for(map<string, ExitHandler>::iterator h=ExitHandlers->begin(); h!=ExitHandlers->end(); h++)
     (h->second)();
   
   killOtherThreads();
-  finalizeSight();*/
+  finalizeSight();
 }
 
 // Invoked when the application is sent a kill signal
 void AbortHandlerInstantiator::killSignal(int signum) {
-  cout << "AbortHandlerInstantiator::killSignal("<<signum<<") #KillHandlers="<<KillSignalHandlers->size()<<endl;
+  //cout << "AbortHandlerInstantiator::killSignal("<<signum<<") #KillHandlers="<<KillSignalHandlers->size()<<endl;
   // Call all the functions registered to listen for the application's exit
   for(map<string, KillSignalHandler>::iterator h=KillSignalHandlers->begin(); h!=KillSignalHandlers->end(); h++)
     (h->second)(signum);
@@ -2882,26 +2885,26 @@ void AbortHandlerInstantiator::killSignal(int signum) {
 
 // Finalizes the state of Sight to ensure that its output is self-consistent
 void AbortHandlerInstantiator::finalizeSight() {
-  cout << pthread_self()<<": <<<< AbortHandlerInstantiator::finalizeSight()"<<endl;
-  /*for(std::map<pthread_t, map<dbgStream*, std::list<sightObj*> >* >::iterator t=threadSoStacks.begin();
+  //cout << pthread_self()<<": <<<< AbortHandlerInstantiator::finalizeSight()"<<endl;
+  for(std::map<pthread_t, map<dbgStream*, std::list<sightObj*> >* >::iterator t=threadSoStacks.begin();
       t!=threadSoStacks.end(); t++) {
-    cout << "t="<<t->first<<" / "<<t->second<<endl;
+    //cout << "t="<<t->first<<" / "<<t->second<<endl;
     sightObj::destroyAll(t->second);
-    cout << "#threadSoStacks="<<threadSoStacks.size()<<endl;
-  }*/
+    //cout << "#threadSoStacks="<<threadSoStacks.size()<<endl;
+  }
   //killOtherThreads();
   // On Termination deallocate all the currently live sightObjs
-  //sightObj::destroyAll();
+  sightObj::destroyAll();
 
   // If a copy of dbg has been allocated for this thread
-  cout << "AbortHandlerInstantiator::finalizeSight() dbg.isValueMappedForThread()="<<dbg.isValueMappedForThread()<<endl;
+  //cout << "AbortHandlerInstantiator::finalizeSight() dbg.isValueMappedForThread()="<<dbg.isValueMappedForThread()<<endl;
   if(dbg.isValueMappedForThread()) {
     // Flush the file used to output the structure log and close the file to make sure it is flushed.
     dbg->flush();
     if(dbg->dbgFile)
       dbg->dbgFile->close();
   }
-  cout << pthread_self()<<": >>>>"<<endl; 
+  //cout << pthread_self()<<": >>>>"<<endl; 
 }
 
 std::string AbortHandlerInstantiator::str() {

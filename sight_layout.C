@@ -17,7 +17,7 @@
 #include "process.h"
 #include "process.C"
 
-//#define VERBOSE
+#define VERBOSE
 
 using namespace std;
 using namespace sight::common;
@@ -91,7 +91,6 @@ void invokeEnterHandler(map<string, list<void*> >& stack, string objName, proper
 // that the returned value is NULL.
 void invokeEnterHandlerNoStack(string objName, properties::iterator iter) {
   #ifdef VERBOSE
-  cout << "<<<"<<stack[objName].size()<<": "<<objName<<endl;
   cout << "    "<<iter.str()<<endl;
   #endif
   if(layoutHandlerInstantiator::layoutEnterHandlers->find(objName) == layoutHandlerInstantiator::layoutEnterHandlers->end()) { cerr << "ERROR: no entry handler for \""<<objName<<"\" tags!" << endl; }

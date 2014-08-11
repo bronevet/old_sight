@@ -54,7 +54,8 @@ int sendCausality(const std::string& sendID,
 int receiveCausality(const std::string& sendID, pthread_t sender,
                      const std::string& recvID, 
                      const std::string& label, bool cmHeld) {
- if(!cmHeld) {
+  //dbg << pthread_self()<<": receiveCausality("<<sendID<<", sender="<<sender<<", "<<recvID<<", "<<label<<", "<<cmHeld<<")"<<endl;
+  if(!cmHeld) {
     int rc = pthread_mutex_lock(&causalityMutex);
     if(rc!=0) return rc;
   }
@@ -62,9 +63,9 @@ int receiveCausality(const std::string& sendID, pthread_t sender,
   checkCausality(true);
   //scope s(label, scope::minimum);
  
-  //cout << pthread_self()<<": lock time="<<causality[smutex->lastMutexOwner]->send()<<endl;
+  //dbg << pthread_self()<<": lock time="<<causality[sender]->send()<<endl;
   causality[pthread_self()]->recv(causality[sender]->send());
-  //cout << pthread_self()<<": local time="<<causality[pthread_self()]->send()<<endl;
+  //dbg << pthread_self()<<": local time="<<causality[pthread_self()]->send()<<endl;
   commRecv(label, sendID, recvID);
 
   if(!cmHeld) {
@@ -79,6 +80,7 @@ int receiveCausality(const std::string& sendID, long long senderTime,
                      const std::string& recvID, 
                      const std::string& label, 
                      bool cmHeld) {
+  //dbg << pthread_self()<<": receiveCausality("<<sendID<<", senderTime="<<senderTime<<", "<<recvID<<", "<<label<<", "<<cmHeld<<")"<<endl;
   if(!cmHeld) {
     int rc = pthread_mutex_lock(&causalityMutex);
     if(rc!=0) return rc;
@@ -87,7 +89,7 @@ int receiveCausality(const std::string& sendID, long long senderTime,
   checkCausality(true);
   //scope s(label, scope::minimum);
  
-  //cout << pthread_self()<<": lock time="<<causality[smutex->lastMutexOwner]->send()<<endl;
+  ////cout << pthread_self()<<": lock time="<<causality[smutex->lastMutexOwner]->send()<<endl;
   causality[pthread_self()]->recv(senderTime);
   //cout << pthread_self()<<": local time="<<causality[pthread_self()]->send()<<endl;
   commRecv(label, sendID, recvID);
@@ -160,11 +162,15 @@ void *sightThreadInitializer(void* data) {
 
   // Initialize Sight for this thread before we initialize its clock
   SightInit_NewThread();
-
+ 
   void* ret;
 
   pthread_cleanup_push(threadCleanup, NULL);
   
+  {
+  modularApp ma("", namedMeasures("time",      new timeMeasure()));
+  comparison c(txt()<<pthread_self());
+
   //dbg << "Starting sightThreadInitializer("<<arg<<") dbg="<<&dbg<<endl;
 
   // Initialize the new thread's causality clock, while under control of causalityMutex
@@ -199,6 +205,7 @@ void *sightThreadInitializer(void* data) {
   // Add a causality send edge from the thread's termination to the join call
   //commSend(txt()<<"End_"<<pthread_self(), "");
   rc = sendCausality(txt()<<"End_"<<pthread_self(), "Terminating");
+  }
 
   pthread_cleanup_pop(0);
   cout << pthread_self()<<": Calling SightThreadFinalize()\n"; cout.flush();

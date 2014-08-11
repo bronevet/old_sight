@@ -9,7 +9,7 @@ var blockID2UniqueIDs={};
 
 function registerUniqueMark(blockID, allUIDs, allLabels) {
   // Map each unique ID in allUIDs to blockID and each label in allLabels
-  for(var ID in allUIDs) {
+  for(var ID in allUIDs) { if(allUIDs.hasOwnProperty(ID)) {
     if(!(allUIDs[ID] in uniqueIDs2BlockID)) {
       uniqueIDs2BlockID[allUIDs[ID]] = [];
       uniqueBlockIDs2Labels[allUIDs[ID]] = {};
@@ -19,11 +19,13 @@ function registerUniqueMark(blockID, allUIDs, allLabels) {
     for(label in allLabels) { if(allLabels.hasOwnProperty(label)) {
       uniqueBlockIDs2Labels[allUIDs[ID]][allLabels[label]]=1;
     } }
-  }
+  } }
   
   // Map blockID to all unique IDs in allUIDs
   if(!(blockID in blockID2UniqueIDs)) blockID2UniqueIDs[blockID] = {};
-  for(i in allUIDs) blockID2UniqueIDs[blockID][allUIDs[i]] = 1;
+  for(var ID in allUIDs) { if(allUIDs.hasOwnProperty(ID)) {
+     blockID2UniqueIDs[blockID][allUIDs[ID]] = 1;
+  } }
 }
 
 // Given a blockID returns a concatenation of the labels associated with all the uniqueIDs mapped to this blockID,

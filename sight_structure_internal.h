@@ -1442,9 +1442,11 @@ class comparison: public sightObj
 {
   int ID;
   public:
-  comparison(int ID,                        properties* props=NULL);
-  comparison(int ID, const attrOp& onoffOp, properties* props=NULL);
-  static properties* setProperties(int ID, const attrOp* onoffOp, properties* props);
+  comparison(const std::string& ID,                        properties* props=NULL);
+  comparison(const std::string& ID, const attrOp& onoffOp, properties* props=NULL);
+  comparison(int ID,                                       properties* props=NULL);
+  comparison(int ID,                const attrOp& onoffOp, properties* props=NULL);
+  static properties* setProperties(const std::string& ID, const attrOp* onoffOp, properties* props);
   
   // Directly calls the destructor of this object. This is necessary because when an application crashes
   // Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
