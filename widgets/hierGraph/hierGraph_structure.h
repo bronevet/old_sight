@@ -36,7 +36,7 @@ extern hierGraphConfHandlerInstantiator hierGraphConfHandlerInstance;
 class hierGraphTraceStream;
 
 
-//#ifndef MODULE_STRUCTURE_C
+//#ifndef HIERGRAPH_STRUCTURE_C
 // Rename for contexts, groups and ports that enables users to refer to them without prepending common::hierGraph
 //typedef common::hierGraph::group group;
 typedef common::hierGraph::context context;
@@ -240,7 +240,7 @@ class instanceTree {
 class hierGraph;
 
 // Base class for functors that generate traceStreams that are specific to different sub-types of hierGraph.
-// We need this so that we can pass a reference to the correct genTS() method to modularApp::enterHierGraph(). Since this
+// We need this so that we can pass a reference to the correct genTS() method to hierGraphApp::enterHierGraph(). Since this
 // call is made inside the constructor of hierGraph, we can't use virtual methods to ensure that the correct version
 // of genTS will be called by just passing a reference to the current hierGraph-derived object
 //typedef traceStream* (*generateTraceStream)(int hierGraphID, const group& g);
@@ -251,14 +251,14 @@ class generateTraceStream {
 
 // Represents a modular application, which may contain one or more hierGraphs. Only one modular application may be
 // in-scope at any given point in time.
-class modularApp: public block
+class hierGraphApp: public block
 {
   friend class group;
   friend class hierGraph;
   
   protected:
-  // Points to the currently active instance of modularApp. There can be only one.
-  static modularApp* activeMA;
+  // Points to the currently active instance of hierGraphApp. There can be only one.
+  static hierGraphApp* activeMA;
     
   // The maximum ID ever assigned to any modular application
   static int maxModularAppID;
@@ -310,21 +310,21 @@ class modularApp: public block
   namedMeasures meas;
 
   public:
-  modularApp(const std::string& appName,                                                   properties* props=NULL);
-  modularApp(const std::string& appName, const attrOp& onoffOp,                            properties* props=NULL);
-  modularApp(const std::string& appName,                        const namedMeasures& meas, properties* props=NULL);
-  modularApp(const std::string& appName, const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
+  hierGraphApp(const std::string& appName,                                                   properties* props=NULL);
+  hierGraphApp(const std::string& appName, const attrOp& onoffOp,                            properties* props=NULL);
+  hierGraphApp(const std::string& appName,                        const namedMeasures& meas, properties* props=NULL);
+  hierGraphApp(const std::string& appName, const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
   
   // Stack used while we're emitting the nesting hierarchy of hierGraph groups to keep each hierGraph group's 
   // sightObject between the time the group is entered and exited
   static std::list<sightObj*> hierGraphEmitStack;
 
-  // Emits the entry tag for a hierGraph group during the execution of ~modularApp()
+  // Emits the entry tag for a hierGraph group during the execution of ~hierGraphApp()
   static void enterHierGraphGroup(const group& g);
-  // Emits the exit tag for a hierGraph group during the execution of ~modularApp()
+  // Emits the exit tag for a hierGraph group during the execution of ~hierGraphApp()
   static void exitHierGraphGroup(const group& g);
   
-  ~modularApp();
+  ~hierGraphApp();
 
   // Directly calls the destructor of this object. This is necessary because when an application crashes
   // Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
@@ -345,11 +345,11 @@ class modularApp: public block
   // Returns the hierGraph ID of the given hierGraph group, generating a fresh one if one has not yet been assigned
   static int genHierGraphID(const group& g);
   
-  // Returns whether the current instance of modularApp is active
+  // Returns whether the current instance of hierGraphApp is active
   static bool isInstanceActive();
 
-  // Returns a pointer to the current instance of modularApp
-  static modularApp* getInstance() { assert(activeMA); return activeMA; }
+  // Returns a pointer to the current instance of hierGraphApp
+  static hierGraphApp* getInstance() { assert(activeMA); return activeMA; }
   
   // Assigns a unique ID to the given hierGraph group, as needed and returns this ID
   static int addHierGraphGroup(const group& g);
@@ -408,12 +408,12 @@ class modularApp: public block
     delete c;
     return NULL;
   }
-}; // class modularApp
+}; // class hierGraphApp
 
 class hierGraph: public sightObj, public common::hierGraph
 {
   friend class group;
-  friend class modularApp;
+  friend class hierGraphApp;
   
   protected:
   
@@ -776,7 +776,7 @@ class compNamedMeasures {
 
 // Represents a modular application, which may contain one or more hierGraphs. Only one modular application may be
 // in-scope at any given point in time.
-class compModularApp : public modularApp
+class compModularApp : public hierGraphApp
 {
   // Maps the names of of all the measurements that should be taken during the execution of compHierGraphs within
   // this modular app to the names and descriptors of the comparisons that should be performed for them.
@@ -1004,9 +1004,9 @@ class springModularApp : public compModularApp
   
   static void *Interference(void *arg);
 
-  // Returns a pointer to the current instance of modularApp
+  // Returns a pointer to the current instance of hierGraphApp
   static springModularApp* getInstance() { 
-    springModularApp* springActiveMA = dynamic_cast<springModularApp*>(modularApp::getInstance());
+    springModularApp* springActiveMA = dynamic_cast<springModularApp*>(hierGraphApp::getInstance());
     assert(springActiveMA);
     return springActiveMA;
   }
@@ -1392,9 +1392,9 @@ class HierGraphStreamRecord: public streamRecord {
   friend class CompHierGraphTraceStreamMerger;
   
   /*
-  // We allow hierGraphs within different modularApps to use independent ID schemes (i.e. the hierGraph IDs within
+  // We allow hierGraphs within different hierGraphApps to use independent ID schemes (i.e. the hierGraph IDs within
   // different apps may independently start from 0) because we anticipate that in the future this may make it easier
-  // to match up instances of the same hierGraph within the same modularApp.
+  // to match up instances of the same hierGraph within the same hierGraphApp.
   // The stack of streamRecords that record for each currently active moduluarApp
   // (they are nested hierarchically), the mappings of nodes IDs from incoming to 
   // outgoing streams.

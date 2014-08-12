@@ -9,7 +9,7 @@
 // Please read the COPYRIGHT file for Our Notice and
 // for the BSD License.
 // Licence information included in file LICENCE
-#define MODULE_STRUCTURE_C
+#define HIERGRAPH_STRUCTURE_C
 #include "../../sight_structure.h"
 #include "hierGraph_structure.h"
 #include "../../sight_common.h"
@@ -39,21 +39,21 @@ namespace structure {
 
 // Record the configuration handlers in this file
 hierGraphConfHandlerInstantiator::hierGraphConfHandlerInstantiator() {
-  (*enterHandlers)["modularApp"] = &modularApp::configure;
-  (*exitHandlers )["modularApp"] = &hierGraphConfHandlerInstantiator::defaultExitFunc;
-  /*(*confEnterHandlers)["modularAppBody"]      = &defaultConfEntryHandler;
-  (*confExitHandlers )["modularAppBody"]      = &defaultConfExitHandler;
-  (*confEnterHandlers)["modularAppStructure"] = &defaultConfEntryHandler;
-  (*confExitHandlers )["modularAppStructure"] = &defaultConfExitHandler;
+  (*enterHandlers)["hierGraphApp"] = &hierGraphApp::configure;
+  (*exitHandlers )["hierGraphApp"] = &hierGraphConfHandlerInstantiator::defaultExitFunc;
+  /*(*confEnterHandlers)["hierGraphAppBody"]      = &defaultConfEntryHandler;
+  (*confExitHandlers )["hierGraphAppBody"]      = &defaultConfExitHandler;
+  (*confEnterHandlers)["hierGraphAppStructure"] = &defaultConfEntryHandler;
+  (*confExitHandlers )["hierGraphAppStructure"] = &defaultConfExitHandler;
   (*confEnterHandlers)["hierGraphTS"]            = &hierGraphTraceStream::enterTraceStream;
   (*confExitHandlers )["hierGraphTS"]            = &defaultConfExitHandler;
-  (*confEnterHandlers)["hierGraph"]              = &modularApp::enterHierGraph;
-  (*confExitHandlers )["hierGraph"]              = &modularApp::exitHierGraph;
+  (*confEnterHandlers)["hierGraph"]              = &hierGraphApp::enterHierGraph;
+  (*confExitHandlers )["hierGraph"]              = &hierGraphApp::exitHierGraph;
   (*confEnterHandlers)["hierGraphMarker"]        = &defaultConfEntryHandler;
   (*confExitHandlers )["hierGraphMarker"]        = &defaultConfExitHandler;
   (*confEnterHandlers)["hierGraphCtrl"]          = &defaultConfEntryHandler;
   (*confExitHandlers )["hierGraphCtrl"]          = &defaultConfExitHandler;
-  (*confEnterHandlers)["hierGraphEdge"]          = &modularApp::addEdge;
+  (*confEnterHandlers)["hierGraphEdge"]          = &hierGraphApp::addEdge;
   (*confExitHandlers )["hierGraphEdge"]          = &defaultConfExitHandler;
   (*confEnterHandlers)["compHierGraphTS"]        = &compHierGraphTraceStream::enterTraceStream;
   (*confExitHandlers )["compHierGraphTS"]        = &defaultConfExitHandler;
@@ -256,113 +256,113 @@ std::string instanceTree::str() const {
 }
 
 /**********************
- ***** modularApp *****
+ ***** hierGraphApp *****
  **********************/
 
-// Points to the currently active instance of modularApp. There can be only one.
-modularApp* modularApp::activeMA = NULL;
+// Points to the currently active instance of hierGraphApp. There can be only one.
+hierGraphApp* hierGraphApp::activeMA = NULL;
 
 // The maximum ID ever assigned to any modular application
-int modularApp::maxModularAppID=0;
+int hierGraphApp::maxModularAppID=0;
 
 // The maximum ID ever assigned to any hierGraph group
-int modularApp::maxHierGraphGroupID=0;
+int hierGraphApp::maxHierGraphGroupID=0;
 
 // Records all the known contexts, mapping each context to its unique ID
-std::map<group, int> modularApp::group2ID;
+std::map<group, int> hierGraphApp::group2ID;
 
 // Maps each context to the number of times it was ever observed
-std::map<group, int> modularApp::group2Count;
+std::map<group, int> hierGraphApp::group2Count;
 
 // The trace that records performance observations of different hierGraphs and contexts
-std::map<group, traceStream*> modularApp::hierGraphTrace;
-std::map<group, int>          modularApp::hierGraphTraceID;
+std::map<group, traceStream*> hierGraphApp::hierGraphTrace;
+std::map<group, int>          hierGraphApp::hierGraphTraceID;
 
 // Tree that records the hierarchy of hierGraph instances that were observed during the execution of this
 // modular application. Each path from the tree's root to a leaf is a stack of hierGraph instances that
 // corresponds to some observed hierGraph group.
-instanceTree modularApp::tree;
+instanceTree hierGraphApp::tree;
 
 // Maps each hierGraph to the list of the names of its input and output context attributes. 
 // This enables us to verify that all the hierGraphs are used consistently.
-std::map<group, std::vector<std::list<std::string> > > modularApp::hierGraphInCtxtNames;
-std::map<group, std::vector<std::list<std::string> > > modularApp::hierGraphOutCtxtNames;
+std::map<group, std::vector<std::list<std::string> > > hierGraphApp::hierGraphInCtxtNames;
+std::map<group, std::vector<std::list<std::string> > > hierGraphApp::hierGraphOutCtxtNames;
 
 // The properties object that describes each hierGraph group. This object is created by calling each group's
 // setProperties() method and each call to this method for the same hierGraph group must return the same properties.
-std::map<group, properties*> modularApp::hierGraphProps;
+std::map<group, properties*> hierGraphApp::hierGraphProps;
 
 // Records all the edges ever observed, mapping them to the number of times each edge was observed
-std::map<std::pair<port, port>, int> modularApp::edges;
+std::map<std::pair<port, port>, int> hierGraphApp::edges;
 
 // Stack of the hierGraph graphs that are currently in scope
-std::list<hierGraph*> modularApp::mStack;
+std::list<hierGraph*> hierGraphApp::mStack;
 
-modularApp::modularApp(const std::string& appName,                                                   properties* props) :
+hierGraphApp::hierGraphApp(const std::string& appName,                                                   properties* props) :
     block(appName, setProperties(appName, NULL, props)), appName(appName)
 { init(); }
         
-modularApp::modularApp(const std::string& appName, const attrOp& onoffOp,                            properties* props) :
+hierGraphApp::hierGraphApp(const std::string& appName, const attrOp& onoffOp,                            properties* props) :
     block(appName, setProperties(appName, &onoffOp, props)), appName(appName)
 { init(); }
 
-modularApp::modularApp(const std::string& appName,                        const namedMeasures& meas, properties* props) :
+hierGraphApp::hierGraphApp(const std::string& appName,                        const namedMeasures& meas, properties* props) :
     block(appName, setProperties(appName, NULL, props)), appName(appName), meas(meas)
 { init(); }
 
-modularApp::modularApp(const std::string& appName, const attrOp& onoffOp, const namedMeasures& meas, properties* props) :
+hierGraphApp::hierGraphApp(const std::string& appName, const attrOp& onoffOp, const namedMeasures& meas, properties* props) :
     block(appName, setProperties(appName, &onoffOp, props)), appName(appName), meas(meas)
 { init(); }
 
 // Common initialization logic
-void modularApp::init() {
-  // Register this modularApp instance (there can be only one)
-  if(activeMA != NULL) { cerr << "ERROR: multiple modularApps are active at the same time! Make sure to complete one modularApp before starting another."<<endl; }
+void hierGraphApp::init() {
+  // Register this hierGraphApp instance (there can be only one)
+  if(activeMA != NULL) { cerr << "ERROR: multiple hierGraphApps are active at the same time! Make sure to complete one hierGraphApp before starting another."<<endl; }
   assert(activeMA == NULL);
   activeMA = this;
   
   appID = maxModularAppID;
   maxModularAppID++;
   
-  // If this modularApp is not active, deallocate all the provided measurements
+  // If this hierGraphApp is not active, deallocate all the provided measurements
   if(!props->active) {
     for(namedMeasures::iterator m=meas.begin(); m!=meas.end(); m++)
       delete m->second;
   }
   
-  // Emit the tag that starts the description of the modularApp's body
+  // Emit the tag that starts the description of the hierGraphApp's body
   map<string, string> pMapMABody;
   properties propsMABody;
-  propsMABody.add("modularAppBody", pMapMABody);
+  propsMABody.add("hierGraphAppBody", pMapMABody);
   dbg.enter(propsMABody);
 }
 
 // Stack used while we're emitting the nesting hierarchy of hierGraph groups to keep each hierGraph group's 
 // sightObj between the time the group is entered and exited
-list<sightObj*> modularApp::hierGraphEmitStack;
+list<sightObj*> hierGraphApp::hierGraphEmitStack;
 
-// Emits the entry tag for a hierGraph group during the execution of ~modularApp()
-void modularApp::enterHierGraphGroup(const group& g) {
+// Emits the entry tag for a hierGraph group during the execution of ~hierGraphApp()
+void hierGraphApp::enterHierGraphGroup(const group& g) {
   properties* props = new properties();
   
   /*map<string, string> pMap;
-  pMap["hierGraphID"]   = txt()<<modularApp::group2ID[g];
+  pMap["hierGraphID"]   = txt()<<hierGraphApp::group2ID[g];
   pMap["name"]       = g.name();
   pMap["numInputs"]  = txt()<<g.numInputs();
   pMap["numOutputs"] = txt()<<g.numOutputs();
-  assert(modularApp::group2Count.find(g) != modularApp::group2Count.end());
-  pMap["count"] = txt()<<modularApp::group2Count[g];
+  assert(hierGraphApp::group2Count.find(g) != hierGraphApp::group2Count.end());
+  pMap["count"] = txt()<<hierGraphApp::group2Count[g];
   props->add("hierGraph", pMap);*/
   
   // Add the count property to the map of "hierGraph".
   /*properties::iterator hierGraphIter = hierGraphProps[g]->find("hierGraph");
-  properties::set(hierGraphIter, "count", txt()<<modularApp::group2Count[g]);*/
-  hierGraphProps[g]->set("hierGraph", "count", txt()<<modularApp::group2Count[g]);
+  properties::set(hierGraphIter, "count", txt()<<hierGraphApp::group2Count[g]);*/
+  hierGraphProps[g]->set("hierGraph", "count", txt()<<hierGraphApp::group2Count[g]);
   hierGraphEmitStack.push_back(new sightObj(hierGraphProps[g]));
 }
 
-// Emits the exit tag for a hierGraph group during the execution of ~modularApp()
-void modularApp::exitHierGraphGroup(const group& g) {
+// Emits the exit tag for a hierGraph group during the execution of ~hierGraphApp()
+void hierGraphApp::exitHierGraphGroup(const group& g) {
   assert(hierGraphEmitStack.size()>0);
   delete hierGraphEmitStack.back();
   hierGraphEmitStack.pop_back();
@@ -378,18 +378,18 @@ void modularApp::exitHierGraphGroup(const group& g) {
 // of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
 // it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
 // an object will invoke the destroy() method of the most-derived class.
-void modularApp::destroy() {
-  this->~modularApp();
+void hierGraphApp::destroy() {
+  this->~hierGraphApp();
 }
 
-modularApp::~modularApp() {
+hierGraphApp::~hierGraphApp() {
   assert(!destroyed);
   
-  // Unregister this modularApp instance (there can be only one)
+  // Unregister this hierGraphApp instance (there can be only one)
   assert(activeMA);
   activeMA = NULL;
   
-  // All the hierGraphs that were entered inside this modularApp instance must have already been exited
+  // All the hierGraphs that were entered inside this hierGraphApp instance must have already been exited
   assert(mStack.size()==0);
   
   if(props->active) {
@@ -398,16 +398,16 @@ modularApp::~modularApp() {
       cout << "    "<<c->first.UID()<<" ==> "<<c->second<<endl;
     */
     
-    // Emit the tag that ends the description of the modularApp's body
+    // Emit the tag that ends the description of the hierGraphApp's body
     map<string, string> pMapMABody;
     properties propsMABody;
-    propsMABody.add("modularAppBody", pMapMABody);
+    propsMABody.add("hierGraphAppBody", pMapMABody);
     dbg.exit(propsMABody);
     
-    // Emit the tag that starts the description of the modularApp's structure
+    // Emit the tag that starts the description of the hierGraphApp's structure
     map<string, string> pMapMAStructure;
     properties propsMAStructure;
-    propsMAStructure.add("modularAppStructure", pMapMAStructure);
+    propsMAStructure.add("hierGraphAppStructure", pMapMAStructure);
     dbg.enter(propsMAStructure);
     
     // Delete the hierGraphTraces associated with each hierGraph group, forcing them to emit their respective end tags
@@ -419,10 +419,10 @@ modularApp::~modularApp() {
     // Emit the tags of all hierGraphs and the edges between them
     // -------------------------------------------------------
     
-    // Emit the hierarchy of hierGraph groups observed during this modularApp's execution
+    // Emit the hierarchy of hierGraph groups observed during this hierGraphApp's execution
     tree.iterate(enterHierGraphGroup, exitHierGraphGroup);
     
-    // Emit all the edges between hierGraph groups collected while this modularApp was live.
+    // Emit all the edges between hierGraph groups collected while this hierGraphApp was live.
     // Note that this guarantees that edges are guaranteed to be placed after or inside the hierGraphs they connect.
     for(std::map<pair<port, port>, int>::iterator e=edges.begin(); e!=edges.end(); e++) {
       // If either group is NULL, don't generate an edge. Users can specify a NULL group if they don't want to bother
@@ -449,25 +449,25 @@ modularApp::~modularApp() {
       dbg.tag(edgeP);
     }
     
-    // Emit the exit tag that denotes the end of the description of the modularApp's structure
+    // Emit the exit tag that denotes the end of the description of the hierGraphApp's structure
     dbg.exit(propsMAStructure);
     
     // ------------------------
     // Clean up sata structures
     // ------------------------
     
-    // Deallocate all the measurements provided to this modularApp since we won't need them any longer
+    // Deallocate all the measurements provided to this hierGraphApp since we won't need them any longer
     for(namedMeasures::iterator m=meas.begin(); m!=meas.end(); m++)
       delete m->second;
     
     // We do not deallocate all the hierGraph group properties because these are deallocated in the destructors
-    // of the sightObjs created in modularApp::enterHierGraphGroup(). Further, hierGraphProps should be completely 
-    // emptied by all our calls to modularApp::exitHierGraphGroup().
+    // of the sightObjs created in hierGraphApp::enterHierGraphGroup(). Further, hierGraphProps should be completely 
+    // emptied by all our calls to hierGraphApp::exitHierGraphGroup().
     assert(hierGraphProps.size()==0);
     /*for(std::map<group, properties*>::iterator p=hierGraphProps.begin(); p!=hierGraphProps.end(); p++)
       delete p->second;*/
     
-    // Clear out all of the static datastructures of modularApp
+    // Clear out all of the static datastructures of hierGraphApp
     group2ID.clear();
     group2Count.clear();
     hierGraphTrace.clear();
@@ -477,7 +477,7 @@ modularApp::~modularApp() {
     edges.clear();
     meas.clear();
   } else {
-    // If this modularApp instance is inactive, all the static datastructures must be empty
+    // If this hierGraphApp instance is inactive, all the static datastructures must be empty
     assert(group2ID.size()==0);
     assert(group2Count.size()==0);
     assert(hierGraphTrace.size()==0);
@@ -490,7 +490,7 @@ modularApp::~modularApp() {
 }
 
 // Sets the properties of this object
-properties* modularApp::setProperties(const std::string& appName, const attrOp* onoffOp, properties* props) {
+properties* hierGraphApp::setProperties(const std::string& appName, const attrOp* onoffOp, properties* props) {
   if(props==NULL) props = new properties();
   
   if(props->active && props->emitTag) {
@@ -505,7 +505,7 @@ properties* modularApp::setProperties(const std::string& appName, const attrOp* 
         map<string, string> pMap;
         pMap["appName"] = appName;
         pMap["appID"]   = txt()<<maxModularAppID;
-        props->add("modularApp", pMap);
+        props->add("hierGraphApp", pMap);
       }
     } else
     	props->active = false;
@@ -515,7 +515,7 @@ properties* modularApp::setProperties(const std::string& appName, const attrOp* 
 }
 
 // Returns the hierGraph ID of the given hierGraph group, generating a fresh one if one has not yet been assigned
-int modularApp::genHierGraphID(const group& g) {
+int hierGraphApp::genHierGraphID(const group& g) {
   // If this hierGraph group doesn't yet have an ID, set one
   if(group2ID.find(g) == group2ID.end()) {
     group2ID[g] = maxHierGraphGroupID;
@@ -531,14 +531,14 @@ int modularApp::genHierGraphID(const group& g) {
   return group2ID[g];
 }
 
-// Returns whether the current instance of modularApp is active
-bool modularApp::isInstanceActive() {
+// Returns whether the current instance of hierGraphApp is active
+bool hierGraphApp::isInstanceActive() {
   //assert(activeMA);
   return activeMA!=NULL && activeMA->isActive();
 }
 
 // Assigns a unique ID to the given hierGraph group, as needed and returns this ID
-int modularApp::addHierGraphGroup(const group& g) {
+int hierGraphApp::addHierGraphGroup(const group& g) {
   
   return group2ID[g];
 }
@@ -548,9 +548,9 @@ int modularApp::addHierGraphGroup(const group& g) {
 // g - the hierGraph group for which we're registering inputs/outputs
 // inouts - the vector of input or output ports
 // toT - identifies whether inouts is the vector of inputs or outputs
-void modularApp::registerInOutContexts(const group& g, const std::vector<port>& inouts, sight::common::hierGraph::ioT io)
+void hierGraphApp::registerInOutContexts(const group& g, const std::vector<port>& inouts, sight::common::hierGraph::ioT io)
 {
-  // Exactly one modularAppInstance must be active
+  // Exactly one hierGraphAppInstance must be active
   assert(activeMA);
   assert(activeMA->isActive());
   
@@ -592,8 +592,8 @@ void modularApp::registerInOutContexts(const group& g, const std::vector<port>& 
 
 
 // Add an edge between one hierGraph's output port and another hierGraph's input port
-void modularApp::addEdge(port from, port to) {
-  // Exactly one modularAppInstance must be active
+void hierGraphApp::addEdge(port from, port to) {
+  // Exactly one hierGraphAppInstance must be active
   assert(activeMA);
   assert(activeMA->isActive());
   
@@ -615,20 +615,20 @@ void modularApp::addEdge(port from, port to) {
 }
 
 // Add an edge between one hierGraph's output port and another hierGraph's input port
-void modularApp::addEdge(group fromG, sight::common::hierGraph::ioT fromT, int fromP, 
+void hierGraphApp::addEdge(group fromG, sight::common::hierGraph::ioT fromT, int fromP, 
                          group toG,   sight::common::hierGraph::ioT toT,   int toP) {
   addEdge(port(fromG, context(), fromT, fromP), port(toG, context(), toT, toP));
 }
 
 // Returns the current hierGraph on the stack and NULL if the stack is empty
-hierGraph* modularApp::getCurHierGraph() {
+hierGraph* hierGraphApp::getCurHierGraph() {
   if(mStack.size()>0) return mStack.back();
   else                return NULL;
 }
 
 // Adds the given hierGraph object to the hierGraphs stack
-void modularApp::enterHierGraph(hierGraph* m, int hierGraphID, properties* props) {
-  // Exactly one modularAppInstance must be active
+void hierGraphApp::enterHierGraph(hierGraph* m, int hierGraphID, properties* props) {
+  // Exactly one hierGraphAppInstance must be active
   assert(isInstanceActive());
   
   mStack.push_back(m);
@@ -651,26 +651,26 @@ void modularApp::enterHierGraph(hierGraph* m, int hierGraphID, properties* props
 }
 
 // Returns whether a traceStream has been registered for the given hierGraph group
-bool modularApp::isTraceStreamRegistered(const group& g) {
+bool hierGraphApp::isTraceStreamRegistered(const group& g) {
   return hierGraphTrace.find(g) != hierGraphTrace.end();
 }
 
 // Registers the given traceStream for the given hierGraph group
-void modularApp::registerTraceStream(const group& g, traceStream* ts) {
+void hierGraphApp::registerTraceStream(const group& g, traceStream* ts) {
   // No other traceStream may be currently registered for this hierGraph group;
   assert(hierGraphTrace.find(g) == hierGraphTrace.end());
   hierGraphTrace[g] = ts;
 }
 
 // Registers the ID of the traceStream that will be used for the given hierGraph group
-void modularApp::registerTraceStreamID(const group& g, int traceID) {
+void hierGraphApp::registerTraceStreamID(const group& g, int traceID) {
   // No other traceStream ID may be currently registered for this hierGraph group;
   assert(hierGraphTraceID.find(g) == hierGraphTraceID.end());
   hierGraphTraceID[g] = traceID;
 }
 
 // Returns the currently registered the ID of the traceStream that will be used for the given hierGraph group
-int modularApp::getTraceStreamID(const group& g) {
+int hierGraphApp::getTraceStreamID(const group& g) {
   // A traceID must be registered with this hierGraph group
   if(hierGraphTraceID.find(g) == hierGraphTraceID.end()) { cerr << "ERROR: No traceStream registered for hierGraph \""<<g.str()<<"\"!"<<endl; }
   assert(hierGraphTraceID.find(g) != hierGraphTraceID.end());
@@ -678,8 +678,8 @@ int modularApp::getTraceStreamID(const group& g) {
 }
 
 // Removes the given hierGraph object from the hierGraphs stack
-void modularApp::exitHierGraph(hierGraph* m) {
-  // Exactly one modularAppInstance must be active
+void hierGraphApp::exitHierGraph(hierGraph* m) {
+  // Exactly one hierGraphAppInstance must be active
   assert(isInstanceActive());
 
   // Pop this hierGraph from the mStack
@@ -693,112 +693,112 @@ void modularApp::exitHierGraph(hierGraph* m) {
  ******************/
 
 hierGraph::hierGraph(const instance& inst,                                                     properties* props) : 
-  sightObj(setProperties(inst, props, NULL, this)), g(modularApp::mStack, inst), externalOutputs(NULL)
+  sightObj(setProperties(inst, props, NULL, this)), g(hierGraphApp::mStack, inst), externalOutputs(NULL)
 { init(inputs(), props); }
 
 hierGraph::hierGraph(const instance& inst, const port& in,                                     properties* props): 
-  sightObj(setProperties(inst, props, NULL, this)), g(modularApp::mStack, inst), externalOutputs(NULL)
+  sightObj(setProperties(inst, props, NULL, this)), g(hierGraphApp::mStack, inst), externalOutputs(NULL)
 { init(inputs(in), props); }
 
 hierGraph::hierGraph(const instance& inst, const std::vector<port>& in,                        properties* props) :
-  sightObj(setProperties(inst, props, NULL, this)), g(modularApp::mStack, inst), externalOutputs(NULL)
+  sightObj(setProperties(inst, props, NULL, this)), g(hierGraphApp::mStack, inst), externalOutputs(NULL)
 { init(in, props); }
 
 hierGraph::hierGraph(const instance& inst,                              const attrOp& onoffOp, properties* props) : 
-  sightObj(setProperties(inst, props, &onoffOp, this)), g(modularApp::mStack, inst), externalOutputs(NULL)
+  sightObj(setProperties(inst, props, &onoffOp, this)), g(hierGraphApp::mStack, inst), externalOutputs(NULL)
 { init(inputs(), props); }
 
 hierGraph::hierGraph(const instance& inst, const port& in,              const attrOp& onoffOp, properties* props): 
-  sightObj(setProperties(inst, props, &onoffOp, this)), g(modularApp::mStack, inst), externalOutputs(NULL)
+  sightObj(setProperties(inst, props, &onoffOp, this)), g(hierGraphApp::mStack, inst), externalOutputs(NULL)
 { init(inputs(in), props); }
 
 hierGraph::hierGraph(const instance& inst, const std::vector<port>& in, const attrOp& onoffOp, properties* props) :
-  sightObj(setProperties(inst, props, &onoffOp, this)), g(modularApp::mStack, inst), externalOutputs(NULL)
+  sightObj(setProperties(inst, props, &onoffOp, this)), g(hierGraphApp::mStack, inst), externalOutputs(NULL)
 { init(in, props); }
 
 
 hierGraph::hierGraph(const instance& inst,                              std::vector<port>& externalOutputs,                        properties* props) : 
-  sightObj(setProperties(inst, props, NULL, this)), g(modularApp::mStack, inst), externalOutputs(&externalOutputs)
+  sightObj(setProperties(inst, props, NULL, this)), g(hierGraphApp::mStack, inst), externalOutputs(&externalOutputs)
 { init(inputs(), props); }
 
 hierGraph::hierGraph(const instance& inst, const port& in,              std::vector<port>& externalOutputs,                        properties* props): 
-  sightObj(setProperties(inst, props, NULL, this)), g(modularApp::mStack, inst), externalOutputs(&externalOutputs)
+  sightObj(setProperties(inst, props, NULL, this)), g(hierGraphApp::mStack, inst), externalOutputs(&externalOutputs)
 { init(inputs(in), props); }
 
 hierGraph::hierGraph(const instance& inst, const std::vector<port>& in, std::vector<port>& externalOutputs,                        properties* props) :
-  sightObj(setProperties(inst, props, NULL, this)), g(modularApp::mStack, inst), externalOutputs(&externalOutputs)
+  sightObj(setProperties(inst, props, NULL, this)), g(hierGraphApp::mStack, inst), externalOutputs(&externalOutputs)
 { init(in, props); }
 
 hierGraph::hierGraph(const instance& inst,                              std::vector<port>& externalOutputs, const attrOp& onoffOp, properties* props) : 
-  sightObj(setProperties(inst, props, &onoffOp, this)), g(modularApp::mStack, inst), externalOutputs(&externalOutputs)
+  sightObj(setProperties(inst, props, &onoffOp, this)), g(hierGraphApp::mStack, inst), externalOutputs(&externalOutputs)
 { init(inputs(), props); }
 
 hierGraph::hierGraph(const instance& inst, const port& in,              std::vector<port>& externalOutputs, const attrOp& onoffOp, properties* props): 
-  sightObj(setProperties(inst, props, &onoffOp, this)), g(modularApp::mStack, inst), externalOutputs(&externalOutputs)
+  sightObj(setProperties(inst, props, &onoffOp, this)), g(hierGraphApp::mStack, inst), externalOutputs(&externalOutputs)
 { init(inputs(in), props); }
 
 hierGraph::hierGraph(const instance& inst, const std::vector<port>& in, std::vector<port>& externalOutputs, const attrOp& onoffOp, properties* props) :
-  sightObj(setProperties(inst, props, &onoffOp, this)), g(modularApp::mStack, inst), externalOutputs(&externalOutputs)
+  sightObj(setProperties(inst, props, &onoffOp, this)), g(hierGraphApp::mStack, inst), externalOutputs(&externalOutputs)
 { init(in, props); }
 
 
 
 hierGraph::hierGraph(const instance& inst,                                                     const namedMeasures& meas, properties* props) : 
-  sightObj(setProperties(inst, props, NULL, this)), g(modularApp::mStack, inst), externalOutputs(NULL), meas(meas)
+  sightObj(setProperties(inst, props, NULL, this)), g(hierGraphApp::mStack, inst), externalOutputs(NULL), meas(meas)
 { init(inputs(), props); }
 
 hierGraph::hierGraph(const instance& inst, const port& in,                                     const namedMeasures& meas, properties* props): 
-  sightObj(setProperties(inst, props, NULL, this)), g(modularApp::mStack, inst), externalOutputs(NULL), meas(meas)
+  sightObj(setProperties(inst, props, NULL, this)), g(hierGraphApp::mStack, inst), externalOutputs(NULL), meas(meas)
 { init(inputs(in), props); }
 
 hierGraph::hierGraph(const instance& inst, const std::vector<port>& in,                        const namedMeasures& meas, properties* props) :
-  sightObj(setProperties(inst, props, NULL, this)), g(modularApp::mStack, inst), externalOutputs(NULL), meas(meas)
+  sightObj(setProperties(inst, props, NULL, this)), g(hierGraphApp::mStack, inst), externalOutputs(NULL), meas(meas)
 { init(in, props); }
 
 hierGraph::hierGraph(const instance& inst,                              const attrOp& onoffOp, const namedMeasures& meas, properties* props) : 
-  sightObj(setProperties(inst, props, &onoffOp, this)), g(modularApp::mStack, inst), externalOutputs(NULL), meas(meas)
+  sightObj(setProperties(inst, props, &onoffOp, this)), g(hierGraphApp::mStack, inst), externalOutputs(NULL), meas(meas)
 { init(inputs(), props); }
 
 hierGraph::hierGraph(const instance& inst, const port& in,              const attrOp& onoffOp, const namedMeasures& meas, properties* props): 
-  sightObj(setProperties(inst, props, &onoffOp, this)), g(modularApp::mStack, inst), externalOutputs(NULL), meas(meas)
+  sightObj(setProperties(inst, props, &onoffOp, this)), g(hierGraphApp::mStack, inst), externalOutputs(NULL), meas(meas)
 { init(inputs(in), props); }
 
 hierGraph::hierGraph(const instance& inst, const std::vector<port>& in, const attrOp& onoffOp, const namedMeasures& meas, properties* props) :
-  sightObj(setProperties(inst, props, &onoffOp, this)), g(modularApp::mStack, inst), externalOutputs(NULL), meas(meas)
+  sightObj(setProperties(inst, props, &onoffOp, this)), g(hierGraphApp::mStack, inst), externalOutputs(NULL), meas(meas)
 { init(in, props); }
 
 
 hierGraph::hierGraph(const instance& inst,                              std::vector<port>& externalOutputs,                        const namedMeasures& meas, properties* props) : 
-  sightObj(setProperties(inst, props, NULL, this)), g(modularApp::mStack, inst), externalOutputs(&externalOutputs), meas(meas)
+  sightObj(setProperties(inst, props, NULL, this)), g(hierGraphApp::mStack, inst), externalOutputs(&externalOutputs), meas(meas)
 { init(inputs(), props); }
 
 hierGraph::hierGraph(const instance& inst, const port& in,              std::vector<port>& externalOutputs,                        const namedMeasures& meas, properties* props): 
-  sightObj(setProperties(inst, props, NULL, this)), g(modularApp::mStack, inst), externalOutputs(&externalOutputs), meas(meas)
+  sightObj(setProperties(inst, props, NULL, this)), g(hierGraphApp::mStack, inst), externalOutputs(&externalOutputs), meas(meas)
 { init(inputs(in), props); }
 
 hierGraph::hierGraph(const instance& inst, const std::vector<port>& in, std::vector<port>& externalOutputs,                        const namedMeasures& meas, properties* props) :
-  sightObj(setProperties(inst, props, NULL, this)), g(modularApp::mStack, inst), externalOutputs(&externalOutputs), meas(meas)
+  sightObj(setProperties(inst, props, NULL, this)), g(hierGraphApp::mStack, inst), externalOutputs(&externalOutputs), meas(meas)
 { init(in, props); }
 
 hierGraph::hierGraph(const instance& inst,                              std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, properties* props) : 
-  sightObj(setProperties(inst, props, &onoffOp, this)), g(modularApp::mStack, inst), externalOutputs(&externalOutputs), meas(meas)
+  sightObj(setProperties(inst, props, &onoffOp, this)), g(hierGraphApp::mStack, inst), externalOutputs(&externalOutputs), meas(meas)
 { init(inputs(), props); }
 
 hierGraph::hierGraph(const instance& inst, const port& in,              std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, properties* props): 
-  sightObj(setProperties(inst, props, &onoffOp, this)), g(modularApp::mStack, inst), externalOutputs(&externalOutputs), meas(meas)
+  sightObj(setProperties(inst, props, &onoffOp, this)), g(hierGraphApp::mStack, inst), externalOutputs(&externalOutputs), meas(meas)
 { init(inputs(in), props); }
 
 hierGraph::hierGraph(const instance& inst, const std::vector<port>& in, std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, properties* props) :
-  sightObj(setProperties(inst, props, &onoffOp, this)), g(modularApp::mStack, inst), externalOutputs(&externalOutputs), meas(meas)
+  sightObj(setProperties(inst, props, &onoffOp, this)), g(hierGraphApp::mStack, inst), externalOutputs(&externalOutputs), meas(meas)
 { init(in, props); }
 
 properties* hierGraph::setProperties(const instance& inst, properties* props, const attrOp* onoffOp, hierGraph* me) {
-  group g(modularApp::mStack, inst);
+  group g(hierGraphApp::mStack, inst);
   bool isDerived = (props!=NULL); // This is an instance of an object that derives from hierGraph if its constructor sets props to non-NULL
  
   if(attributes.query() && (onoffOp? onoffOp->apply(): true)) {
-    if(!modularApp::isInstanceActive()) {
-      cerr << "ERROR: hierGraph "<<inst.str()<<" entered while there no instance of modularApp is active!"<<endl;
+    if(!hierGraphApp::isInstanceActive()) {
+      cerr << "ERROR: hierGraph "<<inst.str()<<" entered while there no instance of hierGraphApp is active!"<<endl;
       assert(0);
     }
  
@@ -806,25 +806,25 @@ properties* hierGraph::setProperties(const instance& inst, properties* props, co
     properties* markerProps = new properties();
   
     map<string, string> pMap;
-    //pMap["hierGraphID"] = txt()<<modularApp::genHierGraphID(g);
+    //pMap["hierGraphID"] = txt()<<hierGraphApp::genHierGraphID(g);
     pMap["name"]       = g.name();
     pMap["numInputs"]  = txt()<<g.numInputs();
     pMap["numOutputs"] = txt()<<g.numOutputs();
 
     // If this is an instance of hierGraph rather than a class that derives from hierGraph
-    //if(modularApp::isInstanceActive() && !isDerived) {
+    //if(hierGraphApp::isInstanceActive() && !isDerived) {
       markerProps->active = true;
 
       // If no traceStream has been registered for this hierGraph group
-      if(!modularApp::isTraceStreamRegistered(g)) {
+      if(!hierGraphApp::isTraceStreamRegistered(g)) {
         // We'll create a new traceStream in the destructor but first, generate and record the ID of that 
         // traceStream so that we can include it in the tag and record it in the hierGraph object for use in its destructor
         int traceID = traceStream::genTraceID();
-        modularApp::registerTraceStreamID(g, traceID);
+        hierGraphApp::registerTraceStreamID(g, traceID);
         pMap["traceID"] = txt()<<traceID;
       } else {
         // Reuse the previously registered traceID
-        pMap["traceID"] = txt()<<modularApp::getTraceStreamID(g);
+        pMap["traceID"] = txt()<<hierGraphApp::getTraceStreamID(g);
       }
     //}
   
@@ -840,8 +840,8 @@ void hierGraph::init(const std::vector<port>& ins, properties* derivedProps) {
   if(derivedProps==NULL) derivedProps = new properties();
   this->ins = ins;
   
-  if(modularApp::isInstanceActive() && derivedProps->active) {
-    hierGraphID = modularApp::genHierGraphID(g);
+  if(hierGraphApp::isInstanceActive() && derivedProps->active) {
+    hierGraphID = hierGraphApp::genHierGraphID(g);
     
     // Add the properties of this hierGraph to derivedProps
     map<string, string> pMap;
@@ -852,14 +852,14 @@ void hierGraph::init(const std::vector<port>& ins, properties* derivedProps) {
     derivedProps->add("hierGraph", pMap);
     
     // Add this hierGraph instance to the current stack of hierGraphs
-    modularApp::enterHierGraph(this, hierGraphID, derivedProps);
+    hierGraphApp::enterHierGraph(this, hierGraphID, derivedProps);
     
     // Make sure that the input contexts have the same names across all the invocations of this hierGraph group
-    modularApp::registerInOutContexts(g, ins, sight::common::hierGraph::input);
+    hierGraphApp::registerInOutContexts(g, ins, sight::common::hierGraph::input);
     
     // Add edges between the hierGraphs from which this hierGraph's inputs came and this hierGraph
     for(int i=0; i<ins.size(); i++)
-    	modularApp::addEdge(ins[i], port(g, context(), input, i));
+    	hierGraphApp::addEdge(ins[i], port(g, context(), input, i));
     
     // Initialize the output ports of this hierGraph
     if(externalOutputs) externalOutputs->clear(); 
@@ -871,9 +871,9 @@ void hierGraph::init(const std::vector<port>& ins, properties* derivedProps) {
       }
     }
     
-    // Add the default measurements recored in modularApp to meas
-    for(namedMeasures::iterator m=modularApp::activeMA->meas.begin(); m!=modularApp::activeMA->meas.end(); m++) {
-      // If the name of the current measurement in modularApp isn't already specified for the given hierGraph group, add it
+    // Add the default measurements recored in hierGraphApp to meas
+    for(namedMeasures::iterator m=hierGraphApp::activeMA->meas.begin(); m!=hierGraphApp::activeMA->meas.end(); m++) {
+      // If the name of the current measurement in hierGraphApp isn't already specified for the given hierGraph group, add it
       if(meas.find(m->first) == meas.end())
         meas[m->first] = m->second->copy();
     }
@@ -925,9 +925,9 @@ hierGraph::~hierGraph() {
       dbg.enter(hierGraphCtrl);
 
       // Register a traceStream for this hierGraph's group, if one has not already been registered
-      if(!modularApp::isTraceStreamRegistered(g)) {
-        modularApp::registerTraceStream(g, new hierGraphTraceStream(hierGraphID, this, trace::lines, trace::disjMerge, 
-                                        modularApp::getTraceStreamID(g)));
+      if(!hierGraphApp::isTraceStreamRegistered(g)) {
+        hierGraphApp::registerTraceStream(g, new hierGraphTraceStream(hierGraphID, this, trace::lines, trace::disjMerge, 
+                                        hierGraphApp::getTraceStreamID(g)));
       }
     }
 
@@ -957,15 +957,15 @@ hierGraph::~hierGraph() {
     cout << "    "<<tc->first << ": "<<tc->second.serialize()<<endl;*/
 
     // Record the observation into this hierGraph group's trace
-    modularApp::hierGraphTrace[g]->traceFullObservation(traceCtxt, obs, anchor::noAnchor);
+    hierGraphApp::hierGraphTrace[g]->traceFullObservation(traceCtxt, obs, anchor::noAnchor);
 
     /* GB 2014-01-24 - It makes sense to allow different instances of a hierGraph group to not provide
      *        the same outputs since in fault injection we may be aborted before all the outputs are 
      *        computed and in other cases the code may break out without computing some output. *?
     // Make sure that the output contexts have the same names across all the invocations of this hierGraph group
-    modularApp::registerInOutContexts(g, outs, sight::common::hierGraph::output); */
+    hierGraphApp::registerInOutContexts(g, outs, sight::common::hierGraph::output); */
   
-    modularApp::exitHierGraph(this);
+    hierGraphApp::exitHierGraph(this);
     
     // Close the tag that wraps the control section of this hierGraph
     properties hierGraphCtrl;
@@ -1162,19 +1162,19 @@ std::string compContext::str() const {
  **************************/
 
 compModularApp::compModularApp(const std::string& appName,                                                       properties* props) : 
-  modularApp(appName,                                   props)
+  hierGraphApp(appName,                                   props)
 {}
 
 compModularApp::compModularApp(const std::string& appName, const attrOp& onoffOp,                                properties* props) : 
-  modularApp(appName, onoffOp,                          props)
+  hierGraphApp(appName, onoffOp,                          props)
 {}
 
 compModularApp::compModularApp(const std::string& appName,                        const compNamedMeasures& cMeas, properties* props) :
-  modularApp(appName,          cMeas.getNamedMeasures(), props), measComp(cMeas.getComparators())
+  hierGraphApp(appName,          cMeas.getNamedMeasures(), props), measComp(cMeas.getComparators())
 {}
 
 compModularApp::compModularApp(const std::string& appName, const attrOp& onoffOp, const compNamedMeasures& cMeas, properties* props) :
-  modularApp(appName, onoffOp, cMeas.getNamedMeasures(), props), measComp(cMeas.getComparators())
+  hierGraphApp(appName, onoffOp, cMeas.getNamedMeasures(), props), measComp(cMeas.getComparators())
 {}
 
 // Directly calls the destructor of this object. This is necessary because when an application crashes
@@ -1341,8 +1341,8 @@ compHierGraph::~compHierGraph() {
     dbg.enter(hierGraphCtrl);
 
     // Register a traceStream for this compHierGraph's hierGraph group, if one has not already been registered
-    if(!modularApp::isTraceStreamRegistered(g))
-      modularApp::registerTraceStream(g, new compHierGraphTraceStream(hierGraphID, this, trace::lines, trace::disjMerge, modularApp::getTraceStreamID(g)));
+    if(!hierGraphApp::isTraceStreamRegistered(g))
+      hierGraphApp::registerTraceStream(g, new compHierGraphTraceStream(hierGraphID, this, trace::lines, trace::disjMerge, hierGraphApp::getTraceStreamID(g)));
   }
   
   if(!isDerived) setTraceCtxt();
@@ -1694,8 +1694,8 @@ processedHierGraph::~processedHierGraph() {
   // If this is an instance of processedHierGraph rather than a class that derives from processedHierGraph
   if(props->active) {
     // Register a traceStream for this processedHierGraph's hierGraph group, if one has not already been registered
-    if(!modularApp::isTraceStreamRegistered(g))
-      modularApp::registerTraceStream(g, new processedHierGraphTraceStream(hierGraphID, this, trace::lines, trace::disjMerge, modularApp::getTraceStreamID(g)));
+    if(!hierGraphApp::isTraceStreamRegistered(g))
+      hierGraphApp::registerTraceStream(g, new processedHierGraphTraceStream(hierGraphID, this, trace::lines, trace::disjMerge, hierGraphApp::getTraceStreamID(g)));
   }
 }
 
@@ -1888,12 +1888,12 @@ processedHierGraphTraceStream::~processedHierGraphTraceStream() {
  ******************************************/
 
 HierGraphMergeHandlerInstantiator::HierGraphMergeHandlerInstantiator() { 
-  (*MergeHandlers   )["modularApp"]          = ModularAppMerger::create;
-  (*MergeKeyHandlers)["modularApp"]          = ModularAppMerger::mergeKey;
-  (*MergeHandlers   )["modularAppBody"]      = ModularAppStructureMerger::create;
-  (*MergeKeyHandlers)["modularAppBody"]      = ModularAppStructureMerger::mergeKey;
-  (*MergeHandlers   )["modularAppStructure"] = ModularAppStructureMerger::create;
-  (*MergeKeyHandlers)["modularAppStructure"] = ModularAppStructureMerger::mergeKey;
+  (*MergeHandlers   )["hierGraphApp"]          = ModularAppMerger::create;
+  (*MergeKeyHandlers)["hierGraphApp"]          = ModularAppMerger::mergeKey;
+  (*MergeHandlers   )["hierGraphAppBody"]      = ModularAppStructureMerger::create;
+  (*MergeKeyHandlers)["hierGraphAppBody"]      = ModularAppStructureMerger::mergeKey;
+  (*MergeHandlers   )["hierGraphAppStructure"] = ModularAppStructureMerger::create;
+  (*MergeKeyHandlers)["hierGraphAppStructure"] = ModularAppStructureMerger::mergeKey;
   (*MergeHandlers   )["hierGraph"]              = HierGraphMerger::create;
   (*MergeKeyHandlers)["hierGraph"]              = HierGraphMerger::mergeKey;    
   (*MergeHandlers   )["hierGraphMarker"]        = HierGraphMerger::create;
@@ -1916,7 +1916,7 @@ HierGraphMergeHandlerInstantiator HierGraphMergeHandlerInstance;
 
 std::map<std::string, streamRecord*> HierGraphGetMergeStreamRecord(int streamID) {
   std::map<std::string, streamRecord*> mergeMap;
-  mergeMap["modularApp"] = new HierGraphStreamRecord(streamID);
+  mergeMap["hierGraphApp"] = new HierGraphStreamRecord(streamID);
   mergeMap["hierGraph"]     = new HierGraphStreamRecord(streamID);
   return mergeMap;
 }
@@ -1944,10 +1944,10 @@ properties* ModularAppMerger::setProperties(std::vector<std::pair<properties::ta
 
   map<string, string> pMap;
   properties::tagType type = streamRecord::getTagType(tags);
-  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging modularApps!"<<endl; exit(-1); }
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging hierGraphApps!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
     vector<string> names = getNames(tags); assert(allSame<string>(names));
-    assert(*names.begin() == "modularApp");
+    assert(*names.begin() == "hierGraphApp");
 
     // All the merged apps must have the same name
     vector<string> cpValues = getValues(tags, "appName");
@@ -1955,7 +1955,7 @@ properties* ModularAppMerger::setProperties(std::vector<std::pair<properties::ta
     pMap["appName"] = *cpValues.begin();
     
     // Merge the app IDs along all the streams
-    int appID = streamRecord::mergeIDs("modularApp", "appID", pMap, tags, outStreamRecords, inStreamRecords);
+    int appID = streamRecord::mergeIDs("hierGraphApp", "appID", pMap, tags, outStreamRecords, inStreamRecords);
     pMap["appID"] = txt() << appID;
     
     /*vector<string> cpValues = getValues(tags, "callPath");
@@ -1963,10 +1963,10 @@ properties* ModularAppMerger::setProperties(std::vector<std::pair<properties::ta
     pMap["callPath"] = *cpValues.begin();*/
     
     //HierGraphStreamRecord::enterModularApp(outStreamRecords, inStreamRecords);
-    props->add("modularApp", pMap);
+    props->add("hierGraphApp", pMap);
   } else {
     //HierGraphStreamRecord::exitModularApp(outStreamRecords, inStreamRecords);
-    props->add("modularApp", pMap);
+    props->add("hierGraphApp", pMap);
   }
   
   return props;
@@ -1978,9 +1978,9 @@ properties* ModularAppMerger::setProperties(std::vector<std::pair<properties::ta
 // call their parents so they can add any info,
 void ModularAppMerger::mergeKey(properties::tagType type, properties::iterator tag, 
                            std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
-  // We do not call the mergeKey method of the BlockMerger because we wish to keep the API of modularApps simple:
+  // We do not call the mergeKey method of the BlockMerger because we wish to keep the API of hierGraphApps simple:
   // If there are two modular apps with the same name, they should be merged even if their call stacks are different.
-  // This is because for the most part users define a single modularApp variable in their application and details
+  // This is because for the most part users define a single hierGraphApp variable in their application and details
   // of call stack, etc. should not make a difference.
   //BlockMerger::mergeKey(type, tag.next(), inStreamRecords, info);
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; assert(0); }
@@ -2011,11 +2011,11 @@ properties* ModularAppStructureMerger::setProperties(std::vector<std::pair<prope
 
   map<string, string> pMap;
   properties::tagType type = streamRecord::getTagType(tags);
-  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging modularAppStructure!"<<endl; exit(-1); }
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging hierGraphAppStructure!"<<endl; exit(-1); }
   if(type==properties::enterTag || type==properties::exitTag) {
     vector<string> names = getNames(tags); assert(allSame<string>(names));
-    assert(*names.begin() == "modularAppBody" || 
-           *names.begin() == "modularAppStructure");
+    assert(*names.begin() == "hierGraphAppBody" || 
+           *names.begin() == "hierGraphAppStructure");
     
     props->add(*names.begin(), pMap);
   }
@@ -2078,7 +2078,7 @@ properties* HierGraphMerger::setProperties(std::vector<std::pair<properties::tag
     group g = ((HierGraphStreamRecord*)(outStreamRecords)["hierGraph"])->enterHierGraph(
                            instance(pMap["name"], attrValue::parseInt(pMap["numInputs"]), attrValue::parseInt(pMap["numOutputs"])));
 
-    // If this is a hierGraph tag, which is placed at the end of the modularApp and records information
+    // If this is a hierGraph tag, which is placed at the end of the hierGraphApp and records information
     // about the hierGraph's execution
     if(*names.begin() == "hierGraph") {
       // Record for every incoming stream that we've entered the given hierGraph instance, making sure that the 
