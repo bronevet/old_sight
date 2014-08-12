@@ -383,9 +383,21 @@ void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int
     
     // Register the command to be executed when this button is clicked
     ostringstream cmd; 
+
+    //hoa edit
+        list<string> vizList;
+        vizList.push_back("scatter3d");
+        vizList.push_back("ccp");
+        vizList.push_back("pcp");
+
+        cmd << "registerModuleButtonCmd("<<maxButtonID<<", \""<<
+                                 moduleTraces[moduleID]->getDisplayJSCmd(contextAttrs, traceAttrs, "", vizList,true, true, false, true)<<
+                               "\");"<<endl;
+    /*
     cmd << "registerModuleButtonCmd("<<maxButtonID<<", \""<<
                              moduleTraces[moduleID]->getDisplayJSCmd(contextAttrs, traceAttrs, "", trace::scatter3d, true, false, true)<<
                            "\");"<<endl;
+    */
     dbg.widgetScriptCommand(cmd.str());
     
     dotFile << "\t\t<TR><TD";

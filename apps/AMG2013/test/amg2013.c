@@ -1851,13 +1851,20 @@ main( int   argc,
    }
    attr myidAttr("MPIrank", 0/*myid*/);
    
-   sightModularApp AMGApp("AMG", namedMeasures("timestamp", new timeStampMeasure(),
+//<<<<<<< HEAD
+//   sightModularApp AMGApp("AMG", namedMeasures("timestamp", new timeStampMeasure(),
+//=======
+   // hoa edit
+   
+   sightModularApp AMGApp("AMG", namedMeasures(//"timestamp", new timeStampMeasure(),
+//>>>>>>> 5a0a542d5e02e8383d2d5916a46ed9c8663215c7
 #ifdef RAPL
                                                "RAPL", new RAPLMeasure()
 #else
                                                "time", new timeMeasure()
 #endif
                          ));
+  
    
    if (build_matrix_type > 1 && build_matrix_type < 8)
    {
