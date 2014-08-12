@@ -66,194 +66,194 @@ hierGraphConfHandlerInstantiator::hierGraphConfHandlerInstantiator() {
 }
 hierGraphConfHandlerInstantiator hierGraphConfHandlerInstance;
 
-
-/********************
- ***** instance *****
- ********************/
- 
-instance::instance(properties::iterator props) {
-  name       = properties::get(props, "name");
-  numInputs  = properties::getInt(props, "numInputs");
-  numOutputs = properties::getInt(props, "numOutputs");
-}
-
-// Returns the properties map that describes this group object;
-std::map<std::string, std::string> instance::getProperties() const {
-  map<string, string> pMap;
-  pMap["name"]       = name;
-  pMap["numInputs"]  = txt()<<numInputs;
-  pMap["numOutputs"] = txt()<<numOutputs;  
-  return pMap;
-}
-
-// Returns a human-readable string that describes this context
-std::string instance::str() const {
-  return txt()<<"[instance "<<name<<", #inputs="<<numInputs<<", #outputs="<<numOutputs<<"]";
-}
-
-/*****************
- ***** group *****
- *****************/
-
-// Creates a group given the current stack of hierGraphs and a new hierGraph instance
-group::group(const std::list<hierGraph*>& mStack, const instance& inst) {
-  for(std::list<hierGraph*>::const_iterator m=mStack.begin(); m!=mStack.end(); m++)
-    stack.push_back((*m)->g.getInst());
-  stack.push_back(inst);
-}
-
-
-void group::init(const std::list<hierGraph*>& mStack, const instance& inst) {
-  stack.clear();
-  for(std::list<hierGraph*>::const_iterator m=mStack.begin(); m!=mStack.end(); m++)
-    stack.push_back((*m)->g.getInst());
-  stack.push_back(inst);
-}
-
-// Returns the name of the most deeply nested instance within this group
-std::string group::name() const {
-  assert(stack.size()>0);
-  return stack.back().name;
-}
-
-// Returns the number of inputs of the most deeply nested instance within this group
-int group::numInputs() const {
-  assert(stack.size()>0);
-  return stack.back().numInputs;
-}
-
-// Returns the number of outnputs of the most deeply nested instance within this group
-int group::numOutputs() const {
-  assert(stack.size()>0);
-  return stack.back().numOutputs;
-}
-
-// Returns the most deeply nested instance within this group
-const instance& group::getInst() const {
-  assert(stack.size()>0);
-  return stack.back();
-}
-
-// Returns the depth of the callstack
-int group::depth() const {
-  return stack.size();
-}
-
-// Returns a human-readable string that describes this group
-std::string group::str() const {
-  ostringstream s;
-  
-  s << "[group: ";
-  for(list<instance>::const_iterator i=stack.begin(); i!=stack.end(); i++) {
-    if(i!=stack.begin()) s << " ";
-    s << "    "<<i->str();
-  }
-  s << "]";
-  
-  return s.str();
-}
-
-/****************
- ***** port *****
- ****************/
-
-// Returns a human-readable string that describes this context
-std::string port::str() const {
-  return txt() << "[port: g="<<g.str()<<", ctxt="<<ctxt->str() << " : "<<(type==sight::common::hierGraph::input?"In":"Out")<<" : "<<index<<"]";
-}
-  
-/************************
- ***** instanceTree *****
- ************************/
-
-void instanceTree::add(const group& g) {
-  // The current instance tree. We'll keep walking t deeper into the depths of the tree until we find the leaf
-  // for this group or find a missing node where this group should go
-  instanceTree* t = this;
-  for(std::list<instance>::const_iterator i=g.stack.begin(); i!=g.stack.end(); i++) {
-    // If the current instance within this group's stack exists within the current level of the tree
-    if(t->m.find(*i) != t->m.end()) {
-      // Recurse deeper into the tree
-      t = t->m[*i];
-      assert(t);
-    // Otherwise, we've identified the missing sub-node within the tree where we need to add g
-    } else {
-      // Iterate through the rest of g's stack, adding deeper sub-trees for each instance
-      while(i!=g.stack.end()) {
-        t->m[*i] = new instanceTree();
-        t = t->m[*i];
-        i++;
-      }
-      return;
-    }
-  }
-}
-
-// Iterate through all the groups encoded by this tree, where each group corresponds to a stack of instances
-// from the tree's root to one of its leaves.
-void instanceTree::iterate(instanceEnterFunc entry, instanceExitFunc exit) const {
-  group g;
-  iterate(entry, exit, g);
-}
-
-// Recursive version of iterate that takes as an argument the fragment of the current group that corresponds to
-// the stack of instances between the tree's root and the current sub-tree
-void instanceTree::iterate(instanceEnterFunc entry, instanceExitFunc exit, group& g) const {
-  // Iterate over all the instances at this level of the tree
-  for(std::map<instance, instanceTree*>::const_iterator i=m.begin(); i!=m.end(); i++) {
-    // Enter this instance
-    g.push(i->first);
-    entry(g);
-
-    // Iterate on the next deeper level of the tree
-    i->second->iterate(entry, exit, g);
-
-    // Exit this instance()
-    exit(g);
-    g.pop();
-  }
-}
-
-// Empties out this instanceTree
-void instanceTree::clear() {
-  // Empty out each of this tree's sub-trees and then delete them
-  for(std::map<instance, instanceTree*>::const_iterator i=m.begin(); i!=m.end(); i++) {
-    i->second->clear();
-    delete(i->second);
-  }
-  // Clear out this tree's sub-tree map
-  m.clear();
-}
-
-// The depth of the recursion in instanceTree::str()
-int instanceTree::instanceTreeStrDepth;
-
-// The ostringstream into which the output of instanceTree::str() is accumulated
-std::ostringstream instanceTree::oss;
-
-// The entry and exit functions used in instanceTree::str()
-void instanceTree::strEnterFunc(const group& g) {
-  instanceTreeStrDepth++;
-  // Print out the indentation that corresponds to the current depth of recursion
-  for(int i=0; i<instanceTreeStrDepth; i++) oss << "    ";
-  oss << g.getInst().str()<<endl;
-}
-void instanceTree::strExitFunc(const group& g)
-{
-  instanceTreeStrDepth--;
-}
-
-// Returns a human-readable string representation of this object
-std::string instanceTree::str() const {
-  // Reset the recursion depth and the ostringstream
-  instanceTreeStrDepth=0;
-  oss.str("");
-  oss.clear();
-  
-  iterate(strEnterFunc, strExitFunc);
-  
-  return oss.str();
-}
+////
+/////********************
+//// ***** instance *****
+//// ********************/
+//// 
+////instance::instance(properties::iterator props) {
+////  name       = properties::get(props, "name");
+////  numInputs  = properties::getInt(props, "numInputs");
+////  numOutputs = properties::getInt(props, "numOutputs");
+////}
+////
+////// Returns the properties map that describes this group object;
+////std::map<std::string, std::string> instance::getProperties() const {
+////  map<string, string> pMap;
+////  pMap["name"]       = name;
+////  pMap["numInputs"]  = txt()<<numInputs;
+////  pMap["numOutputs"] = txt()<<numOutputs;  
+////  return pMap;
+////}
+////
+////// Returns a human-readable string that describes this context
+////std::string instance::str() const {
+////  return txt()<<"[instance "<<name<<", #inputs="<<numInputs<<", #outputs="<<numOutputs<<"]";
+////}
+////
+/////*****************
+//// ***** group *****
+//// *****************/
+////
+////// Creates a group given the current stack of hierGraphs and a new hierGraph instance
+////group::group(const std::list<hierGraph*>& mStack, const instance& inst) {
+////  for(std::list<hierGraph*>::const_iterator m=mStack.begin(); m!=mStack.end(); m++)
+////    stack.push_back((*m)->g.getInst());
+////  stack.push_back(inst);
+////}
+////
+////
+////void group::init(const std::list<hierGraph*>& mStack, const instance& inst) {
+////  stack.clear();
+////  for(std::list<hierGraph*>::const_iterator m=mStack.begin(); m!=mStack.end(); m++)
+////    stack.push_back((*m)->g.getInst());
+////  stack.push_back(inst);
+////}
+////
+////// Returns the name of the most deeply nested instance within this group
+////std::string group::name() const {
+////  assert(stack.size()>0);
+////  return stack.back().name;
+////}
+////
+////// Returns the number of inputs of the most deeply nested instance within this group
+////int group::numInputs() const {
+////  assert(stack.size()>0);
+////  return stack.back().numInputs;
+////}
+////
+////// Returns the number of outnputs of the most deeply nested instance within this group
+////int group::numOutputs() const {
+////  assert(stack.size()>0);
+////  return stack.back().numOutputs;
+////}
+////
+////// Returns the most deeply nested instance within this group
+////const instance& group::getInst() const {
+////  assert(stack.size()>0);
+////  return stack.back();
+////}
+////
+////// Returns the depth of the callstack
+////int group::depth() const {
+////  return stack.size();
+////}
+////
+////// Returns a human-readable string that describes this group
+////std::string group::str() const {
+////  ostringstream s;
+////  
+////  s << "[group: ";
+////  for(list<instance>::const_iterator i=stack.begin(); i!=stack.end(); i++) {
+////    if(i!=stack.begin()) s << " ";
+////    s << "    "<<i->str();
+////  }
+////  s << "]";
+////  
+////  return s.str();
+////}
+////
+/////****************
+//// ***** port *****
+//// ****************/
+////
+////// Returns a human-readable string that describes this context
+////std::string port::str() const {
+////  return txt() << "[port: g="<<g.str()<<", ctxt="<<ctxt->str() << " : "<<(type==sight::common::hierGraph::input?"In":"Out")<<" : "<<index<<"]";
+////}
+////  
+/////************************
+//// ***** instanceTree *****
+//// ************************/
+////
+////void instanceTree::add(const group& g) {
+////  // The current instance tree. We'll keep walking t deeper into the depths of the tree until we find the leaf
+////  // for this group or find a missing node where this group should go
+////  instanceTree* t = this;
+////  for(std::list<instance>::const_iterator i=g.stack.begin(); i!=g.stack.end(); i++) {
+////    // If the current instance within this group's stack exists within the current level of the tree
+////    if(t->m.find(*i) != t->m.end()) {
+////      // Recurse deeper into the tree
+////      t = t->m[*i];
+////      assert(t);
+////    // Otherwise, we've identified the missing sub-node within the tree where we need to add g
+////    } else {
+////      // Iterate through the rest of g's stack, adding deeper sub-trees for each instance
+////      while(i!=g.stack.end()) {
+////        t->m[*i] = new instanceTree();
+////        t = t->m[*i];
+////        i++;
+////      }
+////      return;
+////    }
+////  }
+////}
+////
+////// Iterate through all the groups encoded by this tree, where each group corresponds to a stack of instances
+////// from the tree's root to one of its leaves.
+////void instanceTree::iterate(instanceEnterFunc entry, instanceExitFunc exit) const {
+////  group g;
+////  iterate(entry, exit, g);
+////}
+////
+////// Recursive version of iterate that takes as an argument the fragment of the current group that corresponds to
+////// the stack of instances between the tree's root and the current sub-tree
+////void instanceTree::iterate(instanceEnterFunc entry, instanceExitFunc exit, group& g) const {
+////  // Iterate over all the instances at this level of the tree
+////  for(std::map<instance, instanceTree*>::const_iterator i=m.begin(); i!=m.end(); i++) {
+////    // Enter this instance
+////    g.push(i->first);
+////    entry(g);
+////
+////    // Iterate on the next deeper level of the tree
+////    i->second->iterate(entry, exit, g);
+////
+////    // Exit this instance()
+////    exit(g);
+////    g.pop();
+////  }
+////}
+////
+////// Empties out this instanceTree
+////void instanceTree::clear() {
+////  // Empty out each of this tree's sub-trees and then delete them
+////  for(std::map<instance, instanceTree*>::const_iterator i=m.begin(); i!=m.end(); i++) {
+////    i->second->clear();
+////    delete(i->second);
+////  }
+////  // Clear out this tree's sub-tree map
+////  m.clear();
+////}
+////
+////// The depth of the recursion in instanceTree::str()
+////int instanceTree::instanceTreeStrDepth;
+////
+////// The ostringstream into which the output of instanceTree::str() is accumulated
+////std::ostringstream instanceTree::oss;
+////
+////// The entry and exit functions used in instanceTree::str()
+////void instanceTree::strEnterFunc(const group& g) {
+////  instanceTreeStrDepth++;
+////  // Print out the indentation that corresponds to the current depth of recursion
+////  for(int i=0; i<instanceTreeStrDepth; i++) oss << "    ";
+////  oss << g.getInst().str()<<endl;
+////}
+////void instanceTree::strExitFunc(const group& g)
+////{
+////  instanceTreeStrDepth--;
+////}
+////
+////// Returns a human-readable string representation of this object
+////std::string instanceTree::str() const {
+////  // Reset the recursion depth and the ostringstream
+////  instanceTreeStrDepth=0;
+////  oss.str("");
+////  oss.clear();
+////  
+////  iterate(strEnterFunc, strExitFunc);
+////  
+////  return oss.str();
+////}
 
 /**********************
  ***** hierGraphApp *****
@@ -263,7 +263,7 @@ std::string instanceTree::str() const {
 hierGraphApp* hierGraphApp::activeMA = NULL;
 
 // The maximum ID ever assigned to any modular application
-int hierGraphApp::maxModularAppID=0;
+int hierGraphApp::maxHierGraphAppID=0;
 
 // The maximum ID ever assigned to any hierGraph group
 int hierGraphApp::maxHierGraphGroupID=0;
@@ -321,8 +321,8 @@ void hierGraphApp::init() {
   assert(activeMA == NULL);
   activeMA = this;
   
-  appID = maxModularAppID;
-  maxModularAppID++;
+  appID = maxHierGraphAppID;
+  maxHierGraphAppID++;
   
   // If this hierGraphApp is not active, deallocate all the provided measurements
   if(!props->active) {
@@ -504,7 +504,7 @@ properties* hierGraphApp::setProperties(const std::string& appName, const attrOp
         //newProps["callPath"] = cp2str(CPRuntime.doStackwalk());*/
         map<string, string> pMap;
         pMap["appName"] = appName;
-        pMap["appID"]   = txt()<<maxModularAppID;
+        pMap["appID"]   = txt()<<maxHierGraphAppID;
         props->add("hierGraphApp", pMap);
       }
     } else
@@ -1067,113 +1067,115 @@ void hierGraph::setTraceCtxt() {
   }
 }
 
-/***********************
- ***** compContext *****
- ***********************/
 
-// Loads this context from the given properties map. The names of all the fields are assumed to be prefixed
-// with the given string.
-compContext::compContext(properties::iterator props, std::string prefix) : context(props, prefix) {
-  // Read out just the fields related to the comparator description
-  int numCfgKeys = properties::getInt(props, txt()<<prefix<<"numCfgKeys");
-  for(int i=0; i<numCfgKeys; i++) {
-    comparators[properties::get(props, txt()<<prefix<<"key_"<<i)] = 
-            make_pair(properties::get(props, txt()<<prefix<<"compName_"<<i),
-                      properties::get(props, txt()<<prefix<<"compDesc_"<<i));
-  }
-}
-
-// Returns the properties map that describes this context object.
-// The names of all the fields in the map are prefixed with the given string.
-map<string, string> compContext::getProperties(std::string prefix) const {
-  // Initialize pMap with the properties of all the keys and values
-  map<string, string> pMap = context::getProperties(prefix);
-  // Add to it the properties of each key's comparator
-  int i=0;
-  for(map<string, pair<string, string> >::const_iterator comp=comparators.begin(); comp!=comparators.end(); comp++, i++) {
-    pMap[txt()<<prefix<<"compName_"<<i]  = comp->second.first;
-    pMap[txt()<<prefix<<"compDesc_"<<i]  = comp->second.second;
-  }
-  return pMap;
-}
-
-// These comparator routines must be implemented by all classes that inherit from context to make sure that
-// their additional details are reflected in the results of the comparison. Implementors may assume that 
-// the type of that is their special derivation of context rather than a generic context and should dynamically
-// cast from const context& to their sub-type.
-bool compContext::operator==(const context& that_arg) const {
-  try {
-    // If both this and that are compContexts
-    const compContext& that = dynamic_cast<const compContext&>(that_arg);
-    return context::operator==(that_arg) && comparators==that.comparators;
-  } catch(std::bad_cast exp) {
-    // Otherwise, relate different context instances based on their typeids
-    //cout << "compContext::operator==() typeid(*this)="<<typeid(*this).name()<<", typeid(that_arg)="<<typeid(that_arg).name()<<", == "<<(typeid(*this) == typeid(that_arg))<<endl;
-    return typeid(*this) == typeid(that_arg);
-    /*cerr << "ERROR: comparing compContext and a different sub-type of context using == operator!"<<endl;
-    assert(0);*/
-  }
-}
-
-bool compContext::operator<(const context& that_arg) const { 
-  try {
-    // If both this and that are compContexts
-    const compContext& that = dynamic_cast<const compContext&>(that_arg);
-    return context::operator<(that_arg) ||
-           (context::operator==(that_arg) && comparators<that.comparators);
-  } catch(std::bad_cast exp) {
-    // Otherwise, relate different context instances based on their typeids
-    //cout << "compContext::operator<() typeid(*this)="<<typeid(*this).name()<<", typeid(that_arg)="<<typeid(that_arg).name()<<", < "<<(typeid(*this).name() < typeid(that_arg).name())<<endl;
-    return typeid(*this).name() < typeid(that_arg).name();
-    /*cerr << "ERROR: comparing compContext and a different sub-type of context using < operator!"<<endl;
-    assert(0);*/
-  }
-}
-
-// Adds the given key/attrValue pair to this context
-void compContext::add(std::string key, const attrValue& val, const comparatorDesc& cdesc) {
-  context::add(key, val);
-  comparators[key] = std::make_pair(cdesc.name(), cdesc.description());
-}
-
-// Add all the key/attrValue pairs from the given context to this one, overwriting keys as needed
-void compContext::add(const compContext& that) {
-  context::add(that);
-  for(std::map<std::string, std::pair<std::string, std::string> >::const_iterator c=that.comparators.begin();
-      c!=that.comparators.end(); c++) {
-    comparators[c->first] = c->second;
-  }
-}
-
-// Returns a human-readable string that describes this context
-std::string compContext::str() const {
-  ostringstream s;
-  s << "[compContext: "<<endl;
-  for(map<string, pair<string, string> >::const_iterator comp=comparators.begin(); comp!=comparators.end(); comp++) {
-    if(comp!=comparators.begin()) s << " ";
-    s << "("<<comp->second.first<<": "<<comp->second.second<<")";
-  }
-  s << "]";
-  return s.str();
-}
+////0812
+/////***********************
+//// ***** compContext *****
+//// ***********************/
+////
+////// Loads this context from the given properties map. The names of all the fields are assumed to be prefixed
+////// with the given string.
+////compContext::compContext(properties::iterator props, std::string prefix) : context(props, prefix) {
+////  // Read out just the fields related to the comparator description
+////  int numCfgKeys = properties::getInt(props, txt()<<prefix<<"numCfgKeys");
+////  for(int i=0; i<numCfgKeys; i++) {
+////    comparators[properties::get(props, txt()<<prefix<<"key_"<<i)] = 
+////            make_pair(properties::get(props, txt()<<prefix<<"compName_"<<i),
+////                      properties::get(props, txt()<<prefix<<"compDesc_"<<i));
+////  }
+////}
+////
+////// Returns the properties map that describes this context object.
+////// The names of all the fields in the map are prefixed with the given string.
+////map<string, string> compContext::getProperties(std::string prefix) const {
+////  // Initialize pMap with the properties of all the keys and values
+////  map<string, string> pMap = context::getProperties(prefix);
+////  // Add to it the properties of each key's comparator
+////  int i=0;
+////  for(map<string, pair<string, string> >::const_iterator comp=comparators.begin(); comp!=comparators.end(); comp++, i++) {
+////    pMap[txt()<<prefix<<"compName_"<<i]  = comp->second.first;
+////    pMap[txt()<<prefix<<"compDesc_"<<i]  = comp->second.second;
+////  }
+////  return pMap;
+////}
+////
+////// These comparator routines must be implemented by all classes that inherit from context to make sure that
+////// their additional details are reflected in the results of the comparison. Implementors may assume that 
+////// the type of that is their special derivation of context rather than a generic context and should dynamically
+////// cast from const context& to their sub-type.
+////bool compContext::operator==(const context& that_arg) const {
+////  try {
+////    // If both this and that are compContexts
+////    const compContext& that = dynamic_cast<const compContext&>(that_arg);
+////    return context::operator==(that_arg) && comparators==that.comparators;
+////  } catch(std::bad_cast exp) {
+////    // Otherwise, relate different context instances based on their typeids
+////    //cout << "compContext::operator==() typeid(*this)="<<typeid(*this).name()<<", typeid(that_arg)="<<typeid(that_arg).name()<<", == "<<(typeid(*this) == typeid(that_arg))<<endl;
+////    return typeid(*this) == typeid(that_arg);
+////    /*cerr << "ERROR: comparing compContext and a different sub-type of context using == operator!"<<endl;
+////    assert(0);*/
+////  }
+////}
+////
+////bool compContext::operator<(const context& that_arg) const { 
+////  try {
+////    // If both this and that are compContexts
+////    const compContext& that = dynamic_cast<const compContext&>(that_arg);
+////    return context::operator<(that_arg) ||
+////           (context::operator==(that_arg) && comparators<that.comparators);
+////  } catch(std::bad_cast exp) {
+////    // Otherwise, relate different context instances based on their typeids
+////    //cout << "compContext::operator<() typeid(*this)="<<typeid(*this).name()<<", typeid(that_arg)="<<typeid(that_arg).name()<<", < "<<(typeid(*this).name() < typeid(that_arg).name())<<endl;
+////    return typeid(*this).name() < typeid(that_arg).name();
+////    /*cerr << "ERROR: comparing compContext and a different sub-type of context using < operator!"<<endl;
+////    assert(0);*/
+////  }
+////}
+////
+////// Adds the given key/attrValue pair to this context
+////void compContext::add(std::string key, const attrValue& val, const comparatorDesc& cdesc) {
+////  context::add(key, val);
+////  comparators[key] = std::make_pair(cdesc.name(), cdesc.description());
+////}
+////
+////// Add all the key/attrValue pairs from the given context to this one, overwriting keys as needed
+////void compContext::add(const compContext& that) {
+////  context::add(that);
+////  for(std::map<std::string, std::pair<std::string, std::string> >::const_iterator c=that.comparators.begin();
+////      c!=that.comparators.end(); c++) {
+////    comparators[c->first] = c->second;
+////  }
+////}
+////
+////// Returns a human-readable string that describes this context
+////std::string compContext::str() const {
+////  ostringstream s;
+////  s << "[compContext: "<<endl;
+////  for(map<string, pair<string, string> >::const_iterator comp=comparators.begin(); comp!=comparators.end(); comp++) {
+////    if(comp!=comparators.begin()) s << " ";
+////    s << "("<<comp->second.first<<": "<<comp->second.second<<")";
+////  }
+////  s << "]";
+////  return s.str();
+////}
 
 /**************************
- ***** compModularApp *****
+ ***** compHierGraphApp *****
  **************************/
 
-compModularApp::compModularApp(const std::string& appName,                                                       properties* props) : 
+compHierGraphApp::compHierGraphApp(const std::string& appName,                                                       properties* props) : 
   hierGraphApp(appName,                                   props)
 {}
 
-compModularApp::compModularApp(const std::string& appName, const attrOp& onoffOp,                                properties* props) : 
+compHierGraphApp::compHierGraphApp(const std::string& appName, const attrOp& onoffOp,                                properties* props) : 
   hierGraphApp(appName, onoffOp,                          props)
 {}
 
-compModularApp::compModularApp(const std::string& appName,                        const compNamedMeasures& cMeas, properties* props) :
+compHierGraphApp::compHierGraphApp(const std::string& appName,                        const compNamedMeasures& cMeas, properties* props) :
   hierGraphApp(appName,          cMeas.getNamedMeasures(), props), measComp(cMeas.getComparators())
 {}
 
-compModularApp::compModularApp(const std::string& appName, const attrOp& onoffOp, const compNamedMeasures& cMeas, properties* props) :
+compHierGraphApp::compHierGraphApp(const std::string& appName, const attrOp& onoffOp, const compNamedMeasures& cMeas, properties* props) :
   hierGraphApp(appName, onoffOp, cMeas.getNamedMeasures(), props), measComp(cMeas.getComparators())
 {}
 
@@ -1183,11 +1185,11 @@ compModularApp::compModularApp(const std::string& appName, const attrOp& onoffOp
 // of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
 // it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
 // an object will invoke the destroy() method of the most-derived class.
-void compModularApp::destroy() {
-  this->~compModularApp();
+void compHierGraphApp::destroy() {
+  this->~compHierGraphApp();
 }
 
-compModularApp::~compModularApp() {
+compHierGraphApp::~compHierGraphApp() {
   assert(!destroyed);
 }
 
@@ -1408,34 +1410,34 @@ attrValue compHierGraph::getModOption(std::string name) {
 }
 
 /*****************************
- ***** springModularApp  *****
+ ***** springHierGraphApp  *****
  *****************************/
 
-springModularApp::springModularApp(const std::string& appName,                                                        properties* props) :
-    compModularApp(appName, props)
+springHierGraphApp::springHierGraphApp(const std::string& appName,                                                        properties* props) :
+    compHierGraphApp(appName, props)
 { init(); }
 
-springModularApp::springModularApp(const std::string& appName, const attrOp& onoffOp,                                 properties* props)  :
-    compModularApp(appName, props)
+springHierGraphApp::springHierGraphApp(const std::string& appName, const attrOp& onoffOp,                                 properties* props)  :
+    compHierGraphApp(appName, props)
 { init(); }
 
-springModularApp::springModularApp(const std::string& appName,                        const compNamedMeasures& cMeas, properties* props) :
-    compModularApp(appName, props)
+springHierGraphApp::springHierGraphApp(const std::string& appName,                        const compNamedMeasures& cMeas, properties* props) :
+    compHierGraphApp(appName, props)
 { init(); }
 
-springModularApp::springModularApp(const std::string& appName, const attrOp& onoffOp, const compNamedMeasures& cMeas, properties* props)  :
-    compModularApp(appName, props)
+springHierGraphApp::springHierGraphApp(const std::string& appName, const attrOp& onoffOp, const compNamedMeasures& cMeas, properties* props)  :
+    compHierGraphApp(appName, props)
 { init(); }
 
 #include <sched.h>
 
-void *springModularApp::Interference(void *arg) {
+void *springHierGraphApp::Interference(void *arg) {
   int oldstate; pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, &oldstate);
   int oldtype; pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, &oldtype);
   
   //cout << "Interference CPU: "<<sched_getcpu()<<endl;
   
-  springModularApp* spring = static_cast<springModularApp*>(arg);
+  springHierGraphApp* spring = static_cast<springHierGraphApp*>(arg);
   assert(spring);
   char* data = spring->data;
   long long numLL = spring->bufSize / sizeof(long long);
@@ -1484,7 +1486,7 @@ long long randomLL() {
   return r;
 }
 
-void springModularApp::init() {
+void springHierGraphApp::init() {
   if(!props->active) return;
   
   bufSize=0;
@@ -1527,11 +1529,11 @@ void springModularApp::init() {
 // of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
 // it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
 // an object will invoke the destroy() method of the most-derived class.
-void springModularApp::destroy() {
-  this->~springModularApp();
+void springHierGraphApp::destroy() {
+  this->~springHierGraphApp();
 }
 
-springModularApp::~springModularApp() {
+springHierGraphApp::~springHierGraphApp() {
   assert(!destroyed);
   
   if(props->active && bufSize>sizeof(long long)) {
@@ -1555,7 +1557,7 @@ springHierGraph::springHierGraph(const instance& inst, const std::vector<port>& 
                                                                          properties* props) :
           compHierGraph(inst, inputs, externalOutputs, isSpringReference(), extendOptions(options), compNamedMeasures(), props)
 { 
-/*springModularApp* app = springModularApp::getInstance();
+/*springHierGraphApp* app = springHierGraphApp::getInstance();
 if(app->bufSize>0) { cout << "bufSize="<<app->bufSize<<" sleep("<<(log(app->bufSize)/log(10))<<")"<<endl; sleep(log(app->bufSize)/log(10)); }*/
 }
 
@@ -1564,7 +1566,7 @@ springHierGraph::springHierGraph(const instance& inst, const std::vector<port>& 
                        const attrOp& onoffOp,                            properties* props) :
           compHierGraph(inst, inputs, externalOutputs, isSpringReference(), extendOptions(options), onoffOp, compNamedMeasures(), props)
 { 
-/*springModularApp* app = springModularApp::getInstance();
+/*springHierGraphApp* app = springHierGraphApp::getInstance();
 if(app->bufSize>0) { cout << "bufSize="<<app->bufSize<<" sleep("<<(log(app->bufSize)/log(10))<<")"<<endl; sleep(log(app->bufSize)/log(10)); }*/
 }
 
@@ -1573,7 +1575,7 @@ springHierGraph::springHierGraph(const instance& inst, const std::vector<port>& 
                                               const compNamedMeasures& cMeas, properties* props) :
           compHierGraph(inst, inputs, externalOutputs, isSpringReference(), extendOptions(options), cMeas, props)
 { 
-/*springModularApp* app = springModularApp::getInstance();
+/*springHierGraphApp* app = springHierGraphApp::getInstance();
 if(app->bufSize>0) { cout << "bufSize="<<app->bufSize<<" sleep("<<(log(app->bufSize)/log(10))<<")"<<endl; sleep(log(app->bufSize)/log(10)); }*/
 }
 
@@ -1582,19 +1584,19 @@ springHierGraph::springHierGraph(const instance& inst, const std::vector<port>& 
                        const attrOp& onoffOp, const compNamedMeasures& cMeas, properties* props) :
           compHierGraph(inst, inputs, externalOutputs, isSpringReference(), extendOptions(options), cMeas, props)
 { 
-/*springModularApp* app = springModularApp::getInstance();
+/*springHierGraphApp* app = springHierGraphApp::getInstance();
 if(app->bufSize>0) { cout << "bufSize="<<app->bufSize<<" sleep("<<(log(app->bufSize)/log(10))<<")"<<endl; sleep(log(app->bufSize)/log(10)); }*/
 }
 
 bool springHierGraph::isSpringReference() {
-  springModularApp* app = springModularApp::getInstance();
+  springHierGraphApp* app = springHierGraphApp::getInstance();
   if(app) return app->bufSize==0;
   else    return false;
 }
 
 context springHierGraph::extendOptions(const context& options) {
   context extendedO = options;
-  springModularApp* app = springModularApp::getInstance();
+  springHierGraphApp* app = springHierGraphApp::getInstance();
   if(app) {
     extendedO.configuration["Spring:bufSize"] = attrValue(app->bufSize);
     return extendedO;
@@ -1888,12 +1890,12 @@ processedHierGraphTraceStream::~processedHierGraphTraceStream() {
  ******************************************/
 
 HierGraphMergeHandlerInstantiator::HierGraphMergeHandlerInstantiator() { 
-  (*MergeHandlers   )["hierGraphApp"]          = ModularAppMerger::create;
-  (*MergeKeyHandlers)["hierGraphApp"]          = ModularAppMerger::mergeKey;
-  (*MergeHandlers   )["hierGraphAppBody"]      = ModularAppStructureMerger::create;
-  (*MergeKeyHandlers)["hierGraphAppBody"]      = ModularAppStructureMerger::mergeKey;
-  (*MergeHandlers   )["hierGraphAppStructure"] = ModularAppStructureMerger::create;
-  (*MergeKeyHandlers)["hierGraphAppStructure"] = ModularAppStructureMerger::mergeKey;
+  (*MergeHandlers   )["hierGraphApp"]          = HierGraphAppMerger::create;
+  (*MergeKeyHandlers)["hierGraphApp"]          = HierGraphAppMerger::mergeKey;
+  (*MergeHandlers   )["hierGraphAppBody"]      = HierGraphAppStructureMerger::create;
+  (*MergeKeyHandlers)["hierGraphAppBody"]      = HierGraphAppStructureMerger::mergeKey;
+  (*MergeHandlers   )["hierGraphAppStructure"] = HierGraphAppStructureMerger::create;
+  (*MergeKeyHandlers)["hierGraphAppStructure"] = HierGraphAppStructureMerger::mergeKey;
   (*MergeHandlers   )["hierGraph"]              = HierGraphMerger::create;
   (*MergeKeyHandlers)["hierGraph"]              = HierGraphMerger::mergeKey;    
   (*MergeHandlers   )["hierGraphMarker"]        = HierGraphMerger::create;
@@ -1923,10 +1925,10 @@ std::map<std::string, streamRecord*> HierGraphGetMergeStreamRecord(int streamID)
 
 
 /****************************
- ***** ModularAppMerger *****
+ ***** HierGraphAppMerger *****
  ****************************/
 
-ModularAppMerger::ModularAppMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+HierGraphAppMerger::HierGraphAppMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                          map<string, streamRecord*>& outStreamRecords,
                          vector<map<string, streamRecord*> >& inStreamRecords,
                          properties* props) : 
@@ -1934,7 +1936,7 @@ ModularAppMerger::ModularAppMerger(std::vector<std::pair<properties::tagType, pr
                     setProperties(tags, outStreamRecords, inStreamRecords, props)) { }
 
 // Sets the properties of the merged object
-properties* ModularAppMerger::setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+properties* HierGraphAppMerger::setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                                        map<string, streamRecord*>& outStreamRecords,
                                        vector<map<string, streamRecord*> >& inStreamRecords,
                                        properties* props) {
@@ -1962,10 +1964,10 @@ properties* ModularAppMerger::setProperties(std::vector<std::pair<properties::ta
     assert(allSame<string>(cpValues));
     pMap["callPath"] = *cpValues.begin();*/
     
-    //HierGraphStreamRecord::enterModularApp(outStreamRecords, inStreamRecords);
+    //HierGraphStreamRecord::enterHierGraphApp(outStreamRecords, inStreamRecords);
     props->add("hierGraphApp", pMap);
   } else {
-    //HierGraphStreamRecord::exitModularApp(outStreamRecords, inStreamRecords);
+    //HierGraphStreamRecord::exitHierGraphApp(outStreamRecords, inStreamRecords);
     props->add("hierGraphApp", pMap);
   }
   
@@ -1976,7 +1978,7 @@ properties* ModularAppMerger::setProperties(std::vector<std::pair<properties::ta
 // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info,
-void ModularAppMerger::mergeKey(properties::tagType type, properties::iterator tag, 
+void HierGraphAppMerger::mergeKey(properties::tagType type, properties::iterator tag, 
                            std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
   // We do not call the mergeKey method of the BlockMerger because we wish to keep the API of hierGraphApps simple:
   // If there are two modular apps with the same name, they should be merged even if their call stacks are different.
@@ -1990,10 +1992,10 @@ void ModularAppMerger::mergeKey(properties::tagType type, properties::iterator t
 }
 
 /*************************************
- ***** ModularAppStructureMerger *****
+ ***** HierGraphAppStructureMerger *****
  *************************************/
 
-ModularAppStructureMerger::ModularAppStructureMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+HierGraphAppStructureMerger::HierGraphAppStructureMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                          map<string, streamRecord*>& outStreamRecords,
                          vector<map<string, streamRecord*> >& inStreamRecords,
                          properties* props) : 
@@ -2001,7 +2003,7 @@ ModularAppStructureMerger::ModularAppStructureMerger(std::vector<std::pair<prope
                     setProperties(tags, outStreamRecords, inStreamRecords, props)) { }
 
 // Sets the properties of the merged object
-properties* ModularAppStructureMerger::setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+properties* HierGraphAppStructureMerger::setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                                        map<string, streamRecord*>& outStreamRecords,
                                        vector<map<string, streamRecord*> >& inStreamRecords,
                                        properties* props) {
@@ -2027,7 +2029,7 @@ properties* ModularAppStructureMerger::setProperties(std::vector<std::pair<prope
 // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info,
-void ModularAppStructureMerger::mergeKey(properties::tagType type, properties::iterator tag, 
+void HierGraphAppStructureMerger::mergeKey(properties::tagType type, properties::iterator tag, 
                            std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
   Merger::mergeKey(type, tag.next(), inStreamRecords, info);
   
@@ -2799,11 +2801,11 @@ HierGraphStreamRecord::HierGraphStreamRecord(const HierGraphStreamRecord& that, 
 
 /*
 // Called to record that we've entered/exited a hierGraph
-void HierGraphStreamRecord::enterModularApp() {
+void HierGraphStreamRecord::enterHierGraphApp() {
   mStack.push_back(new streamRecord(getVariantID(), "hierGraphNode"));
 }
 
-void HierGraphStreamRecord::enterModularApp(map<string, streamRecord*>& outStreamRecords,
+void HierGraphStreamRecord::enterHierGraphApp(map<string, streamRecord*>& outStreamRecords,
                                        vector<map<string, streamRecord*> >& inStreamRecords) {
   for(vector<map<string, streamRecord*> >::iterator i=inStreamRecords.begin();
       i!=inStreamRecords.end(); i++) {
@@ -2813,14 +2815,14 @@ void HierGraphStreamRecord::enterModularApp(map<string, streamRecord*>& outStrea
   dynamic_cast<HierGraphStreamRecord*>(outStreamRecords["hierGraph"])->enterHierGraph();
 }
 
-void HierGraphStreamRecord::exitModularApp() {
+void HierGraphStreamRecord::exitHierGraphApp() {
   assert(mStack.size()>0);
   assert(mStack.back());
   delete mStack.back();
   mStack.pop_back();
 }
 
-void HierGraphStreamRecord::exitModularApp(map<string, streamRecord*>& outStreamRecords,
+void HierGraphStreamRecord::exitHierGraphApp(map<string, streamRecord*>& outStreamRecords,
                                     vector<map<string, streamRecord*> >& inStreamRecords) {
   for(vector<map<string, streamRecord*> >::iterator i=inStreamRecords.begin();
       i!=inStreamRecords.end(); i++) {
