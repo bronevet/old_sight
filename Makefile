@@ -252,6 +252,12 @@ definitions.h: initDefinitionsH
 	chmod 755 initDefinitionsH
 	./initDefinitionsH ${RAPL_ENABLED}
 
+cdexample: cdprofiler
+	wget --no-check-certificate https://bitbucket.org/kyushick/cdprofiler/get/master.zip
+	unzip master.zip
+	mv *cdprofiler* ./../cdprofiler
+	rm master.zip
+
 clean:
 	cd widgets; make -f Makefile_pre clean
 	cd widgets; make -f Makefile_post clean
