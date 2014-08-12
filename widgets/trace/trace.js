@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 // Copyright (c) 203 Lawrence Livermore National Security, LLC.
 // Produced at the Lawrence Livermore National Laboratory
 // Written by Greg Bronevetsky <bronevetsky1@llnl.gov>
@@ -9,10 +8,8 @@
 // This file is part of Sight. For details, see https://github.com/bronevet/sight. 
 // Please read the COPYRIGHT file for Our Notice and
 // for the BSD License.
-=======
 
 // hoa edited
->>>>>>> 5a0a542d5e02e8383d2d5916a46ed9c8663215c7
 var traceDataList = {};
 
 var traceDataHash = {};
