@@ -28,7 +28,7 @@
 #include <boost/algorithm/string.hpp>                                                                                                                                                
 #include <boost/algorithm/string/regex.hpp>       
 
-#include "module_layout.h"
+#include "hierGraph_layout.h"
 
 using namespace std;
 using namespace sight::common;
@@ -58,62 +58,62 @@ std::string data2str(const map<string, string>& data) {
 void* modularAppEnterHandler(properties::iterator props) { return new modularApp(props); }
 void  modularAppExitHandler(void* obj) { modularApp* ma = static_cast<modularApp*>(obj); delete ma; }
   
-moduleLayoutHandlerInstantiator::moduleLayoutHandlerInstantiator() { 
+hierGraphLayoutHandlerInstantiator::hierGraphLayoutHandlerInstantiator() { 
   (*layoutEnterHandlers)["modularApp"]          = &modularAppEnterHandler;
   (*layoutExitHandlers )["modularApp"]          = &modularAppExitHandler;
   (*layoutEnterHandlers)["modularAppBody"]      = &defaultEntryHandler;
   (*layoutExitHandlers )["modularAppBody"]      = &defaultExitHandler;
   (*layoutEnterHandlers)["modularAppStructure"] = &defaultEntryHandler;
   (*layoutExitHandlers )["modularAppStructure"] = &defaultExitHandler;
-  (*layoutEnterHandlers)["moduleTS"]            = &moduleTraceStream::enterTraceStream;
-  (*layoutExitHandlers )["moduleTS"]            = &defaultExitHandler;
-  (*layoutEnterHandlers)["module"]              = &modularApp::enterModule;
-  (*layoutExitHandlers )["module"]              = &modularApp::exitModule;
-  (*layoutEnterHandlers)["moduleMarker"]        = &modularApp::enterModuleMarker;
-  (*layoutExitHandlers )["moduleMarker"]        = &modularApp::exitModuleMarker;
-  (*layoutEnterHandlers)["moduleCtrl"]          = &defaultEntryHandler;
-  (*layoutExitHandlers )["moduleCtrl"]          = &defaultExitHandler;
-  (*layoutEnterHandlers)["moduleEdge"]          = &modularApp::addEdge;
-  (*layoutExitHandlers )["moduleEdge"]          = &defaultExitHandler;
-  (*layoutEnterHandlers)["compModuleTS"]        = &compModuleTraceStream::enterTraceStream;
-  (*layoutExitHandlers )["compModuleTS"]        = &defaultExitHandler;
-  (*layoutEnterHandlers)["processedModuleTS"]   = &processedModuleTraceStream::enterTraceStream;
-  (*layoutExitHandlers )["processedModuleTS"]   = &defaultExitHandler;
+  (*layoutEnterHandlers)["hierGraphTS"]            = &hierGraphTraceStream::enterTraceStream;
+  (*layoutExitHandlers )["hierGraphTS"]            = &defaultExitHandler;
+  (*layoutEnterHandlers)["hierGraph"]              = &modularApp::enterHierGraph;
+  (*layoutExitHandlers )["hierGraph"]              = &modularApp::exitHierGraph;
+  (*layoutEnterHandlers)["hierGraphMarker"]        = &modularApp::enterHierGraphMarker;
+  (*layoutExitHandlers )["hierGraphMarker"]        = &modularApp::exitHierGraphMarker;
+  (*layoutEnterHandlers)["hierGraphCtrl"]          = &defaultEntryHandler;
+  (*layoutExitHandlers )["hierGraphCtrl"]          = &defaultExitHandler;
+  (*layoutEnterHandlers)["hierGraphEdge"]          = &modularApp::addEdge;
+  (*layoutExitHandlers )["hierGraphEdge"]          = &defaultExitHandler;
+  (*layoutEnterHandlers)["compHierGraphTS"]        = &compHierGraphTraceStream::enterTraceStream;
+  (*layoutExitHandlers )["compHierGraphTS"]        = &defaultExitHandler;
+  (*layoutEnterHandlers)["processedHierGraphTS"]   = &processedHierGraphTraceStream::enterTraceStream;
+  (*layoutExitHandlers )["processedHierGraphTS"]   = &defaultExitHandler;
 }
-moduleLayoutHandlerInstantiator moduleLayoutHandlerInstance;
+hierGraphLayoutHandlerInstantiator hierGraphLayoutHandlerInstance;
 
 // -------------------------
 // ----- Configuration -----
 // -------------------------
 
 // Record the configuration handlers in this file
-moduleConfHandlerInstantiator::moduleConfHandlerInstantiator() {
+hierGraphConfHandlerInstantiator::hierGraphConfHandlerInstantiator() {
   (*enterHandlers)["modularApp"]  = &modularApp::configure;
-  (*exitHandlers )["modularApp"]  = &moduleConfHandlerInstantiator::defaultExitFunc;
+  (*exitHandlers )["modularApp"]  = &hierGraphConfHandlerInstantiator::defaultExitFunc;
   /*(*confEnterHandlers)["modularAppBody"]      = &defaultConfEntryHandler;
   (*confExitHandlers )["modularAppBody"]      = &defaultConfExitHandler;
   (*confEnterHandlers)["modularAppStructure"] = &defaultConfEntryHandler;
   (*confExitHandlers )["modularAppStructure"] = &defaultConfExitHandler;
-  (*confEnterHandlers)["moduleTS"]            = &moduleTraceStream::enterTraceStream;
-  (*confExitHandlers )["moduleTS"]            = &defaultConfExitHandler;
-  (*confEnterHandlers)["module"]              = &modularApp::enterModule;
-  (*confExitHandlers )["module"]              = &modularApp::exitModule;
-  (*confEnterHandlers)["moduleMarker"]        = &defaultConfEntryHandler;
-  (*confExitHandlers )["moduleMarker"]        = &defaultConfExitHandler;
-  (*confEnterHandlers)["moduleCtrl"]          = &defaultConfEntryHandler;
-  (*confExitHandlers )["moduleCtrl"]          = &defaultConfExitHandler;
-  (*confEnterHandlers)["moduleEdge"]          = &modularApp::addEdge;
-  (*confExitHandlers )["moduleEdge"]          = &defaultConfExitHandler;
-  (*confEnterHandlers)["compModuleTS"]        = &compModuleTraceStream::enterTraceStream;
-  (*confExitHandlers )["compModuleTS"]        = &defaultConfExitHandler;
-  (*confEnterHandlers)["processedModuleTS"]   = &processedModuleTraceStream::enterTraceStream;
-  (*confExitHandlers )["processedModuleTS"]   = &defaultConfExitHandler;
-  (*enterHandlers)["module"]          = &module::configure;
-  (*exitHandlers )["module"]          = &moduleConfHandlerInstantiator::defaultExitFunc;
-  (*enterHandlers)["compModule"]      = &compModule::configure;
-  (*exitHandlers )["compModule"]      = &moduleConfHandlerInstantiator::efaultExitFunc;*/
+  (*confEnterHandlers)["hierGraphTS"]            = &hierGraphTraceStream::enterTraceStream;
+  (*confExitHandlers )["hierGraphTS"]            = &defaultConfExitHandler;
+  (*confEnterHandlers)["hierGraph"]              = &modularApp::enterHierGraph;
+  (*confExitHandlers )["hierGraph"]              = &modularApp::exitHierGraph;
+  (*confEnterHandlers)["hierGraphMarker"]        = &defaultConfEntryHandler;
+  (*confExitHandlers )["hierGraphMarker"]        = &defaultConfExitHandler;
+  (*confEnterHandlers)["hierGraphCtrl"]          = &defaultConfEntryHandler;
+  (*confExitHandlers )["hierGraphCtrl"]          = &defaultConfExitHandler;
+  (*confEnterHandlers)["hierGraphEdge"]          = &modularApp::addEdge;
+  (*confExitHandlers )["hierGraphEdge"]          = &defaultConfExitHandler;
+  (*confEnterHandlers)["compHierGraphTS"]        = &compHierGraphTraceStream::enterTraceStream;
+  (*confExitHandlers )["compHierGraphTS"]        = &defaultConfExitHandler;
+  (*confEnterHandlers)["processedHierGraphTS"]   = &processedHierGraphTraceStream::enterTraceStream;
+  (*confExitHandlers )["processedHierGraphTS"]   = &defaultConfExitHandler;
+  (*enterHandlers)["hierGraph"]          = &hierGraph::configure;
+  (*exitHandlers )["hierGraph"]          = &hierGraphConfHandlerInstantiator::defaultExitFunc;
+  (*enterHandlers)["compHierGraph"]      = &compHierGraph::configure;
+  (*exitHandlers )["compHierGraph"]      = &hierGraphConfHandlerInstantiator::efaultExitFunc;*/
 }
-moduleConfHandlerInstantiator moduleConfHandlerInstance;
+hierGraphConfHandlerInstantiator hierGraphConfHandlerInstance;
 
 // Points to the currently active instance of modularApp. There can be only one.
 modularApp* modularApp::activeMA=NULL;
@@ -124,11 +124,11 @@ string modularApp::outDir="";
 // Relative to root of HTML document
 string modularApp::htmlOutDir="";
 
-// Stack of the module markers that are currently in scope within this modularApp
-list<sight::layout::moduleInfo> modularApp::mMarkerStack;
+// Stack of the hierGraph markers that are currently in scope within this modularApp
+list<sight::layout::hierGraphInfo> modularApp::mMarkerStack;
 
-// Stack of the modules that are currently in scope within this modularApp
-list<sight::layout::moduleInfo> modularApp::mStack;
+// Stack of the hierGraphs that are currently in scope within this modularApp
+list<sight::layout::hierGraphInfo> modularApp::mStack;
 
 modularApp::modularApp(properties::iterator props) : block(properties::next(props)) {
   // Register this modularApp instance (there can be only one)
@@ -142,7 +142,7 @@ modularApp::modularApp(properties::iterator props) : block(properties::next(prop
   appID = properties::getInt(props, "appID");
   
   dbg.ownerAccessing();
-  dbg << "<div id=\"module_container_"<<appID<<"\"></div>\n";
+  dbg << "<div id=\"hierGraph_container_"<<appID<<"\"></div>\n";
   dbg.userAccessing();
   
   ostringstream origDotFName;   origDotFName   << outDir << "/orig."   << appID << ".dot";
@@ -150,34 +150,34 @@ modularApp::modularApp(properties::iterator props) : block(properties::next(prop
   dotFile << "digraph G {"<<endl;
   dotFile << "\tcompound=true;"<<endl;
   
-  // If we were asked to emit all observations from all modules into a file, 
+  // If we were asked to emit all observations from all hierGraphs into a file, 
   // create a traceObserver to do this. This traceObserver will be connected to the
-  // moduleTraceStreams of individual modules as they are encountered.
+  // hierGraphTraceStreams of individual hierGraphs as they are encountered.
   if(emitObsCommonDataTable) 
-    commonDataTableLogger = new SynopticModuleObsLogger(txt()<<modularApp::getOutDir()<<"/data/"<<
+    commonDataTableLogger = new SynopticHierGraphObsLogger(txt()<<modularApp::getOutDir()<<"/data/"<<
                                                         boost::replace_all_copy(modularApp::getInstance()->getAppName(), " ", "_"));
   else
     commonDataTableLogger = NULL;
 }
 
-// Returns a string that uniquely identifies all the module markers currently on the stack, using the 
-// given string to separate the strings of different module instances.
-std::string modularApp::getModuleMarkerStackName(std::string separator) {
+// Returns a string that uniquely identifies all the hierGraph markers currently on the stack, using the 
+// given string to separate the strings of different hierGraph instances.
+std::string modularApp::getHierGraphMarkerStackName(std::string separator) {
   ostringstream s;
-  for(list<sight::layout::moduleInfo>::iterator m=mMarkerStack.begin(); m!=mMarkerStack.end(); m++) {
+  for(list<sight::layout::hierGraphInfo>::iterator m=mMarkerStack.begin(); m!=mMarkerStack.end(); m++) {
     if(m!=mMarkerStack.begin()) s << separator;
-    s << m->moduleName;
+    s << m->hierGraphName;
   }
   return s.str();
 }
 
-// Returns a string that uniquely identifies all the modules currently on the stack, using the 
-// given string to separate the strings of different module instances.
-std::string modularApp::getModuleStackName(std::string separator) {
+// Returns a string that uniquely identifies all the hierGraphs currently on the stack, using the 
+// given string to separate the strings of different hierGraph instances.
+std::string modularApp::getHierGraphStackName(std::string separator) {
   ostringstream s;
-  for(list<sight::layout::moduleInfo>::iterator m=mStack.begin(); m!=mStack.end(); m++) {
+  for(list<sight::layout::hierGraphInfo>::iterator m=mStack.begin(); m!=mStack.end(); m++) {
     if(m!=mStack.begin()) s << separator;
-    s << m->moduleName;
+    s << m->hierGraphName;
   }
   return s.str();
 }
@@ -190,8 +190,8 @@ void modularApp::initEnvironment() {
   if(initialized) return;
   initialized = true;
   
-  // Create the directory that holds the module-specific scripts
-  pair<string, string> paths = dbg.createWidgetDir("module");
+  // Create the directory that holds the hierGraph-specific scripts
+  pair<string, string> paths = dbg.createWidgetDir("hierGraph");
   outDir = paths.first;
   htmlOutDir = paths.second;
   //cout << "outDir="<<outDir<<" htmlOutDir="<<htmlOutDir<<endl;
@@ -208,7 +208,7 @@ void modularApp::initEnvironment() {
   //dbg.includeWidgetScript("canviz-0.1/graphs/graphlist.js",  "text/javascript");
   //dbg.includeWidgetScript("canviz-0.1/graphs/layoutlist.js", "text/javascript");
   
-  dbg.includeFile("module/module.js"); dbg.includeWidgetScript("module/module.js", "text/javascript"); 
+  dbg.includeFile("hierGraph/hierGraph.js"); dbg.includeWidgetScript("hierGraph/hierGraph.js", "text/javascript"); 
 }
 
 modularApp::~modularApp() {
@@ -232,19 +232,19 @@ modularApp::~modularApp() {
   
   dbg.widgetScriptCommand(txt() << 
      "  var canviz_"<<appID<<";\n" <<
-     "  canviz_"<<appID<<" = new Canviz('module_container_"<<appID<<"');\n" <<
+     "  canviz_"<<appID<<" = new Canviz('hierGraph_container_"<<appID<<"');\n" <<
      "  canviz_"<<appID<<".setScale(1);\n" <<
      "  canviz_"<<appID<<".load('"<<htmlOutDir<<"/placed." << appID << ".dot');\n"); 
   
   // Delete all the traceStreams associated with the given trace, which emits their output
-  for(map<int, traceStream*>::iterator m=moduleTraces.begin(); m!=moduleTraces.end(); m++)
+  for(map<int, traceStream*>::iterator m=hierGraphTraces.begin(); m!=hierGraphTraces.end(); m++)
     delete m->second;
   
   if(commonDataTableLogger) delete commonDataTableLogger;
 }
 
-string portName(common::module::ioT type, int index) 
-{ return txt()<<(type==common::module::input?"input":"output")<<"_"<<index; }
+string portName(common::hierGraph::ioT type, int index) 
+{ return txt()<<(type==common::hierGraph::input?"input":"output")<<"_"<<index; }
 
 // Given the name of a trace attribute, the string representation of its polynomial fit and a line width 
 // emits to dotFile HTML where line breaks are inserted at approximately every lineWidth characters.
@@ -281,11 +281,11 @@ void printPolyFitStr(ostream& dotFile, std::string traceName, std::string polyFi
 }
 
 // Emits to the dot file the buttons used to select the combination of input property and trace attribute
-// that should be shown in the data panel of a given module node.
-// numInputs/numOutputs - the number of inputs/outputs of this module node
-// ID - the unique ID of this module node
-// prefix - We measure both the observations of measurements during the execution of modules and the 
-//    properties of module outputs. Both are included in the trace of the module but the names of measurements
+// that should be shown in the data panel of a given hierGraph node.
+// numInputs/numOutputs - the number of inputs/outputs of this hierGraph node
+// ID - the unique ID of this hierGraph node
+// prefix - We measure both the observations of measurements during the execution of hierGraphs and the 
+//    properties of hierGraph outputs. Both are included in the trace of the hierGraph but the names of measurements
 //    are prefixed with "measure:" and the names of outputs are prefixed with "output:#:", where the # is the
 //    index of the output. The prefix argument identifies the types of attributs we'll be making buttons for and
 //    it should be either "measure" or "output".
@@ -293,15 +293,15 @@ void printPolyFitStr(ostream& dotFile, std::string traceName, std::string polyFi
 int maxButtonID=0; // The maximum ID that has ever been assigned to a button
 //void modularApp::showButtons(int numInputs, int numOutputs, int ID, std::string prefix, std::string bgColor) {
 //  // Buttons for showing the observation trace plots
-//  //cout << "showButtons("<<numInputs<<", "<<numOutputs<<", #modules["<<ID<<"]->traceAttrNames="<<modules[ID]->traceAttrNames.size()<<endl;
-//  for(set<string>::iterator t=modules[ID]->traceAttrNames.begin(); t!=modules[ID]->traceAttrNames.end(); t++) {
+//  //cout << "showButtons("<<numInputs<<", "<<numOutputs<<", #hierGraphs["<<ID<<"]->traceAttrNames="<<hierGraphs[ID]->traceAttrNames.size()<<endl;
+//  for(set<string>::iterator t=hierGraphs[ID]->traceAttrNames.begin(); t!=hierGraphs[ID]->traceAttrNames.end(); t++) {
 //    // If the current trace attribute does not have the selected prefix, skip it
 //    if(t->find(prefix) == string::npos) continue;
 //    
 //    dotFile << "\t\t\t<TR>";
 //    //for(int i=0; i<numInputs; i++) {
-//    for(map<string, list<string> >::iterator ctxtGrouping=modules[ID]->ctxtNames.begin(); 
-//        ctxtGrouping!=modules[ID]->ctxtNames.end(); ctxtGrouping++) {
+//    for(map<string, list<string> >::iterator ctxtGrouping=hierGraphs[ID]->ctxtNames.begin(); 
+//        ctxtGrouping!=hierGraphs[ID]->ctxtNames.end(); ctxtGrouping++) {
 //      //if(ctxtNames[ID].find(i)!=ctxtNames[ID].end()) {
 //        //for(list<string>::iterator c=ctxtNames[ID][i].begin(); c!=ctxtNames[ID][i].end(); c++) {
 //        for(list<string>::iterator c=ctxtGrouping->second.begin(); c!=ctxtGrouping->second.end(); c++) {
@@ -310,10 +310,10 @@ int maxButtonID=0; // The maximum ID that has ever been assigned to a button
 //
 //          // Register the command to be executed when this button is clicked
 //          ostringstream cmd; 
-//          cmd << "registerModuleButtonCmd("<<buttonID<<", \""<<
-//                               moduleTraces[ID]->getDisplayJSCmd(traceStream::attrNames(/*txt()<<i<<":"<<*c*/ctxtGrouping->first+":"+*c), traceStream::attrNames(*t))<<
+//          cmd << "registerHierGraphButtonCmd("<<buttonID<<", \""<<
+//                               hierGraphTraces[ID]->getDisplayJSCmd(traceStream::attrNames(/*txt()<<i<<":"<<*c*/ctxtGrouping->first+":"+*c), traceStream::attrNames(*t))<<
 //                             "\");"<<endl;
-////cout << "ts="<<moduleTraces[ID]<<" cmd="<<cmd.str()<<endl;
+////cout << "ts="<<hierGraphTraces[ID]<<" cmd="<<cmd.str()<<endl;
 //          dbg.widgetScriptCommand(cmd.str());
 //        } // ctxt attrs
 //      /*} else
@@ -323,55 +323,55 @@ int maxButtonID=0; // The maximum ID that has ever been assigned to a button
 //  } // trace attrs
 //}
 
-// Enter a new moduleMarker within the current modularApp
-// numInputs/numOutputs - the number of inputs/outputs of this module node
-// ID - the unique ID of this module node
-void modularApp::enterModuleMarker(string moduleName, int numInputs, int numOutputs) {
-  // Add a moduleInfo object that records this moduleMarker to the modularApp's stack
-  mMarkerStack.push_back(sight::layout::moduleInfo(moduleName, -1, numInputs, numOutputs, -1));
+// Enter a new hierGraphMarker within the current modularApp
+// numInputs/numOutputs - the number of inputs/outputs of this hierGraph node
+// ID - the unique ID of this hierGraph node
+void modularApp::enterHierGraphMarker(string hierGraphName, int numInputs, int numOutputs) {
+  // Add a hierGraphInfo object that records this hierGraphMarker to the modularApp's stack
+  mMarkerStack.push_back(sight::layout::hierGraphInfo(hierGraphName, -1, numInputs, numOutputs, -1));
 }
 
-// Static version of enterModuleMarker() that pulls the from/to anchor IDs from the properties iterator and calls 
-// enterModule() in the currently active modularApp
-void* modularApp::enterModuleMarker(properties::iterator props) {
+// Static version of enterHierGraphMarker() that pulls the from/to anchor IDs from the properties iterator and calls 
+// enterHierGraph() in the currently active modularApp
+void* modularApp::enterHierGraphMarker(properties::iterator props) {
   assert(modularApp::activeMA);
-  modularApp::activeMA->enterModuleMarker(props.get("name"), 
+  modularApp::activeMA->enterHierGraphMarker(props.get("name"), 
                                           props.getInt("numInputs"), 
                                           props.getInt("numOutputs")); 
   return NULL;
 }
 
-// Exit a module within the current modularApp
-void modularApp::exitModuleMarker() {
+// Exit a hierGraph within the current modularApp
+void modularApp::exitHierGraphMarker() {
   assert(mMarkerStack.size()>0);
   mMarkerStack.pop_back();
 }
 
-// Static version of exitModuleMarker() that calls exitModuleMarker() in the currently active modularApp
-void modularApp::exitModuleMarker(void* obj) {
+// Static version of exitHierGraphMarker() that calls exitHierGraphMarker() in the currently active modularApp
+void modularApp::exitHierGraphMarker(void* obj) {
   assert(modularApp::activeMA);
-  modularApp::activeMA->exitModuleMarker();
+  modularApp::activeMA->exitHierGraphMarker();
 }
 
-// Enter a new module within the current modularApp
-// numInputs/numOutputs - the number of inputs/outputs of this module node
-// ID - the unique ID of this module node
-void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int numOutputs, int count) {
-  //cout << "modularApp::enterModule("<<moduleName<<") numInputs="<<numInputs<<", #modules["<<moduleID<<"]->ctxtNames="<<modules[moduleID]->ctxtNames.size()<<endl;
+// Enter a new hierGraph within the current modularApp
+// numInputs/numOutputs - the number of inputs/outputs of this hierGraph node
+// ID - the unique ID of this hierGraph node
+void modularApp::enterHierGraph(string hierGraphName, int hierGraphID, int numInputs, int numOutputs, int count) {
+  //cout << "modularApp::enterHierGraph("<<hierGraphName<<") numInputs="<<numInputs<<", #hierGraphs["<<hierGraphID<<"]->ctxtNames="<<hierGraphs[hierGraphID]->ctxtNames.size()<<endl;
   
-  // Inform the traceStream associated with this module that it is finished. We need this stream to wrap up
+  // Inform the traceStream associated with this hierGraph that it is finished. We need this stream to wrap up
   // all of its processing and analysis now, rather than before it is deallocated.
-  moduleTraces[moduleID]->obsFinished();
+  hierGraphTraces[hierGraphID]->obsFinished();
 
-  // Get the ID of the module that contains this one, if any.
-  int containerModuleID=-1;
-  if(mStack.size()>0) containerModuleID = mStack.back().moduleID;
+  // Get the ID of the hierGraph that contains this one, if any.
+  int containerHierGraphID=-1;
+  if(mStack.size()>0) containerHierGraphID = mStack.back().hierGraphID;
   
-  // Start a subgraph for the current module
-  dotFile << "subgraph cluster"<<moduleID<<" {"<<endl;
+  // Start a subgraph for the current hierGraph
+  dotFile << "subgraph cluster"<<hierGraphID<<" {"<<endl;
   //dotFile << "\tstyle=filled;"<<endl;
   dotFile << "\tcolor=black;"<<endl;
-  //dotFile << "\tlabel=\""<<moduleName<<"\";"<<endl;
+  //dotFile << "\tlabel=\""<<hierGraphName<<"\";"<<endl;
   
   /*for(int i=0; i<numInputs; i++) {
     dotFile << "\t\t"<<portName(node, input, i)<<" [shape=box, label=\"In "<<i<<"\"];\n";//, href=\"javascript:"<<b->first.getLinkJS()<<"\"];\n";
@@ -406,27 +406,27 @@ void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int
   int databoxWidth = 300;
   int databoxHeight = 200;
   
-  //cout << "module "<<moduleName<<", numInputs="<<numInputs<<", #modules[moduleID]->ctxtNames="<<modules[moduleID]->ctxtNames.size()<<endl;
-  //dotFile << "\t\""<<portNamePrefix(moduleName)<<"\" [shape=none, fill=lightgrey, label=<<TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\">"<<endl;
+  //cout << "hierGraph "<<hierGraphName<<", numInputs="<<numInputs<<", #hierGraphs[hierGraphID]->ctxtNames="<<hierGraphs[hierGraphID]->ctxtNames.size()<<endl;
+  //dotFile << "\t\""<<portNamePrefix(hierGraphName)<<"\" [shape=none, fill=lightgrey, label=<<TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\">"<<endl;
   // Input ports and body
-  dotFile << "\tnode"<<moduleID<<" [shape=none, fill=lightgrey, href=\"#\", onclick=\"return ClickOnModuleNode('node"<<moduleID<<"', this, ID);\", label=";
+  dotFile << "\tnode"<<hierGraphID<<" [shape=none, fill=lightgrey, href=\"#\", onclick=\"return ClickOnHierGraphNode('node"<<hierGraphID<<"', this, ID);\", label=";
   dotFile << "<<TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\">"<<endl;
  
   // Records whether the entry and ports have been emitted
   bool entryEmitted=false; 
   bool exitEmitted=false;
-  //cout << "moduleName="<<moduleName<<", numInputs="<<numInputs<<", #modules["<<moduleID<<"]->ctxtNames="<<modules[moduleID]->ctxtNames.size()<<endl;
+  //cout << "hierGraphName="<<hierGraphName<<", numInputs="<<numInputs<<", #hierGraphs["<<hierGraphID<<"]->ctxtNames="<<hierGraphs[hierGraphID]->ctxtNames.size()<<endl;
   if(numInputs>0) {
-    if(modules[moduleID]->ctxtNames.size()>0) {
+    if(hierGraphs[hierGraphID]->ctxtNames.size()>0) {
       dotFile << "\t\t<TR><TD PORT=\"ENTRY\"><TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\">"<<endl;
       entryEmitted = true;
       dotFile << "\t\t\t<TR>";
       
       int maxCtxt=0; // The maximum number of context names across all the inputs
-      for(map<string, list<string> >::iterator c=modules[moduleID]->ctxtNames.begin(); 
-          c!=modules[moduleID]->ctxtNames.end(); c++) {
-        string moduleClass, ctxtGrouping, ctxtSubGrouping, attrName;
-        decodeCtxtName(c->first, moduleClass, ctxtGrouping, ctxtSubGrouping, attrName);
+      for(map<string, list<string> >::iterator c=hierGraphs[hierGraphID]->ctxtNames.begin(); 
+          c!=hierGraphs[hierGraphID]->ctxtNames.end(); c++) {
+        string hierGraphClass, ctxtGrouping, ctxtSubGrouping, attrName;
+        decodeCtxtName(c->first, hierGraphClass, ctxtGrouping, ctxtSubGrouping, attrName);
         
         dotFile << "<TD PORT=\""<<ctxtGrouping<<"_"<<ctxtSubGrouping<<"\" "<<
         // Horizontal context               "COLSPAN=\""<<c->second.size()<<"\""<<
@@ -441,8 +441,8 @@ void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int
       // The names of the context attributes for each output
       /* Horizontal context
       dotFile << "\t\t\t<TR>";
-      for(map<string, list<string> >::iterator ctxtGrouping=modules[moduleID]->ctxtNames.begin(); 
-          ctxtGrouping!=modules[moduleID]->ctxtNames.end(); ctxtGrouping++) {
+      for(map<string, list<string> >::iterator ctxtGrouping=hierGraphs[hierGraphID]->ctxtNames.begin(); 
+          ctxtGrouping!=hierGraphs[hierGraphID]->ctxtNames.end(); ctxtGrouping++) {
         for(list<string>::iterator c=ctxtGrouping->second.begin(); c!=ctxtGrouping->second.end(); c++) {
           dotFile << "<TD BGCOLOR=\"#000066\"><FONT COLOR=\"#ffffff\" POINT-SIZE=\"18\">:"<<*c<<"</FONT></TD>";
         }
@@ -454,7 +454,7 @@ void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int
       // Place the first context name of each input, then the 2nd, etc.
       map<string, pair<list<string>::iterator, list<string>::iterator> > i; // Points to the i^th context name for each input
       // Initializes i to contain the starting iterators of each input's context names list
-      for(map<string, list<string> >::iterator c=modules[moduleID]->ctxtNames.begin(); c!=modules[moduleID]->ctxtNames.end(); c++)
+      for(map<string, list<string> >::iterator c=hierGraphs[hierGraphID]->ctxtNames.begin(); c!=hierGraphs[hierGraphID]->ctxtNames.end(); c++)
         i[c->first] = make_pair(c->second.begin(), c->second.end());
       
       for(int cIdx=0; cIdx<maxCtxt; cIdx++) {
@@ -479,8 +479,8 @@ void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int
       }*/
       
       // Buttons for showing the observation trace plots
-      //showButtons(numInputs, numOutputs, moduleID, "measure", "B0CDFF");
-      //showButtons(numInputs, numOutputs, moduleID, "output",  "F78181");
+      //showButtons(numInputs, numOutputs, hierGraphID, "measure", "B0CDFF");
+      //showButtons(numInputs, numOutputs, hierGraphID, "output",  "F78181");
       
       dotFile << "</TABLE></TD></TR>"<<endl;
     }
@@ -491,50 +491,50 @@ void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int
     
     // Collect the names of all the context and trace attributes
     list<string> contextAttrs;
-    for(map<string, list<string> >::iterator c=modules[moduleID]->ctxtNames.begin(); c!=modules[moduleID]->ctxtNames.end(); c++) {
+    for(map<string, list<string> >::iterator c=hierGraphs[hierGraphID]->ctxtNames.begin(); c!=hierGraphs[hierGraphID]->ctxtNames.end(); c++) {
       for(list<string>::iterator d=c->second.begin(); d!=c->second.end(); d++)
         contextAttrs.push_back(c->first+":"+*d);
     }
     
     list<string> traceAttrs;
-    for(set<string>::iterator t=modules[moduleID]->traceAttrNames.begin(); t!=modules[moduleID]->traceAttrNames.end(); t++)
+    for(set<string>::iterator t=hierGraphs[hierGraphID]->traceAttrNames.begin(); t!=hierGraphs[hierGraphID]->traceAttrNames.end(); t++)
       traceAttrs.push_back(*t);
     
     // Register the command to be executed when this button is clicked
     ostringstream cmd; 
-    cmd << "registerModuleButtonCmd("<<maxButtonID<<", \""<<
-                             moduleTraces[moduleID]->getDisplayJSCmd(contextAttrs, traceAttrs, "", trace::scatter3d, true, false, true)<<
+    cmd << "registerHierGraphButtonCmd("<<maxButtonID<<", \""<<
+                             hierGraphTraces[hierGraphID]->getDisplayJSCmd(contextAttrs, traceAttrs, "", trace::scatter3d, true, false, true)<<
                            "\");"<<endl;
     dbg.widgetScriptCommand(cmd.str());
     
     dotFile << "\t\t<TR><TD";
     if(!entryEmitted) dotFile << " PORT=\"ENTRY\"";
     //if(numInputs + numOutputs > 0) dotFile << " COLSPAN=\""<<(numInputs>numOutputs? numInputs: numOutputs)<<"\"";
-    dotFile << "><FONT POINT-SIZE=\"26\">"<<(maxButtonID++)<<":"<<moduleName<<"</FONT></TD></TR>"<<endl;
+    dotFile << "><FONT POINT-SIZE=\"26\">"<<(maxButtonID++)<<":"<<hierGraphName<<"</FONT></TD></TR>"<<endl;
   }
   
   if(numInputs>0) {
-/*    // If we observed values during the execution of this module group  
-    if(modules[moduleID]->traceAttrNames.size()>0) {
+/*    // If we observed values during the execution of this hierGraph group  
+    if(hierGraphs[hierGraphID]->traceAttrNames.size()>0) {
       // Polynomial fit of the observations
-      vector<string> polynomials = modules[moduleID]->polyFit();
-      assert(polynomials.size() == modules[moduleID]->traceAttrNames.size());
+      vector<string> polynomials = hierGraphs[hierGraphID]->polyFit();
+      assert(polynomials.size() == hierGraphs[hierGraphID]->traceAttrNames.size());
       int i=0; 
-      for(set<std::string>::iterator t=modules[moduleID]->traceAttrNames.begin(); t!=modules[moduleID]->traceAttrNames.end(); t++, i++) {
+      for(set<std::string>::iterator t=hierGraphs[hierGraphID]->traceAttrNames.begin(); t!=hierGraphs[hierGraphID]->traceAttrNames.end(); t++, i++) {
         // If we were able to train a model for the current trace attribute, emit it
         if(polynomials[i] != "") printPolyFitStr(dotFile, *t, polynomials[i], 80);
       }
-        //dotFile << "\t\t<TR><TD>:"<<modules[moduleID]->traceAttrNames[i]<< ": "<<wrapStr(polynomials[i], 50)<<"</TD></TR>"<<endl;
+        //dotFile << "\t\t<TR><TD>:"<<hierGraphs[hierGraphID]->traceAttrNames[i]<< ": "<<wrapStr(polynomials[i], 50)<<"</TD></TR>"<<endl;
     }*/
-    //cout << "polyFits[moduleID]="<<polyFits[moduleID]<<", polyFits[moduleID]->numFits()="<<polyFits[moduleID]->numFits()<<endl;
-    if(polyFits[moduleID] && polyFits[moduleID]->numFits()>0)
-      dotFile << "\t\t"<<polyFits[moduleID]->getFitText()<<""<<endl;
+    //cout << "polyFits[hierGraphID]="<<polyFits[hierGraphID]<<", polyFits[hierGraphID]->numFits()="<<polyFits[hierGraphID]->numFits()<<endl;
+    if(polyFits[hierGraphID] && polyFits[hierGraphID]->numFits()>0)
+      dotFile << "\t\t"<<polyFits[hierGraphID]->getFitText()<<""<<endl;
     
     
-    //cout << "#modules[moduleID]->traceAttrNames="<<modules[moduleID]->traceAttrNames.size()<<endl;
+    //cout << "#hierGraphs[hierGraphID]->traceAttrNames="<<hierGraphs[hierGraphID]->traceAttrNames.size()<<endl;
     
-    if(modules[moduleID]->traceAttrNames.size()>0) {
-    //for(int i=0; i<modules[moduleID]->traceAttrNames.size(); i++) {
+    if(hierGraphs[hierGraphID]->traceAttrNames.size()>0) {
+    //for(int i=0; i<hierGraphs[hierGraphID]->traceAttrNames.size(); i++) {
       dotFile << "\t\t<TR><TD PORT=\"EXIT\"><TABLE><TR><TD BGCOLOR=\"#FF00FF\" COLOR=\"#FF00FF\" WIDTH=\""<<databoxWidth<<"\" HEIGHT=\""<<databoxHeight<<"\"></TD></TR></TABLE></TD></TR>"<<endl;
       exitEmitted = true;
     }
@@ -547,7 +547,7 @@ void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int
   dotFile << "];" << endl;
 
   // Output ports
-  dotFile << "\tnode"<<moduleID<<"_Out [shape=none, fill=lightgrey, href=\"#\", onclick=\"return ClickOnModuleNode('node"<<moduleID<<"', this, ID);\", label=";
+  dotFile << "\tnode"<<hierGraphID<<"_Out [shape=none, fill=lightgrey, href=\"#\", onclick=\"return ClickOnHierGraphNode('node"<<hierGraphID<<"', this, ID);\", label=";
   if(numOutputs==0)
     dotFile << "\"\"";
   else {
@@ -564,77 +564,77 @@ void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int
   
   
   // Add a high-weight invisible edge between the input and the output nodes to vertically align them
-  dotFile << "\tnode"<<moduleID<<":EXIT:s "
+  dotFile << "\tnode"<<hierGraphID<<":EXIT:s "
              " -> "<<
-               "node"<<moduleID<<"_Out "<<
+               "node"<<hierGraphID<<"_Out "<<
              "[weight=100, style=invis];\n";
   
-  // If this module is contained inside another, add invisible edges between the input portion of container module and 
-  // this one and the output portion of this module and the container to vertically align them
-  if(containerModuleID>=0) {
-    dotFile << "\tnode"<<containerModuleID<<":EXIT:s -> node"<<moduleID<<":ENTRY:n              [weight=150, style=invis];"<<endl;
-    //dotFile << "\tnode"<<moduleID<<"_Out:EXIT:s      -> node"<<containerModuleID<<"_Out:ENTRY:n [weight=300];"<<endl;
-    dotFile << "\tnode"<<moduleID<<"_Out      -> node"<<containerModuleID<<"_Out [weight=150, style=invis];"<<endl;
-    //dotFile << "\tnode"<<containerModuleID<<" -> node"<<moduleID<<"         [ltail=cluster"<<containerModuleID<<", lhead=cluster"<<moduleID<<", weight=5];"<<endl;
-    //dotFile << "\tnode"<<moduleID<<"_Out -> node"<<containerModuleID<<"_Out [ltail=cluster"<<moduleID<<", lhead=cluster"<<containerModuleID<<", weight=5];"<<endl;
+  // If this hierGraph is contained inside another, add invisible edges between the input portion of container hierGraph and 
+  // this one and the output portion of this hierGraph and the container to vertically align them
+  if(containerHierGraphID>=0) {
+    dotFile << "\tnode"<<containerHierGraphID<<":EXIT:s -> node"<<hierGraphID<<":ENTRY:n              [weight=150, style=invis];"<<endl;
+    //dotFile << "\tnode"<<hierGraphID<<"_Out:EXIT:s      -> node"<<containerHierGraphID<<"_Out:ENTRY:n [weight=300];"<<endl;
+    dotFile << "\tnode"<<hierGraphID<<"_Out      -> node"<<containerHierGraphID<<"_Out [weight=150, style=invis];"<<endl;
+    //dotFile << "\tnode"<<containerHierGraphID<<" -> node"<<hierGraphID<<"         [ltail=cluster"<<containerHierGraphID<<", lhead=cluster"<<hierGraphID<<", weight=5];"<<endl;
+    //dotFile << "\tnode"<<hierGraphID<<"_Out -> node"<<containerHierGraphID<<"_Out [ltail=cluster"<<hierGraphID<<", lhead=cluster"<<containerHierGraphID<<", weight=5];"<<endl;
   }
   
-  dotFile << "{rank=source;node"<<moduleID<<";}"<<endl;
-  dotFile << "{rank=sink;node"<<moduleID<<"_Out;}"<<endl;
+  dotFile << "{rank=source;node"<<hierGraphID<<";}"<<endl;
+  dotFile << "{rank=sink;node"<<hierGraphID<<"_Out;}"<<endl;
   
-  // Add a moduleInfo object that records this module to the modularApp's stack
-  mStack.push_back(sight::layout::moduleInfo(moduleName, moduleID, numInputs, numOutputs, count));
+  // Add a hierGraphInfo object that records this hierGraph to the modularApp's stack
+  mStack.push_back(sight::layout::hierGraphInfo(hierGraphName, hierGraphID, numInputs, numOutputs, count));
   
-  //cout << "modularApp::enterModule() done\n";
+  //cout << "modularApp::enterHierGraph() done\n";
 }
 
-// Static version of enterModule() that pulls the from/to anchor IDs from the properties iterator and calls 
-// enterModule() in the currently active modularApp
-void* modularApp::enterModule(properties::iterator props) {
-  int moduleID = properties::getInt(props, "moduleID");
+// Static version of enterHierGraph() that pulls the from/to anchor IDs from the properties iterator and calls 
+// enterHierGraph() in the currently active modularApp
+void* modularApp::enterHierGraph(properties::iterator props) {
+  int hierGraphID = properties::getInt(props, "hierGraphID");
   
-  // Get this module's moduleTraceStream
-  assert(modularApp::getInstance()->moduleTraces.find(moduleID) != modularApp::getInstance()->moduleTraces.end());
-  moduleTraceStream* ts = dynamic_cast<moduleTraceStream*>(modularApp::getInstance()->moduleTraces[moduleID]);
+  // Get this hierGraph's hierGraphTraceStream
+  assert(modularApp::getInstance()->hierGraphTraces.find(hierGraphID) != modularApp::getInstance()->hierGraphTraces.end());
+  hierGraphTraceStream* ts = dynamic_cast<hierGraphTraceStream*>(modularApp::getInstance()->hierGraphTraces[hierGraphID]);
   assert(ts);
   
   assert(modularApp::activeMA);
-  modularApp::activeMA->enterModule(ts->name, 
-                                    moduleID, 
+  modularApp::activeMA->enterHierGraph(ts->name, 
+                                    hierGraphID, 
                                     ts->numInputs, 
                                     ts->numOutputs, 
                                     properties::getInt(props, "count")); 
   return NULL;
 }
 
-// Exit a module within the current modularApp
-void modularApp::exitModule() {
-  // Grab the information about the module we're exiting from this modularApp's mStack and pop it off
+// Exit a hierGraph within the current modularApp
+void modularApp::exitHierGraph() {
+  // Grab the information about the hierGraph we're exiting from this modularApp's mStack and pop it off
   assert(mStack.size()>0);
-  sight::layout::moduleInfo m = mStack.back();
+  sight::layout::hierGraphInfo m = mStack.back();
   mStack.pop_back();
   
-  //cout << "modularApp::exitModule("<<m.moduleName<<")"<<endl;
-  // Close the current module's sub-graph
+  //cout << "modularApp::exitHierGraph("<<m.hierGraphName<<")"<<endl;
+  // Close the current hierGraph's sub-graph
   dotFile << "}" << endl;
 }
 
-// Static version of exitModule() that calls exitModule() in the currently active modularApp
-void modularApp::exitModule(void* obj) {
+// Static version of exitHierGraph() that calls exitHierGraph() in the currently active modularApp
+void modularApp::exitHierGraph(void* obj) {
   assert(modularApp::activeMA);
-  modularApp::activeMA->exitModule();
+  modularApp::activeMA->exitHierGraph();
 }
 
-// Register the given module object (keeps data on the raw observations) and polyFitObserver object 
-void modularApp::registerModule(int moduleID, sight::layout::module* m, polyFitObserver* pf) {
+// Register the given hierGraph object (keeps data on the raw observations) and polyFitObserver object 
+void modularApp::registerHierGraph(int hierGraphID, sight::layout::hierGraph* m, polyFitObserver* pf) {
   assert(modularApp::activeMA);
-  modularApp::activeMA->modules[moduleID] = m;
-  modularApp::activeMA->polyFits[moduleID] = pf;
+  modularApp::activeMA->hierGraphs[hierGraphID] = m;
+  modularApp::activeMA->polyFits[hierGraphID] = pf;
 }
 
 // Add a directed edge from one port to another
-void modularApp::addEdge(int fromCID, common::module::ioT fromT, int fromP, 
-                         int toCID,   common::module::ioT toT,   int toP,
+void modularApp::addEdge(int fromCID, common::hierGraph::ioT fromT, int fromP, 
+                         int toCID,   common::hierGraph::ioT toT,   int toP,
                          double prob) {
   dotFile << "\tnode"<<fromCID<<"_Out:"<<portName(fromT, fromP)<<":s"<<
              " -> "<<
@@ -651,16 +651,16 @@ void* modularApp::addEdge(properties::iterator props) {
   return NULL;
 }
 
-// Records whether we should emit the observations of each module into a separate table for use by external tools
+// Records whether we should emit the observations of each hierGraph into a separate table for use by external tools
 bool modularApp::emitObsIndividualDataTable;
 // Records whether we should emit the observations of all modular into a single table for use by external tools
 bool modularApp::emitObsCommonDataTable;
 
 /******************
- ***** module *****
+ ***** hierGraph *****
  ******************/
 
-module::module(int moduleID) : moduleID(moduleID)
+hierGraph::hierGraph(int hierGraphID) : hierGraphID(hierGraphID)
 {
   /*polyfitCtxt=NULL;
   polyfitObs=NULL;*/
@@ -670,7 +670,7 @@ module::module(int moduleID) : moduleID(moduleID)
   numNumericCtxt=-1;*/
 }
 
-module::~module() {
+hierGraph::~hierGraph() {
   /*if(numObs>0) {
     gsl_matrix_free(polyfitCtxt);
     gsl_matrix_free(polyfitObs);
@@ -735,9 +735,9 @@ module::~module() {
 //}
 //
 //
-//// Do a multi-variate polynomial fit of the data observed for the given moduleID and return for each trace attribute 
+//// Do a multi-variate polynomial fit of the data observed for the given hierGraphID and return for each trace attribute 
 //// a string that describes the function that best fits its values
-//std::vector<std::string> module::polyFit()
+//std::vector<std::string> hierGraph::polyFit()
 //{
 //  vector<string> polynomials;
 //  
@@ -861,11 +861,11 @@ module::~module() {
 
 // Interface implemented by objects that listen for observations a traceStream reads. Such objects
 // call traceStream::registerObserver() to inform a given traceStream that it should observations.
-void module::observe(int traceID,
+void hierGraph::observe(int traceID,
                      const map<string, string>& ctxt, 
                      const map<string, string>& obs,
                      const map<string, anchor>& obsAnchor) {
-  /*cout << "module::observe("<<traceID<<") moduleID="<<moduleID<<" #ctxt="<<ctxt.size()<<" #obs="<<obs.size()<<endl;
+  /*cout << "hierGraph::observe("<<traceID<<") hierGraphID="<<hierGraphID<<" #ctxt="<<ctxt.size()<<" #obs="<<obs.size()<<endl;
   cout << "    ctxt=";
   for(map<string, string>::const_iterator c=ctxt.begin(); c!=ctxt.end(); c++) { cout << c->first << "=>"<<c->second<<" "; }
   cout << endl;
@@ -880,7 +880,7 @@ void module::observe(int traceID,
   if(numObs == 0) traceAttrNames = curTraceAttrNames;
   else if(traceAttrNames != curTraceAttrNames)
   { 
-    /*cerr << "ERROR: Inconsistent trace attributes in different observations for the same module node "<<moduleID<<"!"<<endl;
+    /*cerr << "ERROR: Inconsistent trace attributes in different observations for the same hierGraph node "<<hierGraphID<<"!"<<endl;
     cerr << "Before observed "<<traceAttrNames.size()<<" trace attributes: ["; 
     for(set<string>::iterator t=traceAttrNames.begin(); t!=traceAttrNames.end(); t++) {
       if(t!=traceAttrNames.begin()) cerr << ", ";
@@ -904,13 +904,13 @@ void module::observe(int traceID,
   // Record the context attribute groupings and the names of the attributes within each one
   map<string, list<string> > curCtxtNames;
   for(map<string, string>::const_iterator c=ctxt.begin(); c!=ctxt.end(); c++) {
-    string moduleClass, ctxtGrouping, ctxtSubGrouping, attrName;
-    decodeCtxtName(c->first, moduleClass, ctxtGrouping, ctxtSubGrouping, attrName);
-    curCtxtNames[moduleClass+":"+ctxtGrouping+":"+ctxtSubGrouping].push_back(attrName);
+    string hierGraphClass, ctxtGrouping, ctxtSubGrouping, attrName;
+    decodeCtxtName(c->first, hierGraphClass, ctxtGrouping, ctxtSubGrouping, attrName);
+    curCtxtNames[hierGraphClass+":"+ctxtGrouping+":"+ctxtSubGrouping].push_back(attrName);
   }
   if(numObs==0) ctxtNames = curCtxtNames;
   else if(ctxtNames != curCtxtNames) { 
-    cerr << "ERROR: Inconsistent context attributes in different observations for the same module node "<<moduleID<<"!"<<endl;
+    cerr << "ERROR: Inconsistent context attributes in different observations for the same hierGraph node "<<hierGraphID<<"!"<<endl;
     cerr << "Before observed "<<ctxtNames.size()<<" context attributes: "<<endl; 
     for(map<string, list<string> >::iterator c=ctxtNames.begin(); c!=ctxtNames.end(); c++) {
       cerr << "    "<<c->first<<" : ";
@@ -949,7 +949,7 @@ void module::observe(int traceID,
   }
   if(numObs==0) numericCtxtNames = curNumericCtxtNames;
   else if(numericCtxtNames != curNumericCtxtNames)
-  { cerr << "ERROR: Inconsistent numeric context attributes in different observations for the same module node "<<moduleID<<"! Before observed "<<numericCtxtNames.size()<<" numeric context attributed but this observation has "<<curNumericCtxtNames.size()<<"."<<endl; assert(false); }
+  { cerr << "ERROR: Inconsistent numeric context attributes in different observations for the same hierGraph node "<<hierGraphID<<"! Before observed "<<numericCtxtNames.size()<<" numeric context attributed but this observation has "<<curNumericCtxtNames.size()<<"."<<endl; assert(false); }
   
   
   //cout << "    #numericCtxt="<<numericCtxt.size()<<endl;
@@ -976,7 +976,7 @@ void module::observe(int traceID,
                          // #numericCtxt^0 + #numericCtxt^1 + #numericCtxt^2 + ... + #numericCtxt^maxDegree = #numericCtxt^(maxDegree+1) - 1
                          pow(numericCtxt.size(), maxDegree+1));
 
-    //cout << "module::observe() moduleID="<<moduleID<<", #numericCtxt="<<numericCtxt.size()<<", #polyfitCtxt="<<polyfitCtxt.size()<<", found="<<(polyfitCtxt.find(moduleID) != polyfitCtxt.end())<<", numTerms="<<numTerms<<endl;
+    //cout << "hierGraph::observe() hierGraphID="<<hierGraphID<<", #numericCtxt="<<numericCtxt.size()<<", #polyfitCtxt="<<polyfitCtxt.size()<<", found="<<(polyfitCtxt.find(hierGraphID) != polyfitCtxt.end())<<", numTerms="<<numTerms<<endl;
 
     // If this is the first observation we have from the given traceStream, allocate the
     // polynomial fit datastructures
@@ -994,7 +994,7 @@ void module::observe(int traceID,
 
       //cout << "    Allocated "<<numAllocObs<<" rows, "<<numAllocTraceAttrs<<" columns"<<endl;
     }
-    //cout << "    #polyfitCtxt="<<polyfitCtxt.size()<<", found="<<(polyfitCtxt.find(moduleID) != polyfitCtxt.end())<<", numObs="<<numObs<<", numAllocObs="<<numAllocObs<<endl;
+    //cout << "    #polyfitCtxt="<<polyfitCtxt.size()<<", found="<<(polyfitCtxt.find(hierGraphID) != polyfitCtxt.end())<<", numObs="<<numObs<<", numAllocObs="<<numAllocObs<<endl;
 
     //cout << "traceAttrName2Col.size()="<<traceAttrName2Col.size()<<" numAllocTraceAttrs="<<numAllocTraceAttrs<<endl;
     // If we're out of space in polyfitCtxt and polyfitObs to store another observation or store more columns, grow them
@@ -1265,7 +1265,7 @@ void polyFitFilter::observe(int traceID,
 //    *(outFiles[t->first]) << t->second << "\n";*/
 //    
 //    // Add a constant term
-//    numericCtxt["module:polyFitFilter:constant:constant"] = attrValue("1", attrValue::intT).serialize();
+//    numericCtxt["hierGraph:polyFitFilter:constant:constant"] = attrValue("1", attrValue::intT).serialize();
 //    
 //    std::map<std::string, std::string> numTraceVal;
 //    numTraceVal[t->first] = t->second;
@@ -1296,7 +1296,7 @@ void polyFitFilter::obsFinished() {
   // don't do any function fitting and just stop
   if(numObservations==0 || (numericCtxtNames.size() - ctxtConstVals.size())==0) return;
   
-  // Set of all the externalTraceProcessor that will listen to this module's observations
+  // Set of all the externalTraceProcessor that will listen to this hierGraph's observations
   // and run them through funcFit
   set<traceObserver*> outProcessors;
   
@@ -1334,7 +1334,7 @@ void polyFitFilter::obsFinished() {
         }
         
         // Add a constant term to the current observation's context
-        (*dc)["module:polyFitFilter:constant:constant"] = attrValue("1", attrValue::intT).serialize();
+        (*dc)["hierGraph:polyFitFilter:constant:constant"] = attrValue("1", attrValue::intT).serialize();
       }
 
       // Put together a map that holds just the value of the current trace attribute in this observation
@@ -1372,7 +1372,7 @@ void polyFitFilter::obsFinished() {
     for(set<string>::const_iterator c=numericCtxtNames.begin(); c!=numericCtxtNames.end(); c++, l++)
       cfgFile << "pname "<<l<<" "<<*c<<endl;
     // Constant term
-    cfgFile << "pname "<<l<<" module:polyFitFilter:constant:constant"<<endl;
+    cfgFile << "pname "<<l<<" hierGraph:polyFitFilter:constant:constant"<<endl;
 
     // Parameter links (one param per link)
     cfgFile << "L "<<(numericCtxtNames.size()+1);
@@ -1444,8 +1444,8 @@ void polyFitObserver::observe(int traceID,
   assert(traceFullAttrNameIt != obs.end());
   attrValue traceFullAttrName(traceFullAttrNameIt->second, attrValue::unknownT);
 
-  string traceModuleClass, traceGrouping, traceSubGrouping, traceAttrName;
-  module::decodeCtxtName(traceFullAttrName.getAsStr(), traceModuleClass, traceGrouping, traceSubGrouping, traceAttrName);
+  string traceHierGraphClass, traceGrouping, traceSubGrouping, traceAttrName;
+  hierGraph::decodeCtxtName(traceFullAttrName.getAsStr(), traceHierGraphClass, traceGrouping, traceSubGrouping, traceAttrName);
   
   // The number of non-zero term coefficients encountered so far
   int numNonZeroCoeff=0;
@@ -1454,8 +1454,8 @@ void polyFitObserver::observe(int traceID,
   
   // Add the string representation of the functional form, one term at a time
   for(map<string, string>::const_iterator c=ctxt.begin(); c!=ctxt.end(); c++) {
-    string moduleClass, ctxtGrouping, ctxtSubGrouping, attrName;
-    module::decodeCtxtName(c->first, moduleClass, ctxtGrouping, ctxtSubGrouping, attrName);
+    string hierGraphClass, ctxtGrouping, ctxtSubGrouping, attrName;
+    hierGraph::decodeCtxtName(c->first, hierGraphClass, ctxtGrouping, ctxtSubGrouping, attrName);
     attrValue val(c->second, attrValue::unknownT);
 
     // For non-zero constants
@@ -1487,7 +1487,7 @@ void polyFitObserver::observe(int traceID,
 }
 
 // Returns the formatted text representation of the fits, to be included in the HTML table 
-// that encodes each module's graph node
+// that encodes each hierGraph's graph node
 std::string polyFitObserver::getFitText() const
 {
   string ret;
@@ -1508,39 +1508,39 @@ std::string polyFitObserver::getFitText() const
 }
   
 /*****************************
- ***** moduleTraceStream *****
+ ***** hierGraphTraceStream *****
  *****************************/
 
-moduleTraceStream::moduleTraceStream(properties::iterator props, traceObserver* observer) : 
-  traceStream(properties::next(props), txt()<<"CanvizBox_node"<<properties::getInt(props, "moduleID"), false)
+hierGraphTraceStream::hierGraphTraceStream(properties::iterator props, traceObserver* observer) : 
+  traceStream(properties::next(props), txt()<<"CanvizBox_node"<<properties::getInt(props, "hierGraphID"), false)
 {
-  assert(props.name() == "moduleTS");
+  assert(props.name() == "hierGraphTS");
     
-  moduleID   = props.getInt("moduleID");
+  hierGraphID   = props.getInt("hierGraphID");
   name       = props.get("name");
   numInputs  = props.getInt("numInputs");
   numOutputs = props.getInt("numOutputs");
   
-  // Get the currently active module that this traceStream belongs to
+  // Get the currently active hierGraph that this traceStream belongs to
   /*assert(modularApp::mStack.size()>0);
-  module* m = modularApp::activeMA->mStack.back();*/
+  hierGraph* m = modularApp::activeMA->mStack.back();*/
 
-  /*cout << "modularApp::activeMA->moduleTraces=";
-  for(map<int, traceStream*>::iterator i=modularApp::activeMA->moduleTraces.begin(); i!=modularApp::activeMA->moduleTraces.end(); i++)
+  /*cout << "modularApp::activeMA->hierGraphTraces=";
+  for(map<int, traceStream*>::iterator i=modularApp::activeMA->hierGraphTraces.begin(); i!=modularApp::activeMA->hierGraphTraces.end(); i++)
     cout << "    "<<i->first<<" : "<<i->second<<endl;
   cout << "props="<<props.str()<<endl;*/
 
-  assert(modularApp::activeMA->moduleTraces.find(moduleID) == modularApp::activeMA->moduleTraces.end());
+  assert(modularApp::activeMA->hierGraphTraces.find(hierGraphID) == modularApp::activeMA->hierGraphTraces.end());
   
-  // Create a new traceStream object to collect the observations for this module group
-  modularApp::activeMA->moduleTraces[moduleID] = this;
+  // Create a new traceStream object to collect the observations for this hierGraph group
+  modularApp::activeMA->hierGraphTraces[hierGraphID] = this;
   
-  //cout << "moduleTraceStream::moduleTraceStream() this="<<this<<", traceID="<<getID()<<", moduleID="<<moduleID<<endl;
+  //cout << "hierGraphTraceStream::hierGraphTraceStream() this="<<this<<", traceID="<<getID()<<", hierGraphID="<<hierGraphID<<endl;
   
   // If no observer is specified, register the current instance of modularApp to listen in on observations recorded by this traceStream
   if(observer==NULL) {
-    // Create a fresh instance of module to analyze data of this stream
-    mFilter = new module(moduleID);
+    // Create a fresh instance of hierGraph to analyze data of this stream
+    mFilter = new hierGraph(hierGraphID);
 
     polyFitter = new polyFitFilter();
     polyFitCollector = new polyFitObserver();
@@ -1554,12 +1554,12 @@ moduleTraceStream::moduleTraceStream(properties::iterator props, traceObserver* 
     if(modularApp::emitObsIndividualDataTable) {
       fileWriter = new traceFileWriterTSV(txt()<<modularApp::outDir<<"/data_individual/"<<
                                                  modularApp::activeMA->getAppName()<<"/"<<
-                                                 modularApp::activeMA->getModuleMarkerStackName("/")<<".tsv");
+                                                 modularApp::activeMA->getHierGraphMarkerStackName("/")<<".tsv");
       registerObserver(fileWriter);
     } else
       fileWriter = NULL;
     
-    // If we need to record all observations from all modules into a common file, connect
+    // If we need to record all observations from all hierGraphs into a common file, connect
     // commonDataTableLogger to observe this traceStream
     if(modularApp::emitObsCommonDataTable) {
       assert(modularApp::activeMA->commonDataTableLogger);
@@ -1567,14 +1567,14 @@ moduleTraceStream::moduleTraceStream(properties::iterator props, traceObserver* 
       modularApp::getInstance()->commonDataTableLogger->recordTraceLabel(
                                     getID(), 
                                     txt()<<modularApp::getInstance()->getAppName()<<"-"<<
-                                           modularApp::getInstance()->getModuleMarkerStackName("-"));
+                                           modularApp::getInstance()->getHierGraphMarkerStackName("-"));
     }
 	    
-    modularApp::registerModule(moduleID, mFilter, polyFitCollector);
+    modularApp::registerHierGraph(hierGraphID, mFilter, polyFitCollector);
 	    
     // The queue of observation filters
 /*    queue = new traceObserverQueue(traceObservers(
-    // - Observations pass through a new instance of module to enable it to build polynomial 
+    // - Observations pass through a new instance of hierGraph to enable it to build polynomial 
     // fits of this data
     new polyFitFilter(),
     mFilter,
@@ -1586,43 +1586,43 @@ moduleTraceStream::moduleTraceStream(properties::iterator props, traceObserver* 
   // sets mFilter and queue.
 	  
 	  
-  // Record the mapping between traceStream IDs and the IDs of the module group they're associated with
-  modularApp::activeMA->trace2moduleID[getID()] = moduleID;
-  ///cout << "moduleID="<<moduleID<<", traceID="<<m->moduleTraces[moduleID]->getID()<<endl;
+  // Record the mapping between traceStream IDs and the IDs of the hierGraph group they're associated with
+  modularApp::activeMA->trace2hierGraphID[getID()] = hierGraphID;
+  ///cout << "hierGraphID="<<hierGraphID<<", traceID="<<m->hierGraphTraces[hierGraphID]->getID()<<endl;
 }
 
-moduleTraceStream::~moduleTraceStream() {
+hierGraphTraceStream::~hierGraphTraceStream() {
   if(mFilter)          { delete mFilter; }
   if(polyFitter)       { delete polyFitter; }
   if(polyFitCollector) { delete polyFitCollector; }
   //if(queue)   delete queue;
 }
 
-// Called when we observe the entry tag of a moduleTraceStream
-void *moduleTraceStream::enterTraceStream(properties::iterator props) {
+// Called when we observe the entry tag of a hierGraphTraceStream
+void *hierGraphTraceStream::enterTraceStream(properties::iterator props) {
   //cout << "modularApp::enterTraceStream props="<<props.str()<<endl;
-  assert(props.name() == "moduleTS");
-  //string moduleName = properties::get(nameProps, "ModuleName");
+  assert(props.name() == "hierGraphTS");
+  //string hierGraphName = properties::get(nameProps, "HierGraphName");
   
-  // Allocate a new moduleTraceStream. The constructor takes care of registering it with the currently active module
-  new moduleTraceStream(props);
+  // Allocate a new hierGraphTraceStream. The constructor takes care of registering it with the currently active hierGraph
+  new hierGraphTraceStream(props);
   
   return NULL;
 }
 
 /*********************************
- ***** compModuleTraceStream *****
+ ***** compHierGraphTraceStream *****
  *********************************/
 
-compModuleTraceStream::compModuleTraceStream(properties::iterator props, traceObserver* observer) :
-  moduleTraceStream(props.next(), this)
+compHierGraphTraceStream::compHierGraphTraceStream(properties::iterator props, traceObserver* observer) :
+  hierGraphTraceStream(props.next(), this)
 {
-  /*cout << "compModuleTraceStream::compModuleTraceStream() traceID="<<getID()<<", observer="<<observer<<endl;
+  /*cout << "compHierGraphTraceStream::compHierGraphTraceStream() traceID="<<getID()<<", observer="<<observer<<endl;
   cout << "props="<<props.str()<<endl;*/
-  // If no observer is specified, register a filtering queue containing a compModule, followed by the the current instance of 
+  // If no observer is specified, register a filtering queue containing a compHierGraph, followed by the the current instance of 
   // modularApp to listen in on observations recorded by this traceStream.
   if(observer==NULL) {
-    cmFilter = new compModule(/*properties::getInt(props, "isReference"), common::module::context(props, "op")*/);
+    cmFilter = new compHierGraph(/*properties::getInt(props, "isReference"), common::hierGraph::context(props, "op")*/);
 
     // Load the comparators to be used with each input
     for(int i=0; i<numInputs; i++) {
@@ -1640,7 +1640,7 @@ compModuleTraceStream::compModuleTraceStream(properties::iterator props, traceOb
 	// The description of the comparator
 	string compDesc = fields[2];
 	
-	// Generate a comparator object based on the encoded comparator name and description and store it in the compModule
+	// Generate a comparator object based on the encoded comparator name and description and store it in the compHierGraph
 	cmFilter->inComparators[i][inName] = attrValueComparatorInstantiator::genComparator(compName, compDesc);
 //cout << "inComparators["<<i<<"]["<<inName<<"] => "<<compName<<" , "<<compDesc<<endl;
       }
@@ -1662,7 +1662,7 @@ compModuleTraceStream::compModuleTraceStream(properties::iterator props, traceOb
 	// The description of the comparator
 	string compDesc = fields[2];
 	
-	// Generate a comparator object based on the encoded comparator name and description and store it in the compModule
+	// Generate a comparator object based on the encoded comparator name and description and store it in the compHierGraph
 	cmFilter->outComparators[i][outName] = attrValueComparatorInstantiator::genComparator(compName, compDesc);
 //cout << "outComparators["<<i<<"]["<<outName<<"] => "<<compName<<" , "<<compDesc<<endl;
       }
@@ -1681,11 +1681,11 @@ compModuleTraceStream::compModuleTraceStream(properties::iterator props, traceOb
       // The description of the comparator
       string compDesc = fields[2];
       
-      // Generate a comparator object based on the encoded comparator name and description and store it in the compModule
+      // Generate a comparator object based on the encoded comparator name and description and store it in the compHierGraph
       cmFilter->measComparators[measName] = attrValueComparatorInstantiator::genComparator(compName, compDesc);
     }
     
-    mFilter = new module(moduleID);
+    mFilter = new hierGraph(hierGraphID);
     
     polyFitter = new polyFitFilter();
     polyFitCollector = new polyFitObserver();
@@ -1704,17 +1704,17 @@ compModuleTraceStream::compModuleTraceStream(properties::iterator props, traceOb
     if(modularApp::emitObsIndividualDataTable) {
       /*cout << "Logging to "<<modularApp::getOutDir()<<"/data/"<<
                                                  modularApp::getInstance()->getAppName()<<"/"<<
-                                                 modularApp::getInstance()->getModuleMarkerStackName("/")<<endl;
+                                                 modularApp::getInstance()->getHierGraphMarkerStackName("/")<<endl;
       cout << "    #mStack="<< modularApp::getInstance()->getMMarkerStack().size()<<endl;*/
 
       fileWriter = new traceFileWriterTSV(txt()<<modularApp::getOutDir()<<"/data/"<<
                                                  modularApp::getInstance()->getAppName()<<"/"<<
-                                                 modularApp::getInstance()->getModuleMarkerStackName("/")<<".tsv");
+                                                 modularApp::getInstance()->getHierGraphMarkerStackName("/")<<".tsv");
       cmFilter->registerObserver(fileWriter);
     } else
       fileWriter = NULL;
     
-    // If we need to record all observations from all modules into a common file, connect
+    // If we need to record all observations from all hierGraphs into a common file, connect
     // commonDataTableLogger to observe this traceStream
     if(modularApp::emitObsCommonDataTable) {
       assert(modularApp::getInstance()->commonDataTableLogger);
@@ -1722,10 +1722,10 @@ compModuleTraceStream::compModuleTraceStream(properties::iterator props, traceOb
       modularApp::getInstance()->commonDataTableLogger->recordTraceLabel(
                                     getID(), 
                                     txt()<<modularApp::getInstance()->getAppName()<<"-"<<
-                                           modularApp::getInstance()->getModuleMarkerStackName("-"));
+                                           modularApp::getInstance()->getHierGraphMarkerStackName("-"));
     }
  
-    modularApp::registerModule(moduleID, mFilter, polyFitCollector);
+    modularApp::registerHierGraph(hierGraphID, mFilter, polyFitCollector);
     
     /*
     // The queue of observation filters
@@ -1733,7 +1733,7 @@ compModuleTraceStream::compModuleTraceStream(properties::iterator props, traceOb
                     // - filters the decoded data to replace the raw observations with comparisons between 
                     //   reference configurations and non-reference configurations
                     cmFilter, 
-                    // - these observations pass through the instance of module that buids a polynomial to fit of this data
+                    // - these observations pass through the instance of hierGraph that buids a polynomial to fit of this data
                     //modularApp::getInstance(), 
                     mFilter,
                     // - finally it ends up at the original traceStream to be included in the generated visualization
@@ -1743,28 +1743,28 @@ compModuleTraceStream::compModuleTraceStream(properties::iterator props, traceOb
   //cout << "cmFilter="<<cmFilter<<", modularApp::getInstance()="<<modularApp::getInstance()<<", queue="<<queue<<endl;
 }
 
-compModuleTraceStream::~compModuleTraceStream() {
+compHierGraphTraceStream::~compHierGraphTraceStream() {
   // Deallocate the observation filter objects
   if(cmFilter) { delete cmFilter; cmFilter=NULL; }
   //if(mFilter)  { delete mFilter;  mFilter=NULL; }
   //if(queue)    { delete queue;    queue=NULL; }
 }
 
-// Called when we observe the entry tag of a compModuleTraceStream
-void *compModuleTraceStream::enterTraceStream(properties::iterator props) {
+// Called when we observe the entry tag of a compHierGraphTraceStream
+void *compHierGraphTraceStream::enterTraceStream(properties::iterator props) {
   //cout << "modularApp::enterTraceStream"<<endl;
-  assert(props.name() == "compModuleTS");
-  //string moduleName = properties::get(nameProps, "ModuleName");
+  assert(props.name() == "compHierGraphTS");
+  //string hierGraphName = properties::get(nameProps, "HierGraphName");
   
-  //cout << "compModuleTraceStream::enterTraceStream() props="<<props.str()<<endl;
-  // Allocate a new compModuleTraceStream. The constructor takes care of registering it with the currently active module
-  new compModuleTraceStream(props);
+  //cout << "compHierGraphTraceStream::enterTraceStream() props="<<props.str()<<endl;
+  // Allocate a new compHierGraphTraceStream. The constructor takes care of registering it with the currently active hierGraph
+  new compHierGraphTraceStream(props);
   
   return NULL;
 }
 
 /**********************
- ***** compModule *****
+ ***** compHierGraph *****
  **********************/
 
 // Compare the value of each trace attribute value ctxtobs (a given context or observation) to the corresponding value 
@@ -1772,7 +1772,7 @@ void *compModuleTraceStream::enterTraceStream(properties::iterator props) {
 // representation of their relationship. Where a comparator is not provided add the raw value from ctxtobs to the 
 // returned map.
 /* // The set of trace attributes in ref must contain that in ctxtobs. */
-std::map<std::string, std::string> compModule::compareObservations(
+std::map<std::string, std::string> compHierGraph::compareObservations(
                                          const std::map<std::string, attrValue>& ctxtobs,
                                          const std::map<std::string, attrValue>& ref) {
   map<string, string> relation;
@@ -1857,7 +1857,7 @@ std::map<std::string, std::string> compModule::compareObservations(
 
 // Given a mapping of trace attribute names to the serialized representations of their attrValues, returns
 // the same mapping but with the attrValues deserialized as attrValues
-std::map<std::string, attrValue> compModule::deserializeObs(const std::map<std::string, std::string>& obs) {
+std::map<std::string, attrValue> compHierGraph::deserializeObs(const std::map<std::string, std::string>& obs) {
   // Store the observation in comparisonObs, converting the observed values from strings to attrValues
   map<string, attrValue> valObs;
   for(map<string, string>::const_iterator o=obs.begin(); o!=obs.end(); o++) {
@@ -1877,11 +1877,11 @@ map<string, string> remKey(const map<string, string>& m, std::string key) {
 
 // Interface implemented by objects that listen for observations a traceStream reads. Such objects
 // call traceStream::registerObserver() to inform a given traceStream that it should observations.
-void compModule::observe(int traceID,
+void compHierGraph::observe(int traceID,
                          const map<string, string>& ctxt, 
                          const map<string, string>& obs,
                          const map<string, anchor>& obsAnchor) {
-  /*cout << "compModule::observe("<<traceID<<")"<<endl;
+  /*cout << "compHierGraph::observe("<<traceID<<")"<<endl;
   cout << "    ctxt=";
   for(map<string, string>::const_iterator c=ctxt.begin(); c!=ctxt.end(); c++) { cout << c->first << "=>"<<c->second<<" "; }
   cout << endl;
@@ -1889,16 +1889,16 @@ void compModule::observe(int traceID,
   for(map<string, string>::const_iterator o=obs.begin(); o!=obs.end(); o++) { cout << o->first << "=>"<<o->second<<" "; }
   cout << endl;*/
   
-  // Compute the portion of the context that identifies the inputs to the modules for which no compContext was 
+  // Compute the portion of the context that identifies the inputs to the hierGraphs for which no compContext was 
   // specified. For identical values of these inputs we will consider different values of options and different 
   // relations between the reference and non-reference outputs and inputs for which a comparator was provided.
   map<string, string> inputCtxt;
   
   for(map<string, string>::const_iterator c=ctxt.begin(); c!=ctxt.end(); c++) {
-    string moduleClass, ctxtGrouping, ctxtSubGrouping, attrName;
-    decodeCtxtName(c->first, moduleClass, ctxtGrouping, ctxtSubGrouping, attrName);
+    string hierGraphClass, ctxtGrouping, ctxtSubGrouping, attrName;
+    decodeCtxtName(c->first, hierGraphClass, ctxtGrouping, ctxtSubGrouping, attrName);
     
-    /*cout << "        c->first="<<c->first<<", moduleClass="<<moduleClass<<", ctxtGrouping="<<ctxtGrouping<<", ctxtSubGrouping="<<ctxtSubGrouping<<", attrName="<<attrName<<endl;
+    /*cout << "        c->first="<<c->first<<", hierGraphClass="<<hierGraphClass<<", ctxtGrouping="<<ctxtGrouping<<", ctxtSubGrouping="<<ctxtSubGrouping<<", attrName="<<attrName<<endl;
     cout << "        inComparators="<<endl;
     int inIdx=0;
     for(vector<map<string, comparator*> >::iterator c=inComparators.begin(); c!=inComparators.end(); c++, inIdx++) {
@@ -1909,7 +1909,7 @@ void compModule::observe(int traceID,
     }*/
     
     // If the current key is not a control attribute
-    if(!(moduleClass=="compModule" && ctxtGrouping=="isReference")) {
+    if(!(hierGraphClass=="compHierGraph" && ctxtGrouping=="isReference")) {
       // If the current context key is an input and no comparator was provided for it, include it in inputCtxt
       int inIdx = attrValue::parseInt(ctxtSubGrouping);
       //cout << "inIdx="<<inIdx<<", ctxtGrouping="<<ctxtGrouping<<", attrName="<<attrName<<", find="<<(inComparators[inIdx].find(attrName) == inComparators[inIdx].end())<<endl;
@@ -1929,17 +1929,17 @@ void compModule::observe(int traceID,
   cout << "    comparisonObs[inputCtxt] (#"<<comparisonObs.size()<<") : "<<(comparisonObs.find(inputCtxt) != comparisonObs.end())<<endl;*/
   
   // If this is the reference observation for the given input context
-  map<string, string>::const_iterator isReferenceIter = ctxt.find("compModule:isReference");
+  map<string, string>::const_iterator isReferenceIter = ctxt.find("compHierGraph:isReference");
   assert(isReferenceIter != ctxt.end());
   attrValue isReference(isReferenceIter->second, attrValue::unknownT);
   //cout << "isReference.getInt()="<<isReference.getInt()<<", str="<<isReferenceIter->second<<endl;
   if(isReference.getInt()) {
     // There can only be one such observation for a given input context
     if(referenceObs.find(inputCtxt) != referenceObs.end())
-    { cerr << "Multiple instances of module are declared to be reference!\nctxt=\n"<<data2str(ctxt)<<"\nobs="<<data2str(obs)<<endl; assert(0); }
+    { cerr << "Multiple instances of hierGraph are declared to be reference!\nctxt=\n"<<data2str(ctxt)<<"\nobs="<<data2str(obs)<<endl; assert(0); }
     
     // Store the observation in referenceCtxt/referenceObs, converting the observed values from strings to attrValues
-    referenceCtxt[inputCtxt] = deserializeObs(remKey(ctxt, "compModule:isReference"));
+    referenceCtxt[inputCtxt] = deserializeObs(remKey(ctxt, "compHierGraph:isReference"));
     referenceObs[inputCtxt]  = deserializeObs(obs);
     
     //cout << "comparisonObs.find(inputCtxt) = "<<(comparisonObs.find(inputCtxt) != comparisonObs.end())<<endl;
@@ -1975,7 +1975,7 @@ void compModule::observe(int traceID,
   } else {
     // If we've already observed the reference observation for the current input context
     if(referenceObs.find(inputCtxt) != referenceObs.end()) {
-      map<string, string> ctxtRelation = compareObservations(deserializeObs(remKey(ctxt, "compModule:isReference")), referenceCtxt[inputCtxt]);
+      map<string, string> ctxtRelation = compareObservations(deserializeObs(remKey(ctxt, "compHierGraph:isReference")), referenceCtxt[inputCtxt]);
       map<string, string> obsRelation  = compareObservations(deserializeObs(obs), referenceObs[inputCtxt]);
       
       // Compare this observation to the reference and emit the result to the observe method of the parent class
@@ -1984,38 +1984,38 @@ void compModule::observe(int traceID,
     } else {
       // Store the observation in comparisonObs, converting the observed values from strings to attrValues
       comparisonObs[inputCtxt].push_back(deserializeObs(obs));
-      comparisonCtxt[inputCtxt].push_back(deserializeObs(remKey(ctxt, "compModule:isReference")));
+      comparisonCtxt[inputCtxt].push_back(deserializeObs(remKey(ctxt, "compHierGraph:isReference")));
     }
   }
 }
 
 /**************************************
- ***** processedModuleTraceStream *****
+ ***** processedHierGraphTraceStream *****
  **************************************/
 
 // The directory that is used for storing intermediate files
-std::string processedModuleTraceStream::workDir;
+std::string processedHierGraphTraceStream::workDir;
 // The maximum unique ID assigned to any file that was used as input to a processor
-int processedModuleTraceStream::maxFileID;
+int processedHierGraphTraceStream::maxFileID;
 
-processedModuleTraceStream::processedModuleTraceStream(properties::iterator props, traceObserver* observer) :
-  moduleTraceStream(props.next(), this)
+processedHierGraphTraceStream::processedHierGraphTraceStream(properties::iterator props, traceObserver* observer) :
+  hierGraphTraceStream(props.next(), this)
 {
   // Initialize the directories this processedTraceStream will use for its temporary storage
   static bool initialized=false;
   if(!initialized) {
     // Create the directory that holds the trace-specific scripts
-    std::pair<std::string, std::string> dirs = dbg.createWidgetDir("moduleProcTS");
+    std::pair<std::string, std::string> dirs = dbg.createWidgetDir("hierGraphProcTS");
     workDir = dirs.first;
     maxFileID = 0;
   }
   
-  // If no observer is specified, register a filtering queue containing a processModule, followed by the the current instance of 
+  // If no observer is specified, register a filtering queue containing a processHierGraph, followed by the the current instance of 
   // modularApp to listen in on observations recorded by this traceStream.
   if(observer==NULL) {
     filterQueue = new traceObserverQueue();
   
-    //cout << "<<< processedModuleTraceStream::processedModuleTraceStream"<<endl;
+    //cout << "<<< processedHierGraphTraceStream::processedHierGraphTraceStream"<<endl;
     // Add this trace object as a change listener to all the context variables
     long numCmds = properties::getInt(props, "numCmds");
     for(long i=0; i<numCmds; i++) {
@@ -2023,10 +2023,10 @@ processedModuleTraceStream::processedModuleTraceStream(properties::iterator prop
       filterQueue->push_back(commandProcessors.back());
     }
 
-    // Create an instance of module to build the polynomial to fit of the data that comes out of the 
+    // Create an instance of hierGraph to build the polynomial to fit of the data that comes out of the 
     // final command
-    mFilter = new module(moduleID);
-    modularApp::registerModule(moduleID, mFilter, NULL);
+    mFilter = new hierGraph(hierGraphID);
+    modularApp::registerHierGraph(hierGraphID, mFilter, NULL);
     
     filterQueue->push_back(mFilter);
 
@@ -2036,7 +2036,7 @@ processedModuleTraceStream::processedModuleTraceStream(properties::iterator prop
 
     // Route all of this traceStream's observations through queue
     registerObserver(filterQueue);
-    //cout << ">>> processedModuleTraceStream::processedModuleTraceStream"<<endl;
+    //cout << ">>> processedHierGraphTraceStream::processedHierGraphTraceStream"<<endl;
   }/* else {
     m = NULL;
     queue = NULL;
@@ -2044,7 +2044,7 @@ processedModuleTraceStream::processedModuleTraceStream(properties::iterator prop
   //cout << "cmFilter="<<cmFilter<<", modularApp::getInstance()="<<modularApp::getInstance()<<", queue="<<queue<<endl;
 }
 
-processedModuleTraceStream::~processedModuleTraceStream() {
+processedHierGraphTraceStream::~processedHierGraphTraceStream() {
   if(filterQueue)   { delete filterQueue;   filterQueue=NULL; }
   
   //if(mFilter) { delete mFilter; mFilter=NULL; }
@@ -2053,43 +2053,43 @@ processedModuleTraceStream::~processedModuleTraceStream() {
     delete *cp;
 }
 
-// Called when we observe the entry tag of a processedModuleTraceStream
-void *processedModuleTraceStream::enterTraceStream(properties::iterator props) {
+// Called when we observe the entry tag of a processedHierGraphTraceStream
+void *processedHierGraphTraceStream::enterTraceStream(properties::iterator props) {
   //cout << "modularApp::enterTraceStream"<<endl;
-  assert(props.name() == "processedModuleTS");
-  //string moduleName = properties::get(nameProps, "ModuleName");
+  assert(props.name() == "processedHierGraphTS");
+  //string hierGraphName = properties::get(nameProps, "HierGraphName");
   
-  //cout << "processedModuleTraceStream::enterTraceStream() props="<<props.str()<<endl;
-  // Allocate a new processedModuleTraceStream. The constructor takes care of registering it with the currently active module
-  new processedModuleTraceStream(props);
+  //cout << "processedHierGraphTraceStream::enterTraceStream() props="<<props.str()<<endl;
+  // Allocate a new processedHierGraphTraceStream. The constructor takes care of registering it with the currently active hierGraph
+  new processedHierGraphTraceStream(props);
   
   return NULL;
 }
 
 /***********************************
- ***** SynopticModuleObsLogger *****
+ ***** SynopticHierGraphObsLogger *****
  ***********************************/
 
-SynopticModuleObsLogger::SynopticModuleObsLogger(std::string outFName) : outFName(outFName){
+SynopticHierGraphObsLogger::SynopticHierGraphObsLogger(std::string outFName) : outFName(outFName){
   mkpath(outFName, 0755, false);
-  //cout << "SynopticModuleObsLogger opening file "<<outFName<<endl;
+  //cout << "SynopticHierGraphObsLogger opening file "<<outFName<<endl;
   string fName = txt()<<outFName<<".synoptic";
   out.open(fName.c_str(), std::ofstream::out);
-  if(!out.is_open()) { cerr << "SynopticModuleObsLogger::SynopticModuleObsLogger() ERROR opening file \""<<fName<<"\" for writing! "<<strerror(errno)<<endl; assert(0); }
+  if(!out.is_open()) { cerr << "SynopticHierGraphObsLogger::SynopticHierGraphObsLogger() ERROR opening file \""<<fName<<"\" for writing! "<<strerror(errno)<<endl; assert(0); }
 
   numObservations=0;
 }
 
 // Interface implemented by objects that listen for observations a traceStream reads. Such objects
 // call traceStream::registerObserver() to inform a given traceStream that it should observations.
-void SynopticModuleObsLogger::observe(int traceID,
+void SynopticHierGraphObsLogger::observe(int traceID,
              const std::map<std::string, std::string>& ctxt, 
              const std::map<std::string, std::string>& obs,
              const std::map<std::string, anchor>&      obsAnchor) {
   assert(traceID2Label.find(traceID) != traceID2Label.end());
   escapedStr esLabel(traceID2Label[traceID], "\"", escapedStr::unescaped);
   
-  /*cout << "SynopticModuleObsLogger::observe("<<traceID<<": "<<traceID2Label[traceID]<<") #ctxt="<<ctxt.size()<<" #obs="<<obs.size()<<endl;
+  /*cout << "SynopticHierGraphObsLogger::observe("<<traceID<<": "<<traceID2Label[traceID]<<") #ctxt="<<ctxt.size()<<" #obs="<<obs.size()<<endl;
   cout << "    ctxt=";
   for(map<string, string>::const_iterator c=ctxt.begin(); c!=ctxt.end(); c++) { cout << c->first << "=>"<<c->second<<" "; }
   cout << endl;
@@ -2097,13 +2097,13 @@ void SynopticModuleObsLogger::observe(int traceID,
   for(map<string, string>::const_iterator o=obs.begin(); o!=obs.end(); o++) { cout << o->first << "=>"<<o->second<<" "; }
   cout << endl;*/
   
-  map<string, string>::const_iterator startO = obs.find("module:measure:timestamp:Start");
+  map<string, string>::const_iterator startO = obs.find("hierGraph:measure:timestamp:Start");
   if(startO != obs.end()) {
     out << "\"" << esLabel.escape() << "-Start\" "<<attrValue(startO->second, attrValue::unknownT).getAsStr()<<endl;
     cout << "\"" << esLabel.escape() << "-Start\" "<<attrValue(startO->second, attrValue::unknownT).getAsStr()<<endl;
   }
   
-  map<string, string>::const_iterator endO = obs.find("module:measure:timestamp:End");
+  map<string, string>::const_iterator endO = obs.find("hierGraph:measure:timestamp:End");
   if(endO != obs.end()) {
     out << "\"" << esLabel.escape() << "-End\" "<<attrValue(endO->second, attrValue::unknownT).getAsStr()<<endl;
     cout << "\"" << esLabel.escape() << "-End\" "<<attrValue(endO->second, attrValue::unknownT).getAsStr()<<endl;
@@ -2113,10 +2113,10 @@ void SynopticModuleObsLogger::observe(int traceID,
   
 // Called when the stream of observations has finished to allow the implementor to perform clean-up tasks.
 // This method is optional.
-void SynopticModuleObsLogger::obsFinished() {
+void SynopticHierGraphObsLogger::obsFinished() {
 }
 
-SynopticModuleObsLogger::~SynopticModuleObsLogger() {
+SynopticHierGraphObsLogger::~SynopticHierGraphObsLogger() {
   assert(out.is_open());
   out.close();
 

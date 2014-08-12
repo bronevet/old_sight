@@ -20,46 +20,46 @@
 #include <fstream>
 #include "../../sight_common.h"
 #include "../../sight_layout.h"
-#include "module_common.h"
+#include "hierGraph_common.h"
 #include <gsl/gsl_multifit.h>
 
 namespace sight {
 namespace layout {
 
-class moduleLayoutHandlerInstantiator : layoutHandlerInstantiator {
+class hierGraphLayoutHandlerInstantiator : layoutHandlerInstantiator {
   public:
-  moduleLayoutHandlerInstantiator();
+  hierGraphLayoutHandlerInstantiator();
 };
-extern moduleLayoutHandlerInstantiator moduleLayoutHandlerInstance;
+extern hierGraphLayoutHandlerInstantiator hierGraphLayoutHandlerInstance;
 
-class moduleConfHandlerInstantiator : common::confHandlerInstantiator {
+class hierGraphConfHandlerInstantiator : common::confHandlerInstantiator {
   public:
-  moduleConfHandlerInstantiator();
+  hierGraphConfHandlerInstantiator();
 };
-extern moduleConfHandlerInstantiator moduleConfHandlerInstance;
+extern hierGraphConfHandlerInstantiator hierGraphConfHandlerInstance;
 
-class moduleTraceStream;
+class hierGraphTraceStream;
 
-// Records the information of a given module when the module is entered so that we have it available 
-// when the module is exited
-class moduleInfo {
+// Records the information of a given hierGraph when the hierGraph is entered so that we have it available 
+// when the hierGraph is exited
+class hierGraphInfo {
   public:
-  std::string moduleName;
-  int moduleID;
+  std::string hierGraphName;
+  int hierGraphID;
   int numInputs;
   int numOutputs;
   int count;
   
-  moduleInfo(const std::string& moduleName, int moduleID, int numInputs, int numOutputs, int count) :
-    moduleName(moduleName), moduleID(moduleID), numInputs(numInputs), numOutputs(numOutputs), count(count)
+  hierGraphInfo(const std::string& hierGraphName, int hierGraphID, int numInputs, int numOutputs, int count) :
+    hierGraphName(hierGraphName), hierGraphID(hierGraphID), numInputs(numInputs), numOutputs(numOutputs), count(count)
   {}
 };
 
-// Records the information of a given module when the module is entered so that we have it available 
-// when the module is exited
-class module : public common::module, public traceObserver {
+// Records the information of a given hierGraph when the hierGraph is entered so that we have it available 
+// when the hierGraph is exited
+class hierGraph : public common::hierGraph, public traceObserver {
   friend class modularApp;
-  // Maps each moduleID to the data needed to compute a polynomial approximation of the relationship
+  // Maps each hierGraphID to the data needed to compute a polynomial approximation of the relationship
   // between its input context and its observations
   /*
   // Matrix of polynomial terms composed of context values, 1 row per observation, 1 column for each combination of terms
@@ -97,14 +97,14 @@ class module : public common::module, public traceObserver {
   // The names of the observation trace attributes
   std::set<std::string> traceAttrNames;
 
-  int moduleID;
+  int hierGraphID;
   
   public:
-  module(int moduleID);
+  hierGraph(int hierGraphID);
   
-  ~module();
+  ~hierGraph();
   
-  // Do a multi-variate polynomial fit of the data observed for the given moduleID and return for each trace attribute 
+  // Do a multi-variate polynomial fit of the data observed for the given hierGraphID and return for each trace attribute 
   // a string that describes the function that best fits its values
   //std::vector<std::string> polyFit();
   
@@ -115,7 +115,7 @@ class module : public common::module, public traceObserver {
                const std::map<std::string, std::string>& obs,
                const std::map<std::string, anchor>&      obsAnchor/*,
                const std::set<traceObserver*>&           observers*/);
-}; // class module
+}; // class hierGraph
 
 // Observation filter that finds a polynomial fit of the numeric features of the observed data
 class polyFitFilter : public traceObserver {
@@ -215,16 +215,16 @@ class polyFitObserver: public traceObserver
   int numFits() const { return fits.size(); }
   
   // Returns the formatted text representation of the fits, to be included in the HTML table 
-  // that encodes each module's graph node
+  // that encodes each hierGraph's graph node
   std::string getFitText() const;
 }; // polyFitObserver
 
-class SynopticModuleObsLogger;
+class SynopticHierGraphObsLogger;
 
-class modularApp: public block, public common::module
+class modularApp: public block, public common::hierGraph
 {
-  friend class module;
-  friend class moduleTraceStream;
+  friend class hierGraph;
+  friend class hierGraphTraceStream;
   protected:
  
   // Points to the currently active instance of modularApp. There can be only one.
@@ -242,25 +242,25 @@ class modularApp: public block, public common::module
   // Unique ID of this modular app
   int appID;
   
-  // Stack of the module markers that are currently in scope within this modularApp
-  static std::list<sight::layout::moduleInfo> mMarkerStack;
+  // Stack of the hierGraph markers that are currently in scope within this modularApp
+  static std::list<sight::layout::hierGraphInfo> mMarkerStack;
   
-  // Stack of the modules that are currently in scope within this modularApp
-  static std::list<sight::layout::moduleInfo> mStack;
+  // Stack of the hierGraphs that are currently in scope within this modularApp
+  static std::list<sight::layout::hierGraphInfo> mStack;
   
-  // Maps each module group's ID to the trace that holds the observations performed within it
-  std::map<int, traceStream*> moduleTraces;
+  // Maps each hierGraph group's ID to the trace that holds the observations performed within it
+  std::map<int, traceStream*> hierGraphTraces;
   
-  // Maps each module group's ID to the module object that processes its data
-  std::map<int, sight::layout::module*> modules;
+  // Maps each hierGraph group's ID to the hierGraph object that processes its data
+  std::map<int, sight::layout::hierGraph*> hierGraphs;
   
-  // Maps each module group's ID to the polyFitObserver object that records the polynomial fit of the module's trace attributes
+  // Maps each hierGraph group's ID to the polyFitObserver object that records the polynomial fit of the hierGraph's trace attributes
   std::map<int, sight::layout::polyFitObserver*> polyFits;
     
-  // Maps each traceStream's ID to the ID of its corresponding module graph node
-  std::map<int, int> trace2moduleID;
+  // Maps each traceStream's ID to the ID of its corresponding hierGraph graph node
+  std::map<int, int> trace2hierGraphID;
   
-  // The dot file that will hold the representation of the module interaction graph
+  // The dot file that will hold the representation of the hierGraph interaction graph
   std::ofstream dotFile;
   
   public:
@@ -273,76 +273,76 @@ class modularApp: public block, public common::module
   const std::string& getAppName() { return appName; }
   static const std::string getOutDir() { return outDir; }
   static const std::string getHtmlOutDir() { return htmlOutDir; }
-  static const std::list<sight::layout::moduleInfo> getMMarkerStack() { return mMarkerStack; }
-  static const std::list<sight::layout::moduleInfo> getMStack() { return mStack; }
+  static const std::list<sight::layout::hierGraphInfo> getMMarkerStack() { return mMarkerStack; }
+  static const std::list<sight::layout::hierGraphInfo> getMStack() { return mStack; }
   
-  // Returns a string that uniquely identifies all the module markers currently on the stack, using the 
-  // given string to separate the strings of different module instances.
-  std::string getModuleMarkerStackName(std::string separator="_");
+  // Returns a string that uniquely identifies all the hierGraph markers currently on the stack, using the 
+  // given string to separate the strings of different hierGraph instances.
+  std::string getHierGraphMarkerStackName(std::string separator="_");
   
-  // Returns a string that uniquely identifies all the modules currently on the stack, using the 
-  // given string to separate the strings of different module instances.
-  std::string getModuleStackName(std::string separator="_");
+  // Returns a string that uniquely identifies all the hierGraphs currently on the stack, using the 
+  // given string to separate the strings of different hierGraph instances.
+  std::string getHierGraphStackName(std::string separator="_");
   
   // Initialize the environment within which generated graphs will operate, including
   // the JavaScript files that are included as well as the directories that are available.
   static void initEnvironment();
     
-  // Registers the ID of the trace that is associated with the current module
+  // Registers the ID of the trace that is associated with the current hierGraph
   //void registerTraceID(int traceID);
   //static void* registerTraceID(properties::iterator props);
   
   // Do a multi-variate polynomial fit of the data observed for the given nodeID and return for each trace attribute 
   // a string that describes the function that best fits its values
-  std::vector<std::string> polyFit(int moduleID);
+  std::vector<std::string> polyFit(int hierGraphID);
   
   // Emits to the dot file the buttons used to select the combination of input property and trace attribute
-  // that should be shown in the data panel of a given module node.
-  // numInputs/numOutputs - the number of inputs/outputs of this module node
-  // ID - the unique ID of this module node
-  // prefix - We measure both the observations of measurements during the execution of modules and the 
-  //    properties of module outputs. Both are included in the trace of the module but the names of measurements
+  // that should be shown in the data panel of a given hierGraph node.
+  // numInputs/numOutputs - the number of inputs/outputs of this hierGraph node
+  // ID - the unique ID of this hierGraph node
+  // prefix - We measure both the observations of measurements during the execution of hierGraphs and the 
+  //    properties of hierGraph outputs. Both are included in the trace of the hierGraph but the names of measurements
   //    are prefixed with "measure:" and the names of outputs are prefixed with "output:#:", where the # is the
   //    index of the output. The prefix argument identifies the types of attributs we'll be making buttons for and
-  //    it should be either "module" or "output".
+  //    it should be either "hierGraph" or "output".
   // bgColor - The background color of the buttons
   //void showButtons(int numInputs, int numOutputs, int ID, std::string prefix, std::string bgColor);
  
-  // Enter a new moduleMarker within the current modularApp
-  // numInputs/numOutputs - the number of inputs/outputs of this module node
-  // ID - the unique ID of this module node
-  void enterModuleMarker(std::string moduleName, int numInputs, int numOutputs);
+  // Enter a new hierGraphMarker within the current modularApp
+  // numInputs/numOutputs - the number of inputs/outputs of this hierGraph node
+  // ID - the unique ID of this hierGraph node
+  void enterHierGraphMarker(std::string hierGraphName, int numInputs, int numOutputs);
 
-  // Static version of enterModuleMarker() that pulls the from/to anchor IDs from the properties iterator and calls
-  // enterModule() in the currently active modularApp
-  static void* enterModuleMarker(properties::iterator props);
+  // Static version of enterHierGraphMarker() that pulls the from/to anchor IDs from the properties iterator and calls
+  // enterHierGraph() in the currently active modularApp
+  static void* enterHierGraphMarker(properties::iterator props);
 
-  // Exit a module within the current modularApp
-  void exitModuleMarker();
+  // Exit a hierGraph within the current modularApp
+  void exitHierGraphMarker();
 
-  // Static version of exitModuleMarker() that calls exitModuleMarker() in the currently active modularApp
-  static void exitModuleMarker(void* obj);
+  // Static version of exitHierGraphMarker() that calls exitHierGraphMarker() in the currently active modularApp
+  static void exitHierGraphMarker(void* obj);
 
-  // Enter a new module within the current modularApp
-  // numInputs/numOutputs - the number of inputs/outputs of this module node
-  // ID - the unique ID of this module node
-  void enterModule(std::string node, int moduleID, int numInputs, int numOutputs, int count);
-  // Static version of enterModule() that pulls the from/to anchor IDs from the properties iterator and calls 
-  // enterModule() in the currently active modularApp
-  static void* enterModule(properties::iterator props);
+  // Enter a new hierGraph within the current modularApp
+  // numInputs/numOutputs - the number of inputs/outputs of this hierGraph node
+  // ID - the unique ID of this hierGraph node
+  void enterHierGraph(std::string node, int hierGraphID, int numInputs, int numOutputs, int count);
+  // Static version of enterHierGraph() that pulls the from/to anchor IDs from the properties iterator and calls 
+  // enterHierGraph() in the currently active modularApp
+  static void* enterHierGraph(properties::iterator props);
   
-  // Exit a module within the current modularApp
-  void exitModule();
-  // Static version of enterModule() that calls exitModule() in the currently active modularApp
-  static void exitModule(void* obj);
+  // Exit a hierGraph within the current modularApp
+  void exitHierGraph();
+  // Static version of enterHierGraph() that calls exitHierGraph() in the currently active modularApp
+  static void exitHierGraph(void* obj);
   
-  // Register the given module object (keeps data on the raw observations) and polyFitObserver object 
+  // Register the given hierGraph object (keeps data on the raw observations) and polyFitObserver object 
   // (keeps data on the polynomial fits that summarize these observations) with the currently active modularApp
-  static void registerModule(int moduleID, sight::layout::module* m, polyFitObserver* pf);
+  static void registerHierGraph(int hierGraphID, sight::layout::hierGraph* m, polyFitObserver* pf);
   
   // Add a directed edge from the location of the from anchor to the location of the to anchor
-  void addEdge(int fromC, common::module::ioT fromT, int fromP, 
-               int toC,   common::module::ioT toT,   int toP,
+  void addEdge(int fromC, common::hierGraph::ioT fromT, int fromP, 
+               int toC,   common::hierGraph::ioT toT,   int toP,
                double prob);
   static void* addEdge(properties::iterator props);
   
@@ -352,20 +352,20 @@ class modularApp: public block, public common::module
   bool subBlockEnterNotify(block* subBlock) { return false; }
   bool subBlockExitNotify (block* subBlock) { return false; }
   
-  // Records whether we should emit the observations of each module into a separate table for use by external tools
+  // Records whether we should emit the observations of each hierGraph into a separate table for use by external tools
   static bool emitObsIndividualDataTable;
   // Records whether we should emit the observations of all modular into a single table for use by external tools
   static bool emitObsCommonDataTable;
 
-  // If emitObsCommonDataTable, points to the instance of SynopticModuleObsLogger that monitors and 
-  // records all module observations.
-  SynopticModuleObsLogger* commonDataTableLogger;
+  // If emitObsCommonDataTable, points to the instance of SynopticHierGraphObsLogger that monitors and 
+  // records all hierGraph observations.
+  SynopticHierGraphObsLogger* commonDataTableLogger;
   
   // -------------------------
   // ----- Configuration -----
   // -------------------------
   // Currently there isn't anything that can be configured but in the future we may wish to
-  // add measurements that will be taken on all modules
+  // add measurements that will be taken on all hierGraphs
   public:
   class ModularAppConfiguration : public common::Configuration{
     public:
@@ -376,26 +376,26 @@ class modularApp: public block, public common::module
   };
 
   static common::Configuration* configure(properties::iterator props) {
-    // Create a ModuleConfiguration object, using the invocation of the constructor hierarchy to
-    // record the configuration details with the respective widgets from which modules inherit
+    // Create a HierGraphConfiguration object, using the invocation of the constructor hierarchy to
+    // record the configuration details with the respective widgets from which hierGraphs inherit
     ModularAppConfiguration* c = new ModularAppConfiguration(props);
     delete c;
     return NULL;
   }
 }; // class modularApp
 
-// Specialization of traceStreams for the case where they are hosted by a module
-class moduleTraceStream: public traceStream
+// Specialization of traceStreams for the case where they are hosted by a hierGraph
+class hierGraphTraceStream: public traceStream
 {
   friend class modularApp;
   protected:
-  int moduleID;
+  int hierGraphID;
   std::string name;
   int numInputs;
   int numOutputs;
   
   // The observers that processes observations of this object
-  module* mFilter;
+  hierGraph* mFilter;
   polyFitFilter* polyFitter;
   polyFitObserver* polyFitCollector;
   traceFileWriterTSV* fileWriter;
@@ -404,23 +404,23 @@ class moduleTraceStream: public traceStream
   //traceObserverQueue* queue;
   
   public:
-  moduleTraceStream(properties::iterator props, traceObserver* observer=NULL);
-  ~moduleTraceStream();
+  hierGraphTraceStream(properties::iterator props, traceObserver* observer=NULL);
+  ~hierGraphTraceStream();
   
-  // Called when we observe the entry tag of a moduleTraceStream
+  // Called when we observe the entry tag of a hierGraphTraceStream
   static void *enterTraceStream(properties::iterator props);
 };
 
-// This class analyzes the observations from a compModuleTraceStream. It relates all observations that share
+// This class analyzes the observations from a compHierGraphTraceStream. It relates all observations that share
 // the same values for the subset of context attributes that are not in the set options to a single one reference 
 // observation (one reference for each value of non-option attributes) and emits these comparisons to the 
 // traceObservers that listen to it.
-class compModule : public common::module, public traceObserver {
-  friend class compModuleTraceStream;
-  // Records whether this is the reference configuration of the module
+class compHierGraph : public common::hierGraph, public traceObserver {
+  friend class compHierGraphTraceStream;
+  // Records whether this is the reference configuration of the hierGraph
   //bool isReference;
   
-  // The context that describes the configuration options of this module
+  // The context that describes the configuration options of this hierGraph
   //context options;
   
   // Maps each configuration of input context values for which compContexts were not provided (this identifies
@@ -430,9 +430,9 @@ class compModule : public common::module, public traceObserver {
   std::map<std::map<std::string, std::string>, std::map<std::string, attrValue> > referenceObs;
   
   // Records for each configuration of input context values all the the mappings of trace and context attributes to
-  // their values within non-reference configurations of the compModule. We keep these around until we 
+  // their values within non-reference configurations of the compHierGraph. We keep these around until we 
   // find the reference configuration for the given configuration of input context values and once we find 
-  // it, we relate these to the reference, emit them to this compModuleTraceStream's observer and empty them out.
+  // it, we relate these to the reference, emit them to this compHierGraphTraceStream's observer and empty them out.
   std::map<std::map<std::string, std::string>, std::list<std::map<std::string, attrValue> > > comparisonObs;
   std::map<std::map<std::string, std::string>, std::list<std::map<std::string, attrValue> > > comparisonCtxt;
   
@@ -448,7 +448,7 @@ class compModule : public common::module, public traceObserver {
   std::map<std::string, comparator*> measComparators;
 
   public:  
-  compModule() { }
+  compHierGraph() { }
   
   // Compare the value of each trace attribute value ctxtobs (a given context or observation) to the corresponding value 
   // in ref (the corresponding reference observation) and return a mapping of each trace attribute to the serialized 
@@ -469,27 +469,27 @@ class compModule : public common::module, public traceObserver {
                const std::map<std::string, std::string>& ctxt, 
                const std::map<std::string, std::string>& obs,
                const std::map<std::string, anchor>&      obsAnchor);
-}; // class compModule
+}; // class compHierGraph
 
-// Specialization of traceStreams for the case where they are hosted by a compModule 
-class compModuleTraceStream: public moduleTraceStream
+// Specialization of traceStreams for the case where they are hosted by a compHierGraph 
+class compHierGraphTraceStream: public hierGraphTraceStream
 {
   // The object that filters observations to compare non-reference observations to their reference values
-  compModule* cmFilter;
+  compHierGraph* cmFilter;
   
   // The object that filters comparison observations that come out of cmFilter
-  //module* mFilter;
+  //hierGraph* mFilter;
   
   public:
-  compModuleTraceStream(properties::iterator props, traceObserver* observer=NULL);
-  ~compModuleTraceStream();
+  compHierGraphTraceStream(properties::iterator props, traceObserver* observer=NULL);
+  ~compHierGraphTraceStream();
   
-  // Called when we observe the entry tag of a compModuleTraceStream
+  // Called when we observe the entry tag of a compHierGraphTraceStream
   static void *enterTraceStream(properties::iterator props);
-}; // class compModuleTraceStream
+}; // class compHierGraphTraceStream
 
-// Specialization of traceStreams for the case where they are hosted by a processModule 
-class processedModuleTraceStream: public moduleTraceStream
+// Specialization of traceStreams for the case where they are hosted by a processHierGraph 
+class processedHierGraphTraceStream: public hierGraphTraceStream
 { 
   // The directory that is used for storing intermediate files
   static std::string workDir;
@@ -502,18 +502,18 @@ class processedModuleTraceStream: public moduleTraceStream
   traceObserverQueue* filterQueue;
   
   public:
-  processedModuleTraceStream(properties::iterator props, traceObserver* observer=NULL);
-  ~processedModuleTraceStream();
+  processedHierGraphTraceStream(properties::iterator props, traceObserver* observer=NULL);
+  ~processedHierGraphTraceStream();
   
-  // Called when we observe the entry tag of a processedModuleTraceStream
+  // Called when we observe the entry tag of a processedHierGraphTraceStream
   static void *enterTraceStream(properties::iterator props);
-}; // class processedModuleTraceStream
+}; // class processedHierGraphTraceStream
 
-// This is a trace observer that processes incoming module by writing them into the given file 
-// Synoptic format, writing for each module observation two lines, one with the entry timestamp
-// and one with the exit timestamp. SynopticModuleObsLogger requires the use of timeStampMeasures.
+// This is a trace observer that processes incoming hierGraph by writing them into the given file 
+// Synoptic format, writing for each hierGraph observation two lines, one with the entry timestamp
+// and one with the exit timestamp. SynopticHierGraphObsLogger requires the use of timeStampMeasures.
 // Only records with such timestamps are emitted into the log.
-class SynopticModuleObsLogger: public traceObserver {
+class SynopticHierGraphObsLogger: public traceObserver {
   // Map the IDs of the traces this logger is observing to their string labels
   std::map<int, std::string> traceID2Label;
   
@@ -527,8 +527,8 @@ class SynopticModuleObsLogger: public traceObserver {
   int numObservations;
   
   public: 
-  SynopticModuleObsLogger(std::string outFName);
-  ~SynopticModuleObsLogger();
+  SynopticHierGraphObsLogger(std::string outFName);
+  ~SynopticHierGraphObsLogger();
   
   // Records the mapping from the given traceID to the given label
   void recordTraceLabel(int traceID, std::string label) { traceID2Label[traceID] = label; }
@@ -543,7 +543,7 @@ class SynopticModuleObsLogger: public traceObserver {
   // Called when the stream of observations has finished to allow the implementor to perform clean-up tasks.
   // This method is optional.
   void obsFinished();
-}; // class SynopticModuleObsLogger
+}; // class SynopticHierGraphObsLogger
   
 }; // namespace layout
 }; // namespace sight

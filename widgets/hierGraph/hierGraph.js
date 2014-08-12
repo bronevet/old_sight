@@ -9,11 +9,11 @@
 // Please read the COPYRIGHT file for Our Notice and
 // for the BSD License.
 var buttonCommands = {};
-function registerModuleButtonCmd(buttonID, command) {
+function registerHierGraphButtonCmd(buttonID, command) {
   buttonCommands[buttonID] = command;
 }
 
-function ClickOnModuleNode(label, target, buttonID) {
+function ClickOnHierGraphNode(label, target, buttonID) {
   //alert(label+": "+target+" buttonID="+buttonID);
   if(buttonID>=0) 
     eval(buttonCommands[buttonID]);
