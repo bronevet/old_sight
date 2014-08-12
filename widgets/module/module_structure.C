@@ -11,9 +11,9 @@
 // Licence information included in file LICENCE
 #define MODULE_STRUCTURE_C
 #include "../../sight_structure.h"
-#include "hierGraph_structure.h"
+#include "module_structure.h"
 #include "../../sight_common.h"
-#include "hierGraph_common.h"
+#include "module_common.h"
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -38,33 +38,33 @@ namespace structure {
 // -------------------------
 
 // Record the configuration handlers in this file
-hierGraphConfHandlerInstantiator::hierGraphConfHandlerInstantiator() {
+moduleConfHandlerInstantiator::moduleConfHandlerInstantiator() {
   (*enterHandlers)["modularApp"] = &modularApp::configure;
-  (*exitHandlers )["modularApp"] = &hierGraphConfHandlerInstantiator::defaultExitFunc;
+  (*exitHandlers )["modularApp"] = &moduleConfHandlerInstantiator::defaultExitFunc;
   /*(*confEnterHandlers)["modularAppBody"]      = &defaultConfEntryHandler;
   (*confExitHandlers )["modularAppBody"]      = &defaultConfExitHandler;
   (*confEnterHandlers)["modularAppStructure"] = &defaultConfEntryHandler;
   (*confExitHandlers )["modularAppStructure"] = &defaultConfExitHandler;
-  (*confEnterHandlers)["hierGraphTS"]            = &hierGraphTraceStream::enterTraceStream;
-  (*confExitHandlers )["hierGraphTS"]            = &defaultConfExitHandler;
-  (*confEnterHandlers)["hierGraph"]              = &modularApp::enterHierGraph;
-  (*confExitHandlers )["hierGraph"]              = &modularApp::exitHierGraph;
-  (*confEnterHandlers)["hierGraphMarker"]        = &defaultConfEntryHandler;
-  (*confExitHandlers )["hierGraphMarker"]        = &defaultConfExitHandler;
-  (*confEnterHandlers)["hierGraphCtrl"]          = &defaultConfEntryHandler;
-  (*confExitHandlers )["hierGraphCtrl"]          = &defaultConfExitHandler;
-  (*confEnterHandlers)["hierGraphEdge"]          = &modularApp::addEdge;
-  (*confExitHandlers )["hierGraphEdge"]          = &defaultConfExitHandler;
-  (*confEnterHandlers)["compHierGraphTS"]        = &compHierGraphTraceStream::enterTraceStream;
-  (*confExitHandlers )["compHierGraphTS"]        = &defaultConfExitHandler;
-  (*confEnterHandlers)["processedHierGraphTS"]   = &processedHierGraphTraceStream::enterTraceStream;
-  (*confExitHandlers )["processedHierGraphTS"]   = &defaultConfExitHandler;*/
-  (*enterHandlers)["hierGraph"]          = &hierGraph::configure;
-  (*exitHandlers )["hierGraph"]          = &hierGraphConfHandlerInstantiator::defaultExitFunc;
-  (*enterHandlers)["compHierGraph"]      = &compHierGraph::configure;
-  (*exitHandlers )["compHierGraph"]      = &hierGraphConfHandlerInstantiator::defaultExitFunc;
+  (*confEnterHandlers)["moduleTS"]            = &moduleTraceStream::enterTraceStream;
+  (*confExitHandlers )["moduleTS"]            = &defaultConfExitHandler;
+  (*confEnterHandlers)["module"]              = &modularApp::enterModule;
+  (*confExitHandlers )["module"]              = &modularApp::exitModule;
+  (*confEnterHandlers)["moduleMarker"]        = &defaultConfEntryHandler;
+  (*confExitHandlers )["moduleMarker"]        = &defaultConfExitHandler;
+  (*confEnterHandlers)["moduleCtrl"]          = &defaultConfEntryHandler;
+  (*confExitHandlers )["moduleCtrl"]          = &defaultConfExitHandler;
+  (*confEnterHandlers)["moduleEdge"]          = &modularApp::addEdge;
+  (*confExitHandlers )["moduleEdge"]          = &defaultConfExitHandler;
+  (*confEnterHandlers)["compModuleTS"]        = &compModuleTraceStream::enterTraceStream;
+  (*confExitHandlers )["compModuleTS"]        = &defaultConfExitHandler;
+  (*confEnterHandlers)["processedModuleTS"]   = &processedModuleTraceStream::enterTraceStream;
+  (*confExitHandlers )["processedModuleTS"]   = &defaultConfExitHandler;*/
+  (*enterHandlers)["module"]          = &module::configure;
+  (*exitHandlers )["module"]          = &moduleConfHandlerInstantiator::defaultExitFunc;
+  (*enterHandlers)["compModule"]      = &compModule::configure;
+  (*exitHandlers )["compModule"]      = &moduleConfHandlerInstantiator::defaultExitFunc;
 }
-hierGraphConfHandlerInstantiator hierGraphConfHandlerInstance;
+moduleConfHandlerInstantiator moduleConfHandlerInstance;
 
 
 /********************
@@ -95,17 +95,17 @@ std::string instance::str() const {
  ***** group *****
  *****************/
 
-// Creates a group given the current stack of hierGraphs and a new hierGraph instance
-group::group(const std::list<hierGraph*>& mStack, const instance& inst) {
-  for(std::list<hierGraph*>::const_iterator m=mStack.begin(); m!=mStack.end(); m++)
+// Creates a group given the current stack of modules and a new module instance
+group::group(const std::list<module*>& mStack, const instance& inst) {
+  for(std::list<module*>::const_iterator m=mStack.begin(); m!=mStack.end(); m++)
     stack.push_back((*m)->g.getInst());
   stack.push_back(inst);
 }
 
 
-void group::init(const std::list<hierGraph*>& mStack, const instance& inst) {
+void group::init(const std::list<module*>& mStack, const instance& inst) {
   stack.clear();
-  for(std::list<hierGraph*>::const_iterator m=mStack.begin(); m!=mStack.end(); m++)
+  for(std::list<module*>::const_iterator m=mStack.begin(); m!=mStack.end(); m++)
     stack.push_back((*m)->g.getInst());
   stack.push_back(inst);
 }
@@ -159,7 +159,7 @@ std::string group::str() const {
 
 // Returns a human-readable string that describes this context
 std::string port::str() const {
-  return txt() << "[port: g="<<g.str()<<", ctxt="<<ctxt->str() << " : "<<(type==sight::common::hierGraph::input?"In":"Out")<<" : "<<index<<"]";
+  return txt() << "[port: g="<<g.str()<<", ctxt="<<ctxt->str() << " : "<<(type==sight::common::module::input?"In":"Out")<<" : "<<index<<"]";
 }
   
 /************************
@@ -265,8 +265,8 @@ modularApp* modularApp::activeMA = NULL;
 // The maximum ID ever assigned to any modular application
 int modularApp::maxModularAppID=0;
 
-// The maximum ID ever assigned to any hierGraph group
-int modularApp::maxHierGraphGroupID=0;
+// The maximum ID ever assigned to any module group
+int modularApp::maxModuleGroupID=0;
 
 // Records all the known contexts, mapping each context to its unique ID
 std::map<group, int> modularApp::group2ID;
@@ -274,29 +274,29 @@ std::map<group, int> modularApp::group2ID;
 // Maps each context to the number of times it was ever observed
 std::map<group, int> modularApp::group2Count;
 
-// The trace that records performance observations of different hierGraphs and contexts
-std::map<group, traceStream*> modularApp::hierGraphTrace;
-std::map<group, int>          modularApp::hierGraphTraceID;
+// The trace that records performance observations of different modules and contexts
+std::map<group, traceStream*> modularApp::moduleTrace;
+std::map<group, int>          modularApp::moduleTraceID;
 
-// Tree that records the hierarchy of hierGraph instances that were observed during the execution of this
-// modular application. Each path from the tree's root to a leaf is a stack of hierGraph instances that
-// corresponds to some observed hierGraph group.
+// Tree that records the hierarchy of module instances that were observed during the execution of this
+// modular application. Each path from the tree's root to a leaf is a stack of module instances that
+// corresponds to some observed module group.
 instanceTree modularApp::tree;
 
-// Maps each hierGraph to the list of the names of its input and output context attributes. 
-// This enables us to verify that all the hierGraphs are used consistently.
-std::map<group, std::vector<std::list<std::string> > > modularApp::hierGraphInCtxtNames;
-std::map<group, std::vector<std::list<std::string> > > modularApp::hierGraphOutCtxtNames;
+// Maps each module to the list of the names of its input and output context attributes. 
+// This enables us to verify that all the modules are used consistently.
+std::map<group, std::vector<std::list<std::string> > > modularApp::moduleInCtxtNames;
+std::map<group, std::vector<std::list<std::string> > > modularApp::moduleOutCtxtNames;
 
-// The properties object that describes each hierGraph group. This object is created by calling each group's
-// setProperties() method and each call to this method for the same hierGraph group must return the same properties.
-std::map<group, properties*> modularApp::hierGraphProps;
+// The properties object that describes each module group. This object is created by calling each group's
+// setProperties() method and each call to this method for the same module group must return the same properties.
+std::map<group, properties*> modularApp::moduleProps;
 
 // Records all the edges ever observed, mapping them to the number of times each edge was observed
 std::map<std::pair<port, port>, int> modularApp::edges;
 
-// Stack of the hierGraph graphs that are currently in scope
-std::list<hierGraph*> modularApp::mStack;
+// Stack of the module graphs that are currently in scope
+std::list<module*> modularApp::mStack;
 
 modularApp::modularApp(const std::string& appName,                                                   properties* props) :
     block(appName, setProperties(appName, NULL, props)), appName(appName)
@@ -337,39 +337,39 @@ void modularApp::init() {
   dbg.enter(propsMABody);
 }
 
-// Stack used while we're emitting the nesting hierarchy of hierGraph groups to keep each hierGraph group's 
+// Stack used while we're emitting the nesting hierarchy of module groups to keep each module group's 
 // sightObj between the time the group is entered and exited
-list<sightObj*> modularApp::hierGraphEmitStack;
+list<sightObj*> modularApp::moduleEmitStack;
 
-// Emits the entry tag for a hierGraph group during the execution of ~modularApp()
-void modularApp::enterHierGraphGroup(const group& g) {
+// Emits the entry tag for a module group during the execution of ~modularApp()
+void modularApp::enterModuleGroup(const group& g) {
   properties* props = new properties();
   
   /*map<string, string> pMap;
-  pMap["hierGraphID"]   = txt()<<modularApp::group2ID[g];
+  pMap["moduleID"]   = txt()<<modularApp::group2ID[g];
   pMap["name"]       = g.name();
   pMap["numInputs"]  = txt()<<g.numInputs();
   pMap["numOutputs"] = txt()<<g.numOutputs();
   assert(modularApp::group2Count.find(g) != modularApp::group2Count.end());
   pMap["count"] = txt()<<modularApp::group2Count[g];
-  props->add("hierGraph", pMap);*/
+  props->add("module", pMap);*/
   
-  // Add the count property to the map of "hierGraph".
-  /*properties::iterator hierGraphIter = hierGraphProps[g]->find("hierGraph");
-  properties::set(hierGraphIter, "count", txt()<<modularApp::group2Count[g]);*/
-  hierGraphProps[g]->set("hierGraph", "count", txt()<<modularApp::group2Count[g]);
-  hierGraphEmitStack.push_back(new sightObj(hierGraphProps[g]));
+  // Add the count property to the map of "module".
+  /*properties::iterator moduleIter = moduleProps[g]->find("module");
+  properties::set(moduleIter, "count", txt()<<modularApp::group2Count[g]);*/
+  moduleProps[g]->set("module", "count", txt()<<modularApp::group2Count[g]);
+  moduleEmitStack.push_back(new sightObj(moduleProps[g]));
 }
 
-// Emits the exit tag for a hierGraph group during the execution of ~modularApp()
-void modularApp::exitHierGraphGroup(const group& g) {
-  assert(hierGraphEmitStack.size()>0);
-  delete hierGraphEmitStack.back();
-  hierGraphEmitStack.pop_back();
+// Emits the exit tag for a module group during the execution of ~modularApp()
+void modularApp::exitModuleGroup(const group& g) {
+  assert(moduleEmitStack.size()>0);
+  delete moduleEmitStack.back();
+  moduleEmitStack.pop_back();
   
-  // Erase this group from hierGraphProps to clearly keep track of the properties objects that are currently allocated
+  // Erase this group from moduleProps to clearly keep track of the properties objects that are currently allocated
   // (the sightObj destructor will deallocate them)
-  hierGraphProps.erase(g);
+  moduleProps.erase(g);
 }
 
 // Directly calls the destructor of this object. This is necessary because when an application crashes
@@ -389,7 +389,7 @@ modularApp::~modularApp() {
   assert(activeMA);
   activeMA = NULL;
   
-  // All the hierGraphs that were entered inside this modularApp instance must have already been exited
+  // All the modules that were entered inside this modularApp instance must have already been exited
   assert(mStack.size()==0);
   
   if(props->active) {
@@ -410,20 +410,20 @@ modularApp::~modularApp() {
     propsMAStructure.add("modularAppStructure", pMapMAStructure);
     dbg.enter(propsMAStructure);
     
-    // Delete the hierGraphTraces associated with each hierGraph group, forcing them to emit their respective end tags
-    for(map<group, traceStream*>::iterator m=hierGraphTrace.begin(); m!=hierGraphTrace.end(); m++) {
+    // Delete the moduleTraces associated with each module group, forcing them to emit their respective end tags
+    for(map<group, traceStream*>::iterator m=moduleTrace.begin(); m!=moduleTrace.end(); m++) {
       delete m->second;
     }
     
     // -------------------------------------------------------
-    // Emit the tags of all hierGraphs and the edges between them
+    // Emit the tags of all modules and the edges between them
     // -------------------------------------------------------
     
-    // Emit the hierarchy of hierGraph groups observed during this modularApp's execution
-    tree.iterate(enterHierGraphGroup, exitHierGraphGroup);
+    // Emit the hierarchy of module groups observed during this modularApp's execution
+    tree.iterate(enterModuleGroup, exitModuleGroup);
     
-    // Emit all the edges between hierGraph groups collected while this modularApp was live.
-    // Note that this guarantees that edges are guaranteed to be placed after or inside the hierGraphs they connect.
+    // Emit all the edges between module groups collected while this modularApp was live.
+    // Note that this guarantees that edges are guaranteed to be placed after or inside the modules they connect.
     for(std::map<pair<port, port>, int>::iterator e=edges.begin(); e!=edges.end(); e++) {
       // If either group is NULL, don't generate an edge. Users can specify a NULL group if they don't want to bother
       // documenting where a given input came from
@@ -438,14 +438,14 @@ modularApp::~modularApp() {
       pMap["toT"]     = txt()<<e->first.second.type;
       pMap["toP"]     = txt()<<e->first.second.index;
       
-      // Number of time we've entere the edge's source hierGraph group
+      // Number of time we've entere the edge's source module group
       pMap["fromCount"] = txt()<<group2Count[e->first.first.g];
       
-      // Fraction of times that we've entered the edge's source hierGraph group and took this outgoing edge
+      // Fraction of times that we've entered the edge's source module group and took this outgoing edge
       assert(group2Count.find(e->first.first.g) != group2Count.end());
       pMap["prob"]    = txt()<<(e->second / group2Count[e->first.first.g]);
       
-      edgeP.add("hierGraphEdge", pMap);
+      edgeP.add("moduleEdge", pMap);
       dbg.tag(edgeP);
     }
     
@@ -460,30 +460,30 @@ modularApp::~modularApp() {
     for(namedMeasures::iterator m=meas.begin(); m!=meas.end(); m++)
       delete m->second;
     
-    // We do not deallocate all the hierGraph group properties because these are deallocated in the destructors
-    // of the sightObjs created in modularApp::enterHierGraphGroup(). Further, hierGraphProps should be completely 
-    // emptied by all our calls to modularApp::exitHierGraphGroup().
-    assert(hierGraphProps.size()==0);
-    /*for(std::map<group, properties*>::iterator p=hierGraphProps.begin(); p!=hierGraphProps.end(); p++)
+    // We do not deallocate all the module group properties because these are deallocated in the destructors
+    // of the sightObjs created in modularApp::enterModuleGroup(). Further, moduleProps should be completely 
+    // emptied by all our calls to modularApp::exitModuleGroup().
+    assert(moduleProps.size()==0);
+    /*for(std::map<group, properties*>::iterator p=moduleProps.begin(); p!=moduleProps.end(); p++)
       delete p->second;*/
     
     // Clear out all of the static datastructures of modularApp
     group2ID.clear();
     group2Count.clear();
-    hierGraphTrace.clear();
+    moduleTrace.clear();
     tree.clear();
-    hierGraphInCtxtNames.clear();
-    hierGraphOutCtxtNames.clear();
+    moduleInCtxtNames.clear();
+    moduleOutCtxtNames.clear();
     edges.clear();
     meas.clear();
   } else {
     // If this modularApp instance is inactive, all the static datastructures must be empty
     assert(group2ID.size()==0);
     assert(group2Count.size()==0);
-    assert(hierGraphTrace.size()==0);
-    assert(hierGraphInCtxtNames.size()==0);
-    assert(hierGraphOutCtxtNames.size()==0);
-    assert(hierGraphProps.size()==0);
+    assert(moduleTrace.size()==0);
+    assert(moduleInCtxtNames.size()==0);
+    assert(moduleOutCtxtNames.size()==0);
+    assert(moduleProps.size()==0);
     assert(edges.size()==0);
     assert(meas.size()==0);
   }
@@ -514,12 +514,12 @@ properties* modularApp::setProperties(const std::string& appName, const attrOp* 
   return props;
 }
 
-// Returns the hierGraph ID of the given hierGraph group, generating a fresh one if one has not yet been assigned
-int modularApp::genHierGraphID(const group& g) {
-  // If this hierGraph group doesn't yet have an ID, set one
+// Returns the module ID of the given module group, generating a fresh one if one has not yet been assigned
+int modularApp::genModuleID(const group& g) {
+  // If this module group doesn't yet have an ID, set one
   if(group2ID.find(g) == group2ID.end()) {
-    group2ID[g] = maxHierGraphGroupID;
-    maxHierGraphGroupID++;
+    group2ID[g] = maxModuleGroupID;
+    maxModuleGroupID++;
     group2Count[g] = 1;
     
     // Add this group to the instance tree
@@ -537,61 +537,61 @@ bool modularApp::isInstanceActive() {
   return activeMA!=NULL && activeMA->isActive();
 }
 
-// Assigns a unique ID to the given hierGraph group, as needed and returns this ID
-int modularApp::addHierGraphGroup(const group& g) {
+// Assigns a unique ID to the given module group, as needed and returns this ID
+int modularApp::addModuleGroup(const group& g) {
   
   return group2ID[g];
 }
 
-// Registers the names of the contexts of the given hierGraph's inputs or outputs and if this is not the first time this hierGraph is called, 
+// Registers the names of the contexts of the given module's inputs or outputs and if this is not the first time this module is called, 
 // verifies that these context names are consistent across different calls.
-// g - the hierGraph group for which we're registering inputs/outputs
+// g - the module group for which we're registering inputs/outputs
 // inouts - the vector of input or output ports
 // toT - identifies whether inouts is the vector of inputs or outputs
-void modularApp::registerInOutContexts(const group& g, const std::vector<port>& inouts, sight::common::hierGraph::ioT io)
+void modularApp::registerInOutContexts(const group& g, const std::vector<port>& inouts, sight::common::module::ioT io)
 {
   // Exactly one modularAppInstance must be active
   assert(activeMA);
   assert(activeMA->isActive());
   
-  // Refers to either hierGraphInCtxtNames or hierGraphOutCtxtNames, depending on the value of io;
-  map<group, vector<list<string> > >& hierGraphCtxtNames = (io==sight::common::hierGraph::input? hierGraphInCtxtNames: hierGraphOutCtxtNames);
+  // Refers to either moduleInCtxtNames or moduleOutCtxtNames, depending on the value of io;
+  map<group, vector<list<string> > >& moduleCtxtNames = (io==sight::common::module::input? moduleInCtxtNames: moduleOutCtxtNames);
   
-  // If hierGraphInCtxtNames/hierGraphOutCtxtNames has not yet been initialized, set it to contain the names of the context attributes in inputs
-  if(hierGraphCtxtNames.find(g) == hierGraphCtxtNames.end()) {
+  // If moduleInCtxtNames/moduleOutCtxtNames has not yet been initialized, set it to contain the names of the context attributes in inputs
+  if(moduleCtxtNames.find(g) == moduleCtxtNames.end()) {
     vector<list<string> > ctxtNames;
     for(int i=0; i<inouts.size(); i++) {
       ctxtNames.push_back(list<string>());
       for(std::map<std::string, attrValue>::const_iterator c=inouts[i].ctxt->configuration.begin(); c!=inouts[i].ctxt->configuration.end(); c++)
         ctxtNames[i].push_back(c->first);
     }
-    hierGraphCtxtNames[g] = ctxtNames;
-  // If hierGraphInCtxtNames has already been initialized, verify inputs against it
+    moduleCtxtNames[g] = ctxtNames;
+  // If moduleInCtxtNames has already been initialized, verify inputs against it
   } else {
-    if(inouts.size() != hierGraphCtxtNames[g].size()) { cerr << "ERROR: Inconsistent "<<(io==sight::common::hierGraph::input?"inputs":"outputs")<<" for hierGraph "<<g.name()<<"! Prior instances has "<<hierGraphCtxtNames[g].size()<<" "<<(io==sight::common::hierGraph::input?"inputs":"outputs")<<" while this instance has "<<inouts.size()<<" "<<(io==sight::common::hierGraph::input?"inputs":"outputs")<<"!"<<endl; assert(0); }
+    if(inouts.size() != moduleCtxtNames[g].size()) { cerr << "ERROR: Inconsistent "<<(io==sight::common::module::input?"inputs":"outputs")<<" for module "<<g.name()<<"! Prior instances has "<<moduleCtxtNames[g].size()<<" "<<(io==sight::common::module::input?"inputs":"outputs")<<" while this instance has "<<inouts.size()<<" "<<(io==sight::common::module::input?"inputs":"outputs")<<"!"<<endl; assert(0); }
     for(int i=0; i<inouts.size(); i++) {
-      if(inouts[i].ctxt->configuration.size() != hierGraphCtxtNames[g][i].size()) { 
-         cerr << "ERROR: Inconsistent number of context attributes for "<<(io==sight::common::hierGraph::input?"input":"output")<<" "<<i<<" of hierGraph "<<g.name()<<"!"<<endl;
-         cerr << "Prior instances has "<<hierGraphCtxtNames[g][i].size()<<" "<<(io==sight::common::hierGraph::input?"inputs":"outputs")<<":"<<endl;
-         for(list<string>::const_iterator c=hierGraphCtxtNames[g][i].begin(); c!=hierGraphCtxtNames[g][i].end(); c++)
+      if(inouts[i].ctxt->configuration.size() != moduleCtxtNames[g][i].size()) { 
+         cerr << "ERROR: Inconsistent number of context attributes for "<<(io==sight::common::module::input?"input":"output")<<" "<<i<<" of module "<<g.name()<<"!"<<endl;
+         cerr << "Prior instances has "<<moduleCtxtNames[g][i].size()<<" "<<(io==sight::common::module::input?"inputs":"outputs")<<":"<<endl;
+         for(list<string>::const_iterator c=moduleCtxtNames[g][i].begin(); c!=moduleCtxtNames[g][i].end(); c++)
            cerr << "    "<<*c<<endl; 
-         cerr << "This instance has "<<inouts[i].ctxt->configuration.size()<<" "<<(io==sight::common::hierGraph::input?"inputs":"outputs")<<"!"<<endl; 
+         cerr << "This instance has "<<inouts[i].ctxt->configuration.size()<<" "<<(io==sight::common::module::input?"inputs":"outputs")<<"!"<<endl; 
          for(map<std::string, attrValue>::const_iterator c=inouts[i].ctxt->configuration.begin(); c!=inouts[i].ctxt->configuration.end(); c++)
            cerr << "    "<<c->first<<endl; 
          assert(0);
       }
       std::map<std::string, attrValue>::const_iterator c=inouts[i].ctxt->configuration.begin();
-      list<std::string>::const_iterator m=hierGraphCtxtNames[g][i].begin();
+      list<std::string>::const_iterator m=moduleCtxtNames[g][i].begin();
       int idx=0;
       for(; c!=inouts[i].ctxt->configuration.end(); c++, m++, idx++) {
-        if(c->first != *m) { cerr << "ERROR: Inconsistent names for context attribute "<<idx<<" of "<<(io==sight::common::hierGraph::input?"input":"output")<<" "<<i<<" of hierGraph "<<g.name()<<"! Prior instances has "<<*m<<" while this instance has "<<c->first<<"!"<<endl; assert(0); }
+        if(c->first != *m) { cerr << "ERROR: Inconsistent names for context attribute "<<idx<<" of "<<(io==sight::common::module::input?"input":"output")<<" "<<i<<" of module "<<g.name()<<"! Prior instances has "<<*m<<" while this instance has "<<c->first<<"!"<<endl; assert(0); }
       }
     }
   }
 }
 
 
-// Add an edge between one hierGraph's output port and another hierGraph's input port
+// Add an edge between one module's output port and another module's input port
 void modularApp::addEdge(port from, port to) {
   // Exactly one modularAppInstance must be active
   assert(activeMA);
@@ -607,42 +607,42 @@ void modularApp::addEdge(port from, port to) {
   else
     edges[edge]++;
   
-  /*cout << "    hierGraph::addEdge()"<<endl;
+  /*cout << "    module::addEdge()"<<endl;
   cout << "      edge="<<from.str()<<" => "<<to.str()<<endl;
   for(map<pair<port, port>, int>::iterator e=edges.begin(); e!=edges.end(); e++) {
     cout << "        "<<e->first.first.str()<<" => "<<e->first.second.str()<<" : "<<e->second<<endl;
   }*/
 }
 
-// Add an edge between one hierGraph's output port and another hierGraph's input port
-void modularApp::addEdge(group fromG, sight::common::hierGraph::ioT fromT, int fromP, 
-                         group toG,   sight::common::hierGraph::ioT toT,   int toP) {
+// Add an edge between one module's output port and another module's input port
+void modularApp::addEdge(group fromG, sight::common::module::ioT fromT, int fromP, 
+                         group toG,   sight::common::module::ioT toT,   int toP) {
   addEdge(port(fromG, context(), fromT, fromP), port(toG, context(), toT, toP));
 }
 
-// Returns the current hierGraph on the stack and NULL if the stack is empty
-hierGraph* modularApp::getCurHierGraph() {
+// Returns the current module on the stack and NULL if the stack is empty
+module* modularApp::getCurModule() {
   if(mStack.size()>0) return mStack.back();
   else                return NULL;
 }
 
-// Adds the given hierGraph object to the hierGraphs stack
-void modularApp::enterHierGraph(hierGraph* m, int hierGraphID, properties* props) {
+// Adds the given module object to the modules stack
+void modularApp::enterModule(module* m, int moduleID, properties* props) {
   // Exactly one modularAppInstance must be active
   assert(isInstanceActive());
   
   mStack.push_back(m);
   
-  // If we have not yet recorded the properties of this hierGraph group, do so now
-  if(hierGraphProps.find(m->g) == hierGraphProps.end())
-    hierGraphProps[m->g] = props;
-  // Otherwise, make sure that every hierGraph within the same group has the same properties
+  // If we have not yet recorded the properties of this module group, do so now
+  if(moduleProps.find(m->g) == moduleProps.end())
+    moduleProps[m->g] = props;
+  // Otherwise, make sure that every module within the same group has the same properties
   else {
     /*cout << "props="<<props->str()<<endl;
-    cout << "hierGraphProps["<<m->g.str()<<"]="<<hierGraphProps[m->g]->str()<<endl;*/
-    //assert(*(hierGraphProps[m->g]) == *props);
-    if(*(hierGraphProps[m->g]) != *props) {
-      cerr << "ERROR: hierGraph "<<m->g.str()<<" observed multiple times with different properties (count of inputs and outputs)!\n";
+    cout << "moduleProps["<<m->g.str()<<"]="<<moduleProps[m->g]->str()<<endl;*/
+    //assert(*(moduleProps[m->g]) == *props);
+    if(*(moduleProps[m->g]) != *props) {
+      cerr << "ERROR: module "<<m->g.str()<<" observed multiple times with different properties (count of inputs and outputs)!\n";
       assert(0);
     }
     // Delete props since it is no longer useful
@@ -650,175 +650,175 @@ void modularApp::enterHierGraph(hierGraph* m, int hierGraphID, properties* props
   }
 }
 
-// Returns whether a traceStream has been registered for the given hierGraph group
+// Returns whether a traceStream has been registered for the given module group
 bool modularApp::isTraceStreamRegistered(const group& g) {
-  return hierGraphTrace.find(g) != hierGraphTrace.end();
+  return moduleTrace.find(g) != moduleTrace.end();
 }
 
-// Registers the given traceStream for the given hierGraph group
+// Registers the given traceStream for the given module group
 void modularApp::registerTraceStream(const group& g, traceStream* ts) {
-  // No other traceStream may be currently registered for this hierGraph group;
-  assert(hierGraphTrace.find(g) == hierGraphTrace.end());
-  hierGraphTrace[g] = ts;
+  // No other traceStream may be currently registered for this module group;
+  assert(moduleTrace.find(g) == moduleTrace.end());
+  moduleTrace[g] = ts;
 }
 
-// Registers the ID of the traceStream that will be used for the given hierGraph group
+// Registers the ID of the traceStream that will be used for the given module group
 void modularApp::registerTraceStreamID(const group& g, int traceID) {
-  // No other traceStream ID may be currently registered for this hierGraph group;
-  assert(hierGraphTraceID.find(g) == hierGraphTraceID.end());
-  hierGraphTraceID[g] = traceID;
+  // No other traceStream ID may be currently registered for this module group;
+  assert(moduleTraceID.find(g) == moduleTraceID.end());
+  moduleTraceID[g] = traceID;
 }
 
-// Returns the currently registered the ID of the traceStream that will be used for the given hierGraph group
+// Returns the currently registered the ID of the traceStream that will be used for the given module group
 int modularApp::getTraceStreamID(const group& g) {
-  // A traceID must be registered with this hierGraph group
-  if(hierGraphTraceID.find(g) == hierGraphTraceID.end()) { cerr << "ERROR: No traceStream registered for hierGraph \""<<g.str()<<"\"!"<<endl; }
-  assert(hierGraphTraceID.find(g) != hierGraphTraceID.end());
-  return hierGraphTraceID[g];
+  // A traceID must be registered with this module group
+  if(moduleTraceID.find(g) == moduleTraceID.end()) { cerr << "ERROR: No traceStream registered for module \""<<g.str()<<"\"!"<<endl; }
+  assert(moduleTraceID.find(g) != moduleTraceID.end());
+  return moduleTraceID[g];
 }
 
-// Removes the given hierGraph object from the hierGraphs stack
-void modularApp::exitHierGraph(hierGraph* m) {
+// Removes the given module object from the modules stack
+void modularApp::exitModule(module* m) {
   // Exactly one modularAppInstance must be active
   assert(isInstanceActive());
 
-  // Pop this hierGraph from the mStack
+  // Pop this module from the mStack
   assert(mStack.size()>0);
   assert(mStack.back()==m);
   mStack.pop_back();
 }
 
 /******************
- ***** hierGraph *****
+ ***** module *****
  ******************/
 
-hierGraph::hierGraph(const instance& inst,                                                     properties* props) : 
+module::module(const instance& inst,                                                     properties* props) : 
   sightObj(setProperties(inst, props, NULL, this)), g(modularApp::mStack, inst), externalOutputs(NULL)
 { init(inputs(), props); }
 
-hierGraph::hierGraph(const instance& inst, const port& in,                                     properties* props): 
+module::module(const instance& inst, const port& in,                                     properties* props): 
   sightObj(setProperties(inst, props, NULL, this)), g(modularApp::mStack, inst), externalOutputs(NULL)
 { init(inputs(in), props); }
 
-hierGraph::hierGraph(const instance& inst, const std::vector<port>& in,                        properties* props) :
+module::module(const instance& inst, const std::vector<port>& in,                        properties* props) :
   sightObj(setProperties(inst, props, NULL, this)), g(modularApp::mStack, inst), externalOutputs(NULL)
 { init(in, props); }
 
-hierGraph::hierGraph(const instance& inst,                              const attrOp& onoffOp, properties* props) : 
+module::module(const instance& inst,                              const attrOp& onoffOp, properties* props) : 
   sightObj(setProperties(inst, props, &onoffOp, this)), g(modularApp::mStack, inst), externalOutputs(NULL)
 { init(inputs(), props); }
 
-hierGraph::hierGraph(const instance& inst, const port& in,              const attrOp& onoffOp, properties* props): 
+module::module(const instance& inst, const port& in,              const attrOp& onoffOp, properties* props): 
   sightObj(setProperties(inst, props, &onoffOp, this)), g(modularApp::mStack, inst), externalOutputs(NULL)
 { init(inputs(in), props); }
 
-hierGraph::hierGraph(const instance& inst, const std::vector<port>& in, const attrOp& onoffOp, properties* props) :
+module::module(const instance& inst, const std::vector<port>& in, const attrOp& onoffOp, properties* props) :
   sightObj(setProperties(inst, props, &onoffOp, this)), g(modularApp::mStack, inst), externalOutputs(NULL)
 { init(in, props); }
 
 
-hierGraph::hierGraph(const instance& inst,                              std::vector<port>& externalOutputs,                        properties* props) : 
+module::module(const instance& inst,                              std::vector<port>& externalOutputs,                        properties* props) : 
   sightObj(setProperties(inst, props, NULL, this)), g(modularApp::mStack, inst), externalOutputs(&externalOutputs)
 { init(inputs(), props); }
 
-hierGraph::hierGraph(const instance& inst, const port& in,              std::vector<port>& externalOutputs,                        properties* props): 
+module::module(const instance& inst, const port& in,              std::vector<port>& externalOutputs,                        properties* props): 
   sightObj(setProperties(inst, props, NULL, this)), g(modularApp::mStack, inst), externalOutputs(&externalOutputs)
 { init(inputs(in), props); }
 
-hierGraph::hierGraph(const instance& inst, const std::vector<port>& in, std::vector<port>& externalOutputs,                        properties* props) :
+module::module(const instance& inst, const std::vector<port>& in, std::vector<port>& externalOutputs,                        properties* props) :
   sightObj(setProperties(inst, props, NULL, this)), g(modularApp::mStack, inst), externalOutputs(&externalOutputs)
 { init(in, props); }
 
-hierGraph::hierGraph(const instance& inst,                              std::vector<port>& externalOutputs, const attrOp& onoffOp, properties* props) : 
+module::module(const instance& inst,                              std::vector<port>& externalOutputs, const attrOp& onoffOp, properties* props) : 
   sightObj(setProperties(inst, props, &onoffOp, this)), g(modularApp::mStack, inst), externalOutputs(&externalOutputs)
 { init(inputs(), props); }
 
-hierGraph::hierGraph(const instance& inst, const port& in,              std::vector<port>& externalOutputs, const attrOp& onoffOp, properties* props): 
+module::module(const instance& inst, const port& in,              std::vector<port>& externalOutputs, const attrOp& onoffOp, properties* props): 
   sightObj(setProperties(inst, props, &onoffOp, this)), g(modularApp::mStack, inst), externalOutputs(&externalOutputs)
 { init(inputs(in), props); }
 
-hierGraph::hierGraph(const instance& inst, const std::vector<port>& in, std::vector<port>& externalOutputs, const attrOp& onoffOp, properties* props) :
+module::module(const instance& inst, const std::vector<port>& in, std::vector<port>& externalOutputs, const attrOp& onoffOp, properties* props) :
   sightObj(setProperties(inst, props, &onoffOp, this)), g(modularApp::mStack, inst), externalOutputs(&externalOutputs)
 { init(in, props); }
 
 
 
-hierGraph::hierGraph(const instance& inst,                                                     const namedMeasures& meas, properties* props) : 
+module::module(const instance& inst,                                                     const namedMeasures& meas, properties* props) : 
   sightObj(setProperties(inst, props, NULL, this)), g(modularApp::mStack, inst), externalOutputs(NULL), meas(meas)
 { init(inputs(), props); }
 
-hierGraph::hierGraph(const instance& inst, const port& in,                                     const namedMeasures& meas, properties* props): 
+module::module(const instance& inst, const port& in,                                     const namedMeasures& meas, properties* props): 
   sightObj(setProperties(inst, props, NULL, this)), g(modularApp::mStack, inst), externalOutputs(NULL), meas(meas)
 { init(inputs(in), props); }
 
-hierGraph::hierGraph(const instance& inst, const std::vector<port>& in,                        const namedMeasures& meas, properties* props) :
+module::module(const instance& inst, const std::vector<port>& in,                        const namedMeasures& meas, properties* props) :
   sightObj(setProperties(inst, props, NULL, this)), g(modularApp::mStack, inst), externalOutputs(NULL), meas(meas)
 { init(in, props); }
 
-hierGraph::hierGraph(const instance& inst,                              const attrOp& onoffOp, const namedMeasures& meas, properties* props) : 
+module::module(const instance& inst,                              const attrOp& onoffOp, const namedMeasures& meas, properties* props) : 
   sightObj(setProperties(inst, props, &onoffOp, this)), g(modularApp::mStack, inst), externalOutputs(NULL), meas(meas)
 { init(inputs(), props); }
 
-hierGraph::hierGraph(const instance& inst, const port& in,              const attrOp& onoffOp, const namedMeasures& meas, properties* props): 
+module::module(const instance& inst, const port& in,              const attrOp& onoffOp, const namedMeasures& meas, properties* props): 
   sightObj(setProperties(inst, props, &onoffOp, this)), g(modularApp::mStack, inst), externalOutputs(NULL), meas(meas)
 { init(inputs(in), props); }
 
-hierGraph::hierGraph(const instance& inst, const std::vector<port>& in, const attrOp& onoffOp, const namedMeasures& meas, properties* props) :
+module::module(const instance& inst, const std::vector<port>& in, const attrOp& onoffOp, const namedMeasures& meas, properties* props) :
   sightObj(setProperties(inst, props, &onoffOp, this)), g(modularApp::mStack, inst), externalOutputs(NULL), meas(meas)
 { init(in, props); }
 
 
-hierGraph::hierGraph(const instance& inst,                              std::vector<port>& externalOutputs,                        const namedMeasures& meas, properties* props) : 
+module::module(const instance& inst,                              std::vector<port>& externalOutputs,                        const namedMeasures& meas, properties* props) : 
   sightObj(setProperties(inst, props, NULL, this)), g(modularApp::mStack, inst), externalOutputs(&externalOutputs), meas(meas)
 { init(inputs(), props); }
 
-hierGraph::hierGraph(const instance& inst, const port& in,              std::vector<port>& externalOutputs,                        const namedMeasures& meas, properties* props): 
+module::module(const instance& inst, const port& in,              std::vector<port>& externalOutputs,                        const namedMeasures& meas, properties* props): 
   sightObj(setProperties(inst, props, NULL, this)), g(modularApp::mStack, inst), externalOutputs(&externalOutputs), meas(meas)
 { init(inputs(in), props); }
 
-hierGraph::hierGraph(const instance& inst, const std::vector<port>& in, std::vector<port>& externalOutputs,                        const namedMeasures& meas, properties* props) :
+module::module(const instance& inst, const std::vector<port>& in, std::vector<port>& externalOutputs,                        const namedMeasures& meas, properties* props) :
   sightObj(setProperties(inst, props, NULL, this)), g(modularApp::mStack, inst), externalOutputs(&externalOutputs), meas(meas)
 { init(in, props); }
 
-hierGraph::hierGraph(const instance& inst,                              std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, properties* props) : 
+module::module(const instance& inst,                              std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, properties* props) : 
   sightObj(setProperties(inst, props, &onoffOp, this)), g(modularApp::mStack, inst), externalOutputs(&externalOutputs), meas(meas)
 { init(inputs(), props); }
 
-hierGraph::hierGraph(const instance& inst, const port& in,              std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, properties* props): 
+module::module(const instance& inst, const port& in,              std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, properties* props): 
   sightObj(setProperties(inst, props, &onoffOp, this)), g(modularApp::mStack, inst), externalOutputs(&externalOutputs), meas(meas)
 { init(inputs(in), props); }
 
-hierGraph::hierGraph(const instance& inst, const std::vector<port>& in, std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, properties* props) :
+module::module(const instance& inst, const std::vector<port>& in, std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, properties* props) :
   sightObj(setProperties(inst, props, &onoffOp, this)), g(modularApp::mStack, inst), externalOutputs(&externalOutputs), meas(meas)
 { init(in, props); }
 
-properties* hierGraph::setProperties(const instance& inst, properties* props, const attrOp* onoffOp, hierGraph* me) {
+properties* module::setProperties(const instance& inst, properties* props, const attrOp* onoffOp, module* me) {
   group g(modularApp::mStack, inst);
-  bool isDerived = (props!=NULL); // This is an instance of an object that derives from hierGraph if its constructor sets props to non-NULL
+  bool isDerived = (props!=NULL); // This is an instance of an object that derives from module if its constructor sets props to non-NULL
  
   if(attributes.query() && (onoffOp? onoffOp->apply(): true)) {
     if(!modularApp::isInstanceActive()) {
-      cerr << "ERROR: hierGraph "<<inst.str()<<" entered while there no instance of modularApp is active!"<<endl;
+      cerr << "ERROR: module "<<inst.str()<<" entered while there no instance of modularApp is active!"<<endl;
       assert(0);
     }
  
-    // The properties object for the hierGraphMarker that will be emitted at this location in the log
+    // The properties object for the moduleMarker that will be emitted at this location in the log
     properties* markerProps = new properties();
   
     map<string, string> pMap;
-    //pMap["hierGraphID"] = txt()<<modularApp::genHierGraphID(g);
+    //pMap["moduleID"] = txt()<<modularApp::genModuleID(g);
     pMap["name"]       = g.name();
     pMap["numInputs"]  = txt()<<g.numInputs();
     pMap["numOutputs"] = txt()<<g.numOutputs();
 
-    // If this is an instance of hierGraph rather than a class that derives from hierGraph
+    // If this is an instance of module rather than a class that derives from module
     //if(modularApp::isInstanceActive() && !isDerived) {
       markerProps->active = true;
 
-      // If no traceStream has been registered for this hierGraph group
+      // If no traceStream has been registered for this module group
       if(!modularApp::isTraceStreamRegistered(g)) {
         // We'll create a new traceStream in the destructor but first, generate and record the ID of that 
-        // traceStream so that we can include it in the tag and record it in the hierGraph object for use in its destructor
+        // traceStream so that we can include it in the tag and record it in the module object for use in its destructor
         int traceID = traceStream::genTraceID();
         modularApp::registerTraceStreamID(g, traceID);
         pMap["traceID"] = txt()<<traceID;
@@ -828,40 +828,40 @@ properties* hierGraph::setProperties(const instance& inst, properties* props, co
       }
     //}
   
-    markerProps->add("hierGraphMarker", pMap);
+    markerProps->add("moduleMarker", pMap);
     
     return markerProps;
   } else
     return NULL;
 }
 
-void hierGraph::init(const std::vector<port>& ins, properties* derivedProps) {
-  isDerived = (derivedProps!=NULL); // This is an instance of an object that derives from hierGraph if its constructor sets props to non-NULL
+void module::init(const std::vector<port>& ins, properties* derivedProps) {
+  isDerived = (derivedProps!=NULL); // This is an instance of an object that derives from module if its constructor sets props to non-NULL
   if(derivedProps==NULL) derivedProps = new properties();
   this->ins = ins;
   
   if(modularApp::isInstanceActive() && derivedProps->active) {
-    hierGraphID = modularApp::genHierGraphID(g);
+    moduleID = modularApp::genModuleID(g);
     
-    // Add the properties of this hierGraph to derivedProps
+    // Add the properties of this module to derivedProps
     map<string, string> pMap;
-    pMap["hierGraphID"]   = txt()<<hierGraphID;
+    pMap["moduleID"]   = txt()<<moduleID;
     pMap["name"]       = g.name();
     pMap["numInputs"]  = txt()<<g.numInputs();
     pMap["numOutputs"] = txt()<<g.numOutputs();
-    derivedProps->add("hierGraph", pMap);
+    derivedProps->add("module", pMap);
     
-    // Add this hierGraph instance to the current stack of hierGraphs
-    modularApp::enterHierGraph(this, hierGraphID, derivedProps);
+    // Add this module instance to the current stack of modules
+    modularApp::enterModule(this, moduleID, derivedProps);
     
-    // Make sure that the input contexts have the same names across all the invocations of this hierGraph group
-    modularApp::registerInOutContexts(g, ins, sight::common::hierGraph::input);
+    // Make sure that the input contexts have the same names across all the invocations of this module group
+    modularApp::registerInOutContexts(g, ins, sight::common::module::input);
     
-    // Add edges between the hierGraphs from which this hierGraph's inputs came and this hierGraph
+    // Add edges between the modules from which this module's inputs came and this module
     for(int i=0; i<ins.size(); i++)
     	modularApp::addEdge(ins[i], port(g, context(), input, i));
     
-    // Initialize the output ports of this hierGraph
+    // Initialize the output ports of this module
     if(externalOutputs) externalOutputs->clear(); 
     for(int i=0; i<g.numOutputs(); i++) {
       outs.push_back(port(g, /*context(),*/ output, i));
@@ -873,18 +873,18 @@ void hierGraph::init(const std::vector<port>& ins, properties* derivedProps) {
     
     // Add the default measurements recored in modularApp to meas
     for(namedMeasures::iterator m=modularApp::activeMA->meas.begin(); m!=modularApp::activeMA->meas.end(); m++) {
-      // If the name of the current measurement in modularApp isn't already specified for the given hierGraph group, add it
+      // If the name of the current measurement in modularApp isn't already specified for the given module group, add it
       if(meas.find(m->first) == meas.end())
         meas[m->first] = m->second->copy();
     }
     
-    // Begin measuring this hierGraph instance
+    // Begin measuring this module instance
     for(namedMeasures::iterator m=meas.begin(); m!=meas.end(); m++) {
       m->second->start(); 
     }
   }
   
-  // We've not yet completed measuring this hierGraph's behavior
+  // We've not yet completed measuring this module's behavior
   measurementCompleted = false;
   
   //cout << "g="<<g.str()<<", ins.size()="<<ins.size()<<endl;
@@ -896,42 +896,42 @@ void hierGraph::init(const std::vector<port>& ins, properties* derivedProps) {
 // of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
 // it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
 // an object will invoke the destroy() method of the most-derived class.
-void hierGraph::destroy() {
-  this->~hierGraph();
+void module::destroy() {
+  this->~module();
 }
 
-hierGraph::~hierGraph() {
+module::~module() {
   assert(!destroyed);
   
-  //cout << "~hierGraph() props->active="<<props->active<<endl;
+  //cout << "~module() props->active="<<props->active<<endl;
 
-  if(ins.size() != g.numInputs()) { cerr << "WARNING: hierGraph \""<<g.name()<<"\" specifies "<<g.numInputs()<<" inputs but "<<ins.size()<<" inputs are actually provided!"<<endl; }
+  if(ins.size() != g.numInputs()) { cerr << "WARNING: module \""<<g.name()<<"\" specifies "<<g.numInputs()<<" inputs but "<<ins.size()<<" inputs are actually provided!"<<endl; }
   
   if(outsSet.size() != g.numOutputs()) { 
-    cerr << "WARNING: hierGraph \""<<g.name()<<"\" specifies "<<g.numOutputs()<<" outputs but "<<outsSet.size()<<" outputs are actually provided! ";
+    cerr << "WARNING: module \""<<g.name()<<"\" specifies "<<g.numOutputs()<<" outputs but "<<outsSet.size()<<" outputs are actually provided! ";
     cerr << "Missing outputs:";
     for(int i=0; i<outs.size(); i++) if(outsSet.find(i)==outsSet.end()) cerr << " "<<i;
     cerr << endl;
   }
   
   if(props->active) {
-    // If this is an instance of hierGraph rather than a class that derives from hierGraph
+    // If this is an instance of module rather than a class that derives from module
     if(!isDerived) {
-      // Wrap the portion of the hierGraphMarker tag where we place the control information (the traceStream)
+      // Wrap the portion of the moduleMarker tag where we place the control information (the traceStream)
       // in its own tag to make them easier to match across different streams
-      properties hierGraphCtrl;
-      hierGraphCtrl.add("hierGraphCtrl", map<string, string>());
+      properties moduleCtrl;
+      moduleCtrl.add("moduleCtrl", map<string, string>());
 
-      dbg.enter(hierGraphCtrl);
+      dbg.enter(moduleCtrl);
 
-      // Register a traceStream for this hierGraph's group, if one has not already been registered
+      // Register a traceStream for this module's group, if one has not already been registered
       if(!modularApp::isTraceStreamRegistered(g)) {
-        modularApp::registerTraceStream(g, new hierGraphTraceStream(hierGraphID, this, trace::lines, trace::disjMerge, 
+        modularApp::registerTraceStream(g, new moduleTraceStream(moduleID, this, trace::lines, trace::disjMerge, 
                                         modularApp::getTraceStreamID(g)));
       }
     }
 
-    // Set the context attributes to be used in this hierGraph's measurements by combining the context provided by any
+    // Set the context attributes to be used in this module's measurements by combining the context provided by any
     // class that may derive from this one as well as the contexts of its inputs
     //map<string, attrValue> traceCtxt = getTraceCtxt();
     if(!isDerived) setTraceCtxt();
@@ -939,16 +939,16 @@ hierGraph::~hierGraph() {
     for(map<string, attrValue>::iterator tc=traceCtxt.begin(); tc!=traceCtxt.end(); tc++)
       cout << "    "<<tc->first << ": "<<tc->second.serialize()<<endl;*/
 
-    // Complete the measurement of application's behavior during the hierGraph's lifetime
+    // Complete the measurement of application's behavior during the module's lifetime
     completeMeasurement();
     
-    // Add to the trace observation the properties of all of the hierGraph's outputs
+    // Add to the trace observation the properties of all of the module's outputs
     for(int i=0; i<outs.size(); i++) {
       if(outs[i].ctxt==NULL) continue;
 
       for(map<std::string, attrValue>::iterator c=outs[i].ctxt->configuration.begin();
           c!=outs[i].ctxt->configuration.end(); c++) {
-        obs.push_back(make_pair(encodeCtxtName("hierGraph", "output", txt()<<i, c->first), c->second));
+        obs.push_back(make_pair(encodeCtxtName("module", "output", txt()<<i, c->first), c->second));
       }
     }
     
@@ -956,32 +956,32 @@ hierGraph::~hierGraph() {
   for(list<pair<string, attrValue> >::iterator tc=obs.begin(); tc!=obs.end(); tc++)
     cout << "    "<<tc->first << ": "<<tc->second.serialize()<<endl;*/
 
-    // Record the observation into this hierGraph group's trace
-    modularApp::hierGraphTrace[g]->traceFullObservation(traceCtxt, obs, anchor::noAnchor);
+    // Record the observation into this module group's trace
+    modularApp::moduleTrace[g]->traceFullObservation(traceCtxt, obs, anchor::noAnchor);
 
-    /* GB 2014-01-24 - It makes sense to allow different instances of a hierGraph group to not provide
+    /* GB 2014-01-24 - It makes sense to allow different instances of a module group to not provide
      *        the same outputs since in fault injection we may be aborted before all the outputs are 
      *        computed and in other cases the code may break out without computing some output. *?
-    // Make sure that the output contexts have the same names across all the invocations of this hierGraph group
-    modularApp::registerInOutContexts(g, outs, sight::common::hierGraph::output); */
+    // Make sure that the output contexts have the same names across all the invocations of this module group
+    modularApp::registerInOutContexts(g, outs, sight::common::module::output); */
   
-    modularApp::exitHierGraph(this);
+    modularApp::exitModule(this);
     
-    // Close the tag that wraps the control section of this hierGraph
-    properties hierGraphCtrl;
-    hierGraphCtrl.add("hierGraphCtrl", map<string, string>());
-    dbg.exit(hierGraphCtrl);
+    // Close the tag that wraps the control section of this module
+    properties moduleCtrl;
+    moduleCtrl.add("moduleCtrl", map<string, string>());
+    dbg.exit(moduleCtrl);
   }
 }
 
-// Called to complete the measurement of this hierGraph's execution. This measurement may be completed before
-// the hierGraph itself completes to enable users to separate the portion of the hierGraph's execution that 
-// represents its core behavior (and thus should be measured) from the portion where the hierGraph's outputs
+// Called to complete the measurement of this module's execution. This measurement may be completed before
+// the module itself completes to enable users to separate the portion of the module's execution that 
+// represents its core behavior (and thus should be measured) from the portion where the module's outputs
 // are computed.
-void hierGraph::completeMeasurement() {
+void module::completeMeasurement() {
   if(!props->active) return;
   
-  if(measurementCompleted) return; // { cerr << "ERROR: completing measurement of execution of hierGraph "<<g.str()<<" multiple times!"<<endl; assert(0); }
+  if(measurementCompleted) return; // { cerr << "ERROR: completing measurement of execution of module "<<g.str()<<" multiple times!"<<endl; assert(0); }
   
   // Complete measuring this instance and collect the observations into props
   int measIdx=0;
@@ -990,40 +990,40 @@ void hierGraph::completeMeasurement() {
     list<pair<string, attrValue> > curObs = m->second->endGet();
     // Push each measurement onto the observation
     for(list<pair<string, attrValue> >::iterator o=curObs.begin(); o!=curObs.end(); o++) {
-      obs.push_back(make_pair(encodeCtxtName("hierGraph", "measure", m->first, o->first), o->second));
+      obs.push_back(make_pair(encodeCtxtName("module", "measure", m->first, o->first), o->second));
     }
     delete m->second;
   }
   
-  // We've completed measuring this hierGraph
+  // We've completed measuring this module
   measurementCompleted = true;
 }
 
 // Sets the context of the given output port
-void hierGraph::setInCtxt(int idx, const context& c) {
+void module::setInCtxt(int idx, const context& c) {
   if(!props->active) return;
-  if(idx>=g.numInputs()) { cerr << "ERROR: cannot set context of input "<<idx<<" of hierGraph \""<<g.str()<<"\"! This hierGraph was declared to have "<<g.numInputs()<<" inputs."<<endl; }
+  if(idx>=g.numInputs()) { cerr << "ERROR: cannot set context of input "<<idx<<" of module \""<<g.str()<<"\"! This module was declared to have "<<g.numInputs()<<" inputs."<<endl; }
   assert(idx<g.numInputs());
   ins[idx].setCtxt(c);
 }
 
 // Adds the given key/attrValue pair to the context of the given output port
-void hierGraph::addInCtxt(int idx, const std::string& key, const attrValue& val) {
+void module::addInCtxt(int idx, const std::string& key, const attrValue& val) {
   if(!props->active) return;
-  if(idx>=g.numInputs()) { cerr << "ERROR: cannot add context to input "<<idx<<" of hierGraph \""<<g.str()<<"\"! This hierGraph was declared to have "<<g.numInputs()<<" inputs."<<endl; }
+  if(idx>=g.numInputs()) { cerr << "ERROR: cannot add context to input "<<idx<<" of module \""<<g.str()<<"\"! This module was declared to have "<<g.numInputs()<<" inputs."<<endl; }
   assert(idx<g.numInputs());
   ins[idx].addCtxt(key, val);
 }
 
-// Adds the given port to this hierGraph's inputs
-void hierGraph::addInCtxt(const port& p) {
+// Adds the given port to this module's inputs
+void module::addInCtxt(const port& p) {
   ins.push_back(p);
 }
 
 // Sets the context of the given output port
-void hierGraph::setOutCtxt(int idx, const context& c) { 
+void module::setOutCtxt(int idx, const context& c) { 
   if(!props->active) return;
-  if(idx>=g.numOutputs()) { cerr << "ERROR: cannot set context of output "<<idx<<" of hierGraph \""<<g.str()<<"\"! This hierGraph was declared to have "<<g.numOutputs()<<" outputs."<<endl; }
+  if(idx>=g.numOutputs()) { cerr << "ERROR: cannot set context of output "<<idx<<" of module \""<<g.str()<<"\"! This module was declared to have "<<g.numOutputs()<<" outputs."<<endl; }
   assert(idx<g.numOutputs());
   outs[idx].setCtxt(c);
   // If the user provided an output vector, update it as well
@@ -1031,38 +1031,38 @@ void hierGraph::setOutCtxt(int idx, const context& c) {
     (*externalOutputs)[idx].setCtxt(c);
     
   // Emit a warning of an output has been set multiple times
-  if(outsSet.find(idx) != outsSet.end()) cerr << "WARNING: output "<<idx<<" of hierGraph \""<<g.str()<<"\" has been set multiple times! Set this time to context "<<c.str()<<endl;
+  if(outsSet.find(idx) != outsSet.end()) cerr << "WARNING: output "<<idx<<" of module \""<<g.str()<<"\" has been set multiple times! Set this time to context "<<c.str()<<endl;
   else outsSet.insert(idx);
 }
 
-// Returns a list of the hierGraph's input ports
-/*std::vector<port> hierGraph::inputPorts() const {
+// Returns a list of the module's input ports
+/*std::vector<port> module::inputPorts() const {
 	std::vector<port> ports;
   for(int i=0; i<numInputs(); i++)
   	ports.push_back(port(c, input, i));
 	return ports;
 }*/
 
-// Returns a list of the hierGraph's output ports
-std::vector<port> hierGraph::outPorts() const {
+// Returns a list of the module's output ports
+std::vector<port> module::outPorts() const {
 	return outs;
 }
 
-port hierGraph::outPort(int idx) const {
+port module::outPort(int idx) const {
   if(!props->active) return port();
-  if(idx>=g.numOutputs()) { cerr << "ERROR: cannot get port "<<idx<<" of hierGraph \""<<g.str()<<"\"! This hierGraph was declared to have "<<g.numOutputs()<<" outputs."<<endl; }
+  if(idx>=g.numOutputs()) { cerr << "ERROR: cannot get port "<<idx<<" of module \""<<g.str()<<"\"! This module was declared to have "<<g.numOutputs()<<" outputs."<<endl; }
   assert(idx < g.numOutputs());
   return outs[idx];  
 }
 
-// Sets the traceCtxt map, which contains the context attributes to be used in this hierGraph's measurements 
+// Sets the traceCtxt map, which contains the context attributes to be used in this module's measurements 
 // by combining the context provided by the classes that this object derives from with its own unique 
 // context attributes.
-void hierGraph::setTraceCtxt() {
-  // Add to it the context of this hierGraph based on the contexts of its inputs
+void module::setTraceCtxt() {
+  // Add to it the context of this module based on the contexts of its inputs
   for(int i=0; i<ins.size(); i++) {
     for(std::map<std::string, attrValue>::const_iterator c=ins[i].ctxt->configuration.begin(); c!=ins[i].ctxt->configuration.end(); c++) {
-      traceCtxt[encodeCtxtName("hierGraph", "input", txt()<<i, c->first)] = c->second;
+      traceCtxt[encodeCtxtName("module", "input", txt()<<i, c->first)] = c->second;
     }
   }
 }
@@ -1192,108 +1192,108 @@ compModularApp::~compModularApp() {
 }
 
 /**********************
- ***** compHierGraph *****
+ ***** compModule *****
  **********************/
 
-compHierGraph::compHierGraph(const instance& inst, const std::vector<port>& inputs,  
+compModule::compModule(const instance& inst, const std::vector<port>& inputs,  
                        bool isReference,
                                                                          properties* props) :
-            hierGraph(inst, inputs, setProperties(inst, isReference, hierGraph::context(), NULL, props)),           isReference(isReference), options(hierGraph::context())
+            module(inst, inputs, setProperties(inst, isReference, module::context(), NULL, props)),           isReference(isReference), options(module::context())
 { init(props); }
 
-compHierGraph::compHierGraph(const instance& inst, const std::vector<port>& inputs,  
+compModule::compModule(const instance& inst, const std::vector<port>& inputs,  
                        bool isReference, 
                        const attrOp& onoffOp,                            properties* props) :
-          hierGraph(inst, inputs, setProperties(inst, isReference, hierGraph::context(), &onoffOp, props)),       isReference(isReference), options(hierGraph::context())
+          module(inst, inputs, setProperties(inst, isReference, module::context(), &onoffOp, props)),       isReference(isReference), options(module::context())
 { init(props); }
 
-compHierGraph::compHierGraph(const instance& inst, const std::vector<port>& inputs,  
+compModule::compModule(const instance& inst, const std::vector<port>& inputs,  
                        bool isReference, 
                                               const compNamedMeasures& cMeas, properties* props) :
-          hierGraph(inst, inputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, hierGraph::context(), NULL, props)),     isReference(isReference), options(hierGraph::context()), measComp(cMeas.getComparators())
+          module(inst, inputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, module::context(), NULL, props)),     isReference(isReference), options(module::context()), measComp(cMeas.getComparators())
 { init(props); }
 
-compHierGraph::compHierGraph(const instance& inst, const std::vector<port>& inputs,  
+compModule::compModule(const instance& inst, const std::vector<port>& inputs,  
                        bool isReference, 
                        const attrOp& onoffOp, const compNamedMeasures& cMeas, properties* props) : 
-          hierGraph(inst, inputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, hierGraph::context(), &onoffOp, props)), isReference(isReference), options(hierGraph::context()), measComp(cMeas.getComparators())
+          module(inst, inputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, module::context(), &onoffOp, props)), isReference(isReference), options(module::context()), measComp(cMeas.getComparators())
 { init(props); }
 
-compHierGraph::compHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+compModule::compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
                        bool isReference,
                                                                          properties* props) :
-            hierGraph(inst, inputs, externalOutputs, setProperties(inst, isReference, hierGraph::context(), NULL, props)),           isReference(isReference), options(hierGraph::context())
+            module(inst, inputs, externalOutputs, setProperties(inst, isReference, module::context(), NULL, props)),           isReference(isReference), options(module::context())
 { init(props); }
 
-compHierGraph::compHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+compModule::compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
                        bool isReference, 
                        const attrOp& onoffOp,                            properties* props) :
-          hierGraph(inst, inputs, externalOutputs, setProperties(inst, isReference, hierGraph::context(), &onoffOp, props)),       isReference(isReference), options(hierGraph::context())
+          module(inst, inputs, externalOutputs, setProperties(inst, isReference, module::context(), &onoffOp, props)),       isReference(isReference), options(module::context())
 { init(props); }
 
-compHierGraph::compHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+compModule::compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
                        bool isReference, 
                                               const compNamedMeasures& cMeas, properties* props) :
-          hierGraph(inst, inputs, externalOutputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, hierGraph::context(), NULL, props)),     isReference(isReference), options(hierGraph::context()), measComp(cMeas.getComparators())
+          module(inst, inputs, externalOutputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, module::context(), NULL, props)),     isReference(isReference), options(module::context()), measComp(cMeas.getComparators())
 { init(props); }
 
-compHierGraph::compHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+compModule::compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
                        bool isReference, 
                        const attrOp& onoffOp, const compNamedMeasures& cMeas, properties* props) : 
-          hierGraph(inst, inputs, externalOutputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, hierGraph::context(), &onoffOp, props)), isReference(isReference), options(hierGraph::context()), measComp(cMeas.getComparators())
+          module(inst, inputs, externalOutputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, module::context(), &onoffOp, props)), isReference(isReference), options(module::context()), measComp(cMeas.getComparators())
 { init(props); }
 
 
-compHierGraph::compHierGraph(const instance& inst, const std::vector<port>& inputs,  
+compModule::compModule(const instance& inst, const std::vector<port>& inputs,  
                        bool isReference, context options,
                                                                          properties* props) :
-            hierGraph(inst, inputs, setProperties(inst, isReference, options, NULL, props)),           isReference(isReference), options(options)
+            module(inst, inputs, setProperties(inst, isReference, options, NULL, props)),           isReference(isReference), options(options)
 { init(props); }
 
-compHierGraph::compHierGraph(const instance& inst, const std::vector<port>& inputs,  
+compModule::compModule(const instance& inst, const std::vector<port>& inputs,  
                        bool isReference, context options, 
                        const attrOp& onoffOp,                            properties* props) :
-          hierGraph(inst, inputs, setProperties(inst, isReference, options, &onoffOp, props)),       isReference(isReference), options(options)
+          module(inst, inputs, setProperties(inst, isReference, options, &onoffOp, props)),       isReference(isReference), options(options)
 { init(props); }
 
-compHierGraph::compHierGraph(const instance& inst, const std::vector<port>& inputs,  
+compModule::compModule(const instance& inst, const std::vector<port>& inputs,  
                        bool isReference, context options, 
                                               const compNamedMeasures& cMeas, properties* props) :
-          hierGraph(inst, inputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, options, NULL, props)),     isReference(isReference), options(options), measComp(cMeas.getComparators())
+          module(inst, inputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, options, NULL, props)),     isReference(isReference), options(options), measComp(cMeas.getComparators())
 { init(props); }
 
-compHierGraph::compHierGraph(const instance& inst, const std::vector<port>& inputs,  
+compModule::compModule(const instance& inst, const std::vector<port>& inputs,  
                        bool isReference, context options, 
                        const attrOp& onoffOp, const compNamedMeasures& cMeas, properties* props) : 
-          hierGraph(inst, inputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, options, &onoffOp, props)), isReference(isReference), options(options), measComp(cMeas.getComparators())
+          module(inst, inputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, options, &onoffOp, props)), isReference(isReference), options(options), measComp(cMeas.getComparators())
 { init(props); }
 
-compHierGraph::compHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+compModule::compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
                        bool isReference, context options,
                                                                          properties* props) :
-            hierGraph(inst, inputs, externalOutputs, setProperties(inst, isReference, options, NULL, props)),           isReference(isReference), options(options)
+            module(inst, inputs, externalOutputs, setProperties(inst, isReference, options, NULL, props)),           isReference(isReference), options(options)
 { init(props); }
 
-compHierGraph::compHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+compModule::compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
                        bool isReference, context options, 
                        const attrOp& onoffOp,                            properties* props) :
-          hierGraph(inst, inputs, externalOutputs, setProperties(inst, isReference, options, &onoffOp, props)),       isReference(isReference), options(options)
+          module(inst, inputs, externalOutputs, setProperties(inst, isReference, options, &onoffOp, props)),       isReference(isReference), options(options)
 { init(props); }
 
-compHierGraph::compHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+compModule::compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
                        bool isReference, context options, 
                                               const compNamedMeasures& cMeas, properties* props) :
-          hierGraph(inst, inputs, externalOutputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, options, NULL, props)),     isReference(isReference), options(options), measComp(cMeas.getComparators())
+          module(inst, inputs, externalOutputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, options, NULL, props)),     isReference(isReference), options(options), measComp(cMeas.getComparators())
 { init(props); }
 
-compHierGraph::compHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+compModule::compModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
                        bool isReference, context options, 
                        const attrOp& onoffOp, const compNamedMeasures& cMeas, properties* props) : 
-          hierGraph(inst, inputs, externalOutputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, options, &onoffOp, props)), isReference(isReference), options(options), measComp(cMeas.getComparators())
+          module(inst, inputs, externalOutputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, options, &onoffOp, props)), isReference(isReference), options(options), measComp(cMeas.getComparators())
 { init(props); }
 
 // Sets the properties of this object
-properties* compHierGraph::setProperties(const instance& inst, bool isReference, context options, const attrOp* onoffOp, properties* props) {
+properties* compModule::setProperties(const instance& inst, bool isReference, context options, const attrOp* onoffOp, properties* props) {
   if(props==NULL) {
     props = new properties();
   }
@@ -1305,7 +1305,7 @@ properties* compHierGraph::setProperties(const instance& inst, bool isReference,
     map<string, string> pMap;// = options.getProperties("op");
     //pMap["isReference"]   = txt()<<isReference;
 
-    deriv->props->add("compHierGraph", pMap);* /
+    deriv->props->add("compModule", pMap);* /
     
  }
   else
@@ -1314,8 +1314,8 @@ properties* compHierGraph::setProperties(const instance& inst, bool isReference,
   return props;
 }
 
-void compHierGraph::init(properties* props) {
-  isDerived = props!=NULL; // This is an instance of an object that derives from hierGraph if its constructor sets deriv to non-NULL
+void compModule::init(properties* props) {
+  isDerived = props!=NULL; // This is an instance of an object that derives from module if its constructor sets deriv to non-NULL
   
   if(!isDerived) setTraceCtxt();
 }
@@ -1326,83 +1326,83 @@ void compHierGraph::init(properties* props) {
 // of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
 // it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
 // an object will invoke the destroy() method of the most-derived class.
-void compHierGraph::destroy() {
-  this->~compHierGraph();
+void compModule::destroy() {
+  this->~compModule();
 }
 
-compHierGraph::~compHierGraph() {
+compModule::~compModule() {
   assert(!destroyed);
   
-  // If this is an instance of compHierGraph rather than a class that derives from compHierGraph
-  if(props->active && !isDerived) {    // Wrap the portion of the hierGraphMarker tag where we place the control information (the traceStream)
+  // If this is an instance of compModule rather than a class that derives from compModule
+  if(props->active && !isDerived) {    // Wrap the portion of the moduleMarker tag where we place the control information (the traceStream)
     // in its own tag to make them easier to match across different streams
-    properties hierGraphCtrl;
-    hierGraphCtrl.add("hierGraphCtrl", map<string, string>());
-    dbg.enter(hierGraphCtrl);
+    properties moduleCtrl;
+    moduleCtrl.add("moduleCtrl", map<string, string>());
+    dbg.enter(moduleCtrl);
 
-    // Register a traceStream for this compHierGraph's hierGraph group, if one has not already been registered
+    // Register a traceStream for this compModule's module group, if one has not already been registered
     if(!modularApp::isTraceStreamRegistered(g))
-      modularApp::registerTraceStream(g, new compHierGraphTraceStream(hierGraphID, this, trace::lines, trace::disjMerge, modularApp::getTraceStreamID(g)));
+      modularApp::registerTraceStream(g, new compModuleTraceStream(moduleID, this, trace::lines, trace::disjMerge, modularApp::getTraceStreamID(g)));
   }
   
   if(!isDerived) setTraceCtxt();
 }
 
-// Sets the traceCtxt map, which contains the context attributes to be used in this hierGraph's measurements 
+// Sets the traceCtxt map, which contains the context attributes to be used in this module's measurements 
 // by combining the context provided by the classes that this object derives from with its own unique 
 // context attributes.
-void compHierGraph::setTraceCtxt() {
-  // Initialize traceCtxt with the information from hierGraph
-  hierGraph::setTraceCtxt();
+void compModule::setTraceCtxt() {
+  // Initialize traceCtxt with the information from module
+  module::setTraceCtxt();
 
-  traceCtxt["compHierGraph:isReference"] = attrValue((long)isReference);
+  traceCtxt["compModule:isReference"] = attrValue((long)isReference);
   
   // Add all the options to the context
   for(map<std::string, attrValue>::const_iterator o=options.getCfg().begin(); o!=options.getCfg().end(); o++)
-    traceCtxt[encodeCtxtName("compHierGraph", "option", "0", o->first)] = o->second;
+    traceCtxt[encodeCtxtName("compModule", "option", "0", o->first)] = o->second;
 }
 
-// Sets the isReference flag to indicate whether this is a reference instance of this compHierGraph or not
-void compHierGraph::setIsReference(bool newVal) {
+// Sets the isReference flag to indicate whether this is a reference instance of this compModule or not
+void compModule::setIsReference(bool newVal) {
   isReference = newVal;
 }
 
 // Sets the context of the given option
-void compHierGraph::setOptionCtxt(std::string name, attrValue val) {
+void compModule::setOptionCtxt(std::string name, attrValue val) {
   options.configuration[name] = val;
 }
    
 
-// Sets the context of the given output port. This variant ensures that the outputs of compHierGraphs can only
+// Sets the context of the given output port. This variant ensures that the outputs of compModules can only
 // be set with compContexts.
-void compHierGraph::setOutCtxt(int idx, const compContext& c) {
+void compModule::setOutCtxt(int idx, const compContext& c) {
   if(!props->active) return;
-  hierGraph::setOutCtxt(idx, (const context&)c);
+  module::setOutCtxt(idx, (const context&)c);
 }
 
 // -------------------------
 // ----- Configuration -----
 // -------------------------
 
-// We can configure the values that modifiable options take within each hierGraph
-// hierGraph name -> modifiable option name -> option value
-std::map<std::string, std::map<std::string, attrValue> > compHierGraph::modOptValue;
+// We can configure the values that modifiable options take within each module
+// module name -> modifiable option name -> option value
+std::map<std::string, std::map<std::string, attrValue> > compModule::modOptValue;
 
-// Checks whether a modifiable option with the given name was specified for this hierGraph. 
+// Checks whether a modifiable option with the given name was specified for this module. 
 // This option may be set in a configuration file and then applications may use this 
 // function to query for its value and act accordingly
-bool compHierGraph::existsModOption(std::string name) {
+bool compModule::existsModOption(std::string name) {
   return (modOptValue.find(g.name()) != modOptValue.end()) &&
          (modOptValue[g.name()].find(name) != modOptValue[g.name()].end());
 }
 
-// Returns the value of the given modifiable option of this hierGraph.
-attrValue compHierGraph::getModOption(std::string name) {
+// Returns the value of the given modifiable option of this module.
+attrValue compModule::getModOption(std::string name) {
   if(modOptValue.find(g.name()) == modOptValue.end())
-  { cerr << "ERROR: no modifiable options specified for hierGraph "<<g.name()<<"!"<<endl; assert(0); }
+  { cerr << "ERROR: no modifiable options specified for module "<<g.name()<<"!"<<endl; assert(0); }
   
   if(modOptValue[g.name()].find(name) == modOptValue[g.name()].end())
-  { cerr << "ERROR: no value specified for modifiable option "<<name<<" in hierGraph "<<g.name()<<"!"<<endl; assert(0); }
+  { cerr << "ERROR: no value specified for modifiable option "<<name<<" in module "<<g.name()<<"!"<<endl; assert(0); }
   
   return modOptValue[g.name()][name];
 }
@@ -1547,52 +1547,52 @@ springModularApp::~springModularApp() {
 }
 
 /************************
- ***** springHierGraph *****
+ ***** springModule *****
  ************************/
 
-springHierGraph::springHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs,
+springModule::springModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs,
                        const context& options,
                                                                          properties* props) :
-          compHierGraph(inst, inputs, externalOutputs, isSpringReference(), extendOptions(options), compNamedMeasures(), props)
+          compModule(inst, inputs, externalOutputs, isSpringReference(), extendOptions(options), compNamedMeasures(), props)
 { 
 /*springModularApp* app = springModularApp::getInstance();
 if(app->bufSize>0) { cout << "bufSize="<<app->bufSize<<" sleep("<<(log(app->bufSize)/log(10))<<")"<<endl; sleep(log(app->bufSize)/log(10)); }*/
 }
 
-springHierGraph::springHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs,
+springModule::springModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs,
                        const context& options,
                        const attrOp& onoffOp,                            properties* props) :
-          compHierGraph(inst, inputs, externalOutputs, isSpringReference(), extendOptions(options), onoffOp, compNamedMeasures(), props)
+          compModule(inst, inputs, externalOutputs, isSpringReference(), extendOptions(options), onoffOp, compNamedMeasures(), props)
 { 
 /*springModularApp* app = springModularApp::getInstance();
 if(app->bufSize>0) { cout << "bufSize="<<app->bufSize<<" sleep("<<(log(app->bufSize)/log(10))<<")"<<endl; sleep(log(app->bufSize)/log(10)); }*/
 }
 
-springHierGraph::springHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs,
+springModule::springModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs,
                        const context& options,
                                               const compNamedMeasures& cMeas, properties* props) :
-          compHierGraph(inst, inputs, externalOutputs, isSpringReference(), extendOptions(options), cMeas, props)
+          compModule(inst, inputs, externalOutputs, isSpringReference(), extendOptions(options), cMeas, props)
 { 
 /*springModularApp* app = springModularApp::getInstance();
 if(app->bufSize>0) { cout << "bufSize="<<app->bufSize<<" sleep("<<(log(app->bufSize)/log(10))<<")"<<endl; sleep(log(app->bufSize)/log(10)); }*/
 }
 
-springHierGraph::springHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs,
+springModule::springModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs,
                        const context& options,
                        const attrOp& onoffOp, const compNamedMeasures& cMeas, properties* props) :
-          compHierGraph(inst, inputs, externalOutputs, isSpringReference(), extendOptions(options), cMeas, props)
+          compModule(inst, inputs, externalOutputs, isSpringReference(), extendOptions(options), cMeas, props)
 { 
 /*springModularApp* app = springModularApp::getInstance();
 if(app->bufSize>0) { cout << "bufSize="<<app->bufSize<<" sleep("<<(log(app->bufSize)/log(10))<<")"<<endl; sleep(log(app->bufSize)/log(10)); }*/
 }
 
-bool springHierGraph::isSpringReference() {
+bool springModule::isSpringReference() {
   springModularApp* app = springModularApp::getInstance();
   if(app) return app->bufSize==0;
   else    return false;
 }
 
-context springHierGraph::extendOptions(const context& options) {
+context springModule::extendOptions(const context& options) {
   context extendedO = options;
   springModularApp* app = springModularApp::getInstance();
   if(app) {
@@ -1608,49 +1608,49 @@ context springHierGraph::extendOptions(const context& options) {
 // of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
 // it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
 // an object will invoke the destroy() method of the most-derived class.
-void springHierGraph::destroy() {
-  this->~springHierGraph();
+void springModule::destroy() {
+  this->~springModule();
 }
 
-springHierGraph::~springHierGraph() {
+springModule::~springModule() {
   assert(!destroyed);
 }
 
-// Returns the context attributes to be used in this hierGraph's measurements by combining the context provided by the classes
+// Returns the context attributes to be used in this module's measurements by combining the context provided by the classes
 // that this object derives from with its own unique context attributes.
-/*std::map<std::string, attrValue> springHierGraph::getTraceCtxt(const std::vector<port>& inputs, bool isReference, const context& options)
-{ return compHierGraph::getTraceCtxt(ins, isReference, options); }*/
+/*std::map<std::string, attrValue> springModule::getTraceCtxt(const std::vector<port>& inputs, bool isReference, const context& options)
+{ return compModule::getTraceCtxt(ins, isReference, options); }*/
 
 /***************************
- ***** processedHierGraph *****
+ ***** processedModule *****
  ***************************/
 
-processedHierGraph::processedHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+processedModule::processedModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
                        const processedTrace::commands& processorCommands,
                                                                          properties* props) :
-          hierGraph(inst, inputs, externalOutputs, props),           processorCommands(processorCommands)
+          module(inst, inputs, externalOutputs, props),           processorCommands(processorCommands)
 { init(props); }
 
-processedHierGraph::processedHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+processedModule::processedModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
                        const processedTrace::commands& processorCommands, 
                        const attrOp& onoffOp,                            properties* props) :
-          hierGraph(inst, inputs, externalOutputs, props),       processorCommands(processorCommands)
+          module(inst, inputs, externalOutputs, props),       processorCommands(processorCommands)
 { init(props); }
 
-processedHierGraph::processedHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+processedModule::processedModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
                        const processedTrace::commands& processorCommands, 
                                               const namedMeasures& meas, properties* props) :
-          hierGraph(inst, inputs, externalOutputs, meas, props),     processorCommands(processorCommands)
+          module(inst, inputs, externalOutputs, meas, props),     processorCommands(processorCommands)
 { init(props); }
 
-processedHierGraph::processedHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+processedModule::processedModule(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
                        const processedTrace::commands& processorCommands, 
                        const attrOp& onoffOp, const namedMeasures& meas, properties* props) : 
-          hierGraph(inst, inputs, externalOutputs, meas, props), processorCommands(processorCommands)
+          module(inst, inputs, externalOutputs, meas, props), processorCommands(processorCommands)
 { init(props); }
 
 /* // Sets the properties of this object
-hierGraph::derivInfo* processedHierGraph::setProperties(const instance& inst, const processedTrace::commands& processorCommands, const attrOp* onoffOp, properties* props) {
+module::derivInfo* processedModule::setProperties(const instance& inst, const processedTrace::commands& processorCommands, const attrOp* onoffOp, properties* props) {
 / *  if(deriv==NULL) {
     deriv = new derivInfo();
   }
@@ -1666,7 +1666,7 @@ hierGraph::derivInfo* processedHierGraph::setProperties(const instance& inst, co
     for(list<string>::const_iterator c=processorCommands.begin(); c!=processorCommands.end(); c++)
       pMap[txt()<<"cmd"<<i] = *c;
     
-    deriv->props->add("processedHierGraph", pMap);
+    deriv->props->add("processedModule", pMap);
   }
   else
     deriv->props->active = false;
@@ -1674,8 +1674,8 @@ hierGraph::derivInfo* processedHierGraph::setProperties(const instance& inst, co
   return deriv;
 }*/ 
 
-void processedHierGraph::init(properties* props) {
-  isDerived = props!=NULL; // This is an instance of an object that derives from hierGraph if its constructor sets deriv to non-NULL
+void processedModule::init(properties* props) {
+  isDerived = props!=NULL; // This is an instance of an object that derives from module if its constructor sets deriv to non-NULL
 }
 
 // Directly calls the destructor of this object. This is necessary because when an application crashes
@@ -1684,44 +1684,44 @@ void processedHierGraph::init(properties* props) {
 // of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
 // it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
 // an object will invoke the destroy() method of the most-derived class.
-void processedHierGraph::destroy() {
-  this->~processedHierGraph();
+void processedModule::destroy() {
+  this->~processedModule();
 }
 
-processedHierGraph::~processedHierGraph() {
+processedModule::~processedModule() {
   assert(!destroyed);
   
-  // If this is an instance of processedHierGraph rather than a class that derives from processedHierGraph
+  // If this is an instance of processedModule rather than a class that derives from processedModule
   if(props->active) {
-    // Register a traceStream for this processedHierGraph's hierGraph group, if one has not already been registered
+    // Register a traceStream for this processedModule's module group, if one has not already been registered
     if(!modularApp::isTraceStreamRegistered(g))
-      modularApp::registerTraceStream(g, new processedHierGraphTraceStream(hierGraphID, this, trace::lines, trace::disjMerge, modularApp::getTraceStreamID(g)));
+      modularApp::registerTraceStream(g, new processedModuleTraceStream(moduleID, this, trace::lines, trace::disjMerge, modularApp::getTraceStreamID(g)));
   }
 }
 
-// Returns the context attributes to be used in this hierGraph's measurements by combining the context provided by the classes
+// Returns the context attributes to be used in this module's measurements by combining the context provided by the classes
 // that this object derives from with its own unique context attributes.
-/*std::map<std::string, attrValue> processedHierGraph::getTraceCtxt(const std::vector<port>& inputs)
-{ return hierGraph::getTraceCtxt(inputs); }*/
+/*std::map<std::string, attrValue> processedModule::getTraceCtxt(const std::vector<port>& inputs)
+{ return module::getTraceCtxt(inputs); }*/
 
 /*****************************
- ***** hierGraphTraceStream *****
+ ***** moduleTraceStream *****
  *****************************/
 
-hierGraphTraceStream::hierGraphTraceStream(int hierGraphID, hierGraph* m, vizT viz, mergeT merge, int traceID, properties* props) : 
-  traceStream(viz, merge, traceID, setProperties(hierGraphID, m, viz, merge, props))
+moduleTraceStream::moduleTraceStream(int moduleID, module* m, vizT viz, mergeT merge, int traceID, properties* props) : 
+  traceStream(viz, merge, traceID, setProperties(moduleID, m, viz, merge, props))
 { }
 
-properties* hierGraphTraceStream::setProperties(int hierGraphID, hierGraph* m, vizT viz, mergeT merge, properties* props) {
+properties* moduleTraceStream::setProperties(int moduleID, module* m, vizT viz, mergeT merge, properties* props) {
   if(props==NULL) props = new properties();
   
   if(props->active && props->emitTag) {
     map<string, string> pMap;
-    pMap["hierGraphID"]   = txt()<<hierGraphID;
+    pMap["moduleID"]   = txt()<<moduleID;
     pMap["name"]       = m->name();
     pMap["numInputs"]  = txt()<<m->numInputs();
     pMap["numOutputs"] = txt()<<m->numOutputs();
-    props->add("hierGraphTS", pMap);
+    props->add("moduleTS", pMap);
   }
   
   return props;
@@ -1733,40 +1733,40 @@ properties* hierGraphTraceStream::setProperties(int hierGraphID, hierGraph* m, v
 // of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
 // it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
 // an object will invoke the destroy() method of the most-derived class.
-void hierGraphTraceStream::destroy() {
-  this->~hierGraphTraceStream();
+void moduleTraceStream::destroy() {
+  this->~moduleTraceStream();
 }
 
-hierGraphTraceStream::~hierGraphTraceStream() {
+moduleTraceStream::~moduleTraceStream() {
   assert(!destroyed);
 }
 
 /*********************************
- ***** compHierGraphTraceStream *****
+ ***** compModuleTraceStream *****
  *********************************/
 
-compHierGraphTraceStream::compHierGraphTraceStream(int hierGraphID, 
-                                             compHierGraph* cm,
+compModuleTraceStream::compModuleTraceStream(int moduleID, 
+                                             compModule* cm,
                                              vizT viz, mergeT merge, 
                                              int traceID, properties* props) : 
-  hierGraphTraceStream(hierGraphID, (hierGraph*)cm, viz, merge, 
-                    traceID, setProperties(hierGraphID, cm, viz, merge, props))
+  moduleTraceStream(moduleID, (module*)cm, viz, merge, 
+                    traceID, setProperties(moduleID, cm, viz, merge, props))
 { }
 
-properties* compHierGraphTraceStream::setProperties(int hierGraphID, 
-                                                 compHierGraph* cm, vizT viz, mergeT merge, properties* props) {
+properties* compModuleTraceStream::setProperties(int moduleID, 
+                                                 compModule* cm, vizT viz, mergeT merge, properties* props) {
   if(props==NULL) props = new properties();
   
   if(props->active && props->emitTag) {
     map<string, string> pMap;// = cm->options.getProperties("op");
     
-    // Record the number of inputs and outputs of this compHierGraph. This repeats the same attributes in hierGraphTS but 
-    // it is easier let both hierGraphTS and compHierGraphTS to have their own than to allow functions of compHierGraphTS
-    // access to properties of hierGraphTS.
+    // Record the number of inputs and outputs of this compModule. This repeats the same attributes in moduleTS but 
+    // it is easier let both moduleTS and compModuleTS to have their own than to allow functions of compModuleTS
+    // access to properties of moduleTS.
     pMap["numInputs"]  = txt()<<cm->numInputs(); 
     pMap["numOutputs"] = txt()<<cm->numOutputs(); 
     
-    //cout << "compHierGraphTraceStream::setProperties() #ins="<<cm->ins.size()<<endl;
+    //cout << "compModuleTraceStream::setProperties() #ins="<<cm->ins.size()<<endl;
     // Add the comparators to be used for each input attribute, where they are provided
     for(int inIdx=0; inIdx<cm->ins.size(); inIdx++) {
       // If the context specified for this input is a compContext
@@ -1789,7 +1789,7 @@ properties* compHierGraphTraceStream::setProperties(int hierGraphID,
     
     // Add the comparators to be used for each output attribute
     for(int outIdx=0; outIdx<cm->outs.size(); outIdx++) {
-      //if(o->ctxt==NULL) { cerr << "ERROR in hierGraph "<<hierGraphID<<"! Context of output "<<outIdx<<" not provided!"<<endl; assert(0); }
+      //if(o->ctxt==NULL) { cerr << "ERROR in module "<<moduleID<<"! Context of output "<<outIdx<<" not provided!"<<endl; assert(0); }
       // Skip outputs for which contexts were not provided
       if(cm->outs[outIdx].ctxt==NULL) {
         pMap[txt()<<"out"<<outIdx<<":numAttrs"] = "0";
@@ -1818,7 +1818,7 @@ properties* compHierGraphTraceStream::setProperties(int hierGraphID,
                      escapedStr(mc->second.second, ":", escapedStr::unescaped).escape();
     }
     
-    props->add("compHierGraphTS", pMap);
+    props->add("compModuleTS", pMap);
   }
   
   return props;
@@ -1830,29 +1830,29 @@ properties* compHierGraphTraceStream::setProperties(int hierGraphID,
 // of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
 // it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
 // an object will invoke the destroy() method of the most-derived class.
-void compHierGraphTraceStream::destroy() {
-  this->~compHierGraphTraceStream();
+void compModuleTraceStream::destroy() {
+  this->~compModuleTraceStream();
 }
 
-compHierGraphTraceStream::~compHierGraphTraceStream() {
+compModuleTraceStream::~compModuleTraceStream() {
   assert(!destroyed);
 }
 
 
 /**************************************
- ***** processedHierGraphTraceStream *****
+ ***** processedModuleTraceStream *****
  **************************************/
 
-processedHierGraphTraceStream::processedHierGraphTraceStream(int hierGraphID, 
-                                                       processedHierGraph* pm,
+processedModuleTraceStream::processedModuleTraceStream(int moduleID, 
+                                                       processedModule* pm,
                                                        vizT viz, mergeT merge, 
                                                        int traceID, properties* props) : 
-  hierGraphTraceStream(hierGraphID, (hierGraph*)pm, viz, merge, 
-                    traceID, setProperties(hierGraphID, pm, viz, merge, props))
+  moduleTraceStream(moduleID, (module*)pm, viz, merge, 
+                    traceID, setProperties(moduleID, pm, viz, merge, props))
 { }
 
-properties* processedHierGraphTraceStream::setProperties(int hierGraphID, 
-                                                      processedHierGraph* pm, vizT viz, mergeT merge, properties* props) {
+properties* processedModuleTraceStream::setProperties(int moduleID, 
+                                                      processedModule* pm, vizT viz, mergeT merge, properties* props) {
   if(props==NULL) props = new properties();
   
   if(props->active && props->emitTag) {
@@ -1862,7 +1862,7 @@ properties* processedHierGraphTraceStream::setProperties(int hierGraphID,
     for(list<string>::const_iterator c=pm->processorCommands.begin(); c!=pm->processorCommands.end(); c++)
       pMap[txt()<<"cmd"<<i] = *c;
     
-    props->add("processedHierGraphTS", pMap);
+    props->add("processedModuleTS", pMap);
   }
   
   return props;
@@ -1874,50 +1874,50 @@ properties* processedHierGraphTraceStream::setProperties(int hierGraphID,
 // of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
 // it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
 // an object will invoke the destroy() method of the most-derived class.
-void processedHierGraphTraceStream::destroy() {
-  this->~processedHierGraphTraceStream();
+void processedModuleTraceStream::destroy() {
+  this->~processedModuleTraceStream();
 }
 
-processedHierGraphTraceStream::~processedHierGraphTraceStream() {
+processedModuleTraceStream::~processedModuleTraceStream() {
   assert(!destroyed);
 }
 
 
 /******************************************
- ***** HierGraphMergeHandlerInstantiator *****
+ ***** ModuleMergeHandlerInstantiator *****
  ******************************************/
 
-HierGraphMergeHandlerInstantiator::HierGraphMergeHandlerInstantiator() { 
+ModuleMergeHandlerInstantiator::ModuleMergeHandlerInstantiator() { 
   (*MergeHandlers   )["modularApp"]          = ModularAppMerger::create;
   (*MergeKeyHandlers)["modularApp"]          = ModularAppMerger::mergeKey;
   (*MergeHandlers   )["modularAppBody"]      = ModularAppStructureMerger::create;
   (*MergeKeyHandlers)["modularAppBody"]      = ModularAppStructureMerger::mergeKey;
   (*MergeHandlers   )["modularAppStructure"] = ModularAppStructureMerger::create;
   (*MergeKeyHandlers)["modularAppStructure"] = ModularAppStructureMerger::mergeKey;
-  (*MergeHandlers   )["hierGraph"]              = HierGraphMerger::create;
-  (*MergeKeyHandlers)["hierGraph"]              = HierGraphMerger::mergeKey;    
-  (*MergeHandlers   )["hierGraphMarker"]        = HierGraphMerger::create;
-  (*MergeKeyHandlers)["hierGraphMarker"]        = HierGraphMerger::mergeKey;
-  (*MergeHandlers   )["hierGraphCtrl"]          = HierGraphCtrlMerger::create;
-  (*MergeKeyHandlers)["hierGraphCtrl"]          = HierGraphCtrlMerger::mergeKey;
-  (*MergeHandlers   )["hierGraphEdge"]          = HierGraphEdgeMerger::create;
-  (*MergeKeyHandlers)["hierGraphEdge"]          = HierGraphEdgeMerger::mergeKey;
-  (*MergeHandlers   )["hierGraphTS"]            = HierGraphTraceStreamMerger::create;
-  (*MergeKeyHandlers)["hierGraphTS"]            = HierGraphTraceStreamMerger::mergeKey;
+  (*MergeHandlers   )["module"]              = ModuleMerger::create;
+  (*MergeKeyHandlers)["module"]              = ModuleMerger::mergeKey;    
+  (*MergeHandlers   )["moduleMarker"]        = ModuleMerger::create;
+  (*MergeKeyHandlers)["moduleMarker"]        = ModuleMerger::mergeKey;
+  (*MergeHandlers   )["moduleCtrl"]          = ModuleCtrlMerger::create;
+  (*MergeKeyHandlers)["moduleCtrl"]          = ModuleCtrlMerger::mergeKey;
+  (*MergeHandlers   )["moduleEdge"]          = ModuleEdgeMerger::create;
+  (*MergeKeyHandlers)["moduleEdge"]          = ModuleEdgeMerger::mergeKey;
+  (*MergeHandlers   )["moduleTS"]            = ModuleTraceStreamMerger::create;
+  (*MergeKeyHandlers)["moduleTS"]            = ModuleTraceStreamMerger::mergeKey;
   
-  (*MergeHandlers   )["compHierGraph"]          = CompHierGraphMerger::create;
-  (*MergeKeyHandlers)["compHierGraph"]          = CompHierGraphMerger::mergeKey;    
-  (*MergeHandlers   )["compHierGraphTS"]        = CompHierGraphTraceStreamMerger::create;
-  (*MergeKeyHandlers)["compHierGraphTS"]        = CompHierGraphTraceStreamMerger::mergeKey;
+  (*MergeHandlers   )["compModule"]          = CompModuleMerger::create;
+  (*MergeKeyHandlers)["compModule"]          = CompModuleMerger::mergeKey;    
+  (*MergeHandlers   )["compModuleTS"]        = CompModuleTraceStreamMerger::create;
+  (*MergeKeyHandlers)["compModuleTS"]        = CompModuleTraceStreamMerger::mergeKey;
     
-  MergeGetStreamRecords->insert(&HierGraphGetMergeStreamRecord);
+  MergeGetStreamRecords->insert(&ModuleGetMergeStreamRecord);
 }
-HierGraphMergeHandlerInstantiator HierGraphMergeHandlerInstance;
+ModuleMergeHandlerInstantiator ModuleMergeHandlerInstance;
 
-std::map<std::string, streamRecord*> HierGraphGetMergeStreamRecord(int streamID) {
+std::map<std::string, streamRecord*> ModuleGetMergeStreamRecord(int streamID) {
   std::map<std::string, streamRecord*> mergeMap;
-  mergeMap["modularApp"] = new HierGraphStreamRecord(streamID);
-  mergeMap["hierGraph"]     = new HierGraphStreamRecord(streamID);
+  mergeMap["modularApp"] = new ModuleStreamRecord(streamID);
+  mergeMap["module"]     = new ModuleStreamRecord(streamID);
   return mergeMap;
 }
 
@@ -1962,10 +1962,10 @@ properties* ModularAppMerger::setProperties(std::vector<std::pair<properties::ta
     assert(allSame<string>(cpValues));
     pMap["callPath"] = *cpValues.begin();*/
     
-    //HierGraphStreamRecord::enterModularApp(outStreamRecords, inStreamRecords);
+    //ModuleStreamRecord::enterModularApp(outStreamRecords, inStreamRecords);
     props->add("modularApp", pMap);
   } else {
-    //HierGraphStreamRecord::exitModularApp(outStreamRecords, inStreamRecords);
+    //ModuleStreamRecord::exitModularApp(outStreamRecords, inStreamRecords);
     props->add("modularApp", pMap);
   }
   
@@ -2037,10 +2037,10 @@ void ModularAppStructureMerger::mergeKey(properties::tagType type, properties::i
 }
 
 /************************
- ***** HierGraphMerger *****
+ ***** ModuleMerger *****
  ************************/
 
-HierGraphMerger::HierGraphMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+ModuleMerger::ModuleMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                          map<string, streamRecord*>& outStreamRecords,
                          vector<map<string, streamRecord*> >& inStreamRecords,
                          properties* props) : 
@@ -2048,7 +2048,7 @@ HierGraphMerger::HierGraphMerger(std::vector<std::pair<properties::tagType, prop
                     setProperties(tags, outStreamRecords, inStreamRecords, props)) { }
 
 // Sets the properties of the merged object
-properties* HierGraphMerger::setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+properties* ModuleMerger::setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                                        map<string, streamRecord*>& outStreamRecords,
                                        vector<map<string, streamRecord*> >& inStreamRecords,
                                        properties* props) {
@@ -2058,64 +2058,64 @@ properties* HierGraphMerger::setProperties(std::vector<std::pair<properties::tag
 
   map<string, string> pMap;
   properties::tagType type = streamRecord::getTagType(tags); 
-  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging HierGraphs!"<<endl; exit(-1); }
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Modules!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
     vector<string> names = getNames(tags); assert(allSame<string>(names));
-    assert(*names.begin() == "hierGraphMarker" || *names.begin() == "hierGraph");
+    assert(*names.begin() == "moduleMarker" || *names.begin() == "module");
     
     /*vector<string> cpValues = getValues(tags, "callPath");
     assert(allSame<string>(cpValues));
     pMap["callPath"] = *cpValues.begin();*/
     
-    // Merge the hierGraph IDs along all the streams
-    //int nodeID = HierGraphStreamRecord::mergeNodeIDs("hierGraphID", pMap, tags, outStreamRecords, inStreamRecords);
-    //pMap["hierGraphID"] = txt() << nodeID;
+    // Merge the module IDs along all the streams
+    //int nodeID = ModuleStreamRecord::mergeNodeIDs("moduleID", pMap, tags, outStreamRecords, inStreamRecords);
+    //pMap["moduleID"] = txt() << nodeID;
     
     pMap["name"]       = getSameValue(tags, "name");
     pMap["numInputs"]  = getSameValue(tags, "numInputs");
     pMap["numOutputs"] = getSameValue(tags, "numOutputs");
 
-    group g = ((HierGraphStreamRecord*)(outStreamRecords)["hierGraph"])->enterHierGraph(
+    group g = ((ModuleStreamRecord*)(outStreamRecords)["module"])->enterModule(
                            instance(pMap["name"], attrValue::parseInt(pMap["numInputs"]), attrValue::parseInt(pMap["numOutputs"])));
 
-    // If this is a hierGraph tag, which is placed at the end of the modularApp and records information
-    // about the hierGraph's execution
-    if(*names.begin() == "hierGraph") {
-      // Record for every incoming stream that we've entered the given hierGraph instance, making sure that the 
-      // hierGraph group along every incoming stream is the same
-      /*group g = HierGraphStreamRecord::enterHierGraph(
+    // If this is a module tag, which is placed at the end of the modularApp and records information
+    // about the module's execution
+    if(*names.begin() == "module") {
+      // Record for every incoming stream that we've entered the given module instance, making sure that the 
+      // module group along every incoming stream is the same
+      /*group g = ModuleStreamRecord::enterModule(
                            instance(pMap["name"], attrValue::parseInt(pMap["numInputs"]), attrValue::parseInt(pMap["numOutputs"])),
                            inStreamRecords);*/
       
-      // We must have previously assigned a streamID in the outgoing stream to this hierGraph group
-      assert(((HierGraphStreamRecord*)(outStreamRecords)["hierGraph"])->isHierGraphObserved(g));
-      pMap["hierGraphID"] = txt() << ((HierGraphStreamRecord*)(outStreamRecords)["hierGraph"])->getHierGraphID(g);
-      //pMap["hierGraphID"] = txt()<<streamRecord::mergeIDs("hierGraph", "hierGraphID", pMap, tags, outStreamRecords, inStreamRecords);
+      // We must have previously assigned a streamID in the outgoing stream to this module group
+      assert(((ModuleStreamRecord*)(outStreamRecords)["module"])->isModuleObserved(g));
+      pMap["moduleID"] = txt() << ((ModuleStreamRecord*)(outStreamRecords)["module"])->getModuleID(g);
+      //pMap["moduleID"] = txt()<<streamRecord::mergeIDs("module", "moduleID", pMap, tags, outStreamRecords, inStreamRecords);
       
       pMap["count"] = txt()<<vSum(str2int(getValues(tags, "count")));
-      props->add("hierGraph", pMap);
+      props->add("module", pMap);
     
-    } else if(*names.begin() == "hierGraphMarker") {
-      // Merge the IDs of the traceStreams associated with these hierGraphs
+    } else if(*names.begin() == "moduleMarker") {
+      // Merge the IDs of the traceStreams associated with these modules
 //      pMap["traceID"] = txt()<<streamRecord::mergeIDs("traceStream", "traceID", pMap, tags, outStreamRecords, inStreamRecords);
       
-      // Record for every incoming stream that we've entered the given hierGraph instance, making sure that the 
-      // hierGraph group along every incoming stream is the same
-      /*group g = HierGraphStreamRecord::enterHierGraph(
+      // Record for every incoming stream that we've entered the given module instance, making sure that the 
+      // module group along every incoming stream is the same
+      /*group g = ModuleStreamRecord::enterModule(
                            instance(pMap["name"], attrValue::parseInt(pMap["numInputs"]), attrValue::parseInt(pMap["numOutputs"])),
                             inStreamRecords);*/
       // The variants must have the same name and numbers of inputs and outputs
       
-      props->add("hierGraphMarker", pMap);
+      props->add("moduleMarker", pMap);
     }
     
   } else {
     vector<string> names = getNames(tags); assert(allSame<string>(names));
-    assert(*names.begin() == "hierGraphMarker" || *names.begin() == "hierGraph");
+    assert(*names.begin() == "moduleMarker" || *names.begin() == "module");
     
-    //if(*names.begin() == "hierGraphMarker") {
-    //HierGraphStreamRecord::exitHierGraph(inStreamRecords);
-      ((HierGraphStreamRecord*)(outStreamRecords)["hierGraph"])->exitHierGraph();
+    //if(*names.begin() == "moduleMarker") {
+    //ModuleStreamRecord::exitModule(inStreamRecords);
+      ((ModuleStreamRecord*)(outStreamRecords)["module"])->exitModule();
     //}
     
     
@@ -2129,37 +2129,37 @@ properties* HierGraphMerger::setProperties(std::vector<std::pair<properties::tag
 // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info,
-void HierGraphMerger::mergeKey(properties::tagType type, properties::iterator tag, 
+void ModuleMerger::mergeKey(properties::tagType type, properties::iterator tag, 
                            std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
   Merger::mergeKey(type, tag.next(), inStreamRecords, info);
     
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
-    // We only merge hierGraph tags that correspond to the same hierGraph in the outgoing stream. This ID is assigned 
-    // to nodes while we're processing their hierGraphNodeTraceStreams because the hierGraph tags are emitted after
-    // the hierGraphTS tags.
-    /*assert(((HierGraphStreamRecord*)inStreamRecords["hierGraph"])->mStack.size()>0);
-    assert(((HierGraphStreamRecord*)inStreamRecords["hierGraph"])->mStack.back());*/
+    // We only merge module tags that correspond to the same module in the outgoing stream. This ID is assigned 
+    // to nodes while we're processing their moduleNodeTraceStreams because the module tags are emitted after
+    // the moduleTS tags.
+    /*assert(((ModuleStreamRecord*)inStreamRecords["module"])->mStack.size()>0);
+    assert(((ModuleStreamRecord*)inStreamRecords["module"])->mStack.back());*/
 
-    //if(tag.name() == "hierGraphMarker") {
+    //if(tag.name() == "moduleMarker") {
       info.add(tag.get("name"));
       info.add(tag.get("numInputs"));
       info.add(tag.get("numOutputs"));
-    /*} else if(tag.name() == "hierGraph") {
-      streamID inSID(properties::getInt(tag, "hierGraphID"), inStreamRecords["hierGraph"]->getVariantID());
-      //streamID outSID = ((HierGraphStreamRecord*)inStreamRecords["hierGraph"])->mStack.back()->in2outID(inSID);
+    /*} else if(tag.name() == "module") {
+      streamID inSID(properties::getInt(tag, "moduleID"), inStreamRecords["module"]->getVariantID());
+      //streamID outSID = ((ModuleStreamRecord*)inStreamRecords["module"])->mStack.back()->in2outID(inSID);
       map<string, string> pMap;
-      streamID outSID = inStreamRecords["hierGraph"]->in2outID(inSID);
+      streamID outSID = inStreamRecords["module"]->in2outID(inSID);
       info.add(txt()<<outSID.ID);
     }*/
   }
 }
 
 /*****************************
- ***** HierGraphCtrlMerger *****
+ ***** ModuleCtrlMerger *****
  ****************************/
 
-HierGraphCtrlMerger::HierGraphCtrlMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+ModuleCtrlMerger::ModuleCtrlMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                          map<string, streamRecord*>& outStreamRecords,
                          vector<map<string, streamRecord*> >& inStreamRecords,
                          properties* props) : 
@@ -2167,7 +2167,7 @@ HierGraphCtrlMerger::HierGraphCtrlMerger(std::vector<std::pair<properties::tagTy
                     setProperties(tags, outStreamRecords, inStreamRecords, props)) { }
 
 // Sets the properties of the merged object
-properties* HierGraphCtrlMerger::setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+properties* ModuleCtrlMerger::setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                                        map<string, streamRecord*>& outStreamRecords,
                                        vector<map<string, streamRecord*> >& inStreamRecords,
                                        properties* props) {
@@ -2177,12 +2177,12 @@ properties* HierGraphCtrlMerger::setProperties(std::vector<std::pair<properties:
 
   map<string, string> pMap;
   properties::tagType type = streamRecord::getTagType(tags); 
-  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging HierGraph Control tags!"<<endl; exit(-1); }
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Module Control tags!"<<endl; exit(-1); }
   if(type==properties::enterTag || type==properties::exitTag) {
     vector<string> names = getNames(tags); assert(allSame<string>(names));
-    assert(*names.begin() == "hierGraphCtrl");
+    assert(*names.begin() == "moduleCtrl");
   }
-  props->add("hierGraphCtrl", pMap);
+  props->add("moduleCtrl", pMap);
   
   return props;
 }
@@ -2191,7 +2191,7 @@ properties* HierGraphCtrlMerger::setProperties(std::vector<std::pair<properties:
 // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info,
-void HierGraphCtrlMerger::mergeKey(properties::tagType type, properties::iterator tag, 
+void ModuleCtrlMerger::mergeKey(properties::tagType type, properties::iterator tag, 
                            std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
   Merger::mergeKey(type, tag.next(), inStreamRecords, info);
     
@@ -2202,10 +2202,10 @@ void HierGraphCtrlMerger::mergeKey(properties::tagType type, properties::iterato
 }
 
 /****************************
- ***** HierGraphEdgeMerger *****
+ ***** ModuleEdgeMerger *****
  ****************************/
 
-HierGraphEdgeMerger::HierGraphEdgeMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+ModuleEdgeMerger::ModuleEdgeMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                          map<string, streamRecord*>& outStreamRecords,
                          vector<map<string, streamRecord*> >& inStreamRecords,
                          properties* props) : 
@@ -2213,7 +2213,7 @@ HierGraphEdgeMerger::HierGraphEdgeMerger(std::vector<std::pair<properties::tagTy
                     setProperties(tags, outStreamRecords, inStreamRecords, props)) { }
 
 // Sets the properties of the merged object
-properties* HierGraphEdgeMerger::setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+properties* ModuleEdgeMerger::setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                                        map<string, streamRecord*>& outStreamRecords,
                                        vector<map<string, streamRecord*> >& inStreamRecords,
                                        properties* props) {
@@ -2223,22 +2223,22 @@ properties* HierGraphEdgeMerger::setProperties(std::vector<std::pair<properties:
 
   map<string, string> pMap;
   properties::tagType type = streamRecord::getTagType(tags); 
-  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging HierGraph Edges!"<<endl; exit(-1); }
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Module Edges!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
     vector<string> names = getNames(tags); assert(allSame<string>(names));
-    assert(*names.begin() == "hierGraphEdge");
+    assert(*names.begin() == "moduleEdge");
 
     /*vector<string> cpValues = getValues(tags, "callPath");
     assert(allSame<string>(cpValues));
     pMap["callPath"] = *cpValues.begin();*/
     
-    // Merge the IDs of the hierGraph nodes on both sides of the edge, along all the streams
-    int fromNodeID = streamRecord::mergeIDs("hierGraph", "fromCID", pMap, tags, outStreamRecords, inStreamRecords);
-    //int fromNodeID = HierGraphStreamRecord::mergeNodeIDs("fromCID", pMap, tags, outStreamRecords, inStreamRecords);
+    // Merge the IDs of the module nodes on both sides of the edge, along all the streams
+    int fromNodeID = streamRecord::mergeIDs("module", "fromCID", pMap, tags, outStreamRecords, inStreamRecords);
+    //int fromNodeID = ModuleStreamRecord::mergeNodeIDs("fromCID", pMap, tags, outStreamRecords, inStreamRecords);
     pMap["fromCID"] = txt() << fromNodeID;
       
-    int toNodeID   = streamRecord::mergeIDs("hierGraph", "toCID",   pMap, tags, outStreamRecords, inStreamRecords);
-    //int toNodeID = HierGraphStreamRecord::mergeNodeIDs("toCID", pMap, tags, outStreamRecords, inStreamRecords);
+    int toNodeID   = streamRecord::mergeIDs("module", "toCID",   pMap, tags, outStreamRecords, inStreamRecords);
+    //int toNodeID = ModuleStreamRecord::mergeNodeIDs("toCID", pMap, tags, outStreamRecords, inStreamRecords);
     pMap["toCID"] = txt() << toNodeID;
     
     // The variants must connect the same port indexes with the same types (input/output)
@@ -2258,8 +2258,8 @@ properties* HierGraphEdgeMerger::setProperties(std::vector<std::pair<properties:
     assert(allSame<string>(toP));
     pMap["toP"] = *toP.begin();
     
-    // Compute the average of the fraction of times we entered this edge's source hierGraph group and then took
-    // this edge, weighted by the number of times we enter the source hierGraph group within each incoming stream.
+    // Compute the average of the fraction of times we entered this edge's source module group and then took
+    // this edge, weighted by the number of times we enter the source module group within each incoming stream.
     std::vector<long> fromCount = str2int  (getValues(tags, "fromCount"));
     std::vector<double> prob    = str2float(getValues(tags, "prob"));
     assert(fromCount.size() == prob.size());
@@ -2273,9 +2273,9 @@ properties* HierGraphEdgeMerger::setProperties(std::vector<std::pair<properties:
     pMap["fromCount"] = txt()<<sumCount;
     pMap["prob"] = txt()<<(sumProb / sumCount);
     
-    props->add("hierGraphEdge", pMap);
+    props->add("moduleEdge", pMap);
   } else {
-    props->add("hierGraphEdge", pMap);
+    props->add("moduleEdge", pMap);
   }
   
   return props;
@@ -2285,24 +2285,24 @@ properties* HierGraphEdgeMerger::setProperties(std::vector<std::pair<properties:
 // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info,
-void HierGraphEdgeMerger::mergeKey(properties::tagType type, properties::iterator tag, 
+void ModuleEdgeMerger::mergeKey(properties::tagType type, properties::iterator tag, 
                                 std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
   Merger::mergeKey(type, tag.next(), inStreamRecords, info);
     
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
     // Edges between nodes that were merged to different nodeIDs in the outgoing streams are separated
-    /*assert(((HierGraphStreamRecord*)inStreamRecords["hierGraph"])->mStack.size()>0);
-    assert(((HierGraphStreamRecord*)inStreamRecords["hierGraph"])->mStack.back());*/
+    /*assert(((ModuleStreamRecord*)inStreamRecords["module"])->mStack.size()>0);
+    assert(((ModuleStreamRecord*)inStreamRecords["module"])->mStack.back());*/
     
-    streamID inFromSID(tag.getInt("fromCID"), inStreamRecords["hierGraph"]->getVariantID());
-    //streamID outFromSID = ((HierGraphStreamRecord*)inStreamRecords["hierGraph"])->mStack.back()->in2outID(inFromSID);
-    streamID outFromSID = inStreamRecords["hierGraph"]->in2outID(inFromSID);
+    streamID inFromSID(tag.getInt("fromCID"), inStreamRecords["module"]->getVariantID());
+    //streamID outFromSID = ((ModuleStreamRecord*)inStreamRecords["module"])->mStack.back()->in2outID(inFromSID);
+    streamID outFromSID = inStreamRecords["module"]->in2outID(inFromSID);
     info.add(txt()<<outFromSID.ID);
     
-    streamID inToSID(tag.getInt("toCID"), inStreamRecords["hierGraph"]->getVariantID());
-    //streamID outToSID = ((HierGraphStreamRecord*)inStreamRecords["hierGraph"])->mStack.back()->in2outID(inToSID);
-    streamID outToSID = inStreamRecords["hierGraph"]->in2outID(inToSID);
+    streamID inToSID(tag.getInt("toCID"), inStreamRecords["module"]->getVariantID());
+    //streamID outToSID = ((ModuleStreamRecord*)inStreamRecords["module"])->mStack.back()->in2outID(inToSID);
+    streamID outToSID = inStreamRecords["module"]->in2outID(inToSID);
     info.add(txt()<<outToSID.ID);
     
     // Edges between different port numbers/types are separated
@@ -2314,10 +2314,10 @@ void HierGraphEdgeMerger::mergeKey(properties::tagType type, properties::iterato
 }
 
 /***********************************
- ***** HierGraphTraceStreamMerger *****
+ ***** ModuleTraceStreamMerger *****
  ***********************************/
 
-HierGraphTraceStreamMerger::HierGraphTraceStreamMerger(
+ModuleTraceStreamMerger::ModuleTraceStreamMerger(
                          std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                          std::map<std::string, streamRecord*>& outStreamRecords,
                          std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
@@ -2326,45 +2326,45 @@ HierGraphTraceStreamMerger::HierGraphTraceStreamMerger(
                                       setProperties(tags, outStreamRecords, inStreamRecords, props))
 {
   properties::tagType type = streamRecord::getTagType(tags); 
-  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging HierGraph TraceStreams!"<<endl; exit(-1); }
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Module TraceStreams!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
-    /*properties::iterator hierGraphTSIter = getProps().find("hierGraphTS");
-    HierGraphStreamRecord::hierGraphInfo info(hierGraphTSIter.getInt("hierGraphID"),
-                                        hierGraphTSIter.get("name"),
-                                        hierGraphTSIter.getInt("numInputs"),
-                                        hierGraphTSIter.getInt("numOutputs"));
+    /*properties::iterator moduleTSIter = getProps().find("moduleTS");
+    ModuleStreamRecord::moduleInfo info(moduleTSIter.getInt("moduleID"),
+                                        moduleTSIter.get("name"),
+                                        moduleTSIter.getInt("numInputs"),
+                                        moduleTSIter.getInt("numOutputs"));
     
-    cout << "< ((HierGraphStreamRecord*)outStreamRecords[\"hierGraph\"])->observedHierGraphs (#"<<(((HierGraphStreamRecord*)outStreamRecords["hierGraph"])->observedHierGraphs.size())<<")="<<endl;
-    for(map<group, int>::iterator i=((HierGraphStreamRecord*)outStreamRecords["hierGraph"])->observedHierGraphs.begin(); i!=((HierGraphStreamRecord*)outStreamRecords["hierGraph"])->observedHierGraphs.end(); i++)
+    cout << "< ((ModuleStreamRecord*)outStreamRecords[\"module\"])->observedModules (#"<<(((ModuleStreamRecord*)outStreamRecords["module"])->observedModules.size())<<")="<<endl;
+    for(map<group, int>::iterator i=((ModuleStreamRecord*)outStreamRecords["module"])->observedModules.begin(); i!=((ModuleStreamRecord*)outStreamRecords["module"])->observedModules.end(); i++)
       cout << "<     "<<i->first.str()<<" : "<<i->second<<endl;
     
     // Record 
-    (HierGraphStreamRecord*)outStreamRecords["hierGraph"])->observedHierGraphs.find(info)
+    (ModuleStreamRecord*)outStreamRecords["module"])->observedModules.find(info)
     
-    // If we already have a record for this hierGraphTS on the outgoing stream
-    if(((HierGraphStreamRecord*)outStreamRecords["hierGraph"])->observedHierGraphs.find(info) != 
-       ((HierGraphStreamRecord*)outStreamRecords["hierGraph"])->observedHierGraphs.end())
+    // If we already have a record for this moduleTS on the outgoing stream
+    if(((ModuleStreamRecord*)outStreamRecords["module"])->observedModules.find(info) != 
+       ((ModuleStreamRecord*)outStreamRecords["module"])->observedModules.end())
     {
-      cout << "Found "<<hierGraphTSIter.get("name")<<endl;
-      // Don't emit this tag since it will be a duplicate of the hierGraphTS that we've already emitted
+      cout << "Found "<<moduleTSIter.get("name")<<endl;
+      // Don't emit this tag since it will be a duplicate of the moduleTS that we've already emitted
       dontEmit();
-    // If we do not yet have a record for this hierGraphTS, add one
+    // If we do not yet have a record for this moduleTS, add one
     } else 
-      ((HierGraphStreamRecord*)outStreamRecords["hierGraph"])->observedHierGraphs[info] = hierGraphTSIter.getInt("hierGraphID");
+      ((ModuleStreamRecord*)outStreamRecords["module"])->observedModules[info] = moduleTSIter.getInt("moduleID");
 
-    cout << "> ((HierGraphStreamRecord*)outStreamRecords[\"hierGraph\"])->observedHierGraphs (#"<<(((HierGraphStreamRecord*)outStreamRecords["hierGraph"])->observedHierGraphs.size())<<")="<<endl;
-    for(map<HierGraphStreamRecord::hierGraphInfo, int>::iterator i=((HierGraphStreamRefcord*)outStreamRecords["hierGraph"])->observedHierGraphs.begin(); i!=((HierGraphStreamRecord*)outStreamRecords["hierGraph"])->observedHierGraphs.end(); i++)
+    cout << "> ((ModuleStreamRecord*)outStreamRecords[\"module\"])->observedModules (#"<<(((ModuleStreamRecord*)outStreamRecords["module"])->observedModules.size())<<")="<<endl;
+    for(map<ModuleStreamRecord::moduleInfo, int>::iterator i=((ModuleStreamRefcord*)outStreamRecords["module"])->observedModules.begin(); i!=((ModuleStreamRecord*)outStreamRecords["module"])->observedModules.end(); i++)
       cout << ">     "<<i->first.str()<<" : "<<i->second<<endl;*/
     
-    // If in setProperties() we discovered that a hierGraphTS tag has already been emitted for this hierGraph group,
+    // If in setProperties() we discovered that a moduleTS tag has already been emitted for this module group,
     // don't emit another one
-    if(getProps().find("hierGraphTS").exists("dontEmit"))
+    if(getProps().find("moduleTS").exists("dontEmit"))
       dontEmit();
   }
 }
 
 // Sets the properties of this object
-properties* HierGraphTraceStreamMerger::setProperties(
+properties* ModuleTraceStreamMerger::setProperties(
                          std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                          std::map<std::string, streamRecord*>& outStreamRecords,
                          std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
@@ -2375,10 +2375,10 @@ properties* HierGraphTraceStreamMerger::setProperties(
   
   map<string, string> pMap;
   properties::tagType type = streamRecord::getTagType(tags); 
-  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging HierGraph TraceStreams!"<<endl; exit(-1); }
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Module TraceStreams!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
     vector<string> names = getNames(tags); assert(allSame<string>(names));
-    assert(*names.begin() == "hierGraphTS");
+    assert(*names.begin() == "moduleTS");
     
     pMap["name"] = getSameValue(tags, "name");
     pMap["numInputs"] = getSameValue(tags, "numInputs");
@@ -2389,66 +2389,66 @@ properties* HierGraphTraceStreamMerger::setProperties(
     /*streamID outSID;
     bool sidAssigned=false; // Records whether the ID on the outgoing stream has been assigned
     for(std::vector<std::map<std::string, streamRecord*> >::iterator in=inStreamRecords.begin(); in!=inStreamRecords.end(); in++) {
-      HierGraphStreamRecord* ms = (HierGraphStreamRecord*)(*in)["hierGraph"];
+      ModuleStreamRecord* ms = (ModuleStreamRecord*)(*in)["module"];
       group g = ms->getGroup();
-      if(((HierGraphStreamRecord*)outStreamRecords["hierGraph"])->isHierGraphObserved(g)) {
+      if(((ModuleStreamRecord*)outStreamRecords["module"])->isModuleObserved(g)) {
         if(!sidAssigned) {
-          outSID = ms->getHierGraphID(g);
+          outSID = ms->getModuleID(g);
           sidAssigned = true;
         } else {
-          if(outSID != ms->getHierGraphID(g)) { cerr << "ERROR: Attempting to merge hierGraph IDs of multiple incoming streams but they are mapped to different anchorIDs in the outgoing stream!"<<endl; assert(0); }
+          if(outSID != ms->getModuleID(g)) { cerr << "ERROR: Attempting to merge module IDs of multiple incoming streams but they are mapped to different anchorIDs in the outgoing stream!"<<endl; assert(0); }
         }
       }
     }*/
-    //group g = HierGraphStreamRecord::getGroup(inStreamRecords);
-    group g = ((HierGraphStreamRecord*)(outStreamRecords)["hierGraph"])->getGroup();
-    int hierGraphID;
+    //group g = ModuleStreamRecord::getGroup(inStreamRecords);
+    group g = ((ModuleStreamRecord*)(outStreamRecords)["module"])->getGroup();
+    int moduleID;
     
     // The tags of the traceStream objects along the incoming streams, which are the parent objects of
-    // the hierGraphTraceStreams considered in this function.
+    // the moduleTraceStreams considered in this function.
     std::vector<std::pair<properties::tagType, properties::iterator> > TraceStreamTags = advance(tags);
     
-    // If we've previously assigned a streamID in the outgoing stream to this hierGraph group
-    if(((HierGraphStreamRecord*)(outStreamRecords)["hierGraph"])->isHierGraphObserved(g)) {
-      // This means that a hierGraphTS tag for this hierGraph group has already been emitted and thus, we will
+    // If we've previously assigned a streamID in the outgoing stream to this module group
+    if(((ModuleStreamRecord*)(outStreamRecords)["module"])->isModuleObserved(g)) {
+      // This means that a moduleTS tag for this module group has already been emitted and thus, we will
       // not be emitting another one.
-      // Set the dontEmit field in pMap to communicate this fact to the HierGraphTraceStreamMerger constructor
+      // Set the dontEmit field in pMap to communicate this fact to the ModuleTraceStreamMerger constructor
       pMap["dontEmit"] = "1";
       
-      hierGraphID = ((HierGraphStreamRecord*)(outStreamRecords)["hierGraph"])->getHierGraphID(g);
+      moduleID = ((ModuleStreamRecord*)(outStreamRecords)["module"])->getModuleID(g);
       
-      // We get into this case where the merger cannot align different instances of HierGraphTraceStream,
-      //   causing one instance to appear on one incoming stream before the same HierGraphTraceStream appear
-      //   on another incoming stream. Since we've already chosen the traceID for this hierGraph group,
-      //   simply retrieve it and and use mergeIDs() to force all the newly-observed HierGraphTraceStreams
+      // We get into this case where the merger cannot align different instances of ModuleTraceStream,
+      //   causing one instance to appear on one incoming stream before the same ModuleTraceStream appear
+      //   on another incoming stream. Since we've already chosen the traceID for this module group,
+      //   simply retrieve it and and use mergeIDs() to force all the newly-observed ModuleTraceStreams
       //   to use it.
       // When TraceStreamMerger calls mergeIDs() in TraceStreamMerger::TraceStreamMerger() call right 
       //   after this function ends it will get this traceID.
-      int traceID = ((HierGraphStreamRecord*)(outStreamRecords)["hierGraph"])->getHierGraphTraceID(g);
+      int traceID = ((ModuleStreamRecord*)(outStreamRecords)["module"])->getModuleTraceID(g);
       streamRecord::mergeIDs("traceStream", "traceID", pMap, TraceStreamTags, outStreamRecords, inStreamRecords, traceID);
-    // If we've never previously observed this hierGraph group
+    // If we've never previously observed this module group
     } else {
-      // Generate a fresh ID for all the hierGraphs along the incoming streams
-      hierGraphID = ((HierGraphStreamRecord*)(outStreamRecords)["hierGraph"])->genHierGraphID();
+      // Generate a fresh ID for all the modules along the incoming streams
+      moduleID = ((ModuleStreamRecord*)(outStreamRecords)["module"])->genModuleID();
       
-      // Make sure that the traceIDs of the traceStreams associated with the aligned hierGraphs along the 
+      // Make sure that the traceIDs of the traceStreams associated with the aligned modules along the 
       //   incoming streams are mapped to the same traceID along the outgoing stream. 
       // When TraceStreamMerger calls mergeIDs() in TraceStreamMerger::TraceStreamMerger() call right 
       //   after this function ends it will get this traceID.
       int traceID = streamRecord::mergeIDs("traceStream", "traceID", pMap, TraceStreamTags, outStreamRecords, inStreamRecords);
       
-      // Associate the new hierGraphID and traceID with the hierGraph group
-      ((HierGraphStreamRecord*)(outStreamRecords)["hierGraph"])->setHierGraphID(g, hierGraphID, traceID);
+      // Associate the new moduleID and traceID with the module group
+      ((ModuleStreamRecord*)(outStreamRecords)["module"])->setModuleID(g, moduleID, traceID);
       
-      pMap["hierGraphID"] = txt() << hierGraphID;
+      pMap["moduleID"] = txt() << moduleID;
     }
     
-    // Record the mapping from the hierGraphIDs of each incoming stream to this hierGraphID
-    int mergedID = streamRecord::mergeIDs("hierGraph", "hierGraphID", pMap, tags, outStreamRecords, inStreamRecords, hierGraphID);
-    assert(mergedID == hierGraphID);
+    // Record the mapping from the moduleIDs of each incoming stream to this moduleID
+    int mergedID = streamRecord::mergeIDs("module", "moduleID", pMap, tags, outStreamRecords, inStreamRecords, moduleID);
+    assert(mergedID == moduleID);
   } else if(type==properties::exitTag) {
   }
-  props->add("hierGraphTS", pMap);
+  props->add("moduleTS", pMap);
   
   return props;
 }
@@ -2458,16 +2458,16 @@ properties* HierGraphTraceStreamMerger::setProperties(
 // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
-void HierGraphTraceStreamMerger::mergeKey(properties::tagType type, properties::iterator tag, 
+void ModuleTraceStreamMerger::mergeKey(properties::tagType type, properties::iterator tag, 
                            std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
   Merger::mergeKey(type, tag.next(), inStreamRecords, info);
    
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
-    // We only merge hierGraphNodeTraceStreams that have the same name and numbers of inputs and outputs
-    // The same rule is used for their associated hierGraph but since those tags appear later in the stream
+    // We only merge moduleNodeTraceStreams that have the same name and numbers of inputs and outputs
+    // The same rule is used for their associated module but since those tags appear later in the stream
     // they're split according to the ID in the outgoing stream that was assigned to them while processing
-    // their hierGraphNodeTraceStreams.
+    // their moduleNodeTraceStreams.
     info.add(tag.get("name"));
     info.add(tag.get("numInputs"));
     info.add(tag.get("numOutputs"));
@@ -2475,18 +2475,18 @@ void HierGraphTraceStreamMerger::mergeKey(properties::tagType type, properties::
 }
 
 /****************************
- ***** CompHierGraphMerger *****
+ ***** CompModuleMerger *****
  ****************************/
 
-CompHierGraphMerger::CompHierGraphMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+CompModuleMerger::CompModuleMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                          map<string, streamRecord*>& outStreamRecords,
                          vector<map<string, streamRecord*> >& inStreamRecords,
                          properties* props) : 
-        HierGraphMerger(advance(tags), outStreamRecords, inStreamRecords, 
+        ModuleMerger(advance(tags), outStreamRecords, inStreamRecords, 
                     setProperties(tags, outStreamRecords, inStreamRecords, props)) { }
 
 // Sets the properties of the merged object
-properties* CompHierGraphMerger::setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+properties* CompModuleMerger::setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                                        map<string, streamRecord*>& outStreamRecords,
                                        vector<map<string, streamRecord*> >& inStreamRecords,
                                        properties* props) {
@@ -2496,26 +2496,26 @@ properties* CompHierGraphMerger::setProperties(std::vector<std::pair<properties:
 
   map<string, string> pMap;
   properties::tagType type = streamRecord::getTagType(tags); 
-  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging HierGraphs!"<<endl; exit(-1); }
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Modules!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
     vector<string> names = getNames(tags); assert(allSame<string>(names));
-    assert(*names.begin() == "compHierGraph");
+    assert(*names.begin() == "compModule");
     
     /*vector<string> cpValues = getValues(tags, "callPath");
     assert(allSame<string>(cpValues));
     pMap["callPath"] = *cpValues.begin();*/
     
-    // Merge the hierGraph IDs along all the streams
-    //int nodeID = HierGraphStreamRecord::mergeNodeIDs("hierGraphID", pMap, tags, outStreamRecords, inStreamRecords);
-    /*int nodeID = streamRecord::mergeIDs("hierGraph", "hierGraphID", pMap, tags, outStreamRecords, inStreamRecords);
-    pMap["hierGraphID"] = txt() << nodeID;*/
+    // Merge the module IDs along all the streams
+    //int nodeID = ModuleStreamRecord::mergeNodeIDs("moduleID", pMap, tags, outStreamRecords, inStreamRecords);
+    /*int nodeID = streamRecord::mergeIDs("module", "moduleID", pMap, tags, outStreamRecords, inStreamRecords);
+    pMap["moduleID"] = txt() << nodeID;*/
     
     // The variants must have the same name and numbers of inputs and outputs
-    pMap["compHierGraph:isReference"] = getSameValue(tags, "compHierGraph:isReference");
+    pMap["compModule:isReference"] = getSameValue(tags, "compModule:isReference");
     
-    props->add("compHierGraph", pMap);
+    props->add("compModule", pMap);
   } else {
-    props->add("compHierGraph", pMap);
+    props->add("compModule", pMap);
   }
   
   return props;
@@ -2525,31 +2525,31 @@ properties* CompHierGraphMerger::setProperties(std::vector<std::pair<properties:
 // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info,
-void CompHierGraphMerger::mergeKey(properties::tagType type, properties::iterator tag, 
+void CompModuleMerger::mergeKey(properties::tagType type, properties::iterator tag, 
                            std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
-  HierGraphMerger::mergeKey(type, tag.next(), inStreamRecords, info);
+  ModuleMerger::mergeKey(type, tag.next(), inStreamRecords, info);
     
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
-    info.add(tag.get("compHierGraph:isReference"));
+    info.add(tag.get("compModule:isReference"));
   }
 }
 
 /***************************************
- ***** CompHierGraphTraceStreamMerger *****
+ ***** CompModuleTraceStreamMerger *****
  ***************************************/
 
-CompHierGraphTraceStreamMerger::CompHierGraphTraceStreamMerger(
+CompModuleTraceStreamMerger::CompModuleTraceStreamMerger(
                          std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                          std::map<std::string, streamRecord*>& outStreamRecords,
                          std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
                          properties* props) :
-                    HierGraphTraceStreamMerger(advance(tags), outStreamRecords, inStreamRecords, 
+                    ModuleTraceStreamMerger(advance(tags), outStreamRecords, inStreamRecords, 
                                             setProperties(tags, outStreamRecords, inStreamRecords, props))
 { }
 
 // Sets the properties of this object
-properties* CompHierGraphTraceStreamMerger::setProperties(
+properties* CompModuleTraceStreamMerger::setProperties(
                          std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                          std::map<std::string, streamRecord*>& outStreamRecords,
                          std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
@@ -2560,16 +2560,16 @@ properties* CompHierGraphTraceStreamMerger::setProperties(
   
   map<string, string> pMap;
   properties::tagType type = streamRecord::getTagType(tags); 
-  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Comparison HierGraph TraceStreams!"<<endl; exit(-1); }
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Comparison Module TraceStreams!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
-    assert(getSameName(tags) == "compHierGraphTS");
+    assert(getSameName(tags) == "compModuleTS");
 
-    //int nodeID = HierGraphStreamRecord::mergeNodeIDs("nodeID", pMap, tags, outStreamRecords, inStreamRecords);
+    //int nodeID = ModuleStreamRecord::mergeNodeIDs("nodeID", pMap, tags, outStreamRecords, inStreamRecords);
     
     // We know that all the tags have the same values for isReference, options, output comparators and measurements.
     // Thus, we only consider this information from the first tag.
     
-    /*common::hierGraph::context options = common::hierGraph::context(tags[0].second, "op");
+    /*common::module::context options = common::module::context(tags[0].second, "op");
     pMap = options.getProperties("op");*/
     
     //pMap["isReference"] = tags[0].second.get("isReference");
@@ -2660,7 +2660,7 @@ cout << "outIdx="<<outIdx<<", compIdx="<<compIdx<<". key="<<key<<": "<<t->second
     for(int m=0; m<numMeasurements; m++)
       pMap[txt()<<"measure"<<m] = tags[0].second.get(txt()<<"measure"<<m);
   }
-  props->add("compHierGraphTS", pMap);
+  props->add("compModuleTS", pMap);
   
   return props;
 }
@@ -2670,22 +2670,22 @@ cout << "outIdx="<<outIdx<<", compIdx="<<compIdx<<". key="<<key<<": "<<t->second
 // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
-void CompHierGraphTraceStreamMerger::mergeKey(properties::tagType type, properties::iterator tag, 
+void CompModuleTraceStreamMerger::mergeKey(properties::tagType type, properties::iterator tag, 
                                            std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
   Merger::mergeKey(type, tag.next(), inStreamRecords, info);
    
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
-    // We only merge hierGraphNodeTraceStreams that have the same values for isReference, (they either are both 
+    // We only merge moduleNodeTraceStreams that have the same values for isReference, (they either are both 
     // examples of the reference configuration or they're bith not), same configuration, same output comparators and 
     // same measurements. 
-    // The same rule is used for their associated hierGraph but since those tags appear later in the stream
+    // The same rule is used for their associated module but since those tags appear later in the stream
     // they're split according to the ID in the outgoing stream that was assigned to them while processing
-    // their hierGraphNodeTraceStreams.
+    // their moduleNodeTraceStreams.
     //info.add(tag.get("isReference"));
     
     // Same options
-    /*common::hierGraph::context options(tag, "op");
+    /*common::module::context options(tag, "op");
     info.add(txt()<<options.configuration.size());
     int cIdx=0;
     for(map<string, attrValue>::iterator c=options.configuration.begin(); c!=options.configuration.end(); c++, cIdx++) {
@@ -2730,140 +2730,140 @@ void CompHierGraphTraceStreamMerger::mergeKey(properties::tagType type, properti
 }
 
 /*****************************
- ***** HierGraphStreamRecord *****
+ ***** ModuleStreamRecord *****
  *****************************/
 
-// Called when a hierGraph is entered/exited along the given stream to record the current hierGraph group
-group HierGraphStreamRecord::enterHierGraph(const instance& inst) { 
+// Called when a module is entered/exited along the given stream to record the current module group
+group ModuleStreamRecord::enterModule(const instance& inst) { 
   iStack.push_back(inst);
   //cout << "<("<<this<<")#iStack = "<<iStack.size()<<", iStack.back()="<<(&(iStack.back()))<<endl;
   return getGroup();
 }
 
-// Record that we've entered the given hierGraph instance on all the given incoming streams
-group HierGraphStreamRecord::enterHierGraph(const instance& inst, const std::vector<std::map<std::string, streamRecord*> >& inStreamRecords) {
-  // Record for every incoming stream that we've entered the given hierGraph instance, making sure that the 
-  // hierGraph group along every incoming stream is the same
+// Record that we've entered the given module instance on all the given incoming streams
+group ModuleStreamRecord::enterModule(const instance& inst, const std::vector<std::map<std::string, streamRecord*> >& inStreamRecords) {
+  // Record for every incoming stream that we've entered the given module instance, making sure that the 
+  // module group along every incoming stream is the same
   group g;
   for(std::vector<std::map<std::string, streamRecord*> >::const_iterator in=inStreamRecords.begin(); in!=inStreamRecords.end(); in++) {
-    std::map<std::string, streamRecord*>::const_iterator modIter = in->find("hierGraph");
+    std::map<std::string, streamRecord*>::const_iterator modIter = in->find("module");
     assert(modIter != in->end());
-    HierGraphStreamRecord* ms = (HierGraphStreamRecord*)modIter->second;
-    group curGroup = ms->enterHierGraph(inst);
+    ModuleStreamRecord* ms = (ModuleStreamRecord*)modIter->second;
+    group curGroup = ms->enterModule(inst);
     if(in == inStreamRecords.begin()) 
       g = curGroup;
     else if(g != curGroup)
-    { cerr << "ERROR: Attempting to merge hierGraphs from multiple incoming streams but the hierGraph groups on these streams are not identical!"<<endl; assert(0); }
+    { cerr << "ERROR: Attempting to merge modules from multiple incoming streams but the module groups on these streams are not identical!"<<endl; assert(0); }
   }
   return g;
 }
 
-void HierGraphStreamRecord::exitHierGraph() { 
+void ModuleStreamRecord::exitModule() { 
   //cout << ">("<<this<<")#iStack = "<<iStack.size()<<", iStack.back()="<<(&(iStack.back()))<<endl;
   assert(iStack.size()>0);
   iStack.pop_back();
 }
 
-// Record that we've exited the given hierGraph instance on all the given incoming streams
-void HierGraphStreamRecord::exitHierGraph(const std::vector<std::map<std::string, streamRecord*> >& inStreamRecords) {
+// Record that we've exited the given module instance on all the given incoming streams
+void ModuleStreamRecord::exitModule(const std::vector<std::map<std::string, streamRecord*> >& inStreamRecords) {
   for(std::vector<std::map<std::string, streamRecord*> >::const_iterator in=inStreamRecords.begin(); in!=inStreamRecords.end(); in++) {
-    std::map<std::string, streamRecord*>::const_iterator modIter = in->find("hierGraph");
+    std::map<std::string, streamRecord*>::const_iterator modIter = in->find("module");
     assert(modIter != in->end());
-    ((HierGraphStreamRecord*)modIter->second)->exitHierGraph();
+    ((ModuleStreamRecord*)modIter->second)->exitModule();
   }
 }
 
-// Returns the group denoted by the current stack of hierGraph instances
-group HierGraphStreamRecord::getGroup()
+// Returns the group denoted by the current stack of module instances
+group ModuleStreamRecord::getGroup()
 { return group(iStack); }
 
-// Returns the group denoted by the current stack of hierGraph instances in all the given incoming streams 
+// Returns the group denoted by the current stack of module instances in all the given incoming streams 
 // (must be identical on all of them).
-group HierGraphStreamRecord::getGroup(const std::vector<std::map<std::string, streamRecord*> >& inStreamRecords) { 
+group ModuleStreamRecord::getGroup(const std::vector<std::map<std::string, streamRecord*> >& inStreamRecords) { 
   group g;
   for(std::vector<std::map<std::string, streamRecord*> >::const_iterator in=inStreamRecords.begin(); in!=inStreamRecords.end(); in++) {
-    std::map<std::string, streamRecord*>::const_iterator modIter = in->find("hierGraph");
+    std::map<std::string, streamRecord*>::const_iterator modIter = in->find("module");
     assert(modIter != in->end());
-    HierGraphStreamRecord* ms = (HierGraphStreamRecord*)modIter->second;
+    ModuleStreamRecord* ms = (ModuleStreamRecord*)modIter->second;
     if(in == inStreamRecords.begin()) 
       g = ms->getGroup();
     else if(ms->getGroup() != g)
-    { cerr << "ERROR: Attempting to merge hierGraphs from multiple incoming streams but the hierGraph groups on these streams are not identical!"<<endl; assert(0); }
+    { cerr << "ERROR: Attempting to merge modules from multiple incoming streams but the module groups on these streams are not identical!"<<endl; assert(0); }
   }
   return g;
 }
 
-HierGraphStreamRecord::HierGraphStreamRecord(const HierGraphStreamRecord& that, int vSuffixID) :
-  streamRecord(that, vSuffixID), iStack(that.iStack), observedHierGraphs(that.observedHierGraphs), observedHierGraphsTS(that.observedHierGraphsTS), maxHierGraphID(that.maxHierGraphID)
+ModuleStreamRecord::ModuleStreamRecord(const ModuleStreamRecord& that, int vSuffixID) :
+  streamRecord(that, vSuffixID), iStack(that.iStack), observedModules(that.observedModules), observedModulesTS(that.observedModulesTS), maxModuleID(that.maxModuleID)
 {}
 
 /*
-// Called to record that we've entered/exited a hierGraph
-void HierGraphStreamRecord::enterModularApp() {
-  mStack.push_back(new streamRecord(getVariantID(), "hierGraphNode"));
+// Called to record that we've entered/exited a module
+void ModuleStreamRecord::enterModularApp() {
+  mStack.push_back(new streamRecord(getVariantID(), "moduleNode"));
 }
 
-void HierGraphStreamRecord::enterModularApp(map<string, streamRecord*>& outStreamRecords,
+void ModuleStreamRecord::enterModularApp(map<string, streamRecord*>& outStreamRecords,
                                        vector<map<string, streamRecord*> >& inStreamRecords) {
   for(vector<map<string, streamRecord*> >::iterator i=inStreamRecords.begin();
       i!=inStreamRecords.end(); i++) {
-    assert(dynamic_cast<HierGraphStreamRecord*>((*i)["hierGraph"]));
-    dynamic_cast<HierGraphStreamRecord*>((*i)["hierGraph"])->enterHierGraph();
+    assert(dynamic_cast<ModuleStreamRecord*>((*i)["module"]));
+    dynamic_cast<ModuleStreamRecord*>((*i)["module"])->enterModule();
   }
-  dynamic_cast<HierGraphStreamRecord*>(outStreamRecords["hierGraph"])->enterHierGraph();
+  dynamic_cast<ModuleStreamRecord*>(outStreamRecords["module"])->enterModule();
 }
 
-void HierGraphStreamRecord::exitModularApp() {
+void ModuleStreamRecord::exitModularApp() {
   assert(mStack.size()>0);
   assert(mStack.back());
   delete mStack.back();
   mStack.pop_back();
 }
 
-void HierGraphStreamRecord::exitModularApp(map<string, streamRecord*>& outStreamRecords,
+void ModuleStreamRecord::exitModularApp(map<string, streamRecord*>& outStreamRecords,
                                     vector<map<string, streamRecord*> >& inStreamRecords) {
   for(vector<map<string, streamRecord*> >::iterator i=inStreamRecords.begin();
       i!=inStreamRecords.end(); i++) {
-    assert(dynamic_cast<HierGraphStreamRecord*>((*i)["hierGraph"]));
-    dynamic_cast<HierGraphStreamRecord*>((*i)["hierGraph"])->exitHierGraph();
+    assert(dynamic_cast<ModuleStreamRecord*>((*i)["module"]));
+    dynamic_cast<ModuleStreamRecord*>((*i)["module"])->exitModule();
   }
-  dynamic_cast<HierGraphStreamRecord*>(outStreamRecords["hierGraph"])->exitHierGraph();
+  dynamic_cast<ModuleStreamRecord*>(outStreamRecords["module"])->exitModule();
 }*/
 
 // Returns a dynamically-allocated copy of this streamRecord, specialized to the given variant ID,
 // which is appended to the new stream's variant list.
-streamRecord* HierGraphStreamRecord::copy(int vSuffixID) {
-  return new HierGraphStreamRecord(*this, vSuffixID);
+streamRecord* ModuleStreamRecord::copy(int vSuffixID) {
+  return new ModuleStreamRecord(*this, vSuffixID);
 }
 
-/* // Given a vector of streamRecord maps, collects the streamRecords associated with the currently active hierGraph (top of the mStack)
+/* // Given a vector of streamRecord maps, collects the streamRecords associated with the currently active module (top of the mStack)
 // within each stream into nodeStreamRecords and returns the height of the mStacks on all the streams (must be the same number)
-int HierGraphStreamRecord::collectNodeStreamRecords(std::vector<std::map<std::string, streamRecord*> >& streams,
+int ModuleStreamRecord::collectNodeStreamRecords(std::vector<std::map<std::string, streamRecord*> >& streams,
                                                  std::vector<std::map<std::string, streamRecord*> >& nodeStreamRecords) {
   int stackSize=0;
   
   // Iterate over the mStacks in all the streams
   for(vector<map<string, streamRecord*> >::iterator s=streams.begin(); s!=streams.end(); s++) {
     // Make sure that the mStack is the same height along all the incoming streams
-    if(s==streams.begin()) stackSize = ((HierGraphStreamRecord*)(*s)["hierGraph"])->mStack.size();
-    else assert(stackSize == ((HierGraphStreamRecord*)(*s)["hierGraph"])->mStack.size());
+    if(s==streams.begin()) stackSize = ((ModuleStreamRecord*)(*s)["module"])->mStack.size();
+    else assert(stackSize == ((ModuleStreamRecord*)(*s)["module"])->mStack.size());
     
     // Add a reference to nodes streamRecord to nodeInStreamRecords
     if(stackSize>0) {
       map<string, streamRecord*> srMap;
-      srMap["hierGraphNode"] = ((HierGraphStreamRecord*)(*s)["hierGraph"])->mStack.back();
+      srMap["moduleNode"] = ((ModuleStreamRecord*)(*s)["module"])->mStack.back();
       nodeStreamRecords.push_back(srMap);
     }
   }
   
-  / * // The mStack must contain at least one hierGraph
+  / * // The mStack must contain at least one module
   assert(stackSize > 0);* /
   
   return stackSize;
 }
 
-// Applies streamRecord::mergeIDs to the nodeIDs of the currently active hierGraph
-int HierGraphStreamRecord::mergeNodeIDs(
+// Applies streamRecord::mergeIDs to the nodeIDs of the currently active module
+int ModuleStreamRecord::mergeNodeIDs(
                          std::string IDName, 
                          std::map<std::string, std::string>& pMap, 
                          const vector<pair<properties::tagType, properties::iterator> >& tags,
@@ -2875,22 +2875,22 @@ int HierGraphStreamRecord::mergeNodeIDs(
   int stackSize = collectNodeStreamRecords(inStreamRecords, nodeInStreamRecords);
   
   // Make sure that the size of the mStack on the incoming streams as the same as it is on the outgoing stream
-  assert(stackSize == ((HierGraphStreamRecord*)outStreamRecords["hierGraph"])->mStack.size());
+  assert(stackSize == ((ModuleStreamRecord*)outStreamRecords["module"])->mStack.size());
   
   if(stackSize>0) {
-    // Set nodeOutStreamRecords to refer to just the streamRecord of the currently active hierGraph
+    // Set nodeOutStreamRecords to refer to just the streamRecord of the currently active module
     std::map<std::string, streamRecord*> nodeOutStreamRecords;
-    nodeOutStreamRecords["hierGraph"] = ((HierGraphStreamRecord*)outStreamRecords["hierGraph"])->mStack.back();
+    nodeOutStreamRecords["module"] = ((ModuleStreamRecord*)outStreamRecords["module"])->mStack.back();
 
     // Call mergeIDs on the nodeInStreamRecords to merge this nodeIS    
-    return mergeIDs("hierGraph", IDName, pMap, tags, nodeOutStreamRecords, nodeInStreamRecords);
+    return mergeIDs("module", IDName, pMap, tags, nodeOutStreamRecords, nodeInStreamRecords);
   } else
     return -1;
 }*/
 
 // Given multiple streamRecords from several variants of the same stream, update this streamRecord object
 // to contain the state that succeeds them all, making it possible to resume processing
-void HierGraphStreamRecord::resumeFrom(std::vector<std::map<std::string, streamRecord*> >& streams) {
+void ModuleStreamRecord::resumeFrom(std::vector<std::map<std::string, streamRecord*> >& streams) {
   streamRecord::resumeFrom(streams);
     
   /*vector<map<string, streamRecord*> > nodeStreamRecords;
@@ -2901,45 +2901,45 @@ void HierGraphStreamRecord::resumeFrom(std::vector<std::map<std::string, streamR
   // Set iStack to be equal to its counterparts in streams, which should have identical iStacks
   iStack.clear();
   for(vector<map<string, streamRecord*> >::iterator s=streams.begin(); s!=streams.end(); s++) {
-    HierGraphStreamRecord* ms = (HierGraphStreamRecord*)(*s)["hierGraph"];
+    ModuleStreamRecord* ms = (ModuleStreamRecord*)(*s)["module"];
     if(s==streams.begin())
       iStack = ms->iStack;
-    else if(iStack != ms->iStack) { cerr << "ERROR: inconsistent stacks of hierGraph instances along different incoming streams!"<<endl; }
+    else if(iStack != ms->iStack) { cerr << "ERROR: inconsistent stacks of module instances along different incoming streams!"<<endl; }
   }
   
-  // Set observedHierGraphs to be the union of its counterparts in streams
-  observedHierGraphs.clear();
-  observedHierGraphsTS.clear();
+  // Set observedModules to be the union of its counterparts in streams
+  observedModules.clear();
+  observedModulesTS.clear();
   
   for(vector<map<string, streamRecord*> >::iterator s=streams.begin(); s!=streams.end(); s++) {
-    HierGraphStreamRecord* ms = (HierGraphStreamRecord*)(*s)["hierGraph"];
+    ModuleStreamRecord* ms = (ModuleStreamRecord*)(*s)["module"];
 
-    /*cout << "| | HierGraphStreamRecord::resumeFrom observedHierGraphs ms (#"<<ms->observedHierGraphs.size()<<")="<<endl;
-    for(map<HierGraphStreamRecord::hierGraphInfo, int>::iterator i=ms->observedHierGraphs.begin(); i!=ms->observedHierGraphs.end(); i++)
+    /*cout << "| | ModuleStreamRecord::resumeFrom observedModules ms (#"<<ms->observedModules.size()<<")="<<endl;
+    for(map<ModuleStreamRecord::moduleInfo, int>::iterator i=ms->observedModules.begin(); i!=ms->observedModules.end(); i++)
       cout << "|       "<<i->first.str()<<" : "<<i->second<<endl;*/
     
-    for(map<group, int>::const_iterator i=ms->observedHierGraphs.begin(); i!=ms->observedHierGraphs.end(); i++)
-      observedHierGraphs.insert(*i);
+    for(map<group, int>::const_iterator i=ms->observedModules.begin(); i!=ms->observedModules.end(); i++)
+      observedModules.insert(*i);
     
-    for(map<group, int>::const_iterator i=ms->observedHierGraphsTS.begin(); i!=ms->observedHierGraphsTS.end(); i++)
-      observedHierGraphsTS.insert(*i);
+    for(map<group, int>::const_iterator i=ms->observedModulesTS.begin(); i!=ms->observedModulesTS.end(); i++)
+      observedModulesTS.insert(*i);
   }
   
-  /*cout << "| HierGraphStreamRecord::resumeFrom observedHierGraphs (#"<<observedHierGraphs.size()<<")="<<endl;
-  for(map<HierGraphStreamRecord::hierGraphInfo, int>::iterator i=observedHierGraphs.begin(); i!=observedHierGraphs.end(); i++)
+  /*cout << "| ModuleStreamRecord::resumeFrom observedModules (#"<<observedModules.size()<<")="<<endl;
+  for(map<ModuleStreamRecord::moduleInfo, int>::iterator i=observedModules.begin(); i!=observedModules.end(); i++)
     cout << "|     "<<i->first.str()<<" : "<<i->second<<endl;*/
   
-  // Set maxHierGraphID to be the maximum of its counterparts in streams
-  maxHierGraphID = -1;
+  // Set maxModuleID to be the maximum of its counterparts in streams
+  maxModuleID = -1;
   for(vector<map<string, streamRecord*> >::iterator s=streams.begin(); s!=streams.end(); s++) {
-    HierGraphStreamRecord* ms = (HierGraphStreamRecord*)(*s)["hierGraph"];
-    maxHierGraphID = (ms->maxHierGraphID > maxHierGraphID? ms->maxHierGraphID: maxHierGraphID);
+    ModuleStreamRecord* ms = (ModuleStreamRecord*)(*s)["module"];
+    maxModuleID = (ms->maxModuleID > maxModuleID? ms->maxModuleID: maxModuleID);
   }
 }
   
-std::string HierGraphStreamRecord::str(std::string indent) const {
+std::string ModuleStreamRecord::str(std::string indent) const {
   ostringstream s;
-  s << "[HierGraphStreamRecord: ";
+  s << "[ModuleStreamRecord: ";
   s << streamRecord::str(indent+"    ") << endl;  
   /*int i=0;
   s << indent << "mStack(#"<<mStack.size()<<")="<<endl;
