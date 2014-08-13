@@ -793,7 +793,8 @@ std::string traceStream::getDisplayJSCmd(const std::list<std::string>& contextAt
                              (showLabels? "true":"false")<<", "<<
                              (refreshView?"true":"false")<<");";
 }
-/*
+
+
  std::string traceStream::getDisplayJSCmd(const std::list<std::string>& contextAttrs, const std::list<std::string>& traceAttrs,
                                          std::string hostDiv, vizT viz, bool showFresh, bool showLabels, bool refreshView) {
   // Default contextAttrs, traceAttrs, hostDiv and viz to be the values set within this traceStream
@@ -816,7 +817,7 @@ std::string traceStream::getDisplayJSCmd(const std::list<std::string>& contextAt
                              (showLabels? "true":"false")<<", "<<
                              (refreshView?"true":"false")<<");";
 }
-*/
+
 // Record an observation
 void* traceStream::observe(properties::iterator props)
 {

@@ -37,276 +37,264 @@ class hierGraphTraceStream;
 
 
 //#ifndef HIERGRAPH_STRUCTURE_C
-// Rename for contexts, groups and ports that enables users to refer to them without prepending common::hierGraph
-//typedef common::hierGraph::group group;
-typedef common::hierGraph::context context;
-//typedef common::hierGraph::context::config config;
-//typedef common::hierGraph::port port;
+// Rename for HG_contexts, HG_groups and HG_ports that enables users to refer to them without prepending common::hierGraph
+//typedef common::hierGraph::HG_group HG_group;
+typedef common::hierGraph::context HG_context;
+//typedef common::hierGraph::HG_context::config config;
+//typedef common::hierGraph::HG_port HG_port;
 //#endif
 
 
-//// 0812
-////class instance {
-////  public:
-////  std::string name;
-////
-////  int numInputs;
-////  int numOutputs;
-////
-////  instance() {}
-////  instance(const std::string& name, int numInputs, int numOutputs) : name(name), numInputs(numInputs), numOutputs(numOutputs) {}
-////  instance(const instance& that) : name(that.name), numInputs(that.numInputs), numOutputs(that.numOutputs) {}
-////
-////  instance(properties::iterator props);
-////
-////  // Returns the properties map that describes this instance object;
-////  std::map<std::string, std::string> getProperties() const;
-////
-////  bool operator==(const instance& that) const
-////  { return name==that.name; }
-////
-////  bool operator<(const instance& that) const
-////  { return name<that.name; }
-////
-////  // Returns a human-readable string that describes this instance
-////  std::string str() const;
-////}; // class instance
+class HG_instance {
+  public:
+  std::string name;
+
+  int numInputs;
+  int numOutputs;
+
+  HG_instance() {}
+  HG_instance(const std::string& name, int numInputs, int numOutputs) : name(name), numInputs(numInputs), numOutputs(numOutputs) {}
+  HG_instance(const HG_instance& that) : name(that.name), numInputs(that.numInputs), numOutputs(that.numOutputs) {}
+
+  HG_instance(properties::iterator props);
+
+  // Returns the properties map that describes this HG_instance object;
+  std::map<std::string, std::string> getProperties() const;
+
+  bool operator==(const HG_instance& that) const
+  { return name==that.name; }
+
+  bool operator<(const HG_instance& that) const
+  { return name<that.name; }
+
+  // Returns a human-readable string that describes this HG_instance
+  std::string str() const;
+}; // class HG_instance
 
 class hierGraph;
 
-////// A group represents the granularity at which we differentiate instances of hierGraphs.
-////// Currently this is done by considering the name and count of inputs and outputs of a given hierGraph instance
-////// as well as the nesting hierarchy of instances within which a given instance is executed.
-////class group {
-////  public:
-////  // Stack of hierGraph instances that uniquely identifies this hierGraph grouping
-////  std::list<instance> stack;
-////
-////  group() { }
-////  group(const std::list<instance>& stack): stack(stack) {}
-////  group(const group& that) : stack(that.stack) {}
-////
-////  // Creates a group given the current stack of hierGraphs and a new hierGraph instance
-////  group(const std::list<hierGraph*>& mStack, const instance& inst);
-////  
-////  void init(const std::list<hierGraph*>& mStack, const instance& inst);
-////  
-////  group& operator=(const group& that) { 
-////    stack = that.stack;
-////    return *this;
-////  }
-////  
-////  // Add the given instance to this group's instance stack
-////  void push(const instance& inst) { stack.push_back(inst); }
-////  
-////  // Remove the last instance from this group's instance stack
-////  void pop() { assert(stack.size()>0); stack.pop_back(); }
-////  
-////  // Returns the name of the most deeply nested instance within this group
-////  std::string name() const;
-////
-////  // Returns the number of inputs of the most deeply nested instance within this group
-////  int numInputs() const;
-////  
-////  // Returns the number of outnputs of the most deeply nested instance within this group
-////  int numOutputs() const;
-////  
-////  // Returns the most deeply nested instance within this group
-////  const instance& getInst() const;
-////  
-////  // Returns the depth of the callstack
-////  int depth() const;
-////  
-////  bool operator==(const group& that) const
-////  { return stack == that.stack; }
-////  
-////  bool operator!=(const group& that) const { return !(*this == that); }
-////  
-////  bool operator<(const group& that) const
-////  { return stack < that.stack; }
-////
-////  // Returns whether the group's descriptor is empty, meaning that this object does not denote any specific group
-////  bool isNULL() const { return stack.size()==0; }
-////  
-////  // Returns a human-readable string that describes this group
-////  std::string str() const;
-////}; // class group
-////
-////class port {
-////  public:
-////  group g;
-////  // Points to a dynamically-allocated instance of a context object, which may be any class that derives from 
-////  // context for use by different types of hierGraphs with their own notion of context. This object is deallocated
-////  // in this port's destructor.
-////  context* ctxt;
-////  sight::common::hierGraph::ioT type;
-////  int index;
-////
-////  port() : ctxt(NULL) {}
-////  port(const port& that) : g(that.g), ctxt(that.ctxt? that.ctxt->copy(): NULL), type(that.type), index(that.index) {}
-////  port(const context& ctxt) : ctxt(ctxt.copy()), type(sight::common::hierGraph::output), index(-1) { }
-////  port(const group& g, const context& ctxt, sight::common::hierGraph::ioT type, int index) : g(g), ctxt(ctxt.copy()), type(type), index(index) {}
-////  port(const group& g, sight::common::hierGraph::ioT type, int index) : g(g), ctxt(NULL), type(type), index(index) {}
-////  ~port() { if(ctxt) delete ctxt; }
-////  
-////  port& operator=(const port& that) {
-////    if(ctxt) delete ctxt;
-////    g    = that.g;
-////    ctxt = that.ctxt->copy();
-////    type = that.type;
-////    index = that.index;
-////    return *this;
-////  }
-////  
-////  bool operator==(const port& that) const
-////  { return g==that.g && *ctxt==*that.ctxt && type==that.type && index==that.index; }
-////
-////  bool operator<(const port& that) const
-////  { return (g< that.g) ||
-////           (g==that.g && *ctxt< *that.ctxt) ||
-////           (g==that.g && *ctxt==*that.ctxt && type< that.type) ||
-////           (g==that.g && *ctxt==*that.ctxt && type==that.type && index<that.index); }
-////
-////  // Sets the context field
-////  void setCtxt(const context& newCtxt) {
-////    if(ctxt) delete ctxt;
-////    ctxt = newCtxt.copy();
-////  }
-////  
-////  // Adds the given key/attrValue pair to the port's context
-////  void addCtxt(const std::string& key, const attrValue& val) {
-////    assert(ctxt);
-////    ctxt->configuration[key] = val;
-////  }
-////  
-////  // Erase the context within this port. This is important for data-structures that ignore context details
-////  void clearContext() { ctxt->configuration.clear(); }
-////
-////  // Returns a human-readable string that describes this context
-////  std::string str() const;
-////}; // class port
-////
-////// Syntactic sugar for specifying inputs
-////typedef common::easyvector<port> inputs;
-////
-////class inport : public port {
-////  public:
-////  inport() {}
-////  inport(const group& g, const context& c, int index) : port(g, c, sight::common::hierGraph::input, index) {}
-////};
-////
-////class outport : public port {
-////  public:
-////  outport() {}
-////  outport(const group& g, const context& c, int index) : port(g, c, sight::common::hierGraph::output, index) {}
-////};
-////
-////// Records the hierarchy of nesting observed for hierGraph instances
-////class instanceTree {
-////  std::map<instance, instanceTree*> m;
-////  
-////  public:
-////  instanceTree() {}
-////  
-////  void add(const group& g);
-////  
-////  // Types for callback functions to be executed on entry to / exit from an instance during the call to iterate
-////  typedef void (*instanceEnterFunc)(const group& g);
-////  typedef void (*instanceExitFunc) (const group& g);
-////  
-////  // Iterate through all the groups encoded by this tree, where each group corresponds to a stack of instances
-////  // from the tree's root to one of its leaves.
-////  void iterate(instanceEnterFunc entry, instanceExitFunc exit) const;
-////  
-////  // Recursive version of iterate that takes as an argument the fragment of the current group that corresponds to
-////  // the stack of instances between the tree's root and the current sub-tree
-////  void iterate(instanceEnterFunc entry, instanceExitFunc exit, group& g) const;
-////  
-////  // Empties out this instanceTree
-////  void clear();
-////  
-////  // The entry and exit functions used in instanceTree::str()
-////  static void strEnterFunc(const group& g);
-////  static void strExitFunc(const group& g);
-////  
-////  // Returns a human-readable string representation of this object
-////  std::string str() const;
-////  
-////  // The depth of the recursion in instanceTree::str()
-////  static int instanceTreeStrDepth;
-////
-////  // The ostringstream into which the output of instanceTree::str() is accumulated
-////  static std::ostringstream oss;
-////}; // class instanceTree
-////
-////class hierGraph;
-////
-////// Base class for functors that generate traceStreams that are specific to different sub-types of hierGraph.
-////// We need this so that we can pass a reference to the correct genTS() method to hierGraphApp::enterHierGraph(). Since this
-////// call is made inside the constructor of hierGraph, we can't use virtual methods to ensure that the correct version
-////// of genTS will be called by just passing a reference to the current hierGraph-derived object
-//////typedef traceStream* (*generateTraceStream)(int hierGraphID, const group& g);
-////class generateTraceStream {
-////  public:
-////  virtual traceStream* operator()(int hierGraphID)=0;
-////}; // class generateTraceStream
+// A HG_group represents the granularity at which we differentiate HG_instances of hierGraphs.
+// Currently this is done by considering the name and count of HG_inputs and outputs of a given hierGraph HG_instance
+// as well as the nesting hierarchy of HG_instances within which a given HG_instance is executed.
+class HG_group {
+  public:
+  // Stack of hierGraph HG_instances that uniquely identifies this hierGraph HG_grouping
+  std::list<HG_instance> stack;
+
+  HG_group() { }
+  HG_group(const std::list<HG_instance>& stack): stack(stack) {}
+  HG_group(const HG_group& that) : stack(that.stack) {}
+
+  // Creates a HG_group given the current stack of hierGraphs and a new hierGraph HG_instance
+  HG_group(const std::list<hierGraph*>& mStack, const HG_instance& inst);
+  
+  void init(const std::list<hierGraph*>& mStack, const HG_instance& inst);
+  
+  HG_group& operator=(const HG_group& that) { 
+    stack = that.stack;
+    return *this;
+  }
+  
+  // Add the given HG_instance to this HG_group's HG_instance stack
+  void push(const HG_instance& inst) { stack.push_back(inst); }
+  
+  // Remove the last HG_instance from this HG_group's HG_instance stack
+  void pop() { assert(stack.size()>0); stack.pop_back(); }
+  
+  // Returns the name of the most deeply nested HG_instance within this HG_group
+  std::string name() const;
+
+  // Returns the number of HG_inputs of the most deeply nested HG_instance within this HG_group
+  int numInputs() const;
+  
+  // Returns the number of outnputs of the most deeply nested HG_instance within this HG_group
+  int numOutputs() const;
+  
+  // Returns the most deeply nested HG_instance within this HG_group
+  const HG_instance& getInst() const;
+  
+  // Returns the depth of the callstack
+  int depth() const;
+  
+  bool operator==(const HG_group& that) const
+  { return stack == that.stack; }
+  
+  bool operator!=(const HG_group& that) const { return !(*this == that); }
+  
+  bool operator<(const HG_group& that) const
+  { return stack < that.stack; }
+
+  // Returns whether the HG_group's descriptor is empty, meaning that this object does not denote any specific HG_group
+  bool isNULL() const { return stack.size()==0; }
+  
+  // Returns a human-readable string that describes this HG_group
+  std::string str() const;
+}; // class HG_group
+
+class HG_port {
+  public:
+  HG_group g;
+  // Points to a dynamically-allocated HG_instance of a HG_context object, which may be any class that derives from 
+  // HG_context for use by different types of hierGraphs with their own notion of HG_context. This object is deallocated
+  // in this HG_port's destructor.
+  HG_context* ctxt;
+  sight::common::hierGraph::ioT type;
+  int index;
+
+  HG_port() : ctxt(NULL) {}
+  HG_port(const HG_port& that) : g(that.g), ctxt(that.ctxt? that.ctxt->copy(): NULL), type(that.type), index(that.index) {}
+  HG_port(const HG_context& ctxt) : ctxt(ctxt.copy()), type(sight::common::hierGraph::output), index(-1) { }
+  HG_port(const HG_group& g, const HG_context& ctxt, sight::common::hierGraph::ioT type, int index) : g(g), ctxt(ctxt.copy()), type(type), index(index) {}
+  HG_port(const HG_group& g, sight::common::hierGraph::ioT type, int index) : g(g), ctxt(NULL), type(type), index(index) {}
+  ~HG_port() { if(ctxt) delete ctxt; }
+  
+  HG_port& operator=(const HG_port& that) {
+    if(ctxt) delete ctxt;
+    g    = that.g;
+    ctxt = that.ctxt->copy();
+    type = that.type;
+    index = that.index;
+    return *this;
+  }
+  
+  bool operator==(const HG_port& that) const
+  { return g==that.g && *ctxt==*that.ctxt && type==that.type && index==that.index; }
+
+  bool operator<(const HG_port& that) const
+  { return (g< that.g) ||
+           (g==that.g && *ctxt< *that.ctxt) ||
+           (g==that.g && *ctxt==*that.ctxt && type< that.type) ||
+           (g==that.g && *ctxt==*that.ctxt && type==that.type && index<that.index); }
+
+  // Sets the HG_context field
+  void setCtxt(const HG_context& newCtxt) {
+    if(ctxt) delete ctxt;
+    ctxt = newCtxt.copy();
+  }
+  
+  // Adds the given key/attrValue pair to the HG_port's HG_context
+  void addCtxt(const std::string& key, const attrValue& val) {
+    assert(ctxt);
+    ctxt->configuration[key] = val;
+  }
+  
+  // Erase the HG_context within this HG_port. This is imHG_portant for data-structures that ignore HG_context details
+  void clearContext() { ctxt->configuration.clear(); }
+
+  // Returns a human-readable string that describes this HG_context
+  std::string str() const;
+}; // class HG_port
+
+// Syntactic sugar for specifying HG_inputs
+typedef common::easyvector<HG_port> HG_inputs;
+
+class HG_inport : public HG_port {
+  public:
+  HG_inport() {}
+  HG_inport(const HG_group& g, const HG_context& c, int index) : HG_port(g, c, sight::common::hierGraph::input, index) {}
+};
+
+class HG_outport : public HG_port {
+  public:
+  HG_outport() {}
+  HG_outport(const HG_group& g, const HG_context& c, int index) : HG_port(g, c, sight::common::hierGraph::output, index) {}
+};
+
+// Records the hierarchy of nesting observed for hierGraph HG_instances
+class HG_instanceTree {
+  std::map<HG_instance, HG_instanceTree*> m;
+  
+  public:
+  HG_instanceTree() {}
+  
+  void add(const HG_group& g);
+  
+  // Types for callback functions to be executed on entry to / exit from an HG_instance during the call to iterate
+  typedef void (*HG_instanceEnterFunc)(const HG_group& g);
+  typedef void (*HG_instanceExitFunc) (const HG_group& g);
+  
+  // Iterate through all the HG_groups encoded by this tree, where each HG_group corresponds to a stack of HG_instances
+  // from the tree's root to one of its leaves.
+  void iterate(HG_instanceEnterFunc entry, HG_instanceExitFunc exit) const;
+  
+  // Recursive version of iterate that takes as an argument the fragment of the current HG_group that corresponds to
+  // the stack of HG_instances between the tree's root and the current sub-tree
+  void iterate(HG_instanceEnterFunc entry, HG_instanceExitFunc exit, HG_group& g) const;
+  
+  // Empties out this HG_instanceTree
+  void clear();
+  
+  // The entry and exit functions used in HG_instanceTree::str()
+  static void strEnterFunc(const HG_group& g);
+  static void strExitFunc(const HG_group& g);
+  
+  // Returns a human-readable string representation of this object
+  std::string str() const;
+  
+  // The depth of the recursion in HG_instanceTree::str()
+  static int HG_instanceTreeStrDepth;
+
+  // The ostringstream into which the output of HG_instanceTree::str() is accumulated
+  static std::ostringstream oss;
+}; // class HG_instanceTree
+
 
 class hierGraph;
 
-////// Base class for functors that generate traceStreams that are specific to different sub-types of hierGraph.
-////// We need this so that we can pass a reference to the correct genTS() method to hierGraphApp::enterHierGraph(). Since this
-////// call is made inside the constructor of hierGraph, we can't use virtual methods to ensure that the correct version
-////// of genTS will be called by just passing a reference to the current hierGraph-derived object
-//////typedef traceStream* (*generateTraceStream)(int hierGraphID, const group& g);
-////class generateTraceStream {
-////  public:
-////  virtual traceStream* operator()(int hierGraphID)=0;
-////}; // class generateTraceStream
+// Base class for functors that generate traceStreams that are specific to different sub-types of hierGraph.
+// We need this so that we can pass a reference to the correct genTS() method to hierGraphApp::enterHierGraph(). Since this
+// call is made inside the constructor of hierGraph, we can't use virtual methods to ensure that the correct version
+// of genTS will be called by just passing a reference to the current hierGraph-derived object
+//typedef traceStream* (*HG_generateTraceStream)(int hierGraphID, const HG_group& g);
+class HG_generateTraceStream {
+  public:
+  virtual traceStream* operator()(int hierGraphID)=0;
+}; // class HG_generateTraceStream
 
 
 // Represents a modular application, which may contain one or more hierGraphs. Only one modular application may be
 // in-scope at any given point in time.
 class hierGraphApp: public block
 {
-  friend class group;
+  friend class HG_group;
   friend class hierGraph;
   
   protected:
-  // Points to the currently active instance of hierGraphApp. There can be only one.
+  // Points to the currently active HG_instance of hierGraphApp. There can be only one.
   static hierGraphApp* activeMA;
     
   // The maximum ID ever assigned to any modular application
   static int maxHierGraphAppID;
   
-  // The maximum ID ever assigned to any hierGraph group
+  // The maximum ID ever assigned to any hierGraph HG_group
   static int maxHierGraphGroupID;
 
-  // Records all the known contexts, mapping each context to its unique ID
-  static std::map<group, int> group2ID;
+  // Records all the known HG_contexts, mapping each HG_context to its unique ID
+  static std::map<HG_group, int> HG_group2ID;
   	
-  // Maps each context to the number of times it was ever observed
-  static std::map<group, int> group2Count;
+  // Maps each HG_context to the number of times it was ever observed
+  static std::map<HG_group, int> HG_group2Count;
   
-  // The trace that records performance observations of different hierGraphs and contexts
-  static std::map<group, traceStream*> hierGraphTrace;
-  static std::map<group, int>          hierGraphTraceID;
+  // The trace that records performance observations of different hierGraphs and HG_contexts
+  static std::map<HG_group, traceStream*> hierGraphTrace;
+  static std::map<HG_group, int>          hierGraphTraceID;
   
-  // Tree that records the hierarchy of hierGraph instances that were observed during the execution of this
-  // modular application. Each path from the tree's root to a leaf is a stack of hierGraph instances that
-  // corresponds to some observed hierGraph group.
-  static instanceTree tree;
+  // Tree that records the hierarchy of hierGraph HG_instances that were observed during the execution of this
+  // modular application. Each path from the tree's root to a leaf is a stack of hierGraph HG_instances that
+  // corresponds to some observed hierGraph HG_group.
+  static HG_instanceTree tree;
   
-  // Maps each hierGraph to the list of the names of its input and output context attributes. 
+  // Maps each hierGraph to the list of the names of its input and output HG_context attributes. 
   // This enables us to verify that all the hierGraphs are used consistently.
-  static std::map<group, std::vector<std::list<std::string> > > hierGraphInCtxtNames;
-  static std::map<group, std::vector<std::list<std::string> > > hierGraphOutCtxtNames;
+  static std::map<HG_group, std::vector<std::list<std::string> > > hierGraphInCtxtNames;
+  static std::map<HG_group, std::vector<std::list<std::string> > > hierGraphOutCtxtNames;
   
-  // The properties object that describes each hierGraph group. This object is created by calling each group's
-  // setProperties() method and each call to this method for the same hierGraph group must return the same properties.
-  static std::map<group, properties*> hierGraphProps;
+  // The properties object that describes each hierGraph HG_group. This object is created by calling each HG_group's
+  // setProperties() method and each call to this method for the same hierGraph HG_group must return the same properties.
+  static std::map<HG_group, properties*> hierGraphProps;
     
   // Records all the edges ever observed, mapping them to the number of times each edge was observed
-  static std::map<std::pair<port, port>, int> edges;
+  static std::map<std::pair<HG_port, HG_port>, int> edges;
   
   // Stack of the hierGraphs that are currently in scope
   static std::list<hierGraph*> mStack;
@@ -330,14 +318,14 @@ class hierGraphApp: public block
   hierGraphApp(const std::string& appName,                        const namedMeasures& meas, properties* props=NULL);
   hierGraphApp(const std::string& appName, const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
   
-  // Stack used while we're emitting the nesting hierarchy of hierGraph groups to keep each hierGraph group's 
-  // sightObject between the time the group is entered and exited
+  // Stack used while we're emitting the nesting hierarchy of hierGraph HG_groups to keep each hierGraph HG_group's 
+  // sightObject between the time the HG_group is entered and exited
   static std::list<sightObj*> hierGraphEmitStack;
 
-  // Emits the entry tag for a hierGraph group during the execution of ~hierGraphApp()
-  static void enterHierGraphGroup(const group& g);
-  // Emits the exit tag for a hierGraph group during the execution of ~hierGraphApp()
-  static void exitHierGraphGroup(const group& g);
+  // Emits the entry tag for a hierGraph HG_group during the execution of ~hierGraphApp()
+  static void enterHierGraphGroup(const HG_group& g);
+  // Emits the exit tag for a hierGraph HG_group during the execution of ~hierGraphApp()
+  static void exitHierGraphGroup(const HG_group& g);
   
   ~hierGraphApp();
 
@@ -357,49 +345,49 @@ class hierGraphApp: public block
   static properties* setProperties(const std::string& appName, const attrOp* onoffOp, properties* props);
   
   public:
-  // Returns the hierGraph ID of the given hierGraph group, generating a fresh one if one has not yet been assigned
-  static int genHierGraphID(const group& g);
+  // Returns the hierGraph ID of the given hierGraph HG_group, generating a fresh one if one has not yet been assigned
+  static int genHierGraphID(const HG_group& g);
   
-  // Returns whether the current instance of hierGraphApp is active
+  // Returns whether the current HG_instance of hierGraphApp is active
   static bool isInstanceActive();
 
-  // Returns a pointer to the current instance of hierGraphApp
+  // Returns a pointer to the current HG_instance of hierGraphApp
   static hierGraphApp* getInstance() { assert(activeMA); return activeMA; }
   
-  // Assigns a unique ID to the given hierGraph group, as needed and returns this ID
-  static int addHierGraphGroup(const group& g);
+  // Assigns a unique ID to the given hierGraph HG_group, as needed and returns this ID
+  static int addHierGraphGroup(const HG_group& g);
   
-  // Registers the names of the contexts of the given hierGraph's inputs or outputs and if this is not the first time this hierGraph is called, 
-  // verifies that these context names are consistent across different calls.
-  // g - the hierGraph group for which we're registering inputs/outputs
-  // inouts - the vector of input or output ports
-  // toT - identifies whether inouts is the vector of inputs or outputs
-  static void registerInOutContexts(const group& g, const std::vector<port>& inouts, sight::common::hierGraph::ioT io);
+  // Registers the names of the HG_contexts of the given hierGraph's HG_inputs or outputs and if this is not the first time this hierGraph is called, 
+  // verifies that these HG_context names are consistent across different calls.
+  // g - the hierGraph HG_group for which we're registering HG_inputs/outputs
+  // inouts - the vector of input or output HG_ports
+  // toT - identifies whether inouts is the vector of HG_inputs or outputs
+  static void registerInOutContexts(const HG_group& g, const std::vector<HG_port>& inouts, sight::common::hierGraph::ioT io);
   
-  // Add an edge between one hierGraph's output port and another hierGraph's input port
-  static void addEdge(port from, port to);
+  // Add an edge between one hierGraph's output HG_port and another hierGraph's input HG_port
+  static void addEdge(HG_port from, HG_port to);
 
-  // Add an edge between one hierGraph's output port and another hierGraph's input port
-  static void addEdge(group fromG, sight::common::hierGraph::ioT fromT, int fromP, 
-                      group toG,   sight::common::hierGraph::ioT toT,   int toP);
+  // Add an edge between one hierGraph's output HG_port and another hierGraph's input HG_port
+  static void addEdge(HG_group fromG, sight::common::hierGraph::ioT fromT, int fromP, 
+                      HG_group toG,   sight::common::hierGraph::ioT toT,   int toP);
 
   // Returns the current hierGraph on the stack and NULL if the stack is empty
   static hierGraph* getCurHierGraph();
   
   // Adds the given hierGraph object to the hierGraphs stack
-  static void enterHierGraph(hierGraph* m, int hierGraphID, properties* props/*, generateTraceStream& tsGenerator*/);
+  static void enterHierGraph(hierGraph* m, int hierGraphID, properties* props/*, HG_generateTraceStream& tsGenerator*/);
   
-    // Returns whether a traceStream has been registered for the given hierGraph group
-  static bool isTraceStreamRegistered(const group& g);
+    // Returns whether a traceStream has been registered for the given hierGraph HG_group
+  static bool isTraceStreamRegistered(const HG_group& g);
 
-  // Registers the given traceStream for the given hierGraph group
-  static void registerTraceStream(const group& g, traceStream* ts);
+  // Registers the given traceStream for the given hierGraph HG_group
+  static void registerTraceStream(const HG_group& g, traceStream* ts);
   
-  // Registers the ID of the traceStream that will be used for the given hierGraph group
-  static void registerTraceStreamID(const group& g, int traceID);
+  // Registers the ID of the traceStream that will be used for the given hierGraph HG_group
+  static void registerTraceStreamID(const HG_group& g, int traceID);
   
-  // Returns the currently registered the ID of the traceStream that will be used for the given hierGraph group
-  static int getTraceStreamID(const group& g);
+  // Returns the currently registered the ID of the traceStream that will be used for the given hierGraph HG_group
+  static int getTraceStreamID(const HG_group& g);
 
   // Removes the given hierGraph object from the hierGraphs stack
   static void exitHierGraph(hierGraph* m);
@@ -427,18 +415,18 @@ class hierGraphApp: public block
 
 class hierGraph: public sightObj, public common::hierGraph
 {
-  friend class group;
+  friend class HG_group;
   friend class hierGraphApp;
   
   protected:
   
   int hierGraphID;
-  group g;
+  HG_group g;
   
-  // The context of this hierGraph execution, which is a combination of the contexts of all of its inputs
-  std::vector<context> ctxt;
+  // The HG_context of this hierGraph execution, which is a combination of the HG_contexts of all of its HG_inputs
+  std::vector<HG_context> ctxt;
   
-  // The context in a format that traces can understand, set in setTraceCtxt() of the the class that
+  // The HG_context in a format that traces can understand, set in setTraceCtxt() of the the class that
   // ultimately derives from hierGraph.
   std::map<std::string, attrValue> traceCtxt;
   public:
@@ -446,11 +434,11 @@ class hierGraph: public sightObj, public common::hierGraph
 
   protected:
   
-  // The input ports of this hierGraph
-  std::vector<port> ins;
+  // The input HG_ports of this hierGraph
+  std::vector<HG_port> ins;
   
-  // The  output ports of this hierGraph
-  std::vector<port> outs;
+  // The  output HG_ports of this hierGraph
+  std::vector<HG_port> outs;
   
   // Set of all the outputs that have already been set by the user. Used to issue
   // warnings when an output has been set multiple times or has not been set.
@@ -458,10 +446,10 @@ class hierGraph: public sightObj, public common::hierGraph
   
   // We allow the user to provide a pointer to an output vector, which is populated by the hierGraph
   // object. This is a pointer to this vector.
-  std::vector<port>* externalOutputs;
+  std::vector<HG_port>* externalOutputs;
   
   // List of all the measurements that should be taken during the execution of this hierGraph. This is a list of pointers to
-  // measure objects. When the hierGraph instance is deleted, its measure objects are automatically deleted as well.
+  // measure objects. When the hierGraph HG_instance is deleted, its measure objects are automatically deleted as well.
   namedMeasures meas;
   
   // Records the observation made during the execution of this hierGraph. obs may be filled in
@@ -477,17 +465,17 @@ class hierGraph: public sightObj, public common::hierGraph
     // includes info about its parents.
     properties* props;
     
-    // Fields that must be included within the context of any trace observations made during the execution of this hierGraph.
+    // Fields that must be included within the HG_context of any trace observations made during the execution of this hierGraph.
     std::map<std::string, attrValue> ctxt;
     
-    // Points to a function that generates the trace stream instance specific to the given derivation of hierGraph
-    //generateTraceStream& tsGenerator;
+    // Points to a function that generates the trace stream HG_instance specific to the given derivation of hierGraph
+    //HG_generateTraceStream& tsGenerator;
     
-    derivInfo(/ *generateTraceStream& tsGenerator* /)/ * : tsGenerator(tsGenerator)* / {
+    derivInfo(/ *HG_generateTraceStream& tsGenerator* /)/ * : tsGenerator(tsGenerator)* / {
       props = new properties();
     }
     
-    derivInfo(properties* props, const std::map<std::string, attrValue>& ctxt/ *, generateTraceStream& tsGenerator* /) :
+    derivInfo(properties* props, const std::map<std::string, attrValue>& ctxt/ *, HG_generateTraceStream& tsGenerator* /) :
                   props(props), ctxt(ctxt)/ *, tsGenerator(tsGenerator)* / { }
   }; // class derivInfo */
   
@@ -496,43 +484,43 @@ class hierGraph: public sightObj, public common::hierGraph
   bool isDerived;
   
   public:
-  // inputs - ports from other hierGraphs that are used as inputs by this hierGraph.
+  // HG_inputs - HG_ports from other hierGraphs that are used as HG_inputs by this hierGraph.
   // onoffOp - We emit this scope if the current attribute query evaluates to true (i.e. we're emitting debug output) AND
   //           either onoffOp is not provided or its evaluates to true.
   // derivInfo: Information that describes the class that derives from this on.
-  hierGraph(const instance& inst,                                                                                                                        properties* props=NULL);
-  hierGraph(const instance& inst, const port& inputs,                                                                                                    properties* props=NULL);
-  hierGraph(const instance& inst, const std::vector<port>& inputs,                                                                                       properties* props=NULL);
-  hierGraph(const instance& inst,                                                                      const attrOp& onoffOp,                            properties* props=NULL);
-  hierGraph(const instance& inst, const port& inputs,                                                  const attrOp& onoffOp,                            properties* props=NULL);
-  hierGraph(const instance& inst, const std::vector<port>& inputs,                                     const attrOp& onoffOp,                            properties* props=NULL);
-  hierGraph(const instance& inst,                                  std::vector<port>& externalOutputs,                                                   properties* props=NULL);
-  hierGraph(const instance& inst, const port& inputs,              std::vector<port>& externalOutputs,                                                   properties* props=NULL);
-  hierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs,                                                   properties* props=NULL);
-  hierGraph(const instance& inst,                                  std::vector<port>& externalOutputs, const attrOp& onoffOp,                            properties* props=NULL);
-  hierGraph(const instance& inst, const port& inputs,              std::vector<port>& externalOutputs, const attrOp& onoffOp,                            properties* props=NULL);
-  hierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, const attrOp& onoffOp,                            properties* props=NULL);
+  hierGraph(const HG_instance& inst,                                                                                                                        properties* props=NULL);
+  hierGraph(const HG_instance& inst, const HG_port& HG_inputs,                                                                                                    properties* props=NULL);
+  hierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs,                                                                                       properties* props=NULL);
+  hierGraph(const HG_instance& inst,                                                                      const attrOp& onoffOp,                            properties* props=NULL);
+  hierGraph(const HG_instance& inst, const HG_port& HG_inputs,                                                  const attrOp& onoffOp,                            properties* props=NULL);
+  hierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs,                                     const attrOp& onoffOp,                            properties* props=NULL);
+  hierGraph(const HG_instance& inst,                                  std::vector<HG_port>& externalOutputs,                                                   properties* props=NULL);
+  hierGraph(const HG_instance& inst, const HG_port& HG_inputs,              std::vector<HG_port>& externalOutputs,                                                   properties* props=NULL);
+  hierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs, std::vector<HG_port>& externalOutputs,                                                   properties* props=NULL);
+  hierGraph(const HG_instance& inst,                                  std::vector<HG_port>& externalOutputs, const attrOp& onoffOp,                            properties* props=NULL);
+  hierGraph(const HG_instance& inst, const HG_port& HG_inputs,              std::vector<HG_port>& externalOutputs, const attrOp& onoffOp,                            properties* props=NULL);
+  hierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs, std::vector<HG_port>& externalOutputs, const attrOp& onoffOp,                            properties* props=NULL);
     
-  hierGraph(const instance& inst,                                                                                             const namedMeasures& meas, properties* props=NULL);
-  hierGraph(const instance& inst, const port& inputs,                                                                         const namedMeasures& meas, properties* props=NULL);
-  hierGraph(const instance& inst, const std::vector<port>& inputs,                                                            const namedMeasures& meas, properties* props=NULL);
-  hierGraph(const instance& inst,                                                                      const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
-  hierGraph(const instance& inst, const port& inputs,                                                  const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
-  hierGraph(const instance& inst, const std::vector<port>& inputs,                                     const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
-  hierGraph(const instance& inst,                                  std::vector<port>& externalOutputs,                        const namedMeasures& meas, properties* props=NULL);
-  hierGraph(const instance& inst, const port& inputs,              std::vector<port>& externalOutputs,                        const namedMeasures& meas, properties* props=NULL);
-  hierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs,                        const namedMeasures& meas, properties* props=NULL);
-  hierGraph(const instance& inst,                                  std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
-  hierGraph(const instance& inst, const port& inputs,              std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
-  hierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
+  hierGraph(const HG_instance& inst,                                                                                             const namedMeasures& meas, properties* props=NULL);
+  hierGraph(const HG_instance& inst, const HG_port& HG_inputs,                                                                         const namedMeasures& meas, properties* props=NULL);
+  hierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs,                                                            const namedMeasures& meas, properties* props=NULL);
+  hierGraph(const HG_instance& inst,                                                                      const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
+  hierGraph(const HG_instance& inst, const HG_port& HG_inputs,                                                  const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
+  hierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs,                                     const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
+  hierGraph(const HG_instance& inst,                                  std::vector<HG_port>& externalOutputs,                        const namedMeasures& meas, properties* props=NULL);
+  hierGraph(const HG_instance& inst, const HG_port& HG_inputs,              std::vector<HG_port>& externalOutputs,                        const namedMeasures& meas, properties* props=NULL);
+  hierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs, std::vector<HG_port>& externalOutputs,                        const namedMeasures& meas, properties* props=NULL);
+  hierGraph(const HG_instance& inst,                                  std::vector<HG_port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
+  hierGraph(const HG_instance& inst, const HG_port& HG_inputs,              std::vector<HG_port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
+  hierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs, std::vector<HG_port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
   
-  properties* setProperties(const instance& inst, properties* props, const attrOp* onoffOp, hierGraph* me);
+  properties* setProperties(const HG_instance& inst, properties* props, const attrOp* onoffOp, hierGraph* me);
 
-  void init(const std::vector<port>& in, properties* props);
+  void init(const std::vector<HG_port>& in, properties* props);
   
   private:
   // Sets the properties of this object
-  //static properties* setProperties(const instance& inst, const std::vector<port>& inputs, const attrOp* onoffOp, properties* props);
+  //static properties* setProperties(const HG_instance& inst, const std::vector<HG_port>& HG_inputs, const attrOp* onoffOp, properties* props);
   
   public:
   ~hierGraph();
@@ -543,8 +531,8 @@ class hierGraph: public sightObj, public common::hierGraph
   
   public:
   // Called to complete the measurement of this hierGraph's execution. This measurement may be completed before
-  // the hierGraph itself completes to enable users to separate the portion of the hierGraph's execution that 
-  // represents its core behavior (and thus should be measured) from the portion where the hierGraph's outputs
+  // the hierGraph itself completes to enable users to separate the HG_portion of the hierGraph's execution that 
+  // represents its core behavior (and thus should be measured) from the HG_portion where the hierGraph's outputs
   // are computed.
   virtual void completeMeasurement();
   
@@ -556,15 +544,15 @@ class hierGraph: public sightObj, public common::hierGraph
   // an object will invoke the destroy() method of the most-derived class.
   virtual void destroy();
   
-  // The variant of the generateTraceStream functor specialized to generating hierGraphTraceStreams
-  /*class generateHierGraphTraceStream : public generateTraceStream {
+  // The variant of the HG_generateTraceStream functor specialized to generating hierGraphTraceStreams
+  /*class generateHierGraphTraceStream : public HG_generateTraceStream {
     protected:
-    const group* g;
+    const HG_group* g;
     public:
     generateHierGraphTraceStream() {}
-    generateHierGraphTraceStream(const group& g): g(&g) { }
+    generateHierGraphTraceStream(const HG_group& g): g(&g) { }
     
-    void init(const group& g) { this->g = &g; }
+    void init(const HG_group& g) { this->g = &g; }
     
     traceStream* operator()(int hierGraphID);
   }; // class generateHierGraphTraceStream
@@ -573,35 +561,35 @@ class hierGraph: public sightObj, public common::hierGraph
   // Returns the properties of this object
   //properties* setProperties(int hierGraphID, properties* props=NULL);
   
-  const std::vector<context>& getContext() const { return ctxt; }
+  const std::vector<HG_context>& getContext() const { return ctxt; }
   std::string name() const { return g.name(); }
   int numInputs()  const { return g.numInputs(); }
   int numOutputs() const { return g.numOutputs(); }
-  const group& getGroup() const { return g; }
+  const HG_group& getGroup() const { return g; }
   
-  // Sets the context of the given output port
-  virtual void setInCtxt(int idx, const context& c);
+  // Sets the HG_context of the given output HG_port
+  virtual void setInCtxt(int idx, const HG_context& c);
   
-  // Adds the given key/attrValue pair to the context of the given output port
+  // Adds the given key/attrValue pair to the HG_context of the given output HG_port
   virtual void addInCtxt(int idx, const std::string& key, const attrValue& val);
   
-  // Adds the given port to this hierGraph's inputs
-  virtual void addInCtxt(const port& p);
+  // Adds the given HG_port to this hierGraph's HG_inputs
+  virtual void addInCtxt(const HG_port& p);
   
-  // Sets the context of the given output port
-  virtual void setOutCtxt(int idx, const context& c);
+  // Sets the HG_context of the given output HG_port
+  virtual void setOutCtxt(int idx, const HG_context& c);
   
   
-  // Returns a list of the hierGraph's input ports
-  //std::vector<port> inputPorts() const;
+  // Returns a list of the hierGraph's input HG_ports
+  //std::vector<HG_port> inputPorts() const;
  
-  // Returns a list of the hierGraph's output ports
-  std::vector<port> outPorts() const;
-  port outPort(int idx) const;
+  // Returns a list of the hierGraph's output HG_ports
+  std::vector<HG_port> outPorts() const;
+  HG_port outPort(int idx) const;
 
-  // Sets the traceCtxt map, which contains the context attributes to be used in this hierGraph's measurements 
-  // by combining the context provided by the classes that this object derives from with its own unique 
-  // context attributes.
+  // Sets the traceCtxt map, which contains the HG_context attributes to be used in this hierGraph's measurements 
+  // by combining the HG_context provided by the classes that this object derives from with its own unique 
+  // HG_context attributes.
   void setTraceCtxt();
   
   // Called to notify this block that a sub-block was started/completed inside of it. 
@@ -632,165 +620,164 @@ class hierGraph: public sightObj, public common::hierGraph
 
 
 
-//// 0812
-////// Extends the normal context by allowing the caller to specify a description of the comparator to be used
-////// for each key
-////class compContext: public context {
-////  public:
-////  // Maps each context key to the pair <comparator name, comparator description>
-////  std::map<std::string, std::pair<std::string, std::string> > comparators;
-////
-////  compContext() {}
-////
-////  compContext(const compContext& that) : context((const context&) that), comparators(that.comparators) {}
-////  
-////  compContext(const std::string& name0, const attrValue& val0, const comparatorDesc& cdesc0) : 
-////    context(name0, val0)
-////  { comparators[name0] = std::make_pair(cdesc0.name(), cdesc0.description()); }
-////  
-////  compContext(const std::string& name0, const attrValue& val0, const comparatorDesc& cdesc0, const std::string& name1, const attrValue& val1, const comparatorDesc& cdesc1) : 
-////    context(name0, val0, name1, val1)
-////  { comparators[name0] = std::make_pair(cdesc0.name(), cdesc0.description()); comparators[name1] = std::make_pair(cdesc1.name(), cdesc1.description()); }
-////  
-////  compContext(const std::string& name0, const attrValue& val0, const comparatorDesc& cdesc0, const std::string& name1, const attrValue& val1, const comparatorDesc& cdesc1, const std::string& name2, const attrValue& val2, const comparatorDesc& cdesc2) :
-////    context(name0, val0, name1, val1, name2, val2)
-////  { comparators[name0] = std::make_pair(cdesc0.name(), cdesc0.description()); comparators[name1] = std::make_pair(cdesc1.name(), cdesc1.description()); comparators[name2] = std::make_pair(cdesc2.name(), cdesc2.description()); }
-////  
-////  compContext(const std::string& name0, const attrValue& val0, const comparatorDesc& cdesc0, const std::string& name1, const attrValue& val1, const comparatorDesc& cdesc1, const std::string& name2, const attrValue& val2, const comparatorDesc& cdesc2, const std::string& name3, const attrValue& val3, const comparatorDesc& cdesc3) :
-////    context(name0, val0, name1, val1, name2, val2, name3, val3)
-////  { comparators[name0] = std::make_pair(cdesc0.name(), cdesc0.description()); comparators[name1] = std::make_pair(cdesc1.name(), cdesc1.description()); comparators[name2] = std::make_pair(cdesc2.name(), cdesc2.description()); comparators[name3] = std::make_pair(cdesc3.name(), cdesc3.description()); }
-////  
-////  compContext(const std::string& name0, const attrValue& val0, const comparatorDesc& cdesc0, const std::string& name1, const attrValue& val1, const comparatorDesc& cdesc1, const std::string& name2, const attrValue& val2, const comparatorDesc& cdesc2, const std::string& name3, const attrValue& val3, const comparatorDesc& cdesc3, const std::string& name4, const attrValue& val4, const comparatorDesc& cdesc4) :
-////    context(name0, val0, name1, val1, name2, val2, name3, val3, name4, val4)
-////  { comparators[name0] = std::make_pair(cdesc0.name(), cdesc0.description()); comparators[name1] = std::make_pair(cdesc1.name(), cdesc1.description()); comparators[name2] = std::make_pair(cdesc2.name(), cdesc2.description()); comparators[name3] = std::make_pair(cdesc3.name(), cdesc3.description()); comparators[name4] = std::make_pair(cdesc4.name(), cdesc4.description()); }
-////  
-////  compContext(const std::string& name0, const attrValue& val0, const comparatorDesc& cdesc0, const std::string& name1, const attrValue& val1, const comparatorDesc& cdesc1, const std::string& name2, const attrValue& val2, const comparatorDesc& cdesc2, const std::string& name3, const attrValue& val3, const comparatorDesc& cdesc3, const std::string& name4, const attrValue& val4, const comparatorDesc& cdesc4, const std::string& name5, const attrValue& val5, const comparatorDesc& cdesc5) :
-////    context(name0, val0, name1, val1, name2, val2, name3, val3, name4, val4, name5, val5)
-////  { comparators[name0] = std::make_pair(cdesc0.name(), cdesc0.description()); comparators[name1] = std::make_pair(cdesc1.name(), cdesc1.description()); comparators[name2] = std::make_pair(cdesc2.name(), cdesc2.description()); comparators[name3] = std::make_pair(cdesc3.name(), cdesc3.description()); comparators[name4] = std::make_pair(cdesc4.name(), cdesc4.description()); comparators[name5] = std::make_pair(cdesc5.name(), cdesc5.description()); }
-////  
-////  compContext(const std::string& name0, const attrValue& val0, const comparatorDesc& cdesc0, const std::string& name1, const attrValue& val1, const comparatorDesc& cdesc1, const std::string& name2, const attrValue& val2, const comparatorDesc& cdesc2, const std::string& name3, const attrValue& val3, const comparatorDesc& cdesc3, const std::string& name4, const attrValue& val4, const comparatorDesc& cdesc4, const std::string& name5, const attrValue& val5, const comparatorDesc& cdesc5, const std::string& name6, const attrValue& val6, const comparatorDesc& cdesc6) :
-////    context(name0, val0, name1, val1, name2, val2, name3, val3, name4, val4, name5, val5, name6, val6)
-////  { comparators[name0] = std::make_pair(cdesc0.name(), cdesc0.description()); comparators[name1] = std::make_pair(cdesc1.name(), cdesc1.description()); comparators[name2] = std::make_pair(cdesc2.name(), cdesc2.description()); comparators[name3] = std::make_pair(cdesc3.name(), cdesc3.description()); comparators[name4] = std::make_pair(cdesc4.name(), cdesc4.description()); comparators[name5] = std::make_pair(cdesc5.name(), cdesc5.description()); comparators[name6] = std::make_pair(cdesc6.name(), cdesc6.description()); }
-////  
-////  compContext(const std::string& name0, const attrValue& val0, const comparatorDesc& cdesc0, const std::string& name1, const attrValue& val1, const comparatorDesc& cdesc1, const std::string& name2, const attrValue& val2, const comparatorDesc& cdesc2, const std::string& name3, const attrValue& val3, const comparatorDesc& cdesc3, const std::string& name4, const attrValue& val4, const comparatorDesc& cdesc4, const std::string& name5, const attrValue& val5, const comparatorDesc& cdesc5, const std::string& name6, const attrValue& val6, const comparatorDesc& cdesc6, const std::string& name7, const attrValue& val7, const comparatorDesc& cdesc7) :
-////    context(name0, val0, name1, val1, name2, val2, name3, val3, name4, val4, name5, val5, name6, val6, name7, val7)
-////  { comparators[name0] = std::make_pair(cdesc0.name(), cdesc0.description()); comparators[name1] = std::make_pair(cdesc1.name(), cdesc1.description()); comparators[name2] = std::make_pair(cdesc2.name(), cdesc2.description()); comparators[name3] = std::make_pair(cdesc3.name(), cdesc3.description()); comparators[name4] = std::make_pair(cdesc4.name(), cdesc4.description()); comparators[name5] = std::make_pair(cdesc5.name(), cdesc5.description()); comparators[name6] = std::make_pair(cdesc6.name(), cdesc6.description()); comparators[name7] = std::make_pair(cdesc7.name(), cdesc7.description()); }
-////  
-////  compContext(const std::string& name0, const attrValue& val0, const comparatorDesc& cdesc0, const std::string& name1, const attrValue& val1, const comparatorDesc& cdesc1, const std::string& name2, const attrValue& val2, const comparatorDesc& cdesc2, const std::string& name3, const attrValue& val3, const comparatorDesc& cdesc3, const std::string& name4, const attrValue& val4, const comparatorDesc& cdesc4, const std::string& name5, const attrValue& val5, const comparatorDesc& cdesc5, const std::string& name6, const attrValue& val6, const comparatorDesc& cdesc6, const std::string& name7, const attrValue& val7, const comparatorDesc& cdesc7, const std::string& name8, const attrValue& val8, const comparatorDesc& cdesc8) :
-////    context(name0, val0, name1, val1, name2, val2, name3, val3, name4, val4, name5, val5, name6, val6, name7, val7, name8, val8)
-////  { comparators[name0] = std::make_pair(cdesc0.name(), cdesc0.description()); comparators[name1] = std::make_pair(cdesc1.name(), cdesc1.description()); comparators[name2] = std::make_pair(cdesc2.name(), cdesc2.description()); comparators[name3] = std::make_pair(cdesc3.name(), cdesc3.description()); comparators[name4] = std::make_pair(cdesc4.name(), cdesc4.description()); comparators[name5] = std::make_pair(cdesc5.name(), cdesc5.description()); comparators[name6] = std::make_pair(cdesc6.name(), cdesc6.description()); comparators[name7] = std::make_pair(cdesc7.name(), cdesc7.description()); comparators[name8] = std::make_pair(cdesc8.name(), cdesc8.description()); }
-////  
-////  compContext(const std::string& name0, const attrValue& val0, const comparatorDesc& cdesc0, const std::string& name1, const attrValue& val1, const comparatorDesc& cdesc1, const std::string& name2, const attrValue& val2, const comparatorDesc& cdesc2, const std::string& name3, const attrValue& val3, const comparatorDesc& cdesc3, const std::string& name4, const attrValue& val4, const comparatorDesc& cdesc4, const std::string& name5, const attrValue& val5, const comparatorDesc& cdesc5, const std::string& name6, const attrValue& val6, const comparatorDesc& cdesc6, const std::string& name7, const attrValue& val7, const comparatorDesc& cdesc7, const std::string& name8, const attrValue& val8, const comparatorDesc& cdesc8, const std::string& name9, const attrValue& val9, const comparatorDesc& cdesc9) :
-////    context(name0, val0, name1, val1, name2, val2, name3, val3, name4, val4, name5, val5, name6, val6, name7, val7, name8, val8, name9, val9)
-////  { comparators[name0] = std::make_pair(cdesc0.name(), cdesc0.description()); comparators[name1] = std::make_pair(cdesc1.name(), cdesc1.description()); comparators[name2] = std::make_pair(cdesc2.name(), cdesc2.description()); comparators[name3] = std::make_pair(cdesc3.name(), cdesc3.description()); comparators[name4] = std::make_pair(cdesc4.name(), cdesc4.description()); comparators[name5] = std::make_pair(cdesc5.name(), cdesc5.description()); comparators[name6] = std::make_pair(cdesc6.name(), cdesc6.description()); comparators[name7] = std::make_pair(cdesc7.name(), cdesc7.description()); comparators[name8] = std::make_pair(cdesc8.name(), cdesc8.description()); comparators[name9] = std::make_pair(cdesc9.name(), cdesc9.description()); }
-////  
-////  compContext(const std::map<std::string, attrValue>& configuration, const std::map<std::string, std::pair<std::string, std::string> >& comparators) : 
-////    context(configuration), comparators(comparators) {}
-////
-////  // Loads this context from the given properties map. The names of all the fields are assumed to be prefixed
-////  // with the given string.
-////  compContext(properties::iterator props, std::string prefix="");
-////  
-////  // Returns a dynamically-allocated copy of this object. This method must be implemented by all classes
-////  // that inherit from context to make sure that appropriate copies of them can be created.
-////  virtual context* copy() const { return new compContext(*this); }
-////  
-////  // These comparator routines must be implemented by all classes that inherit from context to make sure that
-////  // their additional details are reflected in the results of the comparison. Implementors may assume that 
-////  // the type of that is their special derivation of context rather than a generic context and should dynamically
-////  // cast from const context& to their sub-type.
-////  virtual bool operator==(const context& that) const;
-////
-////  virtual bool operator<(const context& that) const;
-////
-////  // Adds the given key/attrValue pair to this context
-////  void add(std::string key, const attrValue& val, const comparatorDesc& cdesc);
-////
-////  // Add all the key/attrValue pairs from the given context to this one, overwriting keys as needed
-////  void add(const compContext& that);
-////
-////  // Returns the properties map that describes this context object.
-////  // The names of all the fields in the map are prefixed with the given string.
-////  std::map<std::string, std::string> getProperties(std::string prefix="") const;
-////  
-////  // Returns a human-readable string that describes this context
-////  virtual std::string str() const;
-////}; // class compContext
-////
-////class compHierGraphTraceStream;
-////
-////class compNamedMeasures {
-////  public:
-////  
-////  // Records all the information about a named measures and their comparators
-////  class info {
-////    public:
-////    measure* meas; // Points to the measure object
-////    std::string compName; // The name of the comparator to be used with this measure
-////    std::string compDesc; // The description of the comparator to be used with this measure
-////  
-////    info() {}
-////    info(measure* meas, std::string compName, std::string compDesc) : meas(meas), compName(compName), compDesc(compDesc) {}
-////  };
-////    
-////  // Maps the name of each measure to its info
-////  std::map<std::string, info> measures;
-////
-////  compNamedMeasures() {}
-////  
-////  compNamedMeasures(const compNamedMeasures& that) : measures(that.measures) {}
-////  
-////  compNamedMeasures(const std::string& name0, measure* meas0, const comparatorDesc& cdesc0)
-////  { measures[name0] = info(meas0, cdesc0.name(), cdesc0.description()); }
-////  
-////  compNamedMeasures(const std::string& name0, measure* meas0, const comparatorDesc& cdesc0, const std::string& name1, measure* meas1, const comparatorDesc& cdesc1)
-////  { measures[name0] = info(meas0, cdesc0.name(), cdesc0.description()); measures[name1] = info(meas1, cdesc1.name(), cdesc1.description()); }
-////  
-////  compNamedMeasures(const std::string& name0, measure* meas0, const comparatorDesc& cdesc0, const std::string& name1, measure* meas1, const comparatorDesc& cdesc1, const std::string& name2, measure* meas2, const comparatorDesc& cdesc2)
-////  { measures[name0] = info(meas0, cdesc0.name(), cdesc0.description()); measures[name1] = info(meas1, cdesc1.name(), cdesc1.description()); measures[name2] = info(meas2, cdesc2.name(), cdesc2.description()); }
-////  
-////  compNamedMeasures(const std::string& name0, measure* meas0, const comparatorDesc& cdesc0, const std::string& name1, measure* meas1, const comparatorDesc& cdesc1, const std::string& name2, measure* meas2, const comparatorDesc& cdesc2, const std::string& name3, measure* meas3, const comparatorDesc& cdesc3)
-////  { measures[name0] = info(meas0, cdesc0.name(), cdesc0.description()); measures[name1] = info(meas1, cdesc1.name(), cdesc1.description()); measures[name2] = info(meas2, cdesc2.name(), cdesc2.description()); measures[name3] = info(meas3, cdesc3.name(), cdesc3.description()); }
-////  
-////  compNamedMeasures(const std::string& name0, measure* meas0, const comparatorDesc& cdesc0, const std::string& name1, measure* meas1, const comparatorDesc& cdesc1, const std::string& name2, measure* meas2, const comparatorDesc& cdesc2, const std::string& name3, measure* meas3, const comparatorDesc& cdesc3, const std::string& name4, measure* meas4, const comparatorDesc& cdesc4)
-////  { measures[name0] = info(meas0, cdesc0.name(), cdesc0.description()); measures[name1] = info(meas1, cdesc1.name(), cdesc1.description()); measures[name2] = info(meas2, cdesc2.name(), cdesc2.description()); measures[name3] = info(meas3, cdesc3.name(), cdesc3.description()); measures[name4] = info(meas4, cdesc4.name(), cdesc4.description()); }
-////  
-////  compNamedMeasures(const std::string& name0, measure* meas0, const comparatorDesc& cdesc0, const std::string& name1, measure* meas1, const comparatorDesc& cdesc1, const std::string& name2, measure* meas2, const comparatorDesc& cdesc2, const std::string& name3, measure* meas3, const comparatorDesc& cdesc3, const std::string& name4, measure* meas4, const comparatorDesc& cdesc4, const std::string& name5, measure* meas5, const comparatorDesc& cdesc5)
-////  { measures[name0] = info(meas0, cdesc0.name(), cdesc0.description()); measures[name1] = info(meas1, cdesc1.name(), cdesc1.description()); measures[name2] = info(meas2, cdesc2.name(), cdesc2.description()); measures[name3] = info(meas3, cdesc3.name(), cdesc3.description()); measures[name4] = info(meas4, cdesc4.name(), cdesc4.description()); measures[name5] = info(meas5, cdesc5.name(), cdesc5.description()); }
-////  
-////  compNamedMeasures(const std::string& name0, measure* meas0, const comparatorDesc& cdesc0, const std::string& name1, measure* meas1, const comparatorDesc& cdesc1, const std::string& name2, measure* meas2, const comparatorDesc& cdesc2, const std::string& name3, measure* meas3, const comparatorDesc& cdesc3, const std::string& name5, const std::string& name4, measure* meas4, const comparatorDesc& cdesc4, measure* meas5, const comparatorDesc& cdesc5, const std::string& name6, measure* meas6, const comparatorDesc& cdesc6)
-////  { measures[name0] = info(meas0, cdesc0.name(), cdesc0.description()); measures[name1] = info(meas1, cdesc1.name(), cdesc1.description()); measures[name2] = info(meas2, cdesc2.name(), cdesc2.description()); measures[name3] = info(meas3, cdesc3.name(), cdesc3.description()); measures[name4] = info(meas4, cdesc4.name(), cdesc4.description()); measures[name5] = info(meas5, cdesc5.name(), cdesc5.description()); measures[name6] = info(meas6, cdesc6.name(), cdesc6.description()); }
-////  
-////  compNamedMeasures(const std::string& name0, measure* meas0, const comparatorDesc& cdesc0, const std::string& name1, measure* meas1, const comparatorDesc& cdesc1, const std::string& name2, measure* meas2, const comparatorDesc& cdesc2, const std::string& name3, measure* meas3, const comparatorDesc& cdesc3, const std::string& name5, const std::string& name4, measure* meas4, const comparatorDesc& cdesc4, measure* meas5, const comparatorDesc& cdesc5, const std::string& name6, measure* meas6, const comparatorDesc& cdesc6, const std::string& name7, measure* meas7, const comparatorDesc& cdesc7)
-////  { measures[name0] = info(meas0, cdesc0.name(), cdesc0.description()); measures[name1] = info(meas1, cdesc1.name(), cdesc1.description()); measures[name2] = info(meas2, cdesc2.name(), cdesc2.description()); measures[name3] = info(meas3, cdesc3.name(), cdesc3.description()); measures[name4] = info(meas4, cdesc4.name(), cdesc4.description()); measures[name5] = info(meas5, cdesc5.name(), cdesc5.description()); measures[name6] = info(meas6, cdesc6.name(), cdesc6.description()); measures[name7] = info(meas7, cdesc7.name(), cdesc7.description()); }
-////  
-////  compNamedMeasures(const std::string& name0, measure* meas0, const comparatorDesc& cdesc0, const std::string& name1, measure* meas1, const comparatorDesc& cdesc1, const std::string& name2, measure* meas2, const comparatorDesc& cdesc2, const std::string& name3, measure* meas3, const comparatorDesc& cdesc3, const std::string& name5, const std::string& name4, measure* meas4, const comparatorDesc& cdesc4, measure* meas5, const comparatorDesc& cdesc5, const std::string& name6, measure* meas6, const comparatorDesc& cdesc6, const std::string& name7, measure* meas7, const comparatorDesc& cdesc7, const std::string& name8, measure* meas8, const comparatorDesc& cdesc8)
-////  { measures[name0] = info(meas0, cdesc0.name(), cdesc0.description()); measures[name1] = info(meas1, cdesc1.name(), cdesc1.description()); measures[name2] = info(meas2, cdesc2.name(), cdesc2.description()); measures[name3] = info(meas3, cdesc3.name(), cdesc3.description()); measures[name4] = info(meas4, cdesc4.name(), cdesc4.description()); measures[name5] = info(meas5, cdesc5.name(), cdesc5.description()); measures[name6] = info(meas6, cdesc6.name(), cdesc6.description()); measures[name7] = info(meas7, cdesc7.name(), cdesc7.description()); measures[name8] = info(meas8, cdesc8.name(), cdesc8.description()); }
-////  
-////  compNamedMeasures(const std::string& name0, measure* meas0, const comparatorDesc& cdesc0, const std::string& name1, measure* meas1, const comparatorDesc& cdesc1, const std::string& name2, measure* meas2, const comparatorDesc& cdesc2, const std::string& name3, measure* meas3, const comparatorDesc& cdesc3, const std::string& name5, const std::string& name4, measure* meas4, const comparatorDesc& cdesc4, measure* meas5, const comparatorDesc& cdesc5, const std::string& name6, measure* meas6, const comparatorDesc& cdesc6, const std::string& name7, measure* meas7, const comparatorDesc& cdesc7, const std::string& name8, measure* meas8, const comparatorDesc& cdesc8, const std::string& name9, measure* meas9, const comparatorDesc& cdesc9)
-////  { measures[name0] = info(meas0, cdesc0.name(), cdesc0.description()); measures[name1] = info(meas1, cdesc1.name(), cdesc1.description()); measures[name2] = info(meas2, cdesc2.name(), cdesc2.description()); measures[name3] = info(meas3, cdesc3.name(), cdesc3.description()); measures[name4] = info(meas4, cdesc4.name(), cdesc4.description()); measures[name5] = info(meas5, cdesc5.name(), cdesc5.description()); measures[name6] = info(meas6, cdesc6.name(), cdesc6.description()); measures[name7] = info(meas7, cdesc7.name(), cdesc7.description()); measures[name8] = info(meas8, cdesc8.name(), cdesc8.description()); measures[name9] = info(meas9, cdesc9.name(), cdesc9.description()); }
-////  
-////  // Returns the properties map that describes this context object.
-////  // The names of all the fields in the map are prefixed with the given string.
-////  //std::map<std::string, std::string> getProperties(std::string prefix="") const;
-////  
-////  // Returns a map that maps the names of all the named measurements to the pair of strings that records the 
-////  // name and description of the comparison to be used with each measurement
-////  std::map<std::string, std::pair<std::string, std::string> > getComparators() const {
-////    std::map<std::string, std::pair<std::string, std::string> > name2comp;
-////    for(std::map<std::string, info>::const_iterator m=measures.begin(); m!=measures.end(); m++)
-////      name2comp[m->first] = make_pair(m->second.compName, m->second.compDesc);
-////    return name2comp;
-////  }
-////  
-////  // Returns a mapping from the names of all the named measurements to pointers of their corresponding measure objects
-////  namedMeasures getNamedMeasures() const {
-////    namedMeasures nm;
-////    for(std::map<std::string, info>::const_iterator m=measures.begin(); m!=measures.end(); m++)
-////      nm[m->first] = m->second.meas;
-////    return nm;
-////  }
-////}; // class compNamedMeasures
+// Extends the normal HG_context by allowing the caller to specify a description of the comparator to be used
+// for each key
+class HG_compContext: public HG_context {
+  public:
+  // Maps each HG_context key to the pair <comparator name, comparator description>
+  std::map<std::string, std::pair<std::string, std::string> > comparators;
+
+  HG_compContext() {}
+
+  HG_compContext(const HG_compContext& that) : HG_context((const HG_context&) that), comparators(that.comparators) {}
+  
+  HG_compContext(const std::string& name0, const attrValue& val0, const comparatorDesc& cdesc0) : 
+    HG_context(name0, val0)
+  { comparators[name0] = std::make_pair(cdesc0.name(), cdesc0.description()); }
+  
+  HG_compContext(const std::string& name0, const attrValue& val0, const comparatorDesc& cdesc0, const std::string& name1, const attrValue& val1, const comparatorDesc& cdesc1) : 
+    HG_context(name0, val0, name1, val1)
+  { comparators[name0] = std::make_pair(cdesc0.name(), cdesc0.description()); comparators[name1] = std::make_pair(cdesc1.name(), cdesc1.description()); }
+  
+  HG_compContext(const std::string& name0, const attrValue& val0, const comparatorDesc& cdesc0, const std::string& name1, const attrValue& val1, const comparatorDesc& cdesc1, const std::string& name2, const attrValue& val2, const comparatorDesc& cdesc2) :
+    HG_context(name0, val0, name1, val1, name2, val2)
+  { comparators[name0] = std::make_pair(cdesc0.name(), cdesc0.description()); comparators[name1] = std::make_pair(cdesc1.name(), cdesc1.description()); comparators[name2] = std::make_pair(cdesc2.name(), cdesc2.description()); }
+  
+  HG_compContext(const std::string& name0, const attrValue& val0, const comparatorDesc& cdesc0, const std::string& name1, const attrValue& val1, const comparatorDesc& cdesc1, const std::string& name2, const attrValue& val2, const comparatorDesc& cdesc2, const std::string& name3, const attrValue& val3, const comparatorDesc& cdesc3) :
+    HG_context(name0, val0, name1, val1, name2, val2, name3, val3)
+  { comparators[name0] = std::make_pair(cdesc0.name(), cdesc0.description()); comparators[name1] = std::make_pair(cdesc1.name(), cdesc1.description()); comparators[name2] = std::make_pair(cdesc2.name(), cdesc2.description()); comparators[name3] = std::make_pair(cdesc3.name(), cdesc3.description()); }
+  
+  HG_compContext(const std::string& name0, const attrValue& val0, const comparatorDesc& cdesc0, const std::string& name1, const attrValue& val1, const comparatorDesc& cdesc1, const std::string& name2, const attrValue& val2, const comparatorDesc& cdesc2, const std::string& name3, const attrValue& val3, const comparatorDesc& cdesc3, const std::string& name4, const attrValue& val4, const comparatorDesc& cdesc4) :
+    HG_context(name0, val0, name1, val1, name2, val2, name3, val3, name4, val4)
+  { comparators[name0] = std::make_pair(cdesc0.name(), cdesc0.description()); comparators[name1] = std::make_pair(cdesc1.name(), cdesc1.description()); comparators[name2] = std::make_pair(cdesc2.name(), cdesc2.description()); comparators[name3] = std::make_pair(cdesc3.name(), cdesc3.description()); comparators[name4] = std::make_pair(cdesc4.name(), cdesc4.description()); }
+  
+  HG_compContext(const std::string& name0, const attrValue& val0, const comparatorDesc& cdesc0, const std::string& name1, const attrValue& val1, const comparatorDesc& cdesc1, const std::string& name2, const attrValue& val2, const comparatorDesc& cdesc2, const std::string& name3, const attrValue& val3, const comparatorDesc& cdesc3, const std::string& name4, const attrValue& val4, const comparatorDesc& cdesc4, const std::string& name5, const attrValue& val5, const comparatorDesc& cdesc5) :
+    HG_context(name0, val0, name1, val1, name2, val2, name3, val3, name4, val4, name5, val5)
+  { comparators[name0] = std::make_pair(cdesc0.name(), cdesc0.description()); comparators[name1] = std::make_pair(cdesc1.name(), cdesc1.description()); comparators[name2] = std::make_pair(cdesc2.name(), cdesc2.description()); comparators[name3] = std::make_pair(cdesc3.name(), cdesc3.description()); comparators[name4] = std::make_pair(cdesc4.name(), cdesc4.description()); comparators[name5] = std::make_pair(cdesc5.name(), cdesc5.description()); }
+  
+  HG_compContext(const std::string& name0, const attrValue& val0, const comparatorDesc& cdesc0, const std::string& name1, const attrValue& val1, const comparatorDesc& cdesc1, const std::string& name2, const attrValue& val2, const comparatorDesc& cdesc2, const std::string& name3, const attrValue& val3, const comparatorDesc& cdesc3, const std::string& name4, const attrValue& val4, const comparatorDesc& cdesc4, const std::string& name5, const attrValue& val5, const comparatorDesc& cdesc5, const std::string& name6, const attrValue& val6, const comparatorDesc& cdesc6) :
+    HG_context(name0, val0, name1, val1, name2, val2, name3, val3, name4, val4, name5, val5, name6, val6)
+  { comparators[name0] = std::make_pair(cdesc0.name(), cdesc0.description()); comparators[name1] = std::make_pair(cdesc1.name(), cdesc1.description()); comparators[name2] = std::make_pair(cdesc2.name(), cdesc2.description()); comparators[name3] = std::make_pair(cdesc3.name(), cdesc3.description()); comparators[name4] = std::make_pair(cdesc4.name(), cdesc4.description()); comparators[name5] = std::make_pair(cdesc5.name(), cdesc5.description()); comparators[name6] = std::make_pair(cdesc6.name(), cdesc6.description()); }
+  
+  HG_compContext(const std::string& name0, const attrValue& val0, const comparatorDesc& cdesc0, const std::string& name1, const attrValue& val1, const comparatorDesc& cdesc1, const std::string& name2, const attrValue& val2, const comparatorDesc& cdesc2, const std::string& name3, const attrValue& val3, const comparatorDesc& cdesc3, const std::string& name4, const attrValue& val4, const comparatorDesc& cdesc4, const std::string& name5, const attrValue& val5, const comparatorDesc& cdesc5, const std::string& name6, const attrValue& val6, const comparatorDesc& cdesc6, const std::string& name7, const attrValue& val7, const comparatorDesc& cdesc7) :
+    HG_context(name0, val0, name1, val1, name2, val2, name3, val3, name4, val4, name5, val5, name6, val6, name7, val7)
+  { comparators[name0] = std::make_pair(cdesc0.name(), cdesc0.description()); comparators[name1] = std::make_pair(cdesc1.name(), cdesc1.description()); comparators[name2] = std::make_pair(cdesc2.name(), cdesc2.description()); comparators[name3] = std::make_pair(cdesc3.name(), cdesc3.description()); comparators[name4] = std::make_pair(cdesc4.name(), cdesc4.description()); comparators[name5] = std::make_pair(cdesc5.name(), cdesc5.description()); comparators[name6] = std::make_pair(cdesc6.name(), cdesc6.description()); comparators[name7] = std::make_pair(cdesc7.name(), cdesc7.description()); }
+  
+  HG_compContext(const std::string& name0, const attrValue& val0, const comparatorDesc& cdesc0, const std::string& name1, const attrValue& val1, const comparatorDesc& cdesc1, const std::string& name2, const attrValue& val2, const comparatorDesc& cdesc2, const std::string& name3, const attrValue& val3, const comparatorDesc& cdesc3, const std::string& name4, const attrValue& val4, const comparatorDesc& cdesc4, const std::string& name5, const attrValue& val5, const comparatorDesc& cdesc5, const std::string& name6, const attrValue& val6, const comparatorDesc& cdesc6, const std::string& name7, const attrValue& val7, const comparatorDesc& cdesc7, const std::string& name8, const attrValue& val8, const comparatorDesc& cdesc8) :
+    HG_context(name0, val0, name1, val1, name2, val2, name3, val3, name4, val4, name5, val5, name6, val6, name7, val7, name8, val8)
+  { comparators[name0] = std::make_pair(cdesc0.name(), cdesc0.description()); comparators[name1] = std::make_pair(cdesc1.name(), cdesc1.description()); comparators[name2] = std::make_pair(cdesc2.name(), cdesc2.description()); comparators[name3] = std::make_pair(cdesc3.name(), cdesc3.description()); comparators[name4] = std::make_pair(cdesc4.name(), cdesc4.description()); comparators[name5] = std::make_pair(cdesc5.name(), cdesc5.description()); comparators[name6] = std::make_pair(cdesc6.name(), cdesc6.description()); comparators[name7] = std::make_pair(cdesc7.name(), cdesc7.description()); comparators[name8] = std::make_pair(cdesc8.name(), cdesc8.description()); }
+  
+  HG_compContext(const std::string& name0, const attrValue& val0, const comparatorDesc& cdesc0, const std::string& name1, const attrValue& val1, const comparatorDesc& cdesc1, const std::string& name2, const attrValue& val2, const comparatorDesc& cdesc2, const std::string& name3, const attrValue& val3, const comparatorDesc& cdesc3, const std::string& name4, const attrValue& val4, const comparatorDesc& cdesc4, const std::string& name5, const attrValue& val5, const comparatorDesc& cdesc5, const std::string& name6, const attrValue& val6, const comparatorDesc& cdesc6, const std::string& name7, const attrValue& val7, const comparatorDesc& cdesc7, const std::string& name8, const attrValue& val8, const comparatorDesc& cdesc8, const std::string& name9, const attrValue& val9, const comparatorDesc& cdesc9) :
+    HG_context(name0, val0, name1, val1, name2, val2, name3, val3, name4, val4, name5, val5, name6, val6, name7, val7, name8, val8, name9, val9)
+  { comparators[name0] = std::make_pair(cdesc0.name(), cdesc0.description()); comparators[name1] = std::make_pair(cdesc1.name(), cdesc1.description()); comparators[name2] = std::make_pair(cdesc2.name(), cdesc2.description()); comparators[name3] = std::make_pair(cdesc3.name(), cdesc3.description()); comparators[name4] = std::make_pair(cdesc4.name(), cdesc4.description()); comparators[name5] = std::make_pair(cdesc5.name(), cdesc5.description()); comparators[name6] = std::make_pair(cdesc6.name(), cdesc6.description()); comparators[name7] = std::make_pair(cdesc7.name(), cdesc7.description()); comparators[name8] = std::make_pair(cdesc8.name(), cdesc8.description()); comparators[name9] = std::make_pair(cdesc9.name(), cdesc9.description()); }
+  
+  HG_compContext(const std::map<std::string, attrValue>& configuration, const std::map<std::string, std::pair<std::string, std::string> >& comparators) : 
+    HG_context(configuration), comparators(comparators) {}
+
+  // Loads this HG_context from the given properties map. The names of all the fields are assumed to be prefixed
+  // with the given string.
+  HG_compContext(properties::iterator props, std::string prefix="");
+  
+  // Returns a dynamically-allocated copy of this object. This method must be implemented by all classes
+  // that inherit from HG_context to make sure that appropriate copies of them can be created.
+  virtual HG_context* copy() const { return new HG_compContext(*this); }
+  
+  // These comparator routines must be implemented by all classes that inherit from HG_context to make sure that
+  // their additional details are reflected in the results of the comparison. Implementors may assume that 
+  // the type of that is their special derivation of HG_context rather than a generic HG_context and should dynamically
+  // cast from const HG_context& to their sub-type.
+  virtual bool operator==(const HG_context& that) const;
+
+  virtual bool operator<(const HG_context& that) const;
+
+  // Adds the given key/attrValue pair to this HG_context
+  void add(std::string key, const attrValue& val, const comparatorDesc& cdesc);
+
+  // Add all the key/attrValue pairs from the given HG_context to this one, overwriting keys as needed
+  void add(const HG_compContext& that);
+
+  // Returns the properties map that describes this HG_context object.
+  // The names of all the fields in the map are prefixed with the given string.
+  std::map<std::string, std::string> getProperties(std::string prefix="") const;
+  
+  // Returns a human-readable string that describes this HG_context
+  virtual std::string str() const;
+}; // class HG_compContext
+
+class compHierGraphTraceStream;
+
+class HG_compNamedMeasures {
+  public:
+  
+  // Records all the information about a named measures and their comparators
+  class info {
+    public:
+    measure* meas; // Points to the measure object
+    std::string compName; // The name of the comparator to be used with this measure
+    std::string compDesc; // The description of the comparator to be used with this measure
+  
+    info() {}
+    info(measure* meas, std::string compName, std::string compDesc) : meas(meas), compName(compName), compDesc(compDesc) {}
+  };
+    
+  // Maps the name of each measure to its info
+  std::map<std::string, info> measures;
+
+  HG_compNamedMeasures() {}
+  
+  HG_compNamedMeasures(const HG_compNamedMeasures& that) : measures(that.measures) {}
+  
+  HG_compNamedMeasures(const std::string& name0, measure* meas0, const comparatorDesc& cdesc0)
+  { measures[name0] = info(meas0, cdesc0.name(), cdesc0.description()); }
+  
+  HG_compNamedMeasures(const std::string& name0, measure* meas0, const comparatorDesc& cdesc0, const std::string& name1, measure* meas1, const comparatorDesc& cdesc1)
+  { measures[name0] = info(meas0, cdesc0.name(), cdesc0.description()); measures[name1] = info(meas1, cdesc1.name(), cdesc1.description()); }
+  
+  HG_compNamedMeasures(const std::string& name0, measure* meas0, const comparatorDesc& cdesc0, const std::string& name1, measure* meas1, const comparatorDesc& cdesc1, const std::string& name2, measure* meas2, const comparatorDesc& cdesc2)
+  { measures[name0] = info(meas0, cdesc0.name(), cdesc0.description()); measures[name1] = info(meas1, cdesc1.name(), cdesc1.description()); measures[name2] = info(meas2, cdesc2.name(), cdesc2.description()); }
+  
+  HG_compNamedMeasures(const std::string& name0, measure* meas0, const comparatorDesc& cdesc0, const std::string& name1, measure* meas1, const comparatorDesc& cdesc1, const std::string& name2, measure* meas2, const comparatorDesc& cdesc2, const std::string& name3, measure* meas3, const comparatorDesc& cdesc3)
+  { measures[name0] = info(meas0, cdesc0.name(), cdesc0.description()); measures[name1] = info(meas1, cdesc1.name(), cdesc1.description()); measures[name2] = info(meas2, cdesc2.name(), cdesc2.description()); measures[name3] = info(meas3, cdesc3.name(), cdesc3.description()); }
+  
+  HG_compNamedMeasures(const std::string& name0, measure* meas0, const comparatorDesc& cdesc0, const std::string& name1, measure* meas1, const comparatorDesc& cdesc1, const std::string& name2, measure* meas2, const comparatorDesc& cdesc2, const std::string& name3, measure* meas3, const comparatorDesc& cdesc3, const std::string& name4, measure* meas4, const comparatorDesc& cdesc4)
+  { measures[name0] = info(meas0, cdesc0.name(), cdesc0.description()); measures[name1] = info(meas1, cdesc1.name(), cdesc1.description()); measures[name2] = info(meas2, cdesc2.name(), cdesc2.description()); measures[name3] = info(meas3, cdesc3.name(), cdesc3.description()); measures[name4] = info(meas4, cdesc4.name(), cdesc4.description()); }
+  
+  HG_compNamedMeasures(const std::string& name0, measure* meas0, const comparatorDesc& cdesc0, const std::string& name1, measure* meas1, const comparatorDesc& cdesc1, const std::string& name2, measure* meas2, const comparatorDesc& cdesc2, const std::string& name3, measure* meas3, const comparatorDesc& cdesc3, const std::string& name4, measure* meas4, const comparatorDesc& cdesc4, const std::string& name5, measure* meas5, const comparatorDesc& cdesc5)
+  { measures[name0] = info(meas0, cdesc0.name(), cdesc0.description()); measures[name1] = info(meas1, cdesc1.name(), cdesc1.description()); measures[name2] = info(meas2, cdesc2.name(), cdesc2.description()); measures[name3] = info(meas3, cdesc3.name(), cdesc3.description()); measures[name4] = info(meas4, cdesc4.name(), cdesc4.description()); measures[name5] = info(meas5, cdesc5.name(), cdesc5.description()); }
+  
+  HG_compNamedMeasures(const std::string& name0, measure* meas0, const comparatorDesc& cdesc0, const std::string& name1, measure* meas1, const comparatorDesc& cdesc1, const std::string& name2, measure* meas2, const comparatorDesc& cdesc2, const std::string& name3, measure* meas3, const comparatorDesc& cdesc3, const std::string& name5, const std::string& name4, measure* meas4, const comparatorDesc& cdesc4, measure* meas5, const comparatorDesc& cdesc5, const std::string& name6, measure* meas6, const comparatorDesc& cdesc6)
+  { measures[name0] = info(meas0, cdesc0.name(), cdesc0.description()); measures[name1] = info(meas1, cdesc1.name(), cdesc1.description()); measures[name2] = info(meas2, cdesc2.name(), cdesc2.description()); measures[name3] = info(meas3, cdesc3.name(), cdesc3.description()); measures[name4] = info(meas4, cdesc4.name(), cdesc4.description()); measures[name5] = info(meas5, cdesc5.name(), cdesc5.description()); measures[name6] = info(meas6, cdesc6.name(), cdesc6.description()); }
+  
+  HG_compNamedMeasures(const std::string& name0, measure* meas0, const comparatorDesc& cdesc0, const std::string& name1, measure* meas1, const comparatorDesc& cdesc1, const std::string& name2, measure* meas2, const comparatorDesc& cdesc2, const std::string& name3, measure* meas3, const comparatorDesc& cdesc3, const std::string& name5, const std::string& name4, measure* meas4, const comparatorDesc& cdesc4, measure* meas5, const comparatorDesc& cdesc5, const std::string& name6, measure* meas6, const comparatorDesc& cdesc6, const std::string& name7, measure* meas7, const comparatorDesc& cdesc7)
+  { measures[name0] = info(meas0, cdesc0.name(), cdesc0.description()); measures[name1] = info(meas1, cdesc1.name(), cdesc1.description()); measures[name2] = info(meas2, cdesc2.name(), cdesc2.description()); measures[name3] = info(meas3, cdesc3.name(), cdesc3.description()); measures[name4] = info(meas4, cdesc4.name(), cdesc4.description()); measures[name5] = info(meas5, cdesc5.name(), cdesc5.description()); measures[name6] = info(meas6, cdesc6.name(), cdesc6.description()); measures[name7] = info(meas7, cdesc7.name(), cdesc7.description()); }
+  
+  HG_compNamedMeasures(const std::string& name0, measure* meas0, const comparatorDesc& cdesc0, const std::string& name1, measure* meas1, const comparatorDesc& cdesc1, const std::string& name2, measure* meas2, const comparatorDesc& cdesc2, const std::string& name3, measure* meas3, const comparatorDesc& cdesc3, const std::string& name5, const std::string& name4, measure* meas4, const comparatorDesc& cdesc4, measure* meas5, const comparatorDesc& cdesc5, const std::string& name6, measure* meas6, const comparatorDesc& cdesc6, const std::string& name7, measure* meas7, const comparatorDesc& cdesc7, const std::string& name8, measure* meas8, const comparatorDesc& cdesc8)
+  { measures[name0] = info(meas0, cdesc0.name(), cdesc0.description()); measures[name1] = info(meas1, cdesc1.name(), cdesc1.description()); measures[name2] = info(meas2, cdesc2.name(), cdesc2.description()); measures[name3] = info(meas3, cdesc3.name(), cdesc3.description()); measures[name4] = info(meas4, cdesc4.name(), cdesc4.description()); measures[name5] = info(meas5, cdesc5.name(), cdesc5.description()); measures[name6] = info(meas6, cdesc6.name(), cdesc6.description()); measures[name7] = info(meas7, cdesc7.name(), cdesc7.description()); measures[name8] = info(meas8, cdesc8.name(), cdesc8.description()); }
+  
+  HG_compNamedMeasures(const std::string& name0, measure* meas0, const comparatorDesc& cdesc0, const std::string& name1, measure* meas1, const comparatorDesc& cdesc1, const std::string& name2, measure* meas2, const comparatorDesc& cdesc2, const std::string& name3, measure* meas3, const comparatorDesc& cdesc3, const std::string& name5, const std::string& name4, measure* meas4, const comparatorDesc& cdesc4, measure* meas5, const comparatorDesc& cdesc5, const std::string& name6, measure* meas6, const comparatorDesc& cdesc6, const std::string& name7, measure* meas7, const comparatorDesc& cdesc7, const std::string& name8, measure* meas8, const comparatorDesc& cdesc8, const std::string& name9, measure* meas9, const comparatorDesc& cdesc9)
+  { measures[name0] = info(meas0, cdesc0.name(), cdesc0.description()); measures[name1] = info(meas1, cdesc1.name(), cdesc1.description()); measures[name2] = info(meas2, cdesc2.name(), cdesc2.description()); measures[name3] = info(meas3, cdesc3.name(), cdesc3.description()); measures[name4] = info(meas4, cdesc4.name(), cdesc4.description()); measures[name5] = info(meas5, cdesc5.name(), cdesc5.description()); measures[name6] = info(meas6, cdesc6.name(), cdesc6.description()); measures[name7] = info(meas7, cdesc7.name(), cdesc7.description()); measures[name8] = info(meas8, cdesc8.name(), cdesc8.description()); measures[name9] = info(meas9, cdesc9.name(), cdesc9.description()); }
+  
+  // Returns the properties map that describes this HG_context object.
+  // The names of all the fields in the map are prefixed with the given string.
+  //std::map<std::string, std::string> getProperties(std::string prefix="") const;
+  
+  // Returns a map that maps the names of all the named measurements to the pair of strings that records the 
+  // name and description of the comparison to be used with each measurement
+  std::map<std::string, std::pair<std::string, std::string> > getComparators() const {
+    std::map<std::string, std::pair<std::string, std::string> > name2comp;
+    for(std::map<std::string, info>::const_iterator m=measures.begin(); m!=measures.end(); m++)
+      name2comp[m->first] = make_pair(m->second.compName, m->second.compDesc);
+    return name2comp;
+  }
+  
+  // Returns a mapping from the names of all the named measurements to pointers of their corresponding measure objects
+  namedMeasures getNamedMeasures() const {
+    namedMeasures nm;
+    for(std::map<std::string, info>::const_iterator m=measures.begin(); m!=measures.end(); m++)
+      nm[m->first] = m->second.meas;
+    return nm;
+  }
+}; // class HG_compNamedMeasures
 
 // Represents a modular application, which may contain one or more hierGraphs. Only one modular application may be
 // in-scope at any given point in time.
@@ -803,8 +790,8 @@ class compHierGraphApp : public hierGraphApp
   public:
   compHierGraphApp(const std::string& appName,                                                        properties* props=NULL);
   compHierGraphApp(const std::string& appName, const attrOp& onoffOp,                                 properties* props=NULL);
-  compHierGraphApp(const std::string& appName,                        const compNamedMeasures& cMeas, properties* props=NULL);
-  compHierGraphApp(const std::string& appName, const attrOp& onoffOp, const compNamedMeasures& cMeas, properties* props=NULL);
+  compHierGraphApp(const std::string& appName,                        const HG_compNamedMeasures& cMeas, properties* props=NULL);
+  compHierGraphApp(const std::string& appName, const attrOp& onoffOp, const HG_compNamedMeasures& cMeas, properties* props=NULL);
 
   ~compHierGraphApp();
 
@@ -837,8 +824,8 @@ class compHierGraph: public structure::hierGraph
   // Records whether this is the reference configuration of the moculde
   bool isReference;
     
-  // The context that describes the configuration options of this hierGraph
-  context options;
+  // The HG_context that describes the configuration options of this hierGraph
+  HG_context options;
   
   // Records whether this class has been derived by another. In this case ~hierGraph() relies on the destructor of
   // that class to create an appropriate traceStream.
@@ -856,75 +843,75 @@ class compHierGraph: public structure::hierGraph
     // The options that the derived class wishes to pass to this compHierGraph. The issue is that because we pass
     // options by reference if a derived class wishes to extend them, it cannot do so from within a constructor.
     // Adding options to derivInfo make this possible;
-    context options;
+    HG_context options;
     
     compDerivInfo() : derivInfo() {}
     
-    compDerivInfo(properties* props, const std::map<std::string, attrValue>& ctxt, const context& options) : 
+    compDerivInfo(properties* props, const std::map<std::string, attrValue>& ctxt, const HG_context& options) : 
       derivInfo(props, ctxt), options(options) {}
   };*/
   
   // isReference: Records whether this is the reference configuration of the moculde
-  // options: The context that describes the configuration options of this hierGraph
+  // options: The HG_context that describes the configuration options of this hierGraph
   // meas: The measurements that should be performed during the execution of this compHierGraph
   // derivInfo: Information that describes the class that derives from this on. It includes a pointer to a properties
   //    object that can be used to create a tag for the derived object that includes info about its parents. Further,
-  //    it includes fields that must be included within the context of any trace observations made during the execution
+  //    it includes fields that must be included within the HG_context of any trace observations made during the execution
   //    of this hierGraph.
-  compHierGraph(const instance& inst, const std::vector<port>& inputs,  
+  compHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs,  
              bool isReference,
                                                                properties* props=NULL);
-  compHierGraph(const instance& inst, const std::vector<port>& inputs,  
+  compHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs,  
              bool isReference, 
              const attrOp& onoffOp,                            properties* props=NULL);
-  compHierGraph(const instance& inst, const std::vector<port>& inputs,  
+  compHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs,  
              bool isReference,
-                                    const compNamedMeasures& meas, properties* props=NULL);
-  compHierGraph(const instance& inst, const std::vector<port>& inputs,  
+                                    const HG_compNamedMeasures& meas, properties* props=NULL);
+  compHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs,  
              bool isReference, 
-             const attrOp& onoffOp, const compNamedMeasures& meas, properties* props=NULL);
+             const attrOp& onoffOp, const HG_compNamedMeasures& meas, properties* props=NULL);
 
-  compHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+  compHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs, std::vector<HG_port>& externalOutputs, 
              bool isReference,
                                                                properties* props=NULL);
-  compHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+  compHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs, std::vector<HG_port>& externalOutputs, 
              bool isReference, 
              const attrOp& onoffOp,                            properties* props=NULL);
-  compHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+  compHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs, std::vector<HG_port>& externalOutputs, 
              bool isReference,
-                                    const compNamedMeasures& meas, properties* props=NULL);
-  compHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+                                    const HG_compNamedMeasures& meas, properties* props=NULL);
+  compHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs, std::vector<HG_port>& externalOutputs, 
              bool isReference, 
-             const attrOp& onoffOp, const compNamedMeasures& meas, properties* props=NULL);
+             const attrOp& onoffOp, const HG_compNamedMeasures& meas, properties* props=NULL);
 
-  compHierGraph(const instance& inst, const std::vector<port>& inputs,  
-             bool isReference, context options,
+  compHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs,  
+             bool isReference, HG_context options,
                                                                properties* props=NULL);
-  compHierGraph(const instance& inst, const std::vector<port>& inputs,  
-             bool isReference, context options, 
+  compHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs,  
+             bool isReference, HG_context options, 
              const attrOp& onoffOp,                            properties* props=NULL);
-  compHierGraph(const instance& inst, const std::vector<port>& inputs,  
-             bool isReference, context options,
-                                    const compNamedMeasures& meas, properties* props=NULL);
-  compHierGraph(const instance& inst, const std::vector<port>& inputs,  
-             bool isReference, context options, 
-             const attrOp& onoffOp, const compNamedMeasures& meas, properties* props=NULL);
+  compHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs,  
+             bool isReference, HG_context options,
+                                    const HG_compNamedMeasures& meas, properties* props=NULL);
+  compHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs,  
+             bool isReference, HG_context options, 
+             const attrOp& onoffOp, const HG_compNamedMeasures& meas, properties* props=NULL);
 
-  compHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
-             bool isReference, context options,
+  compHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs, std::vector<HG_port>& externalOutputs, 
+             bool isReference, HG_context options,
                                                                properties* props=NULL);
-  compHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
-             bool isReference, context options, 
+  compHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs, std::vector<HG_port>& externalOutputs, 
+             bool isReference, HG_context options, 
              const attrOp& onoffOp,                            properties* props=NULL);
-  compHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
-             bool isReference, context options,
-                                    const compNamedMeasures& meas, properties* props=NULL);
-  compHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
-             bool isReference, context options, 
-             const attrOp& onoffOp, const compNamedMeasures& meas, properties* props=NULL);
+  compHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs, std::vector<HG_port>& externalOutputs, 
+             bool isReference, HG_context options,
+                                    const HG_compNamedMeasures& meas, properties* props=NULL);
+  compHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs, std::vector<HG_port>& externalOutputs, 
+             bool isReference, HG_context options, 
+             const attrOp& onoffOp, const HG_compNamedMeasures& meas, properties* props=NULL);
 
   // Sets the properties of this object
-  properties* setProperties(const instance& inst, bool isReference, context options, const attrOp* onoffOp, properties* props=NULL);
+  properties* setProperties(const HG_instance& inst, bool isReference, HG_context options, const attrOp* onoffOp, properties* props=NULL);
   
   void init(properties* props);
   
@@ -938,20 +925,20 @@ class compHierGraph: public structure::hierGraph
   // an object will invoke the destroy() method of the most-derived class.
   virtual void destroy();
   
-  // Sets the context of the given option
+  // Sets the HG_context of the given option
   virtual void setOptionCtxt(std::string name, attrValue val);
   
-  // Sets the isReference flag to indicate whether this is a reference instance of this compHierGraph or not
+  // Sets the isReference flag to indicate whether this is a reference HG_instance of this compHierGraph or not
   void setIsReference(bool newVal);
 
-  // Sets the context of the given output port. This variant ensures that the outputs of compHierGraphs can only
-  // be set with compContexts.
-  void setOutCtxt(int idx, const context& c) { std::cerr << "ERROR: compHierGraph::setOutCtxt() can only be called with a compContext argument!"<<std::endl; assert(0); }
-  virtual void setOutCtxt(int idx, const compContext& c);
+  // Sets the HG_context of the given output HG_port. This variant ensures that the outputs of compHierGraphs can only
+  // be set with HG_compContexts.
+  void setOutCtxt(int idx, const HG_context& c) { std::cerr << "ERROR: compHierGraph::setOutCtxt() can only be called with a HG_compContext argument!"<<std::endl; assert(0); }
+  virtual void setOutCtxt(int idx, const HG_compContext& c);
   
-  // Sets the traceCtxt map, which contains the context attributes to be used in this hierGraph's measurements 
-  // by combining the context provided by the classes that this object derives from with its own unique 
-  // context attributes.
+  // Sets the traceCtxt map, which contains the HG_context attributes to be used in this hierGraph's measurements 
+  // by combining the HG_context provided by the classes that this object derives from with its own unique 
+  // HG_context attributes.
   void setTraceCtxt();
 
   // -------------------------
@@ -1005,8 +992,8 @@ class springHierGraphApp : public compHierGraphApp
   public:
   springHierGraphApp(const std::string& appName,                                                        properties* props=NULL);
   springHierGraphApp(const std::string& appName, const attrOp& onoffOp,                                 properties* props=NULL);
-  springHierGraphApp(const std::string& appName,                        const compNamedMeasures& cMeas, properties* props=NULL);
-  springHierGraphApp(const std::string& appName, const attrOp& onoffOp, const compNamedMeasures& cMeas, properties* props=NULL);
+  springHierGraphApp(const std::string& appName,                        const HG_compNamedMeasures& cMeas, properties* props=NULL);
+  springHierGraphApp(const std::string& appName, const attrOp& onoffOp, const HG_compNamedMeasures& cMeas, properties* props=NULL);
   
   void init();
   
@@ -1022,7 +1009,7 @@ class springHierGraphApp : public compHierGraphApp
   
   static void *Interference(void *arg);
 
-  // Returns a pointer to the current instance of hierGraphApp
+  // Returns a pointer to the current HG_instance of hierGraphApp
   static springHierGraphApp* getInstance() { 
     springHierGraphApp* springActiveMA = dynamic_cast<springHierGraphApp*>(hierGraphApp::getInstance());
     assert(springActiveMA);
@@ -1034,31 +1021,31 @@ class springHierGraph: public compHierGraph {
 /*  // The options passed into the constructor, extended with the configuration options from Spring.
   // extendedOptions is cleared at the end of the constructor sincee it is only used to communicate
   // the full set of options to the compHierGraph constructor.
-  context extendedOptions;*/
+  HG_context extendedOptions;*/
 
   public:
   
-  // options: The context that describes the configuration options of this hierGraph
+  // options: The HG_context that describes the configuration options of this hierGraph
   // meas: The measurements that should be performed during the execution of this springHierGraph
   // derivInfo: Information that describes the class that derives from this on. It includes a pointer to a properties
   //    object that can be used to create a tag for the derived object that includes info about its parents. Further,
-  //    it includes fields that must be included within the context of any trace observations made during the execution
+  //    it includes fields that must be included within the HG_context of any trace observations made during the execution
   //    of this hierGraph.
-  springHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
-               const context& options,
+  springHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs, std::vector<HG_port>& externalOutputs, 
+               const HG_context& options,
                                                                properties* props=NULL);
-  springHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
-             const context& options, 
+  springHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs, std::vector<HG_port>& externalOutputs, 
+             const HG_context& options, 
              const attrOp& onoffOp,                            properties* props=NULL);
-  springHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
-             const context& options,
-                                    const compNamedMeasures& meas, properties* props=NULL);
-  springHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
-             const context& options, 
-             const attrOp& onoffOp, const compNamedMeasures& meas, properties* props=NULL);
+  springHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs, std::vector<HG_port>& externalOutputs, 
+             const HG_context& options,
+                                    const HG_compNamedMeasures& meas, properties* props=NULL);
+  springHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs, std::vector<HG_port>& externalOutputs, 
+             const HG_context& options, 
+             const attrOp& onoffOp, const HG_compNamedMeasures& meas, properties* props=NULL);
   
   static bool isSpringReference();
-  static context extendOptions(const context& options);
+  static HG_context extendOptions(const HG_context& options);
 
   ~springHierGraph();
 
@@ -1070,9 +1057,9 @@ class springHierGraph: public compHierGraph {
   // an object will invoke the destroy() method of the most-derived class.
   virtual void destroy();
 
-  // Returns the context attributes to be used in this hierGraph's measurements by combining the context provided by the classes
-  // that this object derives from with its own unique context attributes.
-  //static std::map<std::string, attrValue> getTraceCtxt(const std::vector<port>& inputs, bool isReference, const context& options);
+  // Returns the HG_context attributes to be used in this hierGraph's measurements by combining the HG_context provided by the classes
+  // that this object derives from with its own unique HG_context attributes.
+  //static std::map<std::string, attrValue> getTraceCtxt(const std::vector<HG_port>& HG_inputs, bool isReference, const HG_context& options);
 }; // class springHierGraph
 
 class processedHierGraphTraceStream;
@@ -1084,22 +1071,22 @@ class processedHierGraph : public structure::hierGraph {
   processedTrace::commands processorCommands;
   
   public:
-  // processorCommands - list of executables to be run on the information of the hierGraph instances to process/filter them
-  processedHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+  // processorCommands - list of executables to be run on the information of the hierGraph HG_instances to process/filter them
+  processedHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs, std::vector<HG_port>& externalOutputs, 
              const processedTrace::commands& processorCommands,
                                                                properties* props=NULL);
-  processedHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+  processedHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs, std::vector<HG_port>& externalOutputs, 
              const processedTrace::commands& processorCommands,
              const attrOp& onoffOp,                            properties* props=NULL);
-  processedHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+  processedHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs, std::vector<HG_port>& externalOutputs, 
              const processedTrace::commands& processorCommands,
                                     const namedMeasures& meas, properties* props=NULL);
-  processedHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+  processedHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs, std::vector<HG_port>& externalOutputs, 
              const processedTrace::commands& processorCommands,
              const attrOp& onoffOp, const namedMeasures& meas, properties* props=NULL);
 
   // Sets the properties of this object
-  /*derivInfo* setProperties(const instance& inst, const processedTrace::commands& processorCommands, 
+  /*derivInfo* setProperties(const HG_instance& inst, const processedTrace::commands& processorCommands, 
                            const attrOp* onoffOp, properties* props=NULL);*/
   
   void init(properties* props);
@@ -1114,8 +1101,8 @@ class processedHierGraph : public structure::hierGraph {
   // an object will invoke the destroy() method of the most-derived class.
   virtual void destroy();
 
-  // Returns the context attributes to be used in this hierGraph's measurements by combining the context provided by the classes
-  // that this object derives from with its own unique context attributes.
+  // Returns the HG_context attributes to be used in this hierGraph's measurements by combining the HG_context provided by the classes
+  // that this object derives from with its own unique HG_context attributes.
   //static std::map<std::string, attrValue> getTraceCtxt();
 }; // class processedHierGraph
 
@@ -1203,7 +1190,7 @@ class HierGraphAppMerger : public BlockMerger {
                                    std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
                                    properties* props);
                                    
-  // Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+  // Sets a list of strings that denotes a unique ID according to which HG_instances of this merger's 
   // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info,
@@ -1230,7 +1217,7 @@ class HierGraphAppStructureMerger : public Merger {
                                    std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
                                    properties* props);
                                    
-  // Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+  // Sets a list of strings that denotes a unique ID according to which HG_instances of this merger's 
   // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info,
@@ -1257,7 +1244,7 @@ class HierGraphMerger : public Merger {
                                    std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
                                    properties* props);
                                    
-  // Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+  // Sets a list of strings that denotes a unique ID according to which HG_instances of this merger's 
   // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info,
@@ -1285,7 +1272,7 @@ class HierGraphCtrlMerger : public Merger {
                                    std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
                                    properties* props);
                                    
-  // Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+  // Sets a list of strings that denotes a unique ID according to which HG_instances of this merger's 
   // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info,
@@ -1313,7 +1300,7 @@ class HierGraphEdgeMerger : public Merger {
                                    std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
                                    properties* props);
                                    
-  // Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+  // Sets a list of strings that denotes a unique ID according to which HG_instances of this merger's 
   // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info,
@@ -1340,7 +1327,7 @@ class HierGraphTraceStreamMerger : public TraceStreamMerger {
                                    std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
                                    properties* props);
 
-  // Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+  // Sets a list of strings that denotes a unique ID according to which HG_instances of this merger's 
   // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
@@ -1367,7 +1354,7 @@ class CompHierGraphMerger : public HierGraphMerger {
                                    std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
                                    properties* props);
                                    
-  // Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+  // Sets a list of strings that denotes a unique ID according to which HG_instances of this merger's 
   // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info,
@@ -1394,7 +1381,7 @@ class CompHierGraphTraceStreamMerger : public HierGraphTraceStreamMerger {
                                    std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
                                    properties* props);
 
-  // Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+  // Sets a list of strings that denotes a unique ID according to which HG_instances of this merger's 
   // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
@@ -1412,7 +1399,7 @@ class HierGraphStreamRecord: public streamRecord {
   /*
   // We allow hierGraphs within different hierGraphApps to use independent ID schemes (i.e. the hierGraph IDs within
   // different apps may independently start from 0) because we anticipate that in the future this may make it easier
-  // to match up instances of the same hierGraph within the same hierGraphApp.
+  // to match up HG_instances of the same hierGraph within the same hierGraphApp.
   // The stack of streamRecords that record for each currently active moduluarApp
   // (they are nested hierarchically), the mappings of nodes IDs from incoming to 
   // outgoing streams.
@@ -1443,54 +1430,54 @@ class HierGraphStreamRecord: public streamRecord {
       return txt()<<"name=\""<<name<<"\" numInputs="<<numInputs<<" numOutputs="<<numOutputs;
     }
   };*/
-  // Stack of the hierGraph instances that are currently in scope
-  std::list<instance> iStack;
+  // Stack of the hierGraph HG_instances that are currently in scope
+  std::list<HG_instance> iStack;
   
   // Mapping from the unique information of all the observed hierGraphStreamRecords to their hierGraphIDs.
   // This is maintained on the outgoing stream to ensure that even if we fail to accurately align
   // two hierGraphTS tags that actually belong to the same hierGraph, we only keep the record for the first
-  // and ignore the subsequent instances of the tag.
-  std::map<group, int> observedHierGraphs;  // hierGraph group -> hierGraphID
-  std::map<group, int> observedHierGraphsTS; // hierGraph group -> traceID
-  // The maximum ID ever assigned to a hierGraph group within this stream
+  // and ignore the subsequent HG_instances of the tag.
+  std::map<HG_group, int> observedHierGraphs;  // hierGraph HG_group -> hierGraphID
+  std::map<HG_group, int> observedHierGraphsTS; // hierGraph HG_group -> traceID
+  // The maximum ID ever assigned to a hierGraph HG_group within this stream
   int maxHierGraphID;
   
   // Returns a fresh hierGraphID
   int genHierGraphID() { return maxHierGraphID++; }
   
-  // Called when a hierGraph is entered/exited along the given stream to record the current hierGraph group
-  group enterHierGraph(const instance& inst);
-  // Record that we've entered the given hierGraph instance on all the given incoming streams
-  static group enterHierGraph(const instance& inst, const std::vector<std::map<std::string, streamRecord*> >& inStreamRecords);
+  // Called when a hierGraph is entered/exited along the given stream to record the current hierGraph HG_group
+  HG_group enterHierGraph(const HG_instance& inst);
+  // Record that we've entered the given hierGraph HG_instance on all the given incoming streams
+  static HG_group enterHierGraph(const HG_instance& inst, const std::vector<std::map<std::string, streamRecord*> >& inStreamRecords);
 
   void exitHierGraph();
-  // Record that we've exited the given hierGraph instance on all the given incoming streams
+  // Record that we've exited the given hierGraph HG_instance on all the given incoming streams
   static void exitHierGraph(const std::vector<std::map<std::string, streamRecord*> >& inStreamRecords);
   
-  // Returns the group denoted by the current stack of hierGraph instances
-  group getGroup();
-  // Returns the group denoted by the current stack of hierGraph instances in all the given incoming streams 
+  // Returns the HG_group denoted by the current stack of hierGraph HG_instances
+  HG_group getGroup();
+  // Returns the HG_group denoted by the current stack of hierGraph HG_instances in all the given incoming streams 
   // (must be identical on all of them).
-  static group getGroup(const std::vector<std::map<std::string, streamRecord*> >& inStreamRecords);
+  static HG_group getGroup(const std::vector<std::map<std::string, streamRecord*> >& inStreamRecords);
   
   
-  // Returns true if the given hierGraph group has already been observed and false otherwise
-  bool isHierGraphObserved(const group& g) const { 
+  // Returns true if the given hierGraph HG_group has already been observed and false otherwise
+  bool isHierGraphObserved(const HG_group& g) const { 
     assert((observedHierGraphs.find(g)   != observedHierGraphs.end()) ==
            (observedHierGraphsTS.find(g) != observedHierGraphsTS.end()));
     return observedHierGraphs.find(g) != observedHierGraphs.end();
   }
   
-  // If the given hierGraph group has been observed, returns its hierGraphID
-  int getHierGraphID(const group& g)
+  // If the given hierGraph HG_group has been observed, returns its hierGraphID
+  int getHierGraphID(const HG_group& g)
   { assert(observedHierGraphs.find(g) != observedHierGraphs.end()); return observedHierGraphs[g]; }
   
-  // If the given hierGraph group has been observed, returns its traceID
-  int getHierGraphTraceID(const group& g)
+  // If the given hierGraph HG_group has been observed, returns its traceID
+  int getHierGraphTraceID(const HG_group& g)
   { assert(observedHierGraphsTS.find(g) != observedHierGraphsTS.end()); return observedHierGraphsTS[g]; }
   
-  // Records the ID of a given hierGraph group
-  void setHierGraphID(const group& g, int hierGraphID, int traceID) { 
+  // Records the ID of a given hierGraph HG_group
+  void setHierGraphID(const HG_group& g, int hierGraphID, int traceID) { 
     assert(observedHierGraphs.find(g)   == observedHierGraphs.end()); 
     assert(observedHierGraphsTS.find(g) == observedHierGraphsTS.end()); 
     observedHierGraphs[g]   = hierGraphID;

@@ -10,6 +10,7 @@
 // for the BSD License.
 #define HIERGRAPH_LAYOUT_C
 #include "../../sight_layout.h"
+#include "../trace/trace_layout.h"
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -623,8 +624,8 @@ void hierGraphApp::exitHierGraph(void* obj) {
   hierGraphApp::activeMA->exitHierGraph();
 }
 
-// Register the given hierGraph object (keeps data on the raw observations) and polyFitObserver object 
-void hierGraphApp::registerHierGraph(int hierGraphID, sight::layout::hierGraph* m, polyFitObserver* pf) {
+// Register the given hierGraph object (keeps data on the raw observations) and HG_polyFitObserver object 
+void hierGraphApp::registerHierGraph(int hierGraphID, sight::layout::hierGraph* m, HG_polyFitObserver* pf) {
   assert(hierGraphApp::activeMA);
   hierGraphApp::activeMA->hierGraphs[hierGraphID] = m;
   hierGraphApp::activeMA->polyFits[hierGraphID] = pf;
@@ -1085,27 +1086,27 @@ void hierGraph::observe(int traceID,
 }
 
 /*************************
- ***** polyFitFilter *****
+ ***** HG_polyFitFilter *****
  *************************/
 
-// The total number of polyFitFilter instances that have been created so far. 
+// The total number of HG_polyFitFilter instances that have been created so far. 
 // Used to set unique names to files output by polyFitFilters.
-int polyFitFilter::maxFileNum=0;
+int HG_polyFitFilter::maxFileNum=0;
 
 // Records whether the working directory for this class has been initialized
-bool polyFitFilter::workDirInitialized=false;
+bool HG_polyFitFilter::workDirInitialized=false;
 
 // The directory that is used for storing intermediate files
-std::string polyFitFilter::workDir="";
+std::string HG_polyFitFilter::workDir="";
 
-polyFitFilter::polyFitFilter() {
+HG_polyFitFilter::HG_polyFitFilter() {
   numObservations = 0;
   fileNum = maxFileNum++;
   
-  // Initialize the directories this polyFitFilter will use for its temporary storage
+  // Initialize the directories this HG_polyFitFilter will use for its temporary storage
   if(!workDirInitialized) {
     // Create the directory that holds the workDirInitialized-specific data
-    std::pair<std::string, std::string> dirs = dbg.createWidgetDir("polyFitFilter");
+    std::pair<std::string, std::string> dirs = dbg.createWidgetDir("HG_polyFitFilter");
     workDir = dirs.first;
   }
   workDirInitialized = true;
@@ -1113,7 +1114,7 @@ polyFitFilter::polyFitFilter() {
 
 // Iterates over all combinations of keys in numericCtxt upto maxDegree in size and computes the products of
 // their values. Adds each such product to the given vector termVals.
-void polyFitFilter::addPolyTerms(const map<string, double>& numericCtxt, int termCnt, int maxDegree, 
+void HG_polyFitFilter::addPolyTerms(const map<string, double>& numericCtxt, int termCnt, int maxDegree, 
                                  std::vector<double>& termVals, double product) {
   // If product contains maxDegree terms, add it to the given column of polyfitObs and increment the column counter
   if(termCnt==maxDegree) {
@@ -1134,7 +1135,7 @@ void polyFitFilter::addPolyTerms(const map<string, double>& numericCtxt, int ter
 // numNumeric - refers to the count of numeric context/trace attributes
 // numericAttrNames - refers to the list of names of numeric context/trace attributes
 // label - identifies this as context or trace (for error messages)
-map<string, /*double*/string> polyFitFilter::getNumericAttrs(
+map<string, /*double*/string> HG_polyFitFilter::getNumericAttrs(
                                     const map<string, string>& ctxttraceData, 
                                     std::set<std::string>& numericAttrNames, 
                                     string label) {
@@ -1180,7 +1181,7 @@ map<string, /*double*/string> polyFitFilter::getNumericAttrs(
         /* // Otherwise, verify that the this observation has the same set of numeric attributes as prior ones did
         else {
           if(*priorObsNumAttrNames != d->first)
-          { cerr << "ERROR: Inconsistent numeric "<<label<<" attributes in different observations for the same polyFitFilter "<<fileNum<<"! Expecting attribute "<<*priorObsNumAttrNames<<" but observed attribute "<<d->first<<" instead!"<<endl; assert(false); }
+          { cerr << "ERROR: Inconsistent numeric "<<label<<" attributes in different observations for the same HG_polyFitFilter "<<fileNum<<"! Expecting attribute "<<*priorObsNumAttrNames<<" but observed attribute "<<d->first<<" instead!"<<endl; assert(false); }
           priorObsNumAttrNames++;
         }*/
       // If this attribute is not numeric, remove it from numericAttrNames
@@ -1190,18 +1191,18 @@ map<string, /*double*/string> polyFitFilter::getNumericAttrs(
   }
   // Make sure that all observations have the same number of numeric attributes
   //if(numericData.size() != numericAttrNames.size())
-  //{ cerr << "ERROR: Inconsistent number of numeric "<<label<<" attributes in different observations for the same polyFitFilter "<<fileNum<<"! Before observed "<<numericAttrNames.size()<<" numeric context attributed but this observation has "<<numericData.size()<<"."<<endl; assert(false); }
+  //{ cerr << "ERROR: Inconsistent number of numeric "<<label<<" attributes in different observations for the same HG_polyFitFilter "<<fileNum<<"! Before observed "<<numericAttrNames.size()<<" numeric context attributed but this observation has "<<numericData.size()<<"."<<endl; assert(false); }
   
   return numericData;
 }
 
 // Interface implemented by objects that listen for observations a traceStream reads. Such objects
 // call traceStream::registerObserver() to inform a given traceStream that it should observations.
-void polyFitFilter::observe(int traceID,
+void HG_polyFitFilter::observe(int traceID,
                             const std::map<std::string, std::string>& ctxt, 
                             const std::map<std::string, std::string>& obs,
                             const std::map<std::string, anchor>&      obsAnchor) {
-  /*cout << "polyFitFilter::observe() this="<<this<<endl;
+  /*cout << "HG_polyFitFilter::observe() this="<<this<<endl;
   cout << "ctxt="<<endl<<data2str(ctxt)<<endl;
   cout << "obs="<<endl<<data2str(obs)<<endl;*/
   
@@ -1251,7 +1252,7 @@ void polyFitFilter::observe(int traceID,
 //    // If this is the first observation to be observed by this object
 //    if(numObservations==0) {
 //      // Create files for all the numeric trace attributes 
-//      //string outFName = txt()<<"polyFitFilter.data."<<fileNum<<"."<<t->first;
+//      //string outFName = txt()<<"HG_polyFitFilter.data."<<fileNum<<"."<<t->first;
 //      //outFiles[t->first] = new ofstream(outFName.c_str());
 //      outProcessors[t->first] = 
 //              new externalTraceProcessor_File(string(ROOT_PATH)+"/widgets/funcFit/funcFit", 
@@ -1270,7 +1271,7 @@ void polyFitFilter::observe(int traceID,
 //    *(outFiles[t->first]) << t->second << "\n";*/
 //    
 //    // Add a constant term
-//    numericCtxt["hierGraph:polyFitFilter:constant:constant"] = attrValue("1", attrValue::intT).serialize();
+//    numericCtxt["hierGraph:HG_polyFitFilter:constant:constant"] = attrValue("1", attrValue::intT).serialize();
 //    
 //    std::map<std::string, std::string> numTraceVal;
 //    numTraceVal[t->first] = t->second;
@@ -1291,8 +1292,8 @@ void polyFitFilter::observe(int traceID,
 
 // Called when the stream of observations has finished to allow the implementor to perform clean-up tasks.
 // This method is optional.
-void polyFitFilter::obsFinished() {
-  //cout << "polyFitFilter::obsFinished() this="<<this<<endl;
+void HG_polyFitFilter::obsFinished() {
+  //cout << "HG_polyFitFilter::obsFinished() this="<<this<<endl;
   // Remove from numericCtxtNames all the constant contexts
   for(map<string, string>::iterator c=ctxtConstVals.begin(); c!=ctxtConstVals.end(); c++)
     numericCtxtNames.erase(c->first);
@@ -1339,7 +1340,7 @@ void polyFitFilter::obsFinished() {
         }
         
         // Add a constant term to the current observation's context
-        (*dc)["hierGraph:polyFitFilter:constant:constant"] = attrValue("1", attrValue::intT).serialize();
+        (*dc)["hierGraph:HG_polyFitFilter:constant:constant"] = attrValue("1", attrValue::intT).serialize();
       }
 
       // Put together a map that holds just the value of the current trace attribute in this observation
@@ -1377,7 +1378,7 @@ void polyFitFilter::obsFinished() {
     for(set<string>::const_iterator c=numericCtxtNames.begin(); c!=numericCtxtNames.end(); c++, l++)
       cfgFile << "pname "<<l<<" "<<*c<<endl;
     // Constant term
-    cfgFile << "pname "<<l<<" hierGraph:polyFitFilter:constant:constant"<<endl;
+    cfgFile << "pname "<<l<<" hierGraph:HG_polyFitFilter:constant:constant"<<endl;
 
     // Parameter links (one param per link)
     cfgFile << "L "<<(numericCtxtNames.size()+1);
@@ -1424,16 +1425,16 @@ void polyFitFilter::obsFinished() {
 }
 
 /***************************
- ***** polyFitObserver *****
+ ***** HG_polyFitObserver *****
  ***************************/
 
 // Interface implemented by objects that listen for observations a traceStream reads. Such objects
 // call traceStream::registerObserver() to inform a given traceStream that it should observations.
-void polyFitObserver::observe(int traceID,
+void HG_polyFitObserver::observe(int traceID,
                      const map<string, string>& ctxt, 
                      const map<string, string>& obs,
                      const map<string, anchor>& obsAnchor) {
-  /*cout << "polyFitObserver::observe("<<traceID<<") #ctxt="<<ctxt.size()<<" #obs="<<obs.size()<<endl;
+  /*cout << "HG_polyFitObserver::observe("<<traceID<<") #ctxt="<<ctxt.size()<<" #obs="<<obs.size()<<endl;
   cout << "    ctxt=";
   for(map<string, string>::const_iterator c=ctxt.begin(); c!=ctxt.end(); c++) { cout << c->first << "=>"<<c->second<<" "; }
   cout << endl;
@@ -1470,7 +1471,7 @@ void polyFitObserver::observe(int traceID,
       string t="";
       if(val.getAsFloat()!=1)
         t = val.getAsStr();
-      if(ctxtGrouping!="polyFitFilter" || ctxtSubGrouping!="constant" || attrName != "constant") {
+      if(ctxtGrouping!="HG_polyFitFilter" || ctxtSubGrouping!="constant" || attrName != "constant") {
         if(t != "") t += "*";
         t += ctxtGrouping + ":" + ctxtSubGrouping + ":" + attrName;
       }
@@ -1493,7 +1494,7 @@ void polyFitObserver::observe(int traceID,
 
 // Returns the formatted text representation of the fits, to be included in the HTML table 
 // that encodes each hierGraph's graph node
-std::string polyFitObserver::getFitText() const
+std::string HG_polyFitObserver::getFitText() const
 {
   string ret;
   
@@ -1515,7 +1516,7 @@ std::string polyFitObserver::getFitText() const
 // hoa edit
 // Returns the formatted text representation of the fits, not include the HTML table
 // that encodes each hierGraph's graph node
-std::string polyFitObserver::saveFitText() const
+std::string HG_polyFitObserver::saveFitText() const
 {
   string ret;
 
@@ -1568,8 +1569,8 @@ hierGraphTraceStream::hierGraphTraceStream(properties::iterator props, traceObse
     // Create a fresh instance of hierGraph to analyze data of this stream
     mFilter = new hierGraph(hierGraphID);
 
-    polyFitter = new polyFitFilter();
-    polyFitCollector = new polyFitObserver();
+    polyFitter = new HG_polyFitFilter();
+    polyFitCollector = new HG_polyFitObserver();
     polyFitter->registerObserver(polyFitCollector);
 
     registerObserver(mFilter);
@@ -1582,7 +1583,7 @@ hierGraphTraceStream::hierGraphTraceStream(properties::iterator props, traceObse
 /*    queue = new traceObserverQueue(traceObservers(
                     // - Observations pass through a new instance of hierGraph to enable it to build polynomial 
                     // fits of this data
-                    new polyFitFilter(),
+                    new HG_polyFitFilter(),
                     mFilter,
                     // - They then end up at the original traceStream to be included in the generated visualization
                     this));
@@ -1693,8 +1694,8 @@ compHierGraphTraceStream::compHierGraphTraceStream(properties::iterator props, t
     
     mFilter = new hierGraph(hierGraphID);
     
-    polyFitter = new polyFitFilter();
-    polyFitCollector = new polyFitObserver();
+    polyFitter = new HG_polyFitFilter();
+    polyFitCollector = new HG_polyFitObserver();
     polyFitter->registerObserver(polyFitCollector);
 
     // cmFilter observes this traceStream and performs comparisons

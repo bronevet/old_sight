@@ -331,18 +331,30 @@ class traceStream: public attrObserver, public common::trace, public traceObserv
   //      we should just show the plot (false)
 
   // hoa edit
-  std::string getDisplayJSCmd(const std::list<std::string>& contextAttrs, const std::list<std::string>& traceAttrs, std::string hostDiv, const std::list<std::string>& vizList, bool inwin,
-                                bool showFresh, bool showLabels, bool refreshView);
+  std::string getDisplayJSCmd(const std::list<std::string>& contextAttrs, 
+															const std::list<std::string>& traceAttrs, 
+															std::string hostDiv, 
+															const std::list<std::string>& vizList, 
+															bool inwin,
+															bool showFresh, 
+															bool showLabels, 
+															bool refreshView);
 
-  /*
-  std::string getDisplayJSCmd(const std::list<std::string>& contextAttrs, const std::list<std::string>& traceAttrs, std::string hostDiv="", const std::list<std::string>& vizList, bool inwin=true,
-                              bool showFresh=true, bool showLabels=false, bool refreshView=false);
-  */
-  /*
-  std::string getDisplayJSCmd(const std::list<std::string>& contextAttrs, const std::list<std::string>& traceAttrs,
-                              std::string hostDiv="", vizT viz=unknown,
-                              bool showFresh=true, bool showLabels=false, bool refreshView=false);
-  */
+//  std::string getDisplayJSCmd(const std::list<std::string>& contextAttrs, 
+//															const std::list<std::string>& traceAttrs, 
+//															std::string hostDiv="", 
+//															const std::list<std::string>& vizList, 
+//															bool inwin=true,
+//															bool showFresh=true, 
+//															bool showLabels=false, 
+//															bool refreshView=false);
+  std::string getDisplayJSCmd(const std::list<std::string>& contextAttrs, 
+															const std::list<std::string>& traceAttrs,
+															std::string hostDiv="", 
+															vizT viz=unknown,
+															bool showFresh=true,
+															bool showLabels=false, 
+															bool refreshView=false);
   
   int getID() const { return traceID; }
   private:

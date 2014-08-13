@@ -113,9 +113,9 @@ class hierGraph : public common::hierGraph, public traceObserver {
 }; // class hierGraph
 
 // Observation filter that finds a polynomial fit of the numeric features of the observed data
-class polyFitFilter : public traceObserver {
+class HG_polyFitFilter : public traceObserver {
   private:
-  // The total number of polyFitFilter instances that have been created so far. 
+  // The total number of HG_polyFitFilter instances that have been created so far. 
   // Used to set unique names to files output by polyFitFilters.
   static int maxFileNum;
   int fileNum;
@@ -159,7 +159,7 @@ class polyFitFilter : public traceObserver {
   int numObservations; 
 
   public:
-  polyFitFilter();
+  HG_polyFitFilter();
   
   // Iterates over all combinations of keys in numericCtxt upto maxDegree in size and computes the products of
   // their values. Adds each such product to the given vector termVals.
@@ -188,11 +188,11 @@ class polyFitFilter : public traceObserver {
   // Called when the stream of observations has finished to allow the implementor to perform clean-up tasks.
   // This method is optional.
   void obsFinished();
-}; // polyFitFilter
+}; // HG_polyFitFilter
 
-// Class that observes the polynomial fits that are produced by polyFitFilter. hierGraphApp reads these fits
+// Class that observes the polynomial fits that are produced by HG_polyFitFilter. hierGraphApp reads these fits
 // from this object.
-class polyFitObserver: public traceObserver
+class HG_polyFitObserver: public traceObserver
 {
   // Maps the names of each trace attribute for which a fit was computed to the list of terms
   // in this fit
@@ -216,7 +216,7 @@ class polyFitObserver: public traceObserver
   // hoa edit
   // Returns the formatted text representation of the fits, not include html table
   std::string saveFitText() const;
-}; // polyFitObserver
+}; // HG_polyFitObserver
 
 class hierGraphApp: public block, public common::hierGraph
 {
@@ -248,8 +248,8 @@ class hierGraphApp: public block, public common::hierGraph
   // Maps each hierGraph group's ID to the hierGraph object that processes its data
   std::map<int, sight::layout::hierGraph*> hierGraphs;
   
-  // Maps each hierGraph group's ID to the polyFitObserver object that records the polynomial fit of the hierGraph's trace attributes
-  std::map<int, sight::layout::polyFitObserver*> polyFits;
+  // Maps each hierGraph group's ID to the HG_polyFitObserver object that records the polynomial fit of the hierGraph's trace attributes
+  std::map<int, sight::layout::HG_polyFitObserver*> polyFits;
     
   // Maps each traceStream's ID to the ID of its corresponding hierGraph graph node
   std::map<int, int> trace2hierGraphID;
@@ -309,9 +309,9 @@ class hierGraphApp: public block, public common::hierGraph
   // Static version of enterHierGraph() that calls exitHierGraph() in the currently active hierGraphApp
   static void exitHierGraph(void* obj);
   
-  // Register the given hierGraph object (keeps data on the raw observations) and polyFitObserver object 
+  // Register the given hierGraph object (keeps data on the raw observations) and HG_polyFitObserver object 
   // (keeps data on the polynomial fits that summarize these observations) with the currently active hierGraphApp
-  static void registerHierGraph(int hierGraphID, sight::layout::hierGraph* m, polyFitObserver* pf);
+  static void registerHierGraph(int hierGraphID, sight::layout::hierGraph* m, HG_polyFitObserver* pf);
   
   // Add a directed edge from the location of the from anchor to the location of the to anchor
   void addEdge(int fromC, common::hierGraph::ioT fromT, int fromP, 
@@ -338,8 +338,8 @@ class hierGraphTraceStream: public traceStream
   
   // The observers that processes observations of this object
   hierGraph* mFilter;
-  polyFitFilter* polyFitter;
-  polyFitObserver* polyFitCollector;
+  HG_polyFitFilter* polyFitter;
+  HG_polyFitObserver* polyFitCollector;
   
   // The queue that passes all incoming observations through cmFilter and then forwards them to hierGraphApp.
   //traceObserverQueue* queue;

@@ -66,234 +66,234 @@ hierGraphConfHandlerInstantiator::hierGraphConfHandlerInstantiator() {
 }
 hierGraphConfHandlerInstantiator hierGraphConfHandlerInstance;
 
-////
-/////********************
-//// ***** instance *****
-//// ********************/
-//// 
-////instance::instance(properties::iterator props) {
-////  name       = properties::get(props, "name");
-////  numInputs  = properties::getInt(props, "numInputs");
-////  numOutputs = properties::getInt(props, "numOutputs");
-////}
-////
-////// Returns the properties map that describes this group object;
-////std::map<std::string, std::string> instance::getProperties() const {
-////  map<string, string> pMap;
-////  pMap["name"]       = name;
-////  pMap["numInputs"]  = txt()<<numInputs;
-////  pMap["numOutputs"] = txt()<<numOutputs;  
-////  return pMap;
-////}
-////
-////// Returns a human-readable string that describes this context
-////std::string instance::str() const {
-////  return txt()<<"[instance "<<name<<", #inputs="<<numInputs<<", #outputs="<<numOutputs<<"]";
-////}
-////
-/////*****************
-//// ***** group *****
-//// *****************/
-////
-////// Creates a group given the current stack of hierGraphs and a new hierGraph instance
-////group::group(const std::list<hierGraph*>& mStack, const instance& inst) {
-////  for(std::list<hierGraph*>::const_iterator m=mStack.begin(); m!=mStack.end(); m++)
-////    stack.push_back((*m)->g.getInst());
-////  stack.push_back(inst);
-////}
-////
-////
-////void group::init(const std::list<hierGraph*>& mStack, const instance& inst) {
-////  stack.clear();
-////  for(std::list<hierGraph*>::const_iterator m=mStack.begin(); m!=mStack.end(); m++)
-////    stack.push_back((*m)->g.getInst());
-////  stack.push_back(inst);
-////}
-////
-////// Returns the name of the most deeply nested instance within this group
-////std::string group::name() const {
-////  assert(stack.size()>0);
-////  return stack.back().name;
-////}
-////
-////// Returns the number of inputs of the most deeply nested instance within this group
-////int group::numInputs() const {
-////  assert(stack.size()>0);
-////  return stack.back().numInputs;
-////}
-////
-////// Returns the number of outnputs of the most deeply nested instance within this group
-////int group::numOutputs() const {
-////  assert(stack.size()>0);
-////  return stack.back().numOutputs;
-////}
-////
-////// Returns the most deeply nested instance within this group
-////const instance& group::getInst() const {
-////  assert(stack.size()>0);
-////  return stack.back();
-////}
-////
-////// Returns the depth of the callstack
-////int group::depth() const {
-////  return stack.size();
-////}
-////
-////// Returns a human-readable string that describes this group
-////std::string group::str() const {
-////  ostringstream s;
-////  
-////  s << "[group: ";
-////  for(list<instance>::const_iterator i=stack.begin(); i!=stack.end(); i++) {
-////    if(i!=stack.begin()) s << " ";
-////    s << "    "<<i->str();
-////  }
-////  s << "]";
-////  
-////  return s.str();
-////}
-////
-/////****************
-//// ***** port *****
-//// ****************/
-////
-////// Returns a human-readable string that describes this context
-////std::string port::str() const {
-////  return txt() << "[port: g="<<g.str()<<", ctxt="<<ctxt->str() << " : "<<(type==sight::common::hierGraph::input?"In":"Out")<<" : "<<index<<"]";
-////}
-////  
-/////************************
-//// ***** instanceTree *****
-//// ************************/
-////
-////void instanceTree::add(const group& g) {
-////  // The current instance tree. We'll keep walking t deeper into the depths of the tree until we find the leaf
-////  // for this group or find a missing node where this group should go
-////  instanceTree* t = this;
-////  for(std::list<instance>::const_iterator i=g.stack.begin(); i!=g.stack.end(); i++) {
-////    // If the current instance within this group's stack exists within the current level of the tree
-////    if(t->m.find(*i) != t->m.end()) {
-////      // Recurse deeper into the tree
-////      t = t->m[*i];
-////      assert(t);
-////    // Otherwise, we've identified the missing sub-node within the tree where we need to add g
-////    } else {
-////      // Iterate through the rest of g's stack, adding deeper sub-trees for each instance
-////      while(i!=g.stack.end()) {
-////        t->m[*i] = new instanceTree();
-////        t = t->m[*i];
-////        i++;
-////      }
-////      return;
-////    }
-////  }
-////}
-////
-////// Iterate through all the groups encoded by this tree, where each group corresponds to a stack of instances
-////// from the tree's root to one of its leaves.
-////void instanceTree::iterate(instanceEnterFunc entry, instanceExitFunc exit) const {
-////  group g;
-////  iterate(entry, exit, g);
-////}
-////
-////// Recursive version of iterate that takes as an argument the fragment of the current group that corresponds to
-////// the stack of instances between the tree's root and the current sub-tree
-////void instanceTree::iterate(instanceEnterFunc entry, instanceExitFunc exit, group& g) const {
-////  // Iterate over all the instances at this level of the tree
-////  for(std::map<instance, instanceTree*>::const_iterator i=m.begin(); i!=m.end(); i++) {
-////    // Enter this instance
-////    g.push(i->first);
-////    entry(g);
-////
-////    // Iterate on the next deeper level of the tree
-////    i->second->iterate(entry, exit, g);
-////
-////    // Exit this instance()
-////    exit(g);
-////    g.pop();
-////  }
-////}
-////
-////// Empties out this instanceTree
-////void instanceTree::clear() {
-////  // Empty out each of this tree's sub-trees and then delete them
-////  for(std::map<instance, instanceTree*>::const_iterator i=m.begin(); i!=m.end(); i++) {
-////    i->second->clear();
-////    delete(i->second);
-////  }
-////  // Clear out this tree's sub-tree map
-////  m.clear();
-////}
-////
-////// The depth of the recursion in instanceTree::str()
-////int instanceTree::instanceTreeStrDepth;
-////
-////// The ostringstream into which the output of instanceTree::str() is accumulated
-////std::ostringstream instanceTree::oss;
-////
-////// The entry and exit functions used in instanceTree::str()
-////void instanceTree::strEnterFunc(const group& g) {
-////  instanceTreeStrDepth++;
-////  // Print out the indentation that corresponds to the current depth of recursion
-////  for(int i=0; i<instanceTreeStrDepth; i++) oss << "    ";
-////  oss << g.getInst().str()<<endl;
-////}
-////void instanceTree::strExitFunc(const group& g)
-////{
-////  instanceTreeStrDepth--;
-////}
-////
-////// Returns a human-readable string representation of this object
-////std::string instanceTree::str() const {
-////  // Reset the recursion depth and the ostringstream
-////  instanceTreeStrDepth=0;
-////  oss.str("");
-////  oss.clear();
-////  
-////  iterate(strEnterFunc, strExitFunc);
-////  
-////  return oss.str();
-////}
+
+/********************
+ ***** HG_instance *****
+ ********************/
+ 
+HG_instance::HG_instance(properties::iterator props) {
+  name       = properties::get(props, "name");
+  numInputs  = properties::getInt(props, "numInputs");
+  numOutputs = properties::getInt(props, "numOutputs");
+}
+
+// Returns the properties map that describes this HG_group object;
+std::map<std::string, std::string> HG_instance::getProperties() const {
+  map<string, string> pMap;
+  pMap["name"]       = name;
+  pMap["numInputs"]  = txt()<<numInputs;
+  pMap["numOutputs"] = txt()<<numOutputs;  
+  return pMap;
+}
+
+// Returns a human-readable string that describes this HG_context
+std::string HG_instance::str() const {
+  return txt()<<"[HG_instance "<<name<<", #HG_inputs="<<numInputs<<", #outputs="<<numOutputs<<"]";
+}
+
+/*****************
+ ***** HG_group *****
+ *****************/
+
+// Creates a HG_group given the current stack of hierGraphs and a new hierGraph HG_instance
+HG_group::HG_group(const std::list<hierGraph*>& mStack, const HG_instance& inst) {
+  for(std::list<hierGraph*>::const_iterator m=mStack.begin(); m!=mStack.end(); m++)
+    stack.push_back((*m)->g.getInst());
+  stack.push_back(inst);
+}
+
+
+void HG_group::init(const std::list<hierGraph*>& mStack, const HG_instance& inst) {
+  stack.clear();
+  for(std::list<hierGraph*>::const_iterator m=mStack.begin(); m!=mStack.end(); m++)
+    stack.push_back((*m)->g.getInst());
+  stack.push_back(inst);
+}
+
+// Returns the name of the most deeply nested HG_instance within this HG_group
+std::string HG_group::name() const {
+  assert(stack.size()>0);
+  return stack.back().name;
+}
+
+// Returns the number of HG_inputs of the most deeply nested HG_instance within this HG_group
+int HG_group::numInputs() const {
+  assert(stack.size()>0);
+  return stack.back().numInputs;
+}
+
+// Returns the number of outnputs of the most deeply nested HG_instance within this HG_group
+int HG_group::numOutputs() const {
+  assert(stack.size()>0);
+  return stack.back().numOutputs;
+}
+
+// Returns the most deeply nested HG_instance within this HG_group
+const HG_instance& HG_group::getInst() const {
+  assert(stack.size()>0);
+  return stack.back();
+}
+
+// Returns the depth of the callstack
+int HG_group::depth() const {
+  return stack.size();
+}
+
+// Returns a human-readable string that describes this HG_group
+std::string HG_group::str() const {
+  ostringstream s;
+  
+  s << "[HG_group: ";
+  for(list<HG_instance>::const_iterator i=stack.begin(); i!=stack.end(); i++) {
+    if(i!=stack.begin()) s << " ";
+    s << "    "<<i->str();
+  }
+  s << "]";
+  
+  return s.str();
+}
+
+/****************
+ ***** HG_port *****
+ ****************/
+
+// Returns a human-readable string that describes this HG_context
+std::string HG_port::str() const {
+  return txt() << "[HG_port: g="<<g.str()<<", ctxt="<<ctxt->str() << " : "<<(type==sight::common::hierGraph::input?"In":"Out")<<" : "<<index<<"]";
+}
+  
+/************************
+ ***** HG_instanceTree *****
+ ************************/
+
+void HG_instanceTree::add(const HG_group& g) {
+  // The current HG_instance tree. We'll keep walking t deeper into the depths of the tree until we find the leaf
+  // for this HG_group or find a missing node where this HG_group should go
+  HG_instanceTree* t = this;
+  for(std::list<HG_instance>::const_iterator i=g.stack.begin(); i!=g.stack.end(); i++) {
+    // If the current HG_instance within this HG_group's stack exists within the current level of the tree
+    if(t->m.find(*i) != t->m.end()) {
+      // Recurse deeper into the tree
+      t = t->m[*i];
+      assert(t);
+    // Otherwise, we've identified the missing sub-node within the tree where we need to add g
+    } else {
+      // Iterate through the rest of g's stack, adding deeper sub-trees for each HG_instance
+      while(i!=g.stack.end()) {
+        t->m[*i] = new HG_instanceTree();
+        t = t->m[*i];
+        i++;
+      }
+      return;
+    }
+  }
+}
+
+// Iterate through all the HG_groups encoded by this tree, where each HG_group corresponds to a stack of HG_instances
+// from the tree's root to one of its leaves.
+void HG_instanceTree::iterate(HG_instanceEnterFunc entry, HG_instanceExitFunc exit) const {
+  HG_group g;
+  iterate(entry, exit, g);
+}
+
+// Recursive version of iterate that takes as an argument the fragment of the current HG_group that corresponds to
+// the stack of HG_instances between the tree's root and the current sub-tree
+void HG_instanceTree::iterate(HG_instanceEnterFunc entry, HG_instanceExitFunc exit, HG_group& g) const {
+  // Iterate over all the HG_instances at this level of the tree
+  for(std::map<HG_instance, HG_instanceTree*>::const_iterator i=m.begin(); i!=m.end(); i++) {
+    // Enter this HG_instance
+    g.push(i->first);
+    entry(g);
+
+    // Iterate on the next deeper level of the tree
+    i->second->iterate(entry, exit, g);
+
+    // Exit this HG_instance()
+    exit(g);
+    g.pop();
+  }
+}
+
+// Empties out this HG_instanceTree
+void HG_instanceTree::clear() {
+  // Empty out each of this tree's sub-trees and then delete them
+  for(std::map<HG_instance, HG_instanceTree*>::const_iterator i=m.begin(); i!=m.end(); i++) {
+    i->second->clear();
+    delete(i->second);
+  }
+  // Clear out this tree's sub-tree map
+  m.clear();
+}
+
+// The depth of the recursion in HG_instanceTree::str()
+int HG_instanceTree::HG_instanceTreeStrDepth;
+
+// The ostringstream into which the output of HG_instanceTree::str() is accumulated
+std::ostringstream HG_instanceTree::oss;
+
+// The entry and exit functions used in HG_instanceTree::str()
+void HG_instanceTree::strEnterFunc(const HG_group& g) {
+  HG_instanceTreeStrDepth++;
+  // Print out the indentation that corresponds to the current depth of recursion
+  for(int i=0; i<HG_instanceTreeStrDepth; i++) oss << "    ";
+  oss << g.getInst().str()<<endl;
+}
+void HG_instanceTree::strExitFunc(const HG_group& g)
+{
+  HG_instanceTreeStrDepth--;
+}
+
+// Returns a human-readable string representation of this object
+std::string HG_instanceTree::str() const {
+  // Reset the recursion depth and the ostringstream
+  HG_instanceTreeStrDepth=0;
+  oss.str("");
+  oss.clear();
+  
+  iterate(strEnterFunc, strExitFunc);
+  
+  return oss.str();
+}
 
 /**********************
  ***** hierGraphApp *****
  **********************/
 
-// Points to the currently active instance of hierGraphApp. There can be only one.
+// Points to the currently active HG_instance of hierGraphApp. There can be only one.
 hierGraphApp* hierGraphApp::activeMA = NULL;
 
 // The maximum ID ever assigned to any modular application
 int hierGraphApp::maxHierGraphAppID=0;
 
-// The maximum ID ever assigned to any hierGraph group
+// The maximum ID ever assigned to any hierGraph HG_group
 int hierGraphApp::maxHierGraphGroupID=0;
 
-// Records all the known contexts, mapping each context to its unique ID
-std::map<group, int> hierGraphApp::group2ID;
+// Records all the known HG_contexts, mapping each HG_context to its unique ID
+std::map<HG_group, int> hierGraphApp::HG_group2ID;
 
-// Maps each context to the number of times it was ever observed
-std::map<group, int> hierGraphApp::group2Count;
+// Maps each HG_context to the number of times it was ever observed
+std::map<HG_group, int> hierGraphApp::HG_group2Count;
 
-// The trace that records performance observations of different hierGraphs and contexts
-std::map<group, traceStream*> hierGraphApp::hierGraphTrace;
-std::map<group, int>          hierGraphApp::hierGraphTraceID;
+// The trace that records performance observations of different hierGraphs and HG_contexts
+std::map<HG_group, traceStream*> hierGraphApp::hierGraphTrace;
+std::map<HG_group, int>          hierGraphApp::hierGraphTraceID;
 
-// Tree that records the hierarchy of hierGraph instances that were observed during the execution of this
-// modular application. Each path from the tree's root to a leaf is a stack of hierGraph instances that
-// corresponds to some observed hierGraph group.
-instanceTree hierGraphApp::tree;
+// Tree that records the hierarchy of hierGraph HG_instances that were observed during the execution of this
+// modular application. Each path from the tree's root to a leaf is a stack of hierGraph HG_instances that
+// corresponds to some observed hierGraph HG_group.
+HG_instanceTree hierGraphApp::tree;
 
-// Maps each hierGraph to the list of the names of its input and output context attributes. 
+// Maps each hierGraph to the list of the names of its input and output HG_context attributes. 
 // This enables us to verify that all the hierGraphs are used consistently.
-std::map<group, std::vector<std::list<std::string> > > hierGraphApp::hierGraphInCtxtNames;
-std::map<group, std::vector<std::list<std::string> > > hierGraphApp::hierGraphOutCtxtNames;
+std::map<HG_group, std::vector<std::list<std::string> > > hierGraphApp::hierGraphInCtxtNames;
+std::map<HG_group, std::vector<std::list<std::string> > > hierGraphApp::hierGraphOutCtxtNames;
 
-// The properties object that describes each hierGraph group. This object is created by calling each group's
-// setProperties() method and each call to this method for the same hierGraph group must return the same properties.
-std::map<group, properties*> hierGraphApp::hierGraphProps;
+// The properties object that describes each hierGraph HG_group. This object is created by calling each HG_group's
+// setProperties() method and each call to this method for the same hierGraph HG_group must return the same properties.
+std::map<HG_group, properties*> hierGraphApp::hierGraphProps;
 
 // Records all the edges ever observed, mapping them to the number of times each edge was observed
-std::map<std::pair<port, port>, int> hierGraphApp::edges;
+std::map<std::pair<HG_port, HG_port>, int> hierGraphApp::edges;
 
 // Stack of the hierGraph graphs that are currently in scope
 std::list<hierGraph*> hierGraphApp::mStack;
@@ -316,7 +316,7 @@ hierGraphApp::hierGraphApp(const std::string& appName, const attrOp& onoffOp, co
 
 // Common initialization logic
 void hierGraphApp::init() {
-  // Register this hierGraphApp instance (there can be only one)
+  // Register this hierGraphApp HG_instance (there can be only one)
   if(activeMA != NULL) { cerr << "ERROR: multiple hierGraphApps are active at the same time! Make sure to complete one hierGraphApp before starting another."<<endl; }
   assert(activeMA == NULL);
   activeMA = this;
@@ -337,37 +337,37 @@ void hierGraphApp::init() {
   dbg.enter(propsMABody);
 }
 
-// Stack used while we're emitting the nesting hierarchy of hierGraph groups to keep each hierGraph group's 
-// sightObj between the time the group is entered and exited
+// Stack used while we're emitting the nesting hierarchy of hierGraph HG_groups to keep each hierGraph HG_group's 
+// sightObj between the time the HG_group is entered and exited
 list<sightObj*> hierGraphApp::hierGraphEmitStack;
 
-// Emits the entry tag for a hierGraph group during the execution of ~hierGraphApp()
-void hierGraphApp::enterHierGraphGroup(const group& g) {
+// Emits the entry tag for a hierGraph HG_group during the execution of ~hierGraphApp()
+void hierGraphApp::enterHierGraphGroup(const HG_group& g) {
   properties* props = new properties();
   
   /*map<string, string> pMap;
-  pMap["hierGraphID"]   = txt()<<hierGraphApp::group2ID[g];
+  pMap["hierGraphID"]   = txt()<<hierGraphApp::HG_group2ID[g];
   pMap["name"]       = g.name();
   pMap["numInputs"]  = txt()<<g.numInputs();
   pMap["numOutputs"] = txt()<<g.numOutputs();
-  assert(hierGraphApp::group2Count.find(g) != hierGraphApp::group2Count.end());
-  pMap["count"] = txt()<<hierGraphApp::group2Count[g];
+  assert(hierGraphApp::HG_group2Count.find(g) != hierGraphApp::HG_group2Count.end());
+  pMap["count"] = txt()<<hierGraphApp::HG_group2Count[g];
   props->add("hierGraph", pMap);*/
   
   // Add the count property to the map of "hierGraph".
   /*properties::iterator hierGraphIter = hierGraphProps[g]->find("hierGraph");
-  properties::set(hierGraphIter, "count", txt()<<hierGraphApp::group2Count[g]);*/
-  hierGraphProps[g]->set("hierGraph", "count", txt()<<hierGraphApp::group2Count[g]);
+  properties::set(hierGraphIter, "count", txt()<<hierGraphApp::HG_group2Count[g]);*/
+  hierGraphProps[g]->set("hierGraph", "count", txt()<<hierGraphApp::HG_group2Count[g]);
   hierGraphEmitStack.push_back(new sightObj(hierGraphProps[g]));
 }
 
-// Emits the exit tag for a hierGraph group during the execution of ~hierGraphApp()
-void hierGraphApp::exitHierGraphGroup(const group& g) {
+// Emits the exit tag for a hierGraph HG_group during the execution of ~hierGraphApp()
+void hierGraphApp::exitHierGraphGroup(const HG_group& g) {
   assert(hierGraphEmitStack.size()>0);
   delete hierGraphEmitStack.back();
   hierGraphEmitStack.pop_back();
   
-  // Erase this group from hierGraphProps to clearly keep track of the properties objects that are currently allocated
+  // Erase this HG_group from hierGraphProps to clearly keep track of the properties objects that are currently allocated
   // (the sightObj destructor will deallocate them)
   hierGraphProps.erase(g);
 }
@@ -385,16 +385,16 @@ void hierGraphApp::destroy() {
 hierGraphApp::~hierGraphApp() {
   assert(!destroyed);
   
-  // Unregister this hierGraphApp instance (there can be only one)
+  // Unregister this hierGraphApp HG_instance (there can be only one)
   assert(activeMA);
   activeMA = NULL;
   
-  // All the hierGraphs that were entered inside this hierGraphApp instance must have already been exited
+  // All the hierGraphs that were entered inside this hierGraphApp HG_instance must have already been exited
   assert(mStack.size()==0);
   
   if(props->active) {
-    /*cout << "group2ID="<<endl;
-    for(std::map<context, int>::iterator c=group2ID.begin(); c!=group2ID.end(); c++)
+    /*cout << "HG_group2ID="<<endl;
+    for(std::map<HG_context, int>::iterator c=HG_group2ID.begin(); c!=HG_group2ID.end(); c++)
       cout << "    "<<c->first.UID()<<" ==> "<<c->second<<endl;
     */
     
@@ -410,8 +410,8 @@ hierGraphApp::~hierGraphApp() {
     propsMAStructure.add("hierGraphAppStructure", pMapMAStructure);
     dbg.enter(propsMAStructure);
     
-    // Delete the hierGraphTraces associated with each hierGraph group, forcing them to emit their respective end tags
-    for(map<group, traceStream*>::iterator m=hierGraphTrace.begin(); m!=hierGraphTrace.end(); m++) {
+    // Delete the hierGraphTraces associated with each hierGraph HG_group, forcing them to emit their respective end tags
+    for(map<HG_group, traceStream*>::iterator m=hierGraphTrace.begin(); m!=hierGraphTrace.end(); m++) {
       delete m->second;
     }
     
@@ -419,31 +419,31 @@ hierGraphApp::~hierGraphApp() {
     // Emit the tags of all hierGraphs and the edges between them
     // -------------------------------------------------------
     
-    // Emit the hierarchy of hierGraph groups observed during this hierGraphApp's execution
+    // Emit the hierarchy of hierGraph HG_groups observed during this hierGraphApp's execution
     tree.iterate(enterHierGraphGroup, exitHierGraphGroup);
     
-    // Emit all the edges between hierGraph groups collected while this hierGraphApp was live.
+    // Emit all the edges between hierGraph HG_groups collected while this hierGraphApp was live.
     // Note that this guarantees that edges are guaranteed to be placed after or inside the hierGraphs they connect.
-    for(std::map<pair<port, port>, int>::iterator e=edges.begin(); e!=edges.end(); e++) {
-      // If either group is NULL, don't generate an edge. Users can specify a NULL group if they don't want to bother
+    for(std::map<pair<HG_port, HG_port>, int>::iterator e=edges.begin(); e!=edges.end(); e++) {
+      // If either HG_group is NULL, don't generate an edge. Users can specify a NULL HG_group if they don't want to bother
       // documenting where a given input came from
       if(e->first.first.g.isNULL() || e->first.second.g.isNULL()) continue;
       
       properties edgeP;
       map<string, string> pMap;
-      pMap["fromCID"] = txt()<<group2ID[e->first.first.g];
+      pMap["fromCID"] = txt()<<HG_group2ID[e->first.first.g];
       pMap["fromT"]   = txt()<<e->first.first.type;
       pMap["fromP"]   = txt()<<e->first.first.index;
-      pMap["toCID"]   = txt()<<group2ID[e->first.second.g];
+      pMap["toCID"]   = txt()<<HG_group2ID[e->first.second.g];
       pMap["toT"]     = txt()<<e->first.second.type;
       pMap["toP"]     = txt()<<e->first.second.index;
       
-      // Number of time we've entere the edge's source hierGraph group
-      pMap["fromCount"] = txt()<<group2Count[e->first.first.g];
+      // Number of time we've entere the edge's source hierGraph HG_group
+      pMap["fromCount"] = txt()<<HG_group2Count[e->first.first.g];
       
-      // Fraction of times that we've entered the edge's source hierGraph group and took this outgoing edge
-      assert(group2Count.find(e->first.first.g) != group2Count.end());
-      pMap["prob"]    = txt()<<(e->second / group2Count[e->first.first.g]);
+      // Fraction of times that we've entered the edge's source hierGraph HG_group and took this outgoing edge
+      assert(HG_group2Count.find(e->first.first.g) != HG_group2Count.end());
+      pMap["prob"]    = txt()<<(e->second / HG_group2Count[e->first.first.g]);
       
       edgeP.add("hierGraphEdge", pMap);
       dbg.tag(edgeP);
@@ -460,16 +460,16 @@ hierGraphApp::~hierGraphApp() {
     for(namedMeasures::iterator m=meas.begin(); m!=meas.end(); m++)
       delete m->second;
     
-    // We do not deallocate all the hierGraph group properties because these are deallocated in the destructors
+    // We do not deallocate all the hierGraph HG_group properties because these are deallocated in the destructors
     // of the sightObjs created in hierGraphApp::enterHierGraphGroup(). Further, hierGraphProps should be completely 
     // emptied by all our calls to hierGraphApp::exitHierGraphGroup().
     assert(hierGraphProps.size()==0);
-    /*for(std::map<group, properties*>::iterator p=hierGraphProps.begin(); p!=hierGraphProps.end(); p++)
+    /*for(std::map<HG_group, properties*>::iterator p=hierGraphProps.begin(); p!=hierGraphProps.end(); p++)
       delete p->second;*/
     
     // Clear out all of the static datastructures of hierGraphApp
-    group2ID.clear();
-    group2Count.clear();
+    HG_group2ID.clear();
+    HG_group2Count.clear();
     hierGraphTrace.clear();
     tree.clear();
     hierGraphInCtxtNames.clear();
@@ -477,9 +477,9 @@ hierGraphApp::~hierGraphApp() {
     edges.clear();
     meas.clear();
   } else {
-    // If this hierGraphApp instance is inactive, all the static datastructures must be empty
-    assert(group2ID.size()==0);
-    assert(group2Count.size()==0);
+    // If this hierGraphApp HG_instance is inactive, all the static datastructures must be empty
+    assert(HG_group2ID.size()==0);
+    assert(HG_group2Count.size()==0);
     assert(hierGraphTrace.size()==0);
     assert(hierGraphInCtxtNames.size()==0);
     assert(hierGraphOutCtxtNames.size()==0);
@@ -514,50 +514,50 @@ properties* hierGraphApp::setProperties(const std::string& appName, const attrOp
   return props;
 }
 
-// Returns the hierGraph ID of the given hierGraph group, generating a fresh one if one has not yet been assigned
-int hierGraphApp::genHierGraphID(const group& g) {
-  // If this hierGraph group doesn't yet have an ID, set one
-  if(group2ID.find(g) == group2ID.end()) {
-    group2ID[g] = maxHierGraphGroupID;
+// Returns the hierGraph ID of the given hierGraph HG_group, generating a fresh one if one has not yet been assigned
+int hierGraphApp::genHierGraphID(const HG_group& g) {
+  // If this hierGraph HG_group doesn't yet have an ID, set one
+  if(HG_group2ID.find(g) == HG_group2ID.end()) {
+    HG_group2ID[g] = maxHierGraphGroupID;
     maxHierGraphGroupID++;
-    group2Count[g] = 1;
+    HG_group2Count[g] = 1;
     
-    // Add this group to the instance tree
+    // Add this HG_group to the HG_instance tree
     tree.add(g);
   } else
-    // Increment the number of times this group has been executed.
-    group2Count[g]++;
+    // Increment the number of times this HG_group has been executed.
+    HG_group2Count[g]++;
   
-  return group2ID[g];
+  return HG_group2ID[g];
 }
 
-// Returns whether the current instance of hierGraphApp is active
+// Returns whether the current HG_instance of hierGraphApp is active
 bool hierGraphApp::isInstanceActive() {
   //assert(activeMA);
   return activeMA!=NULL && activeMA->isActive();
 }
 
-// Assigns a unique ID to the given hierGraph group, as needed and returns this ID
-int hierGraphApp::addHierGraphGroup(const group& g) {
+// Assigns a unique ID to the given hierGraph HG_group, as needed and returns this ID
+int hierGraphApp::addHierGraphGroup(const HG_group& g) {
   
-  return group2ID[g];
+  return HG_group2ID[g];
 }
 
-// Registers the names of the contexts of the given hierGraph's inputs or outputs and if this is not the first time this hierGraph is called, 
-// verifies that these context names are consistent across different calls.
-// g - the hierGraph group for which we're registering inputs/outputs
-// inouts - the vector of input or output ports
-// toT - identifies whether inouts is the vector of inputs or outputs
-void hierGraphApp::registerInOutContexts(const group& g, const std::vector<port>& inouts, sight::common::hierGraph::ioT io)
+// Registers the names of the HG_contexts of the given hierGraph's HG_inputs or outputs and if this is not the first time this hierGraph is called, 
+// verifies that these HG_context names are consistent across different calls.
+// g - the hierGraph HG_group for which we're registering HG_inputs/outputs
+// inouts - the vector of input or output HG_ports
+// toT - identifies whether inouts is the vector of HG_inputs or outputs
+void hierGraphApp::registerInOutContexts(const HG_group& g, const std::vector<HG_port>& inouts, sight::common::hierGraph::ioT io)
 {
   // Exactly one hierGraphAppInstance must be active
   assert(activeMA);
   assert(activeMA->isActive());
   
   // Refers to either hierGraphInCtxtNames or hierGraphOutCtxtNames, depending on the value of io;
-  map<group, vector<list<string> > >& hierGraphCtxtNames = (io==sight::common::hierGraph::input? hierGraphInCtxtNames: hierGraphOutCtxtNames);
+  map<HG_group, vector<list<string> > >& hierGraphCtxtNames = (io==sight::common::hierGraph::input? hierGraphInCtxtNames: hierGraphOutCtxtNames);
   
-  // If hierGraphInCtxtNames/hierGraphOutCtxtNames has not yet been initialized, set it to contain the names of the context attributes in inputs
+  // If hierGraphInCtxtNames/hierGraphOutCtxtNames has not yet been initialized, set it to contain the names of the HG_context attributes in HG_inputs
   if(hierGraphCtxtNames.find(g) == hierGraphCtxtNames.end()) {
     vector<list<string> > ctxtNames;
     for(int i=0; i<inouts.size(); i++) {
@@ -566,16 +566,16 @@ void hierGraphApp::registerInOutContexts(const group& g, const std::vector<port>
         ctxtNames[i].push_back(c->first);
     }
     hierGraphCtxtNames[g] = ctxtNames;
-  // If hierGraphInCtxtNames has already been initialized, verify inputs against it
+  // If hierGraphInCtxtNames has already been initialized, verify HG_inputs against it
   } else {
-    if(inouts.size() != hierGraphCtxtNames[g].size()) { cerr << "ERROR: Inconsistent "<<(io==sight::common::hierGraph::input?"inputs":"outputs")<<" for hierGraph "<<g.name()<<"! Prior instances has "<<hierGraphCtxtNames[g].size()<<" "<<(io==sight::common::hierGraph::input?"inputs":"outputs")<<" while this instance has "<<inouts.size()<<" "<<(io==sight::common::hierGraph::input?"inputs":"outputs")<<"!"<<endl; assert(0); }
+    if(inouts.size() != hierGraphCtxtNames[g].size()) { cerr << "ERROR: Inconsistent "<<(io==sight::common::hierGraph::input?"HG_inputs":"outputs")<<" for hierGraph "<<g.name()<<"! Prior HG_instances has "<<hierGraphCtxtNames[g].size()<<" "<<(io==sight::common::hierGraph::input?"HG_inputs":"outputs")<<" while this HG_instance has "<<inouts.size()<<" "<<(io==sight::common::hierGraph::input?"HG_inputs":"outputs")<<"!"<<endl; assert(0); }
     for(int i=0; i<inouts.size(); i++) {
       if(inouts[i].ctxt->configuration.size() != hierGraphCtxtNames[g][i].size()) { 
-         cerr << "ERROR: Inconsistent number of context attributes for "<<(io==sight::common::hierGraph::input?"input":"output")<<" "<<i<<" of hierGraph "<<g.name()<<"!"<<endl;
-         cerr << "Prior instances has "<<hierGraphCtxtNames[g][i].size()<<" "<<(io==sight::common::hierGraph::input?"inputs":"outputs")<<":"<<endl;
+         cerr << "ERROR: Inconsistent number of HG_context attributes for "<<(io==sight::common::hierGraph::input?"input":"output")<<" "<<i<<" of hierGraph "<<g.name()<<"!"<<endl;
+         cerr << "Prior HG_instances has "<<hierGraphCtxtNames[g][i].size()<<" "<<(io==sight::common::hierGraph::input?"HG_inputs":"outputs")<<":"<<endl;
          for(list<string>::const_iterator c=hierGraphCtxtNames[g][i].begin(); c!=hierGraphCtxtNames[g][i].end(); c++)
            cerr << "    "<<*c<<endl; 
-         cerr << "This instance has "<<inouts[i].ctxt->configuration.size()<<" "<<(io==sight::common::hierGraph::input?"inputs":"outputs")<<"!"<<endl; 
+         cerr << "This HG_instance has "<<inouts[i].ctxt->configuration.size()<<" "<<(io==sight::common::hierGraph::input?"HG_inputs":"outputs")<<"!"<<endl; 
          for(map<std::string, attrValue>::const_iterator c=inouts[i].ctxt->configuration.begin(); c!=inouts[i].ctxt->configuration.end(); c++)
            cerr << "    "<<c->first<<endl; 
          assert(0);
@@ -584,24 +584,24 @@ void hierGraphApp::registerInOutContexts(const group& g, const std::vector<port>
       list<std::string>::const_iterator m=hierGraphCtxtNames[g][i].begin();
       int idx=0;
       for(; c!=inouts[i].ctxt->configuration.end(); c++, m++, idx++) {
-        if(c->first != *m) { cerr << "ERROR: Inconsistent names for context attribute "<<idx<<" of "<<(io==sight::common::hierGraph::input?"input":"output")<<" "<<i<<" of hierGraph "<<g.name()<<"! Prior instances has "<<*m<<" while this instance has "<<c->first<<"!"<<endl; assert(0); }
+        if(c->first != *m) { cerr << "ERROR: Inconsistent names for HG_context attribute "<<idx<<" of "<<(io==sight::common::hierGraph::input?"input":"output")<<" "<<i<<" of hierGraph "<<g.name()<<"! Prior HG_instances has "<<*m<<" while this HG_instance has "<<c->first<<"!"<<endl; assert(0); }
       }
     }
   }
 }
 
 
-// Add an edge between one hierGraph's output port and another hierGraph's input port
-void hierGraphApp::addEdge(port from, port to) {
+// Add an edge between one hierGraph's output HG_port and another hierGraph's input HG_port
+void hierGraphApp::addEdge(HG_port from, HG_port to) {
   // Exactly one hierGraphAppInstance must be active
   assert(activeMA);
   assert(activeMA->isActive());
   
-  // Clear the contexts of from and to since edges is not sensitive to contexts
+  // Clear the HG_contexts of from and to since edges is not sensitive to HG_contexts
   from.clearContext();
   to.clearContext();
   
-  pair<port, port> edge(from, to);
+  pair<HG_port, HG_port> edge(from, to);
   if(edges.find(edge) == edges.end())
     edges[edge] = 1;
   else
@@ -609,15 +609,15 @@ void hierGraphApp::addEdge(port from, port to) {
   
   /*cout << "    hierGraph::addEdge()"<<endl;
   cout << "      edge="<<from.str()<<" => "<<to.str()<<endl;
-  for(map<pair<port, port>, int>::iterator e=edges.begin(); e!=edges.end(); e++) {
+  for(map<pair<HG_port, HG_port>, int>::iterator e=edges.begin(); e!=edges.end(); e++) {
     cout << "        "<<e->first.first.str()<<" => "<<e->first.second.str()<<" : "<<e->second<<endl;
   }*/
 }
 
-// Add an edge between one hierGraph's output port and another hierGraph's input port
-void hierGraphApp::addEdge(group fromG, sight::common::hierGraph::ioT fromT, int fromP, 
-                         group toG,   sight::common::hierGraph::ioT toT,   int toP) {
-  addEdge(port(fromG, context(), fromT, fromP), port(toG, context(), toT, toP));
+// Add an edge between one hierGraph's output HG_port and another hierGraph's input HG_port
+void hierGraphApp::addEdge(HG_group fromG, sight::common::hierGraph::ioT fromT, int fromP, 
+                         HG_group toG,   sight::common::hierGraph::ioT toT,   int toP) {
+  addEdge(HG_port(fromG, HG_context(), fromT, fromP), HG_port(toG, HG_context(), toT, toP));
 }
 
 // Returns the current hierGraph on the stack and NULL if the stack is empty
@@ -633,16 +633,16 @@ void hierGraphApp::enterHierGraph(hierGraph* m, int hierGraphID, properties* pro
   
   mStack.push_back(m);
   
-  // If we have not yet recorded the properties of this hierGraph group, do so now
+  // If we have not yet recorded the properties of this hierGraph HG_group, do so now
   if(hierGraphProps.find(m->g) == hierGraphProps.end())
     hierGraphProps[m->g] = props;
-  // Otherwise, make sure that every hierGraph within the same group has the same properties
+  // Otherwise, make sure that every hierGraph within the same HG_group has the same properties
   else {
     /*cout << "props="<<props->str()<<endl;
     cout << "hierGraphProps["<<m->g.str()<<"]="<<hierGraphProps[m->g]->str()<<endl;*/
     //assert(*(hierGraphProps[m->g]) == *props);
     if(*(hierGraphProps[m->g]) != *props) {
-      cerr << "ERROR: hierGraph "<<m->g.str()<<" observed multiple times with different properties (count of inputs and outputs)!\n";
+      cerr << "ERROR: hierGraph "<<m->g.str()<<" observed multiple times with different properties (count of HG_inputs and outputs)!\n";
       assert(0);
     }
     // Delete props since it is no longer useful
@@ -650,28 +650,28 @@ void hierGraphApp::enterHierGraph(hierGraph* m, int hierGraphID, properties* pro
   }
 }
 
-// Returns whether a traceStream has been registered for the given hierGraph group
-bool hierGraphApp::isTraceStreamRegistered(const group& g) {
+// Returns whether a traceStream has been registered for the given hierGraph HG_group
+bool hierGraphApp::isTraceStreamRegistered(const HG_group& g) {
   return hierGraphTrace.find(g) != hierGraphTrace.end();
 }
 
-// Registers the given traceStream for the given hierGraph group
-void hierGraphApp::registerTraceStream(const group& g, traceStream* ts) {
-  // No other traceStream may be currently registered for this hierGraph group;
+// Registers the given traceStream for the given hierGraph HG_group
+void hierGraphApp::registerTraceStream(const HG_group& g, traceStream* ts) {
+  // No other traceStream may be currently registered for this hierGraph HG_group;
   assert(hierGraphTrace.find(g) == hierGraphTrace.end());
   hierGraphTrace[g] = ts;
 }
 
-// Registers the ID of the traceStream that will be used for the given hierGraph group
-void hierGraphApp::registerTraceStreamID(const group& g, int traceID) {
-  // No other traceStream ID may be currently registered for this hierGraph group;
+// Registers the ID of the traceStream that will be used for the given hierGraph HG_group
+void hierGraphApp::registerTraceStreamID(const HG_group& g, int traceID) {
+  // No other traceStream ID may be currently registered for this hierGraph HG_group;
   assert(hierGraphTraceID.find(g) == hierGraphTraceID.end());
   hierGraphTraceID[g] = traceID;
 }
 
-// Returns the currently registered the ID of the traceStream that will be used for the given hierGraph group
-int hierGraphApp::getTraceStreamID(const group& g) {
-  // A traceID must be registered with this hierGraph group
+// Returns the currently registered the ID of the traceStream that will be used for the given hierGraph HG_group
+int hierGraphApp::getTraceStreamID(const HG_group& g) {
+  // A traceID must be registered with this hierGraph HG_group
   if(hierGraphTraceID.find(g) == hierGraphTraceID.end()) { cerr << "ERROR: No traceStream registered for hierGraph \""<<g.str()<<"\"!"<<endl; }
   assert(hierGraphTraceID.find(g) != hierGraphTraceID.end());
   return hierGraphTraceID[g];
@@ -692,113 +692,113 @@ void hierGraphApp::exitHierGraph(hierGraph* m) {
  ***** hierGraph *****
  ******************/
 
-hierGraph::hierGraph(const instance& inst,                                                     properties* props) : 
+hierGraph::hierGraph(const HG_instance& inst,                                                     properties* props) : 
   sightObj(setProperties(inst, props, NULL, this)), g(hierGraphApp::mStack, inst), externalOutputs(NULL)
-{ init(inputs(), props); }
+{ init(HG_inputs(), props); }
 
-hierGraph::hierGraph(const instance& inst, const port& in,                                     properties* props): 
+hierGraph::hierGraph(const HG_instance& inst, const HG_port& in,                                     properties* props): 
   sightObj(setProperties(inst, props, NULL, this)), g(hierGraphApp::mStack, inst), externalOutputs(NULL)
-{ init(inputs(in), props); }
+{ init(HG_inputs(in), props); }
 
-hierGraph::hierGraph(const instance& inst, const std::vector<port>& in,                        properties* props) :
+hierGraph::hierGraph(const HG_instance& inst, const std::vector<HG_port>& in,                        properties* props) :
   sightObj(setProperties(inst, props, NULL, this)), g(hierGraphApp::mStack, inst), externalOutputs(NULL)
 { init(in, props); }
 
-hierGraph::hierGraph(const instance& inst,                              const attrOp& onoffOp, properties* props) : 
+hierGraph::hierGraph(const HG_instance& inst,                              const attrOp& onoffOp, properties* props) : 
   sightObj(setProperties(inst, props, &onoffOp, this)), g(hierGraphApp::mStack, inst), externalOutputs(NULL)
-{ init(inputs(), props); }
+{ init(HG_inputs(), props); }
 
-hierGraph::hierGraph(const instance& inst, const port& in,              const attrOp& onoffOp, properties* props): 
+hierGraph::hierGraph(const HG_instance& inst, const HG_port& in,              const attrOp& onoffOp, properties* props): 
   sightObj(setProperties(inst, props, &onoffOp, this)), g(hierGraphApp::mStack, inst), externalOutputs(NULL)
-{ init(inputs(in), props); }
+{ init(HG_inputs(in), props); }
 
-hierGraph::hierGraph(const instance& inst, const std::vector<port>& in, const attrOp& onoffOp, properties* props) :
+hierGraph::hierGraph(const HG_instance& inst, const std::vector<HG_port>& in, const attrOp& onoffOp, properties* props) :
   sightObj(setProperties(inst, props, &onoffOp, this)), g(hierGraphApp::mStack, inst), externalOutputs(NULL)
 { init(in, props); }
 
 
-hierGraph::hierGraph(const instance& inst,                              std::vector<port>& externalOutputs,                        properties* props) : 
+hierGraph::hierGraph(const HG_instance& inst,                              std::vector<HG_port>& externalOutputs,                        properties* props) : 
   sightObj(setProperties(inst, props, NULL, this)), g(hierGraphApp::mStack, inst), externalOutputs(&externalOutputs)
-{ init(inputs(), props); }
+{ init(HG_inputs(), props); }
 
-hierGraph::hierGraph(const instance& inst, const port& in,              std::vector<port>& externalOutputs,                        properties* props): 
+hierGraph::hierGraph(const HG_instance& inst, const HG_port& in,              std::vector<HG_port>& externalOutputs,                        properties* props): 
   sightObj(setProperties(inst, props, NULL, this)), g(hierGraphApp::mStack, inst), externalOutputs(&externalOutputs)
-{ init(inputs(in), props); }
+{ init(HG_inputs(in), props); }
 
-hierGraph::hierGraph(const instance& inst, const std::vector<port>& in, std::vector<port>& externalOutputs,                        properties* props) :
+hierGraph::hierGraph(const HG_instance& inst, const std::vector<HG_port>& in, std::vector<HG_port>& externalOutputs,                        properties* props) :
   sightObj(setProperties(inst, props, NULL, this)), g(hierGraphApp::mStack, inst), externalOutputs(&externalOutputs)
 { init(in, props); }
 
-hierGraph::hierGraph(const instance& inst,                              std::vector<port>& externalOutputs, const attrOp& onoffOp, properties* props) : 
+hierGraph::hierGraph(const HG_instance& inst,                              std::vector<HG_port>& externalOutputs, const attrOp& onoffOp, properties* props) : 
   sightObj(setProperties(inst, props, &onoffOp, this)), g(hierGraphApp::mStack, inst), externalOutputs(&externalOutputs)
-{ init(inputs(), props); }
+{ init(HG_inputs(), props); }
 
-hierGraph::hierGraph(const instance& inst, const port& in,              std::vector<port>& externalOutputs, const attrOp& onoffOp, properties* props): 
+hierGraph::hierGraph(const HG_instance& inst, const HG_port& in,              std::vector<HG_port>& externalOutputs, const attrOp& onoffOp, properties* props): 
   sightObj(setProperties(inst, props, &onoffOp, this)), g(hierGraphApp::mStack, inst), externalOutputs(&externalOutputs)
-{ init(inputs(in), props); }
+{ init(HG_inputs(in), props); }
 
-hierGraph::hierGraph(const instance& inst, const std::vector<port>& in, std::vector<port>& externalOutputs, const attrOp& onoffOp, properties* props) :
+hierGraph::hierGraph(const HG_instance& inst, const std::vector<HG_port>& in, std::vector<HG_port>& externalOutputs, const attrOp& onoffOp, properties* props) :
   sightObj(setProperties(inst, props, &onoffOp, this)), g(hierGraphApp::mStack, inst), externalOutputs(&externalOutputs)
 { init(in, props); }
 
 
 
-hierGraph::hierGraph(const instance& inst,                                                     const namedMeasures& meas, properties* props) : 
+hierGraph::hierGraph(const HG_instance& inst,                                                     const namedMeasures& meas, properties* props) : 
   sightObj(setProperties(inst, props, NULL, this)), g(hierGraphApp::mStack, inst), externalOutputs(NULL), meas(meas)
-{ init(inputs(), props); }
+{ init(HG_inputs(), props); }
 
-hierGraph::hierGraph(const instance& inst, const port& in,                                     const namedMeasures& meas, properties* props): 
+hierGraph::hierGraph(const HG_instance& inst, const HG_port& in,                                     const namedMeasures& meas, properties* props): 
   sightObj(setProperties(inst, props, NULL, this)), g(hierGraphApp::mStack, inst), externalOutputs(NULL), meas(meas)
-{ init(inputs(in), props); }
+{ init(HG_inputs(in), props); }
 
-hierGraph::hierGraph(const instance& inst, const std::vector<port>& in,                        const namedMeasures& meas, properties* props) :
+hierGraph::hierGraph(const HG_instance& inst, const std::vector<HG_port>& in,                        const namedMeasures& meas, properties* props) :
   sightObj(setProperties(inst, props, NULL, this)), g(hierGraphApp::mStack, inst), externalOutputs(NULL), meas(meas)
 { init(in, props); }
 
-hierGraph::hierGraph(const instance& inst,                              const attrOp& onoffOp, const namedMeasures& meas, properties* props) : 
+hierGraph::hierGraph(const HG_instance& inst,                              const attrOp& onoffOp, const namedMeasures& meas, properties* props) : 
   sightObj(setProperties(inst, props, &onoffOp, this)), g(hierGraphApp::mStack, inst), externalOutputs(NULL), meas(meas)
-{ init(inputs(), props); }
+{ init(HG_inputs(), props); }
 
-hierGraph::hierGraph(const instance& inst, const port& in,              const attrOp& onoffOp, const namedMeasures& meas, properties* props): 
+hierGraph::hierGraph(const HG_instance& inst, const HG_port& in,              const attrOp& onoffOp, const namedMeasures& meas, properties* props): 
   sightObj(setProperties(inst, props, &onoffOp, this)), g(hierGraphApp::mStack, inst), externalOutputs(NULL), meas(meas)
-{ init(inputs(in), props); }
+{ init(HG_inputs(in), props); }
 
-hierGraph::hierGraph(const instance& inst, const std::vector<port>& in, const attrOp& onoffOp, const namedMeasures& meas, properties* props) :
+hierGraph::hierGraph(const HG_instance& inst, const std::vector<HG_port>& in, const attrOp& onoffOp, const namedMeasures& meas, properties* props) :
   sightObj(setProperties(inst, props, &onoffOp, this)), g(hierGraphApp::mStack, inst), externalOutputs(NULL), meas(meas)
 { init(in, props); }
 
 
-hierGraph::hierGraph(const instance& inst,                              std::vector<port>& externalOutputs,                        const namedMeasures& meas, properties* props) : 
+hierGraph::hierGraph(const HG_instance& inst,                              std::vector<HG_port>& externalOutputs,                        const namedMeasures& meas, properties* props) : 
   sightObj(setProperties(inst, props, NULL, this)), g(hierGraphApp::mStack, inst), externalOutputs(&externalOutputs), meas(meas)
-{ init(inputs(), props); }
+{ init(HG_inputs(), props); }
 
-hierGraph::hierGraph(const instance& inst, const port& in,              std::vector<port>& externalOutputs,                        const namedMeasures& meas, properties* props): 
+hierGraph::hierGraph(const HG_instance& inst, const HG_port& in,              std::vector<HG_port>& externalOutputs,                        const namedMeasures& meas, properties* props): 
   sightObj(setProperties(inst, props, NULL, this)), g(hierGraphApp::mStack, inst), externalOutputs(&externalOutputs), meas(meas)
-{ init(inputs(in), props); }
+{ init(HG_inputs(in), props); }
 
-hierGraph::hierGraph(const instance& inst, const std::vector<port>& in, std::vector<port>& externalOutputs,                        const namedMeasures& meas, properties* props) :
+hierGraph::hierGraph(const HG_instance& inst, const std::vector<HG_port>& in, std::vector<HG_port>& externalOutputs,                        const namedMeasures& meas, properties* props) :
   sightObj(setProperties(inst, props, NULL, this)), g(hierGraphApp::mStack, inst), externalOutputs(&externalOutputs), meas(meas)
 { init(in, props); }
 
-hierGraph::hierGraph(const instance& inst,                              std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, properties* props) : 
+hierGraph::hierGraph(const HG_instance& inst,                              std::vector<HG_port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, properties* props) : 
   sightObj(setProperties(inst, props, &onoffOp, this)), g(hierGraphApp::mStack, inst), externalOutputs(&externalOutputs), meas(meas)
-{ init(inputs(), props); }
+{ init(HG_inputs(), props); }
 
-hierGraph::hierGraph(const instance& inst, const port& in,              std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, properties* props): 
+hierGraph::hierGraph(const HG_instance& inst, const HG_port& in,              std::vector<HG_port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, properties* props): 
   sightObj(setProperties(inst, props, &onoffOp, this)), g(hierGraphApp::mStack, inst), externalOutputs(&externalOutputs), meas(meas)
-{ init(inputs(in), props); }
+{ init(HG_inputs(in), props); }
 
-hierGraph::hierGraph(const instance& inst, const std::vector<port>& in, std::vector<port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, properties* props) :
+hierGraph::hierGraph(const HG_instance& inst, const std::vector<HG_port>& in, std::vector<HG_port>& externalOutputs, const attrOp& onoffOp, const namedMeasures& meas, properties* props) :
   sightObj(setProperties(inst, props, &onoffOp, this)), g(hierGraphApp::mStack, inst), externalOutputs(&externalOutputs), meas(meas)
 { init(in, props); }
 
-properties* hierGraph::setProperties(const instance& inst, properties* props, const attrOp* onoffOp, hierGraph* me) {
-  group g(hierGraphApp::mStack, inst);
-  bool isDerived = (props!=NULL); // This is an instance of an object that derives from hierGraph if its constructor sets props to non-NULL
+properties* hierGraph::setProperties(const HG_instance& inst, properties* props, const attrOp* onoffOp, hierGraph* me) {
+  HG_group g(hierGraphApp::mStack, inst);
+  bool isDerived = (props!=NULL); // This is an HG_instance of an object that derives from hierGraph if its constructor sets props to non-NULL
  
   if(attributes.query() && (onoffOp? onoffOp->apply(): true)) {
     if(!hierGraphApp::isInstanceActive()) {
-      cerr << "ERROR: hierGraph "<<inst.str()<<" entered while there no instance of hierGraphApp is active!"<<endl;
+      cerr << "ERROR: hierGraph "<<inst.str()<<" entered while there no HG_instance of hierGraphApp is active!"<<endl;
       assert(0);
     }
  
@@ -811,11 +811,11 @@ properties* hierGraph::setProperties(const instance& inst, properties* props, co
     pMap["numInputs"]  = txt()<<g.numInputs();
     pMap["numOutputs"] = txt()<<g.numOutputs();
 
-    // If this is an instance of hierGraph rather than a class that derives from hierGraph
+    // If this is an HG_instance of hierGraph rather than a class that derives from hierGraph
     //if(hierGraphApp::isInstanceActive() && !isDerived) {
       markerProps->active = true;
 
-      // If no traceStream has been registered for this hierGraph group
+      // If no traceStream has been registered for this hierGraph HG_group
       if(!hierGraphApp::isTraceStreamRegistered(g)) {
         // We'll create a new traceStream in the destructor but first, generate and record the ID of that 
         // traceStream so that we can include it in the tag and record it in the hierGraph object for use in its destructor
@@ -835,8 +835,8 @@ properties* hierGraph::setProperties(const instance& inst, properties* props, co
     return NULL;
 }
 
-void hierGraph::init(const std::vector<port>& ins, properties* derivedProps) {
-  isDerived = (derivedProps!=NULL); // This is an instance of an object that derives from hierGraph if its constructor sets props to non-NULL
+void hierGraph::init(const std::vector<HG_port>& ins, properties* derivedProps) {
+  isDerived = (derivedProps!=NULL); // This is an HG_instance of an object that derives from hierGraph if its constructor sets props to non-NULL
   if(derivedProps==NULL) derivedProps = new properties();
   this->ins = ins;
   
@@ -851,34 +851,34 @@ void hierGraph::init(const std::vector<port>& ins, properties* derivedProps) {
     pMap["numOutputs"] = txt()<<g.numOutputs();
     derivedProps->add("hierGraph", pMap);
     
-    // Add this hierGraph instance to the current stack of hierGraphs
+    // Add this hierGraph HG_instance to the current stack of hierGraphs
     hierGraphApp::enterHierGraph(this, hierGraphID, derivedProps);
     
-    // Make sure that the input contexts have the same names across all the invocations of this hierGraph group
+    // Make sure that the input HG_contexts have the same names across all the invocations of this hierGraph HG_group
     hierGraphApp::registerInOutContexts(g, ins, sight::common::hierGraph::input);
     
-    // Add edges between the hierGraphs from which this hierGraph's inputs came and this hierGraph
+    // Add edges between the hierGraphs from which this hierGraph's HG_inputs came and this hierGraph
     for(int i=0; i<ins.size(); i++)
-    	hierGraphApp::addEdge(ins[i], port(g, context(), input, i));
+    	hierGraphApp::addEdge(ins[i], HG_port(g, HG_context(), input, i));
     
-    // Initialize the output ports of this hierGraph
+    // Initialize the output HG_ports of this hierGraph
     if(externalOutputs) externalOutputs->clear(); 
     for(int i=0; i<g.numOutputs(); i++) {
-      outs.push_back(port(g, /*context(),*/ output, i));
+      outs.push_back(HG_port(g, /*HG_context(),*/ output, i));
       // If the user provided an output vector, initialize it as well
       if(externalOutputs) { 
-        externalOutputs->push_back(port(g, /*context(),*/ output, i));
+        externalOutputs->push_back(HG_port(g, /*HG_context(),*/ output, i));
       }
     }
     
     // Add the default measurements recored in hierGraphApp to meas
     for(namedMeasures::iterator m=hierGraphApp::activeMA->meas.begin(); m!=hierGraphApp::activeMA->meas.end(); m++) {
-      // If the name of the current measurement in hierGraphApp isn't already specified for the given hierGraph group, add it
+      // If the name of the current measurement in hierGraphApp isn't already specified for the given hierGraph HG_group, add it
       if(meas.find(m->first) == meas.end())
         meas[m->first] = m->second->copy();
     }
     
-    // Begin measuring this hierGraph instance
+    // Begin measuring this hierGraph HG_instance
     for(namedMeasures::iterator m=meas.begin(); m!=meas.end(); m++) {
       m->second->start(); 
     }
@@ -905,7 +905,7 @@ hierGraph::~hierGraph() {
   
   //cout << "~hierGraph() props->active="<<props->active<<endl;
 
-  if(ins.size() != g.numInputs()) { cerr << "WARNING: hierGraph \""<<g.name()<<"\" specifies "<<g.numInputs()<<" inputs but "<<ins.size()<<" inputs are actually provided!"<<endl; }
+  if(ins.size() != g.numInputs()) { cerr << "WARNING: hierGraph \""<<g.name()<<"\" specifies "<<g.numInputs()<<" HG_inputs but "<<ins.size()<<" HG_inputs are actually provided!"<<endl; }
   
   if(outsSet.size() != g.numOutputs()) { 
     cerr << "WARNING: hierGraph \""<<g.name()<<"\" specifies "<<g.numOutputs()<<" outputs but "<<outsSet.size()<<" outputs are actually provided! ";
@@ -915,24 +915,24 @@ hierGraph::~hierGraph() {
   }
   
   if(props->active) {
-    // If this is an instance of hierGraph rather than a class that derives from hierGraph
+    // If this is an HG_instance of hierGraph rather than a class that derives from hierGraph
     if(!isDerived) {
-      // Wrap the portion of the hierGraphMarker tag where we place the control information (the traceStream)
+      // Wrap the HG_portion of the hierGraphMarker tag where we place the control information (the traceStream)
       // in its own tag to make them easier to match across different streams
       properties hierGraphCtrl;
       hierGraphCtrl.add("hierGraphCtrl", map<string, string>());
 
       dbg.enter(hierGraphCtrl);
 
-      // Register a traceStream for this hierGraph's group, if one has not already been registered
+      // Register a traceStream for this hierGraph's HG_group, if one has not already been registered
       if(!hierGraphApp::isTraceStreamRegistered(g)) {
         hierGraphApp::registerTraceStream(g, new hierGraphTraceStream(hierGraphID, this, trace::lines, trace::disjMerge, 
                                         hierGraphApp::getTraceStreamID(g)));
       }
     }
 
-    // Set the context attributes to be used in this hierGraph's measurements by combining the context provided by any
-    // class that may derive from this one as well as the contexts of its inputs
+    // Set the HG_context attributes to be used in this hierGraph's measurements by combining the HG_context provided by any
+    // class that may derive from this one as well as the HG_contexts of its HG_inputs
     //map<string, attrValue> traceCtxt = getTraceCtxt();
     if(!isDerived) setTraceCtxt();
     /*cout << "traceCtxt="<<endl;
@@ -956,13 +956,13 @@ hierGraph::~hierGraph() {
   for(list<pair<string, attrValue> >::iterator tc=obs.begin(); tc!=obs.end(); tc++)
     cout << "    "<<tc->first << ": "<<tc->second.serialize()<<endl;*/
 
-    // Record the observation into this hierGraph group's trace
+    // Record the observation into this hierGraph HG_group's trace
     hierGraphApp::hierGraphTrace[g]->traceFullObservation(traceCtxt, obs, anchor::noAnchor);
 
-    /* GB 2014-01-24 - It makes sense to allow different instances of a hierGraph group to not provide
+    /* GB 2014-01-24 - It makes sense to allow different HG_instances of a hierGraph HG_group to not provide
      *        the same outputs since in fault injection we may be aborted before all the outputs are 
      *        computed and in other cases the code may break out without computing some output. *?
-    // Make sure that the output contexts have the same names across all the invocations of this hierGraph group
+    // Make sure that the output HG_contexts have the same names across all the invocations of this hierGraph HG_group
     hierGraphApp::registerInOutContexts(g, outs, sight::common::hierGraph::output); */
   
     hierGraphApp::exitHierGraph(this);
@@ -975,15 +975,15 @@ hierGraph::~hierGraph() {
 }
 
 // Called to complete the measurement of this hierGraph's execution. This measurement may be completed before
-// the hierGraph itself completes to enable users to separate the portion of the hierGraph's execution that 
-// represents its core behavior (and thus should be measured) from the portion where the hierGraph's outputs
+// the hierGraph itself completes to enable users to separate the HG_portion of the hierGraph's execution that 
+// represents its core behavior (and thus should be measured) from the HG_portion where the hierGraph's outputs
 // are computed.
 void hierGraph::completeMeasurement() {
   if(!props->active) return;
   
   if(measurementCompleted) return; // { cerr << "ERROR: completing measurement of execution of hierGraph "<<g.str()<<" multiple times!"<<endl; assert(0); }
   
-  // Complete measuring this instance and collect the observations into props
+  // Complete measuring this HG_instance and collect the observations into props
   int measIdx=0;
   for(namedMeasures::iterator m=meas.begin(); m!=meas.end(); m++, measIdx++) {
     // Complete the m's measurement
@@ -999,31 +999,31 @@ void hierGraph::completeMeasurement() {
   measurementCompleted = true;
 }
 
-// Sets the context of the given output port
-void hierGraph::setInCtxt(int idx, const context& c) {
+// Sets the HG_context of the given output HG_port
+void hierGraph::setInCtxt(int idx, const HG_context& c) {
   if(!props->active) return;
-  if(idx>=g.numInputs()) { cerr << "ERROR: cannot set context of input "<<idx<<" of hierGraph \""<<g.str()<<"\"! This hierGraph was declared to have "<<g.numInputs()<<" inputs."<<endl; }
+  if(idx>=g.numInputs()) { cerr << "ERROR: cannot set HG_context of input "<<idx<<" of hierGraph \""<<g.str()<<"\"! This hierGraph was declared to have "<<g.numInputs()<<" HG_inputs."<<endl; }
   assert(idx<g.numInputs());
   ins[idx].setCtxt(c);
 }
 
-// Adds the given key/attrValue pair to the context of the given output port
+// Adds the given key/attrValue pair to the HG_context of the given output HG_port
 void hierGraph::addInCtxt(int idx, const std::string& key, const attrValue& val) {
   if(!props->active) return;
-  if(idx>=g.numInputs()) { cerr << "ERROR: cannot add context to input "<<idx<<" of hierGraph \""<<g.str()<<"\"! This hierGraph was declared to have "<<g.numInputs()<<" inputs."<<endl; }
+  if(idx>=g.numInputs()) { cerr << "ERROR: cannot add HG_context to input "<<idx<<" of hierGraph \""<<g.str()<<"\"! This hierGraph was declared to have "<<g.numInputs()<<" HG_inputs."<<endl; }
   assert(idx<g.numInputs());
   ins[idx].addCtxt(key, val);
 }
 
-// Adds the given port to this hierGraph's inputs
-void hierGraph::addInCtxt(const port& p) {
+// Adds the given HG_port to this hierGraph's HG_inputs
+void hierGraph::addInCtxt(const HG_port& p) {
   ins.push_back(p);
 }
 
-// Sets the context of the given output port
-void hierGraph::setOutCtxt(int idx, const context& c) { 
+// Sets the HG_context of the given output HG_port
+void hierGraph::setOutCtxt(int idx, const HG_context& c) { 
   if(!props->active) return;
-  if(idx>=g.numOutputs()) { cerr << "ERROR: cannot set context of output "<<idx<<" of hierGraph \""<<g.str()<<"\"! This hierGraph was declared to have "<<g.numOutputs()<<" outputs."<<endl; }
+  if(idx>=g.numOutputs()) { cerr << "ERROR: cannot set HG_context of output "<<idx<<" of hierGraph \""<<g.str()<<"\"! This hierGraph was declared to have "<<g.numOutputs()<<" outputs."<<endl; }
   assert(idx<g.numOutputs());
   outs[idx].setCtxt(c);
   // If the user provided an output vector, update it as well
@@ -1031,35 +1031,35 @@ void hierGraph::setOutCtxt(int idx, const context& c) {
     (*externalOutputs)[idx].setCtxt(c);
     
   // Emit a warning of an output has been set multiple times
-  if(outsSet.find(idx) != outsSet.end()) cerr << "WARNING: output "<<idx<<" of hierGraph \""<<g.str()<<"\" has been set multiple times! Set this time to context "<<c.str()<<endl;
+  if(outsSet.find(idx) != outsSet.end()) cerr << "WARNING: output "<<idx<<" of hierGraph \""<<g.str()<<"\" has been set multiple times! Set this time to HG_context "<<c.str()<<endl;
   else outsSet.insert(idx);
 }
 
-// Returns a list of the hierGraph's input ports
-/*std::vector<port> hierGraph::inputPorts() const {
-	std::vector<port> ports;
+// Returns a list of the hierGraph's input HG_ports
+/*std::vector<HG_port> hierGraph::inputPorts() const {
+	std::vector<HG_port> HG_ports;
   for(int i=0; i<numInputs(); i++)
-  	ports.push_back(port(c, input, i));
-	return ports;
+  	HG_ports.push_back(HG_port(c, input, i));
+	return HG_ports;
 }*/
 
-// Returns a list of the hierGraph's output ports
-std::vector<port> hierGraph::outPorts() const {
+// Returns a list of the hierGraph's output HG_ports
+std::vector<HG_port> hierGraph::outPorts() const {
 	return outs;
 }
 
-port hierGraph::outPort(int idx) const {
-  if(!props->active) return port();
-  if(idx>=g.numOutputs()) { cerr << "ERROR: cannot get port "<<idx<<" of hierGraph \""<<g.str()<<"\"! This hierGraph was declared to have "<<g.numOutputs()<<" outputs."<<endl; }
+HG_port hierGraph::outPort(int idx) const {
+  if(!props->active) return HG_port();
+  if(idx>=g.numOutputs()) { cerr << "ERROR: cannot get HG_port "<<idx<<" of hierGraph \""<<g.str()<<"\"! This hierGraph was declared to have "<<g.numOutputs()<<" outputs."<<endl; }
   assert(idx < g.numOutputs());
   return outs[idx];  
 }
 
-// Sets the traceCtxt map, which contains the context attributes to be used in this hierGraph's measurements 
-// by combining the context provided by the classes that this object derives from with its own unique 
-// context attributes.
+// Sets the traceCtxt map, which contains the HG_context attributes to be used in this hierGraph's measurements 
+// by combining the HG_context provided by the classes that this object derives from with its own unique 
+// HG_context attributes.
 void hierGraph::setTraceCtxt() {
-  // Add to it the context of this hierGraph based on the contexts of its inputs
+  // Add to it the HG_context of this hierGraph based on the HG_contexts of its HG_inputs
   for(int i=0; i<ins.size(); i++) {
     for(std::map<std::string, attrValue>::const_iterator c=ins[i].ctxt->configuration.begin(); c!=ins[i].ctxt->configuration.end(); c++) {
       traceCtxt[encodeCtxtName("hierGraph", "input", txt()<<i, c->first)] = c->second;
@@ -1068,96 +1068,95 @@ void hierGraph::setTraceCtxt() {
 }
 
 
-////0812
-/////***********************
-//// ***** compContext *****
-//// ***********************/
-////
-////// Loads this context from the given properties map. The names of all the fields are assumed to be prefixed
-////// with the given string.
-////compContext::compContext(properties::iterator props, std::string prefix) : context(props, prefix) {
-////  // Read out just the fields related to the comparator description
-////  int numCfgKeys = properties::getInt(props, txt()<<prefix<<"numCfgKeys");
-////  for(int i=0; i<numCfgKeys; i++) {
-////    comparators[properties::get(props, txt()<<prefix<<"key_"<<i)] = 
-////            make_pair(properties::get(props, txt()<<prefix<<"compName_"<<i),
-////                      properties::get(props, txt()<<prefix<<"compDesc_"<<i));
-////  }
-////}
-////
-////// Returns the properties map that describes this context object.
-////// The names of all the fields in the map are prefixed with the given string.
-////map<string, string> compContext::getProperties(std::string prefix) const {
-////  // Initialize pMap with the properties of all the keys and values
-////  map<string, string> pMap = context::getProperties(prefix);
-////  // Add to it the properties of each key's comparator
-////  int i=0;
-////  for(map<string, pair<string, string> >::const_iterator comp=comparators.begin(); comp!=comparators.end(); comp++, i++) {
-////    pMap[txt()<<prefix<<"compName_"<<i]  = comp->second.first;
-////    pMap[txt()<<prefix<<"compDesc_"<<i]  = comp->second.second;
-////  }
-////  return pMap;
-////}
-////
-////// These comparator routines must be implemented by all classes that inherit from context to make sure that
-////// their additional details are reflected in the results of the comparison. Implementors may assume that 
-////// the type of that is their special derivation of context rather than a generic context and should dynamically
-////// cast from const context& to their sub-type.
-////bool compContext::operator==(const context& that_arg) const {
-////  try {
-////    // If both this and that are compContexts
-////    const compContext& that = dynamic_cast<const compContext&>(that_arg);
-////    return context::operator==(that_arg) && comparators==that.comparators;
-////  } catch(std::bad_cast exp) {
-////    // Otherwise, relate different context instances based on their typeids
-////    //cout << "compContext::operator==() typeid(*this)="<<typeid(*this).name()<<", typeid(that_arg)="<<typeid(that_arg).name()<<", == "<<(typeid(*this) == typeid(that_arg))<<endl;
-////    return typeid(*this) == typeid(that_arg);
-////    /*cerr << "ERROR: comparing compContext and a different sub-type of context using == operator!"<<endl;
-////    assert(0);*/
-////  }
-////}
-////
-////bool compContext::operator<(const context& that_arg) const { 
-////  try {
-////    // If both this and that are compContexts
-////    const compContext& that = dynamic_cast<const compContext&>(that_arg);
-////    return context::operator<(that_arg) ||
-////           (context::operator==(that_arg) && comparators<that.comparators);
-////  } catch(std::bad_cast exp) {
-////    // Otherwise, relate different context instances based on their typeids
-////    //cout << "compContext::operator<() typeid(*this)="<<typeid(*this).name()<<", typeid(that_arg)="<<typeid(that_arg).name()<<", < "<<(typeid(*this).name() < typeid(that_arg).name())<<endl;
-////    return typeid(*this).name() < typeid(that_arg).name();
-////    /*cerr << "ERROR: comparing compContext and a different sub-type of context using < operator!"<<endl;
-////    assert(0);*/
-////  }
-////}
-////
-////// Adds the given key/attrValue pair to this context
-////void compContext::add(std::string key, const attrValue& val, const comparatorDesc& cdesc) {
-////  context::add(key, val);
-////  comparators[key] = std::make_pair(cdesc.name(), cdesc.description());
-////}
-////
-////// Add all the key/attrValue pairs from the given context to this one, overwriting keys as needed
-////void compContext::add(const compContext& that) {
-////  context::add(that);
-////  for(std::map<std::string, std::pair<std::string, std::string> >::const_iterator c=that.comparators.begin();
-////      c!=that.comparators.end(); c++) {
-////    comparators[c->first] = c->second;
-////  }
-////}
-////
-////// Returns a human-readable string that describes this context
-////std::string compContext::str() const {
-////  ostringstream s;
-////  s << "[compContext: "<<endl;
-////  for(map<string, pair<string, string> >::const_iterator comp=comparators.begin(); comp!=comparators.end(); comp++) {
-////    if(comp!=comparators.begin()) s << " ";
-////    s << "("<<comp->second.first<<": "<<comp->second.second<<")";
-////  }
-////  s << "]";
-////  return s.str();
-////}
+/***********************
+ ***** HG_compContext *****
+ ***********************/
+
+// Loads this HG_context from the given properties map. The names of all the fields are assumed to be prefixed
+// with the given string.
+HG_compContext::HG_compContext(properties::iterator props, std::string prefix) : HG_context(props, prefix) {
+  // Read out just the fields related to the comparator description
+  int numCfgKeys = properties::getInt(props, txt()<<prefix<<"numCfgKeys");
+  for(int i=0; i<numCfgKeys; i++) {
+    comparators[properties::get(props, txt()<<prefix<<"key_"<<i)] = 
+            make_pair(properties::get(props, txt()<<prefix<<"compName_"<<i),
+                      properties::get(props, txt()<<prefix<<"compDesc_"<<i));
+  }
+}
+
+// Returns the properties map that describes this HG_context object.
+// The names of all the fields in the map are prefixed with the given string.
+map<string, string> HG_compContext::getProperties(std::string prefix) const {
+  // Initialize pMap with the properties of all the keys and values
+  map<string, string> pMap = HG_context::getProperties(prefix);
+  // Add to it the properties of each key's comparator
+  int i=0;
+  for(map<string, pair<string, string> >::const_iterator comp=comparators.begin(); comp!=comparators.end(); comp++, i++) {
+    pMap[txt()<<prefix<<"compName_"<<i]  = comp->second.first;
+    pMap[txt()<<prefix<<"compDesc_"<<i]  = comp->second.second;
+  }
+  return pMap;
+}
+
+// These comparator routines must be implemented by all classes that inherit from HG_context to make sure that
+// their additional details are reflected in the results of the comparison. Implementors may assume that 
+// the type of that is their special derivation of HG_context rather than a generic HG_context and should dynamically
+// cast from const HG_context& to their sub-type.
+bool HG_compContext::operator==(const HG_context& that_arg) const {
+  try {
+    // If both this and that are HG_compContexts
+    const HG_compContext& that = dynamic_cast<const HG_compContext&>(that_arg);
+    return HG_context::operator==(that_arg) && comparators==that.comparators;
+  } catch(std::bad_cast exp) {
+    // Otherwise, relate different HG_context HG_instances based on their typeids
+    //cout << "HG_compContext::operator==() typeid(*this)="<<typeid(*this).name()<<", typeid(that_arg)="<<typeid(that_arg).name()<<", == "<<(typeid(*this) == typeid(that_arg))<<endl;
+    return typeid(*this) == typeid(that_arg);
+    /*cerr << "ERROR: comparing HG_compContext and a different sub-type of HG_context using == operator!"<<endl;
+    assert(0);*/
+  }
+}
+
+bool HG_compContext::operator<(const HG_context& that_arg) const { 
+  try {
+    // If both this and that are HG_compContexts
+    const HG_compContext& that = dynamic_cast<const HG_compContext&>(that_arg);
+    return HG_context::operator<(that_arg) ||
+           (HG_context::operator==(that_arg) && comparators<that.comparators);
+  } catch(std::bad_cast exp) {
+    // Otherwise, relate different HG_context HG_instances based on their typeids
+    //cout << "HG_compContext::operator<() typeid(*this)="<<typeid(*this).name()<<", typeid(that_arg)="<<typeid(that_arg).name()<<", < "<<(typeid(*this).name() < typeid(that_arg).name())<<endl;
+    return typeid(*this).name() < typeid(that_arg).name();
+    /*cerr << "ERROR: comparing HG_compContext and a different sub-type of HG_context using < operator!"<<endl;
+    assert(0);*/
+  }
+}
+
+// Adds the given key/attrValue pair to this HG_context
+void HG_compContext::add(std::string key, const attrValue& val, const comparatorDesc& cdesc) {
+  HG_context::add(key, val);
+  comparators[key] = std::make_pair(cdesc.name(), cdesc.description());
+}
+
+// Add all the key/attrValue pairs from the given HG_context to this one, overwriting keys as needed
+void HG_compContext::add(const HG_compContext& that) {
+  HG_context::add(that);
+  for(std::map<std::string, std::pair<std::string, std::string> >::const_iterator c=that.comparators.begin();
+      c!=that.comparators.end(); c++) {
+    comparators[c->first] = c->second;
+  }
+}
+
+// Returns a human-readable string that describes this HG_context
+std::string HG_compContext::str() const {
+  ostringstream s;
+  s << "[HG_compContext: "<<endl;
+  for(map<string, pair<string, string> >::const_iterator comp=comparators.begin(); comp!=comparators.end(); comp++) {
+    if(comp!=comparators.begin()) s << " ";
+    s << "("<<comp->second.first<<": "<<comp->second.second<<")";
+  }
+  s << "]";
+  return s.str();
+}
 
 /**************************
  ***** compHierGraphApp *****
@@ -1171,11 +1170,11 @@ compHierGraphApp::compHierGraphApp(const std::string& appName, const attrOp& ono
   hierGraphApp(appName, onoffOp,                          props)
 {}
 
-compHierGraphApp::compHierGraphApp(const std::string& appName,                        const compNamedMeasures& cMeas, properties* props) :
+compHierGraphApp::compHierGraphApp(const std::string& appName,                        const HG_compNamedMeasures& cMeas, properties* props) :
   hierGraphApp(appName,          cMeas.getNamedMeasures(), props), measComp(cMeas.getComparators())
 {}
 
-compHierGraphApp::compHierGraphApp(const std::string& appName, const attrOp& onoffOp, const compNamedMeasures& cMeas, properties* props) :
+compHierGraphApp::compHierGraphApp(const std::string& appName, const attrOp& onoffOp, const HG_compNamedMeasures& cMeas, properties* props) :
   hierGraphApp(appName, onoffOp, cMeas.getNamedMeasures(), props), measComp(cMeas.getComparators())
 {}
 
@@ -1193,109 +1192,118 @@ compHierGraphApp::~compHierGraphApp() {
   assert(!destroyed);
 }
 
+
+
+
+
+
+
+
+
+
 /**********************
  ***** compHierGraph *****
  **********************/
 
-compHierGraph::compHierGraph(const instance& inst, const std::vector<port>& inputs,  
+compHierGraph::compHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs,  
                        bool isReference,
                                                                          properties* props) :
-            hierGraph(inst, inputs, setProperties(inst, isReference, hierGraph::context(), NULL, props)),           isReference(isReference), options(hierGraph::context())
+            hierGraph(inst, HG_inputs, setProperties(inst, isReference, hierGraph::context(), NULL, props)),           isReference(isReference), options(hierGraph::context())
 { init(props); }
 
-compHierGraph::compHierGraph(const instance& inst, const std::vector<port>& inputs,  
+compHierGraph::compHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs,  
                        bool isReference, 
                        const attrOp& onoffOp,                            properties* props) :
-          hierGraph(inst, inputs, setProperties(inst, isReference, hierGraph::context(), &onoffOp, props)),       isReference(isReference), options(hierGraph::context())
+          hierGraph(inst, HG_inputs, setProperties(inst, isReference, hierGraph::context(), &onoffOp, props)),       isReference(isReference), options(hierGraph::context())
 { init(props); }
 
-compHierGraph::compHierGraph(const instance& inst, const std::vector<port>& inputs,  
+compHierGraph::compHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs,  
                        bool isReference, 
-                                              const compNamedMeasures& cMeas, properties* props) :
-          hierGraph(inst, inputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, hierGraph::context(), NULL, props)),     isReference(isReference), options(hierGraph::context()), measComp(cMeas.getComparators())
+                                              const HG_compNamedMeasures& cMeas, properties* props) :
+          hierGraph(inst, HG_inputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, hierGraph::context(), NULL, props)),     isReference(isReference), options(hierGraph::context()), measComp(cMeas.getComparators())
 { init(props); }
 
-compHierGraph::compHierGraph(const instance& inst, const std::vector<port>& inputs,  
+compHierGraph::compHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs,  
                        bool isReference, 
-                       const attrOp& onoffOp, const compNamedMeasures& cMeas, properties* props) : 
-          hierGraph(inst, inputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, hierGraph::context(), &onoffOp, props)), isReference(isReference), options(hierGraph::context()), measComp(cMeas.getComparators())
+                       const attrOp& onoffOp, const HG_compNamedMeasures& cMeas, properties* props) : 
+          hierGraph(inst, HG_inputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, hierGraph::context(), &onoffOp, props)), isReference(isReference), options(hierGraph::context()), measComp(cMeas.getComparators())
 { init(props); }
 
-compHierGraph::compHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+compHierGraph::compHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs, std::vector<HG_port>& externalOutputs, 
                        bool isReference,
                                                                          properties* props) :
-            hierGraph(inst, inputs, externalOutputs, setProperties(inst, isReference, hierGraph::context(), NULL, props)),           isReference(isReference), options(hierGraph::context())
+            hierGraph(inst, HG_inputs, externalOutputs, setProperties(inst, isReference, hierGraph::context(), NULL, props)),           isReference(isReference), options(hierGraph::context())
 { init(props); }
 
-compHierGraph::compHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+compHierGraph::compHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs, std::vector<HG_port>& externalOutputs, 
                        bool isReference, 
                        const attrOp& onoffOp,                            properties* props) :
-          hierGraph(inst, inputs, externalOutputs, setProperties(inst, isReference, hierGraph::context(), &onoffOp, props)),       isReference(isReference), options(hierGraph::context())
+          hierGraph(inst, HG_inputs, externalOutputs, setProperties(inst, isReference, hierGraph::context(), &onoffOp, props)),       isReference(isReference), options(hierGraph::context())
 { init(props); }
 
-compHierGraph::compHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+compHierGraph::compHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs, std::vector<HG_port>& externalOutputs, 
                        bool isReference, 
-                                              const compNamedMeasures& cMeas, properties* props) :
-          hierGraph(inst, inputs, externalOutputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, hierGraph::context(), NULL, props)),     isReference(isReference), options(hierGraph::context()), measComp(cMeas.getComparators())
+                                              const HG_compNamedMeasures& cMeas, properties* props) :
+          hierGraph(inst, HG_inputs, externalOutputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, hierGraph::context(), NULL, props)),     isReference(isReference), options(hierGraph::context()), measComp(cMeas.getComparators())
 { init(props); }
 
-compHierGraph::compHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+compHierGraph::compHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs, std::vector<HG_port>& externalOutputs, 
                        bool isReference, 
-                       const attrOp& onoffOp, const compNamedMeasures& cMeas, properties* props) : 
-          hierGraph(inst, inputs, externalOutputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, hierGraph::context(), &onoffOp, props)), isReference(isReference), options(hierGraph::context()), measComp(cMeas.getComparators())
+                       const attrOp& onoffOp, const HG_compNamedMeasures& cMeas, properties* props) : 
+          hierGraph(inst, HG_inputs, externalOutputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, hierGraph::context(), &onoffOp, props)), isReference(isReference), options(hierGraph::context()), measComp(cMeas.getComparators())
 { init(props); }
 
 
-compHierGraph::compHierGraph(const instance& inst, const std::vector<port>& inputs,  
-                       bool isReference, context options,
+compHierGraph::compHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs,  
+                       bool isReference, HG_context options,
                                                                          properties* props) :
-            hierGraph(inst, inputs, setProperties(inst, isReference, options, NULL, props)),           isReference(isReference), options(options)
+            hierGraph(inst, HG_inputs, setProperties(inst, isReference, options, NULL, props)),           isReference(isReference), options(options)
 { init(props); }
 
-compHierGraph::compHierGraph(const instance& inst, const std::vector<port>& inputs,  
-                       bool isReference, context options, 
+compHierGraph::compHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs,  
+                       bool isReference, HG_context options, 
                        const attrOp& onoffOp,                            properties* props) :
-          hierGraph(inst, inputs, setProperties(inst, isReference, options, &onoffOp, props)),       isReference(isReference), options(options)
+          hierGraph(inst, HG_inputs, setProperties(inst, isReference, options, &onoffOp, props)),       isReference(isReference), options(options)
 { init(props); }
 
-compHierGraph::compHierGraph(const instance& inst, const std::vector<port>& inputs,  
-                       bool isReference, context options, 
-                                              const compNamedMeasures& cMeas, properties* props) :
-          hierGraph(inst, inputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, options, NULL, props)),     isReference(isReference), options(options), measComp(cMeas.getComparators())
+compHierGraph::compHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs,  
+                       bool isReference, HG_context options, 
+                                              const HG_compNamedMeasures& cMeas, properties* props) :
+          hierGraph(inst, HG_inputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, options, NULL, props)),     isReference(isReference), options(options), measComp(cMeas.getComparators())
 { init(props); }
 
-compHierGraph::compHierGraph(const instance& inst, const std::vector<port>& inputs,  
-                       bool isReference, context options, 
-                       const attrOp& onoffOp, const compNamedMeasures& cMeas, properties* props) : 
-          hierGraph(inst, inputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, options, &onoffOp, props)), isReference(isReference), options(options), measComp(cMeas.getComparators())
+compHierGraph::compHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs,  
+                       bool isReference, HG_context options, 
+                       const attrOp& onoffOp, const HG_compNamedMeasures& cMeas, properties* props) : 
+          hierGraph(inst, HG_inputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, options, &onoffOp, props)), isReference(isReference), options(options), measComp(cMeas.getComparators())
 { init(props); }
 
-compHierGraph::compHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
-                       bool isReference, context options,
+compHierGraph::compHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs, std::vector<HG_port>& externalOutputs, 
+                       bool isReference, HG_context options,
                                                                          properties* props) :
-            hierGraph(inst, inputs, externalOutputs, setProperties(inst, isReference, options, NULL, props)),           isReference(isReference), options(options)
+            hierGraph(inst, HG_inputs, externalOutputs, setProperties(inst, isReference, options, NULL, props)),           isReference(isReference), options(options)
 { init(props); }
 
-compHierGraph::compHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
-                       bool isReference, context options, 
+compHierGraph::compHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs, std::vector<HG_port>& externalOutputs, 
+                       bool isReference, HG_context options, 
                        const attrOp& onoffOp,                            properties* props) :
-          hierGraph(inst, inputs, externalOutputs, setProperties(inst, isReference, options, &onoffOp, props)),       isReference(isReference), options(options)
+          hierGraph(inst, HG_inputs, externalOutputs, setProperties(inst, isReference, options, &onoffOp, props)),       isReference(isReference), options(options)
 { init(props); }
 
-compHierGraph::compHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
-                       bool isReference, context options, 
-                                              const compNamedMeasures& cMeas, properties* props) :
-          hierGraph(inst, inputs, externalOutputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, options, NULL, props)),     isReference(isReference), options(options), measComp(cMeas.getComparators())
+compHierGraph::compHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs, std::vector<HG_port>& externalOutputs, 
+                       bool isReference, HG_context options, 
+                                              const HG_compNamedMeasures& cMeas, properties* props) :
+          hierGraph(inst, HG_inputs, externalOutputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, options, NULL, props)),     isReference(isReference), options(options), measComp(cMeas.getComparators())
 { init(props); }
 
-compHierGraph::compHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
-                       bool isReference, context options, 
-                       const attrOp& onoffOp, const compNamedMeasures& cMeas, properties* props) : 
-          hierGraph(inst, inputs, externalOutputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, options, &onoffOp, props)), isReference(isReference), options(options), measComp(cMeas.getComparators())
+compHierGraph::compHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs, std::vector<HG_port>& externalOutputs, 
+                       bool isReference, HG_context options, 
+                       const attrOp& onoffOp, const HG_compNamedMeasures& cMeas, properties* props) : 
+          hierGraph(inst, HG_inputs, externalOutputs, cMeas.getNamedMeasures(), setProperties(inst, isReference, options, &onoffOp, props)), isReference(isReference), options(options), measComp(cMeas.getComparators())
 { init(props); }
 
 // Sets the properties of this object
-properties* compHierGraph::setProperties(const instance& inst, bool isReference, context options, const attrOp* onoffOp, properties* props) {
+properties* compHierGraph::setProperties(const HG_instance& inst, bool isReference, HG_context options, const attrOp* onoffOp, properties* props) {
   if(props==NULL) {
     props = new properties();
   }
@@ -1317,7 +1325,7 @@ properties* compHierGraph::setProperties(const instance& inst, bool isReference,
 }
 
 void compHierGraph::init(properties* props) {
-  isDerived = props!=NULL; // This is an instance of an object that derives from hierGraph if its constructor sets deriv to non-NULL
+  isDerived = props!=NULL; // This is an HG_instance of an object that derives from hierGraph if its constructor sets deriv to non-NULL
   
   if(!isDerived) setTraceCtxt();
 }
@@ -1335,14 +1343,14 @@ void compHierGraph::destroy() {
 compHierGraph::~compHierGraph() {
   assert(!destroyed);
   
-  // If this is an instance of compHierGraph rather than a class that derives from compHierGraph
-  if(props->active && !isDerived) {    // Wrap the portion of the hierGraphMarker tag where we place the control information (the traceStream)
+  // If this is an HG_instance of compHierGraph rather than a class that derives from compHierGraph
+  if(props->active && !isDerived) {    // Wrap the HG_portion of the hierGraphMarker tag where we place the control information (the traceStream)
     // in its own tag to make them easier to match across different streams
     properties hierGraphCtrl;
     hierGraphCtrl.add("hierGraphCtrl", map<string, string>());
     dbg.enter(hierGraphCtrl);
 
-    // Register a traceStream for this compHierGraph's hierGraph group, if one has not already been registered
+    // Register a traceStream for this compHierGraph's hierGraph HG_group, if one has not already been registered
     if(!hierGraphApp::isTraceStreamRegistered(g))
       hierGraphApp::registerTraceStream(g, new compHierGraphTraceStream(hierGraphID, this, trace::lines, trace::disjMerge, hierGraphApp::getTraceStreamID(g)));
   }
@@ -1350,36 +1358,36 @@ compHierGraph::~compHierGraph() {
   if(!isDerived) setTraceCtxt();
 }
 
-// Sets the traceCtxt map, which contains the context attributes to be used in this hierGraph's measurements 
-// by combining the context provided by the classes that this object derives from with its own unique 
-// context attributes.
+// Sets the traceCtxt map, which contains the HG_context attributes to be used in this hierGraph's measurements 
+// by combining the HG_context provided by the classes that this object derives from with its own unique 
+// HG_context attributes.
 void compHierGraph::setTraceCtxt() {
   // Initialize traceCtxt with the information from hierGraph
   hierGraph::setTraceCtxt();
 
   traceCtxt["compHierGraph:isReference"] = attrValue((long)isReference);
   
-  // Add all the options to the context
+  // Add all the options to the HG_context
   for(map<std::string, attrValue>::const_iterator o=options.getCfg().begin(); o!=options.getCfg().end(); o++)
     traceCtxt[encodeCtxtName("compHierGraph", "option", "0", o->first)] = o->second;
 }
 
-// Sets the isReference flag to indicate whether this is a reference instance of this compHierGraph or not
+// Sets the isReference flag to indicate whether this is a reference HG_instance of this compHierGraph or not
 void compHierGraph::setIsReference(bool newVal) {
   isReference = newVal;
 }
 
-// Sets the context of the given option
+// Sets the HG_context of the given option
 void compHierGraph::setOptionCtxt(std::string name, attrValue val) {
   options.configuration[name] = val;
 }
    
 
-// Sets the context of the given output port. This variant ensures that the outputs of compHierGraphs can only
-// be set with compContexts.
-void compHierGraph::setOutCtxt(int idx, const compContext& c) {
+// Sets the HG_context of the given output HG_port. This variant ensures that the outputs of compHierGraphs can only
+// be set with HG_compContexts.
+void compHierGraph::setOutCtxt(int idx, const HG_compContext& c) {
   if(!props->active) return;
-  hierGraph::setOutCtxt(idx, (const context&)c);
+  hierGraph::setOutCtxt(idx, (const HG_context&)c);
 }
 
 // -------------------------
@@ -1421,11 +1429,11 @@ springHierGraphApp::springHierGraphApp(const std::string& appName, const attrOp&
     compHierGraphApp(appName, props)
 { init(); }
 
-springHierGraphApp::springHierGraphApp(const std::string& appName,                        const compNamedMeasures& cMeas, properties* props) :
+springHierGraphApp::springHierGraphApp(const std::string& appName,                        const HG_compNamedMeasures& cMeas, properties* props) :
     compHierGraphApp(appName, props)
 { init(); }
 
-springHierGraphApp::springHierGraphApp(const std::string& appName, const attrOp& onoffOp, const compNamedMeasures& cMeas, properties* props)  :
+springHierGraphApp::springHierGraphApp(const std::string& appName, const attrOp& onoffOp, const HG_compNamedMeasures& cMeas, properties* props)  :
     compHierGraphApp(appName, props)
 { init(); }
 
@@ -1552,37 +1560,37 @@ springHierGraphApp::~springHierGraphApp() {
  ***** springHierGraph *****
  ************************/
 
-springHierGraph::springHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs,
-                       const context& options,
+springHierGraph::springHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs, std::vector<HG_port>& externalOutputs,
+                       const HG_context& options,
                                                                          properties* props) :
-          compHierGraph(inst, inputs, externalOutputs, isSpringReference(), extendOptions(options), compNamedMeasures(), props)
+          compHierGraph(inst, HG_inputs, externalOutputs, isSpringReference(), extendOptions(options), HG_compNamedMeasures(), props)
 { 
 /*springHierGraphApp* app = springHierGraphApp::getInstance();
 if(app->bufSize>0) { cout << "bufSize="<<app->bufSize<<" sleep("<<(log(app->bufSize)/log(10))<<")"<<endl; sleep(log(app->bufSize)/log(10)); }*/
 }
 
-springHierGraph::springHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs,
-                       const context& options,
+springHierGraph::springHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs, std::vector<HG_port>& externalOutputs,
+                       const HG_context& options,
                        const attrOp& onoffOp,                            properties* props) :
-          compHierGraph(inst, inputs, externalOutputs, isSpringReference(), extendOptions(options), onoffOp, compNamedMeasures(), props)
+          compHierGraph(inst, HG_inputs, externalOutputs, isSpringReference(), extendOptions(options), onoffOp, HG_compNamedMeasures(), props)
 { 
 /*springHierGraphApp* app = springHierGraphApp::getInstance();
 if(app->bufSize>0) { cout << "bufSize="<<app->bufSize<<" sleep("<<(log(app->bufSize)/log(10))<<")"<<endl; sleep(log(app->bufSize)/log(10)); }*/
 }
 
-springHierGraph::springHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs,
-                       const context& options,
-                                              const compNamedMeasures& cMeas, properties* props) :
-          compHierGraph(inst, inputs, externalOutputs, isSpringReference(), extendOptions(options), cMeas, props)
+springHierGraph::springHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs, std::vector<HG_port>& externalOutputs,
+                       const HG_context& options,
+                                              const HG_compNamedMeasures& cMeas, properties* props) :
+          compHierGraph(inst, HG_inputs, externalOutputs, isSpringReference(), extendOptions(options), cMeas, props)
 { 
 /*springHierGraphApp* app = springHierGraphApp::getInstance();
 if(app->bufSize>0) { cout << "bufSize="<<app->bufSize<<" sleep("<<(log(app->bufSize)/log(10))<<")"<<endl; sleep(log(app->bufSize)/log(10)); }*/
 }
 
-springHierGraph::springHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs,
-                       const context& options,
-                       const attrOp& onoffOp, const compNamedMeasures& cMeas, properties* props) :
-          compHierGraph(inst, inputs, externalOutputs, isSpringReference(), extendOptions(options), cMeas, props)
+springHierGraph::springHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs, std::vector<HG_port>& externalOutputs,
+                       const HG_context& options,
+                       const attrOp& onoffOp, const HG_compNamedMeasures& cMeas, properties* props) :
+          compHierGraph(inst, HG_inputs, externalOutputs, isSpringReference(), extendOptions(options), cMeas, props)
 { 
 /*springHierGraphApp* app = springHierGraphApp::getInstance();
 if(app->bufSize>0) { cout << "bufSize="<<app->bufSize<<" sleep("<<(log(app->bufSize)/log(10))<<")"<<endl; sleep(log(app->bufSize)/log(10)); }*/
@@ -1594,8 +1602,8 @@ bool springHierGraph::isSpringReference() {
   else    return false;
 }
 
-context springHierGraph::extendOptions(const context& options) {
-  context extendedO = options;
+HG_context springHierGraph::extendOptions(const HG_context& options) {
+  HG_context extendedO = options;
   springHierGraphApp* app = springHierGraphApp::getInstance();
   if(app) {
     extendedO.configuration["Spring:bufSize"] = attrValue(app->bufSize);
@@ -1618,41 +1626,41 @@ springHierGraph::~springHierGraph() {
   assert(!destroyed);
 }
 
-// Returns the context attributes to be used in this hierGraph's measurements by combining the context provided by the classes
-// that this object derives from with its own unique context attributes.
-/*std::map<std::string, attrValue> springHierGraph::getTraceCtxt(const std::vector<port>& inputs, bool isReference, const context& options)
+// Returns the HG_context attributes to be used in this hierGraph's measurements by combining the HG_context provided by the classes
+// that this object derives from with its own unique HG_context attributes.
+/*std::map<std::string, attrValue> springHierGraph::getTraceCtxt(const std::vector<HG_port>& HG_inputs, bool isReference, const HG_context& options)
 { return compHierGraph::getTraceCtxt(ins, isReference, options); }*/
 
 /***************************
  ***** processedHierGraph *****
  ***************************/
 
-processedHierGraph::processedHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+processedHierGraph::processedHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs, std::vector<HG_port>& externalOutputs, 
                        const processedTrace::commands& processorCommands,
                                                                          properties* props) :
-          hierGraph(inst, inputs, externalOutputs, props),           processorCommands(processorCommands)
+          hierGraph(inst, HG_inputs, externalOutputs, props),           processorCommands(processorCommands)
 { init(props); }
 
-processedHierGraph::processedHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+processedHierGraph::processedHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs, std::vector<HG_port>& externalOutputs, 
                        const processedTrace::commands& processorCommands, 
                        const attrOp& onoffOp,                            properties* props) :
-          hierGraph(inst, inputs, externalOutputs, props),       processorCommands(processorCommands)
+          hierGraph(inst, HG_inputs, externalOutputs, props),       processorCommands(processorCommands)
 { init(props); }
 
-processedHierGraph::processedHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+processedHierGraph::processedHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs, std::vector<HG_port>& externalOutputs, 
                        const processedTrace::commands& processorCommands, 
                                               const namedMeasures& meas, properties* props) :
-          hierGraph(inst, inputs, externalOutputs, meas, props),     processorCommands(processorCommands)
+          hierGraph(inst, HG_inputs, externalOutputs, meas, props),     processorCommands(processorCommands)
 { init(props); }
 
-processedHierGraph::processedHierGraph(const instance& inst, const std::vector<port>& inputs, std::vector<port>& externalOutputs, 
+processedHierGraph::processedHierGraph(const HG_instance& inst, const std::vector<HG_port>& HG_inputs, std::vector<HG_port>& externalOutputs, 
                        const processedTrace::commands& processorCommands, 
                        const attrOp& onoffOp, const namedMeasures& meas, properties* props) : 
-          hierGraph(inst, inputs, externalOutputs, meas, props), processorCommands(processorCommands)
+          hierGraph(inst, HG_inputs, externalOutputs, meas, props), processorCommands(processorCommands)
 { init(props); }
 
 /* // Sets the properties of this object
-hierGraph::derivInfo* processedHierGraph::setProperties(const instance& inst, const processedTrace::commands& processorCommands, const attrOp* onoffOp, properties* props) {
+hierGraph::derivInfo* processedHierGraph::setProperties(const HG_instance& inst, const processedTrace::commands& processorCommands, const attrOp* onoffOp, properties* props) {
 / *  if(deriv==NULL) {
     deriv = new derivInfo();
   }
@@ -1677,7 +1685,7 @@ hierGraph::derivInfo* processedHierGraph::setProperties(const instance& inst, co
 }*/ 
 
 void processedHierGraph::init(properties* props) {
-  isDerived = props!=NULL; // This is an instance of an object that derives from hierGraph if its constructor sets deriv to non-NULL
+  isDerived = props!=NULL; // This is an HG_instance of an object that derives from hierGraph if its constructor sets deriv to non-NULL
 }
 
 // Directly calls the destructor of this object. This is necessary because when an application crashes
@@ -1693,18 +1701,18 @@ void processedHierGraph::destroy() {
 processedHierGraph::~processedHierGraph() {
   assert(!destroyed);
   
-  // If this is an instance of processedHierGraph rather than a class that derives from processedHierGraph
+  // If this is an HG_instance of processedHierGraph rather than a class that derives from processedHierGraph
   if(props->active) {
-    // Register a traceStream for this processedHierGraph's hierGraph group, if one has not already been registered
+    // Register a traceStream for this processedHierGraph's hierGraph HG_group, if one has not already been registered
     if(!hierGraphApp::isTraceStreamRegistered(g))
       hierGraphApp::registerTraceStream(g, new processedHierGraphTraceStream(hierGraphID, this, trace::lines, trace::disjMerge, hierGraphApp::getTraceStreamID(g)));
   }
 }
 
-// Returns the context attributes to be used in this hierGraph's measurements by combining the context provided by the classes
-// that this object derives from with its own unique context attributes.
-/*std::map<std::string, attrValue> processedHierGraph::getTraceCtxt(const std::vector<port>& inputs)
-{ return hierGraph::getTraceCtxt(inputs); }*/
+// Returns the HG_context attributes to be used in this hierGraph's measurements by combining the HG_context provided by the classes
+// that this object derives from with its own unique HG_context attributes.
+/*std::map<std::string, attrValue> processedHierGraph::getTraceCtxt(const std::vector<HG_port>& HG_inputs)
+{ return hierGraph::getTraceCtxt(HG_inputs); }*/
 
 /*****************************
  ***** hierGraphTraceStream *****
@@ -1762,7 +1770,7 @@ properties* compHierGraphTraceStream::setProperties(int hierGraphID,
   if(props->active && props->emitTag) {
     map<string, string> pMap;// = cm->options.getProperties("op");
     
-    // Record the number of inputs and outputs of this compHierGraph. This repeats the same attributes in hierGraphTS but 
+    // Record the number of HG_inputs and outputs of this compHierGraph. This repeats the same attributes in hierGraphTS but 
     // it is easier let both hierGraphTS and compHierGraphTS to have their own than to allow functions of compHierGraphTS
     // access to properties of hierGraphTS.
     pMap["numInputs"]  = txt()<<cm->numInputs(); 
@@ -1771,9 +1779,9 @@ properties* compHierGraphTraceStream::setProperties(int hierGraphID,
     //cout << "compHierGraphTraceStream::setProperties() #ins="<<cm->ins.size()<<endl;
     // Add the comparators to be used for each input attribute, where they are provided
     for(int inIdx=0; inIdx<cm->ins.size(); inIdx++) {
-      // If the context specified for this input is a compContext
-      compContext* ctxt = dynamic_cast<compContext*>(cm->ins[inIdx].ctxt);
-      // Skip inputs for which a compContext was not provided
+      // If the HG_context specified for this input is a HG_compContext
+      HG_compContext* ctxt = dynamic_cast<HG_compContext*>(cm->ins[inIdx].ctxt);
+      // Skip HG_inputs for which a HG_compContext was not provided
       //cout << "ctxt="<<ctxt<<endl;
       if(!ctxt) {
         pMap[txt()<<"in"<<inIdx<<":numAttrs"] = "0";
@@ -1792,13 +1800,13 @@ properties* compHierGraphTraceStream::setProperties(int hierGraphID,
     // Add the comparators to be used for each output attribute
     for(int outIdx=0; outIdx<cm->outs.size(); outIdx++) {
       //if(o->ctxt==NULL) { cerr << "ERROR in hierGraph "<<hierGraphID<<"! Context of output "<<outIdx<<" not provided!"<<endl; assert(0); }
-      // Skip outputs for which contexts were not provided
+      // Skip outputs for which HG_contexts were not provided
       if(cm->outs[outIdx].ctxt==NULL) {
         pMap[txt()<<"out"<<outIdx<<":numAttrs"] = "0";
         continue;
       }
       
-      compContext* ctxt = dynamic_cast<compContext*>(cm->outs[outIdx].ctxt);
+      HG_compContext* ctxt = dynamic_cast<HG_compContext*>(cm->outs[outIdx].ctxt);
       assert(ctxt);
       pMap[txt()<<"out"<<outIdx<<":numAttrs"] = txt()<<ctxt->comparators.size();
       int compIdx=0;
@@ -1974,7 +1982,7 @@ properties* HierGraphAppMerger::setProperties(std::vector<std::pair<properties::
   return props;
 }
 
-// Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+// Sets a list of strings that denotes a unique ID according to which HG_instances of this merger's 
 // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info,
@@ -2025,7 +2033,7 @@ properties* HierGraphAppStructureMerger::setProperties(std::vector<std::pair<pro
   return props;
 }
 
-// Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+// Sets a list of strings that denotes a unique ID according to which HG_instances of this merger's 
 // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info,
@@ -2077,19 +2085,19 @@ properties* HierGraphMerger::setProperties(std::vector<std::pair<properties::tag
     pMap["numInputs"]  = getSameValue(tags, "numInputs");
     pMap["numOutputs"] = getSameValue(tags, "numOutputs");
 
-    group g = ((HierGraphStreamRecord*)(outStreamRecords)["hierGraph"])->enterHierGraph(
-                           instance(pMap["name"], attrValue::parseInt(pMap["numInputs"]), attrValue::parseInt(pMap["numOutputs"])));
+    HG_group g = ((HierGraphStreamRecord*)(outStreamRecords)["hierGraph"])->enterHierGraph(
+                           HG_instance(pMap["name"], attrValue::parseInt(pMap["numInputs"]), attrValue::parseInt(pMap["numOutputs"])));
 
     // If this is a hierGraph tag, which is placed at the end of the hierGraphApp and records information
     // about the hierGraph's execution
     if(*names.begin() == "hierGraph") {
-      // Record for every incoming stream that we've entered the given hierGraph instance, making sure that the 
-      // hierGraph group along every incoming stream is the same
-      /*group g = HierGraphStreamRecord::enterHierGraph(
-                           instance(pMap["name"], attrValue::parseInt(pMap["numInputs"]), attrValue::parseInt(pMap["numOutputs"])),
+      // Record for every incoming stream that we've entered the given hierGraph HG_instance, making sure that the 
+      // hierGraph HG_group along every incoming stream is the same
+      /*HG_group g = HierGraphStreamRecord::enterHierGraph(
+                           HG_instance(pMap["name"], attrValue::parseInt(pMap["numInputs"]), attrValue::parseInt(pMap["numOutputs"])),
                            inStreamRecords);*/
       
-      // We must have previously assigned a streamID in the outgoing stream to this hierGraph group
+      // We must have previously assigned a streamID in the outgoing stream to this hierGraph HG_group
       assert(((HierGraphStreamRecord*)(outStreamRecords)["hierGraph"])->isHierGraphObserved(g));
       pMap["hierGraphID"] = txt() << ((HierGraphStreamRecord*)(outStreamRecords)["hierGraph"])->getHierGraphID(g);
       //pMap["hierGraphID"] = txt()<<streamRecord::mergeIDs("hierGraph", "hierGraphID", pMap, tags, outStreamRecords, inStreamRecords);
@@ -2101,12 +2109,12 @@ properties* HierGraphMerger::setProperties(std::vector<std::pair<properties::tag
       // Merge the IDs of the traceStreams associated with these hierGraphs
 //      pMap["traceID"] = txt()<<streamRecord::mergeIDs("traceStream", "traceID", pMap, tags, outStreamRecords, inStreamRecords);
       
-      // Record for every incoming stream that we've entered the given hierGraph instance, making sure that the 
-      // hierGraph group along every incoming stream is the same
-      /*group g = HierGraphStreamRecord::enterHierGraph(
-                           instance(pMap["name"], attrValue::parseInt(pMap["numInputs"]), attrValue::parseInt(pMap["numOutputs"])),
+      // Record for every incoming stream that we've entered the given hierGraph HG_instance, making sure that the 
+      // hierGraph HG_group along every incoming stream is the same
+      /*HG_group g = HierGraphStreamRecord::enterHierGraph(
+                           HG_instance(pMap["name"], attrValue::parseInt(pMap["numInputs"]), attrValue::parseInt(pMap["numOutputs"])),
                             inStreamRecords);*/
-      // The variants must have the same name and numbers of inputs and outputs
+      // The variants must have the same name and numbers of HG_inputs and outputs
       
       props->add("hierGraphMarker", pMap);
     }
@@ -2127,7 +2135,7 @@ properties* HierGraphMerger::setProperties(std::vector<std::pair<properties::tag
   return props;
 }
 
-// Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+// Sets a list of strings that denotes a unique ID according to which HG_instances of this merger's 
 // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info,
@@ -2189,7 +2197,7 @@ properties* HierGraphCtrlMerger::setProperties(std::vector<std::pair<properties:
   return props;
 }
 
-// Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+// Sets a list of strings that denotes a unique ID according to which HG_instances of this merger's 
 // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info,
@@ -2243,7 +2251,7 @@ properties* HierGraphEdgeMerger::setProperties(std::vector<std::pair<properties:
     //int toNodeID = HierGraphStreamRecord::mergeNodeIDs("toCID", pMap, tags, outStreamRecords, inStreamRecords);
     pMap["toCID"] = txt() << toNodeID;
     
-    // The variants must connect the same port indexes with the same types (input/output)
+    // The variants must connect the same HG_port indexes with the same types (input/output)
     vector<string> fromT = getValues(tags, "fromT");
     assert(allSame<string>(fromT));
     pMap["fromT"] = *fromT.begin();
@@ -2260,8 +2268,8 @@ properties* HierGraphEdgeMerger::setProperties(std::vector<std::pair<properties:
     assert(allSame<string>(toP));
     pMap["toP"] = *toP.begin();
     
-    // Compute the average of the fraction of times we entered this edge's source hierGraph group and then took
-    // this edge, weighted by the number of times we enter the source hierGraph group within each incoming stream.
+    // Compute the average of the fraction of times we entered this edge's source hierGraph HG_group and then took
+    // this edge, weighted by the number of times we enter the source hierGraph HG_group within each incoming stream.
     std::vector<long> fromCount = str2int  (getValues(tags, "fromCount"));
     std::vector<double> prob    = str2float(getValues(tags, "prob"));
     assert(fromCount.size() == prob.size());
@@ -2283,7 +2291,7 @@ properties* HierGraphEdgeMerger::setProperties(std::vector<std::pair<properties:
   return props;
 }
 
-// Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+// Sets a list of strings that denotes a unique ID according to which HG_instances of this merger's 
 // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info,
@@ -2307,7 +2315,7 @@ void HierGraphEdgeMerger::mergeKey(properties::tagType type, properties::iterato
     streamID outToSID = inStreamRecords["hierGraph"]->in2outID(inToSID);
     info.add(txt()<<outToSID.ID);
     
-    // Edges between different port numbers/types are separated
+    // Edges between different HG_port numbers/types are separated
     info.add(tag.get("fromT"));
     info.add(tag.get("fromP"));
     info.add(tag.get("toT"));
@@ -2337,7 +2345,7 @@ HierGraphTraceStreamMerger::HierGraphTraceStreamMerger(
                                         hierGraphTSIter.getInt("numOutputs"));
     
     cout << "< ((HierGraphStreamRecord*)outStreamRecords[\"hierGraph\"])->observedHierGraphs (#"<<(((HierGraphStreamRecord*)outStreamRecords["hierGraph"])->observedHierGraphs.size())<<")="<<endl;
-    for(map<group, int>::iterator i=((HierGraphStreamRecord*)outStreamRecords["hierGraph"])->observedHierGraphs.begin(); i!=((HierGraphStreamRecord*)outStreamRecords["hierGraph"])->observedHierGraphs.end(); i++)
+    for(map<HG_group, int>::iterator i=((HierGraphStreamRecord*)outStreamRecords["hierGraph"])->observedHierGraphs.begin(); i!=((HierGraphStreamRecord*)outStreamRecords["hierGraph"])->observedHierGraphs.end(); i++)
       cout << "<     "<<i->first.str()<<" : "<<i->second<<endl;
     
     // Record 
@@ -2358,7 +2366,7 @@ HierGraphTraceStreamMerger::HierGraphTraceStreamMerger(
     for(map<HierGraphStreamRecord::hierGraphInfo, int>::iterator i=((HierGraphStreamRefcord*)outStreamRecords["hierGraph"])->observedHierGraphs.begin(); i!=((HierGraphStreamRecord*)outStreamRecords["hierGraph"])->observedHierGraphs.end(); i++)
       cout << ">     "<<i->first.str()<<" : "<<i->second<<endl;*/
     
-    // If in setProperties() we discovered that a hierGraphTS tag has already been emitted for this hierGraph group,
+    // If in setProperties() we discovered that a hierGraphTS tag has already been emitted for this hierGraph HG_group,
     // don't emit another one
     if(getProps().find("hierGraphTS").exists("dontEmit"))
       dontEmit();
@@ -2386,13 +2394,13 @@ properties* HierGraphTraceStreamMerger::setProperties(
     pMap["numInputs"] = getSameValue(tags, "numInputs");
     pMap["numOutputs"] = getSameValue(tags, "numOutputs");
     
-    // Now check to see if the current group on each incoming stream has already been assigned an ID on the
+    // Now check to see if the current HG_group on each incoming stream has already been assigned an ID on the
     // outgoing stream
     /*streamID outSID;
     bool sidAssigned=false; // Records whether the ID on the outgoing stream has been assigned
     for(std::vector<std::map<std::string, streamRecord*> >::iterator in=inStreamRecords.begin(); in!=inStreamRecords.end(); in++) {
       HierGraphStreamRecord* ms = (HierGraphStreamRecord*)(*in)["hierGraph"];
-      group g = ms->getGroup();
+      HG_group g = ms->getGroup();
       if(((HierGraphStreamRecord*)outStreamRecords["hierGraph"])->isHierGraphObserved(g)) {
         if(!sidAssigned) {
           outSID = ms->getHierGraphID(g);
@@ -2402,33 +2410,33 @@ properties* HierGraphTraceStreamMerger::setProperties(
         }
       }
     }*/
-    //group g = HierGraphStreamRecord::getGroup(inStreamRecords);
-    group g = ((HierGraphStreamRecord*)(outStreamRecords)["hierGraph"])->getGroup();
+    //HG_group g = HierGraphStreamRecord::getGroup(inStreamRecords);
+    HG_group g = ((HierGraphStreamRecord*)(outStreamRecords)["hierGraph"])->getGroup();
     int hierGraphID;
     
     // The tags of the traceStream objects along the incoming streams, which are the parent objects of
     // the hierGraphTraceStreams considered in this function.
     std::vector<std::pair<properties::tagType, properties::iterator> > TraceStreamTags = advance(tags);
     
-    // If we've previously assigned a streamID in the outgoing stream to this hierGraph group
+    // If we've previously assigned a streamID in the outgoing stream to this hierGraph HG_group
     if(((HierGraphStreamRecord*)(outStreamRecords)["hierGraph"])->isHierGraphObserved(g)) {
-      // This means that a hierGraphTS tag for this hierGraph group has already been emitted and thus, we will
+      // This means that a hierGraphTS tag for this hierGraph HG_group has already been emitted and thus, we will
       // not be emitting another one.
       // Set the dontEmit field in pMap to communicate this fact to the HierGraphTraceStreamMerger constructor
       pMap["dontEmit"] = "1";
       
       hierGraphID = ((HierGraphStreamRecord*)(outStreamRecords)["hierGraph"])->getHierGraphID(g);
       
-      // We get into this case where the merger cannot align different instances of HierGraphTraceStream,
-      //   causing one instance to appear on one incoming stream before the same HierGraphTraceStream appear
-      //   on another incoming stream. Since we've already chosen the traceID for this hierGraph group,
+      // We get into this case where the merger cannot align different HG_instances of HierGraphTraceStream,
+      //   causing one HG_instance to appear on one incoming stream before the same HierGraphTraceStream appear
+      //   on another incoming stream. Since we've already chosen the traceID for this hierGraph HG_group,
       //   simply retrieve it and and use mergeIDs() to force all the newly-observed HierGraphTraceStreams
       //   to use it.
       // When TraceStreamMerger calls mergeIDs() in TraceStreamMerger::TraceStreamMerger() call right 
       //   after this function ends it will get this traceID.
       int traceID = ((HierGraphStreamRecord*)(outStreamRecords)["hierGraph"])->getHierGraphTraceID(g);
       streamRecord::mergeIDs("traceStream", "traceID", pMap, TraceStreamTags, outStreamRecords, inStreamRecords, traceID);
-    // If we've never previously observed this hierGraph group
+    // If we've never previously observed this hierGraph HG_group
     } else {
       // Generate a fresh ID for all the hierGraphs along the incoming streams
       hierGraphID = ((HierGraphStreamRecord*)(outStreamRecords)["hierGraph"])->genHierGraphID();
@@ -2439,7 +2447,7 @@ properties* HierGraphTraceStreamMerger::setProperties(
       //   after this function ends it will get this traceID.
       int traceID = streamRecord::mergeIDs("traceStream", "traceID", pMap, TraceStreamTags, outStreamRecords, inStreamRecords);
       
-      // Associate the new hierGraphID and traceID with the hierGraph group
+      // Associate the new hierGraphID and traceID with the hierGraph HG_group
       ((HierGraphStreamRecord*)(outStreamRecords)["hierGraph"])->setHierGraphID(g, hierGraphID, traceID);
       
       pMap["hierGraphID"] = txt() << hierGraphID;
@@ -2456,7 +2464,7 @@ properties* HierGraphTraceStreamMerger::setProperties(
 }
 
 
-// Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+// Sets a list of strings that denotes a unique ID according to which HG_instances of this merger's 
 // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
@@ -2466,7 +2474,7 @@ void HierGraphTraceStreamMerger::mergeKey(properties::tagType type, properties::
    
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
-    // We only merge hierGraphNodeTraceStreams that have the same name and numbers of inputs and outputs
+    // We only merge hierGraphNodeTraceStreams that have the same name and numbers of HG_inputs and outputs
     // The same rule is used for their associated hierGraph but since those tags appear later in the stream
     // they're split according to the ID in the outgoing stream that was assigned to them while processing
     // their hierGraphNodeTraceStreams.
@@ -2512,7 +2520,7 @@ properties* CompHierGraphMerger::setProperties(std::vector<std::pair<properties:
     /*int nodeID = streamRecord::mergeIDs("hierGraph", "hierGraphID", pMap, tags, outStreamRecords, inStreamRecords);
     pMap["hierGraphID"] = txt() << nodeID;*/
     
-    // The variants must have the same name and numbers of inputs and outputs
+    // The variants must have the same name and numbers of HG_inputs and outputs
     pMap["compHierGraph:isReference"] = getSameValue(tags, "compHierGraph:isReference");
     
     props->add("compHierGraph", pMap);
@@ -2523,7 +2531,7 @@ properties* CompHierGraphMerger::setProperties(std::vector<std::pair<properties:
   return props;
 }
 
-// Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+// Sets a list of strings that denotes a unique ID according to which HG_instances of this merger's 
 // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info,
@@ -2668,7 +2676,7 @@ cout << "outIdx="<<outIdx<<", compIdx="<<compIdx<<". key="<<key<<": "<<t->second
 }
 
 
-// Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+// Sets a list of strings that denotes a unique ID according to which HG_instances of this merger's 
 // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
@@ -2695,9 +2703,9 @@ void CompHierGraphTraceStreamMerger::mergeKey(properties::tagType type, properti
       info.add(c->second.serialize());
     }*/
     
-    // Same number of inputs
+    // Same number of HG_inputs
     info.add(tag.get("numInputs"));
-    // Same comparators on all inputs. Inputs are not required to have comparators specified for them, so
+    // Same comparators on all HG_inputs. Inputs are not required to have comparators specified for them, so
     // if a given input has no comparators specified we merely make sure that this holds along all incoming streams.
     int numInputs = tag.getInt("numInputs");
     for(int inIdx=0; inIdx<numInputs; inIdx++) {
@@ -2735,27 +2743,27 @@ void CompHierGraphTraceStreamMerger::mergeKey(properties::tagType type, properti
  ***** HierGraphStreamRecord *****
  *****************************/
 
-// Called when a hierGraph is entered/exited along the given stream to record the current hierGraph group
-group HierGraphStreamRecord::enterHierGraph(const instance& inst) { 
+// Called when a hierGraph is entered/exited along the given stream to record the current hierGraph HG_group
+HG_group HierGraphStreamRecord::enterHierGraph(const HG_instance& inst) { 
   iStack.push_back(inst);
   //cout << "<("<<this<<")#iStack = "<<iStack.size()<<", iStack.back()="<<(&(iStack.back()))<<endl;
   return getGroup();
 }
 
-// Record that we've entered the given hierGraph instance on all the given incoming streams
-group HierGraphStreamRecord::enterHierGraph(const instance& inst, const std::vector<std::map<std::string, streamRecord*> >& inStreamRecords) {
-  // Record for every incoming stream that we've entered the given hierGraph instance, making sure that the 
-  // hierGraph group along every incoming stream is the same
-  group g;
+// Record that we've entered the given hierGraph HG_instance on all the given incoming streams
+HG_group HierGraphStreamRecord::enterHierGraph(const HG_instance& inst, const std::vector<std::map<std::string, streamRecord*> >& inStreamRecords) {
+  // Record for every incoming stream that we've entered the given hierGraph HG_instance, making sure that the 
+  // hierGraph HG_group along every incoming stream is the same
+  HG_group g;
   for(std::vector<std::map<std::string, streamRecord*> >::const_iterator in=inStreamRecords.begin(); in!=inStreamRecords.end(); in++) {
     std::map<std::string, streamRecord*>::const_iterator modIter = in->find("hierGraph");
     assert(modIter != in->end());
     HierGraphStreamRecord* ms = (HierGraphStreamRecord*)modIter->second;
-    group curGroup = ms->enterHierGraph(inst);
+    HG_group curGroup = ms->enterHierGraph(inst);
     if(in == inStreamRecords.begin()) 
       g = curGroup;
     else if(g != curGroup)
-    { cerr << "ERROR: Attempting to merge hierGraphs from multiple incoming streams but the hierGraph groups on these streams are not identical!"<<endl; assert(0); }
+    { cerr << "ERROR: Attempting to merge hierGraphs from multiple incoming streams but the hierGraph HG_groups on these streams are not identical!"<<endl; assert(0); }
   }
   return g;
 }
@@ -2766,7 +2774,7 @@ void HierGraphStreamRecord::exitHierGraph() {
   iStack.pop_back();
 }
 
-// Record that we've exited the given hierGraph instance on all the given incoming streams
+// Record that we've exited the given hierGraph HG_instance on all the given incoming streams
 void HierGraphStreamRecord::exitHierGraph(const std::vector<std::map<std::string, streamRecord*> >& inStreamRecords) {
   for(std::vector<std::map<std::string, streamRecord*> >::const_iterator in=inStreamRecords.begin(); in!=inStreamRecords.end(); in++) {
     std::map<std::string, streamRecord*>::const_iterator modIter = in->find("hierGraph");
@@ -2775,14 +2783,14 @@ void HierGraphStreamRecord::exitHierGraph(const std::vector<std::map<std::string
   }
 }
 
-// Returns the group denoted by the current stack of hierGraph instances
-group HierGraphStreamRecord::getGroup()
-{ return group(iStack); }
+// Returns the HG_group denoted by the current stack of hierGraph HG_instances
+HG_group HierGraphStreamRecord::getGroup()
+{ return HG_group(iStack); }
 
-// Returns the group denoted by the current stack of hierGraph instances in all the given incoming streams 
+// Returns the HG_group denoted by the current stack of hierGraph HG_instances in all the given incoming streams 
 // (must be identical on all of them).
-group HierGraphStreamRecord::getGroup(const std::vector<std::map<std::string, streamRecord*> >& inStreamRecords) { 
-  group g;
+HG_group HierGraphStreamRecord::getGroup(const std::vector<std::map<std::string, streamRecord*> >& inStreamRecords) { 
+  HG_group g;
   for(std::vector<std::map<std::string, streamRecord*> >::const_iterator in=inStreamRecords.begin(); in!=inStreamRecords.end(); in++) {
     std::map<std::string, streamRecord*>::const_iterator modIter = in->find("hierGraph");
     assert(modIter != in->end());
@@ -2790,7 +2798,7 @@ group HierGraphStreamRecord::getGroup(const std::vector<std::map<std::string, st
     if(in == inStreamRecords.begin()) 
       g = ms->getGroup();
     else if(ms->getGroup() != g)
-    { cerr << "ERROR: Attempting to merge hierGraphs from multiple incoming streams but the hierGraph groups on these streams are not identical!"<<endl; assert(0); }
+    { cerr << "ERROR: Attempting to merge hierGraphs from multiple incoming streams but the hierGraph HG_groups on these streams are not identical!"<<endl; assert(0); }
   }
   return g;
 }
@@ -2906,7 +2914,7 @@ void HierGraphStreamRecord::resumeFrom(std::vector<std::map<std::string, streamR
     HierGraphStreamRecord* ms = (HierGraphStreamRecord*)(*s)["hierGraph"];
     if(s==streams.begin())
       iStack = ms->iStack;
-    else if(iStack != ms->iStack) { cerr << "ERROR: inconsistent stacks of hierGraph instances along different incoming streams!"<<endl; }
+    else if(iStack != ms->iStack) { cerr << "ERROR: inconsistent stacks of hierGraph HG_instances along different incoming streams!"<<endl; }
   }
   
   // Set observedHierGraphs to be the union of its counterparts in streams
@@ -2920,10 +2928,10 @@ void HierGraphStreamRecord::resumeFrom(std::vector<std::map<std::string, streamR
     for(map<HierGraphStreamRecord::hierGraphInfo, int>::iterator i=ms->observedHierGraphs.begin(); i!=ms->observedHierGraphs.end(); i++)
       cout << "|       "<<i->first.str()<<" : "<<i->second<<endl;*/
     
-    for(map<group, int>::const_iterator i=ms->observedHierGraphs.begin(); i!=ms->observedHierGraphs.end(); i++)
+    for(map<HG_group, int>::const_iterator i=ms->observedHierGraphs.begin(); i!=ms->observedHierGraphs.end(); i++)
       observedHierGraphs.insert(*i);
     
-    for(map<group, int>::const_iterator i=ms->observedHierGraphsTS.begin(); i!=ms->observedHierGraphsTS.end(); i++)
+    for(map<HG_group, int>::const_iterator i=ms->observedHierGraphsTS.begin(); i!=ms->observedHierGraphsTS.end(); i++)
       observedHierGraphsTS.insert(*i);
   }
   
