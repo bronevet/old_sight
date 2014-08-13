@@ -1484,7 +1484,7 @@ void *springHierGraphApp::Interference(void *arg) {
   return &res;*/
 }
 
-long long randomLL() {
+long long HG_randomLL() {
   long long r = 0;
   for (int i = 0; i < sizeof(long long)/sizeof(int); i++)
   {
@@ -1509,7 +1509,7 @@ void springHierGraphApp::init() {
     long long numLL = bufSize / sizeof(long long);
     // Initialize buf with random indexes withiin buf
     for(int i=0; i<numLL; i++) {
-      ((long long*)data)[i] = randomLL() % numLL;
+      ((long long*)data)[i] = HG_randomLL() % numLL;
     }
     
     int ret = pthread_create(&interfThread, NULL, Interference, (void *) this);

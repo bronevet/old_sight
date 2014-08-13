@@ -33,7 +33,7 @@ namespace sight {
 namespace layout {
 
 // Escapes the whitespace in a node's name
-string escapeNodeWhitespace(string s)
+string HG_escapeNodeWhitespace(string s)
 {
   string out;
   for(unsigned int i=0; i<s.length(); i++) {
@@ -44,7 +44,7 @@ string escapeNodeWhitespace(string s)
   return out;
 }
 
-std::string data2str(const map<string, string>& data) {
+std::string HG_data2str(const map<string, string>& data) {
   ostringstream s;
   for(map<string, string>::const_iterator d=data.begin(); d!=data.end(); d++) { cout << d->first << "=>"<<d->second<<" "; }
   return s.str();
@@ -217,11 +217,11 @@ string portName(common::hierGraph::ioT type, int index)
 
 // Given the name of a trace attribute, the string representation of its polynomial fit and a line width 
 // emits to dotFile HTML where line breaks are inserted at approximately every lineWidth characters.
-void printPolyFitStr(ostream& dotFile, std::string traceName, std::string polyFit, unsigned int lineWidth) {
-//void printPolyFitStr(ostream& tFile, std::string traceName, std::string polyFit, unsigned int lineWidth) {
+void HG_printPolyFitStr(ostream& dotFile, std::string traceName, std::string polyFit, unsigned int lineWidth) {
+//void HG_printPolyFitStr(ostream& tFile, std::string traceName, std::string polyFit, unsigned int lineWidth) {
 
   // hoa edit
-  //tFile << "printPolyFitStr"<< endl;
+  //tFile << "HG_printPolyFitStr"<< endl;
   //tFile << "traceName : " << traceName << endl;
 
   unsigned int i=0;
@@ -265,7 +265,7 @@ void printPolyFitStr(ostream& dotFile, std::string traceName, std::string polyFi
 //    index of the output. The prefix argument identifies the types of attributs we'll be making buttons for and
 //    it should be either "measure" or "output".
 // bgColor - The background color of the buttons
-int maxButtonID=0; // The maximum ID that has ever been assigned to a button
+int HG_maxButtonID=0; // The maximum ID that has ever been assigned to a button
 //void hierGraphApp::showButtons(int numInputs, int numOutputs, int ID, std::string prefix, std::string bgColor) {
 //  // Buttons for showing the observation trace plots
 //  //cout << "showButtons("<<numInputs<<", "<<numOutputs<<", #hierGraphs["<<ID<<"]->traceAttrNames="<<hierGraphs[ID]->traceAttrNames.size()<<endl;
@@ -280,7 +280,7 @@ int maxButtonID=0; // The maximum ID that has ever been assigned to a button
 //      //if(ctxtNames[ID].find(i)!=ctxtNames[ID].end()) {
 //        //for(list<string>::iterator c=ctxtNames[ID][i].begin(); c!=ctxtNames[ID][i].end(); c++) {
 //        for(list<string>::iterator c=ctxtGrouping->second.begin(); c!=ctxtGrouping->second.end(); c++) {
-//          int buttonID = maxButtonID; maxButtonID++;
+//          int buttonID = HG_maxButtonID; HG_maxButtonID++;
 //          dotFile << "<TD BGCOLOR=\"#"<<bgColor<<"\"><FONT POINT-SIZE=\"14\">"<<buttonID<<":"<<*t<<"</FONT></TD>";
 //
 //          // Register the command to be executed when this button is clicked
@@ -462,27 +462,27 @@ void hierGraphApp::enterHierGraph(string hierGraphName, int hierGraphID, int num
     vizList.push_back("scatter3d");
 
     // getDisplayJSCmd(contextAttrs, traceAttrs, hostDiv, vizList, inwin, showFresh, showLabels, refreshView)
-    cmd << "registerHierGraphButtonCmd("<<maxButtonID<<", \""<<
+    cmd << "registerHierGraphButtonCmd("<<HG_maxButtonID<<", \""<<
                              hierGraphTraces[hierGraphID]->getDisplayJSCmd(contextAttrs, traceAttrs, "", vizList,true, true, false, true)<<
                            "\");"<<endl;
     vizList.clear();
     vizList.push_back("ccp");
-    cmd << "registerHierGraphButtonCmd("<<(maxButtonID+100)<<", \""<<
+    cmd << "registerHierGraphButtonCmd("<<(HG_maxButtonID+100)<<", \""<<
                                  hierGraphTraces[hierGraphID]->getDisplayJSCmd(contextAttrs, traceAttrs, "", vizList,true, true, false, true)<<
                                "\");"<<endl;
 
     vizList.clear();
 	vizList.push_back("pcp");
-	cmd << "registerHierGraphButtonCmd("<<(maxButtonID+200)<<", \""<<
+	cmd << "registerHierGraphButtonCmd("<<(HG_maxButtonID+200)<<", \""<<
 								 hierGraphTraces[hierGraphID]->getDisplayJSCmd(contextAttrs, traceAttrs, "", vizList,true, true, false, true)<<
 							   "\");"<<endl;
 
     string vizl = "scatter3d:ccp:pcp";
-    //datFile << "nodeid="<< hierGraphID << ",buttonID = " << maxButtonID << ",vizList =" << vizl << endl;
-    datFile << hierGraphID << "," << maxButtonID << "," << vizl << endl;
+    //datFile << "nodeid="<< hierGraphID << ",buttonID = " << HG_maxButtonID << ",vizList =" << vizl << endl;
+    datFile << hierGraphID << "," << HG_maxButtonID << "," << vizl << endl;
 
     /*
-    cmd << "registerHierGraphButtonCmd("<<maxButtonID<<", \""<<
+    cmd << "registerHierGraphButtonCmd("<<HG_maxButtonID<<", \""<<
                              hierGraphTraces[hierGraphID]->getDisplayJSCmd(contextAttrs, traceAttrs, "", trace::scatter3d, true, false, true)<<
                            "\");"<<endl;
     */
@@ -491,7 +491,7 @@ void hierGraphApp::enterHierGraph(string hierGraphName, int hierGraphID, int num
     dotFile << "\t\t<TR><TD";
     if(!entryEmitted) dotFile << " PORT=\"ENTRY\"";
     //if(numInputs + numOutputs > 0) dotFile << " COLSPAN=\""<<(numInputs>numOutputs? numInputs: numOutputs)<<"\"";
-    dotFile << "><FONT POINT-SIZE=\"26\">"<<(maxButtonID++)<<":"<<hierGraphName<<"</FONT></TD></TR>"<<endl;
+    dotFile << "><FONT POINT-SIZE=\"26\">"<<(HG_maxButtonID++)<<":"<<hierGraphName<<"</FONT></TD></TR>"<<endl;
   }
   
   if(numInputs>0) {
@@ -503,7 +503,7 @@ void hierGraphApp::enterHierGraph(string hierGraphName, int hierGraphID, int num
       int i=0; 
       for(set<std::string>::iterator t=hierGraphs[hierGraphID]->traceAttrNames.begin(); t!=hierGraphs[hierGraphID]->traceAttrNames.end(); t++, i++) {
         // If we were able to train a model for the current trace attribute, emit it
-        if(polynomials[i] != "") printPolyFitStr(dotFile, *t, polynomials[i], 80);
+        if(polynomials[i] != "") HG_printPolyFitStr(dotFile, *t, polynomials[i], 80);
       }
         //dotFile << "\t\t<TR><TD>:"<<hierGraphs[hierGraphID]->traceAttrNames[i]<< ": "<<wrapStr(polynomials[i], 50)<<"</TD></TR>"<<endl;
     }*/
@@ -1203,16 +1203,16 @@ void HG_polyFitFilter::observe(int traceID,
                             const std::map<std::string, std::string>& obs,
                             const std::map<std::string, anchor>&      obsAnchor) {
   /*cout << "HG_polyFitFilter::observe() this="<<this<<endl;
-  cout << "ctxt="<<endl<<data2str(ctxt)<<endl;
-  cout << "obs="<<endl<<data2str(obs)<<endl;*/
+  cout << "ctxt="<<endl<<HG_data2str(ctxt)<<endl;
+  cout << "obs="<<endl<<HG_data2str(obs)<<endl;*/
   
   // Determine which context and trace attributes are numeric and 
   // check that all observations have the same numeric context and trace dimensions
   map<string, /*double*/string> numericCtxt  = getNumericAttrs(ctxt, numericCtxtNames,  "context");
   map<string, /*double*/string> numericTrace = getNumericAttrs(obs,  numericTraceNames, "trace");
   
-  /*cout << "numericCtxt="<<endl<<data2str(numericCtxt)<<endl;
-  cout << "numericTrace="<<endl<<data2str(numericTrace)<<endl;
+  /*cout << "numericCtxt="<<endl<<HG_data2str(numericCtxt)<<endl;
+  cout << "numericTrace="<<endl<<HG_data2str(numericTrace)<<endl;
   
   cout << "#numericCtxtNames="<<numericCtxtNames.size()<<", #numericTraceNames="<<numericTraceNames.size()<<endl;*/
   
@@ -1324,8 +1324,8 @@ void HG_polyFitFilter::obsFinished() {
     std::list<std::map<std::string, std::string> >::iterator dt = dataTrace.begin();
     
     for(; dc!=dataCtxt.end(); dt++, dc++) {
-      /*cout << "dc="<<endl<<data2str(*dc)<<endl;
-      cout << "dt="<<endl<<data2str(*dt)<<endl;*/
+      /*cout << "dc="<<endl<<HG_data2str(*dc)<<endl;
+      cout << "dt="<<endl<<HG_data2str(*dt)<<endl;*/
     
       // If this is the first pass through data
       if(t==numericTraceNames.begin()) {
@@ -1846,7 +1846,7 @@ std::map<std::string, attrValue> compHierGraph::deserializeObs(const std::map<st
 }
 
 // Given a map, returns the same map with the given key removed
-map<string, string> remKey(const map<string, string>& m, std::string key) {
+map<string, string> HG_remKey(const map<string, string>& m, std::string key) {
   map<string, string> m2 = m;
   m2.erase(key);
   return m2;
@@ -1914,10 +1914,10 @@ void compHierGraph::observe(int traceID,
   if(isReference.getInt()) {
     // There can only be one such observation for a given input context
     if(referenceObs.find(inputCtxt) != referenceObs.end())
-    { cerr << "Multiple instances of hierGraph are declared to be reference!\nctxt=\n"<<data2str(ctxt)<<"\nobs="<<data2str(obs)<<endl; assert(0); }
+    { cerr << "Multiple instances of hierGraph are declared to be reference!\nctxt=\n"<<HG_data2str(ctxt)<<"\nobs="<<HG_data2str(obs)<<endl; assert(0); }
     
     // Store the observation in referenceCtxt/referenceObs, converting the observed values from strings to attrValues
-    referenceCtxt[inputCtxt] = deserializeObs(remKey(ctxt, "compHierGraph:isReference"));
+    referenceCtxt[inputCtxt] = deserializeObs(HG_remKey(ctxt, "compHierGraph:isReference"));
     referenceObs[inputCtxt]  = deserializeObs(obs);
     
     //cout << "comparisonObs.find(inputCtxt) = "<<(comparisonObs.find(inputCtxt) != comparisonObs.end())<<endl;
@@ -1953,7 +1953,7 @@ void compHierGraph::observe(int traceID,
   } else {
     // If we've already observed the reference observation for the current input context
     if(referenceObs.find(inputCtxt) != referenceObs.end()) {
-      map<string, string> ctxtRelation = compareObservations(deserializeObs(remKey(ctxt, "compHierGraph:isReference")), referenceCtxt[inputCtxt]);
+      map<string, string> ctxtRelation = compareObservations(deserializeObs(HG_remKey(ctxt, "compHierGraph:isReference")), referenceCtxt[inputCtxt]);
       map<string, string> obsRelation  = compareObservations(deserializeObs(obs), referenceObs[inputCtxt]);
       
       // Compare this observation to the reference and emit the result to the observe method of the parent class
@@ -1962,7 +1962,7 @@ void compHierGraph::observe(int traceID,
     } else {
       // Store the observation in comparisonObs, converting the observed values from strings to attrValues
       comparisonObs[inputCtxt].push_back(deserializeObs(obs));
-      comparisonCtxt[inputCtxt].push_back(deserializeObs(remKey(ctxt, "compHierGraph:isReference")));
+      comparisonCtxt[inputCtxt].push_back(deserializeObs(HG_remKey(ctxt, "compHierGraph:isReference")));
     }
   }
 }

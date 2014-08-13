@@ -44,7 +44,7 @@ ifeq (${OS}, Cygwin)
 EXE := .exe
 endif
 
-all: core allExamples
+all: core allExamples cdexample
 	
 core: sightDefines.pl gdbLineNum.pl Makefile.extern definitions.h maketools libsight_common.a libsight_structure.so slayout${EXE} libsight_layout.so hier_merge${EXE} widgets_post script/taffydb 
 	chmod 755 html img script
@@ -252,10 +252,10 @@ definitions.h: initDefinitionsH
 	chmod 755 initDefinitionsH
 	./initDefinitionsH ${RAPL_ENABLED}
 
-cdexample: cdprofiler
+cdexample: cdexample
 	wget --no-check-certificate https://bitbucket.org/kyushick/cdprofiler/get/master.zip
 	unzip master.zip
-	mv *cdprofiler* ./../cdprofiler
+	mv *cdprofiler* cdexample
 	rm master.zip
 
 clean:
