@@ -792,7 +792,7 @@ class TraceMerger : public BlockMerger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
+                       const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
 }; // class TraceMerger
 
 class TraceStreamMerger : public Merger {
@@ -819,7 +819,7 @@ class TraceStreamMerger : public Merger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
+                       const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
 }; // class TraceStreamMerger
 
 class ProcessedTraceStreamMerger : public TraceMerger {
@@ -846,7 +846,7 @@ class ProcessedTraceStreamMerger : public TraceMerger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
+                       const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
 }; // class ProcessedTraceStreamMerger
 
 class TraceObsMerger : public Merger {
@@ -867,7 +867,7 @@ class TraceObsMerger : public Merger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
+                       const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
 }; // class TraceObsMerger
 
 class TraceStreamRecord: public streamRecord {

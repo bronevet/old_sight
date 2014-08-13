@@ -173,7 +173,7 @@ properties* ScopeMerger::setProperties(std::vector<std::pair<properties::tagType
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info,
 void ScopeMerger::mergeKey(properties::tagType type, properties::iterator tag, 
-                           std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+                           const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
   BlockMerger::mergeKey(type, tag.next(), inStreamRecords, info);
 }
 

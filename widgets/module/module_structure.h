@@ -1210,7 +1210,7 @@ class ModularAppMerger : public BlockMerger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info,
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
+                       const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
 }; // class ModularAppMerger
 
 class ModularAppStructureMerger : public Merger {
@@ -1237,7 +1237,7 @@ class ModularAppStructureMerger : public Merger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info,
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
+                       const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
 }; // class ModularAppStructureMerger
 
 class ModuleMerger : public Merger {
@@ -1264,7 +1264,7 @@ class ModuleMerger : public Merger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info,
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
+                       const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
   
 }; // class ModuleMerger
 
@@ -1292,7 +1292,7 @@ class ModuleCtrlMerger : public Merger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info,
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
+                       const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
   
 }; // class ModuleCtrlMerger
 
@@ -1320,7 +1320,7 @@ class ModuleEdgeMerger : public Merger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info,
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
+                       const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
 }; // class ModuleEdgeMerger
 
 class ModuleTraceStreamMerger : public TraceStreamMerger {
@@ -1347,7 +1347,7 @@ class ModuleTraceStreamMerger : public TraceStreamMerger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
+                       const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
 }; // class ModuleTraceStreamMerger
 
 class CompModuleMerger : public ModuleMerger {
@@ -1374,7 +1374,7 @@ class CompModuleMerger : public ModuleMerger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info,
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
+                       const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
 }; // class CompModuleMerger
 
 class CompModuleTraceStreamMerger : public ModuleTraceStreamMerger {
@@ -1401,7 +1401,7 @@ class CompModuleTraceStreamMerger : public ModuleTraceStreamMerger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
+                       const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
 }; // class CompModuleTraceStreamMerger
 
 class ModuleStreamRecord: public streamRecord {

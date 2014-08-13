@@ -491,26 +491,48 @@ class Merger;
  */
 class MergeInfo {
   public:
-  typedef std::list<std::string> mergeKey;
+  typedef std::list<attrValue> mergeKey;
+  // Identifies the way in which this tag should be merged with others
+  //   align: Tags with matching keys should be aligned and tags that align should be merged and emitted as one.
+  //          When no alignment is possible, the merge should show the different non-alignable tags as variants.
+  //   interleave: Tags of this type are not directly comparable and must thus be interleaved in the outgoing
+  //          stream with no attempt made to align them.
+  typedef enum {align, interleave} mergeKindT;
   
   private:
   mergeKey key;
   bool universal;
+  mergeKindT mergeKind;
 
   public:  
-  MergeInfo() : universal(false) {}
+  MergeInfo() : universal(false), mergeKind(align) {}
+  MergeInfo(mergeKindT mergeKind) : universal(false), mergeKind(mergeKind) {}
   
-  void add(std::string subKey) { key.push_back(subKey); }
   void setUniversal(bool newVal=true) { universal = universal || newVal; }
   bool getUniversal() const { return universal; }
+  
+  void setMergeKind(mergeKindT newMergeKind) { mergeKind = newMergeKind; }
+  mergeKindT getMergeKind() { return mergeKind; }
+  
+  void add(const attrValue& subKey) { key.push_back(subKey); }
   const mergeKey& getKey() const { return key; }
+  
+  bool operator==(const MergeInfo& that) const
+  { return key==that.key && universal==that.universal && mergeKind==that.mergeKind; }
+  
+  bool operator<(const MergeInfo& that) const
+  { return (key< that.key) ||
+           (key==that.key && universal< that.universal) ||
+           (key==that.key && universal==that.universal && mergeKind<that.mergeKind); }
 
   std::string str() const {
     std::ostringstream s;
-    s << "[MergeInfo: universal="<<universal<<", key=[";
-    for(std::list<std::string>::const_iterator k=key.begin(); k!=key.end(); k++) {
+    s << "[MergeInfo: universal="<<universal<<", ";
+    s << "mergeKind="<<(mergeKind==align?"align":(mergeKind==interleave?"interleave":"???"))<<", ";
+    s << "key=[";
+    for(std::list<attrValue>::const_iterator k=key.begin(); k!=key.end(); k++) {
       if(k!=key.begin()) s << ", ";
-      s << *k;
+      s << k->getAsStr();
     }
     s << "]]";
     return s.str();
@@ -524,7 +546,7 @@ typedef sight::structure::Merger* (*MergeHandler)(
                                        properties* props);
 typedef void (*MergeKeyHandler)(properties::tagType type,
                                 properties::iterator tag, 
-                                std::map<std::string, streamRecord*>& inStreamRecords,
+                                const std::map<std::string, streamRecord*>& inStreamRecords,
                                 MergeInfo& info);
 // Returns a mapping from the names of objects for which records are kept by a given code module to the freshly-allocated 
 // streamRecord objects that keep their records. The records are specialized with the given stream ID.
@@ -637,6 +659,13 @@ class streamRecord : public printable {
   // Given multiple streamRecords from several variants of the same outgoing stream, update this streamRecord object
   // to contain the state that succeeds them all, making it possible to resume processing
   virtual void resumeFrom(std::vector<std::map<std::string, streamRecord*> >& streams);
+    
+  // Wrapper for resumeFrom that specializes in resuming from a single stream
+  void resumeFrom(const std::map<std::string, streamRecord*>& stream) { 
+    std::vector<std::map<std::string, streamRecord*> > streams;
+    streams.push_back(stream);
+    resumeFrom(streams);
+  }
   
   std::string str(std::string indent="") const;
 }; // streamRecord
@@ -696,7 +725,7 @@ class Merger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
+                       const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
     
   // Given a vector of tag properties, returns whether the given key exists in all tags
   bool keyExists(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags, std::string key);
@@ -791,7 +820,7 @@ class TextMerger : public Merger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+                       const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
     Merger::mergeKey(type, tag.next(), inStreamRecords, info);
   }
 }; // class TextMerger
@@ -938,7 +967,7 @@ class LinkMerger : public Merger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) { 
+                       const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) { 
     Merger::mergeKey(type, tag.next(), inStreamRecords, info);
   }
 }; // class LinkMerger
@@ -1078,7 +1107,7 @@ class BlockMerger : public Merger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
+                       const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
 }; // class BlockMerger
 
 class BlockStreamRecord: public streamRecord {
@@ -1337,7 +1366,7 @@ class dbgStreamMerger : public Merger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) { 
+                       const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) { 
     Merger::mergeKey(type, tag.next(), inStreamRecords, info);
   }
 };
@@ -1430,7 +1459,7 @@ class IndentMerger : public Merger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+                       const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
     Merger::mergeKey(type, tag.next(), inStreamRecords, info);
   }
 }; // class IndentMerger
@@ -1477,7 +1506,7 @@ class ComparisonMerger : public Merger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
+                       const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
 }; // class ComparisonMerger
 
 // When we have multiple logs that are part of a single application it is often useful
@@ -1543,7 +1572,7 @@ class UniqueMarkMerger : public BlockMerger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info,
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
+                       const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
 }; // class UniqueMarkMerger
 
 // Wrapper of the printf function that emits text to the dbg stream

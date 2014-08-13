@@ -303,7 +303,7 @@ properties* TimeClockMerger::setProperties(std::vector<std::pair<properties::tag
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
 void TimeClockMerger::mergeKey(properties::tagType type, properties::iterator tag, 
-                           std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+                           const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
   properties::iterator blockTag = tag;
     
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
@@ -366,7 +366,7 @@ properties* StepClockMerger::setProperties(std::vector<std::pair<properties::tag
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
 void StepClockMerger::mergeKey(properties::tagType type, properties::iterator tag, 
-                               std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+                               const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
   properties::iterator blockTag = tag;
     
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
@@ -422,7 +422,7 @@ properties* ScalarCausalClockMerger::setProperties(std::vector<std::pair<propert
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
 void ScalarCausalClockMerger::mergeKey(properties::tagType type, properties::iterator tag, 
-                               std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+                               const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
   properties::iterator blockTag = tag;
     
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }

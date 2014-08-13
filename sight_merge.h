@@ -35,10 +35,10 @@ class groupStreams {
     parserIndexes.push_back(parserIdx);
   }
 
-  string str() {
+  string str() const {
     ostringstream s;
     s << "[groupStreams: ";
-    for(std::list<int>::iterator i=parserIndexes.begin(); i!=parserIndexes.end(); i++) {
+    for(std::list<int>::const_iterator i=parserIndexes.begin(); i!=parserIndexes.end(); i++) {
       if(i!=parserIndexes.begin()) s << ",";
       s << *i;
     }
@@ -71,12 +71,12 @@ class tagGroup {
   }
   
   bool operator==(const tagGroup& that) const
-  { return type==that.type && objName==that.objName && ((key.size()==0 && that.key.size()==0) || key==that.key); }
+  { return type==that.type && objName==that.objName && info==that.info; }
   
   bool operator<(const tagGroup& that) const
   { return type< that.type ||
           (type==that.type && objName< that.objName) ||
-          (type==that.type && objName==that.objName  && key<that.key); }
+          (type==that.type && objName==that.objName  && info<that.info); }
 
   // Returns the set of objNames within the keys of the given map
   static std::set<std::string> getObjNames(const std::map<tagGroup, groupStreams >& tag2stream) {
@@ -96,12 +96,7 @@ class tagGroup {
 
   string str() const {
     ostringstream s;
-    s << "[tagGroup: objName="<<objName<<", type="<<(type==properties::enterTag? "enter": "exit")<<", key=";
-    for(std::list<string>::const_iterator k=key.begin(); k!=key.end(); k++) {
-      if(k!=key.begin()) s << ", ";
-      s << *k;
-    }
-    s << "]";
+    s << "[tagGroup: objName="<<objName<<", type="<<(type==properties::enterTag? "enter": "exit")<<", info="<<info.str()<<"]";
     return s.str();
   }
 }; // class tagGroup
@@ -182,13 +177,13 @@ class MergeState {
    *************************************************************/
   
   // Called to indicate that we're ready to read a tag on all the parsers in the given groupStreams
-  void readyForNextTag(const groupStreams& gs);
+  void readyForNextTag(const tagGroup& tg, const groupStreams& gs);
   
   // Called to indicate that we're ready to read a tag on all the parsers.
   void readyForNextTag();
   
   // Returns the number of true values in the given boolean vector.
-  static int getNumTrues(const vector<boool> v);
+  static int getNumTrues(const vector<bool>& v);
   
   // Returns the total number of parsers.
   int getNumParsers() const { return parsers.size(); }
@@ -246,7 +241,7 @@ class MergeState {
   template<typename T>
   void printVector(ostream& out, const std::vector<T>& v) const {
     out << "<";
-    for(typename std::vector<T>::const_iterator i=v.begin(); v!=end(); v++)
+    for(typename std::vector<T>::const_iterator i=v.begin(); v!=v.end(); v++) {
       if(i!=v.begin()) out << ", ";
       out << *i;
     }
@@ -255,7 +250,8 @@ class MergeState {
   void printStateVectors(ostream& out) const;
   void printStreamRecords(ostream& out) const;
   void printTags(ostream& out) const;
-  void printTag2Stream(ostream& out, const map<tagGroup, groupStreams>& tag2streamArg=tag2stream) const;
+  void printTag2Stream(ostream& out, const map<tagGroup, groupStreams>& tag2streamArg) const;
+  void printTag2Stream(ostream& out) const { printTag2Stream(out, tag2stream); }
 
   /************************************************
    ***** Aggregation of tag group information *****

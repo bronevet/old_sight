@@ -2053,7 +2053,7 @@ properties* ModularAppMerger::setProperties(std::vector<std::pair<properties::ta
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info,
 void ModularAppMerger::mergeKey(properties::tagType type, properties::iterator tag, 
-                           std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+                           const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
   // We do not call the mergeKey method of the BlockMerger because we wish to keep the API of modularApps simple:
   // If there are two modular apps with the same name, they should be merged even if their call stacks are different.
   // This is because for the most part users define a single modularApp variable in their application and details
@@ -2106,7 +2106,7 @@ properties* ModularAppStructureMerger::setProperties(std::vector<std::pair<prope
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info,
 void ModularAppStructureMerger::mergeKey(properties::tagType type, properties::iterator tag, 
-                           std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+                           const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
   Merger::mergeKey(type, tag.next(), inStreamRecords, info);
   
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; assert(0); }
@@ -2212,7 +2212,7 @@ properties* ModuleMerger::setProperties(std::vector<std::pair<properties::tagTyp
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info,
 void ModuleMerger::mergeKey(properties::tagType type, properties::iterator tag, 
-                           std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+                           const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
   Merger::mergeKey(type, tag.next(), inStreamRecords, info);
     
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
@@ -2274,7 +2274,7 @@ properties* ModuleCtrlMerger::setProperties(std::vector<std::pair<properties::ta
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info,
 void ModuleCtrlMerger::mergeKey(properties::tagType type, properties::iterator tag, 
-                           std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+                           const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
   Merger::mergeKey(type, tag.next(), inStreamRecords, info);
     
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge control attribute key!"<<endl; exit(-1); }
@@ -2368,7 +2368,7 @@ properties* ModuleEdgeMerger::setProperties(std::vector<std::pair<properties::ta
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info,
 void ModuleEdgeMerger::mergeKey(properties::tagType type, properties::iterator tag, 
-                                std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+                                const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
   Merger::mergeKey(type, tag.next(), inStreamRecords, info);
     
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
@@ -2377,14 +2377,17 @@ void ModuleEdgeMerger::mergeKey(properties::tagType type, properties::iterator t
     /*assert(((ModuleStreamRecord*)inStreamRecords["module"])->mStack.size()>0);
     assert(((ModuleStreamRecord*)inStreamRecords["module"])->mStack.back());*/
     
-    streamID inFromSID(tag.getInt("fromCID"), inStreamRecords["module"]->getVariantID());
+    std::map<std::string, streamRecord*>::const_iterator mIt=inStreamRecords.find("module"); assert(mIt!=inStreamRecords.end());
+    streamRecord* moduleSR = mIt->second;
+    
+    streamID inFromSID(tag.getInt("fromCID"), moduleSR->getVariantID());
     //streamID outFromSID = ((ModuleStreamRecord*)inStreamRecords["module"])->mStack.back()->in2outID(inFromSID);
-    streamID outFromSID = inStreamRecords["module"]->in2outID(inFromSID);
+    streamID outFromSID = moduleSR->in2outID(inFromSID);
     info.add(txt()<<outFromSID.ID);
     
-    streamID inToSID(tag.getInt("toCID"), inStreamRecords["module"]->getVariantID());
+    streamID inToSID(tag.getInt("toCID"), moduleSR->getVariantID());
     //streamID outToSID = ((ModuleStreamRecord*)inStreamRecords["module"])->mStack.back()->in2outID(inToSID);
-    streamID outToSID = inStreamRecords["module"]->in2outID(inToSID);
+    streamID outToSID = moduleSR->in2outID(inToSID);
     info.add(txt()<<outToSID.ID);
     
     // Edges between different port numbers/types are separated
@@ -2542,7 +2545,7 @@ properties* ModuleTraceStreamMerger::setProperties(
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
 void ModuleTraceStreamMerger::mergeKey(properties::tagType type, properties::iterator tag, 
-                           std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+                           const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
   Merger::mergeKey(type, tag.next(), inStreamRecords, info);
    
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
@@ -2609,7 +2612,7 @@ properties* CompModuleMerger::setProperties(std::vector<std::pair<properties::ta
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info,
 void CompModuleMerger::mergeKey(properties::tagType type, properties::iterator tag, 
-                           std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+                           const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
   ModuleMerger::mergeKey(type, tag.next(), inStreamRecords, info);
     
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
@@ -2756,7 +2759,7 @@ cout << "outIdx="<<outIdx<<", compIdx="<<compIdx<<". key="<<key<<": "<<t->second
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
 void CompModuleTraceStreamMerger::mergeKey(properties::tagType type, properties::iterator tag, 
-                                           std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+                                           const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
   Merger::mergeKey(type, tag.next(), inStreamRecords, info);
    
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }

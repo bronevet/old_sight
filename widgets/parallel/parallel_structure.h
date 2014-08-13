@@ -113,7 +113,7 @@ class CommSendMerger : public UniqueMarkMerger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info,
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
+                       const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
 }; // class CommSendMerger
 
 class CommRecvMerger : public UniqueMarkMerger {
@@ -140,7 +140,7 @@ class CommRecvMerger : public UniqueMarkMerger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info,
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
+                       const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
 }; // class CommRecvMerger
 
 class CommBarMerger : public UniqueMarkMerger {
@@ -167,7 +167,7 @@ class CommBarMerger : public UniqueMarkMerger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info,
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
+                       const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
 }; // class CommBarMerger
 
 } // namespace structure

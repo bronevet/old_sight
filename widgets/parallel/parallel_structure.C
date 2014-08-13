@@ -227,7 +227,7 @@ properties* CommSendMerger::setProperties(std::vector<std::pair<properties::tagT
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info,
 void CommSendMerger::mergeKey(properties::tagType type, properties::iterator tag, 
-                           std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+                           const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
   UniqueMarkMerger::mergeKey(type, tag.next(), inStreamRecords, info);
 }
 
@@ -287,7 +287,7 @@ properties* CommRecvMerger::setProperties(std::vector<std::pair<properties::tagT
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info,
 void CommRecvMerger::mergeKey(properties::tagType type, properties::iterator tag, 
-                           std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+                           const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
   UniqueMarkMerger::mergeKey(type, tag.next(), inStreamRecords, info);
 }
 
@@ -331,7 +331,7 @@ properties* CommBarMerger::setProperties(std::vector<std::pair<properties::tagTy
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info,
 void CommBarMerger::mergeKey(properties::tagType type, properties::iterator tag, 
-                           std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+                           const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
   UniqueMarkMerger::mergeKey(type, tag.next(), inStreamRecords, info);
 }
 

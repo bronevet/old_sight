@@ -1650,7 +1650,7 @@ properties* TraceMerger::setProperties(std::vector<std::pair<properties::tagType
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
 void TraceMerger::mergeKey(properties::tagType type, properties::iterator tag, 
-                           std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+                           const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
   BlockMerger::mergeKey(type, tag.next(), inStreamRecords, info);
   
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; assert(0);; }
@@ -1726,7 +1726,7 @@ TraceStreamMerger::TraceStreamMerger(std::vector<std::pair<properties::tagType, 
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
 void TraceStreamMerger::mergeKey(properties::tagType type, properties::iterator tag, 
-                           std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+                           const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
   Merger::mergeKey(type, tag.next(), inStreamRecords, info);
     
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; assert(0);; }
@@ -1785,7 +1785,7 @@ properties* ProcessedTraceStreamMerger::setProperties(std::vector<std::pair<prop
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
 void ProcessedTraceStreamMerger::mergeKey(properties::tagType type, properties::iterator tag, 
-                           std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+                           const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
   BlockMerger::mergeKey(type, tag.next(), inStreamRecords, info);
   
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; assert(0);; }
@@ -1949,7 +1949,7 @@ TraceObsMerger::TraceObsMerger(std::vector<std::pair<properties::tagType, proper
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
 void TraceObsMerger::mergeKey(properties::tagType type, properties::iterator tag, 
-                              std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+                              const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
   static ThreadLocalStorage1<long, long> maxObsID(0);
   
   Merger::mergeKey(type, tag.next(), inStreamRecords, info);
@@ -1963,6 +1963,9 @@ void TraceObsMerger::mergeKey(properties::tagType type, properties::iterator tag
     
     // Observations may never be merged. Therefore, each observation gets a unique key.
     info.add(txt()<<(maxObsID++));
+    
+    // Trace observations need to be interleaved in the merged output rather than aligned.
+    info.setMergeKind(MergeInfo::interleave);
   }
 }
 

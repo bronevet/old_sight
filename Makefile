@@ -1,7 +1,7 @@
 SIGHT_COMMON_O := sight_common.o attributes/attributes_common.o binreloc.o getAllHostnames.o utils.o
 SIGHT_COMMON_H := sight.h sight_common_internal.h attributes/attributes_common.h binreloc.h getAllHostnames.h utils.h
-SIGHT_STRUCTURE_O := sight_structure.o attributes/attributes_structure.o
-SIGHT_STRUCTURE_H := sight.h sight_structure_internal.h attributes/attributes_structure.h
+SIGHT_STRUCTURE_O := sight_structure.o sight_merge.o attributes/attributes_structure.o
+SIGHT_STRUCTURE_H := sight.h sight_structure_internal.h sight_merge.h attributes/attributes_structure.h
 SIGHT_LAYOUT_O := sight_layout.o attributes/attributes_layout.o slayout.o variant_layout.o 
 SIGHT_LAYOUT_H := sight.h sight_layout_internal.h attributes/attributes_layout.h variant_layout.h
 sight := ${sight_O} ${sight_H} gdbLineNum.pl sightDefines.pl
@@ -202,6 +202,9 @@ sight_common.o: sight_common.C sight_common_internal.h attributes/attributes_com
 
 sight_structure.o: sight_structure.C sight_structure_internal.h attributes/attributes_structure.h sight_common_internal.h attributes/attributes_common.h maketools
 	${CCC} ${SIGHT_CFLAGS} sight_structure.C -Itools/dtl -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o sight_structure.o
+
+sight_merge.o: sight_merge.C sight_merge.h sight_structure_internal.h sight_common_internal.h attributes/attributes_common.h maketools
+	${CCC} ${SIGHT_CFLAGS} sight_merge.C -Itools/dtl -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o sight_merge.o
 
 sight_layout.o: sight_layout.C sight_layout_internal.h attributes/attributes_layout.h sight_common_internal.h attributes/attributes_common.h
 	${CCC} ${SIGHT_CFLAGS} sight_layout.C -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o sight_layout.o
