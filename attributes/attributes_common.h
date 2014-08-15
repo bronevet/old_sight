@@ -44,7 +44,7 @@ class comparator;
 // Wrapper class for strings, integers and floating point numbers that keeps track of the
 // type of its contents and allows functors that work on only one of these types to be applied.
 class attrValue {
-  public:
+public:
   typedef enum {
      // Scalar types:
      strT,       // std::string
@@ -73,7 +73,7 @@ class attrValue {
   // The storage for the four possible value types
   void* store;
 
-  public:
+public:
   attrValue();
   // Creates an attribute value based on the encoding within the given string. If type is set to unknownT,
   // the constructor figures out the type based on the encoding in the string, which must have been set

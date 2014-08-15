@@ -28,16 +28,17 @@ namespace sight {
 namespace structure {
 
 class hierGraphConfHandlerInstantiator : common::confHandlerInstantiator {
-  public:
+public:
   hierGraphConfHandlerInstantiator();
 };
+
 extern hierGraphConfHandlerInstantiator hierGraphConfHandlerInstance;
 
 class hierGraphTraceStream;
 
-
 //#ifndef HIERGRAPH_STRUCTURE_C
-// Rename for HG_contexts, HG_groups and HG_ports that enables users to refer to them without prepending common::hierGraph
+// Rename for HG_contexts, HG_groups and HG_ports 
+// that enables users to refer to them without prepending common::hierGraph
 //typedef common::hierGraph::HG_group HG_group;
 typedef common::hierGraph::context HG_context;
 //typedef common::hierGraph::HG_context::config config;
@@ -46,16 +47,16 @@ typedef common::hierGraph::context HG_context;
 
 
 class HG_instance {
-  public:
+public:
   std::string name;
-
   int numInputs;
   int numOutputs;
-
+public:
   HG_instance() {}
-  HG_instance(const std::string& name, int numInputs, int numOutputs) : name(name), numInputs(numInputs), numOutputs(numOutputs) {}
-  HG_instance(const HG_instance& that) : name(that.name), numInputs(that.numInputs), numOutputs(that.numOutputs) {}
-
+  HG_instance(const std::string& name, int numInputs, int numOutputs) 
+		: name(name), numInputs(numInputs), numOutputs(numOutputs) {}
+  HG_instance(const HG_instance& that) 
+		: name(that.name), numInputs(that.numInputs), numOutputs(that.numOutputs) {}
   HG_instance(properties::iterator props);
 
   // Returns the properties map that describes this HG_instance object;
@@ -73,8 +74,9 @@ class HG_instance {
 
 class hierGraph;
 
-// A HG_group represents the granularity at which we differentiate HG_instances of hierGraphs.
+// HG_group represents the granularity at which we differentiate HG_instances of hierGraphs.
 // Currently this is done by considering the name and count of HG_inputs and outputs of a given hierGraph HG_instance
+// (Name) + (# of input/output)
 // as well as the nesting hierarchy of HG_instances within which a given HG_instance is executed.
 class HG_group {
   public:
@@ -124,7 +126,8 @@ class HG_group {
   bool operator<(const HG_group& that) const
   { return stack < that.stack; }
 
-  // Returns whether the HG_group's descriptor is empty, meaning that this object does not denote any specific HG_group
+  // Returns whether the HG_group's descriptor is empty, 
+	// meaning that this object does not denote any specific HG_group
   bool isNULL() const { return stack.size()==0; }
   
   // Returns a human-readable string that describes this HG_group
@@ -135,16 +138,20 @@ class HG_port {
   public:
   HG_group g;
   // Points to a dynamically-allocated HG_instance of a HG_context object, which may be any class that derives from 
-  // HG_context for use by different types of hierGraphs with their own notion of HG_context. This object is deallocated
-  // in this HG_port's destructor.
+  // HG_context for use by different types of hierGraphs with their own notion of HG_context. 
+	// This object is deallocated in this HG_port's destructor.
   HG_context* ctxt;
   sight::common::hierGraph::ioT type;
   int index;
 
-  HG_port() : ctxt(NULL) {}
-  HG_port(const HG_port& that) : g(that.g), ctxt(that.ctxt? that.ctxt->copy(): NULL), type(that.type), index(that.index) {}
-  HG_port(const HG_context& ctxt) : ctxt(ctxt.copy()), type(sight::common::hierGraph::output), index(-1) { }
-  HG_port(const HG_group& g, const HG_context& ctxt, sight::common::hierGraph::ioT type, int index) : g(g), ctxt(ctxt.copy()), type(type), index(index) {}
+  HG_port() 
+		: ctxt(NULL) {}
+  HG_port(const HG_port& that) 
+		: g(that.g), ctxt(that.ctxt? that.ctxt->copy() : NULL), type(that.type), index(that.index) {}
+  HG_port(const HG_context& ctxt) 
+		: ctxt(ctxt.copy()), type(sight::common::hierGraph::output), index(-1) { }
+  HG_port(const HG_group& g, const HG_context& ctxt, sight::common::hierGraph::ioT type, int index) 
+		: g(g), ctxt(ctxt.copy()), type(type), index(index) {}
   HG_port(const HG_group& g, sight::common::hierGraph::ioT type, int index) : g(g), ctxt(NULL), type(type), index(index) {}
   ~HG_port() { if(ctxt) delete ctxt; }
   
@@ -178,7 +185,8 @@ class HG_port {
     ctxt->configuration[key] = val;
   }
   
-  // Erase the HG_context within this HG_port. This is imHG_portant for data-structures that ignore HG_context details
+  // Erase the HG_context within this HG_port. 
+	// This is important for data-structures that ignore HG_context details
   void clearContext() { ctxt->configuration.clear(); }
 
   // Returns a human-readable string that describes this HG_context
@@ -204,7 +212,7 @@ class HG_outport : public HG_port {
 class HG_instanceTree {
   std::map<HG_instance, HG_instanceTree*> m;
   
-  public:
+public:
   HG_instanceTree() {}
   
   void add(const HG_group& g);
@@ -252,8 +260,8 @@ class HG_generateTraceStream {
 }; // class HG_generateTraceStream
 
 
-// Represents a modular application, which may contain one or more hierGraphs. Only one modular application may be
-// in-scope at any given point in time.
+// Represents a modular application, which may contain one or more hierGraphs. 
+// Only one modular application may be in-scope at any given point in time.
 class hierGraphApp: public block
 {
   friend class HG_group;
@@ -299,7 +307,7 @@ class hierGraphApp: public block
   // Stack of the hierGraphs that are currently in scope
   static std::list<hierGraph*> mStack;
   
-  public:
+public:
   // Returns a constant reference to the current stack of hierGraphs
   static const std::list<hierGraph*>& getMStack() { return mStack; }
   
@@ -312,7 +320,7 @@ class hierGraphApp: public block
   // The set of measurements that will be collected for all the hierGraphs within this modular app
   namedMeasures meas;
 
-  public:
+public:
   hierGraphApp(const std::string& appName,                                                   properties* props=NULL);
   hierGraphApp(const std::string& appName, const attrOp& onoffOp,                            properties* props=NULL);
   hierGraphApp(const std::string& appName,                        const namedMeasures& meas, properties* props=NULL);
@@ -337,14 +345,14 @@ class hierGraphApp: public block
   // an object will invoke the destroy() method of the most-derived class.
   virtual void destroy();
   
-  private:
+private:
   // Common initialization logic
   void init();
     
   // Sets the properties of this object
   static properties* setProperties(const std::string& appName, const attrOp* onoffOp, properties* props);
   
-  public:
+public:
   // Returns the hierGraph ID of the given hierGraph HG_group, generating a fresh one if one has not yet been assigned
   static int genHierGraphID(const HG_group& g);
   
@@ -357,11 +365,13 @@ class hierGraphApp: public block
   // Assigns a unique ID to the given hierGraph HG_group, as needed and returns this ID
   static int addHierGraphGroup(const HG_group& g);
   
-  // Registers the names of the HG_contexts of the given hierGraph's HG_inputs or outputs and if this is not the first time this hierGraph is called, 
+  // Registers the names of the HG_contexts of the given hierGraph's HG_inputs or outputs 
+	// and if this is not the first time this hierGraph is called, 
   // verifies that these HG_context names are consistent across different calls.
-  // g - the hierGraph HG_group for which we're registering HG_inputs/outputs
+	// 
+  // g 			- the hierGraph HG_group for which we're registering HG_inputs/outputs
   // inouts - the vector of input or output HG_ports
-  // toT - identifies whether inouts is the vector of HG_inputs or outputs
+  // toT 		- identifies whether inouts is the vector of HG_inputs or outputs
   static void registerInOutContexts(const HG_group& g, const std::vector<HG_port>& inouts, sight::common::hierGraph::ioT io);
   
   // Add an edge between one hierGraph's output HG_port and another hierGraph's input HG_port
@@ -377,7 +387,7 @@ class hierGraphApp: public block
   // Adds the given hierGraph object to the hierGraphs stack
   static void enterHierGraph(hierGraph* m, int hierGraphID, properties* props/*, HG_generateTraceStream& tsGenerator*/);
   
-    // Returns whether a traceStream has been registered for the given hierGraph HG_group
+  // Returns whether a traceStream has been registered for the given hierGraph HG_group
   static bool isTraceStreamRegistered(const HG_group& g);
 
   // Registers the given traceStream for the given hierGraph HG_group
@@ -397,11 +407,12 @@ class hierGraphApp: public block
   // -------------------------
   // Currently there isn't anything that can be configured but in the future we may wish to
   // add measurements that will be taken on all hierGraphs
-  public:
+public:
   class HierGraphAppConfiguration : public common::Configuration{
-    public:
-    HierGraphAppConfiguration(properties::iterator props) : common::Configuration(props.next()) {
-    }
+  public:
+    HierGraphAppConfiguration(properties::iterator props) 
+			: common::Configuration(props.next()) 
+		{}
   };
 
   static common::Configuration* configure(properties::iterator props) {
@@ -418,7 +429,7 @@ class hierGraph: public sightObj, public common::hierGraph
   friend class HG_group;
   friend class hierGraphApp;
   
-  protected:
+protected:
   
   int hierGraphID;
   HG_group g;
@@ -429,10 +440,11 @@ class hierGraph: public sightObj, public common::hierGraph
   // The HG_context in a format that traces can understand, set in setTraceCtxt() of the the class that
   // ultimately derives from hierGraph.
   std::map<std::string, attrValue> traceCtxt;
-  public:
+
+public:
   const std::map<std::string, attrValue>& getTraceCtxt() { return traceCtxt; }
 
-  protected:
+protected:
   
   // The input HG_ports of this hierGraph
   std::vector<HG_port> ins;
@@ -458,7 +470,8 @@ class hierGraph: public sightObj, public common::hierGraph
   std::list<std::pair<std::string, attrValue> > obs;
   
   // Information that describes the class that derives from this on. 
-  /*class derivInfo {
+/*
+	class derivInfo {
     public:
     
     // A pointer to a properties object that can be used to create a tag for the derived object that 
@@ -477,13 +490,14 @@ class hierGraph: public sightObj, public common::hierGraph
     
     derivInfo(properties* props, const std::map<std::string, attrValue>& ctxt/ *, HG_generateTraceStream& tsGenerator* /) :
                   props(props), ctxt(ctxt)/ *, tsGenerator(tsGenerator)* / { }
-  }; // class derivInfo */
+  }; // class derivInfo 
+*/
   
-  // Records whether this class has been derived by another. In this case ~hierGraph() relies on the destructor of
-  // that class to create an appropriate traceStream.
+  // Records whether this class has been derived by another. 
+	// In this case ~hierGraph() relies on the destructor of that class to create an appropriate traceStream.
   bool isDerived;
   
-  public:
+public:
   // HG_inputs - HG_ports from other hierGraphs that are used as HG_inputs by this hierGraph.
   // onoffOp - We emit this scope if the current attribute query evaluates to true (i.e. we're emitting debug output) AND
   //           either onoffOp is not provided or its evaluates to true.
@@ -518,18 +532,18 @@ class hierGraph: public sightObj, public common::hierGraph
 
   void init(const std::vector<HG_port>& in, properties* props);
   
-  private:
+private:
   // Sets the properties of this object
   //static properties* setProperties(const HG_instance& inst, const std::vector<HG_port>& HG_inputs, const attrOp* onoffOp, properties* props);
   
-  public:
+public:
   ~hierGraph();
   
-  protected:
+protected:
   // Records whether we've completed measuring this hierGraph's behavior
   bool measurementCompleted;
   
-  public:
+public:
   // Called to complete the measurement of this hierGraph's execution. This measurement may be completed before
   // the hierGraph itself completes to enable users to separate the HG_portion of the hierGraph's execution that 
   // represents its core behavior (and thus should be measured) from the HG_portion where the hierGraph's outputs
@@ -815,10 +829,11 @@ class compHierGraphApp : public hierGraphApp
   };
 }; // class compHierGraphApp
 
+
 class compHierGraph: public structure::hierGraph
 {
   friend class compHierGraphTraceStream;
-  public:
+public:
   
   protected:
   // Records whether this is the reference configuration of the moculde
@@ -838,7 +853,8 @@ class compHierGraph: public structure::hierGraph
   public:
   
   // Information that describes the class that derives from this on. 
-  /*class compDerivInfo : public derivInfo {
+/*
+	class compDerivInfo : public derivInfo {
     public:
     // The options that the derived class wishes to pass to this compHierGraph. The issue is that because we pass
     // options by reference if a derived class wishes to extend them, it cannot do so from within a constructor.
@@ -849,7 +865,8 @@ class compHierGraph: public structure::hierGraph
     
     compDerivInfo(properties* props, const std::map<std::string, attrValue>& ctxt, const HG_context& options) : 
       derivInfo(props, ctxt), options(options) {}
-  };*/
+  };
+*/
   
   // isReference: Records whether this is the reference configuration of the moculde
   // options: The HG_context that describes the configuration options of this hierGraph
@@ -911,7 +928,11 @@ class compHierGraph: public structure::hierGraph
              const attrOp& onoffOp, const HG_compNamedMeasures& meas, properties* props=NULL);
 
   // Sets the properties of this object
-  properties* setProperties(const HG_instance& inst, bool isReference, HG_context options, const attrOp* onoffOp, properties* props=NULL);
+  properties* setProperties(const HG_instance& inst, 
+														bool isReference, 
+														HG_context options, 
+														const attrOp* onoffOp, 
+														properties* props=NULL);
   
   void init(properties* props);
   
@@ -933,7 +954,9 @@ class compHierGraph: public structure::hierGraph
 
   // Sets the HG_context of the given output HG_port. This variant ensures that the outputs of compHierGraphs can only
   // be set with HG_compContexts.
-  void setOutCtxt(int idx, const HG_context& c) { std::cerr << "ERROR: compHierGraph::setOutCtxt() can only be called with a HG_compContext argument!"<<std::endl; assert(0); }
+  void setOutCtxt(int idx, const HG_context& c) 
+	{ std::cerr << "ERROR: compHierGraph::setOutCtxt() can only be called with a HG_compContext argument!"<<std::endl; assert(0); }
+
   virtual void setOutCtxt(int idx, const HG_compContext& c);
   
   // Sets the traceCtxt map, which contains the HG_context attributes to be used in this hierGraph's measurements 
@@ -1007,7 +1030,7 @@ class springHierGraphApp : public compHierGraphApp
   // an object will invoke the destroy() method of the most-derived class.
   virtual void destroy();
   
-  static void *Interference(void *arg);
+  static void* Interference(void *arg);
 
   // Returns a pointer to the current HG_instance of hierGraphApp
   static springHierGraphApp* getInstance() { 
@@ -1163,16 +1186,23 @@ class processedHierGraphTraceStream: public hierGraphTraceStream
   virtual void destroy();
 };
 
+
+
+
+
+// ---------- hierGraph Merge Handler ---------------------------------------------------------------------------------
+
 class HierGraphMergeHandlerInstantiator: public MergeHandlerInstantiator {
   public:
   HierGraphMergeHandlerInstantiator();
 };
+
 extern HierGraphMergeHandlerInstantiator HierGraphMergeHandlerInstance;
 
 std::map<std::string, streamRecord*> HierGraphGetMergeStreamRecord(int streamID);
 
 class HierGraphAppMerger : public BlockMerger {
-  public:
+public:
   HierGraphAppMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
               std::map<std::string, streamRecord*>& outStreamRecords,
               std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
@@ -1199,7 +1229,7 @@ class HierGraphAppMerger : public BlockMerger {
 }; // class HierGraphAppMerger
 
 class HierGraphAppStructureMerger : public Merger {
-  public:
+public:
   HierGraphAppStructureMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
               std::map<std::string, streamRecord*>& outStreamRecords,
               std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
@@ -1226,7 +1256,7 @@ class HierGraphAppStructureMerger : public Merger {
 }; // class HierGraphAppStructureMerger
 
 class HierGraphMerger : public Merger {
-  public:
+public:
   HierGraphMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
               std::map<std::string, streamRecord*>& outStreamRecords,
               std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
@@ -1254,7 +1284,7 @@ class HierGraphMerger : public Merger {
 }; // class HierGraphMerger
 
 class HierGraphCtrlMerger : public Merger {
-  public:
+public:
   HierGraphCtrlMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
               std::map<std::string, streamRecord*>& outStreamRecords,
               std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
@@ -1281,8 +1311,9 @@ class HierGraphCtrlMerger : public Merger {
   
 }; // class HierGraphCtrlMerger
 
+
 class HierGraphEdgeMerger : public Merger {
-  public:
+public:
   HierGraphEdgeMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
               std::map<std::string, streamRecord*>& outStreamRecords,
               std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
@@ -1309,7 +1340,7 @@ class HierGraphEdgeMerger : public Merger {
 }; // class HierGraphEdgeMerger
 
 class HierGraphTraceStreamMerger : public TraceStreamMerger {
-  public:
+public:
   HierGraphTraceStreamMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
               std::map<std::string, streamRecord*>& outStreamRecords,
               std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,

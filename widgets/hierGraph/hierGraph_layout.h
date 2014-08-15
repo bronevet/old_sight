@@ -35,10 +35,11 @@ extern hierGraphLayoutHandlerInstantiator hierGraphLayoutHandlerInstance;
 
 class hierGraphTraceStream;
 
-// Records the information of a given hierGraph when the hierGraph is entered so that we have it available 
+// Records the information of a given hierGraph 
+// when the hierGraph is entered so that we have it available 
 // when the hierGraph is exited
 class hierGraphInfo {
-  public:
+public:
   std::string hierGraphName;
   int hierGraphID;
   int numInputs;
@@ -50,24 +51,28 @@ class hierGraphInfo {
   {}
 };
 
-// Records the information of a given hierGraph when the hierGraph is entered so that we have it available 
+// Records the information of a given hierGraph 
+// when the hierGraph is entered so that we have it available 
 // when the hierGraph is exited
 class hierGraph : public common::hierGraph, public traceObserver {
   friend class hierGraphApp;
   // Maps each hierGraphID to the data needed to compute a polynomial approximation of the relationship
   // between its input context and its observations
-  /*
+
+/*
   // Matrix of polynomial terms composed of context values, 1 row per observation, 1 column for each combination of terms
   gsl_matrix* polyfitCtxt;
   
   // For each value that is observed, a vector of the values actually observed, one entry per observation
   //std::map<int, std::vector<gsl_vector*> >  polyfitObs;
-  gsl_matrix* polyfitObs;*/
+  gsl_matrix* polyfitObs;
+*/
     
   // The number of observations made for each node
   int numObs;
     
-  /* // The number of observations for which we've allocated space in polyfitCtxt and polyfitObs (the rows)
+/* 
+	// The number of observations for which we've allocated space in polyfitCtxt and polyfitObs (the rows)
   int numAllocObs;
   
   // The number of trace attributes for which we've allocated space in newObs (the columns)
@@ -76,15 +81,21 @@ class hierGraph : public common::hierGraph, public traceObserver {
   // Maps the names of trace attributes to their columns in polyfitCtxt
   std::map<std::string, int > traceAttrName2Col;
   
-  // Records the number of observations we've made of each trace attribute (indexed according to the column numbers in traceAttrName2Col)
+  // Records the number of observations we've made of each trace attribute 
+	// (indexed according to the column numbers in traceAttrName2Col)
   std::vector<int> traceAttrName2Count;
   
-  // The number of numeric context attributes of each node. Should be the same for all observations for the node
+  // The number of numeric context attributes of each node. 
+	// Should be the same for all observations for the node
   int numNumericCtxt;
-  std::list<std::string> numericCtxtNames;*/
+  std::list<std::string> numericCtxtNames;
+*/
     
-  /* // For each node, for each input, the names of its context attributes
-  std::map<int, std::map<int, std::list<std::string> > > ctxtNames;*/
+/* 
+	// For each node, for each input, the names of its context attributes
+  std::map<int, std::map<int, std::list<std::string> > > ctxtNames;
+*/
+
   // For each node, for each grouping of context attributes, the names of all the attributes within the grouping
   std::map<std::string, std::list<std::string> > ctxtNames;
   //std::map<std::string, std::set<std::string> > ctxtNames;
@@ -99,7 +110,8 @@ class hierGraph : public common::hierGraph, public traceObserver {
   
   ~hierGraph();
   
-  // Do a multi-variate polynomial fit of the data observed for the given hierGraphID and return for each trace attribute 
+  // Do a multi-variate polynomial fit of the data observed for the given hierGraphID 
+	// and return for each trace attribute 
   // a string that describes the function that best fits its values
   //std::vector<std::string> polyFit();
   
@@ -158,7 +170,7 @@ class HG_polyFitFilter : public traceObserver {
   // The total number of observations that have passed through this filter
   int numObservations; 
 
-  public:
+public:
   HG_polyFitFilter();
   
   // Iterates over all combinations of keys in numericCtxt upto maxDegree in size and computes the products of
