@@ -9,7 +9,7 @@ TESTERS = 8.Modules${EXE} 9.CompModules.merged${EXE} 9.CompModules.single${EXE} 
           4.AttributeAnnotationFiltering${EXE} 6.PerfAnalysis${EXE} \
           7.Merging${EXE} 
 
-TESTERS = 8.Modules${EXE} 0.Demo${EXE} 
+#TESTERS = 8.Modules${EXE} 0.Demo${EXE} 
 
 all: ${TESTERS}
 

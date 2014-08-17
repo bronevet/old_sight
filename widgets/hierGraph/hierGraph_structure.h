@@ -51,12 +51,15 @@ public:
   std::string name;
   int numInputs;
   int numOutputs;
+  int hierGraphID;  // object ID
+  int horID;  // horizontal ID
+  int verID;  // vertical ID
 public:
   HG_instance() {}
-  HG_instance(const std::string& name, int numInputs, int numOutputs) 
-		: name(name), numInputs(numInputs), numOutputs(numOutputs) {}
+  HG_instance(const std::string& name, int numInputs, int numOutputs, int hierGraphID, int horID, int verID) 
+		: name(name), numInputs(numInputs), numOutputs(numOutputs), hierGraphID(hierGraphID), horID(horID), verID(verID) {}
   HG_instance(const HG_instance& that) 
-		: name(that.name), numInputs(that.numInputs), numOutputs(that.numOutputs) {}
+		: name(that.name), numInputs(that.numInputs), numOutputs(that.numOutputs), hierGraphID(that.hierGraphID), horID(that.horID), verID(that.verID) {}
   HG_instance(properties::iterator props);
 
   // Returns the properties map that describes this HG_instance object;
@@ -79,24 +82,31 @@ class hierGraph;
 // (Name) + (# of input/output)
 // as well as the nesting hierarchy of HG_instances within which a given HG_instance is executed.
 class HG_group {
-  public:
+public:
   // Stack of hierGraph HG_instances that uniquely identifies this hierGraph HG_grouping
   std::list<HG_instance> stack;
-
+public:
   HG_group() { }
   HG_group(const std::list<HG_instance>& stack): stack(stack) {}
   HG_group(const HG_group& that) : stack(that.stack) {}
-
   // Creates a HG_group given the current stack of hierGraphs and a new hierGraph HG_instance
-  HG_group(const std::list<hierGraph*>& mStack, const HG_instance& inst);
-  
-  void init(const std::list<hierGraph*>& mStack, const HG_instance& inst);
+  HG_group(const std::list<hierGraph*>& hgStack, const HG_instance& inst);
   
   HG_group& operator=(const HG_group& that) { 
     stack = that.stack;
     return *this;
   }
   
+  bool operator==(const HG_group& that) const
+  { return stack == that.stack; }
+  
+  bool operator!=(const HG_group& that) const { return !(*this == that); }
+  
+  bool operator<(const HG_group& that) const
+  { return stack < that.stack; }
+
+  void init(const std::list<hierGraph*>& hgStack, const HG_instance& inst);
+
   // Add the given HG_instance to this HG_group's HG_instance stack
   void push(const HG_instance& inst) { stack.push_back(inst); }
   
@@ -117,14 +127,6 @@ class HG_group {
   
   // Returns the depth of the callstack
   int depth() const;
-  
-  bool operator==(const HG_group& that) const
-  { return stack == that.stack; }
-  
-  bool operator!=(const HG_group& that) const { return !(*this == that); }
-  
-  bool operator<(const HG_group& that) const
-  { return stack < that.stack; }
 
   // Returns whether the HG_group's descriptor is empty, 
 	// meaning that this object does not denote any specific HG_group
@@ -305,11 +307,11 @@ class hierGraphApp: public block
   static std::map<std::pair<HG_port, HG_port>, int> edges;
   
   // Stack of the hierGraphs that are currently in scope
-  static std::list<hierGraph*> mStack;
+  static std::list<hierGraph*> hgStack;
   
 public:
   // Returns a constant reference to the current stack of hierGraphs
-  static const std::list<hierGraph*>& getMStack() { return mStack; }
+  static const std::list<hierGraph*>& getMStack() { return hgStack; }
   
   // The unique ID of this application
   int appID;
@@ -1434,7 +1436,7 @@ class HierGraphStreamRecord: public streamRecord {
   // The stack of streamRecords that record for each currently active moduluarApp
   // (they are nested hierarchically), the mappings of nodes IDs from incoming to 
   // outgoing streams.
-  std::list<streamRecord*> mStack;*/
+  std::list<streamRecord*> hgStack;*/
   
   // The information that uniquely identifies a hierGraph
   /*class hierGraphInfo {

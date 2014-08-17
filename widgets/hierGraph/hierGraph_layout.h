@@ -42,13 +42,22 @@ class hierGraphInfo {
 public:
   std::string hierGraphName;
   int hierGraphID;
+  
+  // kyushick edit
+  int horID;
+  int verID;
+
   int numInputs;
   int numOutputs;
   int count;
-  
-  hierGraphInfo(const std::string& hierGraphName, int hierGraphID, int numInputs, int numOutputs, int count) :
+ 
+// kyushick edit 
+  hierGraphInfo(const std::string& hierGraphName, int hierGraphID, int horID, int verID, int numInputs, int numOutputs, int count) :
     hierGraphName(hierGraphName), hierGraphID(hierGraphID), numInputs(numInputs), numOutputs(numOutputs), count(count)
   {}
+//  hierGraphInfo(const std::string& hierGraphName, int hierGraphID, int numInputs, int numOutputs, int count) :
+//    hierGraphName(hierGraphName), hierGraphID(hierGraphID), numInputs(numInputs), numOutputs(numOutputs), count(count)
+//  {}
 };
 
 // Records the information of a given hierGraph 
@@ -252,7 +261,7 @@ class hierGraphApp: public block, public common::hierGraph
   int appID;
   
   // Stack of the hierGraphs that are currently in scope within this hierGraphApp
-  static std::list<sight::layout::hierGraphInfo> mStack;
+  static std::list<sight::layout::hierGraphInfo> hgStack;
   
   // Maps each hierGraph group's ID to the trace that holds the observations performed within it
   std::map<int, traceStream*> hierGraphTraces;
@@ -307,11 +316,15 @@ class hierGraphApp: public block, public common::hierGraph
   //    it should be either "hierGraph" or "output".
   // bgColor - The background color of the buttons
   //void showButtons(int numInputs, int numOutputs, int ID, std::string prefix, std::string bgColor);
-  
+ 
+  // Kyushick edit
+ 
   // Enter a new hierGraph within the current hierGraphApp
   // numInputs/numOutputs - the number of inputs/outputs of this hierGraph node
   // ID - the unique ID of this hierGraph node
-  void enterHierGraph(std::string node, int hierGraphID, int numInputs, int numOutputs, int count);
+  //void enterHierGraph(std::string node, int hierGraphID, int numInputs, int numOutputs, int count);
+  void enterHierGraph(std::string node, int hierGraphID, int horID, int verID, int numInputs, int numOutputs, int count);
+
   // Static version of enterHierGraph() that pulls the from/to anchor IDs from the properties iterator and calls 
   // enterHierGraph() in the currently active hierGraphApp
   static void* enterHierGraph(properties::iterator props);

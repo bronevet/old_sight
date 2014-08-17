@@ -40,8 +40,8 @@ namespace structure {
 // Record the configuration handlers in this file
 hierGraphConfHandlerInstantiator::hierGraphConfHandlerInstantiator() 
 {
-  (*enterHandlers)["hierGraphApp"] = &hierGraphApp::configure;
-  (*exitHandlers )["hierGraphApp"] = &hierGraphConfHandlerInstantiator::defaultExitFunc;
+  (*enterHandlers)["hierGraphApp"]       = &hierGraphApp::configure;
+  (*exitHandlers )["hierGraphApp"]       = &hierGraphConfHandlerInstantiator::defaultExitFunc;
   (*enterHandlers)["hierGraph"]          = &hierGraph::configure;
   (*exitHandlers )["hierGraph"]          = &hierGraphConfHandlerInstantiator::defaultExitFunc;
   (*enterHandlers)["compHierGraph"]      = &compHierGraph::configure;
@@ -79,6 +79,9 @@ HG_instance::HG_instance(properties::iterator props) {
   name       = properties::get(props, "name");
   numInputs  = properties::getInt(props, "numInputs");
   numOutputs = properties::getInt(props, "numOutputs");
+  hierGraphID= properties::getInt(props, "hierGraphID");
+  verID      = properties::getInt(props, "verID");
+  horID      = properties::getInt(props, "horID");
 }
 
 // Returns the properties map that describes this HG_group object;
@@ -87,12 +90,20 @@ std::map<std::string, std::string> HG_instance::getProperties() const {
   pMap["name"]       = name;
   pMap["numInputs"]  = txt()<<numInputs;
   pMap["numOutputs"] = txt()<<numOutputs;  
+  pMap["hierGraph"]  = txt()<<hierGraphID;  
+  pMap["verID"]      = txt()<<verID;  
+  pMap["horID"]      = txt()<<horID;  
   return pMap;
 }
 
 // Returns a human-readable string that describes this HG_context
 std::string HG_instance::str() const {
-  return txt()<<"[HG_instance "<<name<<", #HG_inputs="<<numInputs<<", #outputs="<<numOutputs<<"]";
+  return txt()<<"[HG_instance "   << name <<
+                ", #HG_inputs="   << numInputs <<
+                ", #outputs="     << numOutputs <<
+                ", hierGraphID="  << hierGraphID <<
+                ", horizontal ID="<< horID <<
+                ", vertical ID="  << verID << "]";
 }
 
 /*****************
@@ -811,9 +822,13 @@ properties* hierGraph::setProperties(const HG_instance& inst, properties* props,
   
     map<string, string> pMap;
     //pMap["hierGraphID"] = txt()<<hierGraphApp::genHierGraphID(g);
-    pMap["name"]       = g.name();
-    pMap["numInputs"]  = txt()<<g.numInputs();
-    pMap["numOutputs"] = txt()<<g.numOutputs();
+    pMap["name"]        = g.name();
+    pMap["numInputs"]   = txt()<<g.numInputs();
+    pMap["numOutputs"]  = txt()<<g.numOutputs();
+    //kyushick edit
+    pMap["hierGraphID"] = txt()<<g.hierGraphID();
+    pMap["horID"]       = txt()<<g.horID();
+    pMap["verID"]       = txt()<<g.verID();
 
     // If this is an HG_instance of hierGraph rather than a class that derives from hierGraph
     //if(hierGraphApp::isInstanceActive() && !isDerived) {
@@ -853,6 +868,11 @@ void hierGraph::init(const std::vector<HG_port>& ins, properties* derivedProps) 
     pMap["name"]       = g.name();
     pMap["numInputs"]  = txt()<<g.numInputs();
     pMap["numOutputs"] = txt()<<g.numOutputs();
+    //kyushick edit
+    pMap["hierGraphID"] = txt()<<g.hierGraphID();
+    pMap["horID"]       = txt()<<g.horID();
+    pMap["verID"]       = txt()<<g.verID();
+
     derivedProps->add("hierGraph", pMap);
     
     // Add this hierGraph HG_instance to the current stack of hierGraphs
@@ -1006,7 +1026,10 @@ void hierGraph::completeMeasurement() {
 // Sets the HG_context of the given output HG_port
 void hierGraph::setInCtxt(int idx, const HG_context& c) {
   if(!props->active) return;
-  if(idx>=g.numInputs()) { cerr << "ERROR: cannot set HG_context of input "<<idx<<" of hierGraph \""<<g.str()<<"\"! This hierGraph was declared to have "<<g.numInputs()<<" HG_inputs."<<endl; }
+  if(idx>=g.numInputs()) { 
+    cerr << "ERROR: cannot set HG_context of input "<<idx<<" of hierGraph \""<<g.str()<<
+            "\"! This hierGraph was declared to have "<<g.numInputs()<<" HG_inputs."<<endl; 
+  }
   assert(idx<g.numInputs());
   ins[idx].setCtxt(c);
 }
@@ -1014,7 +1037,10 @@ void hierGraph::setInCtxt(int idx, const HG_context& c) {
 // Adds the given key/attrValue pair to the HG_context of the given output HG_port
 void hierGraph::addInCtxt(int idx, const std::string& key, const attrValue& val) {
   if(!props->active) return;
-  if(idx>=g.numInputs()) { cerr << "ERROR: cannot add HG_context to input "<<idx<<" of hierGraph \""<<g.str()<<"\"! This hierGraph was declared to have "<<g.numInputs()<<" HG_inputs."<<endl; }
+  if(idx>=g.numInputs()) { 
+    cerr << "ERROR: cannot add HG_context to input "<<idx<<" of hierGraph \""<<g.str()<<
+            "\"! This hierGraph was declared to have "<<g.numInputs()<<" HG_inputs."<<endl; 
+  }
   assert(idx<g.numInputs());
   ins[idx].addCtxt(key, val);
 }
@@ -1027,7 +1053,10 @@ void hierGraph::addInCtxt(const HG_port& p) {
 // Sets the HG_context of the given output HG_port
 void hierGraph::setOutCtxt(int idx, const HG_context& c) { 
   if(!props->active) return;
-  if(idx>=g.numOutputs()) { cerr << "ERROR: cannot set HG_context of output "<<idx<<" of hierGraph \""<<g.str()<<"\"! This hierGraph was declared to have "<<g.numOutputs()<<" outputs."<<endl; }
+  if(idx>=g.numOutputs()) { 
+    cerr << "ERROR: cannot set HG_context of output "<<idx<<" of hierGraph \""<<g.str()<<
+            "\"! This hierGraph was declared to have "<<g.numOutputs()<<" outputs."<<endl; 
+  }
   assert(idx<g.numOutputs());
   outs[idx].setCtxt(c);
   // If the user provided an output vector, update it as well
@@ -1722,24 +1751,30 @@ processedHierGraph::~processedHierGraph() {
  ***** hierGraphTraceStream *****
  *****************************/
 
-hierGraphTraceStream::hierGraphTraceStream(int hierGraphID, hierGraph* m, vizT viz, mergeT merge, int traceID, properties* props) : 
-  traceStream(viz, merge, traceID, setProperties(hierGraphID, m, viz, merge, props))
+hierGraphTraceStream::hierGraphTraceStream(int hierGraphID, hierGraph* hg, vizT viz, mergeT merge, int traceID, properties* props) : 
+  traceStream(viz, merge, traceID, setProperties(hierGraphID, hg, viz, merge, props))
 { }
 
-properties* hierGraphTraceStream::setProperties(int hierGraphID, hierGraph* m, vizT viz, mergeT merge, properties* props) {
+properties* hierGraphTraceStream::setProperties(int hierGraphID, hierGraph* hg, vizT viz, mergeT merge, properties* props) {
   if(props==NULL) props = new properties();
   
   if(props->active && props->emitTag) {
     map<string, string> pMap;
     pMap["hierGraphID"]   = txt()<<hierGraphID;
-    pMap["name"]       = m->name();
-    pMap["numInputs"]  = txt()<<m->numInputs();
-    pMap["numOutputs"] = txt()<<m->numOutputs();
+    pMap["name"]       = hg->name();
+    pMap["numInputs"]  = txt()<<hg->numInputs();
+    pMap["numOutputs"] = txt()<<hg->numOutputs();
+    // kyushick edit
+    pMap["hierGraphID"] = txt()<<hg->hierGraphID();
+    pMap["horID"]       = txt()<<hg->horID();
+    pMap["verID"]       = txt()<<hg->verID();
+
     props->add("hierGraphTS", pMap);
   }
   
   return props;
 }
+
 
 // Directly calls the destructor of this object. This is necessary because when an application crashes
 // Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
@@ -1760,31 +1795,38 @@ hierGraphTraceStream::~hierGraphTraceStream() {
  *********************************/
 
 compHierGraphTraceStream::compHierGraphTraceStream(int hierGraphID, 
-                                             compHierGraph* cm,
+                                             compHierGraph* chg,
                                              vizT viz, mergeT merge, 
                                              int traceID, properties* props) : 
-  hierGraphTraceStream(hierGraphID, (hierGraph*)cm, viz, merge, 
-                    traceID, setProperties(hierGraphID, cm, viz, merge, props))
+  hierGraphTraceStream(hierGraphID, (hierGraph*)chg, viz, merge, 
+                    traceID, setProperties(hierGraphID, chg, viz, merge, props))
 { }
 
 properties* compHierGraphTraceStream::setProperties(int hierGraphID, 
-                                                 compHierGraph* cm, vizT viz, mergeT merge, properties* props) {
+                                                    compHierGraph* chg, 
+                                                    vizT viz, 
+                                                    mergeT merge, 
+                                                    properties* props) {
   if(props==NULL) props = new properties();
   
   if(props->active && props->emitTag) {
-    map<string, string> pMap;// = cm->options.getProperties("op");
+    map<string, string> pMap;// = chg->options.getProperties("op");
     
     // Record the number of HG_inputs and outputs of this compHierGraph. This repeats the same attributes in hierGraphTS but 
     // it is easier let both hierGraphTS and compHierGraphTS to have their own than to allow functions of compHierGraphTS
     // access to properties of hierGraphTS.
-    pMap["numInputs"]  = txt()<<cm->numInputs(); 
-    pMap["numOutputs"] = txt()<<cm->numOutputs(); 
+    pMap["numInputs"]  = txt()<<chg->numInputs(); 
+    pMap["numOutputs"] = txt()<<chg->numOutputs(); 
+    // kyushick edit
+    pMap["hierGraphID"] = txt()<<chg->hierGraphID();
+    pMap["horID"]       = txt()<<chg->horID();
+    pMap["verID"]       = txt()<<chg->verID();
     
-    //cout << "compHierGraphTraceStream::setProperties() #ins="<<cm->ins.size()<<endl;
+    //cout << "compHierGraphTraceStream::setProperties() #ins="<<chg->ins.size()<<endl;
     // Add the comparators to be used for each input attribute, where they are provided
-    for(int inIdx=0; inIdx<cm->ins.size(); inIdx++) {
+    for(int inIdx=0; inIdx<chg->ins.size(); inIdx++) {
       // If the HG_context specified for this input is a HG_compContext
-      HG_compContext* ctxt = dynamic_cast<HG_compContext*>(cm->ins[inIdx].ctxt);
+      HG_compContext* ctxt = dynamic_cast<HG_compContext*>(chg->ins[inIdx].ctxt);
       // Skip HG_inputs for which a HG_compContext was not provided
       //cout << "ctxt="<<ctxt<<endl;
       if(!ctxt) {
@@ -1802,15 +1844,15 @@ properties* compHierGraphTraceStream::setProperties(int hierGraphID,
     }
     
     // Add the comparators to be used for each output attribute
-    for(int outIdx=0; outIdx<cm->outs.size(); outIdx++) {
+    for(int outIdx=0; outIdx<chg->outs.size(); outIdx++) {
       //if(o->ctxt==NULL) { cerr << "ERROR in hierGraph "<<hierGraphID<<"! Context of output "<<outIdx<<" not provided!"<<endl; assert(0); }
       // Skip outputs for which HG_contexts were not provided
-      if(cm->outs[outIdx].ctxt==NULL) {
+      if(chg->outs[outIdx].ctxt==NULL) {
         pMap[txt()<<"out"<<outIdx<<":numAttrs"] = "0";
         continue;
       }
       
-      HG_compContext* ctxt = dynamic_cast<HG_compContext*>(cm->outs[outIdx].ctxt);
+      HG_compContext* ctxt = dynamic_cast<HG_compContext*>(chg->outs[outIdx].ctxt);
       assert(ctxt);
       pMap[txt()<<"out"<<outIdx<<":numAttrs"] = txt()<<ctxt->comparators.size();
       int compIdx=0;
@@ -1823,9 +1865,9 @@ properties* compHierGraphTraceStream::setProperties(int hierGraphID,
     }
     
     // Add the comparators to be used for each measurement
-    pMap["numMeasurements"] = txt()<<cm->measComp.size();
+    pMap["numMeasurements"] = txt()<<chg->measComp.size();
     int measIdx=0;
-    for(map<string, pair<string, string> >::iterator mc=cm->measComp.begin(); mc!=cm->measComp.end(); mc++, measIdx++) {
+    for(map<string, pair<string, string> >::iterator mc=chg->measComp.begin(); mc!=chg->measComp.end(); mc++, measIdx++) {
       pMap[txt()<<"measure"<<measIdx] = 
               txt()<<escapedStr(mc->first,         ":", escapedStr::unescaped).escape()<<":"<<
                      escapedStr(mc->second.first,  ":", escapedStr::unescaped).escape()<<":"<<
@@ -1837,6 +1879,8 @@ properties* compHierGraphTraceStream::setProperties(int hierGraphID,
   
   return props;
 }
+
+
 
 // Directly calls the destructor of this object. This is necessary because when an application crashes
 // Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
@@ -2088,9 +2132,19 @@ properties* HierGraphMerger::setProperties(std::vector<std::pair<properties::tag
     pMap["name"]       = getSameValue(tags, "name");
     pMap["numInputs"]  = getSameValue(tags, "numInputs");
     pMap["numOutputs"] = getSameValue(tags, "numOutputs");
+    // kyushick edit
+    pMap["hierGraphID"] = txt()<<getSameValue(tags, "hierGraphID");
+    pMap["horID"]       = txt()<<getSameValue(tags, "horID");
+    pMap["verID"]       = txt()<<getSameValue(tags, "verID");
 
     HG_group g = ((HierGraphStreamRecord*)(outStreamRecords)["hierGraph"])->enterHierGraph(
-                           HG_instance(pMap["name"], attrValue::parseInt(pMap["numInputs"]), attrValue::parseInt(pMap["numOutputs"])));
+                           HG_instance( pMap["name"], 
+                                        attrValue::parseInt(pMap["numInputs"]), 
+                                        attrValue::parseInt(pMap["numOutputs"]), 
+                                        // kyushick edit
+                                        attrValue::parseInt(pMap["hierGraphID"]), 
+                                        attrValue::parseInt(pMap["horID"]), 
+                                        attrValue::parseInt(pMap["verID"]) ));
 
     // If this is a hierGraph tag, which is placed at the end of the hierGraphApp and records information
     // about the hierGraph's execution
@@ -2159,6 +2213,11 @@ void HierGraphMerger::mergeKey(properties::tagType type, properties::iterator ta
       info.add(tag.get("name"));
       info.add(tag.get("numInputs"));
       info.add(tag.get("numOutputs"));
+// kyushick edit
+      info.add(tag.get("hierGraphID"));
+      info.add(tag.get("horID"));
+      info.add(tag.get("verID"));
+
     /*} else if(tag.name() == "hierGraph") {
       streamID inSID(properties::getInt(tag, "hierGraphID"), inStreamRecords["hierGraph"]->getVariantID());
       //streamID outSID = ((HierGraphStreamRecord*)inStreamRecords["hierGraph"])->mStack.back()->in2outID(inSID);
@@ -2394,10 +2453,15 @@ properties* HierGraphTraceStreamMerger::setProperties(
     vector<string> names = getNames(tags); assert(allSame<string>(names));
     assert(*names.begin() == "hierGraphTS");
     
-    pMap["name"] = getSameValue(tags, "name");
-    pMap["numInputs"] = getSameValue(tags, "numInputs");
-    pMap["numOutputs"] = getSameValue(tags, "numOutputs");
-    
+    pMap["name"]        = getSameValue(tags, "name");
+    pMap["numInputs"]   = getSameValue(tags, "numInputs");
+    pMap["numOutputs"]  = getSameValue(tags, "numOutputs");
+// kyushick edit FIXME : txt()<<getSameValue()
+    pMap["hierGraphID"] = getSameValue(tags, "hierGraphID");
+    pMap["horID"]       = getSameValue(tags, "horID");
+    pMap["verID"]       = getSameValue(tags, "verID");
+
+ 
     // Now check to see if the current HG_group on each incoming stream has already been assigned an ID on the
     // outgoing stream
     /*streamID outSID;
@@ -2485,6 +2549,10 @@ void HierGraphTraceStreamMerger::mergeKey(properties::tagType type, properties::
     info.add(tag.get("name"));
     info.add(tag.get("numInputs"));
     info.add(tag.get("numOutputs"));
+// kyushick edit
+    info.add(tag.get("hierGraphID"));
+    info.add(tag.get("horID"));
+    info.add(tag.get("verID"));
   }
 }
 
@@ -2563,6 +2631,7 @@ CompHierGraphTraceStreamMerger::CompHierGraphTraceStreamMerger(
 { }
 
 // Sets the properties of this object
+// FIXME 0816
 properties* CompHierGraphTraceStreamMerger::setProperties(
                          std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                          std::map<std::string, streamRecord*>& outStreamRecords,

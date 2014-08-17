@@ -88,7 +88,7 @@ string hierGraphApp::outDir="";
 string hierGraphApp::htmlOutDir="";
 
 // Stack of the hierGraphs that are currently in scope within this hierGraphApp
-list<sight::layout::hierGraphInfo> hierGraphApp::mStack;
+list<sight::layout::hierGraphInfo> hierGraphApp::hgStack;
 
 hierGraphApp::hierGraphApp(properties::iterator props) : block(properties::next(props)) {
   // Register this hierGraphApp instance (there can be only one)
@@ -298,10 +298,12 @@ int HG_maxButtonID=0; // The maximum ID that has ever been assigned to a button
 //  } // trace attrs
 //}
 
+// kyushick edit
 // Enter a new hierGraph within the current hierGraphApp
 // numInputs/numOutputs - the number of inputs/outputs of this hierGraph node
 // ID - the unique ID of this hierGraph node
-void hierGraphApp::enterHierGraph(string hierGraphName, int hierGraphID, int numInputs, int numOutputs, int count) {
+//void hierGraphApp::enterHierGraph(string hierGraphName, int hierGraphID, int numInputs, int numOutputs, int count) {
+void hierGraphApp::enterHierGraph(string hierGraphName, int hierGraphID, int horID, int verID, int numInputs, int numOutputs, int count) {
 
   // hoa edit
   //tFile << hierGraphID <<":"<< hierGraphName << ":" << numInputs << ":"<<numOutputs <<endl;
@@ -316,10 +318,14 @@ void hierGraphApp::enterHierGraph(string hierGraphName, int hierGraphID, int num
 
   // Get the ID of the hierGraph that contains this one, if any.
   int containerHierGraphID = -1;
-  if(mStack.size()>0) containerHierGraphID = mStack.back().hierGraphID;
+  if(hgStack.size()>0) containerHierGraphID = hgStack.back().hierGraphID;
   
   // hoa edit
   tFile << hierGraphID <<":"<< hierGraphName <<":"<< numInputs <<":"<<numOutputs<<":"<<containerHierGraphID<<endl;
+  // kyushick edit
+  // you may want to get horID and verID here.
+  // tFile << hierGraphID << ":"<< horID<< ":"<< verID <<":"<< hierGraphName <<":"<< numInputs <<":"<<numOutputs<<":"<<containerHierGraphID<<endl;
+
 
   // Start a subgraph for the current hierGraph
   dotFile << "subgraph cluster"<<hierGraphID<<" {"<<endl;
@@ -581,37 +587,48 @@ void hierGraphApp::enterHierGraph(string hierGraphName, int hierGraphID, int num
   dotFile << "{rank=source;node"<<hierGraphID<<";}"<<endl;
   dotFile << "{rank=sink;node"<<hierGraphID<<"_Out;}"<<endl;
   
+  // kyushick edit
   // Add a hierGraphInfo object that records this hierGraph to the hierGraphApp's stack
-  mStack.push_back(sight::layout::hierGraphInfo(hierGraphName, hierGraphID, numInputs, numOutputs, count));
-  
+//  hgStack.push_back(sight::layout::hierGraphInfo(hierGraphName, hierGraphID, numInputs, numOutputs, count));
+  hgStack.push_back(sight::layout::hierGraphInfo(hierGraphName, hierGraphID, horID, verID, numInputs, numOutputs, count));
+
   //cout << "hierGraphApp::enterHierGraph() done\n";
 }
 
 // Static version of enterHierGraph() that pulls the from/to anchor IDs from the properties iterator and calls 
 // enterHierGraph() in the currently active hierGraphApp
 void* hierGraphApp::enterHierGraph(properties::iterator props) {
+  // kyushick edit
   int hierGraphID = properties::getInt(props, "hierGraphID");
+  int horID       = properties::getInt(props, "horID");
+  int verID       = properties::getInt(props, "verID");
+  int count       = properties::getInt(props, "count");
+
   
   // Get this hierGraph's hierGraphTraceStream
   assert(hierGraphApp::getInstance()->hierGraphTraces.find(hierGraphID) != hierGraphApp::getInstance()->hierGraphTraces.end());
-  hierGraphTraceStream* ts = dynamic_cast<hierGraphTraceStream*>(hierGraphApp::getInstance()->hierGraphTraces[hierGraphID]);
-  assert(ts);
+  hierGraphTraceStream* hgts = dynamic_cast<hierGraphTraceStream*>(hierGraphApp::getInstance()->hierGraphTraces[hierGraphID]);
+  assert(hgts);
   
   assert(hierGraphApp::activeMA);
-  hierGraphApp::activeMA->enterHierGraph(ts->name, 
-                                    hierGraphID, 
-                                    ts->numInputs, 
-                                    ts->numOutputs, 
-                                    properties::getInt(props, "count")); 
+
+  // Kyushick edit
+  hierGraphApp::activeMA->enterHierGraph(hgts->name, 
+                                         hierGraphID, 
+                                         horID,
+                                         verID,
+                                         hgts->numInputs, 
+                                         hgts->numOutputs, 
+                                         count); 
   return NULL;
 }
 
 // Exit a hierGraph within the current hierGraphApp
 void hierGraphApp::exitHierGraph() {
-  // Grab the information about the hierGraph we're exiting from this hierGraphApp's mStack and pop it off
-  assert(mStack.size()>0);
-  sight::layout::hierGraphInfo m = mStack.back();
-  mStack.pop_back();
+  // Grab the information about the hierGraph we're exiting from this hierGraphApp's hgStack and pop it off
+  assert(hgStack.size()>0);
+  sight::layout::hierGraphInfo m = hgStack.back();
+  hgStack.pop_back();
   
   //cout << "hierGraphApp::exitHierGraph("<<m.hierGraphName<<")"<<endl;
   // Close the current hierGraph's sub-graph
@@ -1549,8 +1566,8 @@ hierGraphTraceStream::hierGraphTraceStream(properties::iterator props, traceObse
   numOutputs = props.getInt("numOutputs");
   
   // Get the currently active hierGraph that this traceStream belongs to
-  /*assert(hierGraphApp::mStack.size()>0);
-  hierGraph* m = hierGraphApp::activeMA->mStack.back();*/
+  /*assert(hierGraphApp::hgStack.size()>0);
+  hierGraph* m = hierGraphApp::activeMA->hgStack.back();*/
 
   /*cout << "hierGraphApp::activeMA->hierGraphTraces=";
   for(map<int, traceStream*>::iterator i=hierGraphApp::activeMA->hierGraphTraces.begin(); i!=hierGraphApp::activeMA->hierGraphTraces.end(); i++)

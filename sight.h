@@ -17,6 +17,7 @@
 #include "widgets/module/module_structure.h"
 #include "widgets/source/source_structure.h"
 #include "widgets/clock/clock_structure.h"
+#include "widgets/hierGraph/hierGraph_structure.h"
 
 using namespace sight::structure;
 
