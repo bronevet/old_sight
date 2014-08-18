@@ -82,7 +82,9 @@ void invokeEnterHandler(map<string, list<void*> >& stack, string objName, proper
   cout << "<<<"<<stack[objName].size()<<": "<<objName<<endl;
   cout << "    "<<iter.str()<<endl;
   #endif
-  if(layoutHandlerInstantiator::layoutEnterHandlers->find(objName) == layoutHandlerInstantiator::layoutEnterHandlers->end()) { cerr << "ERROR: no entry handler for \""<<objName<<"\" tags!" << endl; }
+  if(layoutHandlerInstantiator::layoutEnterHandlers->find(objName) == layoutHandlerInstantiator::layoutEnterHandlers->end()) { 
+    cerr << "ERROR: no entry handler for \""<<objName<<"\" tags!" << endl; 
+  }
   assert(layoutHandlerInstantiator::layoutEnterHandlers->find(objName) != layoutHandlerInstantiator::layoutEnterHandlers->end());
   stack[objName].push_back((*layoutHandlerInstantiator::layoutEnterHandlers)[objName](iter));
 }

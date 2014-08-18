@@ -38,34 +38,33 @@ namespace structure {
 // -------------------------
 
 // Record the configuration handlers in this file
-hierGraphConfHandlerInstantiator::hierGraphConfHandlerInstantiator() 
-{
-  (*enterHandlers)["hierGraphApp"]       = &hierGraphApp::configure;
-  (*exitHandlers )["hierGraphApp"]       = &hierGraphConfHandlerInstantiator::defaultExitFunc;
+hierGraphConfHandlerInstantiator::hierGraphConfHandlerInstantiator() {
+  (*enterHandlers)["hierGraphApp"] = &hierGraphApp::configure;
+  (*exitHandlers )["hierGraphApp"] = &hierGraphConfHandlerInstantiator::defaultExitFunc;
+/*
+  (*confEnterHandlers)["hierGraphAppBody"]      = &defaultConfEntryHandler;
+  (*confExitHandlers )["hierGraphAppBody"]      = &defaultConfExitHandler;
+  (*confEnterHandlers)["hierGraphAppStructure"] = &defaultConfEntryHandler;
+  (*confExitHandlers )["hierGraphAppStructure"] = &defaultConfExitHandler;
+  (*confEnterHandlers)["hierGraphTS"]           = &hierGraphTraceStream::enterTraceStream;
+  (*confExitHandlers )["hierGraphTS"]           = &defaultConfExitHandler;
+  (*confEnterHandlers)["hierGraph"]             = &hierGraphApp::enterHierGraph;
+  (*confExitHandlers )["hierGraph"]             = &hierGraphApp::exitHierGraph;
+  (*confEnterHandlers)["hierGraphMarker"]       = &defaultConfEntryHandler;
+  (*confExitHandlers )["hierGraphMarker"]       = &defaultConfExitHandler;
+  (*confEnterHandlers)["hierGraphCtrl"]         = &defaultConfEntryHandler;
+  (*confExitHandlers )["hierGraphCtrl"]         = &defaultConfExitHandler;
+  (*confEnterHandlers)["hierGraphEdge"]         = &hierGraphApp::addEdge;
+  (*confExitHandlers )["hierGraphEdge"]         = &defaultConfExitHandler;
+  (*confEnterHandlers)["compHierGraphTS"]       = &compHierGraphTraceStream::enterTraceStream;
+  (*confExitHandlers )["compHierGraphTS"]       = &defaultConfExitHandler;
+  (*confEnterHandlers)["processedHierGraphTS"]  = &processedHierGraphTraceStream::enterTraceStream;
+  (*confExitHandlers )["processedHierGraphTS"]  = &defaultConfExitHandler;
+*/
   (*enterHandlers)["hierGraph"]          = &hierGraph::configure;
   (*exitHandlers )["hierGraph"]          = &hierGraphConfHandlerInstantiator::defaultExitFunc;
   (*enterHandlers)["compHierGraph"]      = &compHierGraph::configure;
   (*exitHandlers )["compHierGraph"]      = &hierGraphConfHandlerInstantiator::defaultExitFunc;
-/*
-	(*confEnterHandlers)["hierGraphAppBody"]       = &defaultConfEntryHandler;
-  (*confExitHandlers )["hierGraphAppBody"]       = &defaultConfExitHandler;
-  (*confEnterHandlers)["hierGraphAppStructure"]  = &defaultConfEntryHandler;
-  (*confExitHandlers )["hierGraphAppStructure"]  = &defaultConfExitHandler;
-  (*confEnterHandlers)["hierGraphTS"]            = &hierGraphTraceStream::enterTraceStream;
-  (*confExitHandlers )["hierGraphTS"]            = &defaultConfExitHandler;
-  (*confEnterHandlers)["hierGraph"]              = &hierGraphApp::enterHierGraph;
-  (*confExitHandlers )["hierGraph"]              = &hierGraphApp::exitHierGraph;
-  (*confEnterHandlers)["hierGraphMarker"]        = &defaultConfEntryHandler;
-  (*confExitHandlers )["hierGraphMarker"]        = &defaultConfExitHandler;
-  (*confEnterHandlers)["hierGraphCtrl"]          = &defaultConfEntryHandler;
-  (*confExitHandlers )["hierGraphCtrl"]          = &defaultConfExitHandler;
-  (*confEnterHandlers)["hierGraphEdge"]          = &hierGraphApp::addEdge;
-  (*confExitHandlers )["hierGraphEdge"]          = &defaultConfExitHandler;
-  (*confEnterHandlers)["compHierGraphTS"]        = &compHierGraphTraceStream::enterTraceStream;
-  (*confExitHandlers )["compHierGraphTS"]        = &defaultConfExitHandler;
-  (*confEnterHandlers)["processedHierGraphTS"]   = &processedHierGraphTraceStream::enterTraceStream;
-  (*confExitHandlers )["processedHierGraphTS"]   = &defaultConfExitHandler;
-*/
 }
 
 hierGraphConfHandlerInstantiator hierGraphConfHandlerInstance;
