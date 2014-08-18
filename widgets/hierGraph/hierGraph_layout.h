@@ -33,6 +33,18 @@ class hierGraphLayoutHandlerInstantiator : layoutHandlerInstantiator {
 };
 extern hierGraphLayoutHandlerInstantiator hierGraphLayoutHandlerInstance;
 
+
+// kyushick edit FIXME
+/*
+class hierGraphConfHandlerInstantiator : common::confHandlerInstantiator {
+  public:
+  hierGraphConfHandlerInstantiator();
+};
+extern hierGraphConfHandlerInstantiator hierGraphConfHandlerInstance;
+*/
+
+
+
 class hierGraphTraceStream;
 
 // Records the information of a given hierGraph 
@@ -52,8 +64,8 @@ public:
   int count;
  
 // kyushick edit 
-  hierGraphInfo(const std::string& hierGraphName, int hierGraphID, int horID, int verID, int numInputs, int numOutputs, int count) :
-    hierGraphName(hierGraphName), hierGraphID(hierGraphID), numInputs(numInputs), numOutputs(numOutputs), count(count)
+  hierGraphInfo(const std::string& hierGraphName, int hierGraphID, int horID, int verID, int numInputs, int numOutputs, int count) 
+    : hierGraphName(hierGraphName), hierGraphID(hierGraphID), horID(horID), verID(verID), numInputs(numInputs), numOutputs(numOutputs), count(count)
   {}
 //  hierGraphInfo(const std::string& hierGraphName, int hierGraphID, int numInputs, int numOutputs, int count) :
 //    hierGraphName(hierGraphName), hierGraphID(hierGraphID), numInputs(numInputs), numOutputs(numOutputs), count(count)
@@ -254,10 +266,10 @@ class hierGraphApp: public block, public common::hierGraph
   // Relative to root of HTML document
   static std::string htmlOutDir;
     
-  // Name of this modular app
+  // Name of this hierGraph app
   std::string appName;
   
-  // Unique ID of this modular app
+  // Unique ID of this hierGraph app
   int appID;
   
   // Stack of the hierGraphs that are currently in scope within this hierGraphApp
@@ -349,6 +361,38 @@ class hierGraphApp: public block, public common::hierGraph
   // that contain this block and false otherwise.
   bool subBlockEnterNotify(block* subBlock) { return false; }
   bool subBlockExitNotify (block* subBlock) { return false; }
+
+/* kyushick edit FIXME
+
+  // If emitObsCommonDataTable, points to the instance of SynopticModuleObsLogger that monitors and 
+  // records all hierGraph observations.
+  SynopticModuleObsLogger* commonDataTableLogger;
+  
+  // -------------------------
+  // ----- Configuration -----
+  // -------------------------
+  // Currently there isn't anything that can be configured but in the future we may wish to
+  // add measurements that will be taken on all hierGraphs
+  public:
+  class HierGraphAppConfiguration : public common::Configuration{
+    public:
+    HierGraphAppConfiguration(properties::iterator props) : common::Configuration(props.next()) {
+      emitObsIndividualDataTable = props.exists("emitObsIndividualDataTable");
+      emitObsCommonDataTable     = props.exists("emitObsCommonDataTable");
+    }
+  };
+
+  static common::Configuration* configure(properties::iterator props) {
+    // Create a ModuleConfiguration object, using the invocation of the constructor hierarchy to
+    // record the configuration details with the respective widgets from which hierGraphs inherit
+    HierGraphAppConfiguration* c = new HierGraphAppConfiguration(props);
+    delete c;
+    return NULL;
+  }
+
+*/
+
+
 }; // class hierGraphApp
 
 // Specialization of traceStreams for the case where they are hosted by a hierGraph
@@ -357,6 +401,10 @@ class hierGraphTraceStream: public traceStream
   friend class hierGraphApp;
   protected:
   int hierGraphID;
+  // kyushick edit
+  int horID;
+  int verID;
+
   std::string name;
   int numInputs;
   int numOutputs;

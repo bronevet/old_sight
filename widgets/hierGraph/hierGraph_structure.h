@@ -51,6 +51,7 @@ public:
   std::string name;
   int numInputs;
   int numOutputs;
+  // kyushick edit
   int hierGraphID;  // object ID
   int horID;  // horizontal ID
   int verID;  // vertical ID
@@ -121,6 +122,14 @@ public:
   
   // Returns the number of outnputs of the most deeply nested HG_instance within this HG_group
   int numOutputs() const;
+
+  // Kyushick edit -------------------------------------------------------------------------------
+
+  int hierGraphID() const;
+  int horID() const;
+  int verID() const;
+
+  //----------------------------------------------------------------------------------------------
   
   // Returns the most deeply nested HG_instance within this HG_group
   const HG_instance& getInst() const;
@@ -357,7 +366,10 @@ private:
 public:
   // Returns the hierGraph ID of the given hierGraph HG_group, generating a fresh one if one has not yet been assigned
   static int genHierGraphID(const HG_group& g);
-  
+ 
+  // kyushick edit 
+  static int recvHierGraphID(const HG_group& g);
+
   // Returns whether the current HG_instance of hierGraphApp is active
   static bool isInstanceActive();
 
@@ -433,7 +445,7 @@ class hierGraph: public sightObj, public common::hierGraph
   
 protected:
   
-  int hierGraphID;
+  int hierGraphID_;
   HG_group g;
   
   // The HG_context of this hierGraph execution, which is a combination of the HG_contexts of all of its HG_inputs
@@ -579,8 +591,13 @@ public:
   
   const std::vector<HG_context>& getContext() const { return ctxt; }
   std::string name() const { return g.name(); }
-  int numInputs()  const { return g.numInputs(); }
-  int numOutputs() const { return g.numOutputs(); }
+  int numInputs()    const { return g.numInputs(); }
+  int numOutputs()   const { return g.numOutputs(); }
+  // kyushick edit
+  int hierGraphID()  const { return hierGraphID_; }
+  int horID()        const { return g.horID(); }
+  int verID()        const { return g.verID(); }
+
   const HG_group& getGroup() const { return g; }
   
   // Sets the HG_context of the given output HG_port
@@ -1422,6 +1439,10 @@ class CompHierGraphTraceStreamMerger : public HierGraphTraceStreamMerger {
                        std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
 }; // class CompHierGraphTraceStreamMerger
 
+
+
+
+
 class HierGraphStreamRecord: public streamRecord {
   friend class HierGraphAppMerger;
   friend class HierGraphMerger;
@@ -1429,14 +1450,15 @@ class HierGraphStreamRecord: public streamRecord {
   friend class HierGraphTraceStreamMerger;
   friend class CompHierGraphTraceStreamMerger;
   
-  /*
+/*
   // We allow hierGraphs within different hierGraphApps to use independent ID schemes (i.e. the hierGraph IDs within
   // different apps may independently start from 0) because we anticipate that in the future this may make it easier
   // to match up HG_instances of the same hierGraph within the same hierGraphApp.
   // The stack of streamRecords that record for each currently active moduluarApp
   // (they are nested hierarchically), the mappings of nodes IDs from incoming to 
   // outgoing streams.
-  std::list<streamRecord*> hgStack;*/
+  std::list<streamRecord*> hgStack;
+*/
   
   // The information that uniquely identifies a hierGraph
   /*class hierGraphInfo {
@@ -1477,6 +1499,9 @@ class HierGraphStreamRecord: public streamRecord {
   
   // Returns a fresh hierGraphID
   int genHierGraphID() { return maxHierGraphID++; }
+
+  // kyushick edit
+  int recvHierGraphID() { return iStack.back().hierGraphID; }
   
   // Called when a hierGraph is entered/exited along the given stream to record the current hierGraph HG_group
   HG_group enterHierGraph(const HG_instance& inst);

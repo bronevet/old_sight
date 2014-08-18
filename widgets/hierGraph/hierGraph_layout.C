@@ -76,7 +76,45 @@ hierGraphLayoutHandlerInstantiator::hierGraphLayoutHandlerInstantiator() {
   (*layoutEnterHandlers)["processedHierGraphTS"]   = &processedHierGraphTraceStream::enterTraceStream;
   (*layoutExitHandlers )["processedHierGraphTS"]   = &defaultExitHandler;
 }
+
 hierGraphLayoutHandlerInstantiator hierGraphLayoutHandlerInstance;
+
+
+// kyushick edit FIXME
+////// -------------------------
+////// ----- Configuration -----
+////// -------------------------
+////
+////// Record the configuration handlers in this file
+////hierGraphConfHandlerInstantiator::hierGraphConfHandlerInstantiator() {
+////  (*enterHandlers)["hierGraphApp"]  = &hierGraphApp::configure;
+////  (*exitHandlers )["hierGraphApp"]  = &hierGraphConfHandlerInstantiator::defaultExitFunc;
+////  /*(*confEnterHandlers)["hierGraphAppBody"]      = &defaultConfEntryHandler;
+////  (*confExitHandlers )["hierGraphAppBody"]      = &defaultConfExitHandler;
+////  (*confEnterHandlers)["hierGraphAppStructure"] = &defaultConfEntryHandler;
+////  (*confExitHandlers )["hierGraphAppStructure"] = &defaultConfExitHandler;
+////  (*confEnterHandlers)["hierGraphTS"]            = &hierGraphTraceStream::enterTraceStream;
+////  (*confExitHandlers )["hierGraphTS"]            = &defaultConfExitHandler;
+////  (*confEnterHandlers)["hierGraph"]              = &hierGraphApp::enterHierGraph;
+////  (*confExitHandlers )["hierGraph"]              = &hierGraphApp::exitHierGraph;
+////  (*confEnterHandlers)["hierGraphMarker"]        = &defaultConfEntryHandler;
+////  (*confExitHandlers )["hierGraphMarker"]        = &defaultConfExitHandler;
+////  (*confEnterHandlers)["hierGraphCtrl"]          = &defaultConfEntryHandler;
+////  (*confExitHandlers )["hierGraphCtrl"]          = &defaultConfExitHandler;
+////  (*confEnterHandlers)["hierGraphEdge"]          = &hierGraphApp::addEdge;
+////  (*confExitHandlers )["hierGraphEdge"]          = &defaultConfExitHandler;
+////  (*confEnterHandlers)["compHierGraphTS"]        = &compHierGraphTraceStream::enterTraceStream;
+////  (*confExitHandlers )["compHierGraphTS"]        = &defaultConfExitHandler;
+////  (*confEnterHandlers)["processedHierGraphTS"]   = &processedHierGraphTraceStream::enterTraceStream;
+////  (*confExitHandlers )["processedHierGraphTS"]   = &defaultConfExitHandler;
+////  (*enterHandlers)["hierGraph"]          = &hierGraph::configure;
+////  (*exitHandlers )["hierGraph"]          = &hierGraphConfHandlerInstantiator::defaultExitFunc;
+////  (*enterHandlers)["compHierGraph"]      = &compHierGraph::configure;
+////  (*exitHandlers )["compHierGraph"]      = &hierGraphConfHandlerInstantiator::efaultExitFunc;*/
+////}
+////hierGraphConfHandlerInstantiator hierGraphConfHandlerInstance;
+////
+
 
 // Points to the currently active instance of hierGraphApp. There can be only one.
 hierGraphApp* hierGraphApp::activeMA=NULL;
@@ -1564,6 +1602,10 @@ hierGraphTraceStream::hierGraphTraceStream(properties::iterator props, traceObse
   name       = props.get("name");
   numInputs  = props.getInt("numInputs");
   numOutputs = props.getInt("numOutputs");
+  // kyushick edit
+  hierGraphID = props.getInt("hierGraphID");
+  horID       = props.getInt("horID");
+  verID       = props.getInt("verID");
   
   // Get the currently active hierGraph that this traceStream belongs to
   /*assert(hierGraphApp::hgStack.size()>0);
