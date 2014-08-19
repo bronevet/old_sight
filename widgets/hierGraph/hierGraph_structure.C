@@ -111,6 +111,9 @@ std::string HG_instance::str() const {
 
 // Creates a HG_group given the current stack of hierGraphs and a new hierGraph HG_instance
 HG_group::HG_group(const std::list<hierGraph*>& hgStack, const HG_instance& inst) {
+  std::cout<<"HG_group construction, Instance Name : "<<inst.name<<"\n"<<endl;
+  getchar();
+
   for(std::list<hierGraph*>::const_iterator m=hgStack.begin(); m!=hgStack.end(); m++)
     stack.push_back((*m)->g.getInst());
   stack.push_back(inst);
@@ -118,6 +121,9 @@ HG_group::HG_group(const std::list<hierGraph*>& hgStack, const HG_instance& inst
 
 
 void HG_group::init(const std::list<hierGraph*>& hgStack, const HG_instance& inst) {
+  std::cout<<"HG_group Initialization, Instance Name : "<<inst.name<<"\n"<<endl;
+  getchar();
+
   stack.clear();
   for(std::list<hierGraph*>::const_iterator m=hgStack.begin(); m!=hgStack.end(); m++)
     stack.push_back((*m)->g.getInst());
@@ -900,17 +906,17 @@ void hierGraph::init(const std::vector<HG_port>& ins, properties* derivedProps) 
   if(hierGraphApp::isInstanceActive() && derivedProps->active) {
     
     // kyushick edit
-//    hierGraphID = hierGraphApp::genHierGraphID(g);
+//    hierGraphID_ = hierGraphApp::genHierGraphID(g);
     hierGraphID_ = hierGraphApp::recvHierGraphID(g);
     
     // Add the properties of this hierGraph to derivedProps
     map<string, string> pMap;
-    pMap["hierGraphID"]   = txt()<<hierGraphID_;
-    pMap["name"]       = g.name();
-    pMap["numInputs"]  = txt()<<g.numInputs();
-    pMap["numOutputs"] = txt()<<g.numOutputs();
+    pMap["hierGraphID"] = txt()<<hierGraphID_;
+    pMap["name"]        = g.name();
+    pMap["numInputs"]   = txt()<<g.numInputs();
+    pMap["numOutputs"]  = txt()<<g.numOutputs();
     //kyushick edit
-    pMap["hierGraphID"] = txt()<<g.hierGraphID();
+//    pMap["hierGraphID"] = txt()<<g.hierGraphID();
     pMap["horID"]       = txt()<<g.horID();
     pMap["verID"]       = txt()<<g.verID();
 
@@ -970,10 +976,14 @@ hierGraph::~hierGraph() {
   
   //cout << "~hierGraph() props->active="<<props->active<<endl;
 
-  if(ins.size() != g.numInputs()) { cerr << "WARNING: hierGraph \""<<g.name()<<"\" specifies "<<g.numInputs()<<" HG_inputs but "<<ins.size()<<" HG_inputs are actually provided!"<<endl; }
+  if(ins.size() != g.numInputs()) { 
+    cerr << "WARNING: hierGraph \""<<g.name()<<"\" specifies "<<g.numInputs()<<" HG_inputs, "<<
+            "but "<<ins.size()<<" HG_inputs are actually provided!"<<endl; 
+  }
   
   if(outsSet.size() != g.numOutputs()) { 
-    cerr << "WARNING: hierGraph \""<<g.name()<<"\" specifies "<<g.numOutputs()<<" outputs but "<<outsSet.size()<<" outputs are actually provided! ";
+    cerr << "WARNING: hierGraph \""<<g.name()<<"\" specifies "<<g.numOutputs()<<" outputs,"<<
+            " but "<<outsSet.size()<<" outputs are actually provided!\n";
     cerr << "Missing outputs:";
     for(int i=0; i<outs.size(); i++) if(outsSet.find(i)==outsSet.end()) cerr << " "<<i;
     cerr << endl;
@@ -1105,8 +1115,14 @@ void hierGraph::setOutCtxt(int idx, const HG_context& c) {
     (*externalOutputs)[idx].setCtxt(c);
     
   // Emit a warning of an output has been set multiple times
-  if(outsSet.find(idx) != outsSet.end()) cerr << "WARNING: output "<<idx<<" of hierGraph \""<<g.str()<<"\" has been set multiple times! Set this time to HG_context "<<c.str()<<endl;
-  else outsSet.insert(idx);
+  if(outsSet.find(idx) != outsSet.end()) {
+    cerr << "WARNING: output "<<idx<<" of hierGraph \""<<g.str()<<"\" has been set multiple times! Set this time to HG_context "<<c.str()<<endl;
+  }
+  else {
+// kyushick edit
+//    std::cout<<"\n ------ setOutCtxt ------\n"<<endl;
+    outsSet.insert(idx);
+  }
 }
 
 // Returns a list of the hierGraph's input HG_ports
@@ -1994,21 +2010,20 @@ HierGraphMergeHandlerInstantiator::HierGraphMergeHandlerInstantiator() {
   (*MergeKeyHandlers)["hierGraphAppBody"]      = HierGraphAppStructureMerger::mergeKey;
   (*MergeHandlers   )["hierGraphAppStructure"] = HierGraphAppStructureMerger::create;
   (*MergeKeyHandlers)["hierGraphAppStructure"] = HierGraphAppStructureMerger::mergeKey;
-  (*MergeHandlers   )["hierGraph"]              = HierGraphMerger::create;
-  (*MergeKeyHandlers)["hierGraph"]              = HierGraphMerger::mergeKey;    
-  (*MergeHandlers   )["hierGraphMarker"]        = HierGraphMerger::create;
-  (*MergeKeyHandlers)["hierGraphMarker"]        = HierGraphMerger::mergeKey;
-  (*MergeHandlers   )["hierGraphCtrl"]          = HierGraphCtrlMerger::create;
-  (*MergeKeyHandlers)["hierGraphCtrl"]          = HierGraphCtrlMerger::mergeKey;
-  (*MergeHandlers   )["hierGraphEdge"]          = HierGraphEdgeMerger::create;
-  (*MergeKeyHandlers)["hierGraphEdge"]          = HierGraphEdgeMerger::mergeKey;
-  (*MergeHandlers   )["hierGraphTS"]            = HierGraphTraceStreamMerger::create;
-  (*MergeKeyHandlers)["hierGraphTS"]            = HierGraphTraceStreamMerger::mergeKey;
-  
-  (*MergeHandlers   )["compHierGraph"]          = CompHierGraphMerger::create;
-  (*MergeKeyHandlers)["compHierGraph"]          = CompHierGraphMerger::mergeKey;    
-  (*MergeHandlers   )["compHierGraphTS"]        = CompHierGraphTraceStreamMerger::create;
-  (*MergeKeyHandlers)["compHierGraphTS"]        = CompHierGraphTraceStreamMerger::mergeKey;
+  (*MergeHandlers   )["hierGraph"]             = HierGraphMerger::create;
+  (*MergeKeyHandlers)["hierGraph"]             = HierGraphMerger::mergeKey;    
+  (*MergeHandlers   )["hierGraphMarker"]       = HierGraphMerger::create;
+  (*MergeKeyHandlers)["hierGraphMarker"]       = HierGraphMerger::mergeKey;
+  (*MergeHandlers   )["hierGraphCtrl"]         = HierGraphCtrlMerger::create;
+  (*MergeKeyHandlers)["hierGraphCtrl"]         = HierGraphCtrlMerger::mergeKey;
+  (*MergeHandlers   )["hierGraphEdge"]         = HierGraphEdgeMerger::create;
+  (*MergeKeyHandlers)["hierGraphEdge"]         = HierGraphEdgeMerger::mergeKey;
+  (*MergeHandlers   )["hierGraphTS"]           = HierGraphTraceStreamMerger::create;
+  (*MergeKeyHandlers)["hierGraphTS"]           = HierGraphTraceStreamMerger::mergeKey;
+  (*MergeHandlers   )["compHierGraph"]         = CompHierGraphMerger::create;
+  (*MergeKeyHandlers)["compHierGraph"]         = CompHierGraphMerger::mergeKey;    
+  (*MergeHandlers   )["compHierGraphTS"]       = CompHierGraphTraceStreamMerger::create;
+  (*MergeKeyHandlers)["compHierGraphTS"]       = CompHierGraphTraceStreamMerger::mergeKey;
     
   MergeGetStreamRecords->insert(&HierGraphGetMergeStreamRecord);
 }
@@ -2027,10 +2042,10 @@ std::map<std::string, streamRecord*> HierGraphGetMergeStreamRecord(int streamID)
  ****************************/
 
 HierGraphAppMerger::HierGraphAppMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
-                         map<string, streamRecord*>& outStreamRecords,
-                         vector<map<string, streamRecord*> >& inStreamRecords,
-                         properties* props) : 
-        BlockMerger(advance(tags), outStreamRecords, inStreamRecords, 
+                                       map<string, streamRecord*>& outStreamRecords,
+                                       vector<map<string, streamRecord*> >& inStreamRecords,
+                                       properties* props) 
+  : BlockMerger(advance(tags), outStreamRecords, inStreamRecords, 
                     setProperties(tags, outStreamRecords, inStreamRecords, props)) { }
 
 // Sets the properties of the merged object
@@ -2569,8 +2584,8 @@ properties* HierGraphTraceStreamMerger::setProperties(
     // kyushick edit FIXME
 
       // Generate a fresh ID for all the hierGraphs along the incoming streams
-      hierGraphID = ((HierGraphStreamRecord*)(outStreamRecords)["hierGraph"])->genHierGraphID();
-//      hierGraphID = ((HierGraphStreamRecord*)(outStreamRecords)["hierGraph"])->recvHierGraphID();
+//      hierGraphID = ((HierGraphStreamRecord*)(outStreamRecords)["hierGraph"])->genHierGraphID();
+      hierGraphID = ((HierGraphStreamRecord*)(outStreamRecords)["hierGraph"])->recvHierGraphID();
 
 
       // Make sure that the traceIDs of the traceStreams associated with the aligned hierGraphs along the 

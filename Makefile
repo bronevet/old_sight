@@ -8,7 +8,7 @@ sight := ${sight_O} ${sight_H} gdbLineNum.pl sightDefines.pl
 
 ROOT_PATH = ${CURDIR}
 
-SIGHT_CFLAGS = -g -fPIC -I${ROOT_PATH} -I${ROOT_PATH}/attributes -I${ROOT_PATH}/widgets/* \
+SIGHT_CFLAGS = -g -fPIC -I${ROOT_PATH} -DVERBOSE=1 -I${ROOT_PATH}/attributes -I${ROOT_PATH}/widgets/* \
                 -I${ROOT_PATH}/tools/callpath/src -I${ROOT_PATH}/tools/adept-utils/include \
                 -I${ROOT_PATH}/tools/boost_1_55_0 \
                 -I${ROOT_PATH}/widgets/papi/include \
@@ -272,6 +272,9 @@ clean:
 
 clean_objects:
 	rm -f *.a *.o attributes/*.o widgets/*.o widgets/*/*.o hier_merge slayout
+
+clean_hierGraph:
+	rm widgets/hierGraph/*.o
 
 script/taffydb:
 	#cd script; wget --no-check-certificate https://github.com/typicaljoe/taffydb/archive/master.zip
