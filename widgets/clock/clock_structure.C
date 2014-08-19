@@ -97,9 +97,11 @@ properties* stepClock::setProperties(properties* props) {
   // Store the currrent time in props
   map<string, string> pMap;
   pMap["stepClockID"] = txt()<<stepClockID;
-  pMap["numDims"] = txt()<<curStep.size();
+  /*pMap["numDims"] = txt()<<curStep.size();
   for(int i=0; i<curStep.size(); i++)
-    pMap[txt()<<"dim"<<i] = txt()<<curStep[i];
+    pMap[txt()<<"dim"<<i] = txt()<<curStep[i];*/
+  attrValue arr(sightArray(sightArray::dims(curStep.size()), &curStep[0]));
+  pMap["curStep"] = arr.serialize();
   props->add("stepClock", pMap);
   return props;
 }
@@ -344,7 +346,7 @@ properties* StepClockMerger::setProperties(std::vector<std::pair<properties::tag
     // Merge the step clock IDs along all the streams
     streamRecord::mergeIDs("stepClock", "stepClockID", pMap, tags, outStreamRecords, inStreamRecords);
     
-    // Emit the step vector, which must be the same in all tags
+    /* // Emit the step vector, which must be the same in all tags
     vector<string> numDimsV = getValues(tags, "numDims");
     assert(allSame<string>(numDimsV));
     pMap["numDims"] = txt() << *numDimsV.begin();
@@ -354,7 +356,10 @@ properties* StepClockMerger::setProperties(std::vector<std::pair<properties::tag
       vector<string> vals = getValues(tags, txt()<<"dim"<<i);
       assert(allSame<string>(vals));
       pMap[txt()<<"dim"<<i] = *vals.begin();
-    }
+    }*/
+    vector<string> curStepV = getValues(tags, "curStep");
+    assert(allSame<string>(curStepV));
+    pMap["curStep"] = *curStepV.begin();
   }
   props->add("stepClock", pMap);
   
@@ -372,10 +377,13 @@ void StepClockMerger::mergeKey(properties::tagType type, properties::iterator ta
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
     // Differentiate step clocks according to their step vector
-    info.add(properties::get(tag, "numDims"));
+    /*info.add(properties::get(tag, "numDims"));
     long numDims = properties::getInt(tag, "numDims");
     for(int i=0; i<numDims; i++)
-      info.add(properties::get(tag, txt()<<"dim"<<i));
+      info.add(properties::get(tag, txt()<<"dim"<<i));*/
+    //attrValue curStep(tag.get("curStep"), attrValue::unknownT);
+    //info.add(curStep.serialize());
+    info.add(tag.get("curStep"));
   }
 }
 

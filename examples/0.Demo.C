@@ -25,285 +25,145 @@ int fibGraph(int a, graph& g, anchor* parent);
 double histRecurrence(int a, const vector<double>& hist);
 std::pair<int, std::vector<port> > fibModule(int a, int depth);
 
-pthread_barrier_t barr;
-//long numMutexOwners=0;
-//pthread_t lastMutexOwner;
-pthread_mutex_t mutex;
-
-/*pthread_mutex_t causalitymutex;
-std::map<pthread_t, scalarCausalClock*> causality;
-//ThreadLocalStorage0<scalarCausalClock> threadCausality;
-
-void barrier(pthread_barrier_t& barr, scalarCausalClock& threadCausality) {
-  int rc = pthread_barrier_wait(&barr);
-  if(rc != 0 && rc != PTHREAD_BARRIER_SERIAL_THREAD) { cerr << "ERROR waiting on barrier!\n"; exit(-1); }
-
-  long long maxTime=-1;
-  for(map<pthread_t, scalarCausalClock*>::const_iterator i=causality.begin(); i!=causality.end(); i++) {
-    if(i->first != pthread_self()) 
-      maxTime = (i->second->send()>maxTime? i->second->send(): maxTime);
-  }
-
-  rc = pthread_barrier_wait(&barr);
-  if(rc != 0 && rc != PTHREAD_BARRIER_SERIAL_THREAD) { cerr << "ERROR waiting on barrier!\n"; exit(-1); }
-
-  cout << pthread_self() << ": maxTime="<<maxTime<<endl;
-  threadCausality.recv(maxTime);
-}
-
-void lock(pthread_mutex_t& mutex, scalarCausalClock& threadCausality) {
-  int rc = pthread_mutex_lock(&mutex);
-
-  // If this lock was previously owned by another thread, record the happens-before relationship
-  if(numMutexOwners>0/ * && lastMutexOwner!=pthread_self()* /) {
-    cout << pthread_self()<<": lock time="<<causality[lastMutexOwner]->send()<<endl;
-    long long lastClockTime = causality[lastMutexOwner]->send();
-    threadCausality.recv(causality[lastMutexOwner]->send());
-    cout << pthread_self()<<": local time="<<threadCausality.send()<<endl;
-    commRecv(txt()<<"S_"<<lastMutexOwner<<"_"<<lastClockTime,
-             txt()<<"R_"<<pthread_self()<<"_"<<lastClockTime);
-  }
-
-  // Record that this thread was the last owner of this lock
-  numMutexOwners++;
-  lastMutexOwner = pthread_self();
-}
-
-void unlock(pthread_mutex_t& mutex, scalarCausalClock& threadCausality) {
-  //block b("");
-  commSend(txt()<<"S_"<<pthread_self()<<"_"<<threadCausality.send(), "");
-  int rc = pthread_mutex_unlock(&mutex);
-} */
-
-
-int gargc;
-char** gargv;
-int maxDepth;
-int shared_counter=0;
-void* work(void* data) {
-  int depth = *((int*)data);
-  int rc;
-  //for(int depth=1; depth<maxDepth; depth++) {
-  /*dbg << "<<<<< Depth "<<depth<<" <<<<<"<<endl;
-    
-  fibIndent(depth);
-  
-  dbg << ">>>>> Depth "<<depth<<" >>>>>"<<endl;*/
-  
-  // Clock that tracks causality between threads
-  /*scalarCausalClock threadCausality;
-  pthread_mutex_lock(&causalitymutex);
-  causality[pthread_self()] = &threadCausality;
-  pthread_mutex_unlock(&causalitymutex);*/
-  
-  // Wait for all threads to initialize
-  rc = pthread_barrier_wait(&barr);
-  if(rc!=0) { cerr << pthread_self()<<": ERROR calling barrier! "<<strerror(rc)<<endl; assert(0); }
-  
-  for(int i=0; i<4; i++) {
-    //comparison comp_bar(i);
-    //cout << pthread_self()<<": i="<<i<<endl;
-    {
-    scope sIter(txt()<< pthread_self()<<":"<<i);
-    for(int j=0; j<3; j++) {
-      
-      rc = pthread_mutex_lock(&mutex/*, threadCausality*/);
-      if(rc!=0) { cerr << pthread_self()<<": ERROR calling pthread_mutex_lock! "<<strerror(rc)<<endl; assert(0); }
-      { scope s(txt()<<"iteration "<<j);
-      shared_counter++;
-      dbg << "Counter="<<shared_counter<<endl;
-      //cout << pthread_self()<<" j="<<j<<" grabbed lock\n";
-      }
-      rc = pthread_mutex_unlock(&mutex/*, threadCausality*/);
-      if(rc!=0) { cerr << pthread_self()<<": ERROR calling pthread_mutex_unlock! "<<strerror(rc)<<endl; assert(0); }
-
-      usleep(rand()%2? 100: 100000);
-    }
-    }
-    // Synchronization point
-    pthread_barrier_wait(&barr/*, threadCausality*/);
-    if(rc!=0) { cerr << pthread_self()<<": ERROR calling barrier! "<<strerror(rc)<<endl; assert(0); }
-  }
-  /*#pragma omp for
-  for(int i=0; i<10; i++)
-    dbg << omp_get_thread_num()<< ": iter "<<i<<endl;*/
-  //}
-
-  return NULL;
-}
-
 int main(int argc, char** argv)
 {
-  gargc=argc;
-  gargv=argv;
   if(argc<2) { printf("Usage: 0.Demo maxDepth\n"); exit(-1); }
   int maxDepth = atoi(argv[1]);
+ 
+  // The absolute path of this file. This is necessary to have Sight include the relevant regions of 
+  // source code in the output.
+  string thisFile = txt()<<ROOT_PATH<<"/examples/0.Demo.C";
+  
   SightInit(argc, argv, "Demo", txt()<<"dbg.0.Demo.maxDepth_"<<maxDepth);
-
-  // Barrier initialization
-  if(pthread_barrier_init(&barr, NULL, maxDepth))
-  {
-      printf("Could not create a barrier\n");
-      return -1;
+  
+  dbg << "<h1>Demonstration of Sight</h1>" << endl;
+  
+  { 
+    scope s("No formatting", scope::high);
+    { source src("source", source::regions(source::reg(thisFile, "NFStart",      "NFEnd"),
+                                           source::reg(thisFile, "fibBaseStart", "fibBaseEnd"))); }
+    
+#pragma sightLoc NFStart
+    for(int depth=1; depth<maxDepth; depth++) {
+      dbg << "<<<<< Depth "<<depth<<" <<<<<"<<endl;
+      fibBase(depth);
+      dbg << ">>>>>>>>>>>>>>>>>>>>>>>>>>>>"<<endl;
+    }
+#pragma sightLoc NFEnd
   }
   
-  // Initialize the mutex
-  if(pthread_mutex_init(&mutex, NULL))
-  {
-      printf("Unable to initialize a mutex\n");
-      return -1;
+  { 
+    scope s("Indentation", scope::high);
+    { source src("source", source::regions(source::reg(thisFile, "IndStart",       "IndEnd"),
+                                           source::reg(thisFile, "fibIndentStart", "fibIndentEnd"))); }
+    
+#pragma sightLoc IndStart
+    for(int depth=1; depth<maxDepth; depth++) {
+      dbg << "<<<<< Depth "<<depth<<" <<<<<"<<endl;
+      fibIndent(depth);
+      dbg << ">>>>>>>>>>>>>>>>>>>>>>>>>>>>"<<endl;
+    }
+#pragma sightLoc IndEnd
+  }
+  
+  { 
+    scope s("Indentation Mixed with Scoping", scope::high);
+    { source src("source", source::regions(source::reg(thisFile, "IndScopeStart",  "IndScopeEnd"),
+                                           source::reg(thisFile, "fibIndentStart", "fibIndentEnd"))); }
+    
+#pragma sightLoc IndScopeStart
+    for(int depth=1; depth<maxDepth; depth++) {
+      scope s2(txt()<<"Depth "<<depth);
+      fibIndent(depth);
+    }
+#pragma sightLoc IndScopeEnd
+  }
+ 
+  { 
+    scope s("Multi-level Scoping", scope::high);
+    { source src("source", source::regions(source::reg(thisFile, "MultScopeStart", "MultScopeEnd"),
+                                           source::reg(thisFile, "fibScopeStart",  "fibScopeEnd"))); }
+    
+#pragma sightLoc MultScopeStart
+    for(int depth=1; depth<maxDepth; depth++) {
+      scope s2(txt()<<"Depth "<<depth, scope::high);
+      fibScope(depth, scope::medium);
+    }
+#pragma sightLoc MultScopeEnd
+  }
+   
+  { 
+    scope s("Multi-level Scoping with Links", scope::high);
+    { source src("source", source::regions(source::reg(thisFile, "MultScopeLinksStart", "MultScopeLinksEnd"),
+                                           source::reg(thisFile, "fibScopeLinksStart",  "fibScopeLinksEnd"))); }
+    
+#pragma sightLoc MultScopeLinksStart
+    map<list<int>, anchor> InFW, InBW, OutFW, OutBW;
+    for(int depth=1; depth<maxDepth; depth++) {
+      scope s2(txt()<<"Depth "<<depth, scope::high);
+      list<int> stack;
+      fibScopeLinks(depth, scope::medium, stack, InFW, InBW, OutFW, OutBW, true);
+      InFW = OutFW;
+      InBW = OutBW;
+      OutFW.clear();
+      OutBW.clear();
+    }
+#pragma sightLoc MultScopeLinksEnd
   }
 
-/*  if(pthread_mutex_init(&causalitymutex, NULL))
-  {
-      printf("Unable to initialize a mutex\n");
-      return -1;
-  }*/
+  { 
+    scope s("Multi-level Scoping with Graphs", scope::high);
+    { source src("source", source::regions(source::reg(thisFile, "MultScopeGraphsStart", "MultScopeGraphsEnd"),
+                                           source::reg(thisFile, "fibGraphStart",        "fibGraphEnd"))); }
 
-  
-  std::list<pthread_t> threads;
-  for(int i=0; i<maxDepth; i++) {
-    pthread_t tID;
-    int* iNew = new int(i);
-    pthread_create (&tID, NULL, &work, (void *) iNew);
-    threads.push_back(tID);
+#pragma sightLoc MultScopeGraphsStart
+    graph g;
+    for(int depth=1; depth<maxDepth; depth++) {
+      scope s2(txt()<<"Depth "<<depth, scope::high);
+      fibGraph(depth, g, NULL);
+    }
+#pragma sightLoc MultScopeGraphsEnd
   }
-  for(list<pthread_t>::iterator t=threads.begin(); t!=threads.end(); t++)
-    pthread_join(*t, NULL);
-  
-//  // The absolute path of this file. This is necessary to have Sight include the relevant regions of 
-//  // source code in the output.
-//  string thisFile = txt()<<ROOT_PATH<<"/examples/0.Demo.C";
-//  
-//  SightInit(argc, argv, "Demo", txt()<<"dbg.0.Demo.maxDepth_"<<maxDepth);
-//   
-//  dbg << "<h1>Demonstration of Sight</h1>" << endl;
-//  
-//  { 
-//    scope s("No formatting", scope::high);
-//    { source src("source", source::regions(source::reg(thisFile, "NFStart",      "NFEnd"),
-//                                           source::reg(thisFile, "fibBaseStart", "fibBaseEnd"))); }
-//    
-//#pragma sightLoc NFStart
-//    for(int depth=1; depth<maxDepth; depth++) {
-//      dbg << "<<<<< Depth "<<depth<<" <<<<<"<<endl;
-//      fibBase(depth);
-//      dbg << ">>>>>>>>>>>>>>>>>>>>>>>>>>>>"<<endl;
-//    }
-//#pragma sightLoc NFEnd
-//  }
-//  
-//  { 
-//    scope s("Indentation", scope::high);
-//    { source src("source", source::regions(source::reg(thisFile, "IndStart",       "IndEnd"),
-//                                           source::reg(thisFile, "fibIndentStart", "fibIndentEnd"))); }
-//    
-//#pragma sightLoc IndStart
-//    for(int depth=1; depth<maxDepth; depth++) {
-//      dbg << "<<<<< Depth "<<depth<<" <<<<<"<<endl;
-//      fibIndent(depth);
-//      dbg << ">>>>>>>>>>>>>>>>>>>>>>>>>>>>"<<endl;
-//    }
-//#pragma sightLoc IndEnd
-//  }
-//  
-//  { 
-//    scope s("Indentation Mixed with Scoping", scope::high);
-//    { source src("source", source::regions(source::reg(thisFile, "IndScopeStart",  "IndScopeEnd"),
-//                                           source::reg(thisFile, "fibIndentStart", "fibIndentEnd"))); }
-//    
-//#pragma sightLoc IndScopeStart
-//    for(int depth=1; depth<maxDepth; depth++) {
-//      scope s2(txt()<<"Depth "<<depth);
-//      fibIndent(depth);
-//    }
-//#pragma sightLoc IndScopeEnd
-//  }
-//  
-//  { 
-//    scope s("Multi-level Scoping", scope::high);
-//    { source src("source", source::regions(source::reg(thisFile, "MultScopeStart", "MultScopeEnd"),
-//                                           source::reg(thisFile, "fibScopeStart",  "fibScopeEnd"))); }
-//    
-//#pragma sightLoc MultScopeStart
-//    for(int depth=1; depth<maxDepth; depth++) {
-//      scope s2(txt()<<"Depth "<<depth, scope::high);
-//      fibScope(depth, scope::medium);
-//    }
-//#pragma sightLoc MultScopeEnd
-//  }
-//  
-//  { 
-//    scope s("Multi-level Scoping with Links", scope::high);
-//    { source src("source", source::regions(source::reg(thisFile, "MultScopeLinksStart", "MultScopeLinksEnd"),
-//                                           source::reg(thisFile, "fibScopeLinksStart",  "fibScopeLinksEnd"))); }
-//    
-//#pragma sightLoc MultScopeLinksStart
-//    map<list<int>, anchor> InFW, InBW, OutFW, OutBW;
-//    for(int depth=1; depth<maxDepth; depth++) {
-//      scope s2(txt()<<"Depth "<<depth, scope::high);
-//      list<int> stack;
-//      fibScopeLinks(depth, scope::medium, stack, InFW, InBW, OutFW, OutBW, true);
-//      InFW = OutFW;
-//      InBW = OutBW;
-//      OutFW.clear();
-//      OutBW.clear();
-//    }
-//#pragma sightLoc MultScopeLinksEnd
-//  }
-//  
-//  { 
-//    scope s("Multi-level Scoping with Graphs", scope::high);
-//    { source src("source", source::regions(source::reg(thisFile, "MultScopeGraphsStart", "MultScopeGraphsEnd"),
-//                                           source::reg(thisFile, "fibGraphStart",        "fibGraphEnd"))); }
-//
-//#pragma sightLoc MultScopeGraphsStart
-//    graph g;
-//    for(int depth=1; depth<maxDepth; depth++) {
-//      scope s2(txt()<<"Depth "<<depth, scope::high);
-//      fibGraph(depth, g, NULL);
-//    }
-//#pragma sightLoc MultScopeGraphsEnd
-//  }
-//
-//  {
-//    scope s("Performance Analysis", scope::high);
-//    { source src("source", source::regions(source::reg(thisFile, "PerfAnalysisStart", "PerfAnalysisEnd"),
-//                                           source::reg(thisFile, "fibStart",          "fibEnd"),
-//                                           source::reg(thisFile, "fibLinearStart",    "fibLinearEnd"))); }
-//    
-//#pragma sightLoc PerfAnalysisStart
-//    trace tTime("Fib Time", "depth", trace::showBegin, trace::lines);
-//    trace tValue("Fib Value", "depth", trace::showBegin, trace::table);
-//    // Recursive
-//    for(int depth=1; depth<30; depth++) {
-//      attr depthAttr("depth", depth);
-//      measure* m = startMeasure<timeMeasure>("Fib Time", "Recursive");
-//      int value = fib(depth);
-//      endMeasure(m);
-//      traceAttr("Fib Value", "val", attrValue(value));
-//    }
-//
-//    // Linear
-//    for(int depth=1; depth<30; depth++) {
-//      attr depthAttr("depth", depth);
-//      measure* m = startMeasure<timeMeasure>("Fib Time", "Recursive");
-//      fibLinear(depth);
-//      endMeasure(m);
-//    }
-//#pragma sightLoc PerfAnalysisEnd
-//  }
-//
-//  {
-//    scope s("Modular Analysis", scope::high);
-//    { source src("source", source::regions(source::reg(thisFile, "ModularStart",    "ModularEnd"),
-//                                           source::reg(thisFile, "modularFibStart", "modularFibEnd"))); }
-//    
-//#pragma sightLoc ModularStart
-//    modularApp modularFibonacci("Fibonacci"); 
-//    fibModule(10, 0);
-//#pragma sightLoc ModularEnd
-//  }
+
+  {
+    scope s("Performance Analysis", scope::high);
+    { source src("source", source::regions(source::reg(thisFile, "PerfAnalysisStart", "PerfAnalysisEnd"),
+                                           source::reg(thisFile, "fibStart",          "fibEnd"),
+                                           source::reg(thisFile, "fibLinearStart",    "fibLinearEnd"))); }
+    
+#pragma sightLoc PerfAnalysisStart
+    trace tTime("Fib Time", "depth", trace::showBegin, trace::lines);
+    trace tValue("Fib Value", "depth", trace::showBegin, trace::table);
+    // Recursive
+    for(int depth=1; depth<30; depth++) {
+      attr depthAttr("depth", depth);
+      measure* m = startMeasure<timeMeasure>("Fib Time", "Recursive");
+      int value = fib(depth);
+      endMeasure(m);
+      traceAttr("Fib Value", "val", attrValue(value));
+    }
+
+    // Linear
+    for(int depth=1; depth<30; depth++) {
+      attr depthAttr("depth", depth);
+      measure* m = startMeasure<timeMeasure>("Fib Time", "Recursive");
+      fibLinear(depth);
+      endMeasure(m);
+    }
+#pragma sightLoc PerfAnalysisEnd
+  }
+
+  {
+    scope s("Modular Analysis", scope::high);
+    { source src("source", source::regions(source::reg(thisFile, "ModularStart",    "ModularEnd"),
+                                           source::reg(thisFile, "modularFibStart", "modularFibEnd"))); }
+    
+#pragma sightLoc ModularStart
+    modularApp modularFibonacci("Fibonacci"); 
+    fibModule(10, 0);
+#pragma sightLoc ModularEnd
+  }
+
   
 /*  { 
     scope s("Modular Analysis", scope::high);

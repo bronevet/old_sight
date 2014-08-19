@@ -118,10 +118,13 @@ class attrValue {
   double getAsFloat() const;
   
   // Encodes the JavaScript representation of this attrValue into a string and returns the result.
-  std::string  getAsJS() const;
+  std::string getAsJS() const;
   
   // Returns a JavaScript function that compares instances of the type of this attrValue
-  std::string  getComparatorJS() const;
+  std::string getComparatorJS() const;
+  
+  // Returns a JavaScript function that compares instances of the given type of attrValue
+  static std::string getComparatorJS(valueType type);
 
   // Encodes the contents of this attrValue into a string that can be decoded by providing it to the
   // attrValue(const std::string& strV, attrValue::valueType type) constructor
@@ -345,6 +348,12 @@ class customAttrValue {
   virtual bool operator==(const customAttrValue& that)=0;
   virtual bool operator< (const customAttrValue& that)=0;
 
+  // Encodes the JavaScript representation of this attrValue into a string and returns the result.
+  virtual std::string getAsJS() const=0;
+  
+  // Returns a JavaScript function that compares instances of the type of this attrValue
+  virtual std::string getComparatorJS() const=0;
+  
   // Returns a serialized representation of this value
   std::string serialize() const;
 
@@ -852,8 +861,27 @@ class sightArray : public customAttrValue {
   bool operator< (const customAttrValue& that);
   //void* operator[](unsigned int i) const;
 
+  // Encodes the JavaScript representation of this attrValue into a string and returns the result.
+  std::string getAsJS() const;
+  
+  // Returns a JavaScript function that compares instances of the type of this attrValue
+  std::string getComparatorJS() const;
+  
+  // Recursive implementation of getAsJS()
+  // s - output stream that the string representation is written to
+  // dim - The index of the current dimension
+  // index - The current offset into the linear representation of the array
+  // dimStepSize - The number of array elements between adjacent elements in this dimension
+  void getAsJS(std::ostream& s, int dim, int& index, int dimStepSize) const;
+  
   // Adds the string representation of this value to the given output stream
   void serialize(std::ostream& s) const;
+  
+  // Returns a string representation of the value a the given index
+  std::string getAsStrAtIdx(int idx) const;
+  
+  // Appends the string representation of the value a the given index to the given output stream
+  void getAsStrAtIdx(std::ostream& s, int idx) const;
 
   // Deserializes instances of sightArray
   static customAttrValue* deserialize(std::string serialized);
@@ -897,6 +925,12 @@ class sightVectorField : public customAttrValue {
   bool operator==(const customAttrValue& that);
   bool operator< (const customAttrValue& that);
 
+  // Encodes the JavaScript representation of this attrValue into a string and returns the result.
+  std::string getAsJS() const { std::cerr << "Method not yet implemented!"<<std::endl; assert(0); }
+  
+  // Returns a JavaScript function that compares instances of the type of this attrValue
+  std::string getComparatorJS() const { std::cerr << "Method not yet implemented!"<<std::endl; assert(0); }
+  
   // Adds the string representation of this value to the given output stream
   void serialize(std::ostream& s) const;
 

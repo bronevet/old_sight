@@ -130,7 +130,7 @@ run: all runExamples runApps
 
 runExamples: core
 	cd examples; make ${MAKE_DEFINES} run
-	cd examples; make ${MAKE_DEFINES} runPhread
+	cd examples; make ${MAKE_DEFINES} runPthread
 
 runPthreadExamples: core
 	cd examples; make ${MAKE_DEFINES} runPthread
@@ -154,7 +154,6 @@ endif
 #	apps/mcbench/src/MCBenchmark.exe --nCores=1 --distributedSource --numParticles=13107 --nZonesX=256 --nZonesY=256 --xDim=16 --yDim=16 --mirrorBoundary --multiSigma --nThreadCore=1
 
 runApps: libsight_structure.so slayout${EXE} hier_merge${EXE} apps runMFEM runCoMD #runMCBench
-
 
 slayout.o: slayout.C process.C process.h
 	${CCC} ${SIGHT_CFLAGS} slayout.C -I. -c -o slayout.o

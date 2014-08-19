@@ -17,7 +17,8 @@
 #include "process.h"
 #include "process.C"
 
-#define VERBOSE
+//#define VERBOSE
+//#define VERBOSE2
 
 using namespace std;
 using namespace sight::common;
@@ -77,8 +78,12 @@ sightLayoutHandlerInstantiator sightLayoutHandlerInstance;
 // and push the object it returns onto the stack dedicated to objects of this type.
 void invokeEnterHandler(map<string, list<void*> >& stack, string objName, properties::iterator iter) {
   #ifdef VERBOSE
-  cout << "<<<"<<stack[objName].size()<<": "<<objName<<endl;
-  cout << "    "<<iter.str()<<endl;
+  if(objName != "sight") { 
+    dbg  << "<font color=\"#ff0000\">"<<endl;
+    dbg << "<<<"<<stack[objName].size()<<": "<<objName<<endl;
+    dbg << "    "<<iter.str()<<endl;
+    dbg  << "</font>"<<endl;
+  }
   #endif
   if(layoutHandlerInstantiator::layoutEnterHandlers->find(objName) == layoutHandlerInstantiator::layoutEnterHandlers->end()) { cerr << "ERROR: no entry handler for \""<<objName<<"\" tags!" << endl; }
   assert(layoutHandlerInstantiator::layoutEnterHandlers->find(objName) != layoutHandlerInstantiator::layoutEnterHandlers->end());
@@ -91,7 +96,11 @@ void invokeEnterHandler(map<string, list<void*> >& stack, string objName, proper
 // that the returned value is NULL.
 void invokeEnterHandlerNoStack(string objName, properties::iterator iter) {
   #ifdef VERBOSE
-  cout << "    "<<iter.str()<<endl;
+  if(objName != "sight") { 
+    dbg << "<font color=\"#ff0000\">"<<endl;
+    dbg << "    "<<iter.str()<<endl;
+    dbg << "</font>"<<endl;
+  }
   #endif
   if(layoutHandlerInstantiator::layoutEnterHandlers->find(objName) == layoutHandlerInstantiator::layoutEnterHandlers->end()) { cerr << "ERROR: no entry handler for \""<<objName<<"\" tags!" << endl; }
   assert(layoutHandlerInstantiator::layoutEnterHandlers->find(objName) != layoutHandlerInstantiator::layoutEnterHandlers->end());
@@ -104,7 +113,11 @@ void invokeEnterHandlerNoStack(string objName, properties::iterator iter) {
 // and pop the object off its stack
 void invokeExitHandler(map<string, list<void*> >& stack, string objName) {
   #ifdef VERBOSE
-  cout << ">>>"<<stack[objName].size()<<": "<<objName<<endl;
+  if(objName != "sight") { 
+    dbg << "<font color=\"#ff0000\">"<<endl;
+    dbg << ">>>"<<stack[objName].size()<<": "<<objName<<endl;
+    dbg  << "</font>"<<endl;
+  }
   #endif
   assert(stack[objName].size()>0);
   if(layoutHandlerInstantiator::layoutEnterHandlers->find(objName) == layoutHandlerInstantiator::layoutEnterHandlers->end()) { cerr << "ERROR: no exit handler for \""<<objName<<"\" tags!" << endl; }
@@ -116,9 +129,11 @@ void invokeExitHandler(map<string, list<void*> >& stack, string objName) {
 // Given a parser that reads the structure of a given log file, lays it out and prints it to the output Sight stream
 void layoutStructure(structureParser& parser) {
   #ifdef VERBOSE
+  //dbg << "<font color=\"#ff0000\">"<<endl;
   cout << "layoutHandlers:\n";
   for(map<std::string, layoutEnterHandler>::iterator i=layoutHandlerInstantiator::layoutEnterHandlers->begin(); i!=layoutHandlerInstantiator::layoutEnterHandlers->end(); i++)
     cout << i->first << endl;
+  //dbg  << "</font>"<<endl;
   #endif
 
   // The stack of all the objects of each type that have been entered but not yet exited
@@ -138,15 +153,21 @@ void layoutStructure(structureParser& parser) {
         // and push the object it returns onto the stack dedicated to objects of this type.
         invokeEnterHandler(stack, props.second->name(), props.second->begin());
                   
-        // If this tag denotes one or more variants of the log
-        if(props.second->name() == "variants" || props.second->name() == "comparison") {
+        // If this tag denotes one or more log variants or sub-logs to be compared, and
+        // the contents of this tag are not listed inside of it but rather in another file
+        if((props.second->name() == "variants" || props.second->name() == "comparison") &&
+           (props.second->begin().getInt("inline")==0)) {
           // Iterate through the structure files of all the variants, adding their layout to the log
           int numVariants = props.second->begin().getInt("numSubDirs");
           for(int i=0; i<numVariants; i++) {
             string variantDir = properties::get(props.second->begin(), txt()<<"sub_"<<i);
             //cout << "variantDir="<<variantDir<<"\n";
+            
+            // Lay out the log for the current variant/comparison
             FILEStructureParser parser(variantDir+"/structure", 10000);
             layoutStructure(parser);
+            
+            // Invoke the handler for the transitions between adjacent variant/comparison sub-logs
             if(i!=numVariants-1) invokeEnterHandler(stack, "inter_"+props.second->name(), props.second->begin());
           }
         }
@@ -420,10 +441,14 @@ anchor::anchor(/*dbgStream& myDbg, bool located,*/ int anchorID) :
 // If this anchor is unlocated, checks anchorLocs to see if a location has been found and updates this
 // object accordingly;
 void anchor::update() {
-  /*cout << "  anchor::update() located="<<located<<" anchorID="<<anchorID<<endl;
-  cout << "        anchorLocs="<<endl;
-  for(map<int, location>::iterator i=anchorLocs.begin(); i!=anchorLocs.end(); i++)
-    cout << "            "<<i->first<<" => "<<dbg.blockGlobalStr(i->second)<<endl;*/
+#ifdef VERBOSE2
+  if(anchorID>=0) dbg << "  anchor::update() located="<<located<<" anchorID="<<anchorID<<endl;
+#endif
+  /*if(!located) {
+    cout << "        anchorLocs="<<endl;
+    for(map<int, location>::iterator i=anchorLocs.begin(); i!=anchorLocs.end(); i++)
+      cout << "            "<<i->first<<" => "<<dbg.blockGlobalStr(i->second)<<endl;
+  }*/
   
   // If this copy of the anchor object is not yet located, check if another copy of this object has reached
   // a location and if so, copy it over here.
@@ -432,7 +457,9 @@ void anchor::update() {
     loc = anchorLocs[anchorID];
   }
   
-  //cout << "  anchor::update() mid located="<<located<<endl;
+#ifdef VERBOSE2
+  if(anchorID>=0) dbg << "  anchor::update() mid located="<<located<<", loc="<<dbg.fileLevelStr(loc)<<endl;
+#endif
   
   // If this is the first anchor at this location, associate this location with this anchor ID 
   if(located) {
@@ -443,7 +470,9 @@ void anchor::update() {
     else
       anchorID = locAnchorIDs[loc];
   }
-  //cout << "  anchor::update() final located="<<located<<", anchorID="<<anchorID<<endl;
+#ifdef VERBOSE2
+  if(anchorID>=0) dbg << "  anchor::update() final located="<<located<<", anchorID="<<anchorID<<endl;
+#endif
 }
 
 void anchor::operator=(const anchor& that) {
@@ -528,9 +557,10 @@ const location& anchor::getLocation() const
 void anchor::reachedLocation() {
   //cout << "    reachedLocation() located="<<located<<", anchorID="<<anchorID<<" dbg.getLocation()="<<dbg.blockGlobalStr(dbg.getLocation())<<"<BR>"<<endl;
   // If this anchor has already been set to point to its target location, emit a warning
-  if(located && loc != dbg.getLocation())
+  if(located && loc != dbg.getLocation()) {
+    dbg << "Warning: anchor "<<anchorID<<" is being set to multiple target locations! current location="<<dbg.blockGlobalStr(loc)<<", new location="<<dbg.blockGlobalStr(dbg.getLocation())<< endl;
     cerr << "Warning: anchor "<<anchorID<<" is being set to multiple target locations! current location="<<dbg.blockGlobalStr(loc)<<", new location="<<dbg.blockGlobalStr(dbg.getLocation())<< endl;
-  else {
+  } else {
     located = true; // We've now reached this anchor's location in the output
     loc     = dbg.getLocation();
     //cout << "        loc="<<dbg.blockGlobalStr(loc)<<endl;
@@ -636,11 +666,21 @@ block::block(properties::iterator props) : sightObj(props.next()), startA(/*fals
   // Record the ID assigned to this block in the structure layer
   blockIDFromStructure = properties::getInt(props, "ID");
   long numAnchors = properties::getInt(props, "numAnchors");
+#ifdef VERBOSE2
+  dbg << "<h3>Creating block "<<label<<"</h3>"<<endl;
+#endif
   for(long i=0; i<numAnchors; i++) {
     pointsToAnchors.insert(anchor(/*false,*/ properties::getInt(props, txt()<<"anchor_"<<i)));
+    anchor a(properties::getInt(props, txt()<<"anchor_"<<i));
+#ifdef VERBOSE2
+    dbg << "    anchor="<<properties::getInt(props, txt()<<"anchor_"<<i)<<", a="<<a.str()<<", a.ID="<<a.getID()<<endl;
+#endif
   }
   
   startA.setID(properties::getInt(props, "anchorID"));
+#ifdef VERBOSE2
+  dbg << "    startA="<<startA.str()<<", ID="<<startA.getID()<<endl;
+#endif
     
   scriptFile       = dbg.getCurScriptFile();      // assert(scriptFile);
   scriptPrologFile = dbg.getCurScriptPrologFile();// assert(scriptPrologFile);
@@ -679,7 +719,9 @@ void block::setLocation(const location& loc) {
   blockID = dbg.blockGlobalStr(loc);
   fileID = dbg.fileLevelStr(loc);
   
-  //cout << "block::setLocation() blockID="<<blockID<<", anchorID="<<startA.getID()<<endl;
+#ifdef VERBOSE2
+  dbg << "block::setLocation() blockID="<<blockID<<", anchorID="<<startA.getID()<<endl;
+#endif
   
   // We don't need to initialize startA since it as either initialized in the constructor based
   // on the properties from the structure file or should remain equal to noAnchor.
@@ -688,12 +730,19 @@ void block::setLocation(const location& loc) {
   // Otherwise, ignore it since this anchor will not be used.
   if(startA.getID()!=-1) startA.reachedLocation();
   
-  //cout << "block("<<getLabel()<<")::setLocation() <<< #pointsToAnchors="<<pointsToAnchors.size()<<"\n";
+#ifdef VERBOSE2
+  dbg << "block("<<getLabel()<<")::setLocation() <<< #pointsToAnchors="<<pointsToAnchors.size()<<"\n";
+#endif
   for(set<anchor>::iterator a=pointsToAnchors.begin(); a!=pointsToAnchors.end(); a++) {
     anchor a2 = *a;
+#ifdef VERBOSE2
+    dbg << "  anchor="<<a2.getID()<<endl;
+#endif
     a2.reachedLocation();
   }
-  //cout << "block::setLocation() >>> \n";
+#ifdef VERBOSE2
+  dbg << "block::setLocation() >>> \n";
+#endif
 }
 
 anchor& block::getAnchorRef()
@@ -1609,6 +1658,9 @@ string dbgStream::enterBlock(block* b, bool newFileEntered, bool addSummaryEntry
   // Initialize this block's location (must be done before the call to 
   // subBlockEnterNotify() to make sure b's containers know there it is located)
   string blockID = blockGlobalStr(loc);
+#ifdef VERBOSE2
+  dbg << "enterBlock() blockID="<<blockID<<", label="<<b->getLabel()<<", loc="<<fileLevelStr(loc)<<endl;
+#endif
   b->setLocation(loc);
   
   // Inform this block's container blocks that we have entered it
@@ -1813,16 +1865,26 @@ comparison::comparison(properties::iterator props) :
   dbg.ownerAccessing();
   // Comparisons are visualized as a table with a single column for each sub-log
   
+  double width;
+  if(props.getInt("inline")) width=100;
+  else                       width=(100/props.getFloat("numSubDirs"));
+  
   // Start the table and the first column
-  dbg << "<table border=1 width=\"100\%\"><tr><td style=\"vertical-align:top\">"<<endl;
+  dbg << "<table border=1 width=\"100\%\"><tr>"<<
+         "<td style=\"vertical-align:top\" width=\""<<width<<"%\">"<<endl;
   dbg.flush();
   dbg.userAccessing();  
 }
 
 void* interComparisonHandler(properties::iterator props) { 
   // Complete the last column and start the next one
+  
+  double width;
+  if(props.getInt("inline")) width=100;
+  else                       width=(100/props.getFloat("numSubDirs"));
+  
   dbg.ownerAccessing();
-  dbg << endl << "</td><td style=\"vertical-align:top\">" << endl;
+  dbg << endl << "</td><td style=\"vertical-align:top\" width=\""<<width<<"%\">" << endl;
   dbg.userAccessing();
   return NULL;
 }

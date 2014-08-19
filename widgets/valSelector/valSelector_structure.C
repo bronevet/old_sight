@@ -256,7 +256,7 @@ ColorSelectorMerger::ColorSelectorMerger(std::vector<std::pair<properties::tagTy
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
 void ColorSelectorMerger::mergeKey(properties::tagType type, properties::iterator tag, 
-                           std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+                           const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
   Merger::mergeKey(type, tag.next(), inStreamRecords, info);
   
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
@@ -309,7 +309,7 @@ ColorMerger::ColorMerger(std::vector<std::pair<properties::tagType, properties::
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
 void ColorMerger::mergeKey(properties::tagType type, properties::iterator tag, 
-                           std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+                           const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
   Merger::mergeKey(type, tag.next(), inStreamRecords, info);
   
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
@@ -317,8 +317,10 @@ void ColorMerger::mergeKey(properties::tagType type, properties::iterator tag,
     // We only merge color annotations that correspond to the same colorSelector in the outgoing stream. 
     // ColorSelector IDs are merged when we enter them, which is guaranteed to have occured before
     // we process the color annotations associated with them.
-    streamID inSID(properties::getInt(tag, "selID"), inStreamRecords["colorSelector"]->getVariantID());
-    streamID outSID = ((ColorStreamRecord*)inStreamRecords["colorSelector"])->in2outID(inSID);
+    std::map<std::string, streamRecord*>::const_iterator rIt=inStreamRecords.find("colorSelector"); assert(rIt!=inStreamRecords.end());
+    ColorStreamRecord* CSR = (ColorStreamRecord*)rIt->second;
+    streamID inSID(properties::getInt(tag, "selID"), CSR->getVariantID());
+    streamID outSID = CSR->in2outID(inSID);
     info.add(txt()<<outSID.ID);
   }
 }

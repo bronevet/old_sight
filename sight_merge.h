@@ -9,12 +9,11 @@
 #include <unistd.h>
 #include "utils.h"
 #include "process.h"
-//#include "process.C"
 #include "sight_structure.h"
 using namespace sight;
 using namespace sight::structure;
 
-#define VERBOSE
+//#define VERBOSE
 
 namespace sight {
 
@@ -29,6 +28,10 @@ class groupStreams {
   groupStreams() { }
   groupStreams(const std::list<int>& parserIndexes): parserIndexes(parserIndexes) {}
   groupStreams(int parserIdx) : parserIndexes(1, parserIdx) {}
+  groupStreams(int minParserIdx, int maxParserIdx) {
+    for(int i=minParserIdx; i<maxParserIdx; i++)
+      parserIndexes.push_back(i);
+  }
   
   // Adds the information for a tag from a given parser
   void add(int parserIdx) {
@@ -96,6 +99,8 @@ class tagGroup {
 
   string str() const {
     ostringstream s;
+//cout << "objName="<<objName<<endl;
+//cout << "info="<<info.str()<<endl;
     s << "[tagGroup: objName="<<objName<<", type="<<(type==properties::enterTag? "enter": "exit")<<", info="<<info.str()<<"]";
     return s.str();
   }
@@ -138,6 +143,10 @@ class MergeState {
   // comparison, etc.)
   int variantStackDepth;
   
+  // The number of times we called mergeMultipleGroups() to create variant/comparison tags.
+  // This makes it possible to give different sets of such tags unique IDs.
+  int multGroupID;
+  
   // The output dbgStream into which we'll write the merged log data
   structure::dbgStream* out;
   //mergeType mt;
@@ -145,7 +154,7 @@ class MergeState {
   // Tracks the structural information needed to maintained a manageable debug
   // log for the merging process itself
 #ifdef VERBOSE
-  graph g;
+  graph& g;
   anchor incomingA;
   anchor outgoingA;
 #endif
@@ -154,7 +163,7 @@ class MergeState {
   
   MergeState(const vector<FILEStructureParser*>& parsers
              #ifdef VERBOSE
-             , graph g, anchor incomingA, anchor outgoingA
+             , graph& g, anchor incomingA, anchor outgoingA
              #endif
             );
   
@@ -164,11 +173,7 @@ class MergeState {
   // createNewOutStreamRecords - Whether we'll create new outStreamRecords objects for this MergeState or whether this MergeState
   //      will maintain pointers to that.outStreamRecords. (the inStreamRecords are always pointers)
   MergeState(const MergeState& that,
-             const tagGroup& tg, const groupStreams& gs, int variantID, bool readyForNewTags, bool createNewOutStreamRecords
-             #ifdef VERBOSE
-             , graph g, anchor incomingA, anchor outgoingA
-             #endif
-            );
+             const tagGroup& tg, const groupStreams& gs, int variantID, bool readyForNewTags, bool createNewOutStreamRecords);
             
   ~MergeState();
   
@@ -177,7 +182,12 @@ class MergeState {
    *************************************************************/
   
   // Called to indicate that we're ready to read a tag on all the parsers in the given groupStreams
+  // Updates both readyForTag and tag2stream.
   void readyForNextTag(const tagGroup& tg, const groupStreams& gs);
+  
+  // Called to indicate that we're ready to read a tag on all the parsers in the given groupStreams
+  // Updates both tag2stream but not readyForTag.
+  void readyForNextTag(const groupStreams& gs);
   
   // Called to indicate that we're ready to read a tag on all the parsers.
   void readyForNextTag();
@@ -194,6 +204,9 @@ class MergeState {
   // Returns the number of parsers on which a universal tag is the current one.
   int getNumUniversalTags() const;
   
+  // Return the number of tag groups with the given tag mergeKind
+  int getNumTagGroupsByMergeKind(MergeInfo::mergeKindT mergeKind) const;
+  
   // Returns whether the same universal tag is the current tag on all the streams.
   bool isSingleUniversal() const;
   
@@ -207,13 +220,13 @@ class MergeState {
   int getNumGroupsByName(const std::string& objName) const;
   
   // Returns the tagGroup and tagStreams of the single tag group that has the given objectName
-  std::pair<const tagGroup&, const groupStreams&> getObjNameTS(const std::string& objName) const;
+  std::pair<tagGroup, groupStreams> getObjNameTS(const std::string& objName) const;
   
   // Returns the number of tag groups that correspond to entries into tags among the current set of tags among all the incoming streams
   int getNumEnterGroups() const;
   
   // Returns the tagGroup and tagStreams of the single enter tag group
-  std::pair<const tagGroup&, const groupStreams&> getEnterTS() const;
+  std::pair<tagGroup, groupStreams> getEnterTS() const;
   
   // Returns the number of tag groups that correspond to exits from tags among the current set of tags among all the incoming streams
   int getNumExitGroups() const;
@@ -241,7 +254,7 @@ class MergeState {
   template<typename T>
   void printVector(ostream& out, const std::vector<T>& v) const {
     out << "<";
-    for(typename std::vector<T>::const_iterator i=v.begin(); v!=v.end(); v++) {
+    for(typename std::vector<T>::const_iterator i=v.begin(); i!=v.end(); i++) {
       if(i!=v.begin()) out << ", ";
       out << *i;
     }
@@ -307,12 +320,24 @@ class MergeState {
   // The current tag itself it not emitted to the outgoing stream
   void mergeInsideTag();
   
+  // Creates a sub-directory within the current directory to hold the sub-log that belongs
+  // to a log variant or one of the logs in a comparison tag
+  // parentStream - the dbgStream pointer to the stream that contains the new one this function creates
+  // label - a label that describes the type of sub-directory this is (e.g. "variant" or "comparison")
+/*  // subDirCount - the number of sub-directories that have been created within the calling function.
+  //    incremented during this function*/
+  // Returns the pair:
+  //    dbgStream* into which the contents of the sub-log should be written
+  //    string that holds the path of the sub-directory
+  std::pair<structure::dbgStream*, std::string> createStructSubDir(structure::dbgStream* parentStream, std::string label/*, int& subDirCount*/);
+  
   // Break the contents of all the key/value pairs in tags2stream into separate files, emitting to the
   // current outgoing stream a single tag that points to these new files. 
   // pointerTagName - the name of the pointer tag (currently either variant or comparison)
+  // focustag2stream - the portion of tag2stream that is limited to the tag groups that should be merged
   // includeCurrentTag - indicates whether the current tag along a given stream should be included
   //    in the emitted output or not
-  void mergeMultipleGroups(const string& pointerTagName, bool includeCurrentTag);  
+  void mergeMultipleGroups(const string& pointerTagName, map<tagGroup, groupStreams> focustag2stream, bool includeCurrentTag);  
   
   // General merge algorithm full application logs and sub-logs
   void merge();

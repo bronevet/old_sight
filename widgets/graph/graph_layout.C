@@ -256,7 +256,16 @@ void* graph::addNode(properties::iterator props) {
     cout << "active="<<endl;
     for(map<int, graph*>::iterator i=active.begin(); i!=active.end(); i++)
       cout << "    "<<i->first<<": "<<i->second->getLabel()<<endl;*/
-  assert(active.find(graphID) != active.end());
+  if(active.find(graphID) == active.end()) {
+    cerr << "ERROR: graph with ID "<<graphID<<" is not active when the following node was added: "<<props.str()<<endl;
+    cerr << "active(#"<<active.size()<<")=<";
+    for(map<int, graph*>::const_iterator a=active.begin(); a!=active.end(); a++) {
+      if(a!=active.begin()) cerr << ", ";
+      cerr << a->first;
+    }
+    cerr << ">"<<endl;
+    assert(active.find(graphID) != active.end());
+  }
   
   active[graphID]->addNode(anchor(/*false,*/ properties::getInt(props, "anchorID")), 
                            properties::get(props, "label"));

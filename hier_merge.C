@@ -10,11 +10,11 @@ using namespace sight::structure;
 using namespace sight::merge;
 
 int main(int argc, char** argv) {
-  if(argc<3) { cerr<<"Usage: hier_merge outDir mergeType [fNames]"<<endl; exit(-1); }
+  if(argc<3) { cerr<<"Usage: hier_merge outDir [fNames]"<<endl; exit(-1); }
   vector<FILEStructureParser*> fileParsers;
   const char* outDir = argv[1];
-  mergeType mt = str2MergeType(string(argv[2]));
-  for(int i=3; i<argc; i++) {
+  //mergeType mt = str2MergeType(string(argv[2]));
+  for(int i=2; i<argc; i++) {
     fileParsers.push_back(new FILEStructureParser(argv[i], 10000));
   }
   
@@ -29,14 +29,18 @@ int main(int argc, char** argv) {
   // since the first and only instance of this class will read this working directory and write all output there.
   dbgStreamMerger::workDir = string(outDir);
   
-  dbgStreamStreamRecord::enterBlock(inStreamRecords);
+  //dbgStreamStreamRecord::enterBlock(inStreamRecords);
+#ifdef VERBOSE
+  graph g;
+  anchor outgoingA; 
+#endif
 
-  MergeState state(fileParsers, 
+  MergeState state(fileParsers
                    #ifdef VERBOSE
                    , g, anchor::noAnchor, outgoingA
                    #endif
                   );
-  state.merge();?a
+  state.merge();
   
   // Close all the parsers and their files
   for(vector<FILEStructureParser*>::iterator p=fileParsers.begin(); p!=fileParsers.end(); p++)

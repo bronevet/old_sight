@@ -146,12 +146,11 @@ typedef struct {
 //ThreadLocalStorage1<void*, void*> retVal(NULL);
 
 void threadCleanup(void * arg) {
-  cout << pthread_self()<<": threadCleanup() <<<<"<<endl;
-  /*int *ptr=NULL;
-  printf("%d\n", *ptr);*/
-  AbortHandlerInstantiator::finalizeSight(); 
+//  cout << pthread_self()<<": threadCleanup() <<<<"<<endl;
+  int rc = sendCausality(txt()<<"End_"<<pthread_self(), "Terminating");
+  //AbortHandlerInstantiator::finalizeSight();
   SightThreadFinalize();
-  cout << pthread_self()<<": threadCleanup() >>>>"<<endl;
+//  cout << pthread_self()<<": threadCleanup() >>>>"<<endl;
 }
 
 // Function that wraps the execution of each thread spawned using pthread_create()
@@ -159,7 +158,13 @@ void threadCleanup(void * arg) {
 void *sightThreadInitializer(void* data) {
   pthreadRoutine* routine = ((pthreadRoutineData*)data)->routine;
   void* arg = ((pthreadRoutineData*)data)->arg;
-
+  
+  pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+  pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
+  
+  // Assign each thread to a separate log based on its thread ID
+  globalComparisonIDs.push_back(make_pair("pthread", std::string(txt()<<pthread_self())));
+  
   // Initialize Sight for this thread before we initialize its clock
   SightInit_NewThread();
  
@@ -168,49 +173,52 @@ void *sightThreadInitializer(void* data) {
   pthread_cleanup_push(threadCleanup, NULL);
   
   {
-  modularApp ma("", namedMeasures("time",      new timeMeasure()));
-  comparison c(txt()<<pthread_self());
+  //  modularApp ma("", namedMeasures("time",      new timeMeasure()));
+    comparison c(txt()<<pthread_self());
 
-  //dbg << "Starting sightThreadInitializer("<<arg<<") dbg="<<&dbg<<endl;
+    //dbg << "Starting sightThreadInitializer("<<arg<<") dbg="<<&dbg<<endl;
 
-  // Initialize the new thread's causality clock, while under control of causalityMutex
-  int rc = pthread_mutex_lock(&causalityMutex);
-  if(rc!=0) { fprintf(stderr, "sightThreadInitializer() ERROR locking causalityMutex! %s\n", strerror(rc)); assert(0); }
-  
-  //checkCausality(true);
-  //cout << "causality["<<pthread_self()<<"]="<<causality[pthread_self()]->send()<<endl;
+    // Initialize the new thread's causality clock, while under control of causalityMutex
+    int rc = pthread_mutex_lock(&causalityMutex);
+    if(rc!=0) { fprintf(stderr, "sightThreadInitializer() ERROR locking causalityMutex! %s\n", strerror(rc)); assert(0); }
 
-  // Add a causality send edge from the spawner thread to the spawnee thread
-  /*commRecv(txt()<<"Spawner_"<<((pthreadRoutineData*)data)->spawner<<"_"<<((pthreadRoutineData*)data)->spawnCnt,
-           txt()<<"Spawnee_"<<pthread_self());*/
-  
-  rc = receiveCausality(txt()<<"Spawner_"<<((pthreadRoutineData*)data)->spawner<<"_"<<((pthreadRoutineData*)data)->spawnCnt,
-                        ((pthreadRoutineData*)data)->spawner,
-                        txt()<<"Spawnee_"<<pthread_self(),
-                        "Spawned", true);
-  
-  rc = pthread_mutex_unlock(&causalityMutex);
-  if(rc!=0) { fprintf(stderr, "sightThreadInitializer() ERROR unlocking causalityMutex! %s\n", strerror(rc)); assert(0); }
-  
-  // Deallocate the data wrapper, since it is no longer needed
-  free(data);  
-  
-  if(rc!=0) { fprintf(stderr, "sightThreadInitializer() ERROR unlocking causalityMutex! %s\n", strerror(rc)); assert(0); }
+    //checkCausality(true);
+    //cout << "causality["<<pthread_self()<<"]="<<causality[pthread_self()]->send()<<endl;
 
-  //dbg << "Calling routine("<<arg<<") dbg="<<&dbg<<endl;
-  // Run the function itself
-  ret = routine(arg);
-  //dbg << "Finished routine("<<arg<<") dbg="<<&dbg<<endl;
+    // Add a causality send edge from the spawner thread to the spawnee thread
+    /*commRecv(txt()<<"Spawner_"<<((pthreadRoutineData*)data)->spawner<<"_"<<((pthreadRoutineData*)data)->spawnCnt,
+             txt()<<"Spawnee_"<<pthread_self());*/
 
-  // Add a causality send edge from the thread's termination to the join call
-  //commSend(txt()<<"End_"<<pthread_self(), "");
-  rc = sendCausality(txt()<<"End_"<<pthread_self(), "Terminating");
+    rc = receiveCausality(txt()<<"Spawner_"<<((pthreadRoutineData*)data)->spawner<<"_"<<((pthreadRoutineData*)data)->spawnCnt,
+                          ((pthreadRoutineData*)data)->spawner,
+                          txt()<<"Spawnee_"<<pthread_self(),
+                          "Spawned", true);
+
+    rc = pthread_mutex_unlock(&causalityMutex);
+    if(rc!=0) { fprintf(stderr, "sightThreadInitializer() ERROR unlocking causalityMutex! %s\n", strerror(rc)); assert(0); }
+
+    // Deallocate the data wrapper, since it is no longer needed
+    free(data);  
+
+    if(rc!=0) { fprintf(stderr, "sightThreadInitializer() ERROR unlocking causalityMutex! %s\n", strerror(rc)); assert(0); }
+
+    //dbg << "Calling routine("<<arg<<") dbg="<<&dbg<<endl;
+    // Run the function itself
+    ret = routine(arg);
+    //dbg << "Finished routine("<<arg<<") dbg="<<&dbg<<endl;
+
+    // Add a causality send edge from the thread's termination to the join call
+    //commSend(txt()<<"End_"<<pthread_self(), "");
+    //rc = sendCausality(txt()<<"End_"<<pthread_self(), "Terminating");
+
+    threadCleanup(NULL);
   }
 
-  pthread_cleanup_pop(0);
-  cout << pthread_self()<<": Calling SightThreadFinalize()\n"; cout.flush();
+  /*cout << pthread_self()<<": Calling SightThreadFinalize()\n"; cout.flush();
   SightThreadFinalize();
-  cout << pthread_self()<<": End of thread\n"; cout.flush();
+  cout << pthread_self()<<": End of thread\n"; cout.flush();*/
+
+  pthread_cleanup_pop(0);
  
   return ret;
 }
@@ -251,6 +259,7 @@ int sight_pthread_create(pthread_t * thread,
 }
 
 void sight_pthread_exit(void *value_ptr) {
+  //cout << pthread_self()<<": sight_pthread_exit()"<<endl;
   // Add a causality send edge from the thread's termination to the join call
   //commSend(txt()<<"End_"<<pthread_self(), "");
   int rc = sendCausality(txt()<<"End_"<<pthread_self(), "Terminating");

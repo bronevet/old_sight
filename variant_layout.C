@@ -52,7 +52,7 @@ variant::variant(properties::iterator props) :
   dbg << "<table border=1 width=\"100\%\"><tr><td colspan=\""<<numVariants<<"\">Variants</td></tr>"<<endl;
   dbg << "<tr><td>"<<endl;
   //dbg << "<script type=\"text/javascript\">"<<loadCmd<<"</script>"<<endl;
-
+  
   dbg.flush();
   dbg.userAccessing();  
 }

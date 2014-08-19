@@ -439,8 +439,11 @@ std::string attrValue::getAsJS() const {
   else if(type == ptrT)   return txt() << *((void**)store);
   else if(type == intT)   return txt() << *((long*)store);
   else if(type == floatT) return txt() << std::setprecision(16) << *((double*)store);
-  else if(type == customT || type == customSerT) { 
-    cerr << "attrValue::getAsJS() ERROR: custom attributes not currently supported!"<<endl; assert(0);
+  else if(type == customT) { 
+    //cerr << "attrValue::getAsJS() ERROR: custom attributes not currently supported!"<<endl; assert(0);
+    return(*((customAttrValue**) store))->getAsJS();
+  } else if(type == customSerT) { 
+    cerr << "attrValue::getAsJS() ERROR: serialized custom attributes not currently supported!"<<endl; assert(0);
   } else  {
     cerr << "attrValue::getAsJS() ERROR: unknown attribute value type: "<<type2str(type)<<"!"<<endl;assert(0);
   }
@@ -450,8 +453,24 @@ std::string attrValue::getAsJS() const {
 std::string attrValue::getComparatorJS() const {
   if(type == strT || type == ptrT || type == intT || type == floatT) { 
     return "function(a,b) { return (a<b? -1: (a==b? 0: 1)); }";
-  } else if(type == customT || type == customSerT) { 
+  } else if(type == customT) { 
+    //cerr << "attrValue::getComparatorJS() ERROR: custom attributes not currently supported!"<<endl; assert(0);
+    return (*((customAttrValue**) store))->getComparatorJS();
+  } else if(type == customSerT) { 
+    cerr << "attrValue::getComparatorJS() ERROR: serialized custom attributes not currently supported!"<<endl; assert(0);
+  } else  {
+    cerr << "attrValue::getComparatorJS() ERROR: unknown attribute value type: "<<type2str(type)<<"!"<<endl;assert(0);
+  }
+}
+
+// Returns a JavaScript function that compares instances of the given type of attrValue
+std::string attrValue::getComparatorJS(valueType type) {
+  if(type == strT || type == ptrT || type == intT || type == floatT) { 
+    return "function(a,b) { return (a<b? -1: (a==b? 0: 1)); }";
+  } else if(type == customT) { 
     cerr << "attrValue::getComparatorJS() ERROR: custom attributes not currently supported!"<<endl; assert(0);
+  } else if(type == customSerT) { 
+    cerr << "attrValue::getComparatorJS() ERROR: serialized custom attributes not currently supported!"<<endl; assert(0);
   } else  {
     cerr << "attrValue::getComparatorJS() ERROR: unknown attribute value type: "<<type2str(type)<<"!"<<endl;assert(0);
   }
@@ -1422,6 +1441,63 @@ bool sightArray::operator< (const customAttrValue& that_arg) {
   }
 }*/
 
+// Encodes the JavaScript representation of this attrValue into a string and returns the result.
+std::string sightArray::getAsJS() const {
+  ostringstream s;
+  assert(d.size()>0);
+  int index=0;
+  getAsJS(s, 0, index, getNumElements()/d[0]);
+  return s.str();
+}
+
+// Recursive implementation of getAsJS()
+// s - output stream that the string representation is written to
+// dim - The index of the current dimension
+// index - The current offset into the linear representation of the array
+// dimStepSize - The number of array elements between adjacent elements in this dimension
+void sightArray::getAsJS(ostream& s, int dim, int& index, int dimStepSize) const {
+  // If we have not yet reached the last dimension, call getAsJS() recursively on
+  // each index within the next dimension
+  if(dim<d.size()-1) {
+    int nextDimStepSize = dimStepSize / d[dim];
+    s << "[";
+    for(int i=0; i<d[dim]; i++) {
+      if(i>0) s << ", ";
+      getAsJS(s, dim+1, index, nextDimStepSize);
+    }
+    
+    s << "]";
+            
+  // Else, if this is the final dimension, emit the elements in this dimension
+  } else {
+    for(int i=0; i<d[dim]; i++, index++) {
+      if(i>0) s << ",";
+      getAsStrAtIdx(s, index);
+    }
+  }
+}
+
+// Returns a JavaScript function that compares instances of the type of this attrValue
+std::string sightArray::getComparatorJS() const {
+  ostringstream s;
+  s << "function(a,b) { "<<endl;
+  s << "  var scalarComp = "<<attrValue::getComparatorJS(type)<<";"<<endl;  
+  s << "  var comp = function compFunc(a,b) {"<<endl;
+  s << "    if((a instanceof Array) != (b instanceof Array)) alert(\"ERROR: inconsistent typing of sightArrays during comparison!\");"<<endl;
+  s << "    if(a instanceof Array) {"<<endl;
+  s << "      if(a.length != b.length) { alert(\"ERROR: inconsistent sizing of sightArrays during comparison!\"); }"<<endl;
+  s << "      for(var i=0; i<a.length; i++) {"<<endl;
+  s << "        var comp=compFunc(a[i], b[i]);"<<endl;
+  s << "        if(comp<0 || comp>0) return comp;"<<endl;
+  s << "      }"<<endl;
+  s << "    } else {"<<endl;
+  s << "      return scalarComp(a[i], b[i]);"<<endl;
+  s << "    }"<<endl;
+  s << "  }"<<endl;
+  s << "}"<<endl;
+  return s.str();
+}
+
 // Adds the string representation of this value to the given output stream
 void sightArray::serialize(ostream& s) const {
   // The format is:
@@ -1446,13 +1522,25 @@ void sightArray::serialize(ostream& s) const {
   if(type == attrValue::floatT) s << std::setprecision(16);
   for(int i=0; i<totalVals; i++) {
     if(i>0) s << ",";
-    switch(type) {
-      case attrValue::strT:   s << (sharray? ((string*)sharray.get())[i]: ((string*)array)[i]); break;
-      case attrValue::ptrT:   s << (sharray? ((void**)sharray.get())[i]:  ((void**)array)[i]);  break;
-      case attrValue::intT:   s << (sharray? ((long*)sharray.get())[i]:   ((long*)array)[i]);   break;
-      case attrValue::floatT: s << (sharray? ((double*)sharray.get())[i]: ((double*)array)[i]); break;
-      default: assert(0);
-    }
+    getAsStrAtIdx(s, i);
+  }
+}
+
+// Returns a string representation of the value a the given index
+std::string sightArray::getAsStrAtIdx(int idx) const {
+  ostringstream s;
+  getAsStrAtIdx(s, idx);
+  return s.str();
+}
+
+// Appends the string representation of the value a the given index to the given output stream
+void sightArray::getAsStrAtIdx(ostream& s, int idx) const {
+  switch(type) {
+    case attrValue::strT:   s << (sharray? ((string*)sharray.get())[idx]: ((string*)array)[idx]); return;
+    case attrValue::ptrT:   s << (sharray? ((void**)sharray.get())[idx]:  ((void**)array)[idx]);  return;
+    case attrValue::intT:   s << (sharray? ((long*)sharray.get())[idx]:   ((long*)array)[idx]);   return;
+    case attrValue::floatT: s << (sharray? ((double*)sharray.get())[idx]: ((double*)array)[idx]); return;
+    default: assert(0);
   }
 }
 

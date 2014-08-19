@@ -28,14 +28,15 @@ void* timeClockEnterHandler(properties::iterator props) {
 
 // Parses a given stepClock and records the updated time with sightClock
 void* stepClockEnterHandler(properties::iterator props) { 
-  int numDims = props.getInt("numDims");
+  //int numDims = props.getInt("numDims");
   //boost::shared_ptr<long[]> steps = boost::make_shared<long[]>(numDims);
-  boost::shared_ptr<long> steps(new long[numDims]);
+  /*boost::shared_ptr<long> steps(new long[numDims]);
   for(int i=0; i<numDims; i++)
-    steps.get()[i] = props.getInt(txt()<<"dim"<<i);
-    
+    steps.get()[i] = props.getInt(txt()<<"dim"<<i);*/
+  attrValue curStep(props.get("curStep"), attrValue::unknownT);
+  
   // Update the overall sightClock, using a different unique name for each stepClockID
-  sightClock::updateTime(txt()<<"stepClock_"<<props.get("stepClockID"), sightArray(sightArray::dims(numDims), steps));
+  sightClock::updateTime(txt()<<"stepClock_"<<props.get("stepClockID"), curStep/*sightArray(sightArray::dims(numDims), steps)*/);
   return NULL;
 }
 

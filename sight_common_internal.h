@@ -259,6 +259,10 @@ class properties
   static std::string str(iterator props);
   
   std::string str(std::string indent="") const;
+
+  // Converts a tagType to its string representation
+  static std::string tagType2Str(tagType tt)
+  { return (tt==enterTag?"enterTag":(tt==exitTag?"exitTag":(tt==unknownTag?"unknownTag":"???"))); }
 }; // class properties
 
 namespace common {
