@@ -82,6 +82,128 @@ std::map<pthread_t, map<dbgStream*, std::list<sightObj*> >* > threadSoStacks;
 // Mutex that controls access to threadSoStacks.
 pthread_mutex_t threadSoStacksMutex = PTHREAD_MUTEX_INITIALIZER;
 
+/*************************************
+ ***** ThreadInitFinInstantiator *****
+ *************************************/
+
+// The maximum unique ID assigned to any threadFuncs so far
+int* ThreadInitFinInstantiator::maxUID;
+
+// Keep track of the funcs that are currently registered to initialize and finalize threads
+// Maps the string labels of funcs to their threadFuncs data structures
+//   Each threadFuncs has a unique ID that is used as the vertex number in the dependence
+//   graph, which is implemented using the Boost Graph Library
+std::map<std::string, ThreadInitFinInstantiator::threadFuncs*>* ThreadInitFinInstantiator::funcsM;
+
+// Vector of pointers to the threadFuncs in funcsM, where the index of each record is
+//   equal to its UID.
+std::vector<ThreadInitFinInstantiator::threadFuncs*>* ThreadInitFinInstantiator::funcsV;
+
+// Records the dependencies among the entries in funcs
+boost::adjacency_list<boost::listS, boost::vecS, boost::directedS>* ThreadInitFinInstantiator::depGraph;
+
+// Records the topological order among the funcs
+std::deque<int>* ThreadInitFinInstantiator::topoOrder;
+
+// Records whether the dependence graph is upto-date relative to the current
+// entries in funcs
+bool* ThreadInitFinInstantiator::depGraphUptoDate;
+ 
+ThreadInitFinInstantiator::ThreadInitFinInstantiator() :
+  sight::common::LoadTimeRegistry("ThreadInitFinInstantiator", 
+                                  ThreadInitFinInstantiator::init)
+{ }
+
+// Called exactly once for each class that derives from LoadTimeRegistry to initialize its static data structures.
+void ThreadInitFinInstantiator::init() {
+  maxUID = new int;
+  *maxUID = 0;
+  funcsM = new std::map<std::string, threadFuncs*>();
+  funcsV = new std::vector<threadFuncs*>();
+  depGraph = new boost::adjacency_list<boost::listS, boost::vecS, boost::directedS>();
+  topoOrder = new std::deque<int>;
+  depGraphUptoDate = new bool;
+  *depGraphUptoDate = false;
+}
+
+// Adds the given initialization/finalization funcs under the given widet label.
+// mustFollow - set of widget labels that the given functors must follow during initialization
+// mustPrecede - set of widget labels that the given functors must precede during initialization
+//    finalization is performed in reverse
+void ThreadInitFinInstantiator::addFuncs(const std::string& label, ThreadInitializer init, ThreadFinalizer fin,
+                const common::easyset<std::string>& mustFollow, const common::easyset<std::string>& mustPrecede) {
+  assert(funcsM);
+  assert(funcsV);
+  
+  threadFuncs* funcs = new threadFuncs(init, fin, mustFollow, mustPrecede);
+  (*funcsM)[label] = funcs;
+  funcsV->push_back(funcs);
+  assert(funcsV->size() == funcs->UID+1);
+  
+  // The dependency graph is no longer upto-date relative to funcs
+  *depGraphUptoDate = false;
+  depGraph->clear();
+}
+
+// Update the dependence graph based on funcs, if it not already upto-date
+void ThreadInitFinInstantiator::computeDepGraph() {
+  if(*depGraphUptoDate) return;
+  
+  // Iterate over funcs, adding each dependency to depGraph
+  int i=0;
+  for(map<string, threadFuncs*>::iterator f=funcsM->begin(); f!=funcsM->end(); f++) {
+    // Add edges from all labels that the current func must follow to the current func
+    for(set<std::string>::iterator i=f->second->mustFollow.begin(); i!=f->second->mustFollow.end(); i++) {
+      // Find the current label in the funcs map and add an edge from it to f
+      std::map<std::string, threadFuncs*>::iterator other=funcsM->find(*i);
+      if(other != funcsM->end()) boost::add_edge(other->second->UID, f->second->UID, *depGraph);
+    }
+    
+    // Add edges from the current func to all the labels that follow it
+    for(set<std::string>::iterator i=f->second->mustPrecede.begin(); i!=f->second->mustPrecede.end(); i++) {
+      // Find the current label in the funcs map and add an edge to it from f
+      std::map<std::string, threadFuncs*>::iterator other=funcsM->find(*i);
+      if(other != funcsM->end()) boost::add_edge(f->second->UID, other->second->UID, *depGraph);
+    }
+  }
+  
+  boost::topological_sort(*depGraph, front_inserter(*topoOrder), vertex_index_map(boost::identity_property_map()));
+  
+  // The dependence graph is now upto date
+  *depGraphUptoDate = true;
+}
+
+// Calls all the initializers in their topological order
+void ThreadInitFinInstantiator::initialize() {
+  computeDepGraph();
+  
+  for(deque<int>::iterator i=topoOrder->begin(); i!=topoOrder->end(); ++i) {
+    assert(funcsV->size()>*i);
+    (*funcsV)[*i]->init();
+  }
+}
+
+// Calls all the finalizers in their topological order (reverse of initializers)
+void ThreadInitFinInstantiator::finalize() {
+  computeDepGraph();
+  
+  for(deque<int>::reverse_iterator i=topoOrder->rbegin(); i!=topoOrder->rend(); ++i) {
+    assert(funcsV->size()>*i);
+    (*funcsV)[*i]->init();
+  }
+}
+
+std::string ThreadInitFinInstantiator::str() {
+  std::ostringstream s;
+  s << "[ThreadInitFinInstantiator:"<<endl;
+  s << "    funcsM=(#"<<funcsM->size()<<"): "<<endl;
+  for(map<string, threadFuncs*>::iterator f=funcsM->begin(); f!=funcsM->end(); f++) {
+    s << f->first << " => "<<f->second<<endl;
+  }
+  s << "maxUID="<<*maxUID<<", depGraphUptoDate="<<*depGraphUptoDate<<"]";
+  return s.str();
+}
+
 // Records whether this is the main thread or not.
 ThreadLocalStorage0<bool> isMainThread;
 // Records a pointer to each thread's dbgStream. This is important for finalizing
@@ -93,21 +215,6 @@ ThreadLocalStorage0<dbgStream*> threadDbgStream;
 // of the main thread.
 bool isMainThreadDbg(dbgStream* ds)
 { return isMainThread && ds==threadDbgStream; }
-
-// In many cases we'll want to place the log of each thread or process into a separate 
-// region of output. This is accomplished by creating a comparison object. Logs with
-// comparison objects that have the same IDs are merged with each other and logs with
-// different IDs are kept separate. Multiple comparison objects may be nested to enable
-// threads to be nested within their processes and hierarchical logs, like those produced
-// by Containment Domains.
-// During initialization various code components may register the IDs of all the 
-// comparison tags that should be wrap the entire log generated by each thread. This is done
-// by appending pair <label, ID> that identifies the type of ID to the tail of the 
-// globalComparisonIDs list.
-ThreadLocalStorageList<std::pair<std::string, std::string> > globalComparisonIDs;
-// Pointers to the comparison objects created for each entry in globalComparisonIDs 
-// are stored globalComparisons
-ThreadLocalStorageList<comparison*> globalComparisons;
 
 std::list<sightObj*>& soStack(dbgStream* outStream) {
   return staticSoStack[outStream];
@@ -188,9 +295,9 @@ void SightInit_internal(int argc, char** argv, string title, string workDir, boo
   //cout << pthread_self()<<": SightInit_internal("+title+")"<<endl;
   
   // Assign each pthread to a separate log based on its thread ID
-  if(mainThread) {
+  /*if(mainThread) {
     globalComparisonIDs.push_back(make_pair("pthread", std::string(txt()<<pthread_self())));
-  }
+  }*/
   
   // Record whether this is the main thread
   isMainThread = mainThread;
@@ -329,12 +436,15 @@ void SightThreadInit() {
   pthread_mutex_lock(&threadSoStacksMutex);
   threadSoStacks[pthread_self()] = staticSoStack.get();
   
-  // Create the comparison tags that wrap the entire log of this thread
+  ThreadInitFinInstantiator::initialize();
+  
+  /* // Create the comparison tags that wrap the entire log of this thread
   for(list<std::pair<std::string, std::string> >::const_iterator i=globalComparisonIDs.begin();
       i!=globalComparisonIDs.end(); ++i) {
     //cout << pthread_self() << ": creating comparison "<<i->first<<" => "<<i->second<<endl;
+    globalModularApps.push_back(new modularApp("", namedMeasures("time",      new timeMeasure())));
     globalComparisons.push_back(new comparison(i->second));
-  }
+  }*/
   
   pthread_mutex_unlock(&threadSoStacksMutex);
 }
@@ -346,14 +456,20 @@ void SightThreadFinalize() {
 //    cout << pthread_self()<<": SightThreadFinalize()"<<endl;
     threadSoStacks.erase(pthread_self());
 
+    ThreadInitFinInstantiator::finalize();
     // Delete the comparison tags that wrap the entire log of this thread
     //assert(globalComparisonIDs.size() == globalComparisons.size());
-    while(globalComparisons.size()>0) {
+/*    while(globalComparisons.size()>0) {
       comparison* c = globalComparisons.back();
       globalComparisons.pop_back();
       // Delete this tag only if it has not already been destroyed by the abort algorithm
       if(!c->isDestroyed()) delete c;
-    }
+      
+      modularApp* ma = globalModularApps.back();
+      globalModularApps.pop_back();
+      // Delete this tag only if it has not already been destroyed by the abort algorithm
+      if(!ma->isDestroyed()) delete ma;
+    }*/
     /*for(list<comparison*>::const_reverse_iterator i=globalComparisons.rbegin();
         i!=globalComparisons.rend(); ++i) {
       // If this comparison object has not yet been destroyed (possible if we're
@@ -887,7 +1003,7 @@ properties::tagType streamRecord::getTagType(const vector<pair<properties::tagTy
 }
 
 // Merge the IDs of the next ID field (named IDName, e.g. "anchorID" or "blockID") of the current tag maintained 
-// within object nameed objName (e.g. "anchor" or "block") of each the incoming stream into a single ID in the 
+// within object named objName (e.g. "anchor" or "block") of each the incoming stream into a single ID in the 
 // outgoing stream, updating each incoming stream's mappings from its IDs to the outgoing stream's 
 // IDs. If a given incoming stream anchorID has already been assigned to a different outgoing stream anchorID, yell.
 // For example, to merge the anchorIDs of anchors, blocks or any other tags that maintain anchorIDs, we need to set 

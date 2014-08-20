@@ -639,34 +639,34 @@ class easyset : public std::set<T> {
   easyset() {}
 
   easyset(const T& p0)
-  { insert(p0); }
+  { std::set<T>::insert(p0); }
 
   easyset(const T& p0, const T& p1)
-  { insert(p0); insert(p1); }
+  { std::set<T>::insert(p0); std::set<T>::insert(p1); }
 
   easyset(const T& p0, const T& p1, const T& p2)
-  { insert(p0); insert(p1); insert(p2); }
+  { std::set<T>::insert(p0); std::set<T>::insert(p1); std::set<T>::insert(p2); }
 
   easyset(const T& p0, const T& p1, const T& p2, const T& p3)
-  { insert(p0); insert(p1); insert(p2); insert(p3); }
+  { std::set<T>::insert(p0); std::set<T>::insert(p1); std::set<T>::insert(p2); std::set<T>::insert(p3); }
 
   easyset(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4)
-  { insert(p0); insert(p1); insert(p2); insert(p3); insert(p4); }
+  { std::set<T>::insert(p0); std::set<T>::insert(p1); std::set<T>::insert(p2); std::set<T>::insert(p3); std::set<T>::insert(p4); }
 
   easyset(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4, const T& p5)
-  { insert(p0); insert(p1); insert(p2); insert(p3); insert(p4); insert(p5); }
+  { std::set<T>::insert(p0); std::set<T>::insert(p1); std::set<T>::insert(p2); std::set<T>::insert(p3); std::set<T>::insert(p4); std::set<T>::insert(p5); }
 
   easyset(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4, const T& p5, const T& p6)
-  { insert(p0); insert(p1); insert(p2); insert(p3); insert(p4); insert(p5); insert(p6); }
+  { std::set<T>::insert(p0); std::set<T>::insert(p1); std::set<T>::insert(p2); std::set<T>::insert(p3); std::set<T>::insert(p4); std::set<T>::insert(p5); std::set<T>::insert(p6); }
 
   easyset(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4, const T& p5, const T& p6, const T& p7)
-  { insert(p0); insert(p1); insert(p2); insert(p3); insert(p4); insert(p5); insert(p6); insert(p7); }
+  { std::set<T>::insert(p0); std::set<T>::insert(p1); std::set<T>::insert(p2); std::set<T>::insert(p3); std::set<T>::insert(p4); std::set<T>::insert(p5); std::set<T>::insert(p6); std::set<T>::insert(p7); }
 
   easyset(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4, const T& p5, const T& p6, const T& p7, const T& p8)
-  { insert(p0); insert(p1); insert(p2); insert(p3); insert(p4); insert(p5); insert(p6); insert(p7); insert(p8); }
+  { std::set<T>::insert(p0); std::set<T>::insert(p1); std::set<T>::insert(p2); std::set<T>::insert(p3); std::set<T>::insert(p4); std::set<T>::insert(p5); std::set<T>::insert(p6); std::set<T>::insert(p7); std::set<T>::insert(p8); }
 
   easyset(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4, const T& p5, const T& p6, const T& p7, const T& p8, const T& p9)
-  { insert(p0); insert(p1); insert(p2); insert(p3); insert(p4); insert(p5); insert(p6); insert(p7); insert(p8); insert(p8); insert(p9); }
+  { std::set<T>::insert(p0); std::set<T>::insert(p1); std::set<T>::insert(p2); std::set<T>::insert(p3); std::set<T>::insert(p4); std::set<T>::insert(p5); std::set<T>::insert(p6); std::set<T>::insert(p7); std::set<T>::insert(p8); std::set<T>::insert(p8); std::set<T>::insert(p9); }
 }; // class easyset
 
 /*******************************

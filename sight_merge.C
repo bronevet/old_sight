@@ -7,14 +7,15 @@ namespace merge {
 #ifdef VERBOSE
 #define ITER_ACTION(text)  \
     scope actionS(text);   \
-    if(lastIterA  != anchor::noAnchor) g.addDirEdge(lastIterA,  actionS.getAnchor()); \
+    if(lastIterA  != anchor::noAnchor) g.addDirEdge  (lastIterA,  actionS.getAnchor()); \
     if(incomingA  != anchor::noAnchor) g.addUndirEdge(incomingA,  actionS.getAnchor()); \
-    if(lastRecurA != anchor::noAnchor) g.addUndirEdge(lastRecurA, actionS.getAnchor()); \
+    for(set<anchor>::iterator a=lastRecurA.begin(); a!=lastRecurA.end(); a++)           \
+      g.addUndirEdge(*a, actionS.getAnchor());                                          \
     incomingA  = anchor::noAnchor;     \
     lastIterA  = actionS.getAnchor();  \
     curIterA   = actionS.getAnchor();  \
     outgoingA  = actionS.getAnchor();  \
-    lastRecurA = anchor::noAnchor;
+    lastRecurA.clear();
 #else
 #define ITER_ACTION(text) 
 #endif
@@ -54,11 +55,14 @@ MergeState::MergeState(const vector<FILEStructureParser*>& parsers
 // readyForNewTags - Whether the merger will be ready to read new tags on its incoming streams is controlled by readyForNewTags.
 // createNewOutStreamRecords - Whether we'll create new outStreamRecords objects for this MergeState or whether this MergeState
 //      will maintain pointers to that.outStreamRecords. (the inStreamRecords are always pointers)
-MergeState::MergeState(const MergeState& that,
+MergeState::MergeState(const MergeState& that, 
                        const tagGroup& tg, const groupStreams& gs, int variantID, bool readyForNewTags, bool createNewOutStreamRecords
+                       #ifdef VERBOSE
+                       , const anchor& incomingA
+                       #endif
                       ) : derived(true)
                         #ifdef VERBOSE
-                          , g(that.g), incomingA(that.incomingA), outgoingA(that.outgoingA)
+                          , g(that.g), incomingA(incomingA), outgoingA(anchor::noAnchor)
                         #endif
 {
   out = that.out;
@@ -662,7 +666,12 @@ std::pair<structure::dbgStream*, std::string> MergeState::createStructSubDir(str
 // includeCurrentTag - indicates whether the current tag along a given stream should be included
 //    in the emitted output or not
 void MergeState::mergeMultipleGroups(const string& pointerTagName, map<tagGroup, groupStreams> focustag2stream, 
-                                     bool includeCurrentTag) {
+                                     bool includeCurrentTag
+                                     #ifdef VERBOSE
+                                     , const anchor& incomingA, set<anchor>& lastRecurA
+                                     #endif
+                                    )
+{
   #ifdef VERBOSE
   scope s(txt()<<"mergeMultipleGroups("<<pointerTagName<<", includeCurrentTag="<<includeCurrentTag<<")");
   { scope s("focustag2stream", scope::high); printTag2Stream(dbg, focustag2stream); }
@@ -688,7 +697,15 @@ void MergeState::mergeMultipleGroups(const string& pointerTagName, map<tagGroup,
     dbg << ts->first.str()<<" => "<<ts->second.str()<<endl;
     #endif
     MergeState* groupState = 
-           new MergeState(*this, ts->first, ts->second, variantID, /*readyForNewTags*/ false, /*createNewOutStreamRecords*/ true);
+           new MergeState(*this, ts->first, ts->second, variantID, /*readyForNewTags*/ false, /*createNewOutStreamRecords*/ true
+                          #ifdef VERBOSE
+                          , incomingA 
+                          #endif
+            
+            );
+    #ifdef VERBOSE
+    lastRecurA.insert(groupState->outgoingA);
+    #endif
                          
     allGroupsMSs.push_back(groupState);
     
@@ -763,11 +780,11 @@ void MergeState::mergeMultipleGroups(const string& pointerTagName, map<tagGroup,
 void MergeState::merge() {
   #ifdef VERBOSE
   scope s("MergeState::merge()");
-  #endif
   
   anchor lastIterA  = anchor::noAnchor;
   anchor curIterA   = anchor::noAnchor;
-  anchor lastRecurA = anchor::noAnchor;
+  set<anchor> lastRecurA;
+  #endif
  
   // The depth of the tag nesting stack 
   int stackDepth=0;
@@ -831,7 +848,11 @@ void MergeState::merge() {
       
       // stackDepth is unchanged since mergeInsideTag() will read from the entry upto and 
       // including the exit tag of the comparison
-      mergeMultipleGroups("comparison", tag2stream, /*includeCurrentTag*/ false);
+      mergeMultipleGroups("comparison", tag2stream, /*includeCurrentTag*/ false
+                              #ifdef VERBOSE
+                              , curIterA, lastRecurA
+                              #endif
+                             );
       multGroupID++;
       
       // Note that the call to mergeMultipleNonUniversalEnterGroups will process the exit tags of
@@ -864,8 +885,15 @@ void MergeState::merge() {
           for(map<tagGroup, groupStreams>::iterator ts=tag2stream.begin(); ts!=tag2stream.end(); ) {
             if(ts->first.info.getMergeKind()==MergeInfo::interleave) {
               for(list<int>::iterator p=ts->second.parserIndexes.begin(); p!=ts->second.parserIndexes.end(); p++) {
-                MergeState groupState(*this, ts->first, groupStreams(*p), 0, /*readyForNewTags*/ false, /*createNewOutStreamRecords*/ false);
+                MergeState groupState(*this, ts->first, groupStreams(*p), 0, /*readyForNewTags*/ false, /*createNewOutStreamRecords*/ false
+                                      #ifdef VERBOSE
+                                      , curIterA 
+                                      #endif
+                                     );
                 groupState.merge();
+                #ifdef VERBOSE
+                lastRecurA.insert(groupState.outgoingA);
+                #endif
               }
               map<tagGroup, groupStreams>::iterator ts2=ts;
               ++ts;
@@ -925,7 +953,11 @@ void MergeState::merge() {
           
           map<tagGroup, groupStreams> filtered;
           filtered[ts.first] = ts.second;
-          mergeMultipleGroups("variants", filtered, /*includeCurrentTag*/true);
+          mergeMultipleGroups("variants", filtered, /*includeCurrentTag*/true
+                              #ifdef VERBOSE
+                              , curIterA, lastRecurA
+                              #endif
+                             );
           multGroupID++;
         
         // Else, there are multiple enter tag groups in tag2stream. (no more than one other 
@@ -935,7 +967,11 @@ void MergeState::merge() {
         } else {
           ITER_ACTION(txt()<<"Processing multiple enter tag groups");
           map<tagGroup, groupStreams> filtered = filterTag2Stream_EnterNonUniversal();
-          mergeMultipleGroups("variants", filtered, /*includeCurrentTag*/true);
+          mergeMultipleGroups("variants", filtered, /*includeCurrentTag*/true
+                              #ifdef VERBOSE
+                              , curIterA, lastRecurA
+                              #endif
+                             );
           multGroupID++;
         }
       }

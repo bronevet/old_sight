@@ -10,6 +10,37 @@ using namespace sight;
 static pthread_mutex_t causalityMutex = PTHREAD_MUTEX_INITIALIZER;
 static std::map<pthread_t, scalarCausalClock*> causality;
 
+/**************************************************
+ ***** Thread Initialization and Finalization *****
+ **************************************************/
+
+ThreadLocalStorage0<comparison*> PthreadThreadInitFinInstantiator::globalComparisons;
+
+PthreadThreadInitFinInstantiator::PthreadThreadInitFinInstantiator() { 
+  addFuncs("pthread", 
+           PthreadThreadInitFinInstantiator::initialize, 
+           PthreadThreadInitFinInstantiator::finalize,
+           common::easyset<std::string>("mpi"), common::easyset<std::string>());
+}
+
+void PthreadThreadInitFinInstantiator::initialize() {
+  cout << "PthreadThreadInitFinInstantiator::initialize()"<<endl;
+  // Assign each thread to a separate log based on its thread ID
+  globalComparisons = new comparison(txt()<<pthread_self());
+}
+
+void PthreadThreadInitFinInstantiator::finalize() {
+  // Assign each thread to a separate log based on its thread ID
+  assert(*globalComparisons != NULL);
+  delete *globalComparisons;
+}
+
+PthreadThreadInitFinInstantiator PthreadThreadInitFinInstance;
+
+/********************************
+ ***** Causality Management *****
+ ********************************/
+
 // Updates the causality info from the sender side
 // Returns the error code of the pthreads functions called.
 // cmHeld - indicates whether the causalityMutex is already being held by the calling thread
@@ -163,7 +194,7 @@ void *sightThreadInitializer(void* data) {
   pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
   
   // Assign each thread to a separate log based on its thread ID
-  globalComparisonIDs.push_back(make_pair("pthread", std::string(txt()<<pthread_self())));
+  //globalComparisonIDs.push_back(make_pair("pthread", std::string(txt()<<pthread_self())));
   
   // Initialize Sight for this thread before we initialize its clock
   SightInit_NewThread();
@@ -173,8 +204,8 @@ void *sightThreadInitializer(void* data) {
   pthread_cleanup_push(threadCleanup, NULL);
   
   {
-  //  modularApp ma("", namedMeasures("time",      new timeMeasure()));
-    comparison c(txt()<<pthread_self());
+    //modularApp ma("", namedMeasures("time",      new timeMeasure()));
+    //comparison c(txt()<<pthread_self());
 
     //dbg << "Starting sightThreadInitializer("<<arg<<") dbg="<<&dbg<<endl;
 
@@ -406,14 +437,14 @@ int sight_pthread_mutex_unlock(sight_pthread_mutex_t* smutex) {
   return 0;
 } 
 
-int pthread_orig_mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t *attr)
+/*int pthread_orig_mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t *attr)
 { return pthread_mutex_init(mutex, attr); }
 int pthread_orig_mutex_destroy(pthread_mutex_t *mutex)
 { return pthread_mutex_destroy(mutex); }
 int pthread_orig_mutex_lock(pthread_mutex_t* mutex)
 { return pthread_mutex_lock(mutex); }
 int pthread_orig_mutex_unlock(pthread_mutex_t* mutex)
-{ return pthread_mutex_unlock(mutex); }
+{ return pthread_mutex_unlock(mutex); }*/
 
 /*******************************
  ***** Condition Variables *****

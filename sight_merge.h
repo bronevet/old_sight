@@ -13,7 +13,7 @@
 using namespace sight;
 using namespace sight::structure;
 
-//#define VERBOSE
+#define VERBOSE
 
 namespace sight {
 
@@ -173,7 +173,11 @@ class MergeState {
   // createNewOutStreamRecords - Whether we'll create new outStreamRecords objects for this MergeState or whether this MergeState
   //      will maintain pointers to that.outStreamRecords. (the inStreamRecords are always pointers)
   MergeState(const MergeState& that,
-             const tagGroup& tg, const groupStreams& gs, int variantID, bool readyForNewTags, bool createNewOutStreamRecords);
+             const tagGroup& tg, const groupStreams& gs, int variantID, bool readyForNewTags, bool createNewOutStreamRecords
+             #ifdef VERBOSE
+             , const anchor& incomingA
+             #endif
+            );
             
   ~MergeState();
   
@@ -337,7 +341,11 @@ class MergeState {
   // focustag2stream - the portion of tag2stream that is limited to the tag groups that should be merged
   // includeCurrentTag - indicates whether the current tag along a given stream should be included
   //    in the emitted output or not
-  void mergeMultipleGroups(const string& pointerTagName, map<tagGroup, groupStreams> focustag2stream, bool includeCurrentTag);  
+  void mergeMultipleGroups(const string& pointerTagName, map<tagGroup, groupStreams> focustag2stream, bool includeCurrentTag
+                           #ifdef VERBOSE
+                           , const anchor& incomingA, set<anchor>& lastRecurA
+                           #endif
+                          );  
   
   // General merge algorithm full application logs and sub-logs
   void merge();
