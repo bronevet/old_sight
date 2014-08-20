@@ -1193,7 +1193,8 @@ std::vector<int> sightArray::getIterSpaceDims(const std::vector<int> steps) cons
   std::vector<int> iterSpace(d.size());
   for(int i=0; i<d.size(); i++) {
     //if(d[i] % steps[i] != 0) { cerr << "sightArray::getIterSpaceDims() ERROR: d["<<i<<"]="<<d[i]<<" not evenly divisible by steps["<<i<<"]="<<steps[i]<<"!\n"; assert(0); }
-    iterSpace[i] = d[i] / steps[i];
+    //iterSpace[i] = d[i] / steps[i];
+    iterSpace[i] = d[i] / steps[i] + d[i] % steps[i];
   }
   return iterSpace;
 }
@@ -1713,7 +1714,7 @@ bool sparserMesh(int basisS, int originS, int sizeS,
       // And the origin of basisS fits on the span of basisD
          ((originS - originD) % basisD) == 0 &&
       // And all the points in the span of basisS fit on the span of basisD
-         (originS + basisS * sizeS) <= (originD + basisD * sizeD);
+         (originS + basisS * (sizeS+1)) <= (originD + basisD * (sizeD+1));
 }
 
 // Returns whether a 1-dimensional regular Mesh 1 is identical to Mesh 2.

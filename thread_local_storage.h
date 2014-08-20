@@ -131,6 +131,11 @@ class ThreadLocalStorage
     }
     //cout << "    tlsInit("<<key_<<") after "<<pthread_getspecific(key_)<<endl;
   }
+  
+  // Returns whether a value is currently mapped for this thread or not
+  bool isValueMappedForThread() {
+    return pthread_getspecific(key_)!=NULL;
+  }
 
   // Operators to access the thread-local data
   T* operator ->()

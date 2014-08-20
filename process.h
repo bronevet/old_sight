@@ -37,7 +37,7 @@ class baseStructureParser : public common::structureParser {
   // and returns the amount of data actually read.
   virtual size_t readData()=0;
   
-  // Returns true if we've reached the end of the input strea
+  // Returns true if we've reached the end of the input stream
   virtual bool streamEnd()=0;
   
   // Returns true if we've encountered an error in input stream

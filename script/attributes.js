@@ -147,8 +147,10 @@ function filterByAttr(viewType) {
   query = {};
   filterByAttr_subQuery(Object.keys(allQueries), 0, query, viewType);
   
-  
   resetKeyValTable('attrTable');
+  
+  // Call the window refresh handlers
+  execRefreshHandlers();
 }
 
 function filterByAttr_subQuery(keys, keyIdx, query, viewType) {

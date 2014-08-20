@@ -1400,6 +1400,11 @@ function createCanvasOverlay(canvasContainer)
   
   canvasContainer.appendChild(myCanvas);
   
-  return myCanvas;
+  return {canvas: myCanvas, container: canvasContainer};
+}
+
+function deleteCanvasOverlay(canvasRec) {
+  canvasRec.container.removeChild(canvasRec.canvas);
+  document.body.removeChild(canvasRec.container);
 }
 

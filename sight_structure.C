@@ -123,6 +123,11 @@ void SightInit_LowLevel()
   initializedDebugThisThread = true;
 }
 
+// Comparison tag for the main thread that will live for the entire duration of the application.
+// It must be aligned to the same comparison tag in the logs of other processes (set in 
+// SightInit_internal) and the non-main threads within this process (set in sight_pthread_create).
+//comparison* mainThreadComp=NULL;
+
 // mainThread: Set to true if this function is being called from the main thread directly by the other.
 //             Set to false if it is called inside some other, subsequently-created thread from within Sight
 void SightInit_internal(int argc, char** argv, string title, string workDir, bool mainThread)
@@ -242,9 +247,13 @@ void SightInit_internal(int argc, char** argv, string title, string workDir, boo
   //cout << pthread_self() << " &dbg="<<&dbg<<endl;
 
   dbg->init(props, title, workDir, imgDir, tmpDir);
+  
+  // Create a comparison object for the main thread
+  /*if(mainThread)
+    mainThreadComp = new comparison(0);*/
 }
 
-void SightInit_internal(properties* props, bool storeProps)
+/*void SightInit_internal(properties* props, bool storeProps)
 {
   properties::iterator sightIt = props->find("sight");
   assert(!sightIt.isEnd());
@@ -265,7 +274,7 @@ void SightInit_internal(properties* props, bool storeProps)
   initializedDebugThisThread = true;
   
   dbg->init(storeProps? props: NULL, properties::get(sightIt, "title"), properties::get(sightIt, "workDir"), imgDir, tmpDir);
-}
+}*/
 
 // Creates a new dbgStream based on the given properties of a "sight" tag and returns a pointer to it.
 // storeProps: if true, the given properties object is emitted into this dbgStream's output file
@@ -891,7 +900,7 @@ std::string streamRecord::str(std::string indent) const {
 Merger::Merger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                std::map<std::string, streamRecord*>& outStreamRecords,
                std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
-               properties* props): props(props) {
+               properties* props, bool ignoreClocks): props(props) {
   emitTagFlag = true;
   
   if(props==NULL) props = new properties();
@@ -899,7 +908,7 @@ Merger::Merger(std::vector<std::pair<properties::tagType, properties::iterator> 
   //** cout << "Merger starting props="<<props->str()<<endl;
 
   // Iterate through the properties of any clocks associated with this object
-  while(!isIterEnd(tags)) {
+  while(!ignoreClocks && !isIterEnd(tags)) {
     properties::tagType type = streamRecord::getTagType(tags);
 
     if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging!"<<endl; exit(-1); }
@@ -1987,6 +1996,7 @@ void dbgStream::init(properties* props, string title, string workDir, string img
   
   // Version 1: write output to a file 
   // Create the output file to which the debug log's structure will be written
+  //cout << pthread_self() << ": SIGHT_FILE_OUT="<<getenv("SIGHT_FILE_OUT")<<endl;
   if(getenv("SIGHT_FILE_OUT")) {
     dbgFile = &(createFile(txt()<<workDir<<"/structure"));
     // Call the parent class initialization function to connect it dbgBuf of the output file
@@ -2159,6 +2169,7 @@ string dbgStream::addImage(string ext)
 //void dbgStream::enter(std::string name, const std::map<std::string, std::string>& properties, bool inheritedFrom) {
 void dbgStream::enter(sightObj* obj) {
   INIT_CHECK // Ensure that Sight is correctly initialized
+  
   ownerAccessing();
   *this << enterStr(*(obj->props));
   userAccessing();
@@ -2535,13 +2546,15 @@ ComparisonMerger::ComparisonMerger(std::vector<std::pair<properties::tagType, pr
                            map<string, streamRecord*>& outStreamRecords,
                            vector<map<string, streamRecord*> >& inStreamRecords,
                            properties* props) : 
-                                      Merger(advance(tags), outStreamRecords, inStreamRecords, props) {
+                                      Merger(advance(advance(tags)), outStreamRecords, inStreamRecords, props,
+                                             true /*ignoreClocks*/) {
   assert(tags.size()>0);
   
   if(props==NULL) props = new properties();
   this->props = props;
   
-  vector<string> names = getNames(tags); assert(allSame<string>(names));
+  vector<string> names = getNames(tags); 
+  if(!allSame<string>(names)) { cerr << "ComparisonMerger::ComparisonMerger ERROR: all names must be the same but they are "<<vector2str(names)<<"!"; assert(allSame<string>(names)); }
 
   assert(*names.begin() == "comparison");
   
@@ -2561,10 +2574,12 @@ ComparisonMerger::ComparisonMerger(std::vector<std::pair<properties::tagType, pr
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
 void ComparisonMerger::mergeKey(properties::tagType type, properties::iterator tag, 
                                 std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
-  Merger::mergeKey(type, tag.next(), inStreamRecords, info);
+  // Do not call the generic merging function because we want comparisons to be 
+  // merged purely according to their IDs, not their clock order
+  //Merger::mergeKey(type, tag.next(), inStreamRecords, info);
   if(type==properties::enterTag) {
     // Comparison tags with the same ID must be perfectly aligned in all logs
-    info.setUniversal(true);
+//    info.setUniversal(true);
     info.add(tag.get("ID"));
   }
 }
@@ -2573,16 +2588,25 @@ void ComparisonMerger::mergeKey(properties::tagType type, properties::iterator t
  ***** uniqueMark *****
  **********************/
 
-uniqueMark::uniqueMark(const std::string& ID,                        properties* props) : 
-  block("uniqueMark", setProperties(ID, NULL,     props))
+
+uniqueMark::uniqueMark(                          const std::string& ID,                        properties* props) : 
+  block("uniqueMark", setProperties("", ID, NULL,     props))
 {}
 
-uniqueMark::uniqueMark(const std::string& ID, const attrOp& onoffOp, properties* props) : 
-  block("uniqueMark", setProperties(ID, &onoffOp, props))
+uniqueMark::uniqueMark(                          const std::string& ID, const attrOp& onoffOp, properties* props) : 
+  block("uniqueMark", setProperties("", ID, &onoffOp, props))
+{}
+
+uniqueMark::uniqueMark(const std::string& label, const std::string& ID,                        properties* props) : 
+  block("uniqueMark", setProperties(label, ID, NULL,     props))
+{}
+
+uniqueMark::uniqueMark(const std::string& label, const std::string& ID, const attrOp& onoffOp, properties* props) : 
+  block("uniqueMark", setProperties(label, ID, &onoffOp, props))
 {}
 
 // Sets the properties of this object
-properties* uniqueMark::setProperties(const std::string& ID, const attrOp* onoffOp, properties* props)
+properties* uniqueMark::setProperties(const std::string& label, const std::string& ID, const attrOp* onoffOp, properties* props)
 {
   if(props==NULL) props = new properties();
     
@@ -2591,6 +2615,13 @@ properties* uniqueMark::setProperties(const std::string& ID, const attrOp* onoff
   if(attributes->query() && (onoffOp? onoffOp->apply(): true)) {
     props->active = true;
     map<string, string> newProps;
+
+    if(label!="") {
+      newProps["numLabels"] = "1";
+      newProps["label0"] = label;
+    } else
+      newProps["numLabels"] = "0";
+
     newProps["numIDs"] = "1";
     newProps["ID0"] = ID;
     props->add("uniqueMark", newProps);
@@ -2651,21 +2682,34 @@ properties* UniqueMarkMerger::setProperties(std::vector<std::pair<properties::ta
     vector<string> names = getNames(tags); assert(allSame<string>(names));
     assert(*names.begin() == "uniqueMark");
 
-    // Collect all the IDs from all the incoming streams, while using the allIDs
-    // set to remove duplicates.
-    set<string> allIDs;
+    // Collect all the labels and IDs from all the incoming streams, while using the allLabels and allIDs
+    // sets to remove duplicates.
+    set<string> allLabels, allIDs;
     for(std::vector<std::pair<properties::tagType, properties::iterator> >::const_iterator t=tags.begin();
 	t!=tags.end(); t++) {
+      int numLabels = t->second.getInt("numLabels");
+      for(int i=0; i<numLabels; i++)
+    	  allLabels.insert(t->second.get(txt()<<"label"<<i));
+      
       int numIDs = t->second.getInt("numIDs");
       for(int i=0; i<numIDs; i++)
 	allIDs.insert(t->second.get(txt()<<"ID"<<i));
     }
 
+
+    // Add allLabels to pMap
+    pMap["numLabels"] = txt()<<allLabels.size();
+    { int j=0;
+    for(set<string>::const_iterator i=allLabels.begin(); i!=allLabels.end(); i++, j++)
+      pMap[txt()<<"label"<<j] = *i;
+    }
+
     // Add allIDs to pMap
     pMap["numIDs"] = txt()<<allIDs.size();
-    int j=0;
+    { int j=0;
     for(set<string>::const_iterator i=allIDs.begin(); i!=allIDs.end(); i++, j++)
       pMap[txt()<<"ID"<<j] = *i;
+    }
     
     props->add("uniqueMark", pMap);
   } else {
@@ -2683,16 +2727,13 @@ void UniqueMarkMerger::mergeKey(properties::tagType type, properties::iterator t
 				   std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
   BlockMerger::mergeKey(type, tag.next(), inStreamRecords, info);
 }
-
-
 // Wrapper of the printf function that emits text to the dbg stream
 //ThreadLocalStorageArray<char> printbuf(100000);
-char printbuf[100000];
-
 int dbgprintf(const char * format, ... )    
 {
   va_list args;
   va_start(args, format);
+  char printbuf[100000];
   vsnprintf(printbuf, 100000, format, args);
   va_end(args);
   
@@ -2790,10 +2831,13 @@ void AbortHandlerInstantiator::finalizeSight() {
   // On Termination deallocate all the currently live sightObjs
   sightObj::destroyAll();
 
-  // Flush the file used to output the structure log and close the file to make sure it is flushed.
-  dbg->flush();
-  if(dbg->dbgFile)
-    dbg->dbgFile->close();
+  // If a copy of dbg has been allocated for this thread
+  if(dbg.isValueMappedForThread()) {
+    // Flush the file used to output the structure log and close the file to make sure it is flushed.
+    dbg->flush();
+    if(dbg->dbgFile)
+      dbg->dbgFile->close();
+  }
 }
 
 std::string AbortHandlerInstantiator::str() {

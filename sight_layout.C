@@ -1860,6 +1860,19 @@ uniqueMark::uniqueMark(properties::iterator props) : block(properties::next(prop
     initialized=true;
   }*/
 
+  // Read all the unique labels from props and register them in JavaScript
+  int numLabels = props.getInt("numLabels");
+  // At least one ID must have been specified
+  //assert(numLabels > 0);
+  ostringstream allLabelsS;
+  allLabelsS << "[";
+  for(int i=0; i<numLabels; i++) {
+    if(i>0) allLabelsS << ",";
+    allLabelsS << "'"<<props.get(txt()<<"label"<<i)<<"'";
+  }
+  allLabelsS << "]";
+  allLabels = allLabelsS.str();
+
   // Read all the unique IDs from props and register them in JavaScript
   int numIDs = props.getInt("numIDs");
   // At least one ID must have been specified
@@ -1883,7 +1896,7 @@ void uniqueMark::printEntry(string loadCmd) {
   //cout << "uniqueMark::printEntry("<<loadCmd<<")"<<endl;
   // At least one ID must have been specified
   assert(allIDs!="");
-  dbg.widgetScriptCommand(txt()<<"registerUniqueMark('"<<getBlockID()<<"',"<<allIDs<<");");
+  dbg.widgetScriptCommand(txt()<<"registerUniqueMark('"<<getBlockID()<<"',"<<allIDs<<","<<allLabels<<");");
 }
 
 void uniqueMark::printExit() {

@@ -76,7 +76,7 @@ void SightInit_internal(properties* props);
   /* but not on this thread, initialize it now */                                     \
   if(initializedDebugMainThread && !initializedDebugThisThread) SightInit_NewThread(); \
   /* Skip this if Sight has not yet been initialized on the main thread */            \
-  if(!initializedDebugMainThread) return;
+  if(!initializedDebugMainThread) { cout << "INIT_CHECK Skipping\n"; return; }
 
 // Version for functions that return non-void
 #define INIT_CHECK_RET(retVal)                                                        \
@@ -84,7 +84,7 @@ void SightInit_internal(properties* props);
   /* but not on this thread, initialize it now */                                     \
   if(initializedDebugMainThread && !initializedDebugThisThread) SightInit_NewThread(); \
   /* Skip this if Sight has not yet been initialized on the main thread */            \
-  if(!initializedDebugMainThread) return retVal;
+  if(!initializedDebugMainThread) { cout << "INIT_CHECK Skipping\n"; return retVal; }
 
 // Creates a new dbgStream based on the given properties of a "sight" tag and returns a pointer to it.
 // storeProps: if true, the given properties object is emitted into this dbgStream's output file
@@ -657,7 +657,7 @@ class Merger {
   Merger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
          std::map<std::string, streamRecord*>& outStreamRecords,
          std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
-         properties* props);
+         properties* props, bool ignoreClocks=false);
   
   const properties& getProps() const { return *props; }
   
@@ -1062,7 +1062,6 @@ class BlockMerger : public Merger {
                           map<string, streamRecord*>& outStreamRecords,
                           vector<map<string, streamRecord*> >& inStreamRecords,
                           properties* props);
-
   static Merger* create(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
                         std::map<std::string, streamRecord*>& outStreamRecords,
                         std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
@@ -1482,11 +1481,13 @@ class ComparisonMerger : public Merger {
 // we can write Javascript code that visually relates these blocks.
 class uniqueMark: public block {
   public:
-  uniqueMark(const std::string& ID,                        properties* props=NULL);
-  uniqueMark(const std::string& ID, const attrOp& onoffOp, properties* props=NULL);
+  uniqueMark(                          const std::string& ID,                        properties* props=NULL);
+  uniqueMark(                          const std::string& ID, const attrOp& onoffOp, properties* props=NULL);
+  uniqueMark(const std::string& label, const std::string& ID,                        properties* props=NULL);
+  uniqueMark(const std::string& label, const std::string& ID, const attrOp& onoffOp, properties* props=NULL);
   
   // Sets the properties of this object
-  static properties* setProperties(const std::string& ID, const attrOp* onoffOp, properties* props);
+  static properties* setProperties(const std::string& label, const std::string& ID, const attrOp* onoffOp, properties* props);
 
   ~uniqueMark();
 

@@ -26,7 +26,7 @@ SIGHT_LINKFLAGS = \
                   ${ROOT_PATH}/widgets/gsl/lib/libgsl.so \
                   ${ROOT_PATH}/widgets/gsl/lib/libgslcblas.so \
                   -Wl,-rpath ${ROOT_PATH}/widgets/gsl/lib \
-                  -L ${ROOT_PATH}/../../INSTALL/pnmpi/lib/ -lpnmpi -Wl,-rpath,${ROOT_PATH}/../../INSTALL/pnmpi/lib \
+                  -L /g/g92/polyzou1/INSTALL/pnmpi/lib -lpnmpi -Wl,-rpath,/g/g92/polyzou1/INSTALL/pnmpi/lib \
                   -lpthread
 RAPL_ENABLED = 1
 ifeq (${RAPL_ENABLED}, 1)
@@ -131,6 +131,10 @@ run: all runExamples runApps
 
 runExamples: core
 	cd examples; make ${MAKE_DEFINES} run
+	cd examples; make ${MAKE_DEFINES} runPhread
+
+runPthreadExamples: core
+	cd examples; make ${MAKE_DEFINES} runPthread
 
 runApps: libsight_structure.so slayout${EXE} hier_merge${EXE} apps
 	cd examples; ../apps/mfem/mfem/examples/mfemComp.pl
@@ -173,7 +177,7 @@ libsight_common.a: ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre
 	ar -r libsight_common.a ${SIGHT_COMMON_O} widgets/*/*_common.o
 
 libsight_structure.so: ${SIGHT_STRUCTURE_O} ${SIGHT_STRUCTURE_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre
-	${CC} -shared  -Wl,-soname,libsight_structure.so -o libsight_structure.so  ${SIGHT_STRUCTURE_O} ${SIGHT_COMMON_O} widgets/*/*_structure.o widgets/*/*_common.o
+	${CC} -shared  -Wl,-soname,libsight_structure.so -o libsight_structure.so  ${SIGHT_STRUCTURE_O} ${SIGHT_COMMON_O} widgets/*/*_structure.o widgets/parallel/sight_pthread.o widgets/*/*_common.o
 
 #libsight_structure.a: ${SIGHT_STRUCTURE_O} ${SIGHT_STRUCTURE_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre
 #	ar -r libsight_structure.a ${SIGHT_STRUCTURE_O} ${SIGHT_COMMON_O} widgets/*/*_structure.o widgets/*/*_common.o
@@ -249,7 +253,7 @@ Makefile.extern: initMakefile.extern Makefile
 	chmod 755 initMakefile.extern
 	./initMakefile.extern ${CC} ${CCC} ${RAPL_ENABLED} ${LLVM32_SRC_PATH} ${LLVM32_BUILD_PATH} ${LLVM32_INSTALL_PATH}
 
-definitions.h: initDefinitionsH
+definitions.h: initDefinitionsH Makefile
 	chmod 755 initDefinitionsH
 	./initDefinitionsH ${RAPL_ENABLED}
 
