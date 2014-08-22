@@ -44,7 +44,7 @@ ifeq (${OS}, Cygwin)
 EXE := .exe
 endif
 
-all: core allExamples
+all: core allExamples cdexample
 	
 core: sightDefines.pl gdbLineNum.pl Makefile.extern definitions.h maketools libsight_common.a libsight_structure.so slayout${EXE} libsight_layout.so hier_merge${EXE} widgets_post script/taffydb 
 	chmod 755 html img script
@@ -269,6 +269,12 @@ clean_objects:
 	cd widgets/kulfi; make clean
 	rm ./libsight_structure.so
 	rm ./libsight_layout.so
+
+cdexample: cdexample
+	wget --no-check-certificate https://bitbucket.org/kyushick/cdprofiler/get/master.zip
+	unzip master.zip
+	mv *cdprofiler* cdexample
+	rm master.zip
 
 script/taffydb:
 	#cd script; wget --no-check-certificate https://github.com/typicaljoe/taffydb/archive/master.zip
