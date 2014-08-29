@@ -8,7 +8,7 @@
 #include "lulesh.h"
 
 
-#if defined(COMP) || defined(KULFI)
+#ifdef COMP
 compNamedMeasures getMeasures() {
    return compNamedMeasures(
 #ifdef RAPL
@@ -259,16 +259,11 @@ void ParseCommandLineOptions(int argc, char *argv[],
 
 /////////////////////////////////////////////////////////////////////
 
-#if defined(COMP) || defined(KULFI)
-compContext
-#else
-context
-#endif
-     VerifyAndWriteFinalOutput(Real_t elapsed_time,
+void VerifyAndWriteFinalOutput(Real_t elapsed_time,
                                Domain& locDom,
                                Int_t nx,
                                Int_t numRanks,
-                               bool verbose)
+                               sightModule* mod, int outputNum, bool verbose)
 {
    // GrindTime1 only takes a single domain into account, and is thus a good way to measure
    // processor speed indepdendent of MPI parallelism.
@@ -330,15 +325,13 @@ context
       #endif
    }
 
-#if defined(COMP) || defined(KULFI)
-   return compContext("MaxAbsDiff",   (double)MaxAbsDiff,          noComp(),
-                      "TotalAbsDiff", (double)TotalAbsDiff,        noComp(),
-                      "MaxRelDiff",   (double)MaxRelDiff,          noComp(),
-                      "FOM",          (double)(1000.0/grindTime2), noComp());
-#else
-   return context("MaxAbsDiff",   (double)MaxAbsDiff,          noComp(),
-                  "TotalAbsDiff", (double)TotalAbsDiff,        noComp(),
-                  "MaxRelDiff",   (double)MaxRelDiff,          noComp(),
-                  "FOM",          (double)(1000.0/grindTime2), noComp());
-#endif
+   if(mod) {
+       mod->setOutCtxt(outputNum,
+                       compContext("MaxAbsDiff",   (double)MaxAbsDiff,          noComp(),
+                                   "TotalAbsDiff", (double)TotalAbsDiff,        noComp(),
+                                   "MaxRelDiff",   (double)MaxRelDiff,          noComp(),
+                                   "FOM",          (double)(1000.0/grindTime2), noComp()));
+   }
+
+   return ;
 }

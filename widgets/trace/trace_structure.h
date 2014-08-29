@@ -1,3 +1,13 @@
+// Copyright (c) 203 Lawrence Livermore National Security, LLC.
+// Produced at the Lawrence Livermore National Laboratory
+// Written by Greg Bronevetsky <bronevetsky1@llnl.gov>
+//  
+// LLNL-CODE-642002.
+// All rights reserved.
+//  
+// This file is part of Sight. For details, see https://github.com/bronevet/sight. 
+// Please read the COPYRIGHT file for Our Notice and
+// for the BSD License.
 #pragma once
 
 #include <list>
@@ -13,9 +23,7 @@
 #include "../../sight_structure_internal.h"
 #include <sys/time.h>
 #include <papi.h>
-#ifdef RAPL
 #include "msr_core.h"
-#endif
 
 namespace sight {
 namespace structure {
@@ -496,20 +504,6 @@ class timeStampMeasure : public measure {
 // Syntactic sugar for specifying measurements
 typedef common::easyvector<int> papiEvents;
 
-// List of standard derived counters the user may request. Since PAPI numbers its counters
-// from 2^31-1 down, we set these #defines to count from 0 up
-#define PAPI_MIN_DERIVED 0 // The minimum value of any derived counter
-#define PAPI_L1_TC_MR 0 // L1 Total cache miss rate
-#define PAPI_L2_TC_MR 1 // L2 Total cache miss rate
-#define PAPI_L3_TC_MR 2 // L3 Total cache miss rate
-#define PAPI_L1_DC_MR 3 // L1 Data cache miss rate
-#define PAPI_L2_DC_MR 4 // L2 Data cache miss rate
-#define PAPI_L3_DC_MR 5 // L3 Data cache miss rate
-#define PAPI_L1_IC_MR 6 // L1 Instruction cache miss rate
-#define PAPI_L2_IC_MR 7 // L2 Instruction cache miss rate
-#define PAPI_L3_IC_MR 8 // L3 Instruction cache miss rate
-#define PAPI_MAX_DERIVED 8 // The maximum value of any derived counter
-
 class PAPIMeasure : public measure {
   // Counts the total number of counter events observed so far, accounting for any pauses and resumes
   std::vector<long_long> accumValues;
@@ -520,15 +514,8 @@ class PAPIMeasure : public measure {
   // Buffer into which we'll read counters
   std::vector<long_long> readValues;
   
-  // The events that the user wishes to measure. These may include both raw PAPI counters and derived
-  // counters.
+  // The events that will be measured
   papiEvents events;
-
-  // The raw PAPI events that are actually being measured.
-  std::vector<int> eventsToMeasure;
-
-  // Maps from the PAPI IDs of the raw counters in eventsToMeasure, to their indexes in eventsToMeasure
-  std::map<int, int> events2Idx;
 
   // The label associated with this measurement
   std::string valLabel;
@@ -537,7 +524,7 @@ class PAPIMeasure : public measure {
   static ThreadLocalStorage1<int, int> numMeasurers;
   
   // Records the set of PAPI counters currently being measured (non-empty iff numMeasurers>0)
-  static ThreadLocalStorageVector<int> curMeasuredEvents;
+  static papiEvents curEvents;
 
   // Records whether we were able to successfully start PAPI counting of the selected counters
   bool PAPIOperational;
@@ -579,13 +566,6 @@ class PAPIMeasure : public measure {
   // before the call to resume().
   void resume();
  
-  // Returns the string names of the counters currently being measured
-  std::list<std::string> getMeasuredCounterNames();
-  
-  // Returns a list that maps all the raw and derived counters in events to their observed values,
-  // using the raw counter values in accumValues.
-  std::list<std::pair<std::string, attrValue> > getAccumValues();
-  
   // Complete the measurement and add the observation to the trace associated with this measurement
   void end();
   

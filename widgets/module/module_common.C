@@ -1,3 +1,13 @@
+// Copyright (c) 203 Lawrence Livermore National Security, LLC.
+// Produced at the Lawrence Livermore National Laboratory
+// Written by Greg Bronevetsky <bronevetsky1@llnl.gov>
+//  
+// LLNL-CODE-642002.
+// All rights reserved.
+//  
+// This file is part of Sight. For details, see https://github.com/bronevet/sight. 
+// Please read the COPYRIGHT file for Our Notice and
+// for the BSD License.
 #include <string>
 #include <iostream>
 #include <sstream>
@@ -10,31 +20,6 @@ using namespace std;
 namespace sight {
 namespace common {
 
-/****************
- ***** note *****
- **************** /
-
-// Given a serialized representation of a note, returns an instance of the note 
-// object that is encoded.
-module::note module::note::deserialize(std::string serialized) {
-  escapedStr es(serialized, ":", escapedStr::escaped);
-  vector<string> fields = es.unescapeSplit();
-  assert(fields.size()==2);
-  // flagNote
-  if(fields[0]=="fn") return flagNote(fields[1]);
-  // Invalid note class
-  assert(0);
-}
-
-// Creates a notes object from a ";"-separated list of serialized notes
-module::notes::notes(std::string serialized) {
-  escapedStr es(serialized, ";", escapedStr::escaped);
-  vector<string> notes = es.unescapeSplit();
-  for(vector<string>::iterator n=notes.begin(); n!=notes.end(); n++) {
-    push_back(note::deserialize(*n));
-  }
-}
-  */
 /*******************
  ***** context *****
  *******************/

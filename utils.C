@@ -1,3 +1,13 @@
+// Copyright (c) 203 Lawrence Livermore National Security, LLC.
+// Produced at the Lawrence Livermore National Laboratory
+// Written by Greg Bronevetsky <bronevetsky1@llnl.gov>
+//  
+// LLNL-CODE-642002.
+// All rights reserved.
+//  
+// This file is part of Sight. For details, see https://github.com/bronevet/sight. 
+// Please read the COPYRIGHT file for Our Notice and
+// for the BSD License.
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -149,8 +159,7 @@ std::pair<std::string, std::string> path2filedir(std::string s)
         pos=nextPos+1;
         nextPos=s.find_first_of('/',nextPos+1);
     }
-//cout << "path2filedir() #s="<<s.size()<<" [0, "<<pre<<"] "<<s.substr(0, pre)<<" / ["<<(pre+1)<<", "<<(pos-1)<<"] "<<s.substr(pre+1, pos-1-(pre+1))<<endl;
-    return make_pair(s.substr(0, pre), s.substr(pre, pos-1-pre));
+    return make_pair(s.substr(0, pre), s.substr(pre+1, pos));
 }
 // Adapted from http://stackoverflow.com/questions/675039/how-can-i-create-directory-tree-in-c-linux
 // Creates the directory with the given path, creating any sub-directories within it

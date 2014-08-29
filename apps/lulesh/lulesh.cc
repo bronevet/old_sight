@@ -162,6 +162,10 @@ Additional BSD Notice
 #endif
 
 #include "lulesh.h"
+#include "sight.h"
+using namespace sight;
+using namespace std;
+
 
 /*********************************/
 /* Data structure implementation */
@@ -194,15 +198,13 @@ void Release(T **ptr)
 static inline
 void TimeIncrement(Domain& domain, context& runCfg, context& tsCfg, context& runOpts, struct cmdLineOpts& opts)
 {
-/*   sightModule mod(instance("TimeIncrement", 2, 0),
+   sightModule mod(instance("TimeIncrement", 2, 0),
                    inputs(port(runCfg),
                           port(tsCfg)),
-#if defined(COMP)
+#ifdef COMP                  
                    opts.isReference, runOpts,
-#elif defined(KULFI)
-                   runOpts,
 #endif
-                   getMeasures());*/
+                   getMeasures());
 
    Real_t targetdt = domain.stoptime() - domain.time() ;
 
@@ -1266,15 +1268,13 @@ void CalcPositionForNodes(Domain &domain, const Real_t dt, Index_t numNode)
 static inline
 void LagrangeNodal(Domain& domain, context& runCfg, context& tsCfg, context& runOpts, struct cmdLineOpts& opts)
 {
-/*  sightModule mod(instance("LagrangeNodal", 2, 0),
+  sightModule mod(instance("LagrangeNodal", 2, 0),
                   inputs(port(runCfg),
                          port(tsCfg)),
-#if defined(COMP)
-                   opts.isReference, runOpts,
-#elif defined(KULFI)
-                   runOpts,
+#ifdef COMP                  
+                  opts.isReference, runOpts,
 #endif
-                  getMeasures());*/
+                  getMeasures());
 
 #ifdef SEDOV_SYNC_POS_VEL_EARLY
    Domain_member fieldData[6] ;
@@ -2479,15 +2479,13 @@ void UpdateVolumesForElems(Domain &domain, Real_t *vnew,
 static inline
 void LagrangeElements(Domain& domain, Index_t numElem, context& runCfg, context& tsCfg, context& runOpts, struct cmdLineOpts& opts)
 {
-/*  sightModule mod(instance("LagrangeElements", 2, 0),
+  sightModule mod(instance("LagrangeElements", 2, 0),
                   inputs(port(runCfg),
                          port(tsCfg)),
-#if defined(COMP)
-                   opts.isReference, runOpts,
-#elif defined(KULFI)
-                   runOpts,
+#ifdef COMP                  
+                  opts.isReference, runOpts,
 #endif
-                  getMeasures());*/
+                  getMeasures());
   
   Real_t *vnew = Allocate<Real_t>(numElem) ;  /* new relative vol -- temp */
 
@@ -2675,15 +2673,13 @@ void CalcTimeConstraintsForElems(Domain& domain) {
 static inline
 void LagrangeLeapFrog(Domain& domain, context& runCfg, context& tsCfg, context& runOpts, struct cmdLineOpts& opts)
 {
-/*  sightModule mod(instance("LagrangeLeapFrog", 2, 0),
+  sightModule mod(instance("LagrangeLeapFrog", 2, 0),
                   inputs(port(runCfg),
                          port(tsCfg)),
-#if defined(COMP)
-                   opts.isReference, runOpts,
-#elif defined(KULFI)
-                   runOpts,
+#ifdef COMP                  
+                  opts.isReference, runOpts,
 #endif
-                  getMeasures());*/
+                  getMeasures());
 
 #ifdef SEDOV_SYNC_POS_VEL_LATE
    Domain_member fieldData[6] ;
@@ -2760,7 +2756,6 @@ int main(int argc, char *argv[])
    opts.viz = 0;
    opts.balance = 1;
    opts.cost = 1;
-   opts.powercap = 0;
 
    ParseCommandLineOptions(argc, argv, myRank, &opts);
    std::cout << "dtfixed="<<opts.dtfixed<<std::endl;
@@ -2821,12 +2816,12 @@ int main(int argc, char *argv[])
    // -s 3: |---*---*---*---| 3 nodes, 4 edges
    // -s 7: |-*-*-*-*-*-*-*-| 7 nodes, 8 edges
    //       0               1
-   /*cout << "nodeDiscretizationBasis=";
+   cout << "nodeDiscretizationBasis=";
    for(vector<int>::iterator i=nodeDiscretizationBasis.begin(); i!=nodeDiscretizationBasis.end(); i++) cout << *i << " "; cout << endl;
    cout << "edgeDiscretizationOrigin=";
    for(vector<int>::iterator i=edgeDiscretizationOrigin.begin(); i!=edgeDiscretizationOrigin.end(); i++) cout << *i << " "; cout << endl;
    cout << "edgeDiscretizationBasis=";
-   for(vector<int>::iterator i=edgeDiscretizationBasis.begin(); i!=edgeDiscretizationBasis.end(); i++) cout << *i << " "; cout << endl;*/
+   for(vector<int>::iterator i=edgeDiscretizationBasis.begin(); i!=edgeDiscretizationBasis.end(); i++) cout << *i << " "; cout << endl;
 
    if ((myRank == 0) && (opts.quiet == 0)) {
       printf("Running problem size %d^3 per domain until completion\n", opts.nx);
@@ -2853,19 +2848,16 @@ int main(int argc, char *argv[])
                                                     #elif defined(SOA)
                                                     ".mem_soa"<<
                                                     #endif
-                                                    #if defined(COMP)
-                                                    ".isReference_"<<opts.isReference<<
-                                                    #endif
-                                                    ".rank_"<<myRank<<
+                                                    ".isReference_"<<opts.isReference<<".rank_"<<myRank<<
                                                     (getenv("EXP_ID")? txt()<<".exp_"<<getenv("EXP_ID"): string("")));
-   sightModularApp LuleshApp("LULESH");
+   sightModularApp LuleshApp("LULESH", namedMeasures("RAPL", new RAPLMeasure()));
    
    // Set up the mesh and decompose. Assumes regular cubes for now
    Int_t col, row, plane, side;
    {
 /*   sightModule mod(instance("Setup", 1, 0),
                    inputs(port(runCfg)),
-#if defined(COMP) || defined(KULFI)
+#ifdef COMP
                    opts.isReference, runOpts,
 #endif
                    getMeasures());*/
@@ -2903,97 +2895,76 @@ int main(int argc, char *argv[])
    timeval start;
    gettimeofday(&start, NULL) ;
 #endif
-
+   
    {
       sightModule simMod(instance("Simulation", 1, 
-#if defined(COMP) || defined(KULFI)
+#ifdef COMP
                                                 3
 #else
                                                 2
 #endif
                               ),
                          inputs(port(runCfg)),
-#if defined(COMP)
-                   opts.isReference, runOpts,
-#elif defined(KULFI)
-                   runOpts,
+#ifdef COMP                  
+                         opts.isReference, runOpts,
 #endif
                          getMeasures());
 //debug to see region sizes
 //   for(Int_t i = 0; i < locDom->numReg(); i++)
 //      std::cout << "region" << i + 1<< "size" << locDom->regElemSize(i) <<std::endl;
-
-#if defined(COMP) || defined(KULFI)
-   compContext symmErr;
-#else
-   context symmErr;
-#endif
-   symmErr = VerifyAndWriteFinalOutput(0, *locDom, opts.nx, numRanks, false);
-      
    int numPhases=10;
    Real_t stopTime = locDom->stoptime();
    for(Int_t phase=0; phase<numPhases; phase++) {
       Real_t phaseStopTime = stopTime * (Real_t(phase+1)/numPhases);
       locDom->stoptime() = phaseStopTime;
       cout << "phase="<<phase<<", iter="<<locDom->cycle()<<"\n";
-      context phaseCfg("phase",   phase);
-#if defined(COMP) || defined(KULFI)
-      context phaseOpts = runOpts;
-      phaseOpts.add("iter",    locDom->cycle());
-      phaseOpts.add("u_cut",   (double)locDom->u_cut());
-      phaseOpts.add("numNode", locDom->numNode());
-      phaseOpts.add("numElem", locDom->numElem());
-      phaseOpts.add(symmErr);
+      context tsCfg("phase",   phase);
+#ifdef COMP
+      context tsOpts = runOpts;
+      tsOpts.add("iter",    locDom->cycle());
+      tsOpts.add("u_cut",   (double)locDom->u_cut());
+      tsOpts.add("numNode", locDom->numNode());
+      tsOpts.add("numElem", locDom->numElem());
 #else
-      phaseCfg.add("iter",    locDom->cycle());
-      phaseCfg.add("u_cut",   (double)locDom->u_cut());
-      phaseCfg.add("numNode", locDom->numNode());
-      phaseCfg.add("numElem", locDom->numElem());      
-      phaseCfg.add(symmErr);
+      tsCfg.add("iter",    locDom->cycle());
+      tsCfg.add("u_cut",   (double)locDom->u_cut());
+      tsCfg.add("numNode", locDom->numNode());
+      tsCfg.add("numElem", locDom->numElem());      
 #endif
-      /*cout << "phaseOpts="<<phaseOpts.str()<<endl;
-      cout << "phaseCfg="<<phaseCfg.str()<<endl;
-      cout << "output symErr="<<symmErr.str()<<endl;*/
       
       sightModule phaseMod(instance("Time Phase", 2, 
-#if defined(COMP) || defined(KULFI)
+#ifdef COMP
                                             2
 #else
                                             1
 #endif
                               ),
                       inputs(port(runCfg),
-                             port(phaseCfg)),
-#if defined(COMP)
-                   opts.isReference, phaseOpts,
-#elif defined(KULFI)
-                   phaseOpts,
+                             port(tsCfg)),
+#ifdef COMP                  
+                      opts.isReference, tsOpts,
 #endif
                       getMeasures());
 
       while((locDom->time() < phaseStopTime) && (locDom->cycle() < opts.its)) {
-         context tsCfg = phaseCfg;
          tsCfg.add("t",       (double)locDom->time());
-   #if defined(COMP) || defined(KULFI)
-         context tsOpts = phaseOpts;
+   #ifdef COMP
          tsOpts.add("dt",      (double)locDom->deltatime());
    #else
          tsCfg.add("t",       (double)locDom->time());
          tsCfg.add("dt",      (double)locDom->deltatime());
    #endif
 
-/*         sightModule tsMod(instance("Time Step", 2, 0),
+         sightModule tsMod(instance("Time Step", 2, 0),
                          inputs(port(runCfg),
                                 port(tsCfg)),
-#if defined(COMP)
-                   opts.isReference, runOpts,
-#elif defined(KULFI)
-                   runOpts,
-#endif
+   #ifdef COMP                  
+                         opts.isReference, tsOpts,
+   #endif
                          getMeasures());
-*/
+
          TimeIncrement(*locDom, runCfg, tsCfg, tsOpts, opts) ;
-         //cout << "    Inner: phase="<<phase<<", iter="<<locDom->cycle()<<", t="<<locDom->time()<<", phaseStopTime="<<phaseStopTime<<", dt="<<locDom->deltatime()<<"\n";
+         cout << "    Inner: phase="<<phase<<", iter="<<locDom->cycle()<<", t="<<locDom->time()<<", phaseStopTime="<<phaseStopTime<<", dt="<<locDom->deltatime()<<"\n";
          LagrangeLeapFrog(*locDom, runCfg, tsCfg, tsOpts, opts) ;
 
          if ((opts.showProg != 0) && (opts.quiet == 0) && (myRank == 0)) {
@@ -3006,10 +2977,8 @@ int main(int argc, char *argv[])
       // just computes module outputs and thus, should not be measured.
       phaseMod.completeMeasurement();
       
-      symmErr = VerifyAndWriteFinalOutput(0, *locDom, opts.nx, numRanks, false);
-      phaseMod.setOutCtxt(0, symmErr);
-      //cout << "output symErr="<<symmErr.str()<<endl;
-#if defined(COMP) || defined(KULFI)
+      VerifyAndWriteFinalOutput(0, *locDom, opts.nx, numRanks, &phaseMod, 0, false);
+#ifdef COMP
       DumpDomainToModule(*locDom, myRank, &phaseMod, 1, nodeDiscretizationBasis, edgeDiscretizationOrigin, edgeDiscretizationBasis);
 #endif
    }
@@ -3042,15 +3011,14 @@ int main(int argc, char *argv[])
    
    printf("myRank=%d, opts.quiet=%d", myRank, opts.quiet);
    if ((myRank == 0) && (opts.quiet == 0)) {
-      simMod.setOutCtxt(0, 
-           VerifyAndWriteFinalOutput(elapsed_timeG, *locDom, opts.nx, numRanks, true));
+      VerifyAndWriteFinalOutput(elapsed_timeG, *locDom, opts.nx, numRanks, &simMod, 0, true);
    }
-#if defined(COMP) || defined(KULFI)
+#ifdef COMP
    simMod.setOutCtxt(1, compContext("numCycles", locDom->cycle(), noComp()));
 #else
    simMod.setOutCtxt(1, context("numCycles", locDom->cycle()));
 #endif
-#if defined(COMP) || defined(KULFI)
+#ifdef COMP
    DumpDomainToModule(*locDom, myRank, &simMod, 2, nodeDiscretizationBasis, edgeDiscretizationOrigin, edgeDiscretizationBasis);
 #endif
    }

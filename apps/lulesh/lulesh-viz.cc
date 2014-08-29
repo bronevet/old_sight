@@ -171,8 +171,8 @@ void DumpDomainToVisit(DBfile *db, Domain& domain, int myRank, sightModule* m, i
                          0, DB_DOUBLE, optlist);
       ok += DBFreeOptlist(optlist);
    }
-   /*if(m) {
-     / *Real_t sum=0.0;
+   if(m) {
+     /*Real_t sum=0.0;
      for(int i=0; i<domain.numNode(); i++) sum += coords[0][i];
      #if defined(REAL4)
      dbgprintf("\nX checksum=%.10e\n", sum);
@@ -180,18 +180,15 @@ void DumpDomainToVisit(DBfile *db, Domain& domain, int myRank, sightModule* m, i
      dbgprintf("\nX checksum=%.15le\n", sum);
      #elif defined(REAL10)
      dbgprintf("\nX checksum=%.20Le\n", sum);
-     #endif* /
+     #endif*/
      outCtxt.add("X", sightVectorField(sightArray(sightArray::dims(domain.numEdgeNodes(), domain.numEdgeNodes(), domain.numEdgeNodes()), boost::shared_ptr<double>(coords[0])), nodeDiscretizationBasis), LkComp(2, attrValue::floatT, true));
      outCtxt.add("Y", sightVectorField(sightArray(sightArray::dims(domain.numEdgeNodes(), domain.numEdgeNodes(), domain.numEdgeNodes()), boost::shared_ptr<double>(coords[1])), nodeDiscretizationBasis), LkComp(2, attrValue::floatT, true));
      outCtxt.add("Z", sightVectorField(sightArray(sightArray::dims(domain.numEdgeNodes(), domain.numEdgeNodes(), domain.numEdgeNodes()), boost::shared_ptr<double>(coords[2])), nodeDiscretizationBasis), LkComp(2, attrValue::floatT, true));
-     
-     for (int ni=0; ni < domain.numNode() ; ++ni)
-       cout << "["<<coords[0][ni]<<", "<<coords[1][ni]<<", "<<coords[2][ni]<<"]"<<endl;
-   } else {*/
+   } else {
       delete [] coords[2] ;
       delete [] coords[1] ;
       delete [] coords[0] ;
-   //}
+   }
 
    // Write out the materials
    if(db) {
@@ -215,16 +212,9 @@ void DumpDomainToVisit(DBfile *db, Domain& domain, int myRank, sightModule* m, i
       ok += DBPutUcdvar1(db, "e", "mesh", e,
                          domain.numElem(), NULL, 0, DB_DOUBLE, DB_ZONECENT,
                          NULL);
-   /*if(m) outCtxt.add("e", sightVectorField(sightArray(sightArray::dims(domain.numEdgeElems(), domain.numEdgeElems(), domain.numEdgeElems()), boost::shared_ptr<double>(e)), edgeDiscretizationOrigin, edgeDiscretizationBasis), LkComp(2, attrValue::floatT, true));
-   else  */delete [] e ;
+   if(m) outCtxt.add("e", sightVectorField(sightArray(sightArray::dims(domain.numEdgeElems(), domain.numEdgeElems(), domain.numEdgeElems()), boost::shared_ptr<double>(e)), edgeDiscretizationOrigin, edgeDiscretizationBasis), LkComp(2, attrValue::floatT, true));
+   else  delete [] e ;
 
-   Real_t sumE=0.0;
-   for (int ei=0; ei < domain.numElem(); ++ei)
-     sumE += domain.e(ei);
-   outCtxt.add("E",     (double)sumE, noComp());
-   outCtxt.add("E-L1",  (double)sumE, LkComp(1, attrValue::floatT, true));
-   outCtxt.add("E-Rel", (double)sumE, RelComp(attrValue::floatT));
-   
    double *p = new double[domain.numElem()] ; 
    for (int ei=0; ei < domain.numElem(); ++ei) {
       p[ei] = double(domain.p(ei)) ;
@@ -233,8 +223,8 @@ void DumpDomainToVisit(DBfile *db, Domain& domain, int myRank, sightModule* m, i
       ok += DBPutUcdvar1(db, "p", "mesh", p,
                          domain.numElem(), NULL, 0, DB_DOUBLE, DB_ZONECENT,
                          NULL);
-   /*if(m) outCtxt.add("p", sightVectorField(sightArray(sightArray::dims(domain.numEdgeElems(), domain.numEdgeElems(), domain.numEdgeElems()), boost::shared_ptr<double>(p)), edgeDiscretizationOrigin, edgeDiscretizationBasis), LkComp(2, attrValue::floatT, true));
-   else  */delete [] p ;
+   if(m) outCtxt.add("p", sightVectorField(sightArray(sightArray::dims(domain.numEdgeElems(), domain.numEdgeElems(), domain.numEdgeElems()), boost::shared_ptr<double>(p)), edgeDiscretizationOrigin, edgeDiscretizationBasis), LkComp(2, attrValue::floatT, true));
+   else  delete [] p ;
 
    double *v = new double[domain.numElem()] ; 
    for (int ei=0; ei < domain.numElem(); ++ei) {
@@ -244,8 +234,8 @@ void DumpDomainToVisit(DBfile *db, Domain& domain, int myRank, sightModule* m, i
       ok += DBPutUcdvar1(db, "v", "mesh", v,
                          domain.numElem(), NULL, 0, DB_DOUBLE, DB_ZONECENT,
                          NULL);
-   /*if(m) outCtxt.add("v", sightVectorField(sightArray(sightArray::dims(domain.numEdgeElems(), domain.numEdgeElems(), domain.numEdgeElems()), boost::shared_ptr<double>(v)), edgeDiscretizationOrigin, edgeDiscretizationBasis), LkComp(2, attrValue::floatT, true));
-   else  */delete [] v ;
+   if(m) outCtxt.add("v", sightVectorField(sightArray(sightArray::dims(domain.numEdgeElems(), domain.numEdgeElems(), domain.numEdgeElems()), boost::shared_ptr<double>(v)), edgeDiscretizationOrigin, edgeDiscretizationBasis), LkComp(2, attrValue::floatT, true));
+   else  delete [] v ;
 
    double *q = new double[domain.numElem()] ; 
    for (int ei=0; ei < domain.numElem(); ++ei) {
@@ -255,8 +245,8 @@ void DumpDomainToVisit(DBfile *db, Domain& domain, int myRank, sightModule* m, i
       ok += DBPutUcdvar1(db, "q", "mesh", q,
                          domain.numElem(), NULL, 0, DB_DOUBLE, DB_ZONECENT,
                          NULL);
-   /*if(m) outCtxt.add("q", sightVectorField(sightArray(sightArray::dims(domain.numEdgeElems(), domain.numEdgeElems(), domain.numEdgeElems()), boost::shared_ptr<double>(q)), edgeDiscretizationOrigin, edgeDiscretizationBasis), LkComp(2, attrValue::floatT, true));
-   else  */delete [] q ;
+   if(m) outCtxt.add("q", sightVectorField(sightArray(sightArray::dims(domain.numEdgeElems(), domain.numEdgeElems(), domain.numEdgeElems()), boost::shared_ptr<double>(q)), edgeDiscretizationOrigin, edgeDiscretizationBasis), LkComp(2, attrValue::floatT, true));
+   else  delete [] q ;
 
    // Write out nodal speed, velocities
    double *zd    = new double[domain.numNode()];
@@ -285,17 +275,17 @@ void DumpDomainToVisit(DBfile *db, Domain& domain, int myRank, sightModule* m, i
                          domain.numNode(), NULL, 0, DB_DOUBLE, DB_NODECENT,
                          NULL);
    }
-   /*if(m) {
+   if(m) {
      outCtxt.add("speed", sightVectorField(sightArray(sightArray::dims(domain.numEdgeNodes(), domain.numEdgeNodes(), domain.numEdgeNodes()), boost::shared_ptr<double>(speed)), nodeDiscretizationBasis), LkComp(2, attrValue::floatT, true));
      outCtxt.add("xd",    sightVectorField(sightArray(sightArray::dims(domain.numEdgeNodes(), domain.numEdgeNodes(), domain.numEdgeNodes()), boost::shared_ptr<double>(xd)), nodeDiscretizationBasis), LkComp(2, attrValue::floatT, true));
      outCtxt.add("yd",    sightVectorField(sightArray(sightArray::dims(domain.numEdgeNodes(), domain.numEdgeNodes(), domain.numEdgeNodes()), boost::shared_ptr<double>(yd)), nodeDiscretizationBasis), LkComp(2, attrValue::floatT, true));
      outCtxt.add("zd",    sightVectorField(sightArray(sightArray::dims(domain.numEdgeNodes(), domain.numEdgeNodes(), domain.numEdgeNodes()), boost::shared_ptr<double>(zd)), nodeDiscretizationBasis), LkComp(2, attrValue::floatT, true));
-   } else {*/
+   } else {
      delete [] speed;
      delete [] xd ;
      delete [] yd ;
      delete [] zd ;
-   //}
+   }
    if(m) m->setOutCtxt(outputNum, outCtxt);
    
    if (ok != 0) {

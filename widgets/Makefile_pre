@@ -211,21 +211,19 @@ gsl:
 	tar -xf gsl-1.9.tar.gz 
 	cd gsl-1.9; CC=${CC}; ./configure --prefix=${ROOT_PATH}/widgets/gsl
 	cd gsl-1.9; make; make install
-	rm -r gsl-1.9 gsl-1.9.tar.gz
+	rm -r gsl-1.9
 
 papi:
 	rm -f papi-5.3.0.tar.gz
 	wget http://icl.cs.utk.edu/projects/papi/downloads/papi-5.3.0.tar.gz
 	tar -xf papi-5.3.0.tar.gz 
 	cd papi-5.3.0/src; ./configure -prefix=${ROOT_PATH}/widgets/papi CC=gcc F77=gfortran; 
-	cd papi-5.3.0/src; export CC=gcc; export F77=gfortran; make LDCONFIG=true CC=gcc F77=gfortran; make install
+	cd papi-5.3.0/src; export CC=gcc; export F77=gfortran; make LDCONFIG=true; make install
 	rm -fr papi-5.3.0 papi-5.3.0.tar.gz
 
 libmsr: libmsr/lib/libmsr.so
 
 libmsr/lib/libmsr.so:
-	../getGithub https://github.com/scalability-llnl/libmsr/archive/master.zip zip unzip
-	mv libmsr-master libmsr
 	cd libmsr/src; make CC=${CC}
 
 synoptic:
@@ -328,7 +326,6 @@ clean:
 #	rm -rf ID3-Decision-Tree
 	../killP mongoose/mongoose
 	../killP shellinabox/bin/shellinaboxd
-	rm -rf *.o shellinabox* mongoose* noVNC graphviz papi gsl synoptic libmsr
+	rm -rf *.o shellinabox* mongoose* noVNC graphviz papi
 	rm -f yui-min.js jquery-1.8.1.min.js underscore-min.js d3.v3.min.js d3.v3.js
-	rm -f jquery-1.9.1.min.js jquery-ui.css jquery-ui.js
 	rm -f Three.js Detector.js OrbitControls.js THREEx.WindowResize.js Stats.js

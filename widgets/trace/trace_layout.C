@@ -1,3 +1,13 @@
+// Copyright (c) 203 Lawrence Livermore National Security, LLC.
+// Produced at the Lawrence Livermore National Laboratory
+// Written by Greg Bronevetsky <bronevetsky1@llnl.gov>
+//  
+// LLNL-CODE-642002.
+// All rights reserved.
+//  
+// This file is part of Sight. For details, see https://github.com/bronevet/sight. 
+// Please read the COPYRIGHT file for Our Notice and
+// for the BSD License.
 #include "../../sight_layout_internal.h"
 #include "trace_layout.h"
 #include "errno.h"
@@ -187,7 +197,7 @@ traceObserverQueue::traceObserverQueue() {
 }
 
 traceObserverQueue::traceObserverQueue(const std::list<traceObserver*>& observersL)/* : queue(observersL)*/ {
-//cout << "traceObserverQueue::traceObserverQueue() #observersL.size="<<observersL.size()<<endl;
+cout << "traceObserverQueue::traceObserverQueue() #observersL.size="<<observersL.size()<<endl;
   // If observersL is non-empty
   if(observersL.size()>0) {
     firstO = observersL.front();
@@ -201,10 +211,10 @@ traceObserverQueue::traceObserverQueue(const std::list<traceObserver*>& observer
     // The traceObserver most recently encountered by the loop
     traceObserver* recentO=*o;
 
-//    cout << "  firstO="<<firstO<<", lastO="<<lastO<<", queue="<<this<<endl;
+    cout << "  firstO="<<firstO<<", lastO="<<lastO<<", queue="<<this<<endl;
     
     for(o++; o!=observersL.end(); o++) {
-//      cout << "    traceObserverQueue recentO="<<recentO<<" <-- *o="<<*o<<endl;
+      cout << "    traceObserverQueue recentO="<<recentO<<" <-- *o="<<*o<<endl;
       recentO->registerObserver(*o);
       recentO = *o;
     }
@@ -359,10 +369,10 @@ void traceObserverQueue::obsFinished() {
 externalTraceProcessor_File::externalTraceProcessor_File(std::string processorFName, std::string obsFName) : 
   processorFName(processorFName), obsFName(obsFName) 
 {
-  //cout << "processorFName="<<processorFName<<endl;
-  //cout << "obsFName="<<obsFName<<endl;
+  cout << "processorFName="<<processorFName<<endl;
+  cout << "obsFName="<<obsFName<<endl;
   traceFile.open(obsFName.c_str());
-  //cout << "traceFile.is_open()="<<traceFile.is_open()<<endl;
+  cout << "traceFile.is_open()="<<traceFile.is_open()<<endl;
   finished = false;
 }
 
@@ -500,14 +510,6 @@ void traceFileWriterTSV::observe(int traceID,
              const std::map<std::string, std::string>& ctxt, 
              const std::map<std::string, std::string>& obs,
              const std::map<std::string, anchor>&      obsAnchor) {
-  /*cout << "traceFileWriterTSV::observe("<<traceID<<")"<<endl;
-  cout << "    ctxt=";
-  for(map<string, string>::const_iterator c=ctxt.begin(); c!=ctxt.end(); c++) { cout << c->first << "=>"<<c->second<<" "; }
-  cout << endl;
-  cout << "    obs=";
-  for(map<string, string>::const_iterator o=obs.begin(); o!=obs.end(); o++) { cout << o->first << "=>"<<o->second<<" "; }
-  cout << endl;*/
-
   // Get the keys of ctxt and obs
   set<string> curCtxtKeys;
   for(map<string, string>::const_iterator i=ctxt.begin(); i!=ctxt.end(); i++)
@@ -545,17 +547,14 @@ void traceFileWriterTSV::observe(int traceID,
     if(i!=ctxt.begin()) out << "\t";
     attrValue val(i->second, attrValue::unknownT);
     out << val.getAsStr();
-    //cout << val.getAsStr();
   }
   if(ctxt.size()>0) out << "\t";
   for(map<string, string>::const_iterator i=obs.begin(); i!=obs.end(); i++) {
     if(i!=obs.begin()) out << "\t";
     attrValue val(i->second, attrValue::unknownT);
     out << val.getAsStr();
-    //cout << val.getAsStr();
   }
   out << endl;
-  //cout << endl;
   
   numObservations++;
 }

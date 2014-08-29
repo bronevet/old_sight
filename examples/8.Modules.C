@@ -1,3 +1,13 @@
+// Copyright (c) 203 Lawrence Livermore National Security, LLC.
+// Produced at the Lawrence Livermore National Laboratory
+// Written by Greg Bronevetsky <bronevetsky1@llnl.gov>
+//  
+// LLNL-CODE-642002.
+// All rights reserved.
+//  
+// This file is part of Sight. For details, see https://github.com/bronevet/sight. 
+// Please read the COPYRIGHT file for Our Notice and
+// for the BSD License.
 #include "sight.h"
 #include <math.h>
 #include <map>
@@ -86,7 +96,7 @@ int main(int argc, char** argv)
   
   // Generate the initial particle positions
   std::vector<port> initOutputs;
-  { module initModule(instance("Initialization", 0, 1), initOutputs, namedMeasures("PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS, PAPI_L2_TC_MR))));
+  { module initModule(instance("Initialization", 0, 1), initOutputs, namedMeasures("time", new timeMeasure()));
     for(int p=0; p<numParticles; p++) {
       vector<double> curPos;
       for(int d=0; d<numDims; d++) curPos.push_back(((double)rand()/(double)RAND_MAX));
@@ -102,7 +112,7 @@ int main(int argc, char** argv)
   map<int, set<int> > neighbors;
   for(int t=0; t<numTS; t++) {
     module timeStepModule(instance("TimeStep", 1, 0), inputs(port(context("t", t))), 
-                          namedMeasures("PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS, PAPI_L2_TC_MR))));
+                          namedMeasures("PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS))));
 
     //scope s(txt()<<"Iteration "<<t);
     if(t%neghRefreshPeriod==0) {
@@ -113,7 +123,7 @@ int main(int argc, char** argv)
                                inputs(// particles
                                       (t==0? initOutputs[0]: forceOutputs[0])),
                                neighOutputs,
-                               namedMeasures("PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS, PAPI_L2_TC_MR))));
+                               namedMeasures("PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS))));
       
       // Maps each particles (idx in particle) to the set of its neighbors
       
@@ -148,7 +158,7 @@ int main(int argc, char** argv)
                                 // neighbors
                                 neighOutputs[0]),
                          forceOutputs,
-                         namedMeasures("PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS, PAPI_L2_TC_MR))));
+                         namedMeasures("PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS))));
   
       
       for(map<int, set<int> >::iterator p=neighbors.begin(); p!=neighbors.end(); p++) {

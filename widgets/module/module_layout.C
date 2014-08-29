@@ -1,3 +1,13 @@
+// Copyright (c) 203 Lawrence Livermore National Security, LLC.
+// Produced at the Lawrence Livermore National Laboratory
+// Written by Greg Bronevetsky <bronevetsky1@llnl.gov>
+//  
+// LLNL-CODE-642002.
+// All rights reserved.
+//  
+// This file is part of Sight. For details, see https://github.com/bronevet/sight. 
+// Please read the COPYRIGHT file for Our Notice and
+// for the BSD License.
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////// Licence information included in file LICENCE
 #define MODULE_LAYOUT_C
 #include "../../sight_layout.h"
@@ -1817,11 +1827,10 @@ std::map<std::string, std::string> compModule::compareObservations(
       
       // Get the comparator for this property of this output and compare the two attrValues
       if(measComparators.find(traceSubGrouping) == measComparators.end()) {
-        cerr << "WARNING: no comparator found for trace attribute "<<traceSubGrouping<<"! Assuming that no comparison is to be performed!"<<endl;
-        //assert(0);
-        comp = NULL;
-      } else
-        comp = measComparators[traceSubGrouping];
+        cerr << "ERROR: no comparator found for trace attribute "<<traceSubGrouping<<"!"<<endl;
+        assert(0);
+      }
+      comp = measComparators[traceSubGrouping];
     
     // If the current attribute is an option, do not perform a comparison on it
     } else if(traceGrouping == "option")
@@ -1913,7 +1922,7 @@ void compModule::observe(int traceID,
     }
   }
   
-  /*cout << "    inputCtxt=";
+/*  cout << "    inputCtxt=";
   for(map<string, string>::const_iterator o=inputCtxt.begin(); o!=inputCtxt.end(); o++) { cout << o->first << (o->second.length()>300? "=> LARGE": string("=>")+o->second)<<" "; }
   cout << endl;
   cout << "    referenceObs[inputCtxt] (#"<<referenceObs.size()<<") : "<<(referenceObs.find(inputCtxt) != referenceObs.end())<<endl;
