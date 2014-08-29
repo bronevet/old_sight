@@ -143,7 +143,7 @@ std::string stepClock::str() const {
   /*********************
    *** Scalar Clock ****
    *********************/
-
+/*
   std::set<mpiClock*> mpiClock::active;
 
   mpiClock::mpiClock() {
@@ -212,7 +212,7 @@ std::string stepClock::str() const {
   }
   std::string mpiClock::str() const {
     return txt() << "[mpiClock: time="<<curTime<<"]";
-  }
+  }*/
 
 /*****************************
  ***** scalarCausalClock *****
@@ -260,7 +260,7 @@ properties* scalarCausalClock::setProperties(properties* props) {
 
 // Called when information/causality is sent from one thread to another.
 // Returns the current local scalar clock, enabling the calling sender to propagate it to the receiver.
-long long scalarCausalClock::send()
+long long& scalarCausalClock::send()
 {
   return time;
 }
@@ -329,9 +329,9 @@ ClockMergeHandlerInstantiator::ClockMergeHandlerInstantiator() {
   (*MergeHandlers   )["stepClock"]  = StepClockMerger::create;
   (*MergeKeyHandlers)["stepClock"]  = StepClockMerger::mergeKey;
 
-  (*MergeHandlers   )["mpiClock"]  = MpiClockMerger::create;
+/*  (*MergeHandlers   )["mpiClock"]  = MpiClockMerger::create;
   (*MergeKeyHandlers)["mpiClock"]  = MpiClockMerger::mergeKey;                                                      
-
+*/
   (*MergeHandlers   )["scalarCausalClock"]  = ScalarCausalClockMerger::create;
   (*MergeKeyHandlers)["scalarCausalClock"]  = ScalarCausalClockMerger::mergeKey;
 
@@ -466,7 +466,7 @@ void StepClockMerger::mergeKey(properties::tagType type, properties::iterator ta
 
   /**************************
    ***** MpiClockMerger *****
-   **************************/
+   ************************** /
 
   MpiClockMerger::MpiClockMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
 				 std::map<std::string, streamRecord*>& outStreamRecords,
@@ -516,7 +516,7 @@ void StepClockMerger::mergeKey(properties::tagType type, properties::iterator ta
       info.add(properties::getInt(tag, "time"));
     }
   }
-
+*/
 /***********************************
  ***** ScalarCausalClockMerger *****
  ***********************************/

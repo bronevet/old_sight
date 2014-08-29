@@ -70,7 +70,7 @@ class stepClock: public sightClock {
   
   	std::string str() const;
 }; // class stepClock
-
+/*
   // Scalar Clock for mpi programs
   class mpiClock: public sightClock {
   private:
@@ -97,7 +97,7 @@ class stepClock: public sightClock {
 
     std::string str() const;
   }; // class mpiClock   
-
+*/
 
 // A scalar clock for tracking causal order in concurrent applications
 class scalarCausalClock: public sightClock {
@@ -119,7 +119,7 @@ class scalarCausalClock: public sightClock {
   
 	  // Called when information/causality is sent from one thread to another.
 	  // Returns the current local scalar clock, enabling the calling sender to propagate it to the receiver.
-	  long long send();
+	  long long& send();
 
 	  // Called when information/causality is received from one thread to another.
 	  // Takes as an argument the sender's clock at the time of the send operation.
@@ -222,7 +222,7 @@ class StepClockStreamRecord: public streamRecord {
   }
 }; // class StepClockStreamRecord
 
-// Merger for mpiClock tag
+/*// Merger for mpiClock tag
  class MpiClockMerger : public Merger {
  public:
 	MpiClockMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
@@ -246,7 +246,7 @@ class StepClockStreamRecord: public streamRecord {
 	static void mergeKey(properties::tagType type, properties::iterator tag,
                        std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
 }; // class MpiClockMerger
-
+*/
 // Merger for scalarCausalClock tag
 class ScalarCausalClockMerger : public Merger {
   public:

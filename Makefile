@@ -7,6 +7,8 @@ SIGHT_LAYOUT_H := sight.h sight_layout_internal.h attributes/attributes_layout.h
 sight := ${sight_O} ${sight_H} gdbLineNum.pl sightDefines.pl
 
 ROOT_PATH = ${CURDIR}
+PNMPI_PATH = ${ROOT_PATH}/widgets/PnMPI/INSTALL/
+#PNMPI_PATH = /g/g92/polyzou1/INSTALL/pnmpi/
 
 SIGHT_CFLAGS = -g -fPIC -I${ROOT_PATH} -I${ROOT_PATH}/attributes -I${ROOT_PATH}/widgets/parallel \
                 -I${ROOT_PATH}/tools/callpath/src -I${ROOT_PATH}/tools/adept-utils/include \
@@ -25,8 +27,8 @@ SIGHT_LINKFLAGS = \
                   ${ROOT_PATH}/widgets/papi/lib/libpapi.a \
                   ${ROOT_PATH}/widgets/gsl/lib/libgsl.so \
                   ${ROOT_PATH}/widgets/gsl/lib/libgslcblas.so \
-                  -Wl,-rpath ${ROOT_PATH}/widgets/gsl/lib \
-                  -L /g/g92/polyzou1/INSTALL/pnmpi/lib -lpnmpi -Wl,-rpath,/g/g92/polyzou1/INSTALL/pnmpi/lib \
+                  -Wl,-rpath ${ROOT_PATH}/widgets/gsl/lib #\
+                  -L ${PNMPI_PATH}lib -lpnmpi -Wl,-rpath,${PNMPI_PATH} \
                   -lpthread
 RAPL_ENABLED = 1
 ifeq (${RAPL_ENABLED}, 1)
