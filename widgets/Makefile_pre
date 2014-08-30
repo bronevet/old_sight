@@ -261,10 +261,9 @@ PnMPI/BUILD:PnMPI
 PnMPI/INSTALL/lib/libpnmpi.so:PnMPI/BUILD
 	cd PnMPI/BUILD ; export CC=${CC}; export CXX=${CCC}; cmake ../ -DCMAKE_INSTALL_PREFIX=../INSTALL; make install
 
-
 parallel/commsub-sclock.so:parallel/commsub-sclock.cpp PnMPI/modules/comm/comm.cpp PnMPI
- 	echo "building sclock module:"; echo "	mpig++  ${SIGHT_CFLAGS} -fPIC -g -shared -Wl,-soname,commsub-sclock.so -o parallel/commsub-sclock.so 	-DSUBMODNAME='"sclock"' -IPnMPI/src -IPnMPI/modules/datatype -IPnMPI/modules/requests	-IPnMPI/modules/status -IPnMPI/BUILD/src parallel/commsub-sclock.cpp PnMPI/modules/comm/comm.cpp"
-	mpig++  ${SIGHT_CFLAGS} -fPIC -g  -o parallel/commsub-comm.o \
+	echo "building sclock module:"; echo "	mpig++  ${SIGHT_CFLAGS} -fPIC -g -shared -Wl,-soname,commsub-sclock.so -o parallel/commsub-sclock.so 	-DSUBMODNAME='"sclock"' -IPnMPI/src -IPnMPI/modules/datatype -IPnMPI/modules/requests	-IPnMPI/modules/status -IPnMPI/BUILD/src parallel/commsub-sclock.cpp PnMPI/modules/comm/comm.cpp"
+	mpig++  ${SIGHT_CFLAGS} -fPIC -g -o parallel/commsub-comm.o \
 	-IPnMPI/src -IPnMPI/modules/datatype -IPnMPI/INSTALL/include -IPnMPI/modules/requests \
 	-IPnMPI/modules/status -IPnMPI/modules/comm -IPnMPI/BUILD/src PnMPI/modules/comm/comm.cpp -c
 	mpig++  ${SIGHT_CFLAGS} -fPIC -g -o parallel/commsub-sclock.o \
@@ -272,11 +271,9 @@ parallel/commsub-sclock.so:parallel/commsub-sclock.cpp PnMPI/modules/comm/comm.c
 	-IPnMPI/modules/status -IPnMPI/modules/comm -IPnMPI/BUILD/src parallel/commsub-sclock.cpp -c
 	g++ ${SIGHT_CFLAGS} -fPIC -g  -shared -Wl,-soname,commsub-sclock.so -o parallel/commsub-sclock.so \
 	parallel/commsub-sclock.o parallel/commsub-comm.o
+
 PnMPI/INSTALL/lib/pnmpi-modules/commsub-sclock.so: parallel/commsub-sclock.so
 	PnMPI/INSTALL/bin/pnmpi-patch parallel/commsub-sclock.so PnMPI/INSTALL/lib/pnmpi-modules/commsub-sclock.so
-#cp parallel/commsub-sclock.so PnMPI/INSTALL/lib/pnmpi-modules/
-#PnMPI/INSTALL/lib/pnmpi-modules/commsub-sclock.so:parallel/commsub-sclock.so
-
 
 muster:
 	git clone https://github.com/scalability-llnl/muster.git
