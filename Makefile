@@ -34,8 +34,8 @@ SIGHT_LINKFLAGS += ${ROOT_PATH}/widgets/libmsr/lib/libmsr.so \
 endif
 	                
 	                #-Wl,-rpath ${ROOT_PATH}/widgets/papi/lib \
-override CC=clang #icc #gcc
-override CCC=clang++ #icpc #clang++ #g++
+override CC=gcc
+override CCC=g++
 MPICC = mpi${CC}
 MPICCC = mpi${CCC}
 
@@ -83,7 +83,7 @@ VNC_ENABLED := 0
 endif
 
 # By default we disable KULFI-based fault injection since it requires LLVM
-KULFI_ENABLED := 1
+KULFI_ENABLED := 0 
 	
 ifeq (${KULFI_ENABLED}, 1)
 # Sight must use the same LLVM Clang compiler as KULFI does
@@ -273,6 +273,12 @@ clean:
 clean_objects:
 	rm -f Makefile.extern definitions.h *.a *.o attributes/*.o widgets/*.o widgets/*/*.o hier_merge slayout
 	cd widgets/kulfi; make clean
+
+cdexample: cdexample
+	wget --no-check-certificate https://bitbucket.org/kyushick/cdprofiler/get/master.zip
+	unzip master.zip
+	mv *cdprofiler* cdexample
+	rm master.zip
 
 script/taffydb:
 	#cd script; wget --no-check-certificate https://github.com/typicaljoe/taffydb/archive/master.zip

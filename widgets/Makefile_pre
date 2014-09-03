@@ -220,12 +220,19 @@ papi:
 	cd papi-5.3.0/src; export CC=gcc; export F77=gfortran; make LDCONFIG=true CC=gcc F77=gfortran; make install
 	rm -fr papi-5.3.0 papi-5.3.0.tar.gz
 
+#libmsr: libmsr/lib/libmsr.so
+#
+#libmsr/lib/libmsr.so:
+#	../getGithub https://github.com/scalability-llnl/libmsr/archive/master.zip zip unzip
+#	mv libmsr-master libmsr
+#	cd libmsr/src; make CC=${CC}
+
 libmsr: libmsr/lib/libmsr.so
 
 libmsr/lib/libmsr.so:
-	../getGithub https://github.com/scalability-llnl/libmsr/archive/master.zip zip unzip
-	mv libmsr-master libmsr
 	cd libmsr/src; make CC=${CC}
+
+
 
 synoptic:
 	wget http://synoptic.googlecode.com/files/synoptic-0.1.tar.gz
