@@ -44,9 +44,9 @@ run: ${TESTERS}
 	rm -rf dbg.8.Modules.*;
 	../slayout${EXE} dbg.8.Modules/structure;
 	# 9.CompModules
-	export SIGHT_FILE_OUT=1; ./9.CompModules.merged${EXE} 1 .025 .025 .0001 .05; ./9.CompModules.merged${EXE} 0 .025 .025 .0005 .05; ./9.CompModules.merged${EXE} 0 .025 .025 .001 .05; ./9.CompModules.merged${EXE} 0 .025 .025 .005 .05;
-	export SIGHT_FILE_OUT=1; ./9.CompModules.merged${EXE} 0 .05  .05  .0001 .05; ./9.CompModules.merged${EXE} 0 .05  .05  .0005 .05; ./9.CompModules.merged${EXE} 0 .05  .05  .001 .05; ./9.CompModules.merged${EXE} 0 .05  .05  .005 .05;
-	export SIGHT_FILE_OUT=1; ./9.CompModules.merged${EXE} 0 .1   .1   .0001 .05; ./9.CompModules.merged${EXE} 0 .1   .1   .0005 .05; ./9.CompModules.merged${EXE} 0 .1   .1   .001 .05; ./9.CompModules.merged${EXE} 0 .1   .1   .005 .05;
+	export SIGHT_FILE_OUT=1; ./9.CompModules.merged${EXE} 1 .025 .025 .0001 .05; ./9.CompModules.merged${EXE} 0 .025 .025 .0005 .05; ./9.CompModules.merged${EXE} 0 .025 .025 .001 .05; #./9.CompModules.merged${EXE} 0 .025 .025 .005 .05;
+	export SIGHT_FILE_OUT=1; ./9.CompModules.merged${EXE} 0 .05  .05  .0001 .05; ./9.CompModules.merged${EXE} 0 .05  .05  .0005 .05; ./9.CompModules.merged${EXE} 0 .05  .05  .001 .05; #./9.CompModules.merged${EXE} 0 .05  .05  .005 .05;
+	#export SIGHT_FILE_OUT=1; ./9.CompModules.merged${EXE} 0 .1   .1   .0001 .05; ./9.CompModules.merged${EXE} 0 .1   .1   .0005 .05; ./9.CompModules.merged${EXE} 0 .1   .1   .001 .05; ./9.CompModules.merged${EXE} 0 .1   .1   .005 .05;
 	export SIGHT_FILE_OUT=1; ../hier_merge dbg.9.CompModules zipper dbg.9.CompModules.*/structure
 	rm -rf dbg.9.CompModules.*;
 	../slayout${EXE} dbg.9.CompModules/structure;

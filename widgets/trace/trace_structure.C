@@ -22,7 +22,7 @@ namespace structure {
 
 // Record the configuration handlers in this file
 traceConfHandlerInstantiator::traceConfHandlerInstantiator() {
-#ifdef RAPL
+#if RAPL_ENABLED==1
   (*enterHandlers)["rapl"]          = &RAPLMeasure::configure;
   (*exitHandlers )["rapl"]          = &traceConfHandlerInstantiator::defaultExitFunc;
 #endif // RAPL
@@ -1175,7 +1175,7 @@ std::list<std::pair<std::string, attrValue> > endGetMeasure(measure* m, bool add
 }
 
 
-#ifdef RAPL
+#if RAPL_ENABLED==1
 
 /**********************
  ***** MSRMeasure *****

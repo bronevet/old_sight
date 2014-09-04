@@ -23,7 +23,9 @@
 #include "../../sight_structure_internal.h"
 #include <sys/time.h>
 #include <papi.h>
+#if RAPL_ENABLED==1
 #include "msr_core.h"
+#endif
 
 namespace sight {
 namespace structure {
@@ -576,7 +578,7 @@ class PAPIMeasure : public measure {
   std::string str() const;
 }; // class PAPIMeasure
 
-#ifdef RAPL
+#if RAPL_ENABLED==1
 #include "msr_rapl.h"
 
 // Base class of measurement objects that measure MSRs 
