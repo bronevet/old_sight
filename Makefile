@@ -195,6 +195,9 @@ sight_mrnet_clean:
 	rm -rf mrnet/bin/smrnet_*
 	rm -rf mrnet/bin/libsmrnet_filter.so
 	rm -rf mrnet/bin/dbg.*
+	rm -rf mrnet/bin/*.out
+	rm -rf mrnet/bin/*_out
+	rm -rf mrnet/bin/12.SampleMRnetEmitter
 	rm -rf mrnet/lib
 
 #runMCBench:
