@@ -1,19 +1,36 @@
-==========================================================
+==========================================================================================================
 Starting the Front End MRNet
-==========================================================
+==========================================================================================================
+a.) first export LD_LIBRARY_PATH to point to the MRNet libraries. You can easily do this with following
+    command
+
+    source ../lib/sourced.file
+
+b.) initiate the MRnet Front-End
+
 ./smrnet_fe top_file_s2 libsmrnet_filter.so 4
 
 
 
-===========================================================
-Starting the Front End MRNet
-==========================================================
-source be_process.sh 56313 0 2332 0
-source be_process.sh 56313 0 2333 1
-source be_process.sh 56313 0 2334 2
-source be_process.sh 56313 0 2335 3
+==========================================================================================================
+Starting the Emitter for MRNet Merge
+==========================================================================================================
+a.) first export LD_LIBRARY_PATH to point to the MRNet libraries. You can easily do this with following
+    command
 
-===========================================================
+    source ../lib/sourced.file
+
+b.) users should connet MRnet Backend emiitters to the already started MRnet Front-End. Following script 
+is a sample to connect on localhost with exmaple usage --> 
+
+[source be_process.sh <PARENT_PORT> <PARENT_RANK> <EMITTER_RANK>]
+
+ie:-
+source be_process.sh 56313 0 2330 
+source be_process.sh 56313 0 2331
+source be_process.sh 56313 0 2332
+source be_process.sh 56313 0 2333 
+
+==========================================================================================================
 
 
-./smrnet_fe top_file_s2 libsmrnet_filter.so 1

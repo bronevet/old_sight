@@ -7,7 +7,7 @@ echo "init BE process... [PARENT_PORT: $PARENT_PORT] [PARENT_RANK: $PARENT_RANK]
 
 #export LD_LIBRARY_PATH=/usr/local/lib:/home/usw/Install/sight/sight/sight/mrnet/bin
 #export LD_LIBRARY_PATH=/usr/local/lib:/u/uswickra/sight.usw.git/sight/mrnet/bin
-export LD_LIBRARY_PATH=/usr/local/lib:/home/usw/Install/sight/sight/sight_new/sight/mrnet/bin:/home/usw/Install/sight/sight/sight_new/sight
+#export LD_LIBRARY_PATH=/usr/local/lib:/home/usw/Install/sight/sight/sight_new/sight/mrnet/bin:/home/usw/Install/sight/sight/sight_new/sight
 
 unset SIGHT_FILE_OUT
 export MRNET_MERGE_EXEC="./smrnet_be 127.0.0.1 $PARENT_PORT $PARENT_RANK 127.0.0.1 $BE_RANK";
