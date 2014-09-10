@@ -210,7 +210,11 @@ papi:
 	cd papi-5.3.0/src; export CC=gcc; export F77=gfortran; make LDCONFIG=true; make install
 	rm -fr papi-5.3.0 papi-5.3.0.tar.gz
 
+ifeq (${RAPL_ENABLED}, 1)
 libmsr: libmsr/lib/libmsr.so
+else
+libmsr:
+endif
 
 libmsr/lib/libmsr.so:
 	cd libmsr/src; make CC=${CC}
