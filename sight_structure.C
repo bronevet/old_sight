@@ -298,7 +298,8 @@ void SightInit_internal(int argc, char** argv, string title, string workDir, boo
   /*if(mainThread) {
     globalComparisonIDs.push_back(make_pair("pthread", std::string(txt()<<pthread_self())));
   }*/
-  
+  //initialize Abort object to register exit handlers
+  AbortHandlerInstantiator defaultAbortHandlerInstance;
   // Record whether this is the main thread
   isMainThread = mainThread;
   
@@ -2221,11 +2222,131 @@ int dbgBuf::sync()
 void dbgBuf::userAccessing() { ownerAccess = false; synched = true; }
 void dbgBuf::ownerAccessing() { ownerAccess = true; synched = true; }
 
+
+/*********************
+*** mrnBuf        ****
+* ********************/
+
+
+std::streamsize mrnBuf::xsputn(const char *s, std::streamsize n) {
+            // Only emit text if the current query on attributes evaluates to true
+            if (!attributes->query()) return n;
+
+            // If the owner is printing, output their text exactly
+            if (ownerAccess) {
+                int ret = sputn_mrn(s, n);
+                //cerr << "xputn() >>>\n";
+                return ret;
+            } else {
+                // Otherwise, replace all special characters with their HTML encodings
+                int ret;
+                int i = 0;
+                char open[] = "&#91;";
+                char close[] = "&#93;";
+                while (i < n) {
+                    if (s[i] == '[') {
+                        ret = sputn_mrn(open, sizeof(open) - 1);
+                        if (ret != sizeof(open) - 1) return 0;
+                    } else if (s[i] == ']') {
+                        ret = sputn_mrn(close, sizeof(close) - 1);
+                        if (ret != sizeof(close) - 1) return 0;
+                    } else {
+                        ret = sputn_mrn(&(s[i]), 1);
+                        if (ret != 1) return 0;
+                    }
+                    i++;
+                }
+
+//    cerr << "xputn() >>>\n";
+                return n;
+            }
+        }
+
+
+std::streamsize mrnBuf::sputn_mrn(const char *s, std::streamsize n) {
+    streamsize i = 0;
+    int_type __eof = traits_type::eof();
+    for (; i < n; ++s, ++i)
+    {
+        if (pptr() < epptr()) {
+            *pptr() = *s;
+            pbump(1);
+        }
+        else if (overflow(traits_type::to_int_type(*s)) == __eof) {
+            break;
+        }
+    }
+    return i;
+
+}
+
+
+int mrnBuf::overflow(int c) {
+            if(!attributes->query()) return c;
+            //last character to be sent ==> (buffer size == TOTAL_PACKET_SIZE)
+            buffer[BUFF_SIZE] = c;
+            pbump(1);
+            sync();
+            return c;
+}
+
+/**
+* each time sync() is invoked , buffered data is flushed through MRnet wire
+* if final_packet flag is indicated then special control tag is used to indicate
+* that to the fronet end processor
+*/
+int mrnBuf::sync() {
+            if(!attributes->query()) return 0;
+            //flush to stdout
+            int len = 0;
+            fprintf(stdout, "OUT-Structure: Transfer wave %d ..\n",wave++);
+            for (char *curr = pbase(); curr < pptr(); curr++) {
+                fprintf(stdout, "%c", *curr);
+                len++;
+            }
+            fprintf(stdout, "OUT-Structure Before send length:  %d ..\n",len);
+            fflush(stdout);
+            Packet *pckt;
+            if(!final_packet) {
+                pckt = new Packet(strm_id, tag_id, "%ac", pbase(), len);
+            }   else {
+                pckt = new Packet(strm_id, PROT_END_PHASE, "%ac", pbase(), len);
+            }
+            PacketPtr new_packet (pckt);
+            if (net->is_LocalNodeFrontEnd()) {
+//            FE Processing
+#ifdef DEBUG_ON
+                printf("#MRNet Merger method FE pid : %d  \n", getpid());
+#endif
+                strm->add_IncomingPacket(new_packet);
+                strm->flush();
+            } else {
+//            INternal or BE node processing
+#ifdef DEBUG_ON
+                printf("#MRNet Merger method Internal/BE  pid : %d \n", getpid());
+#endif
+                net->send_PacketToParent(new_packet);
+                net->flush();
+            }
+            fflush(stdout);
+            setp(buffer, buffer + BUFF_SIZE);
+
+
+            if(synched && !ownerAccess) {
+                int ret;
+                //ret = printString("<br>\n");    if(ret != 0) return 0;
+                synched = false;
+            }
+            synched = true;
+            return 0;
+}
+
+
 /*********************
  ***** dbgStream *****
  *********************/
 
-dbgStream::dbgStream() : common::dbgStream(&defaultFileBuf), sightObj(this), initialized(false)
+dbgStream::dbgStream() : common::dbgStream(&defaultFileBuf), sightObj(this), initialized(false), no_destruct(false)
 {
   dbgFile = NULL;
   //buf = new dbgBuf(cout.rdbuf());
@@ -2236,9 +2357,44 @@ dbgStream::dbgStream() : common::dbgStream(&defaultFileBuf), sightObj(this), ini
 }
 
 dbgStream::dbgStream(properties* props, string title, string workDir, string imgDir, std::string tmpDir)
-  : common::dbgStream(&defaultFileBuf), sightObj(this)
+  : common::dbgStream(&defaultFileBuf), sightObj(this), no_destruct(false)
 {
   init(props, title, workDir, imgDir, tmpDir);
+}
+
+dbgStream::dbgStream(mrnBuf* mrnBuff, properties *props, string title, string workDir, string imgDir, std::string tmpDir)
+                : common::dbgStream(&defaultFileBuf), sightObj(this), no_destruct(false) {
+    dbgFile = NULL;
+    this->title   = title;
+    this->workDir = workDir;
+    this->imgDir  = imgDir;
+    this->tmpDir  = tmpDir;
+    numImages++;
+    buf = mrnBuff ;
+    ostream::init(buf);
+
+    this->props = props;
+    //if(props) enter(this);
+    sightObj::init(props, false);
+//    printf("MRN SIGHT INIT DONE...PID : %d \n", getpid());
+    // The application may have written text to this dbgStream before it was fully initialized.
+    // This text was stored in preInitStream. Print it out now.
+    ownerAccessing();
+//    printf("MRN OWNER ACCESS INIT DONE...PID : %d \n", getpid());
+    *this << preInitStream.str();
+//    sleep(10);
+//    printf("MRN PRESTREAM INIT DONE...PID : %d \n", getpid());
+    userAccessing();
+
+    initialized = true;
+
+}
+
+dbgStream::dbgStream(properties* props, string title, string workDir, string imgDir, std::string tmpDir, bool no_init)
+: common::dbgStream(&defaultFileBuf), sightObj(this), no_destruct(false)
+{
+    if(!no_init)
+        init(props, title, workDir, imgDir, tmpDir);
 }
 
 void dbgStream::init(properties* props, string title, string workDir, string imgDir, std::string tmpDir)
@@ -2256,6 +2412,7 @@ void dbgStream::init(properties* props, string title, string workDir, string img
   // Create the output file to which the debug log's structure will be written
   //cout << pthread_self() << ": SIGHT_FILE_OUT="<<getenv("SIGHT_FILE_OUT")<<endl;
   if(getenv("SIGHT_FILE_OUT")) {
+    printf("DBG INIT... SIGHT_OUT \n");
     dbgFile = &(createFile(txt()<<workDir<<"/structure"));
     // Call the parent class initialization function to connect it dbgBuf of the output file
     buf=new dbgBuf(dbgFile->rdbuf());
@@ -2276,7 +2433,24 @@ void dbgStream::init(properties* props, string title, string workDir, string img
     int outFD = fileno(out);
     buf = new dbgBuf(new fdoutbuf(outFD));
   // Version 3 (default): write output to a pipe for the default slayout to use immediately
-  } else {
+  }  else if(getenv("MRNET_MERGE_EXEC")) {
+      printf("DBG INIT... MRNET_MERGE_EXEC \n");
+      dbgFile = NULL;
+      // Unset the mutex environment variables from LoadTimeRegistry to make sure that they don't leak to the layout process
+      LoadTimeRegistry::liftMutexes();
+
+      // Execute the layout process
+      FILE *out = popen(getenv("MRNET_MERGE_EXEC"), "w");
+      if(out == NULL) { cerr << "Failed to run command \""<<getenv("MRNET_MERGE_EXEC")<<"\"!"<<endl; assert(0); }
+
+      // Restore the LoadTimeRegistry mutexes
+      LoadTimeRegistry::restoreMutexes();
+
+      int outFD = fileno(out);
+      buf = new dbgBuf(new fdoutbuf(outFD));
+      // Version 3 (default): write output to a pipe for the default slayout to use immediately
+  } else if(buf == NULL) {
+//    printf("DBG INIT... ELSE BUF == NULL \n");
     dbgFile = NULL;
     // Unset the mutex environment variables from LoadTimeRegistry to make sure that they don't leak to the layout process
     LoadTimeRegistry::liftMutexes();
@@ -2296,11 +2470,13 @@ void dbgStream::init(properties* props, string title, string workDir, string img
   this->props = props; 
   //if(props) enter(this);
   sightObj::init(props, false);
-
+//  printf("DBG SIGHT INIT DONE... \n");
   // The application may have written text to this dbgStream before it was fully initialized.
   // This text was stored in preInitStream. Print it out now.
   ownerAccessing();
+//  printf("DBG OWNER ACCESS INIT DONE... \n");
   *this << preInitStream.str();
+//  printf("DBG PRESTREAM INIT DONE... \n");
   userAccessing();
   
   initialized = true;
@@ -2317,14 +2493,17 @@ void dbgStream::destroy() {
 }
 
 dbgStream::~dbgStream() {
-  // If Sight has already been destroyed, skip out of the destructor
+  //special flag  indicates that proper destruction is handled elsewhere
+  if (no_destruct)
+        return;
+    // If Sight has already been destroyed, skip out of the destructor
   if(SightDestroyed) return;
 
   assert(!destroyed);
   
   if (!initialized)
     return;
-  
+
   // If this is the main thread, finalize it before it terminates
   if(isMainThreadDbg(this))
     SightThreadFinalize();
@@ -2507,6 +2686,31 @@ void dbgStream::tag(const properties& props) {
 std::string dbgStream::tagStr(const properties& props) {
   return enterStr(props) + exitStr(props);
 }
+
+
+/*************************
+ ***** MRNet Stream *****
+ ************************/
+
+ MRNetostream::~MRNetostream()  {
+            assert(!destroyed);
+            if (!initialized)
+                return;
+
+            // If this is the main thread, finalize it before it terminates
+            if(isMainThreadDbg(this))
+                SightThreadFinalize();
+
+            // Emit the exit tag for this dbgStream
+            sightObj::exitTag(false);
+
+            mrnBuf* mrnBuffer = (mrnBuf*)this->rdbuf();
+            mrnBuffer->setEofStream(true);
+            //let other base destructors know that all destruciton is done
+            no_destruct = true;
+ }
+
+
 
 
 /***************************
@@ -3032,7 +3236,15 @@ AbortHandlerInstantiator::AbortHandlerInstantiator() :
 { 
 }
 
+AbortHandlerInstantiator::~AbortHandlerInstantiator()
+{
+  //printf("Abort HANDLE DESTRUCT....\n");
+    //    fflush(stdout);
+}
+
+
 void AbortHandlerInstantiator::init() {
+  //return;
   ExitHandlers       = new map<std::string, ExitHandler>();
   KillSignalHandlers = new map<std::string, KillSignalHandler>();
   
@@ -3076,6 +3288,8 @@ void AbortHandlerInstantiator::overrideSignal(int signum, struct sigaction& new_
 
 // Invoked when the application has called exit()
 void AbortHandlerInstantiator::appExited() {
+//  printf("APP exited SIGHT....\n");
+//        fflush(stdout);
   // Only do exit processing if Sight has not already been destroyed
   if(sightObj::SightDestroyed) return;
   
@@ -3090,6 +3304,8 @@ void AbortHandlerInstantiator::appExited() {
 
 // Invoked when the application is sent a kill signal
 void AbortHandlerInstantiator::killSignal(int signum) {
+  printf("KILLED\n");
+        fflush(stdout);
   // Only do exit processing if Sight has not already been destroyed
   if(sightObj::SightDestroyed) return;
   
@@ -3155,7 +3371,7 @@ std::string AbortHandlerInstantiator::str() {
 // Initial instance of AbortHandlerInstantiator that ensures that the proper 
 // exit/signal handlers are set up. Individual widgets may set up their own 
 // instances as well.
-AbortHandlerInstantiator defaultAbortHandlerInstance;
+//AbortHandlerInstantiator defaultAbortHandlerInstance;
 
 }; // namespace structure
 }; // namespace sight

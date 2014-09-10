@@ -75,6 +75,8 @@ class ThreadLocalStorage
 
   ~ThreadLocalStorage()
   {
+//   printf("DESTRUCT....\n");
+//        fflush(stdout);
 //    cout << "~ThreadLocalStorage deleting key="<<key_<<endl;
     pthread_key_delete(key_);
   }

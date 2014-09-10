@@ -1,3 +1,4 @@
+#pragma once
 #include <stdlib.h>
 #include <stdio.h>
 #include <map>
@@ -117,7 +118,7 @@ class MergeState {
   
   public:
   // The parser objects from which we can read new tags on the incoming streams
-  vector<FILEStructureParser*> parsers;
+  vector<baseStructureParser<FILE>*> parsers;
   // For each parser a flag indicating whether the parser is active (true) or has 
   // reached the end of its stream's contents (false)
   std::vector<bool> active;
@@ -161,7 +162,7 @@ class MergeState {
   // Records whether a universal tag was read on each given parser
   vector<bool> readUniversalTag;
   
-  MergeState(const vector<FILEStructureParser*>& parsers
+  MergeState(const vector<baseStructureParser<FILE>*>& parsers
              #ifdef VERBOSE
              , graph& g, anchor incomingA, anchor outgoingA
              #endif
@@ -333,7 +334,7 @@ class MergeState {
   // Returns the pair:
   //    dbgStream* into which the contents of the sub-log should be written
   //    string that holds the path of the sub-directory
-  std::pair<structure::dbgStream*, std::string> createStructSubDir(structure::dbgStream* parentStream, std::string label/*, int& subDirCount*/);
+  virtual std::pair<structure::dbgStream*, std::string> createStructSubDir(structure::dbgStream* parentStream, std::string label/*, int& subDirCount*/);
   
   // Break the contents of all the key/value pairs in tags2stream into separate files, emitting to the
   // current outgoing stream a single tag that points to these new files. 
@@ -349,6 +350,16 @@ class MergeState {
   
   // General merge algorithm full application logs and sub-logs
   void merge();
+
+  virtual structure::dbgStream* createStream(properties* props, bool storeProps);
+
+//  virtual MergeState* createGroupState(const MergeState& that,
+//          const tagGroup& tg, const groupStreams& gs, int variantID, bool readyForNewTags, bool createNewOutStreamRecords
+//#ifdef VERBOSE
+//          , const anchor& incomingA
+//#endif
+//  );
+
 };
 
 } // namespace merge

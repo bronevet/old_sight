@@ -11,7 +11,7 @@ using namespace sight::merge;
 
 int main(int argc, char** argv) {
   if(argc<3) { cerr<<"Usage: hier_merge outDir [fNames]"<<endl; exit(-1); }
-  vector<FILEStructureParser*> fileParsers;
+  vector<baseStructureParser<FILE>*> fileParsers;
   const char* outDir = argv[1];
   //mergeType mt = str2MergeType(string(argv[2]));
   for(int i=2; i<argc; i++) {
@@ -43,7 +43,7 @@ int main(int argc, char** argv) {
   state.merge();
   
   // Close all the parsers and their files
-  for(vector<FILEStructureParser*>::iterator p=fileParsers.begin(); p!=fileParsers.end(); p++)
+  for(vector<baseStructureParser<FILE>*>::iterator p=fileParsers.begin(); p!=fileParsers.end(); p++)
     delete *p;
   
   return 0;

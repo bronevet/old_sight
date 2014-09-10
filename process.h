@@ -10,6 +10,10 @@
 #include <errno.h>
 #include "sight_common_internal.h"
 //#include "sight_layout.h"
+#include "AtomicSyncPrimitives.h"
+#include "mrnet_integration.h"
+
+using  namespace atomiccontrols;
 
 namespace sight {
 
@@ -132,5 +136,51 @@ class FILEStructureParser : public baseStructureParser<FILE> {
   // Returns true if we've encountered an error in input stream
   bool streamError();
 };
+
+
+class MRNetParser : public baseStructureParser<FILE> {
+    private:
+        std::vector<DataPckt> *inputQueue;
+        atomic_cond_t *inQueueSignal;
+
+        AtomicSync *synchronizer;
+        //this is needed to synchronize reads from inputQueue
+        atomic_mutex_t *inQueueMutex;
+
+        bool stream_end ;
+        bool stream_error ;
+    public:
+        int total_ints;
+        int wave;
+
+    public:
+        MRNetParser(std::vector<DataPckt>& input, atomic_cond_t* cond, atomic_mutex_t* inQueueMutex, AtomicSync* s)
+        :total_ints(0), baseStructureParser<FILE>(TOTAL_PACKET_SIZE){
+            inputQueue = &input;
+            inQueueSignal = cond ;
+            this->inQueueMutex = inQueueMutex;
+            this->synchronizer = s;
+            this->stream_end = false;
+            this->stream_error = false;
+            wave = 0;
+        }
+
+        ~MRNetParser();
+
+    protected:
+        // Functions implemented by children of this class that specialize it to take input from various sources.
+
+        // readData() reads as much data as is available from the data source into buf[], upto bufSize bytes
+        // and returns the amount of data actually read.
+        size_t readData();
+
+        // Returns true if we've reached the end of the input stream
+        bool streamEnd();
+
+        // Returns true if we've encountered an error in input stream
+        bool streamError();
+
+    };
+
 
 } // namespace sight

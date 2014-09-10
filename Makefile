@@ -4,6 +4,10 @@ SIGHT_STRUCTURE_O := sight_structure.o sight_merge.o attributes/attributes_struc
 SIGHT_STRUCTURE_H := sight.h sight_structure_internal.h sight_merge.h attributes/attributes_structure.h
 SIGHT_LAYOUT_O := sight_layout.o attributes/attributes_layout.o slayout.o variant_layout.o 
 SIGHT_LAYOUT_H := sight.h sight_layout_internal.h attributes/attributes_layout.h variant_layout.h
+SIGHT_MRNET_FE := mrnet/mrnet_front.C
+SIGHT_MRNET_SO := mrnet/mrnet_merge.C mrnet/mrnet_producer.C mrnet/mrnet_tr_callback.C mrnet/mrnet_threads.C
+SIGHT_MRNET_BE := mrnet/mrnet_emmitter.C
+SIGHT_MRNET_H := mrnet/AtomicSyncPrimitives.h mrnet/mrnet_integration.h mrnet/mrnet_iterator.h
 sight := ${sight_O} ${sight_H} gdbLineNum.pl sightDefines.pl
 
 ROOT_PATH = ${CURDIR}
@@ -12,7 +16,11 @@ SIGHT_CFLAGS = -g -fPIC -I${ROOT_PATH} -I${ROOT_PATH}/attributes -I${ROOT_PATH}/
                 -I${ROOT_PATH}/tools/callpath/src -I${ROOT_PATH}/tools/adept-utils/include \
                 -I${ROOT_PATH}/tools/boost_1_55_0 \
                 -I${ROOT_PATH}/widgets/papi/include \
-                -I${ROOT_PATH}/widgets/libmsr/include
+                -I${ROOT_PATH}/widgets/libmsr/include \
+                -I${ROOT_PATH}/mrnet \
+		-I${ROOT_PATH}/mrnet/lib/include/mrnet  \
+		-I${ROOT_PATH}/mrnet/lib/include/xplat \
+                -I${ROOT_PATH}/mrnet 
 
 SIGHT_LINKFLAGS = \
                   -Wl,-rpath ${ROOT_PATH} \
@@ -22,11 +30,26 @@ SIGHT_LINKFLAGS = \
                   -Wl,-rpath ${ROOT_PATH}/tools/adept-utils/lib \
                   ${ROOT_PATH}/tools/callpath/src/src/libcallpath.so \
                   -Wl,-rpath ${ROOT_PATH}/tools/callpath/src/src \
-                  ${ROOT_PATH}/widgets/papi/lib/libpapi.a \
                   ${ROOT_PATH}/widgets/gsl/lib/libgsl.so \
                   ${ROOT_PATH}/widgets/gsl/lib/libgslcblas.so \
                   -Wl,-rpath ${ROOT_PATH}/widgets/gsl/lib \
-	          -lpthread
+	          -lpthread -lpapi
+
+
+MRNET_CXXFLAGS = -g -D__STDC_LIMIT_MACROS -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS  \
+				-I${ROOT_PATH}/mrnet/lib/include/mrnet  \
+        		-I${ROOT_PATH}/mrnet/lib/include/xplat \
+                -I${ROOT_PATH}/mrnet \
+                    -Dos_linux \
+                    -Wall -Wno-system-headers -Wfloat-equal -Wconversion -Wshadow -Wpointer-arith \
+                    -Wcast-qual -Wcast-align -Wwrite-strings -Wsign-compare -Wredundant-decls -Wlong-long
+
+LDFLAGS = -Wl,-E
+
+MRNET_SOFLAGS = -fPIC -shared -rdynamic
+
+MRNET_LIBS = -L${ROOT_PATH}/mrnet/lib/lib -lmrnet -lxplat -lm -lpthread -ldl
+
 RAPL_ENABLED = 1
 ifeq (${RAPL_ENABLED}, 1)
 SIGHT_LINKFLAGS += ${ROOT_PATH}/widgets/libmsr/lib/libmsr.so \
@@ -83,7 +106,7 @@ VNC_ENABLED := 0
 endif
 
 # By default we disable KULFI-based fault injection since it requires LLVM
-KULFI_ENABLED := 1
+KULFI_ENABLED := 0
 	
 ifeq (${KULFI_ENABLED}, 1)
 # Sight must use the same LLVM Clang compiler as KULFI does
@@ -150,10 +173,35 @@ ifeq (${REMOTE_ENABLED}, 1)
 	cd examples; ../apps/mfem/mfem/examples/ex1 ../apps/mfem/mfem/data/beam-quad.mesh
 endif
 
+
+#rules for MRNet Integration
+sight_mrnet: sight_mrnet_fe sight_mrnet_be sight_mrnet_so
+	mv smrnet_fe mrnet/bin
+	mv smrnet_be mrnet/bin
+	cp libsmrnet_filter.so mrnet/bin
+	mv libsmrnet_filter.so mrnet/lib/lib
+	cp examples/12.SampleMRnetEmitter mrnet/bin
+
+sight_mrnet_fe: ${SIGHT_MRNET_FE} ${SIGHT_MRNET_H}
+	${CCC} ${MRNET_CXXFLAGS} ${LDFLAGS} mrnet/mrnet_front.C  -o smrnet_fe${EXE} ${MRNET_LIBS}
+
+sight_mrnet_so: ${SIGHT_MRNET_SO} ${SIGHT_MRNET_H} process.C process.h libsight_structure.so
+	${CCC} ${SIGHT_CFLAGS} ${MRNET_CXXFLAGS} ${MRNET_SOFLAGS}  mrnet/mrnet_producer.C  mrnet/mrnet_tr_callback.C mrnet/mrnet_threads.C  -Wl,--whole-archive libsight_structure.so  -Wl,-no-whole-archive -DMFEM -I. ${SIGHT_LINKFLAGS} -o libsmrnet_filter.so
+
+sight_mrnet_be: ${SIGHT_MRNET_BE} ${SIGHT_MRNET_H}
+	${CCC} ${MRNET_CXXFLAGS} ${LDFLAGS} mrnet/mrnet_emmitter.C -o smrnet_be${EXE} ${MRNET_LIBS}
+
+sight_mrnet_clean: 
+	rm -rf mrnet/bin/smrnet_*
+	rm -rf mrnet/bin/libsmrnet_filter.so
+	rm -rf mrnet/bin/dbg.*
+	rm -rf mrnet/lib
+
 #runMCBench:
 #	apps/mcbench/src/MCBenchmark.exe --nCores=1 --distributedSource --numParticles=13107 --nZonesX=256 --nZonesY=256 --xDim=16 --yDim=16 --mirrorBoundary --multiSigma --nThreadCore=1
 
 runApps: libsight_structure.so slayout${EXE} hier_merge${EXE} apps runMFEM runCoMD #runMCBench
+
 
 slayout.o: slayout.C process.C process.h
 	${CCC} ${SIGHT_CFLAGS} slayout.C -I. -c -o slayout.o
@@ -175,7 +223,7 @@ libsight_common.a: ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre
 	ar -r libsight_common.a ${SIGHT_COMMON_O} widgets/*/*_common.o
 
 libsight_structure.so: ${SIGHT_STRUCTURE_O} ${SIGHT_STRUCTURE_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre
-	${CC} -shared  -Wl,-soname,libsight_structure.so -o libsight_structure.so  ${SIGHT_STRUCTURE_O} ${SIGHT_COMMON_O} widgets/*/*_structure.o widgets/parallel/sight_pthread.o widgets/*/*_common.o
+	${CC} -shared  -Wl,-soname,libsight_structure.so -o libsight_structure.so  ${SIGHT_STRUCTURE_O} ${SIGHT_COMMON_O} widgets/*/*_structure.o widgets/parallel/sight_pthread.o widgets/*/*_common.o ${MRNET_LIBS}
 
 #libsight_structure.a: ${SIGHT_STRUCTURE_O} ${SIGHT_STRUCTURE_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre
 #	ar -r libsight_structure.a ${SIGHT_STRUCTURE_O} ${SIGHT_COMMON_O} widgets/*/*_structure.o widgets/*/*_common.o
@@ -231,7 +279,13 @@ widgets_pre: maketools
 widgets_post: libsight_layout.so libsight_structure.so
 	cd widgets; make -f Makefile_post ${MAKE_DEFINES}
 
-maketools: 
+mrnet_pre: mrnet/lib/lib/libmrnet.a
+#	cd mrnet; make -f Makefile_pre ROOT_PATH=${ROOT_PATH} all
+
+mrnet/lib/lib/libmrnet.a: 
+	cd mrnet; make -f Makefile_pre ROOT_PATH=${ROOT_PATH} all
+	
+maketools: mrnet_pre
 	cd tools; make -f Makefile ${MAKE_DEFINES}
 
 binreloc.o: binreloc.c binreloc.h
@@ -258,7 +312,7 @@ definitions.h: initDefinitionsH Makefile
 	chmod 755 initDefinitionsH
 	./initDefinitionsH ${RAPL_ENABLED}
 
-clean:
+clean: sight_mrnet_clean
 	cd widgets; make -f Makefile_pre clean
 	cd widgets; make -f Makefile_post clean
 	cd tools; make -f Makefile clean

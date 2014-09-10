@@ -18,10 +18,15 @@
 #include "thread_local_storage.h"
 #include <signal.h>
 
+#include "mrnet/mrnet_integration.h"
+#include "mrnet/AtomicSyncPrimitives.h"
+using namespace MRN;
+using namespace atomiccontrols;
+using namespace std;
+
 #include <deque>
 #include <boost/graph/topological_sort.hpp>
 #include <boost/graph/adjacency_list.hpp>
-
 namespace sight {
 namespace structure{
 
@@ -1259,6 +1264,10 @@ class BlockStreamRecord: public streamRecord {
 class dbgBuf: public std::streambuf
 {
   friend class dbgStream;
+
+
+
+protected:
   // True immediately after a new line
   bool synched;
   // True if the owner dbgStream is writing text and false if the user is
@@ -1281,8 +1290,8 @@ class dbgBuf: public std::streambuf
   dbgBuf();
   dbgBuf(std::streambuf* baseBuf);
   void init(std::streambuf* baseBuf);
-  
-private:
+
+protected:
   // This dbgBuf has no buffer. So every character "overflows"
   // and can be put directly into the teed buffers.
   virtual int overflow(int c);
@@ -1317,6 +1326,57 @@ protected:
 }; // class dbgBuf
 
 
+/* =============================
+* mrnet based Stream buffer
+* ==============================
+* */
+    class mrnBuf : public dbgBuf {
+
+    private:
+        char *buffer;
+        int BUFF_SIZE;
+        MRN::Stream *strm;
+        int strm_id;
+        int tag_id;
+        MRN::Network *net;
+        bool final_packet;
+        int wave;
+
+        virtual std::streamsize xsputn(const char *s, std::streamsize n) ;
+
+        virtual int overflow(int c) ;
+
+        virtual int sync() ;
+
+        virtual std::streamsize sputn_mrn(const char *s, std::streamsize n) ;
+
+    public:
+        mrnBuf(MRN::Stream *strm, MRN::Network *net, int strm_id, int tag_id) {
+            BUFF_SIZE = TOTAL_PACKET_SIZE - 1 ;
+            //we keep actual buffer size to TOTAL_PACKET_SIZE
+            buffer = new char[BUFF_SIZE + 1];
+            setp(buffer, buffer + BUFF_SIZE);
+            this->strm = strm;
+            this->net = net;
+            this->strm_id = strm_id;
+            this->tag_id = tag_id;
+            final_packet = false;
+            wave = 0 ;
+        }
+
+        void setEofStream(bool flag) {
+            final_packet = flag;
+            sync();
+        }
+
+        bool eofStream() {
+            return final_packet;
+        }
+
+
+    };
+
+
 // Stream that uses dbgBuf
 class dbgStream : public common::dbgStream, public sightObj
 {
@@ -1339,14 +1399,17 @@ public:
   std::list<block*> blocks;
   
   bool initialized;
+  bool no_destruct ;
   
 public:
   // Construct an ostream which tees output to the supplied
   // ostreams.
   dbgStream();
   dbgStream(properties* props, std::string title, std::string workDir, std::string imgDir, std::string tmpDir);
+  dbgStream(mrnBuf* mrnBuff, properties *props, string title, string workDir, string imgDir, std::string tmpDir) ;
+  dbgStream(properties* props, std::string title, std::string workDir, std::string imgDir, std::string tmpDir, bool no_init);
   void init(properties* props, std::string title, std::string workDir, std::string imgDir, std::string tmpDir);
-  ~dbgStream();
+  virtual ~dbgStream();
 
   // Directly calls the destructor of this object. This is necessary because when an application crashes
   // Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
@@ -1418,6 +1481,28 @@ public:
   //std::string tagStr(std::string name, const std::map<std::string, std::string>& properties, bool inheritedFrom);
   std::string tagStr(const properties& props);
 }; // dbgStream
+
+/*************************
+***** MRNet Stream *****
+************************/
+
+    class MRNetostream : public dbgStream {
+    private:
+        bool init;
+        int wave ;
+
+    public:
+        MRNetostream(mrnBuf* mrnBuff, properties* props, std::string title, std::string workDir, std::string imgDir, std::string tmpDir)
+                : dbgStream(mrnBuff, props, title, workDir, imgDir, tmpDir) {
+            init = true;
+        }
+
+        ~MRNetostream();
+
+        std::ostream &get_ostream() {
+            return *this;
+        }
+    };
 
 // Extension of ThreadLocalStorage to opaquely wrap dbgStream
 /*class ThreadLocalDbgStream: public ThreadLocalStorageOStream<dbgStream>/ *, public ThreadLocalStorage0<dbgStream>* / {
@@ -1713,6 +1798,8 @@ class AbortHandlerInstantiator : public sight::common::LoadTimeRegistry {
 
   AbortHandlerInstantiator();
   
+  ~AbortHandlerInstantiator();
+  
   // Called exactly once for each class that derives from LoadTimeRegistry to initialize its static data structures.
   static void init();
   
@@ -1734,7 +1821,7 @@ class AbortHandlerInstantiator : public sight::common::LoadTimeRegistry {
 // Initial instance of AbortHandlerInstantiator that ensures that the proper 
 // exit/signal handlers are set up. Individual widgets may set up their own 
 // instances as well.
-extern AbortHandlerInstantiator defaultAbortHandlerInstance;
+//extern AbortHandlerInstantiator defaultAbortHandlerInstance;
 
 
 } // namespace structure

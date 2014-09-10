@@ -1,0 +1,31 @@
+ ./mrnet_topgen -h h_file -t g:1
+ ./mrnet_topgen -h h_file -t g:1 -o top_file
+./IntegerAddition_FE top_file2 IntegerAddition_BE ../lib/IntegerAdditionFilter.so
+./mrnet_topgen -h hfile -t g:2:2,3 -o top_file
+./MRNetProdCon_FE top_file3  MRNetProdCon_BE ../lib/MRNetProdConFilter.so 
+
+
+//Cmds for with standalone FE/BE initialization
+
+./MRNetProdCon_FE_S top_file_s ../lib/MRNetProdConFilter.so 5
+
+./MRNetProdCon_BE_S 127.0.0.1 [port] [3 - 7] 127.0.0.1 [1 - 2]
+./MRNetProdCon_BE_S localhost 52662 0 localhost 2332 &
+./MRNetProdCon_BE_S localhost 52662 0 localhost 2334 &
+./MRNetProdCon_BE_S localhost 51851 1 localhost 2335 &
+./MRNetProdCon_BE_S localhost 51851 1 localhost 2336 &
+./MRNetProdCon_BE_S localhost 51851 1 localhost 2337 &
+
+
+==========================================================
+./smrnet_fe top_file_s2 libsmrnet_filter.so 4
+
+source be_process.sh 56313 0 2332 0
+source be_process.sh 56313 0 2333 1
+source be_process.sh 56313 0 2334 2
+source be_process.sh 56313 0 2335 3
+
+===============================================================
+
+
+./smrnet_fe top_file_s2 libsmrnet_filter.so 1

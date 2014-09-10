@@ -1,0 +1,19 @@
+==========================================================
+Starting the Front End MRNet
+==========================================================
+./smrnet_fe top_file_s2 libsmrnet_filter.so 4
+
+
+
+===========================================================
+Starting the Front End MRNet
+==========================================================
+source be_process.sh 56313 0 2332 0
+source be_process.sh 56313 0 2333 1
+source be_process.sh 56313 0 2334 2
+source be_process.sh 56313 0 2335 3
+
+===========================================================
+
+
+./smrnet_fe top_file_s2 libsmrnet_filter.so 1
