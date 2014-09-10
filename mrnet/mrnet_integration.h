@@ -1,7 +1,7 @@
 /****************************************************************************
- * Copyright � 2003-2012 Dorian C. Arnold, Philip C. Roth, Barton P. Miller *
- *                  Detailed MRNet usage rights in "LICENSE" file.          *
- ****************************************************************************/
+* Copyright � Udayanga Wickramasinghe - Indiana University                 *
+*                                                                          *
+****************************************************************************/
 
 #if !defined(mrnet_integration_h )
 #define mrnet_integration_h 1
