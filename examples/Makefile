@@ -15,7 +15,8 @@ TESTERS = 0.Demo${EXE} \
           8.Modules${EXE} \
           9.CompModules.merged${EXE} 9.CompModules.single${EXE} \
           10.SpringModules${EXE} \
-          11.ExternTraceProcess${EXE} 
+          11.ExternTraceProcess${EXE} \
+          12.SampleMRnetEmitter${EXE} 
           
 PTHREAD_TESTERS = pthreadMutexEx${EXE} pthreadCondEx${EXE} pthreadThreadsEx${EXE} \
                   pthreadArrayLoops${EXE} dotprodPthreads${EXE} pthreadFib${EXE} #\
@@ -116,6 +117,10 @@ run: ${TESTERS}
 11.ExternTraceProcess${EXE}: 11.ExternTraceProcess.C ../libsight_structure.so ${sight_H}
 	${CCC} -g 11.ExternTraceProcess.windowing.C -I.. -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 11.ExternTraceProcess.windowing${EXE}
 	${CCC} -g ${SIGHT_CFLAGS} 11.ExternTraceProcess.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 11.ExternTraceProcess${EXE}
+
+
+12.SampleMRnetEmitter${EXE}: 12.SampleMRnetEmitter.C ../libsight_structure.so ${sight_H}
+	${CCC} ${SIGHT_CFLAGS} 12.SampleMRnetEmitter.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 12.SampleMRnetEmitter${EXE}
 
 runPthread: ${PTHREAD_TESTERS}
 #	rm -rf dbg.*
