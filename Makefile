@@ -19,6 +19,7 @@ SIGHT_CFLAGS = -g -fPIC -I${ROOT_PATH} -I${ROOT_PATH}/attributes -I${ROOT_PATH}/
                 -I${ROOT_PATH}/widgets/libmsr/include \
                 -I${ROOT_PATH}/mrnet \
 		-I${ROOT_PATH}/mrnet/lib/include/mrnet  \
+		-I${ROOT_PATH}/mrnet/lib/include  \
 		-I${ROOT_PATH}/mrnet/lib/include/xplat \
                 -I${ROOT_PATH}/mrnet 
 
@@ -38,6 +39,7 @@ SIGHT_LINKFLAGS = \
 
 MRNET_CXXFLAGS = -g -D__STDC_LIMIT_MACROS -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS  \
 				-I${ROOT_PATH}/mrnet/lib/include/mrnet  \
+				-I${ROOT_PATH}/mrnet/lib/include  \
         		-I${ROOT_PATH}/mrnet/lib/include/xplat \
                 -I${ROOT_PATH}/mrnet \
                     -Dos_linux \
