@@ -39,7 +39,7 @@ public:
 
     void printData(){
         std::vector<char>::iterator it = char_array.begin();
-        printf("[PRINT METHOD !!...pid : %d arr:size : %d ] \n", getpid(), char_array.size());
+        printf("[PRINT METHOD !!...pid : %d arr:size : %lu ] \n", getpid(), char_array.size());
         while(it != char_array.end()){
             printf("%c",*it);
             it++;
