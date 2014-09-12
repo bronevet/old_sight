@@ -177,7 +177,7 @@ endif
 
 
 #rules for MRNet Integration
-sight_mrnet: sight_mrnet_fe sight_mrnet_be sight_mrnet_so
+sight_mrnet: mrnet_pre sight_mrnet_fe sight_mrnet_be sight_mrnet_so sight_mrnet_samples
 	mv smrnet_fe mrnet/bin
 	mv smrnet_be mrnet/bin
 	cp libsmrnet_filter.so mrnet/bin
@@ -187,11 +187,14 @@ sight_mrnet: sight_mrnet_fe sight_mrnet_be sight_mrnet_so
 sight_mrnet_fe: ${SIGHT_MRNET_FE} ${SIGHT_MRNET_H}
 	${CCC} ${MRNET_CXXFLAGS} ${LDFLAGS} mrnet/mrnet_front.C  -o smrnet_fe${EXE} ${MRNET_LIBS}
 
-sight_mrnet_so: ${SIGHT_MRNET_SO} ${SIGHT_MRNET_H} process.C process.h libsight_structure.so
+sight_mrnet_so: ${SIGHT_MRNET_SO} ${SIGHT_MRNET_H} process.C process.h core
 	${CCC} ${SIGHT_CFLAGS} ${MRNET_CXXFLAGS} ${MRNET_SOFLAGS}  mrnet/mrnet_producer.C  mrnet/mrnet_tr_callback.C mrnet/mrnet_threads.C  -Wl,--whole-archive libsight_structure.so  -Wl,-no-whole-archive -DMFEM -I. ${SIGHT_LINKFLAGS} -o libsmrnet_filter.so
 
 sight_mrnet_be: ${SIGHT_MRNET_BE} ${SIGHT_MRNET_H}
 	${CCC} ${MRNET_CXXFLAGS} ${LDFLAGS} mrnet/mrnet_emmitter.C -o smrnet_be${EXE} ${MRNET_LIBS}
+
+sight_mrnet_samples:
+	${CCC} ${SIGHT_CFLAGS} examples/12.SampleMRnetEmitter.C -I. -I./widgets -L. -lsight_structure ${SIGHT_LINKFLAGS} -o examples/12.SampleMRnetEmitter${EXE}
 
 sight_mrnet_clean: 
 	rm -rf mrnet/bin/smrnet_*
