@@ -62,10 +62,11 @@ void BE_Remove_Callback( Event* evt, void* evt_data )
 }
 
 
-void printLeafInfo(std::vector< NetworkTopology::Node * >& leaves, int num_be){
+void printLeafInfo(std::vector< NetworkTopology::Node * >& leaves, int num_be, char* conn_info){
     unsigned num_leaves = unsigned(leaves.size());
     unsigned be_per_leaf = num_be / num_leaves;
     unsigned curr_leaf = 0;
+    FILE* connFile = fopen (conn_info, "w");
     for(unsigned i=0; (i < num_be) && (curr_leaf < num_leaves); i++) {
         if( i && (i % be_per_leaf == 0) ) {
             // select next parent
@@ -80,8 +81,14 @@ void printLeafInfo(std::vector< NetworkTopology::Node * >& leaves, int num_be){
                 leaves[curr_leaf]->get_HostName().c_str(),
                 leaves[curr_leaf]->get_Port(),
                 leaves[curr_leaf]->get_Rank() );
+        fprintf(connFile, "%s \t %d \t %d\n",
+                leaves[curr_leaf]->get_HostName().c_str(),
+                leaves[curr_leaf]->get_Port(),
+                leaves[curr_leaf]->get_Rank() );
 
     }
+   fflush(connFile);
+   fclose(connFile);	
 }
 
 string createDir(string workDir, string dirName) {
@@ -100,7 +107,7 @@ int main(int argc, char **argv)
     PacketPtr p;
 
     if( (argc != 4) && (argc != 5) ){
-        fprintf(stderr, "Usage: %s <topology file> <so_file> <num BEs>\n", argv[0]);
+        fprintf(stderr, "Usage: %s <topology file> <so_file> <num BEs> [optional - <connection file>]\n", argv[0]);
         exit(-1);
     }
     const char * topology_file = argv[1];
@@ -122,6 +129,14 @@ int main(int argc, char **argv)
     int num_backends = 1;
     if( argc == 4 ){
         num_backends = atoi( argv[3] );
+    }
+
+//	output file for topology connection info
+    char* conn_info_fname ;
+    if(argc > 4){
+	conn_info_fname = argv[4];
+    }else {
+	conn_info_fname = "connection.params";
     }
 
     int n = 0;
@@ -174,7 +189,7 @@ int main(int argc, char **argv)
         topology->print(stdout);
 
         //print leaf info
-        printLeafInfo(internal_leaves, num_backends);
+        printLeafInfo(internal_leaves, num_backends, conn_info_fname);
 
         // Wait for backends to attach
         unsigned int waitfor_count = num_backends;
