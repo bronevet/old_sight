@@ -6,7 +6,7 @@ WIDGETS_LAYOUT_O := scope/scope_layout.o graph/graph_layout.o valSelector/valSel
 WIDGETS_LAYOUT_H := scope/scope_layout.h graph/graph_layout.h valSelector/valSelector_layout.h trace/trace_layout.h module/module_layout.h source/source_layout.o clock/clock_layout.h parallel/parallel_layout.h
 WIDGETS := ${WIDGETS_O} ${WIDGETS_H}
 
-MAKE_DEFINES = ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" CC=${CC} CCC=${CCC} KULFI_ENABLED=${KULFI_ENABLED} LLVM32_SRC_PATH=${LLVM32_SRC_PATH} LLVM32_BUILD_PATH=${LLVM32_BUILD_PATH} LLVM32_INSTALL_PATH=${LLVM32_INSTALL_PATH}
+MAKE_DEFINES = ROOT_PATH=${ROOT_PATH} RAPL_ENABLED=${RAPL_ENABLED} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" CC=${CC} CCC=${CCC} KULFI_ENABLED=${KULFI_ENABLED} LLVM32_SRC_PATH=${LLVM32_SRC_PATH} LLVM32_BUILD_PATH=${LLVM32_BUILD_PATH} LLVM32_INSTALL_PATH=${LLVM32_INSTALL_PATH}
 
 all: gsl papi libmsr synoptic \
      ${WIDGETS_COMMON_O} ${WIDGETS_COMMON_H} ${WIDGETS_STRUCTURE_O} ${WIDGETS_STRUCTURE_H} ${WIDGETS_LAYOUT_O} ${WIDGETS_LAYOUT_H}  \
@@ -224,7 +224,11 @@ papi:
 	cd papi-5.3.0/src; export CC=gcc; export F77=gfortran; make LDCONFIG=true CC=gcc F77=gfortran; make install
 	rm -fr papi-5.3.0 papi-5.3.0.tar.gz
 
+ifeq (${RAPL_ENABLED}, 1)
 libmsr: libmsr/lib/libmsr.so
+else
+libmsr:
+endif
 
 libmsr/lib/libmsr.so:
 	../getGithub https://github.com/scalability-llnl/libmsr/archive/master.zip zip unzip
