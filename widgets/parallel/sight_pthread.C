@@ -14,9 +14,14 @@ static std::map<pthread_t, scalarCausalClock*> causality;
  ***** Thread Initialization and Finalization *****
  **************************************************/
 
-ThreadLocalStorage0<comparison*> PthreadThreadInitFinInstantiator::globalComparisons;
+//ThreadLocalStorage0<comparison*> PthreadThreadInitFinInstantiator::globalComparisons;
+// Had to use __thread instead of the pthreads key API because for some reason the key->value mapping
+// for the main thread was destroyed by the time the finalizer was invoked in the Sight
+// atexit handler.
+__thread comparison* globalComparisons;
 
 PthreadThreadInitFinInstantiator::PthreadThreadInitFinInstantiator() { 
+  //cout << "PthreadThreadInitFinInstantiator::PthreadThreadInitFinInstantiator()"<<endl;
   addFuncs("pthread", 
            PthreadThreadInitFinInstantiator::initialize, 
            PthreadThreadInitFinInstantiator::finalize,
@@ -24,15 +29,16 @@ PthreadThreadInitFinInstantiator::PthreadThreadInitFinInstantiator() {
 }
 
 void PthreadThreadInitFinInstantiator::initialize() {
-  cout << "PthreadThreadInitFinInstantiator::initialize()"<<endl;
   // Assign each thread to a separate log based on its thread ID
   globalComparisons = new comparison(txt()<<pthread_self());
+  //cout << pthread_self()<<": PthreadThreadInitFinInstantiator::initialize() *globalComparisons="<<globalComparisons<<endl;
 }
 
 void PthreadThreadInitFinInstantiator::finalize() {
+  //cout << pthread_self()<<": PthreadThreadInitFinInstantiator::finalize() *globalComparisons="<<globalComparisons<<endl;
   // Assign each thread to a separate log based on its thread ID
-  assert(*globalComparisons != NULL);
-  delete *globalComparisons;
+  assert(globalComparisons != NULL);
+  delete globalComparisons;
 }
 
 PthreadThreadInitFinInstantiator PthreadThreadInitFinInstance;

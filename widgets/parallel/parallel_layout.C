@@ -64,11 +64,17 @@ void vizIncludes() {
     dbg.includeFile("parallel/canvasutilities.js"); dbg.includeWidgetScript("parallel/canvasutilities.js", "text/javascript");
     dbg.includeFile("parallel/parallel.js");        dbg.includeWidgetScript("parallel/parallel.js",        "text/javascript");
     dbg.includeFile("parallel/parallel.css");       dbg.includeWidgetScript("parallel/parallel.css",       "text/css");
- 
+   
+    initialized=true;
+  }
+
+  // If we have not yet added a call to showParallelArrows to the current output stream, add it now
+  static set<std::ofstream*> showAdded;
+//  cout << "#showAdded="<<showAdded.size()<<", found "<<&dbg<<"="<<(showAdded.find(&dbg) == showAdded.end())<<", file="<<dbg.getCurScriptEpilogFile()<<endl;
+  if(showAdded.find(dbg.getCurScriptEpilogFile()) == showAdded.end()) {
     // Add command to show arrows once all the unique marks have been registered
     dbg.widgetScriptEpilogCommand(txt()<<"showParallelArrows();");
-    
-    initialized=true;
+    showAdded.insert(dbg.getCurScriptEpilogFile()); 
   }
 
 }

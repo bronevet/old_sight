@@ -191,48 +191,6 @@ var jsPlumbInstance;
 
 // Called to draw arrows between causally-related events in different portions of the log
 function showParallelArrows() {
-/*  // Initialize the canvas
-  if(parArrowCanvas === undefined) parArrowCanvas = createCanvasOverlay();
-  // Grab a drawing context for the canvas
-  var ctx = parArrowCanvas.canvas.getContext('2d');
-  
-  mapParArrows(parArrowsFrom, 
-               function(sourceCenter, targetCenter) {
-                 if(sourceCenter.x>=0 && sourceCenter.y>=0 && targetCenter.x>=0 && targetCenter.y>=0)
-                   drawArrow(ctx, sourceCenter.x, sourceCenter.y, targetCenter.x, targetCenter.y);
-               });
-               
-  mapParArrows(parArrowsTo, 
-               function(targetCenter, sourceCenter) {
-                 if(sourceCenter.x>=0 && sourceCenter.y>=0 && targetCenter.x>=0 && targetCenter.y>=0)
-                   drawArrow(ctx, sourceCenter.x, sourceCenter.y, targetCenter.x, targetCenter.y);
-               });
-
-  mapBarriers(function(centers) {
-                // Find the left and right edge of the centers
-                var left=999999, right=-1;
-                for(i in centers) {
-                  left  = Math.min(left,  centers[i].x);
-                  right = Math.max(right, centers[i].x);
-                }
-
-                // Find the average y coordinate of the centers
-                var avgY=0;
-                for(i in centers) avgY += centers[i].y;
-                avgY /= centers.length;
-
-                ctx.beginPath();
-                //console.log("["+left+","+avgY+"] - ["+right+","+avgY+"]");
-                ctx.moveTo(left,  avgY);
-                ctx.lineWidth = 5;
-                ctx.lineTo(right, avgY);
-                ctx.stroke();
-              });
-  
-  // Redraw arrows whenever the window is resized
-  //addEvent(window, "resize", refreshParallelArrows);
-  addLazyWindowResizeEvent(refreshParallelArrows);*/
-  
   jsPlumb.ready(function() {
 
 	jsPlumbInstance = jsPlumb.getInstance({
@@ -283,7 +241,8 @@ function showParallelArrows() {
 		},				
 		isSource:true,
 		//connector:[ "Flowchart", { stub:[40, 60], gap:10, cornerRadius:5, alwaysRespectStubs:true } ],								                
-		connector:[ "Straight", { stub:0, gap:0} ],
+		//connector:[ "Straight", { stub:0, gap:0} ],
+		connector:[ "Bezier", { curviness: 10} ],
 		connectorStyle:connectorPaintStyle,
 		//hoverPaintStyle:endpointHoverStyle,
 		//connectorHoverStyle:connectorHoverStyle,
@@ -378,8 +337,12 @@ function showParallelArrows() {
 	});
 
 	jsPlumb.fire("jsPlumbDemoLoaded", jsPlumbInstance);
-	
-});
+  });
+
+  // Erase the records of all the arrows that have already been shown
+  parArrowsTo = {};
+  parArrowsFrom = {};
+  parBarriers = {};
 
   addLazyWindowResizeEvent(refreshParallelArrows);
 }

@@ -394,7 +394,7 @@ void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int
   // Canviz provides an alert). 
   
   int databoxWidth = 300;
-  int databoxHeight = 200;
+  int databoxHeight = 1;
   
   //cout << "module "<<moduleName<<", numInputs="<<numInputs<<", #modules[moduleID]->ctxtNames="<<modules[moduleID]->ctxtNames.size()<<endl;
   //dotFile << "\t\""<<portNamePrefix(moduleName)<<"\" [shape=none, fill=lightgrey, label=<<TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\">"<<endl;
@@ -500,7 +500,7 @@ void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int
     dotFile << "\t\t<TR><TD";
     if(!entryEmitted) dotFile << " PORT=\"ENTRY\"";
     //if(numInputs + numOutputs > 0) dotFile << " COLSPAN=\""<<(numInputs>numOutputs? numInputs: numOutputs)<<"\"";
-    dotFile << "><FONT POINT-SIZE=\"26\">"<<(maxButtonID++)<<":"<<moduleName<<"</FONT></TD></TR>"<<endl;
+    dotFile << "><FONT POINT-SIZE=\"26\">"<<(maxButtonID++)<<":"<<escape(moduleName)<<"</FONT></TD></TR>"<<endl;
   }
   
   if(numInputs>0) {
@@ -1520,65 +1520,68 @@ moduleTraceStream::moduleTraceStream(properties::iterator props, traceObserver* 
     cout << "    "<<i->first<<" : "<<i->second<<endl;
   cout << "props="<<props.str()<<endl;*/
 
-  assert(modularApp::activeMA->moduleTraces.find(moduleID) == modularApp::activeMA->moduleTraces.end());
+  //assert(modularApp::activeMA->moduleTraces.find(moduleID) == modularApp::activeMA->moduleTraces.end());
   
-  // Create a new traceStream object to collect the observations for this module group
-  modularApp::activeMA->moduleTraces[moduleID] = this;
-  
-  //cout << "moduleTraceStream::moduleTraceStream() this="<<this<<", traceID="<<getID()<<", moduleID="<<moduleID<<endl;
-  
-  // If no observer is specified, register the current instance of modularApp to listen in on observations recorded by this traceStream
-  if(observer==NULL) {
-    // Create a fresh instance of module to analyze data of this stream
-    mFilter = new module(moduleID);
+  // If we haven't encountered this moduleID yet, create a new traceStream object 
+  // to collect the observations for this module group
+  if(modularApp::activeMA->moduleTraces.find(moduleID) == modularApp::activeMA->moduleTraces.end()) {
+    modularApp::activeMA->moduleTraces[moduleID] = this;
 
-    polyFitter = new polyFitFilter();
-    polyFitCollector = new polyFitObserver();
-    polyFitter->registerObserver(polyFitCollector);
+    //cout << "moduleTraceStream::moduleTraceStream() this="<<this<<", traceID="<<getID()<<", moduleID="<<moduleID<<endl;
 
-    registerObserver(mFilter);
-    registerObserver(polyFitter);
-    registerObserver(this);
-    
-    // If we need to record all the observations in a file
-    if(modularApp::emitObsIndividualDataTable) {
-      fileWriter = new traceFileWriterTSV(txt()<<modularApp::outDir<<"/data_individual/"<<
-                                                 modularApp::activeMA->getAppName()<<"/"<<
-                                                 modularApp::activeMA->getModuleMarkerStackName("/")<<".tsv");
-      registerObserver(fileWriter);
-    } else
-      fileWriter = NULL;
-    
-    // If we need to record all observations from all modules into a common file, connect
-    // commonDataTableLogger to observe this traceStream
-    if(modularApp::emitObsCommonDataTable) {
-      assert(modularApp::activeMA->commonDataTableLogger);
-      registerObserver(modularApp::activeMA->commonDataTableLogger);
-      modularApp::getInstance()->commonDataTableLogger->recordTraceLabel(
-                                    getID(), 
-                                    txt()<<modularApp::getInstance()->getAppName()<<"-"<<
-                                           modularApp::getInstance()->getModuleMarkerStackName("-"));
+    // If no observer is specified, register the current instance of modularApp to listen in on observations recorded by this traceStream
+    if(observer==NULL) {
+      // Create a fresh instance of module to analyze data of this stream
+      mFilter = new module(moduleID);
+
+      polyFitter = new polyFitFilter();
+      polyFitCollector = new polyFitObserver();
+      polyFitter->registerObserver(polyFitCollector);
+
+      registerObserver(mFilter);
+      registerObserver(polyFitter);
+      registerObserver(this);
+
+      // If we need to record all the observations in a file
+      if(modularApp::emitObsIndividualDataTable) {
+        fileWriter = new traceFileWriterTSV(txt()<<modularApp::outDir<<"/data_individual/"<<
+                                                   modularApp::activeMA->getAppName()<<"/"<<
+                                                   modularApp::activeMA->getModuleMarkerStackName("/")<<".tsv");
+        registerObserver(fileWriter);
+      } else
+        fileWriter = NULL;
+
+      // If we need to record all observations from all modules into a common file, connect
+      // commonDataTableLogger to observe this traceStream
+      if(modularApp::emitObsCommonDataTable) {
+        assert(modularApp::activeMA->commonDataTableLogger);
+        registerObserver(modularApp::activeMA->commonDataTableLogger);
+        modularApp::getInstance()->commonDataTableLogger->recordTraceLabel(
+                                      getID(), 
+                                      txt()<<modularApp::getInstance()->getAppName()<<"-"<<
+                                             modularApp::getInstance()->getModuleMarkerStackName("-"));
+      }
+
+      modularApp::registerModule(moduleID, mFilter, polyFitCollector);
+
+      // The queue of observation filters
+  /*    queue = new traceObserverQueue(traceObservers(
+      // - Observations pass through a new instance of module to enable it to build polynomial 
+      // fits of this data
+      new polyFitFilter(),
+      mFilter,
+      // - They then end up at the original traceStream to be included in the generated visualization
+                      this));
+      registerObserver(queue);*/
     }
-	    
-    modularApp::registerModule(moduleID, mFilter, polyFitCollector);
-	    
-    // The queue of observation filters
-/*    queue = new traceObserverQueue(traceObservers(
-    // - Observations pass through a new instance of module to enable it to build polynomial 
-    // fits of this data
-    new polyFitFilter(),
-    mFilter,
-    // - They then end up at the original traceStream to be included in the generated visualization
-		    this));
-    registerObserver(queue);*/
+    // If an observer is specified, then that observer must be doing the processing. We assme that this derived class
+    // sets mFilter and queue.
+
+
+    // Record the mapping between traceStream IDs and the IDs of the module group they're associated with
+    modularApp::activeMA->trace2moduleID[getID()] = moduleID;
+    ///cout << "moduleID="<<moduleID<<", traceID="<<m->moduleTraces[moduleID]->getID()<<endl;
   }
-  // If an observer is specified, then that observer must be doing the processing. We assme that this derived class
-  // sets mFilter and queue.
-	  
-	  
-  // Record the mapping between traceStream IDs and the IDs of the module group they're associated with
-  modularApp::activeMA->trace2moduleID[getID()] = moduleID;
-  ///cout << "moduleID="<<moduleID<<", traceID="<<m->moduleTraces[moduleID]->getID()<<endl;
 }
 
 moduleTraceStream::~moduleTraceStream() {

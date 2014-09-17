@@ -61,6 +61,10 @@ extern std::map<std::string, std::string> mainThreadSightProps;
 // globalComparisonIDs list.
 extern ThreadLocalStorageList<std::pair<std::string, std::string> > globalComparisonIDs;
 
+// Returns the depth of the sightObjects stack
+int getSOStackDepth();
+int getSOStackDepth(common::dbgStream* outStream);
+
 // This mechanism allows different widgets to register their own code to be called when each
 //    thread is started and stopped. This includes both the main thread and threads created
 //    using pthread_create. Each widget can provide initialization and finalization methods,

@@ -1667,10 +1667,16 @@ TraceStreamMerger::TraceStreamMerger(std::vector<std::pair<properties::tagType, 
                          std::map<std::string, streamRecord*>& outStreamRecords,
                          std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
                          properties* props) :
-                    Merger(advance(tags), outStreamRecords, inStreamRecords, props)
-{
+                    Merger(advance(tags), outStreamRecords, inStreamRecords, 
+                           setProperties(tags, outStreamRecords, inStreamRecords, props)) { }
+
+// Sets the properties of the merged object
+properties* TraceStreamMerger::setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+                                       map<string, streamRecord*>& outStreamRecords,
+                                       vector<map<string, streamRecord*> >& inStreamRecords,
+                                       properties* props) {
   if(props==NULL) props = new properties();
-  this->props = props;
+  props = props;
   
   map<string, string> pMap;
   properties::tagType type = streamRecord::getTagType(tags); 
@@ -1719,6 +1725,8 @@ TraceStreamMerger::TraceStreamMerger(std::vector<std::pair<properties::tagType, 
     }
   }
   props->add("traceStream", pMap);
+
+  return props;
 }
 
 // Sets a list of strings that denotes a unique ID according to which instances of this merger's 

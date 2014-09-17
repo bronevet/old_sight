@@ -11,8 +11,7 @@ ROOT_PATH = ${CURDIR}
 SIGHT_CFLAGS = -g -fPIC -I${ROOT_PATH} -I${ROOT_PATH}/attributes -I${ROOT_PATH}/widgets/parallel \
                 -I${ROOT_PATH}/tools/callpath/src -I${ROOT_PATH}/tools/adept-utils/include \
                 -I${ROOT_PATH}/tools/boost_1_55_0 \
-                -I${ROOT_PATH}/widgets/papi/include \
-                -I${ROOT_PATH}/widgets/libmsr/include
+                -I${ROOT_PATH}/widgets/papi/include 
 
 SIGHT_LINKFLAGS = \
                   -Wl,-rpath ${ROOT_PATH} \
@@ -27,13 +26,14 @@ SIGHT_LINKFLAGS = \
                   ${ROOT_PATH}/widgets/gsl/lib/libgslcblas.so \
                   -Wl,-rpath ${ROOT_PATH}/widgets/gsl/lib \
 	          -lpthread
+
 RAPL_ENABLED = 1
 ifeq (${RAPL_ENABLED}, 1)
+SIGHT_CFLAGS += -I${ROOT_PATH}/widgets/libmsr/include
 SIGHT_LINKFLAGS += ${ROOT_PATH}/widgets/libmsr/lib/libmsr.so \
                     -Wl,-rpath ${ROOT_PATH}/widgets/libmsr/lib
 endif
 	                
-	                #-Wl,-rpath ${ROOT_PATH}/widgets/papi/lib \
 override CC=clang #icc #gcc
 override CCC=clang++ #icpc #clang++ #g++
 MPICC = mpi${CC}
@@ -175,7 +175,7 @@ libsight_common.a: ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre
 	ar -r libsight_common.a ${SIGHT_COMMON_O} widgets/*/*_common.o
 
 libsight_structure.so: ${SIGHT_STRUCTURE_O} ${SIGHT_STRUCTURE_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre
-	${CC} -shared  -Wl,-soname,libsight_structure.so -o libsight_structure.so  ${SIGHT_STRUCTURE_O} ${SIGHT_COMMON_O} widgets/*/*_structure.o widgets/parallel/sight_pthread.o widgets/*/*_common.o
+	${CC} -shared  -Wl,-soname,libsight_structure.so -o libsight_structure.so  ${SIGHT_STRUCTURE_O} ${SIGHT_COMMON_O} widgets/*/*_structure.o widgets/parallel/sight_pthread.o widgets/box/box_api_cpp.o widgets/box/box_merge.o widgets/*/*_common.o
 
 #libsight_structure.a: ${SIGHT_STRUCTURE_O} ${SIGHT_STRUCTURE_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre
 #	ar -r libsight_structure.a ${SIGHT_STRUCTURE_O} ${SIGHT_COMMON_O} widgets/*/*_structure.o widgets/*/*_common.o

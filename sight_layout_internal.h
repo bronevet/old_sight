@@ -545,6 +545,9 @@ public:
   void printSummaryFileContainerHTML(std::string absoluteFileName, std::string relativeFileName, std::string title);
   void printDetailFileContainerHTML(std::string absoluteFileName, std::string title);
   
+  // Generate a JavaScript command that loads the sub-file pointed to by the given location
+  std::string genLoadSubFile(const location& loc);
+
   // Called when a block is entered.
   // b: The block that is being entered
   // newFileEntered: records whether by entering this block we're also entering a new file

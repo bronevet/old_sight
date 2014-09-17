@@ -30,8 +30,12 @@ graphLayoutHandlerInstantiator::graphLayoutHandlerInstantiator() {
   (*layoutExitHandlers )["dirEdge"]     = &defaultExitHandler;
   (*layoutEnterHandlers)["undirEdge"]   = &graph::addUndirEdge;
   (*layoutExitHandlers )["undirEdge"]   = &defaultExitHandler;
+  (*layoutEnterHandlers)["invisEdge"]   = &graph::addInvisEdge;
+  (*layoutExitHandlers )["invisEdge"]   = &defaultExitHandler;
   (*layoutEnterHandlers)["node"]        = &graph::addNode;
   (*layoutExitHandlers )["node"]        = &defaultExitHandler;
+  (*layoutEnterHandlers)["subGraph"]    = &graph::startSubGraph;
+  (*layoutExitHandlers )["subGraph"]    = &graph::endSubGraph;
 }
 graphLayoutHandlerInstantiator graphLayoutHandlerInstance;
 
@@ -66,7 +70,8 @@ graph::graph(properties::iterator props) : block(properties::next(props)) {
   // Otherwise, wait to observe the nodes and edges of the graph before emitting it in the destructor
   } else
     graphOutput = false;
-  
+ 
+  subGraphCounter=0; 
   //cout << "Entering graphID="<<graphID<<endl;
   
   // Add the current graph to the map of ative graphs
@@ -153,8 +158,12 @@ string graph::genDotGraph() {
   for(set<graphEdge>::iterator e=uniqueEdges.begin(); e!=uniqueEdges.end(); e++) {
     dot << "\tnode_" << e->from.getID() << 
            " -> "<<
-           "node_" << e->to.getID() << 
-           (e->directed? "": "[dir=none]") << ";\n";
+           "node_" << e->to.getID();
+    ostringstream style; bool emptyStyle=true;
+    if(!e->directed) { if(!emptyStyle) { style << " "; } style << "dir=none";    emptyStyle=false; }
+    if(!e->visible)  { if(!emptyStyle) { style << " "; } style << "style=invis"; emptyStyle=false; }
+    if(!emptyStyle) dot << "[" << style.str() << "]";
+    dot << ";\n";
   }
 
   dot << " }";
@@ -212,7 +221,7 @@ void* graph::setGraphEncoding(properties::iterator props) {
 // Add a directed edge from the location of the from anchor to the location of the to anchor
 void graph::addDirEdge(anchor from, anchor to) {
   //cout << "graph::addDirEdge("<<from.getID()<<" => "<<to.getID()<<")"<<endl;
-  edges.push_back(graphEdge(from, to, true)); 
+  edges.push_back(graphEdge(from, to, true, true)); 
 }
 
 // Static version of the call that pulls the from/to anchor IDs from the properties iterator and calls addDirEdge() in the currently active graph
@@ -227,10 +236,9 @@ void* graph::addDirEdge(properties::iterator props) {
   return NULL;
 }
 
-
 // Add an undirected edge between the location of the a anchor and the location of the b anchor
 void graph::addUndirEdge(anchor a, anchor b) {
-  edges.push_back(graphEdge(a, b, false));
+  edges.push_back(graphEdge(a, b, false, true));
 }
 
 // Static version of the call that pulls the from/to anchor IDs from the properties iterator and calls addUndirEdge() in the currently active graph
@@ -242,6 +250,23 @@ void* graph::addUndirEdge(properties::iterator props) {
   assert(active.find(graphID) != active.end());
   
   active[graphID]->addUndirEdge(a, b); 
+  return NULL;
+}
+
+// Add an invisible undirected edge between the location of the a anchor and the location of the b anchor
+void graph::addInvisEdge(anchor a, anchor b) {
+  edges.push_back(graphEdge(a, b, false, false));
+}
+
+// Static version of the call that pulls the from/to anchor IDs from the properties iterator and calls addUndirEdge() in the currently active graph
+void* graph::addInvisEdge(properties::iterator props) {
+  anchor a(/*false,*/ properties::getInt(props, "a"));
+  anchor b(/*false,*/ properties::getInt(props, "b"));
+  
+  int graphID = properties::getInt(props, "graphID");
+  assert(active.find(graphID) != active.end());
+  
+  active[graphID]->addInvisEdge(a, b);
   return NULL;
 }
 
@@ -272,5 +297,33 @@ void* graph::addNode(properties::iterator props) {
   return NULL;
 }
 
+// Start a sub-graph
+void graph::startSubGraph() {
+//  dot << "subgraph cluster_"<<clusterCntr<<" {"<<endl;
+  subGraphCounter++;
+}
+
+void graph::startSubGraph(const std::string& label) {
+/*  dot << "subgraph cluster_"<<clusterCntr<<" {"<<endl;
+  dot << "label = \""<<label<<"\";"<<endl;*/
+  subGraphCounter++;
+}
+
+void* graph::startSubGraph(properties::iterator props) {
+  int graphID = props.getInt("graphID");
+  if(props.exists("label"))
+    active[graphID]->startSubGraph(props.get("label"));
+  else
+    active[graphID]->startSubGraph();
+  return NULL;
+}
+
+// End a sub-graph
+/*void graph::endSubGraph() {
+//  dot << "}";
+}*/
+void graph::endSubGraph(void* obj) {
+  //  dot << "}";
+}
 }; // namespace layout
 }; // namespace sight

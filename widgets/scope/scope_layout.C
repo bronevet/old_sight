@@ -148,7 +148,8 @@ void scope::printEntry(string loadCmd) {
   dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"<tr width=\"100%\"><td width=0></td><td width=\"100%\">";
   if(labelInteractive) {
     dbg <<"<h2>\n";
-    dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"<a name=\"anchor"<<getBlockID()<<"\" href=\"javascript:unhide('"<<getBlockID()<<"');\">";
+    //dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"<a name=\"anchor"<<getBlockID()<<"\" href=\"javascript:unhide('"<<getBlockID()<<"');\">";
+    dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"<a href=\"javascript:unhide('"<<getBlockID()<<"');\">";
   }
   
   if(labelShown) {

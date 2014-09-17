@@ -26,7 +26,7 @@ class PthreadThreadInitFinInstantiator: public ThreadInitFinInstantiator
   //ThreadLocalStorageList<std::pair<std::string, std::string> > globalComparisonIDs;
   // Pointers to the comparison objects created for each entry in globalComparisonIDs 
   // are stored globalComparisons
-  static ThreadLocalStorage0<comparison*> globalComparisons;
+  //static ThreadLocalStorage0<comparison*> globalComparisons;
   //ThreadLocalStorageList<modularApp*> globalModularApps;
   
   PthreadThreadInitFinInstantiator();

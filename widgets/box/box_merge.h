@@ -32,14 +32,14 @@ namespace merge {
 
 // This object registers a handler for label "box" that determine whether multiple box objects are compatible for merging
 // (BoxMerer::mergeKey) and a handler that creates an instance of the BoxMerger class that performs the merge (BoxMerger::create).
-class BoxMergeHandlerInstantiator: public MergeHandlerInstantiator {
+class BoxMergeHandlerInstantiator: public sight::structure::MergeHandlerInstantiator {
   public:
   BoxMergeHandlerInstantiator();
 };
 extern BoxMergeHandlerInstantiator BoxMergeHandlerInstance;
 
 // Created to merge multiple instances of the box widget
-class BoxMerger : public BlockMerger {
+class BoxMerger : public sight::structure::BlockMerger {
   public:
   
   // Performs the process of merging multiple properties objects that encode instances of box

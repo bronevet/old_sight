@@ -4,6 +4,10 @@
 //#include <stdlib.h>
 #include <iostream>
 #include <assert.h>
+#include <set>
+#include <vector>
+#include <list>
+#include <map>
 //#include <fstream>
 using namespace std;
 
@@ -48,7 +52,7 @@ class ThreadLocalStorage
   public:
   // Function called when a thread finishes to deallocate the thread-local copy of the object
   static void destructor(void* p) {
-    //cout << "ThreadLocalStorage::destructor("<<p<<")"<<endl;
+    //cout << ((long)pthread_self())<<": ThreadLocalStorage::destructor("<<p<<")"<<endl;
     delete (T*)p;  
   }
     

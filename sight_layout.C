@@ -619,7 +619,9 @@ std::string anchor::getLinkJS() const {
   // If we've already reached this link's location (this is a backward link)
   if(located) {
     oss << "goToAnchor([], "<<dbg.fileLevelJSIntArray(loc)<<",  ";
-    oss << "function() { focusLinkDetail('"<<dbg.blockGlobalStr(loc)<<"'); focusLinkSummary('"<<dbg.blockGlobalStr(loc)<<"');});";
+    oss << "function() {";
+    oss << dbg.genLoadSubFile(loc)<<"; ";
+    oss << "focusLinkDetail('"<<dbg.blockGlobalStr(loc)<<"'); focusLinkSummary('"<<dbg.blockGlobalStr(loc)<<"');});";
   // If we have not yet reached this anchor's location in the output (it is a forward link)
   } else {
     oss << "loadAnchorScriptsFile("<<(anchorID/dbg.getAnchorsPerScriptFile())<<", "<<
@@ -1626,6 +1628,15 @@ void dbgStream::printDetailFileContainerHTML(string absoluteFileName, string tit
   det.close();
 }
 
+// Generate a JavaScript command that loads the sub-file pointed to by the given location
+std::string dbgStream::genLoadSubFile(const location& loc) {
+  string blockID = blockGlobalStr(loc);
+  string fileID = fileLevelStr(loc);
+  return txt() << "loadSubFile(top.detail.document, "<<fileLevelJSIntArray(loc)<<", 'detail."<<fileID<<".body', 'div"<<blockID<<"', "<<
+               "top.summary.document, 'summary."<<fileID<<".body', 'sumdiv"<<blockID<<"', "<<
+               "'script/script."<<fileID<<"')";
+}
+
 // Called when a block is entered.
 // b: The block that is being entered
 // newFileEntered: records whether by entering this block we're also entering a new file
@@ -1680,7 +1691,12 @@ string dbgStream::enterBlock(block* b, bool newFileEntered, bool addSummaryEntry
                "'script/script."<<fileID<<"'";
   }
 
-  if(!recursiveEnterBlock) b->printEntry(loadCmd.str());
+  if(!recursiveEnterBlock) {
+    // Emit an anchor to enable links to target this block
+    dbg << "<a name=\"anchor"<<b->getBlockID()<<"\"></a>"<<endl;
+    // Call the entry code from the class derived from block
+    b->printEntry(loadCmd.str());
+  }
   dbg.ownerAccessing();  
   dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"<div id=\"div"<<b->getBlockID()<<"\" class=\"unhidden\">\n"; dbg.flush();
   dbg.userAccessing();

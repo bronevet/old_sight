@@ -2126,7 +2126,8 @@ ModuleMerger::ModuleMerger(std::vector<std::pair<properties::tagType, properties
                          vector<map<string, streamRecord*> >& inStreamRecords,
                          properties* props) : 
         Merger(advance(tags), outStreamRecords, inStreamRecords, 
-                    setProperties(tags, outStreamRecords, inStreamRecords, props)) { }
+               setProperties(tags, outStreamRecords, inStreamRecords, props),
+               /*ignoreClocks*/ true) { }
 
 // Sets the properties of the merged object
 properties* ModuleMerger::setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
@@ -2213,7 +2214,9 @@ properties* ModuleMerger::setProperties(std::vector<std::pair<properties::tagTyp
 // call their parents so they can add any info,
 void ModuleMerger::mergeKey(properties::tagType type, properties::iterator tag, 
                            const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
-  Merger::mergeKey(type, tag.next(), inStreamRecords, info);
+  // Do not call the parent class' mergeKey method since we do not want to
+  // merge modules based on clock values.
+  //Merger::mergeKey(type, tag.next(), inStreamRecords, info);
     
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
@@ -2413,34 +2416,6 @@ ModuleTraceStreamMerger::ModuleTraceStreamMerger(
   properties::tagType type = streamRecord::getTagType(tags); 
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Module TraceStreams!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
-    /*properties::iterator moduleTSIter = getProps().find("moduleTS");
-    ModuleStreamRecord::moduleInfo info(moduleTSIter.getInt("moduleID"),
-                                        moduleTSIter.get("name"),
-                                        moduleTSIter.getInt("numInputs"),
-                                        moduleTSIter.getInt("numOutputs"));
-    
-    cout << "< ((ModuleStreamRecord*)outStreamRecords[\"module\"])->observedModules (#"<<(((ModuleStreamRecord*)outStreamRecords["module"])->observedModules.size())<<")="<<endl;
-    for(map<group, int>::iterator i=((ModuleStreamRecord*)outStreamRecords["module"])->observedModules.begin(); i!=((ModuleStreamRecord*)outStreamRecords["module"])->observedModules.end(); i++)
-      cout << "<     "<<i->first.str()<<" : "<<i->second<<endl;
-    
-    // Record 
-    (ModuleStreamRecord*)outStreamRecords["module"])->observedModules.find(info)
-    
-    // If we already have a record for this moduleTS on the outgoing stream
-    if(((ModuleStreamRecord*)outStreamRecords["module"])->observedModules.find(info) != 
-       ((ModuleStreamRecord*)outStreamRecords["module"])->observedModules.end())
-    {
-      cout << "Found "<<moduleTSIter.get("name")<<endl;
-      // Don't emit this tag since it will be a duplicate of the moduleTS that we've already emitted
-      dontEmit();
-    // If we do not yet have a record for this moduleTS, add one
-    } else 
-      ((ModuleStreamRecord*)outStreamRecords["module"])->observedModules[info] = moduleTSIter.getInt("moduleID");
-
-    cout << "> ((ModuleStreamRecord*)outStreamRecords[\"module\"])->observedModules (#"<<(((ModuleStreamRecord*)outStreamRecords["module"])->observedModules.size())<<")="<<endl;
-    for(map<ModuleStreamRecord::moduleInfo, int>::iterator i=((ModuleStreamRefcord*)outStreamRecords["module"])->observedModules.begin(); i!=((ModuleStreamRecord*)outStreamRecords["module"])->observedModules.end(); i++)
-      cout << ">     "<<i->first.str()<<" : "<<i->second<<endl;*/
-    
     // If in setProperties() we discovered that a moduleTS tag has already been emitted for this module group,
     // don't emit another one
     if(getProps().find("moduleTS").exists("dontEmit"))
@@ -2523,7 +2498,7 @@ properties* ModuleTraceStreamMerger::setProperties(
       int traceID = streamRecord::mergeIDs("traceStream", "traceID", pMap, TraceStreamTags, outStreamRecords, inStreamRecords);
       
       // Associate the new moduleID and traceID with the module group
-      dbg << "g="<<g.str()<<", obserbing module"<<endl;
+      //dbg << "g="<<g.str()<<", observing module"<<endl;
       ((ModuleStreamRecord*)(outStreamRecords)["module"])->setModuleID(g, moduleID, traceID);
       
       pMap["moduleID"] = txt() << moduleID;

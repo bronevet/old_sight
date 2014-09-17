@@ -1126,7 +1126,8 @@ class moduleTraceStream: public traceStream
 {
   public:
   moduleTraceStream(int moduleID, module* m, vizT viz, mergeT merge, int traceID, properties* props=NULL);
-  
+
+  // Sets the properties of the merged object
   static properties* setProperties(int moduleID, module* m, vizT viz, mergeT merge, properties* props);
 
   ~moduleTraceStream();
@@ -1146,6 +1147,7 @@ class compModuleTraceStream: public moduleTraceStream
   public:
   compModuleTraceStream(int moduleID, compModule* cm, vizT viz, mergeT merge, int traceID, properties* props=NULL);
   
+  // Sets the properties of the merged object
   static properties* setProperties(int moduleID, compModule* cm, vizT viz, mergeT merge, properties* props);
 
   ~compModuleTraceStream();

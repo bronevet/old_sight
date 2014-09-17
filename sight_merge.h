@@ -13,7 +13,7 @@
 using namespace sight;
 using namespace sight::structure;
 
-#define VERBOSE
+//#define VERBOSE
 
 namespace sight {
 

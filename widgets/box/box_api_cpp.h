@@ -19,7 +19,7 @@ namespace sight {
 // The box class inherits from block, which is a generic base for most Sight objects. Blocks 
 // are laid out as HTML divs and provide methods to get an anchor to their location in the 
 // log, making it possible to create links that point to the block.
-class box: public block
+class box: public sight::structure::block
 {
   public:
   // style - the string that determines the visual properties of the generated box
@@ -36,13 +36,15 @@ class box: public block
   //    to create it and add box-specific properties. box::box() then forwards it to the constructor
   //    of its parent class. If another widget inherits from box, the props pointer passed to 
   //    box::box() will be non-NULL so setProperties does not create a fresh object.
-  box(const std::string& style,                        properties* props=NULL);
-  box(const std::string& style, const attrOp& onoffOp, properties* props=NULL);
+  box(const std::string& style,                                                 properties* props=NULL);
+  box(const std::string& style,                          const sight::structure::attrOp& onoffOp, properties* props=NULL);
+  box(const std::string& style, const std::string& label,                       properties* props=NULL);
+  box(const std::string& style, const std::string& label,const sight::structure::attrOp& onoffOp, properties* props=NULL);
  
   private:
   // Sets the properties of this object.
   // onOffOp and props are NULL if this object was not provided to the box constructor.
-  static properties* setProperties(scopeLevel level, const attrOp* onoffOp, properties* props);
+  static properties* setProperties(const std::string& style, const sight::structure::attrOp* onoffOp, properties* props);
     
   public:
   // Ends the boxed region of the log and destroys the object.
@@ -59,8 +61,8 @@ class box: public block
   // Called to notify this block that a sub-block was started/completed inside of it. 
   // Returns true of this notification should be propagated to the blocks 
   // that contain this block and false otherwise.
-  bool subBlockEnterNotify(block* subBlock) { return true; }
-  bool subBlockExitNotify (block* subBlock) { return true; }
+  bool subBlockEnterNotify(sight::structure::block* subBlock) { return true; }
+  bool subBlockExitNotify (sight::structure::block* subBlock) { return true; }
 }; // class box
 
 }; // namespace sight

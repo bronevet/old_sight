@@ -180,6 +180,59 @@ void graph::addUndirEdge(anchor a, anchor b) {
   dbg->tag(p);
 }
 
+// Add an invisible edge that forces the target to be placed after the source
+void graph::addInvisDepEdge(anchor a, anchor b) {
+  // If we only emit nodes that are connected by edges
+  if(!includeAllSubBlocks) {
+    // If the node of either side of this edge has been observed but not yet connected, emit its tag now
+    if(nodesObservedNotEmitted.find(a.getID()) != nodesObservedNotEmitted.end()/* && nodesConnected.find(a) == nodesConnected.end()*/)
+      emitNodeTag(a.getID(), nodesObservedNotEmitted[a.getID()].first, nodesObservedNotEmitted[a.getID()].second);
+    if(nodesObservedNotEmitted.find(b.getID()) != nodesObservedNotEmitted.end()/* && nodesConnected.find(b) == nodesConnected.end()*/)
+      emitNodeTag(b.getID(), nodesObservedNotEmitted[b.getID()].first, nodesObservedNotEmitted[b.getID()].second);
+  
+    // Record that both nodes have been connected
+    nodesConnected.insert(a);
+    nodesConnected.insert(b);
+  }
+  
+  properties p;
+  map<string, string> pMap;
+  pMap["a"] = txt()<<a.getID();
+  pMap["b"] = txt()<<b.getID();
+  pMap["graphID"] = txt()<<graphID;
+  p.add("invisEdge", pMap);
+  //dbg->tag("undEdge", properties, false);
+  
+  dbg->tag(p);  
+}
+  
+
+// Start a graphviz cluster
+void graph::startSubGraph() {
+  properties p;
+  map<string, string> pMap;
+  pMap["graphID"]  = txt()<<graphID;
+  p.add("subGraph", pMap);
+  dbg->enter(p);
+}
+
+void graph::startSubGraph(const std::string& label) {
+  properties p;
+  map<string, string> pMap;
+  pMap["label"] = label;
+  pMap["graphID"]  = txt()<<graphID;
+  p.add("subGraph", pMap);
+  dbg->enter(p);
+}
+
+// End a graphviz cluster
+void graph::endSubGraph() {
+  properties p;
+  map<string, string> pMap;
+  p.add("subGraph", pMap);
+  dbg->exit(p);
+}
+
 /* ADD THIS IF WE WISH TO HAVE NODES THAT EXISTED INSIDE THE GRAPH BUT WERE NOT CONNECTED VIA EDGES*/
 // Called to notify this block that a sub-block was started/completed inside of it. 
 // Returns true of this notification should be propagated to the blocks 
@@ -219,6 +272,17 @@ void graph::emitNodeTag(int anchorID, std::string label, int nodeID) {
   nodesObservedNotEmitted.erase(anchorID);
 
   dbg->tag(p);
+}
+
+/********************
+ ***** subgraph *****
+ ********************/
+subgraph::subgraph(graph& g, const std::string& label): g(g) {
+  g.startSubGraph(label);
+}
+
+subgraph::~subgraph() {
+  g.endSubGraph();
 }
 
 /*****************************************

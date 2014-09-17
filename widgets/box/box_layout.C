@@ -3,6 +3,7 @@
 #include "../../sight_common.h"
 #include <iostream>
 #include <assert.h>
+#include "box_layout.h"
 
 using namespace std;
 
@@ -31,8 +32,9 @@ box::box(properties::iterator props) : block(properties::next(props))
   // Extract the style of this box
   style = props.get("style");
 
-  // Record with the output stream that a new block has been entered.
-  dbg.enterBlock(this, /*newFileEntered*/ false, summaryEntry);
+  // Record with the output stream that a new block has been entered. Don't create an entry in 
+  // the summary pane for this box.
+  dbg.enterBlock(this, /*newFileEntered*/ false, /*addSummaryEntry*/ false);
 }
 
 box::~box()

@@ -39,13 +39,14 @@ extern sight::structure::graph* duGraph;
 void SightInitializeDUGraph();
 #endif
 #define SightInitializeDU(varUID) \
-  duGraph = new graph();
+  graph duGraphMain; \
+  duGraph = &duGraphMain;
 #else
 #define SightInitializeDU(varUID)
 #endif //SIGHT_VARDEFUSE
 
 // ----- SightInitialize -----
-#ifdef SIGHT_MODULE
+#if defined(SIGHT_MODULE) || defined(SIGHT_STATES)
 #define SightInitializeModule(varUID) \
   sight::structure::modularApp SightModularApp ## varUID("app", namedMeasures("time", new timeMeasure()));
 #else
@@ -176,7 +177,7 @@ void sightState(std::string label);
 
 // ----- Variable Change Tracking -----
 #define SightStartTrack(var, UID) \
-  sight::structure::trace sightTrace ## UID (sight::txt()<<"SightTrace_"<<#var<<UID, sight::structure::trace::showBegin, sight::structure::trace::lines); \
+  sight::structure::trace sightTrace ## UID (sight::txt()<<"SightTrace_d"<<sight::structure::getSOStackDepth()<<"_v"<<#var<<UID, sight::structure::trace::showBegin, sight::structure::trace::lines); \
   int sightTraceCounter ## UID=0;
 
 #ifdef SIGHT_VARTRACK
@@ -185,7 +186,7 @@ void sightState(std::string label);
 template<typename T>
 void SIGHT_TRACK(T&, char*) {}
 
-#define TrackVarChange(var, UID) \
+#define TrackVarChange(var, anchorExp, UID) \
   (sight::structure::dbg << #var << "=" << var << endl, \
    traceAttr(&sightTrace ## UID, \
              sight::structure::trace::ctxtVals("index", sightTraceCounter ## UID), \
@@ -202,36 +203,76 @@ void SIGHT_DEFUSE(T&, char*) {}
 
 #ifdef SIGHT_MAIN_FILE
 std::map<long, long> lastVarDef;
+std::map<long, sight::structure::anchor> lastVarDefAnchor;
+//sight::structure::anchor lastDUAnchor = sight::structure::anchor::noAnchor;
+std::map<long, sight::structure::anchor> lastVarAccessAnchor;
 long useCntr=0;
+std::list<sight::box*> udBoxStack;
 #else
 extern std::map<long, long> lastVarDef;
+extern std::map<long, sight::structure::anchor> lastVarDefAnchor;
+//extern sight::structure::anchor lastDUAnchor;
+extern std::map<long, sight::structure::anchor> lastVarAccessAnchor;
 extern long useCntr;
+extern std::list<sight::box*> udBoxStack;
 #endif
 
+#define SightUDStart(var, anchorExp, UID) \
+  udBoxStack.push_back(new sight::box("border-style:solid; border-width:1px; border-color: #000000; display:inline-block"))
+
+#define SightUDEnd(var, anchorExp, UID) \
+  (delete udBoxStack.back(), udBoxStack.pop_back(), dbg<<endl)
+
+#define SightUDOp(var, anchorExp, UID) \
+  (dbg << #anchorExp)
+
 #ifdef SIGHT_MAIN_FILE
-void SightVarDefFunc(char* varName, long UID) {
+void SightVarDefFunc(char* varName, char* anchorExp, long UID) {
   if(lastVarDef.find(UID)==lastVarDef.end()) lastVarDef[UID]=0;
   else lastVarDef[UID]++;
   //dbg << "Def "<<varName<<": send=SightDef_"<<varName<<"_"<<UID<<"_"<<lastVarDef[UID]<<endl;
-  { sight::box b(sight::txt()<<"margin-left:"<<(UID*10)<<"; margin-top:0; margin-bottom:0; margin-right:0; width:40; height:20; border-style:solid; border-color: #0000ff;"); //dbg << " ";
-  sight::structure::commSend s(sight::txt()<<"Def "<<varName,
+  //{ sight::box b(sight::txt()<<"margin-left:"<<(UID*20)<<"; margin-top:0; margin-bottom:0; margin-right:0; width:40; height:20; border-style:solid; border-color: #0000ff;"); 
+  { sight::box b(sight::txt()<<"margin-left:"<<(UID*0)<<"; margin-top:0; margin-bottom:10; margin-right:0; border-style:solid; border-color: #0000ff; display:inline-block",
+                 sight::txt()<<"Def "<<varName); 
+  dbg << "Def "<<varName/*<<" ("<<anchorExp<<")"*/<<endl;
+  sight::structure::commSend s("", //sight::txt()<<"Def "<<varName,
                                sight::txt()<<"SightDef_"<<varName<<"_"<<UID<<"_"<<lastVarDef[UID], "");
+
+  if(lastVarAccessAnchor.find(UID) != lastVarAccessAnchor.end())
+    duGraph->addInvisDepEdge(lastVarAccessAnchor[UID], b.getAnchor());
+  /*if(lastDUAnchor != sight::structure::anchor::noAnchor)
+    duGraph->addUndirEdge(lastDUAnchor, b.getAnchor());*/
+  
+  lastVarDefAnchor[UID] = b.getAnchor();
+  lastVarAccessAnchor[UID] = b.getAnchor();
+//  lastDUAnchor = b.getAnchor();
   }
 }
 #else
 void SightVarDefFunc(char* varName, long UID);
 #endif
 
-#define SightVarDef(var, UID) \
-  SightVarDefFunc(#var, UID)
+#define SightVarDef(var, anchorExp, UID) \
+  SightVarDefFunc(#var, #anchorExp, UID)
 
 #ifdef SIGHT_MAIN_FILE
-void SightVarUseFunc(char* varName, long UID) {
+void SightVarUseFunc(char* varName, char* anchorExp, long UID) {
   //dbg << "Use "<<varName<<": send="<<"SightDef_"<<varName<<"_"<<UID<<"_"<<lastVarDef[UID]<<", recv="<<"SightUse_"<<useCntr<<endl;
-  { sight::box b(sight::txt()<<"margin-left:"<<(UID*10)<<"; margin-top:0; margin-bottom:0; margin-right:0; width:40; height:20; iborder-style:solid; border-color: #ff0000;"); //dbg << " ";
-  sight::structure::commRecv s(sight::txt()<<"Use "<<varName,
+  //{ sight::box b(sight::txt()<<"margin-left:"<<(UID*20)<<"; margin-top:0; margin-bottom:0; margin-right:0; width:40; height:20; iborder-style:solid; border-color: #ff0000;"); 
+  { sight::box b(sight::txt()<<"margin-left:"<<(UID*0)<<"; margin-top:0; margin-bottom:10; margin-right:0; border-style:solid; border-color: #ff0000; display:inline-block",
+                 sight::txt()<<"Use "<<varName); 
+  dbg << "Use "<<varName/*<<" ("<<anchorExp<<")"*/<<endl;
+  if(lastVarDefAnchor.find(UID) != lastVarDefAnchor.end())
+    duGraph->addDirEdge(lastVarDefAnchor[UID], b.getAnchor());
+  else if(lastVarAccessAnchor.find(UID) != lastVarAccessAnchor.end())
+    duGraph->addInvisDepEdge(lastVarAccessAnchor[UID], b.getAnchor());
+  /*else if(lastDUAnchor != sight::structure::anchor::noAnchor)
+    duGraph->addUndirEdge(lastDUAnchor, b.getAnchor());*/
+  sight::structure::commRecv s("",//sight::txt()<<"Use "<<varName,
                                sight::txt()<<"SightDef_"<<varName<<"_"<<UID<<"_"<<lastVarDef[UID],
                                sight::txt()<<"SightUse_"<<useCntr); 
+  lastVarAccessAnchor[UID] = b.getAnchor();
+  //lastDUAnchor = b.getAnchor();
   }
   ++useCntr;
 }
@@ -239,11 +280,11 @@ void SightVarUseFunc(char* varName, long UID) {
 void SightVarUseFunc(char* varName, long UID);
 #endif
 
-#define SightVarUse(var, UID) \
-  SightVarUseFunc(#var, UID)
+#define SightVarUse(var, anchorExp, UID) \
+  SightVarUseFunc(#var, #anchorExp, UID)
 
-#define SightVarDefUse(var, UID) \
-  SightVarUse(var, UID), SightVarDef(var, UID)
+#define SightVarDefUse(var, anchorExp, UID) \
+  SightVarUse(var, anchorExp, UID), SightVarDef(var, anchorExp, UID)
 
 #endif // #ifdef SIGHT_DEFUSE
 

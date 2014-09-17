@@ -926,10 +926,10 @@ class sightVectorField : public customAttrValue {
   bool operator< (const customAttrValue& that);
 
   // Encodes the JavaScript representation of this attrValue into a string and returns the result.
-  std::string getAsJS() const { std::cerr << "Method not yet implemented!"<<std::endl; assert(0); }
+  std::string getAsJS() const { std::cerr << "Method not yet implemented!"<<std::endl; assert(0); return ""; }
   
   // Returns a JavaScript function that compares instances of the type of this attrValue
-  std::string getComparatorJS() const { std::cerr << "Method not yet implemented!"<<std::endl; assert(0); }
+  std::string getComparatorJS() const { std::cerr << "Method not yet implemented!"<<std::endl; assert(0); return ""; }
   
   // Adds the string representation of this value to the given output stream
   void serialize(std::ostream& s) const;

@@ -10,6 +10,7 @@ MAKE_DEFINES = ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=
 
 all: gsl papi libmsr synoptic \
      ${WIDGETS_COMMON_O} ${WIDGETS_COMMON_H} ${WIDGETS_STRUCTURE_O} ${WIDGETS_STRUCTURE_H} ${WIDGETS_LAYOUT_O} ${WIDGETS_LAYOUT_H}  \
+     box \
      kulfi \
      shellinabox/bin/shellinaboxd${EXE} mongoose/mongoose${EXE} graphviz/bin/dot${EXE} \
      vnc \
@@ -103,6 +104,9 @@ parallel/parallel_layout.o: parallel/parallel_layout.C parallel/parallel_layout.
 parallel/sight_pthread.o: parallel/sight_pthread.C parallel/sight_pthread.h parallel/parallel_structure.h
 	${CCC} ${SIGHT_CFLAGS} parallel/sight_pthread.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o parallel/sight_pthread.o
 
+.PHONY: box
+box:
+	cd box; ${MAKE} ${MAKE_DEFINES}
 
 ifeq (${KULFI_ENABLED}, 1)
 .PHONY: kulfi

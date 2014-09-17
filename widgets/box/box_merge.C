@@ -1,10 +1,12 @@
 // Licence information included in file LICENCE
 #include "../../sight_structure.h"
 #include "../../sight_common.h"
+#include "box_merge.h"
 #include <assert.h>
 #include <iostream>
 
 using namespace std;
+using namespace sight::structure;
   
 namespace sight {
 namespace merge {
@@ -56,6 +58,9 @@ properties* BoxMerger::setProperties(std::vector<std::pair<properties::tagType, 
   properties::tagType type = streamRecord::getTagType(tags); 
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Box!"<<endl; exit(-1); }
 
+  // key->value map of the merged object
+  map<string, string> pMap;
+
   // Enter tags have key->value pairs, while exit tags currently do not.
   if(type==properties::enterTag) {
     // Make sure that we do have some objects on the incoming streams
@@ -65,9 +70,6 @@ properties* BoxMerger::setProperties(std::vector<std::pair<properties::tagType, 
     // with this merger class.
     vector<string> names = getNames(tags); assert(allSame<string>(names));
     assert(*names.begin() == "box");
-
-    // key->value map of the merged object
-    map<string, string> pMap;
 
     // BoxMerger::mergeKey() only allows merging of boxes with the same styles. As such, take the style
     // property from the first object and put it into pMap

@@ -82,6 +82,23 @@ std::map<pthread_t, map<dbgStream*, std::list<sightObj*> >* > threadSoStacks;
 // Mutex that controls access to threadSoStacks.
 pthread_mutex_t threadSoStacksMutex = PTHREAD_MUTEX_INITIALIZER;
 
+std::list<sightObj*>& soStack(dbgStream* outStream) {
+  return staticSoStack[outStream];
+}
+
+std::map<dbgStream*, std::list<sightObj*> >& soStackAllStreams() {
+  return *(staticSoStack.get());
+}
+
+// Returns the depth of the sightObjects stack
+int getSOStackDepth() {
+  return soStack(&dbg).size();
+}
+
+int getSOStackDepth(dbgStream* outStream) {
+  return soStack(outStream).size();
+}
+
 /*************************************
  ***** ThreadInitFinInstantiator *****
  *************************************/
@@ -132,6 +149,7 @@ void ThreadInitFinInstantiator::init() {
 //    finalization is performed in reverse
 void ThreadInitFinInstantiator::addFuncs(const std::string& label, ThreadInitializer init, ThreadFinalizer fin,
                 const common::easyset<std::string>& mustFollow, const common::easyset<std::string>& mustPrecede) {
+  //cout << "ThreadInitFinInstantiator::addFuncs()"<<endl;
   assert(funcsM);
   assert(funcsV);
   
@@ -147,27 +165,51 @@ void ThreadInitFinInstantiator::addFuncs(const std::string& label, ThreadInitial
 
 // Update the dependence graph based on funcs, if it not already upto-date
 void ThreadInitFinInstantiator::computeDepGraph() {
+  //cout << pthread_self()<<": ThreadInitFinInstantiator::computeDepGraph() *depGraphUptoDate="<<*depGraphUptoDate<<endl;
   if(*depGraphUptoDate) return;
   
   // Iterate over funcs, adding each dependency to depGraph
   int i=0;
+  //cout << pthread_self()<<":     #funcsM="<<funcsM->size()<<endl;
+  // Map where the keys are the funcs that are not connected to any other funcs. These may be placed
+  // anywhere in the topological order. Initialized to contain all funcs, which are then removed
+  // as they're connected by edges
+  set<int> unconnected;
+  for(map<string, threadFuncs*>::iterator f=funcsM->begin(); f!=funcsM->end(); f++)
+    unconnected.insert(f->second->UID);
+
+  // Iterate over all funcs and connect them to their predecessors and successors via edges
   for(map<string, threadFuncs*>::iterator f=funcsM->begin(); f!=funcsM->end(); f++) {
+    int numEdges=0;
     // Add edges from all labels that the current func must follow to the current func
     for(set<std::string>::iterator i=f->second->mustFollow.begin(); i!=f->second->mustFollow.end(); i++) {
       // Find the current label in the funcs map and add an edge from it to f
       std::map<std::string, threadFuncs*>::iterator other=funcsM->find(*i);
-      if(other != funcsM->end()) boost::add_edge(other->second->UID, f->second->UID, *depGraph);
+      if(other != funcsM->end()) {
+        boost::add_edge(other->second->UID, f->second->UID, *depGraph);
+        unconnected.erase(other->second->UID);
+        unconnected.erase(f->second->UID);
+      }
     }
     
     // Add edges from the current func to all the labels that follow it
     for(set<std::string>::iterator i=f->second->mustPrecede.begin(); i!=f->second->mustPrecede.end(); i++) {
       // Find the current label in the funcs map and add an edge to it from f
       std::map<std::string, threadFuncs*>::iterator other=funcsM->find(*i);
-      if(other != funcsM->end()) boost::add_edge(f->second->UID, other->second->UID, *depGraph);
+      if(other != funcsM->end()) { 
+        boost::add_edge(f->second->UID, other->second->UID, *depGraph);
+        unconnected.erase(other->second->UID);
+        unconnected.erase(f->second->UID);
+      }
     }
   }
-  
+ 
+  // Topologically sort the funcs that are connected with dependence edges 
   boost::topological_sort(*depGraph, front_inserter(*topoOrder), vertex_index_map(boost::identity_property_map()));
+
+  // Append to topoOrder all the funcs that are not connected via edges
+  for(set<int>::iterator i=unconnected.begin(); i!=unconnected.end(); i++)
+    topoOrder->push_back(*i);
   
   // The dependence graph is now upto date
   *depGraphUptoDate = true;
@@ -177,6 +219,11 @@ void ThreadInitFinInstantiator::computeDepGraph() {
 void ThreadInitFinInstantiator::initialize() {
   computeDepGraph();
   
+  /*cout << pthread_self()<<": ThreadInitFinInstantiator::initialize()"<<endl;
+  for(std::map<std::string, threadFuncs*>::iterator i=funcsM->begin(); i!=funcsM->end(); i++)
+    cout << "    "<<i->first<<": "<<i->second->UID<<endl;
+ 
+  cout << pthread_self()<<": #topoOrder="<<topoOrder->size()<<endl; */
   for(deque<int>::iterator i=topoOrder->begin(); i!=topoOrder->end(); ++i) {
     assert(funcsV->size()>*i);
     (*funcsV)[*i]->init();
@@ -189,7 +236,7 @@ void ThreadInitFinInstantiator::finalize() {
   
   for(deque<int>::reverse_iterator i=topoOrder->rbegin(); i!=topoOrder->rend(); ++i) {
     assert(funcsV->size()>*i);
-    (*funcsV)[*i]->init();
+    (*funcsV)[*i]->fin();
   }
 }
 
@@ -215,16 +262,6 @@ ThreadLocalStorage0<dbgStream*> threadDbgStream;
 // of the main thread.
 bool isMainThreadDbg(dbgStream* ds)
 { return isMainThread && ds==threadDbgStream; }
-
-std::list<sightObj*>& soStack(dbgStream* outStream) {
-  return staticSoStack[outStream];
-}
-
-std::map<dbgStream*, std::list<sightObj*> >& soStackAllStreams() {
-  //return staticSoStack;
-  return *(staticSoStack.get());
-}
-
 
 // mainThread: Set to true if this function is being called from the main thread directly by the other.
 //             Set to false if it is called inside some other, subsequently-created thread from within Sight
@@ -412,22 +449,17 @@ void SightInit_internal(int argc, char** argv, string title, string workDir, boo
   if(mainThread) initializedDebugMainThread = true;
   initializedDebugThisThread = true;
   
-  //cout << pthread_self() << " &dbg="<<&dbg<<endl;
-
   dbg->init(props, title, workDir, imgDir, tmpDir);
   
   // Record the address of this thread's dbgStream
   threadDbgStream = dbg.get();
 
-  /*cout << pthread_self()<<": staticSoStack="<<staticSoStack.get()<<endl;*/
+  //cout << pthread_self() << ": SightThreadInit() mainThread="<<mainThread<<endl;
   SightThreadInit();
-
-  // Create a comparison object for the main thread
-  /*if(mainThread)
-    mainThreadComp = new comparison(0);*/
 }
 
 void SightThreadInit() {
+  //cout << pthread_self()<<": SightThreadInit\n";
   // Set this thread to be cancelable
   pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
   pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
@@ -438,18 +470,11 @@ void SightThreadInit() {
   
   ThreadInitFinInstantiator::initialize();
   
-  /* // Create the comparison tags that wrap the entire log of this thread
-  for(list<std::pair<std::string, std::string> >::const_iterator i=globalComparisonIDs.begin();
-      i!=globalComparisonIDs.end(); ++i) {
-    //cout << pthread_self() << ": creating comparison "<<i->first<<" => "<<i->second<<endl;
-    globalModularApps.push_back(new modularApp("", namedMeasures("time",      new timeMeasure())));
-    globalComparisons.push_back(new comparison(i->second));
-  }*/
-  
   pthread_mutex_unlock(&threadSoStacksMutex);
 }
 
 void SightThreadFinalize() {
+  cout << pthread_self()<<": SightThreadFinalize\n";
   // Unregister this thread's soStacks from threadSoStacks
   pthread_mutex_lock(&threadSoStacksMutex);
   if(threadSoStacks.find(pthread_self()) != threadSoStacks.end()) {
@@ -2317,6 +2342,7 @@ void dbgStream::destroy() {
 }
 
 dbgStream::~dbgStream() {
+  //cout << pthread_self()<<": dbgStream::~dbgStream() SightDestroyed="<<SightDestroyed<<endl;
   // If Sight has already been destroyed, skip out of the destructor
   if(SightDestroyed) return;
 
@@ -3079,7 +3105,7 @@ void AbortHandlerInstantiator::appExited() {
   // Only do exit processing if Sight has not already been destroyed
   if(sightObj::SightDestroyed) return;
   
-  //cout << pthread_self()<<": AbortHandlerInstantiator::appExited() #ExitHandlers="<<ExitHandlers->size()<<endl;
+  cout << pthread_self()<<": AbortHandlerInstantiator::appExited() #ExitHandlers="<<ExitHandlers->size()<<endl;
   // Call all the functions registered to listen for the application's exit
   for(map<string, ExitHandler>::iterator h=ExitHandlers->begin(); h!=ExitHandlers->end(); h++)
     (h->second)();
@@ -3110,7 +3136,7 @@ void AbortHandlerInstantiator::killSignal(int signum) {
 void AbortHandlerInstantiator::finalizeSight() {
   //cout << pthread_self()<<": <<<< AbortHandlerInstantiator::finalizeSight()"<<endl;
   
-  /*for(std::map<pthread_t, map<dbgStream*, std::list<sightObj*> >* >::iterator t=threadSoStacks.begin();
+/*for(std::map<pthread_t, map<dbgStream*, std::list<sightObj*> >* >::iterator t=threadSoStacks.begin();
       t!=threadSoStacks.end(); t++) {
     cout << "t="<<t->first<<" / "<<t->second<<endl;
     if(t->first != pthread_self())
@@ -3118,10 +3144,15 @@ void AbortHandlerInstantiator::finalizeSight() {
     cout << "#threadSoStacks="<<threadSoStacks.size()<<endl;
   }*/
   //killOtherThreads();
+  
+  /*cout << pthread_self()<<": #soStack="<<soStack(&dbg).size()<<endl;
+  for(list<sightObj*>::const_iterator i=soStack(&dbg).begin(); i!=soStack(&dbg).end(); i++)
+    cout << "    "<<((*i)->props? (*i)->props->str(): "NULL")<<endl;*/
+    
+  SightThreadFinalize();
+  
   // On Termination deallocate all the currently live sightObjs
   sightObj::destroyAll();
-  
-  SightThreadFinalize();
 
   // If a copy of dbg has been allocated for this thread
   //cout << "AbortHandlerInstantiator::finalizeSight() dbg.isValueMappedForThread()="<<dbg.isValueMappedForThread()<<endl;
