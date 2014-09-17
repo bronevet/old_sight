@@ -11,6 +11,9 @@
 #include <sstream>
 #include <assert.h>
 
+// Include all the definitions that control compilation
+#include "definitions.h"
+
 namespace sight {
 
 namespace common {
@@ -105,6 +108,9 @@ class properties
     std::cout << "active==that.active = "<<(active==that.active)<<std::endl;
     std::cout << "emitTag==that.emitTag = "<<(emitTag==that.emitTag)<<std::endl;*/
     return p==that.p && active==that.active && emitTag==that.emitTag; }
+
+  bool operator!=(const properties& that) const
+  { return !(*this == that); }
   
   bool operator<(const properties& that) const
   { return (p< that.p) ||
@@ -196,7 +202,7 @@ class properties
     
     // Returns the string representation of the given properties iterator  
     std::string str() const;
-  };
+  }; //class iterator
   
   // Returns the start of the list to iterate from the most derived class of an object to the most base
   iterator begin() const;
@@ -253,6 +259,10 @@ class properties
   static std::string str(iterator props);
   
   std::string str(std::string indent="") const;
+
+  // Converts a tagType to its string representation
+  static std::string tagType2Str(tagType tt)
+  { return (tt==enterTag?"enterTag":(tt==exitTag?"exitTag":(tt==unknownTag?"unknownTag":"???"))); }
 }; // class properties
 
 namespace common {
@@ -325,6 +335,21 @@ std::string unescape(std::string s);
 
 // Wrapper for strings in which some characters have been escaped. This is useful for serializing multi-level 
 // collection objects, while using the same separator for each level of the encoding.
+// escapedStr's are used as follows:
+// Serialization: (serialized representations of multiple objects separated by ':')
+//   esapedStr str1(obj1.serialize(), ":", escapedStr::unescaped);
+//   esapedStr str2(obj2.serialize(), ":", escapedStr::unescaped);
+//   esapedStr str3(obj3.serialize(), ":", escapedStr::unescaped);
+//   str serialized = str1.escape() + ":" + str2.escape() + ":" str3.escape();
+//
+// Deserialization: (of above objects)
+//   Given str serialized;
+//   common::escapedStr es(serialized, ":", escapedStr::escaped);
+//   vector<string> fields = es.unescapeSplit(":");
+//   assert(fields.size()==3);
+//   obj1Type obj1(fields[0]);
+//   obj2Type obj2(fields[1]);
+//   obj3Type obj3(fields[2]);
 class escapedStr {
   std::string s;
   std::string control;
@@ -491,6 +516,159 @@ class TagFileReaderRegistry: public LoadTimeRegistry {
   static std::string str();
 }; // class TagFileReaderRegistry
 
+/***********************************************
+ ***** Syntactic Sugar for Data Structures *****
+ ***********************************************/
+
+// Syntactic sugar for specifying lists
+template<class T>
+class easylist : public std::list<T> {
+  public:
+  easylist() {}
+
+  easylist(const T& p0)
+  { std::list<T>::push_back(p0); }
+
+  easylist(const T& p0, const T& p1)
+  { std::list<T>::push_back(p0); std::list<T>::push_back(p1); }
+
+  easylist(const T& p0, const T& p1, const T& p2)
+  { std::list<T>::push_back(p0); std::list<T>::push_back(p1); std::list<T>::push_back(p2); }
+
+  easylist(const T& p0, const T& p1, const T& p2, const T& p3)
+  { std::list<T>::push_back(p0); std::list<T>::push_back(p1); std::list<T>::push_back(p2); std::list<T>::push_back(p3); }
+
+  easylist(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4)
+  { std::list<T>::push_back(p0); std::list<T>::push_back(p1); std::list<T>::push_back(p2); std::list<T>::push_back(p3); std::list<T>::push_back(p4); }
+
+  easylist(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4, const T& p5)
+  { std::list<T>::push_back(p0); std::list<T>::push_back(p1); std::list<T>::push_back(p2); std::list<T>::push_back(p3); std::list<T>::push_back(p4); std::list<T>::push_back(p5); }
+
+  easylist(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4, const T& p5, const T& p6)
+  { std::list<T>::push_back(p0); std::list<T>::push_back(p1); std::list<T>::push_back(p2); std::list<T>::push_back(p3); std::list<T>::push_back(p4); std::list<T>::push_back(p5); std::list<T>::push_back(p6); }
+
+  easylist(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4, const T& p5, const T& p6, const T& p7)
+  { std::list<T>::push_back(p0); std::list<T>::push_back(p1); std::list<T>::push_back(p2); std::list<T>::push_back(p3); std::list<T>::push_back(p4); std::list<T>::push_back(p5); std::list<T>::push_back(p6); std::list<T>::push_back(p7); }
+
+  easylist(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4, const T& p5, const T& p6, const T& p7, const T& p8)
+  { std::list<T>::push_back(p0); std::list<T>::push_back(p1); std::list<T>::push_back(p2); std::list<T>::push_back(p3); std::list<T>::push_back(p4); std::list<T>::push_back(p5); std::list<T>::push_back(p6); std::list<T>::push_back(p7); std::list<T>::push_back(p8); }
+
+  easylist(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4, const T& p5, const T& p6, const T& p7, const T& p8, const T& p9)
+  { std::list<T>::push_back(p0); std::list<T>::push_back(p1); std::list<T>::push_back(p2); std::list<T>::push_back(p3); std::list<T>::push_back(p4); std::list<T>::push_back(p5); std::list<T>::push_back(p6); std::list<T>::push_back(p7); std::list<T>::push_back(p8); std::list<T>::push_back(p8); std::list<T>::push_back(p9); }
+}; // class easylist
+
+// Syntactic sugar for specifying vectors
+template<class T>
+class easyvector : public std::vector<T> {
+  public:
+  easyvector() {}
+
+  easyvector(const T& p0)
+  { std::vector<T>::push_back(p0); }
+
+  easyvector(const T& p0, const T& p1)
+  { std::vector<T>::push_back(p0); std::vector<T>::push_back(p1); }
+
+  easyvector(const T& p0, const T& p1, const T& p2)
+  { std::vector<T>::push_back(p0); std::vector<T>::push_back(p1); std::vector<T>::push_back(p2); }
+
+  easyvector(const T& p0, const T& p1, const T& p2, const T& p3)
+  { std::vector<T>::push_back(p0); std::vector<T>::push_back(p1); std::vector<T>::push_back(p2); std::vector<T>::push_back(p3); }
+
+  easyvector(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4)
+  { std::vector<T>::push_back(p0); std::vector<T>::push_back(p1); std::vector<T>::push_back(p2); std::vector<T>::push_back(p3); std::vector<T>::push_back(p4); }
+
+  easyvector(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4, const T& p5)
+  { std::vector<T>::push_back(p0); std::vector<T>::push_back(p1); std::vector<T>::push_back(p2); std::vector<T>::push_back(p3); std::vector<T>::push_back(p4); std::vector<T>::push_back(p5); }
+
+  easyvector(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4, const T& p5, const T& p6)
+  { std::vector<T>::push_back(p0); std::vector<T>::push_back(p1); std::vector<T>::push_back(p2); std::vector<T>::push_back(p3); std::vector<T>::push_back(p4); std::vector<T>::push_back(p5); std::vector<T>::push_back(p6); }
+
+  easyvector(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4, const T& p5, const T& p6, const T& p7)
+  { std::vector<T>::push_back(p0); std::vector<T>::push_back(p1); std::vector<T>::push_back(p2); std::vector<T>::push_back(p3); std::vector<T>::push_back(p4); std::vector<T>::push_back(p5); std::vector<T>::push_back(p6); std::vector<T>::push_back(p7); }
+
+  easyvector(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4, const T& p5, const T& p6, const T& p7, const T& p8)
+  { std::vector<T>::push_back(p0); std::vector<T>::push_back(p1); std::vector<T>::push_back(p2); std::vector<T>::push_back(p3); std::vector<T>::push_back(p4); std::vector<T>::push_back(p5); std::vector<T>::push_back(p6); std::vector<T>::push_back(p7); std::vector<T>::push_back(p8); }
+
+  easyvector(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4, const T& p5, const T& p6, const T& p7, const T& p8, const T& p9)
+  { std::vector<T>::push_back(p0); std::vector<T>::push_back(p1); std::vector<T>::push_back(p2); std::vector<T>::push_back(p3); std::vector<T>::push_back(p4); std::vector<T>::push_back(p5); std::vector<T>::push_back(p6); std::vector<T>::push_back(p7); std::vector<T>::push_back(p8); std::vector<T>::push_back(p8); std::vector<T>::push_back(p9); }
+}; // class easyvector
+
+
+// Syntactic sugar for specifying maps
+template<class KeyT, class ValT>
+class easymap: public std::map<KeyT, ValT> {
+  public:
+  easymap() {} 
+	
+  easymap(const KeyT& key0, const ValT& val0)
+  { (*this)[key0] = val0; }
+  
+  easymap(const KeyT& key0, const ValT& val0, const KeyT& key1, const ValT& val1)
+  { (*this)[key0] = val0; (*this)[key1] = val1; }
+  
+  easymap(const KeyT& key0, const ValT& val0, const KeyT& key1, const ValT& val1, const KeyT& key2, const ValT& val2)
+  { (*this)[key0] = val0; (*this)[key1] = val1; (*this)[key2] = val2; }
+  
+  easymap(const KeyT& key0, const ValT& val0, const KeyT& key1, const ValT& val1, const KeyT& key2, const ValT& val2, const KeyT& key3, const ValT& val3)
+  { (*this)[key0] = val0; (*this)[key1] = val1; (*this)[key2] = val2; (*this)[key3] = val3; }
+  
+  easymap(const KeyT& key0, const ValT& val0, const KeyT& key1, const ValT& val1, const KeyT& key2, const ValT& val2, const KeyT& key3, const ValT& val3, const KeyT& key4, const ValT& val4)
+  { (*this)[key0] = val0; (*this)[key1] = val1; (*this)[key2] = val2; (*this)[key3] = val3; (*this)[key4] = val4; }
+  
+  easymap(const KeyT& key0, const ValT& val0, const KeyT& key1, const ValT& val1, const KeyT& key2, const ValT& val2, const KeyT& key3, const ValT& val3, const KeyT& key4, const ValT& val4, const KeyT& key5, const ValT& val5)
+  { (*this)[key0] = val0; (*this)[key1] = val1; (*this)[key2] = val2; (*this)[key3] = val3; (*this)[key4] = val4; (*this)[key5] = val5; }
+  
+  easymap(const KeyT& key0, const ValT& val0, const KeyT& key1, const ValT& val1, const KeyT& key2, const ValT& val2, const KeyT& key3, const ValT& val3, const KeyT& key4, const ValT& val4, const KeyT& key5, const ValT& val5, const KeyT& key6, const ValT& val6)
+  { (*this)[key0] = val0; (*this)[key1] = val1; (*this)[key2] = val2; (*this)[key3] = val3; (*this)[key4] = val4; (*this)[key5] = val5; (*this)[key6] = val6; }
+  
+  easymap(const KeyT& key0, const ValT& val0, const KeyT& key1, const ValT& val1, const KeyT& key2, const ValT& val2, const KeyT& key3, const ValT& val3, const KeyT& key4, const ValT& val4, const KeyT& key5, const ValT& val5, const KeyT& key6, const ValT& val6, const KeyT& key7, const ValT& val7)
+  { (*this)[key0] = val0; (*this)[key1] = val1; (*this)[key2] = val2; (*this)[key3] = val3; (*this)[key4] = val4; (*this)[key5] = val5; (*this)[key6] = val6; (*this)[key7] = val7; }
+  
+  easymap(const KeyT& key0, const ValT& val0, const KeyT& key1, const ValT& val1, const KeyT& key2, const ValT& val2, const KeyT& key3, const ValT& val3, const KeyT& key4, const ValT& val4, const KeyT& key5, const ValT& val5, const KeyT& key6, const ValT& val6, const KeyT& key7, const ValT& val7, const KeyT& key8, const ValT& val8)
+  { (*this)[key0] = val0; (*this)[key1] = val1; (*this)[key2] = val2; (*this)[key3] = val3; (*this)[key4] = val4; (*this)[key5] = val5; (*this)[key6] = val6; (*this)[key7] = val7; (*this)[key8] = val8; }
+  
+  easymap(const KeyT& key0, const ValT& val0, const KeyT& key1, const ValT& val1, const KeyT& key2, const ValT& val2, const KeyT& key3, const ValT& val3, const KeyT& key4, const ValT& val4, const KeyT& key5, const ValT& val5, const KeyT& key6, const ValT& val6, const KeyT& key7, const ValT& val7, const KeyT& key8, const ValT& val8, const KeyT& key9, const ValT& val9)
+  { (*this)[key0] = val0; (*this)[key1] = val1; (*this)[key2] = val2; (*this)[key3] = val3; (*this)[key4] = val4; (*this)[key5] = val5; (*this)[key6] = val6; (*this)[key7] = val7; (*this)[key8] = val8; (*this)[key9] = val9; }
+}; // easymap
+
+// Syntactic sugar for specifying sets
+template<class T>
+class easyset : public std::set<T> {
+  public:
+  easyset() {}
+
+  easyset(const T& p0)
+  { std::set<T>::insert(p0); }
+
+  easyset(const T& p0, const T& p1)
+  { std::set<T>::insert(p0); std::set<T>::insert(p1); }
+
+  easyset(const T& p0, const T& p1, const T& p2)
+  { std::set<T>::insert(p0); std::set<T>::insert(p1); std::set<T>::insert(p2); }
+
+  easyset(const T& p0, const T& p1, const T& p2, const T& p3)
+  { std::set<T>::insert(p0); std::set<T>::insert(p1); std::set<T>::insert(p2); std::set<T>::insert(p3); }
+
+  easyset(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4)
+  { std::set<T>::insert(p0); std::set<T>::insert(p1); std::set<T>::insert(p2); std::set<T>::insert(p3); std::set<T>::insert(p4); }
+
+  easyset(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4, const T& p5)
+  { std::set<T>::insert(p0); std::set<T>::insert(p1); std::set<T>::insert(p2); std::set<T>::insert(p3); std::set<T>::insert(p4); std::set<T>::insert(p5); }
+
+  easyset(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4, const T& p5, const T& p6)
+  { std::set<T>::insert(p0); std::set<T>::insert(p1); std::set<T>::insert(p2); std::set<T>::insert(p3); std::set<T>::insert(p4); std::set<T>::insert(p5); std::set<T>::insert(p6); }
+
+  easyset(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4, const T& p5, const T& p6, const T& p7)
+  { std::set<T>::insert(p0); std::set<T>::insert(p1); std::set<T>::insert(p2); std::set<T>::insert(p3); std::set<T>::insert(p4); std::set<T>::insert(p5); std::set<T>::insert(p6); std::set<T>::insert(p7); }
+
+  easyset(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4, const T& p5, const T& p6, const T& p7, const T& p8)
+  { std::set<T>::insert(p0); std::set<T>::insert(p1); std::set<T>::insert(p2); std::set<T>::insert(p3); std::set<T>::insert(p4); std::set<T>::insert(p5); std::set<T>::insert(p6); std::set<T>::insert(p7); std::set<T>::insert(p8); }
+
+  easyset(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4, const T& p5, const T& p6, const T& p7, const T& p8, const T& p9)
+  { std::set<T>::insert(p0); std::set<T>::insert(p1); std::set<T>::insert(p2); std::set<T>::insert(p3); std::set<T>::insert(p4); std::set<T>::insert(p5); std::set<T>::insert(p6); std::set<T>::insert(p7); std::set<T>::insert(p8); std::set<T>::insert(p8); std::set<T>::insert(p9); }
+}; // class easyset
+
 /*******************************
  ***** Configuration Files *****
  *******************************/
@@ -554,161 +732,12 @@ class sightConfHandlerInstantiator : confHandlerInstantiator {
 };
 extern sightConfHandlerInstantiator sightConfHandlerInstantance;
 
+// Loads the configuration file(s) stored in the files specified in the given environment variables
+typedef easylist<std::string> configFileEnvVars;
+void loadSightConfig(const std::list<std::string>& cfgFNameEnv); 
+
 // Given a parser that reads a given configuration file, load it
 void loadConfiguration(structureParser& parser);
-
-/***********************************************
- ***** Syntactic Sugar for Data Structures *****
- ***********************************************/
-
-// Syntactic sugar for specifying lists
-template<class T>
-class easylist : public std::list<T> {
-	public:
-	easylist() {}
-	  
-	easylist(const T& p0)
-	{ std::list<T>::push_back(p0); }
-	
-	easylist(const T& p0, const T& p1)
-	{ std::list<T>::push_back(p0); std::list<T>::push_back(p1); }
-	
-	easylist(const T& p0, const T& p1, const T& p2)
-	{ std::list<T>::push_back(p0); std::list<T>::push_back(p1); std::list<T>::push_back(p2); }
-	
-	easylist(const T& p0, const T& p1, const T& p2, const T& p3)
-	{ std::list<T>::push_back(p0); std::list<T>::push_back(p1); std::list<T>::push_back(p2); std::list<T>::push_back(p3); }
-	
-	easylist(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4)
-	{ std::list<T>::push_back(p0); std::list<T>::push_back(p1); std::list<T>::push_back(p2); std::list<T>::push_back(p3); std::list<T>::push_back(p4); }
-	
-	easylist(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4, const T& p5)
-	{ std::list<T>::push_back(p0); std::list<T>::push_back(p1); std::list<T>::push_back(p2); std::list<T>::push_back(p3); std::list<T>::push_back(p4); std::list<T>::push_back(p5); }
-	
-	easylist(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4, const T& p5, const T& p6)
-	{ std::list<T>::push_back(p0); std::list<T>::push_back(p1); std::list<T>::push_back(p2); std::list<T>::push_back(p3); std::list<T>::push_back(p4); std::list<T>::push_back(p5); std::list<T>::push_back(p6); }
-	
-	easylist(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4, const T& p5, const T& p6, const T& p7)
-	{ std::list<T>::push_back(p0); std::list<T>::push_back(p1); std::list<T>::push_back(p2); std::list<T>::push_back(p3); std::list<T>::push_back(p4); std::list<T>::push_back(p5); std::list<T>::push_back(p6); std::list<T>::push_back(p7); }
-	
-	easylist(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4, const T& p5, const T& p6, const T& p7, const T& p8)
-	{ std::list<T>::push_back(p0); std::list<T>::push_back(p1); std::list<T>::push_back(p2); std::list<T>::push_back(p3); std::list<T>::push_back(p4); std::list<T>::push_back(p5); std::list<T>::push_back(p6); std::list<T>::push_back(p7); std::list<T>::push_back(p8); }
-	
-	easylist(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4, const T& p5, const T& p6, const T& p7, const T& p8, const T& p9)
-	{ std::list<T>::push_back(p0); std::list<T>::push_back(p1); std::list<T>::push_back(p2); std::list<T>::push_back(p3); std::list<T>::push_back(p4); std::list<T>::push_back(p5); std::list<T>::push_back(p6); std::list<T>::push_back(p7); std::list<T>::push_back(p8); std::list<T>::push_back(p8); std::list<T>::push_back(p9); }
-}; // class easylist
-
-// Syntactic sugar for specifying vectors
-template<class T>
-class easyvector : public std::vector<T> {
-	public:
-	easyvector() {}
-	  
-	easyvector(const T& p0)
-	{ std::vector<T>::push_back(p0); }
-	
-	easyvector(const T& p0, const T& p1)
-	{ std::vector<T>::push_back(p0); std::vector<T>::push_back(p1); }
-	
-	easyvector(const T& p0, const T& p1, const T& p2)
-	{ std::vector<T>::push_back(p0); std::vector<T>::push_back(p1); std::vector<T>::push_back(p2); }
-	
-	easyvector(const T& p0, const T& p1, const T& p2, const T& p3)
-	{ std::vector<T>::push_back(p0); std::vector<T>::push_back(p1); std::vector<T>::push_back(p2); std::vector<T>::push_back(p3); }
-	
-	easyvector(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4)
-	{ std::vector<T>::push_back(p0); std::vector<T>::push_back(p1); std::vector<T>::push_back(p2); std::vector<T>::push_back(p3); std::vector<T>::push_back(p4); }
-	
-	easyvector(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4, const T& p5)
-	{ std::vector<T>::push_back(p0); std::vector<T>::push_back(p1); std::vector<T>::push_back(p2); std::vector<T>::push_back(p3); std::vector<T>::push_back(p4); std::vector<T>::push_back(p5); }
-	
-	easyvector(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4, const T& p5, const T& p6)
-	{ std::vector<T>::push_back(p0); std::vector<T>::push_back(p1); std::vector<T>::push_back(p2); std::vector<T>::push_back(p3); std::vector<T>::push_back(p4); std::vector<T>::push_back(p5); std::vector<T>::push_back(p6); }
-	
-	easyvector(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4, const T& p5, const T& p6, const T& p7)
-	{ std::vector<T>::push_back(p0); std::vector<T>::push_back(p1); std::vector<T>::push_back(p2); std::vector<T>::push_back(p3); std::vector<T>::push_back(p4); std::vector<T>::push_back(p5); std::vector<T>::push_back(p6); std::vector<T>::push_back(p7); }
-	
-	easyvector(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4, const T& p5, const T& p6, const T& p7, const T& p8)
-	{ std::vector<T>::push_back(p0); std::vector<T>::push_back(p1); std::vector<T>::push_back(p2); std::vector<T>::push_back(p3); std::vector<T>::push_back(p4); std::vector<T>::push_back(p5); std::vector<T>::push_back(p6); std::vector<T>::push_back(p7); std::vector<T>::push_back(p8); }
-	
-	easyvector(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4, const T& p5, const T& p6, const T& p7, const T& p8, const T& p9)
-	{ std::vector<T>::push_back(p0); std::vector<T>::push_back(p1); std::vector<T>::push_back(p2); std::vector<T>::push_back(p3); std::vector<T>::push_back(p4); std::vector<T>::push_back(p5); std::vector<T>::push_back(p6); std::vector<T>::push_back(p7); std::vector<T>::push_back(p8); std::vector<T>::push_back(p8); std::vector<T>::push_back(p9); }
-}; // class easyvector
-
-
-// Syntactic sugar for specifying maps
-template<class KeyT, class ValT>
-class easymap: public std::map<KeyT, ValT> {
-	public:
-	easymap() {} 
-	
-  easymap(const KeyT& key0, const ValT& val0)
-  { (*this)[key0] = val0; }
-  
-  easymap(const KeyT& key0, const ValT& val0, const KeyT& key1, const ValT& val1)
-  { (*this)[key0] = val0; (*this)[key1] = val1; }
-  
-  easymap(const KeyT& key0, const ValT& val0, const KeyT& key1, const ValT& val1, const KeyT& key2, const ValT& val2)
-  { (*this)[key0] = val0; (*this)[key1] = val1; (*this)[key2] = val2; }
-  
-  easymap(const KeyT& key0, const ValT& val0, const KeyT& key1, const ValT& val1, const KeyT& key2, const ValT& val2, const KeyT& key3, const ValT& val3)
-  { (*this)[key0] = val0; (*this)[key1] = val1; (*this)[key2] = val2; (*this)[key3] = val3; }
-  
-  easymap(const KeyT& key0, const ValT& val0, const KeyT& key1, const ValT& val1, const KeyT& key2, const ValT& val2, const KeyT& key3, const ValT& val3, const KeyT& key4, const ValT& val4)
-  { (*this)[key0] = val0; (*this)[key1] = val1; (*this)[key2] = val2; (*this)[key3] = val3; (*this)[key4] = val4; }
-  
-  easymap(const KeyT& key0, const ValT& val0, const KeyT& key1, const ValT& val1, const KeyT& key2, const ValT& val2, const KeyT& key3, const ValT& val3, const KeyT& key4, const ValT& val4, const KeyT& key5, const ValT& val5)
-  { (*this)[key0] = val0; (*this)[key1] = val1; (*this)[key2] = val2; (*this)[key3] = val3; (*this)[key4] = val4; (*this)[key5] = val5; }
-  
-  easymap(const KeyT& key0, const ValT& val0, const KeyT& key1, const ValT& val1, const KeyT& key2, const ValT& val2, const KeyT& key3, const ValT& val3, const KeyT& key4, const ValT& val4, const KeyT& key5, const ValT& val5, const KeyT& key6, const ValT& val6)
-  { (*this)[key0] = val0; (*this)[key1] = val1; (*this)[key2] = val2; (*this)[key3] = val3; (*this)[key4] = val4; (*this)[key5] = val5; (*this)[key6] = val6; }
-  
-  easymap(const KeyT& key0, const ValT& val0, const KeyT& key1, const ValT& val1, const KeyT& key2, const ValT& val2, const KeyT& key3, const ValT& val3, const KeyT& key4, const ValT& val4, const KeyT& key5, const ValT& val5, const KeyT& key6, const ValT& val6, const KeyT& key7, const ValT& val7)
-  { (*this)[key0] = val0; (*this)[key1] = val1; (*this)[key2] = val2; (*this)[key3] = val3; (*this)[key4] = val4; (*this)[key5] = val5; (*this)[key6] = val6; (*this)[key7] = val7; }
-  
-  easymap(const KeyT& key0, const ValT& val0, const KeyT& key1, const ValT& val1, const KeyT& key2, const ValT& val2, const KeyT& key3, const ValT& val3, const KeyT& key4, const ValT& val4, const KeyT& key5, const ValT& val5, const KeyT& key6, const ValT& val6, const KeyT& key7, const ValT& val7, const KeyT& key8, const ValT& val8)
-  { (*this)[key0] = val0; (*this)[key1] = val1; (*this)[key2] = val2; (*this)[key3] = val3; (*this)[key4] = val4; (*this)[key5] = val5; (*this)[key6] = val6; (*this)[key7] = val7; (*this)[key8] = val8; }
-  
-  easymap(const KeyT& key0, const ValT& val0, const KeyT& key1, const ValT& val1, const KeyT& key2, const ValT& val2, const KeyT& key3, const ValT& val3, const KeyT& key4, const ValT& val4, const KeyT& key5, const ValT& val5, const KeyT& key6, const ValT& val6, const KeyT& key7, const ValT& val7, const KeyT& key8, const ValT& val8, const KeyT& key9, const ValT& val9)
-  { (*this)[key0] = val0; (*this)[key1] = val1; (*this)[key2] = val2; (*this)[key3] = val3; (*this)[key4] = val4; (*this)[key5] = val5; (*this)[key6] = val6; (*this)[key7] = val7; (*this)[key8] = val8; (*this)[key9] = val9; }
-}; // easymap
-
-// Syntactic sugar for specifying sets
-template<class T>
-class easyset : public std::set<T> {
-	public:
-	easyset() {}
-	  
-	easyset(const T& p0)
-	{ insert(p0); }
-	
-	easyset(const T& p0, const T& p1)
-	{ insert(p0); insert(p1); }
-	
-	easyset(const T& p0, const T& p1, const T& p2)
-	{ insert(p0); insert(p1); insert(p2); }
-	
-	easyset(const T& p0, const T& p1, const T& p2, const T& p3)
-	{ insert(p0); insert(p1); insert(p2); insert(p3); }
-	
-	easyset(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4)
-	{ insert(p0); insert(p1); insert(p2); insert(p3); insert(p4); }
-	
-	easyset(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4, const T& p5)
-	{ insert(p0); insert(p1); insert(p2); insert(p3); insert(p4); insert(p5); }
-	
-	easyset(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4, const T& p5, const T& p6)
-	{ insert(p0); insert(p1); insert(p2); insert(p3); insert(p4); insert(p5); insert(p6); }
-	
-	easyset(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4, const T& p5, const T& p6, const T& p7)
-	{ insert(p0); insert(p1); insert(p2); insert(p3); insert(p4); insert(p5); insert(p6); insert(p7); }
-	
-	easyset(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4, const T& p5, const T& p6, const T& p7, const T& p8)
-	{ insert(p0); insert(p1); insert(p2); insert(p3); insert(p4); insert(p5); insert(p6); insert(p7); insert(p8); }
-	
-	easyset(const T& p0, const T& p1, const T& p2, const T& p3, const T& p4, const T& p5, const T& p6, const T& p7, const T& p8, const T& p9)
-	{ insert(p0); insert(p1); insert(p2); insert(p3); insert(p4); insert(p5); insert(p6); insert(p7); insert(p8); insert(p8); insert(p9); }
-}; // class easyset
 
 } // namespace common
 } // namespace sight

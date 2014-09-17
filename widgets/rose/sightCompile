@@ -1,0 +1,26 @@
+echo "ROSE_DIR=$1, file=$2, CFLAGS=$3"
+
+echo "----- Preparing for transformation -----"
+rm -f  $2.rose0.C
+echo "#include  \"sight.h\"" >> $2.rose0.C
+echo "#include \"sight_rose.h\"" >> $2.rose0.C
+cat $2 >> $2.rose0.C
+
+echo "----- Transforming with ROSE -----"
+rm -f $2.rose1.C
+echo "$1/addFunctionCalls -rose:skipfinalCompileStep -rose:Cxx $2.rose0.C -rose:output $2.rose1.C $3"
+$1/addFunctionCalls -rose:skipfinalCompileStep -rose:Cxx $2.rose0.C -rose:output $2.rose1.C $3 
+
+echo "----- Preparing for final compilation -----"
+rm -f $2.rose2.C
+# MAIN or NONMAIN
+head -n 1 $2.rose1.C > $2.rose2.C
+# includes
+#echo "#include \"sight_rose.h\"" >> $2.rose2.C
+echo "#include  \"sight.h\"" >> $2.rose2.C
+# body
+tail -n +2 $2.rose1.C >> $2.rose2.C
+
+echo "----- Renaming and cleaning up -----"
+cp $2.rose2.C $2.rose.C
+rm -f $2.rose0.C $2.rose1.C $2.rose2.C

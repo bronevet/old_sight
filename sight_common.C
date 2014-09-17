@@ -4,7 +4,10 @@
 #include <ostream>
 #include <fstream>
 #include <assert.h>
+#include <errno.h>
+#include <string.h>
 #include "sight_common.h"
+#include "process.h"
 
 using namespace std;
 
@@ -13,8 +16,8 @@ namespace common {
 
 // Returns whether log generation has been enabled or explicitly disabled
 bool isEnabled() {
-  static bool checked=false;
-  static bool enabledDebug; // Records whether log generation has been enabled or explicitly disabled
+  static __thread bool checked=false;
+  static __thread bool enabledDebug; // Records whether log generation has been enabled or explicitly disabled
   if(!checked) {
     checked = true;
     enabledDebug = (getenv("DISABLE_SIGHT") == NULL);
@@ -741,6 +744,24 @@ sightConfHandlerInstantiator::sightConfHandlerInstantiator() {
   (*confExitHandlers )["link"]   = &defaultExitHandler;*/
 }
 sightConfHandlerInstantiator sightConfHandlerInstantance;
+
+// Loads the configuration file(s) stored in the files specified in the given environment variables
+void loadSightConfig(const std::list<std::string>& cfgFNameEnv) {
+  for(list<string>::const_iterator c=cfgFNameEnv.begin(); c!=cfgFNameEnv.end(); c++) {
+    // If the user has specified a file name under the current environment variable
+    if(getenv(c->c_str())) {
+      escapedStr es(string(getenv(c->c_str())), ":", escapedStr::escaped);
+      vector<string> files = es.unescapeSplit(":");
+      for(vector<string>::iterator f=files.begin(); f!=files.end(); f++) {
+        FILE* cfg = fopen(f->c_str(), "r");
+        if(cfg==NULL) { cerr << "ERROR opening configuration file \""<<f->c_str()<<"\" for reading! "<<strerror(errno)<<endl; assert(cfg); }
+        FILEStructureParser parser(cfg, 10000);
+        loadConfiguration(parser);
+        fclose(cfg);
+      }
+    }
+  }
+}
 
 // Given a parser that reads a given configuration file, load it
 void loadConfiguration(structureParser& parser) {

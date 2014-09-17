@@ -9,9 +9,13 @@ import re
 import math
 import argparse
 
+<<<<<<< HEAD
 #SIGHT_ROOT = "/nfs/tmp2/bronevet/sight/sight"
 #CODE_ROOT = SIGHT_ROOT+"/apps/AMG2013"
 SIGHT_ROOT = "~/sightVis/sight"
+=======
+SIGHT_ROOT = "/nfs/tmp2/bronevet/sight/sight"
+>>>>>>> gbDevelop
 CODE_ROOT = SIGHT_ROOT+"/apps/AMG2013"
 procsPerNode = 16
 
@@ -27,6 +31,7 @@ def main(argv):
   elif("AMG_MTX" in os.environ) : mtx = os.environ["AMG_MTX"].split()
   else :                          mtx = ["default"]#, "laplace", "27pt", "jumps"];
   print "mtx="+str(mtx)
+<<<<<<< HEAD
   solver = ["PCG_AMG", "GMRES_AMG"]#"PCG_Diag", "GMRES_AMG", "GMRES_Diag"];
   pooldist = ["1"]#["0", "1"];
   power = ["3000"]#["1000"]#["25", "50", "75", "100"];
@@ -34,11 +39,23 @@ def main(argv):
   ncube = ["100"]#["10"]# "40", "100"];
   tol = ["1e-01", "1e-02", "1e-03","1e-04", "1e-05","1e-06"] #, "1e-05", "1e-04"]
   #tol = ["1e-04", "1e-05","1e-06"]
+=======
+  solver = ["PCG_AMG", "PCG_Diag", "GMRES_AMG", "GMRES_Diag"];
+  pooldist = ["0", "1"];
+  power = ["25", "50", "75", "100"];
+  refine = ["1", "6", "12"];
+  ncube = ["10", "40", "100"];
+  tol = ["1e-06", "1e-05", "1e-04"]
+>>>>>>> gbDevelop
   # The distribution of processors among the x, y z dimensions. The last entry must correspond to 
   # the distribution with the largest values in each dimension. The problem size is pMult*px*py*pz of the largest entry.
   # px, py and pz must be powers of 2.
   pSize = [4,2,2]
+<<<<<<< HEAD
   numprocs = [[2,2,2]]#, [4,2,2], [4,4,2]]
+=======
+  numprocs = [[2,2,2], [4,2,2], [4,4,2]]
+>>>>>>> gbDevelop
   
   #os.system("rm -rf data")
   os.system("rm -rf data/*.core dbg.AMG2013* *.core")
@@ -99,6 +116,7 @@ def main(argv):
   #          for n in ncube :
   #              mergeLayout(m, s, pd, r, n)
   
+<<<<<<< HEAD
 #  # Merge all the runs
 #  syscall(SIGHT_ROOT+"/hier_merge dbg.AMG2013 zipper data/merge/dbg.AMG2013.numprocs_*", True)
 #  
@@ -115,6 +133,24 @@ def main(argv):
 #  
 #  # Remove the core files
 #  os.system("rm -f data/*.core data/*.yaml");
+=======
+  # Merge all the runs
+  syscall(SIGHT_ROOT+"/hier_merge dbg.AMG2013 zipper data/merge/dbg.AMG2013.numprocs_*", True)
+  
+  # Lay out the html output
+  print "SLAYOUT"
+  print SIGHT_ROOT+"/slayout dbg.AMG2013\n"
+  os.system(SIGHT_ROOT+"/slayout dbg.AMG2013")
+  
+  print "PACKAGING"
+  #syscall("rm -f dbg.AMG2013.tar.gz", True);
+  #syscall("rm -f dbg.AMG2013/structure data/merge/dbg.AMG2013.*/structure", True);
+  #syscall("tar -cf dbg.AMG2013.tar dbg.AMG2013 data/merge/dbg.AMG2013.*", True);
+  #syscall("gzip dbg.AMG2013.tar", True);
+  
+  # Remove the core files
+  os.system("rm -f data/*.core data/*.yaml");
+>>>>>>> gbDevelop
 
 def syscall(command, verbose=True) :
     print command;
@@ -168,7 +204,10 @@ def merge(m, s, pd, pw, t, np, pSize, r, n, idx) :
       # Merge data from all ranks into a single log
       if(not os.path.exists("merge/"+path)) : 
           syscall(SIGHT_ROOT+"/hier_merge merge/"+path+" zipper "+path+".rank_*", True);
+<<<<<<< HEAD
           syscall(SIGHT_ROOT+"/slayout merge/"+path, True);
+=======
+>>>>>>> gbDevelop
           
       return;
   

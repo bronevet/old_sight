@@ -1,20 +1,21 @@
 SIGHT_COMMON_O := sight_common.o attributes/attributes_common.o binreloc.o getAllHostnames.o utils.o
 SIGHT_COMMON_H := sight.h sight_common_internal.h attributes/attributes_common.h binreloc.h getAllHostnames.h utils.h
-SIGHT_STRUCTURE_O := sight_structure.o attributes/attributes_structure.o
-SIGHT_STRUCTURE_H := sight.h sight_structure_internal.h attributes/attributes_structure.h
+SIGHT_STRUCTURE_O := sight_structure.o sight_merge.o attributes/attributes_structure.o
+SIGHT_STRUCTURE_H := sight.h sight_structure_internal.h sight_merge.h attributes/attributes_structure.h
 SIGHT_LAYOUT_O := sight_layout.o attributes/attributes_layout.o slayout.o variant_layout.o 
 SIGHT_LAYOUT_H := sight.h sight_layout_internal.h attributes/attributes_layout.h variant_layout.h
 sight := ${sight_O} ${sight_H} gdbLineNum.pl sightDefines.pl
 
 ROOT_PATH = ${CURDIR}
 
-SIGHT_CFLAGS = -g -I${ROOT_PATH} -I${ROOT_PATH}/attributes -I${ROOT_PATH}/widgets/* \
+SIGHT_CFLAGS = -g -fPIC -I${ROOT_PATH} -I${ROOT_PATH}/attributes -I${ROOT_PATH}/widgets/parallel \
                 -I${ROOT_PATH}/tools/callpath/src -I${ROOT_PATH}/tools/adept-utils/include \
                 -I${ROOT_PATH}/tools/boost_1_55_0 \
-                -I${ROOT_PATH}/widgets/papi/include \
-                -I${ROOT_PATH}/widgets/libmsr/include
+                -I${ROOT_PATH}/widgets/papi/include 
 
-SIGHT_LINKFLAGS = ${ROOT_PATH}/tools/adept-utils/lib/libadept_cutils.so \
+SIGHT_LINKFLAGS = \
+                  -Wl,-rpath ${ROOT_PATH} \
+                  ${ROOT_PATH}/tools/adept-utils/lib/libadept_cutils.so \
                   ${ROOT_PATH}/tools/adept-utils/lib/libadept_timing.so \
                   ${ROOT_PATH}/tools/adept-utils/lib/libadept_utils.so \
                   -Wl,-rpath ${ROOT_PATH}/tools/adept-utils/lib \
@@ -25,16 +26,16 @@ SIGHT_LINKFLAGS = ${ROOT_PATH}/tools/adept-utils/lib/libadept_cutils.so \
                   ${ROOT_PATH}/widgets/gsl/lib/libgslcblas.so \
                   -Wl,-rpath ${ROOT_PATH}/widgets/gsl/lib \
 	          -lpthread
-RAPL_ENABLED = 0
+
+RAPL_ENABLED = 1
 ifeq (${RAPL_ENABLED}, 1)
+SIGHT_CFLAGS += -I${ROOT_PATH}/widgets/libmsr/include
 SIGHT_LINKFLAGS += ${ROOT_PATH}/widgets/libmsr/lib/libmsr.so \
                     -Wl,-rpath ${ROOT_PATH}/widgets/libmsr/lib
 endif
 	                
-	                #-Wl,-rpath ${ROOT_PATH}/widgets/papi/lib \
-
-CC = gcc #clang #gcc
-CCC = g++ #clang++ #g++
+override CC=clang #icc #gcc
+override CCC=clang++ #icpc #clang++ #g++
 MPICC = mpi${CC}
 MPICCC = mpi${CCC}
 
@@ -45,7 +46,7 @@ endif
 
 all: core allExamples
 	
-core: sightDefines.pl gdbLineNum.pl Makefile.extern maketools libsight_common.a libsight_structure.a slayout${EXE} hier_merge${EXE} widgets_post script/taffydb 
+core: sightDefines.pl gdbLineNum.pl Makefile.extern definitions.h maketools libsight_common.a libsight_structure.so slayout${EXE} libsight_layout.so hier_merge${EXE} widgets_post script/taffydb 
 	chmod 755 html img script
 	chmod 644 html/* img/* script/*
 	chmod 755 script/taffydb
@@ -53,7 +54,8 @@ core: sightDefines.pl gdbLineNum.pl Makefile.extern maketools libsight_common.a 
 # Remakes only the object files
 refresh: clean_objects all
 
-# Set to "1" if we wish gdb support to be enabled and otherwise set to 0
+# Set to "1" if we wish to enable support for services running on the node on which the original computation was 
+# performed in addition to running code in the browser. The includes gdb and VNC integration. Otherwise set to 0
 ifeq (${OS}, Cygwin)
 REMOTE_ENABLED := 0
 else
@@ -69,8 +71,19 @@ ifneq (${OS}, Cygwin)
 GDB_PORT := 17501
 endif
 
+# Set to "1" if we wish to enable VNC integration
+ifeq (${OS}, Cygwin)
+VNC_ENABLED := 0
+else
+# Default distribution disables VNC 
+VNC_ENABLED := 0
+# VNC is only enabled if remote services are enabled
+#ifeq (${REMOTE_ENABLED}, 1)
+# VNC_ENABLED := 1 
+endif
+
 # By default we disable KULFI-based fault injection since it requires LLVM
-KULFI_ENABLED := 0
+KULFI_ENABLED := 1
 	
 ifeq (${KULFI_ENABLED}, 1)
 # Sight must use the same LLVM Clang compiler as KULFI does
@@ -86,12 +99,20 @@ MPICC = ${ROOT_PATH}/tools/mpiclang
 MPICCC = ${ROOT_PATH}/tools/mpiclang++
 endif
 
-MAKE_DEFINES = ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" CC=${CC} CCC=${CCC} KULFI_ENABLED=${KULFI_ENABLED} LLVM32_SRC_PATH=${LLVM32_SRC_PATH} LLVM32_BUILD_PATH=${LLVM32_BUILD_PATH} LLVM32_INSTALL_PATH=${LLVM32_INSTALL_PATH}
+MAKE_DEFINES = ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} VNC_ENABLED=${VNC_ENABLED} MPI_ENABLED=${MPI_ENABLED} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" CC=${CC} CCC=${CCC} KULFI_ENABLED=${KULFI_ENABLED} LLVM32_SRC_PATH=${LLVM32_SRC_PATH} LLVM32_BUILD_PATH=${LLVM32_BUILD_PATH} LLVM32_INSTALL_PATH=${LLVM32_INSTALL_PATH}
+
+# Set to "!" if we wish to enable examples that use MPI
+MPI_ENABLED = 0
+#MPI_ENABLED = 1
 
 .PHONY: apps
-apps: mfem #mcbench
+ifeq (${MPI_ENABLED}, 1)
+apps: mfem CoMD #mcbench
+else
+apps: mfem
+endif
 
-mfem: libsight_structure.a
+mfem: libsight_structure.so
 	cd apps/mfem; make ${MAKE_DEFINES}
 
 CoMD: 
@@ -102,54 +123,77 @@ CoMD:
 #	cd apps/mcbench; ./build-linux-x86_64.sh ${ROOT_PATH}
 #endif
 
-allExamples: libsight_structure.a
+allExamples: libsight_structure.so
 	cd examples; make ${MAKE_DEFINES}
 
 run: all runExamples runApps
 
-runExamples: libsight_structure.a slayout${EXE} hier_merge${EXE}
+runExamples: core
 	cd examples; make ${MAKE_DEFINES} run
+	cd examples; make ${MAKE_DEFINES} runPthread
 
+<<<<<<< HEAD
 runApps: libsight_structure.a slayout${EXE} hier_merge${EXE} apps mfem
+=======
+runPthreadExamples: core
+	cd examples; make ${MAKE_DEFINES} runPthread
+
+runApps: libsight_structure.so slayout${EXE} hier_merge${EXE} apps
+>>>>>>> gbDevelop
 	cd examples; ../apps/mfem/mfem/examples/mfemComp.pl
 	cd examples; ../apps/mfem/mfem/examples/ex2 ../apps/mfem/mfem/data/beam-tet.mesh 2
 	cd examples; ../apps/mfem/mfem/examples/ex3 ../apps/mfem/mfem/data/ball-nurbs.mesh
 	cd examples; ../apps/mfem/mfem/examples/ex4 ../apps/mfem/mfem/data/fichera-q3.mesh
+ifeq (${MPI_ENABLED}, 1)
 	cd examples; ../apps/CoMD/bin/CoMD-mpi.modules
 	cd examples; ../apps/CoMD/bin/CoMD-mpi.tracepath
 	cd examples; ../apps/CoMD/bin/CoMD-mpi.tracepos
 	cd examples; ../apps/CoMD/CoMDCompare.pl
+endif
 ifeq (${REMOTE_ENABLED}, 1)
 	cd examples; ../apps/mfem/mfem/examples/ex1 ../apps/mfem/mfem/data/beam-quad.mesh
 endif
-#ifneq (${OS}, Cygwin)
-#	apps/mcbench/src/MCBenchmark.exe --nCores=1 --distributedSource --numParticles=13107 --nZonesX=256 --nZonesY=256 --xDim=16 --yDim=16 --mirrorBoundary --multiSigma --nThreadCore=1
-#endif
 
+#runMCBench:
+#	apps/mcbench/src/MCBenchmark.exe --nCores=1 --distributedSource --numParticles=13107 --nZonesX=256 --nZonesY=256 --xDim=16 --yDim=16 --mirrorBoundary --multiSigma --nThreadCore=1
+
+runApps: libsight_structure.so slayout${EXE} hier_merge${EXE} apps runMFEM runCoMD #runMCBench
 
 slayout.o: slayout.C process.C process.h
 	${CCC} ${SIGHT_CFLAGS} slayout.C -I. -c -o slayout.o
 
-slayout${EXE}: mfem libsight_layout.a widgets_post
-	${CCC} -Wl,--whole-archive libsight_layout.a apps/mfem/mfem_layout.o -Wl,-no-whole-archive -o slayout${EXE}
+slayout${EXE}: mfem libsight_layout.so widgets_post
+	${CCC} -Wl,-rpath ${ROOT_PATH} -Wl,--whole-archive libsight_layout.so apps/mfem/mfem_layout.o -Wl,-no-whole-archive -o slayout${EXE}
+#slayout${EXE}: mfem libsight_layout.so
+#	${CCC} libsight_layout.so -Wl,-rpath ${ROOT_PATH} -Wl,-rpath ${ROOT_PATH}/widgets/gsl/lib -Lwidgets/gsl/lib -lgsl -lgslcblas apps/mfem/mfem_layout.o -o slayout${EXE}
+#slayout${EXE}: mfem libsight_layout.a
+#	${CCC} -Wl,--whole-archive libsight_layout.a apps/mfem/mfem_layout.o -Wl,-no-whole-archive -o slayout${EXE}
 #	ld --whole-archive slayout.o libsight_layout.a apps/mfem/mfem_layout.o -o slayout${EXE}
 #	${CCC} ${SIGHT_CFLAGS} slayout.C -Wl,--whole-archive libsight_layout.a -DMFEM -I. -Iapps/mfem apps/mfem/mfem_layout.o -Wl,-no-whole-archive -o slayout${EXE}
 
-hier_merge${EXE}: hier_merge.C process.C process.h libsight_structure.a 
-	${CCC} ${SIGHT_CFLAGS} hier_merge.C -Wl,--whole-archive libsight_structure.a -Wl,-no-whole-archive \
+hier_merge${EXE}: hier_merge.C process.C process.h libsight_structure.so 
+	${CCC} ${SIGHT_CFLAGS} hier_merge.C -Wl,--whole-archive libsight_structure.so -Wl,-no-whole-archive \
 	                                 -DMFEM -I. ${SIGHT_LINKFLAGS} -o hier_merge${EXE}
 
 libsight_common.a: ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre
 	ar -r libsight_common.a ${SIGHT_COMMON_O} widgets/*/*_common.o
 
-libsight_structure.a: ${SIGHT_STRUCTURE_O} ${SIGHT_STRUCTURE_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre
-	ar -r libsight_structure.a ${SIGHT_STRUCTURE_O} ${SIGHT_COMMON_O} widgets/*/*_structure.o widgets/*/*_common.o
+libsight_structure.so: ${SIGHT_STRUCTURE_O} ${SIGHT_STRUCTURE_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre
+	${CC} -shared  -Wl,-soname,libsight_structure.so -o libsight_structure.so  ${SIGHT_STRUCTURE_O} ${SIGHT_COMMON_O} widgets/*/*_structure.o widgets/parallel/sight_pthread.o widgets/box/box_api_cpp.o widgets/box/box_merge.o widgets/*/*_common.o
 
-libsight_layout.a: ${SIGHT_LAYOUT_O} ${SIGHT_LAYOUT_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre widgets/gsl/lib/libgsl.a widgets/gsl/lib/libgslcblas.a
-	mkdir -p tmp
-	cd tmp; ar -x ../widgets/gsl/lib/libgsl.a; ar -x ../widgets/gsl/lib/libgslcblas.a
-	ar -r libsight_layout.a    ${SIGHT_LAYOUT_O}    ${SIGHT_COMMON_O} widgets/*/*_layout.o widgets/*/*_common.o tmp/*.o
-	rm -fr tmp
+#libsight_structure.a: ${SIGHT_STRUCTURE_O} ${SIGHT_STRUCTURE_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre
+#	ar -r libsight_structure.a ${SIGHT_STRUCTURE_O} ${SIGHT_COMMON_O} widgets/*/*_structure.o widgets/*/*_common.o
+
+libsight_layout.so: ${SIGHT_LAYOUT_O} ${SIGHT_LAYOUT_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre widgets/gsl/lib/libgsl.so widgets/gsl/lib/libgslcblas.so
+	${CC} -shared -Wl,-soname,libsight_layout.so -o libsight_layout.so ${SIGHT_LAYOUT_O} ${SIGHT_COMMON_O} widgets/*/*_layout.o widgets/*/*_common.o -Lwidgets/gsl/lib -lgsl -lgslcblas
+#widgets/gsl/lib/libgsl.a widgets/gsl/lib/libgslcblas.a
+#-Wl,-rpath widgets/gsl/lib -Wl,--whole-archive widgets/gsl/lib/libgsl.so widgets/gsl/lib/libgslcblas.so -Wl,--no-whole-archive
+
+#libsight_layout.a: ${SIGHT_LAYOUT_O} ${SIGHT_LAYOUT_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre widgets/gsl/lib/libgsl.so widgets/gsl/lib/libgslcblas.so
+#	mkdir -p tmp
+#	cd tmp; ar -x ../widgets/gsl/lib/libgsl.a; ar -x ../widgets/gsl/lib/libgslcblas.a
+#	ar -r libsight_layout.a    ${SIGHT_LAYOUT_O}    ${SIGHT_COMMON_O} widgets/*/*_layout.o widgets/*/*_common.o tmp/*.o
+#	rm -fr tmp
 	
 #libaz.a: libabc.a(*.o) libxyz.a(*.o)
 #    ar rcs $@ $^
@@ -161,6 +205,9 @@ sight_common.o: sight_common.C sight_common_internal.h attributes/attributes_com
 
 sight_structure.o: sight_structure.C sight_structure_internal.h attributes/attributes_structure.h sight_common_internal.h attributes/attributes_common.h maketools
 	${CCC} ${SIGHT_CFLAGS} sight_structure.C -Itools/dtl -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o sight_structure.o
+
+sight_merge.o: sight_merge.C sight_merge.h sight_structure_internal.h sight_common_internal.h attributes/attributes_common.h maketools
+	${CCC} ${SIGHT_CFLAGS} sight_merge.C -Itools/dtl -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o sight_merge.o
 
 sight_layout.o: sight_layout.C sight_layout_internal.h attributes/attributes_layout.h sight_common_internal.h attributes/attributes_common.h
 	${CCC} ${SIGHT_CFLAGS} sight_layout.C -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o sight_layout.o
@@ -185,7 +232,7 @@ widgets_pre: maketools
 	cd widgets; make -f Makefile_pre ${MAKE_DEFINES}
 
 # Rule for compiling the aspects of widgets that require libsight.a
-widgets_post: libsight_layout.a libsight_structure.a
+widgets_post: libsight_layout.so libsight_structure.so
 	cd widgets; make -f Makefile_post ${MAKE_DEFINES}
 
 maketools: 
@@ -207,9 +254,13 @@ gdbLineNum.pl: setupGDBWrap.pl sight_structure.C
 sightDefines.pl:
 	printf "\$$main::sightPath = \"${ROOT_PATH}\"; return 1;" > sightDefines.pl
 
-Makefile.extern: initMakefile.extern
+Makefile.extern: initMakefile.extern Makefile
 	chmod 755 initMakefile.extern
-	./initMakefile.extern ${CC} ${CCC} ${RAPL_ENABLED}
+	./initMakefile.extern ${CC} ${CCC} ${RAPL_ENABLED} ${LLVM32_SRC_PATH} ${LLVM32_BUILD_PATH} ${LLVM32_INSTALL_PATH}
+
+definitions.h: initDefinitionsH Makefile
+	chmod 755 initDefinitionsH
+	./initDefinitionsH ${RAPL_ENABLED}
 
 clean:
 	cd widgets; make -f Makefile_pre clean
@@ -224,7 +275,8 @@ clean:
 	rm -f slayout hier_merge
 
 clean_objects:
-	rm -f *.a *.o attributes/*.o widgets/*.o widgets/*/*.o hier_merge slayout
+	rm -f Makefile.extern definitions.h *.a *.o attributes/*.o widgets/*.o widgets/*/*.o hier_merge slayout
+	cd widgets/kulfi; make clean
 
 script/taffydb:
 	#cd script; wget --no-check-certificate https://github.com/typicaljoe/taffydb/archive/master.zip

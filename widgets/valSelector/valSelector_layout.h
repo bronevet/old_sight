@@ -21,7 +21,7 @@ class valSelectorLayoutHandlerInstantiator : layoutHandlerInstantiator {
 };
 extern valSelectorLayoutHandlerInstantiator valSelectorLayoutHandlerInstance;
 
-class valSelector
+class valSelector : public sightObj
 {
   protected:
   // Maps the selIDs of all the active valSelectors to their objects
@@ -31,7 +31,7 @@ class valSelector
   
   public:
   
-  valSelector() {}
+  valSelector(properties::iterator props): sightObj(props.next()) {}
   
   static void observeSelection(properties::iterator props, std::string fieldName, const std::map<std::string, std::string>& fieldSettings);
   

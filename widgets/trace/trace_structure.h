@@ -13,7 +13,9 @@
 #include "../../sight_structure_internal.h"
 #include <sys/time.h>
 #include <papi.h>
+#ifdef RAPL
 #include "msr_core.h"
+#endif
 
 namespace sight {
 namespace structure {
@@ -92,7 +94,7 @@ class trace: public block, public common::trace
   traceStream* stream;
   
   // Maps the names of all the currently active traces to their trace objects
-  static std::map<std::string, trace*> active;
+  static ThreadLocalStorageMap<std::string, trace*> active;
   
   public:
   trace(std::string label, const std::list<std::string>& contextAttrs,                        showLocT showLoc=showBegin, vizT viz=table, mergeT merge=disjMerge, properties* props=NULL);
@@ -172,7 +174,7 @@ class traceStream: public attrObserver, public common::trace, public sightObj
   int traceID;
   
   // Maximum ID assigned to any trace object
-  static int maxTraceID;
+  static ThreadLocalStorage1<int, int> maxTraceID;
   
   // Names of attributes to be used as context when visualizing the values of trace observations
   std::list<std::string> contextAttrs;
@@ -434,9 +436,79 @@ class timeMeasure : public measure {
   std::string str() const;
 }; // class timeMeasure
 
+// Measures the absolute time when measurement started and stopped, ignoring
+// any pauses in measurement
+class timeStampMeasure : public measure {
+  // The time when we started and ended this measure since the Epoch, seconds
+  double startTime;
+  double endTime;
+  
+  // The label associated with this measurement
+  std::string valLabel;
+  
+  public:
+  // Non-full measure
+  timeStampMeasure(                        std::string valLabel="timestamp");
+  timeStampMeasure(std::string traceLabel, std::string valLabel);
+  timeStampMeasure(trace* t,               std::string valLabel="timestamp");
+  timeStampMeasure(traceStream* ts,        std::string valLabel="timestamp");
+  // Full measure
+  timeStampMeasure(                        std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt);
+  timeStampMeasure(std::string traceLabel, std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt);
+  timeStampMeasure(trace* t,               std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt);
+  timeStampMeasure(traceStream* ts,        std::string valLabel, const std::map<std::string, attrValue>& fullMeasureCtxt);
+  
+  timeStampMeasure(const timeStampMeasure& that);
+  
+  ~timeStampMeasure();
+ 
+  private:
+  // Common initialization code
+  void init();   
+          
+  public:
+  
+  // Returns a copy of this measure object, including its current measurement state, if any. The returned
+  // object is connected to the same traceStream, if any, as the original object.
+  measure* copy() const;
+  
+  // Start the measurement
+  void start();
+   
+  // Pauses the measurement so that time elapsed between this call and resume() is not counted.
+  // Returns true if the measure is not currently paused and false if it is (i.e. the pause command has no effect)
+  bool pause();
+
+  // Restarts counting time. Time collection is restarted regardless of how many times pause() was called
+  // before the call to resume().
+  void resume();
+ 
+  // Complete the measurement and add the observation to the trace associated with this measurement
+  void end();
+  
+  // Complete the measurement and return the observation.
+  // If addToTrace is true, the observation is addes to this measurement's trace and not, otherwise
+  std::list<std::pair<std::string, attrValue> > endGet(bool addToTrace=false);
+  
+  std::string str() const;
+}; // class timeStampMeasure
 
 // Syntactic sugar for specifying measurements
 typedef common::easyvector<int> papiEvents;
+
+// List of standard derived counters the user may request. Since PAPI numbers its counters
+// from 2^31-1 down, we set these #defines to count from 0 up
+#define PAPI_MIN_DERIVED 0 // The minimum value of any derived counter
+#define PAPI_L1_TC_MR 0 // L1 Total cache miss rate
+#define PAPI_L2_TC_MR 1 // L2 Total cache miss rate
+#define PAPI_L3_TC_MR 2 // L3 Total cache miss rate
+#define PAPI_L1_DC_MR 3 // L1 Data cache miss rate
+#define PAPI_L2_DC_MR 4 // L2 Data cache miss rate
+#define PAPI_L3_DC_MR 5 // L3 Data cache miss rate
+#define PAPI_L1_IC_MR 6 // L1 Instruction cache miss rate
+#define PAPI_L2_IC_MR 7 // L2 Instruction cache miss rate
+#define PAPI_L3_IC_MR 8 // L3 Instruction cache miss rate
+#define PAPI_MAX_DERIVED 8 // The maximum value of any derived counter
 
 class PAPIMeasure : public measure {
   // Counts the total number of counter events observed so far, accounting for any pauses and resumes
@@ -448,17 +520,27 @@ class PAPIMeasure : public measure {
   // Buffer into which we'll read counters
   std::vector<long_long> readValues;
   
-  // The events that will be measured
+  // The events that the user wishes to measure. These may include both raw PAPI counters and derived
+  // counters.
   papiEvents events;
+
+  // The raw PAPI events that are actually being measured.
+  std::vector<int> eventsToMeasure;
+
+  // Maps from the PAPI IDs of the raw counters in eventsToMeasure, to their indexes in eventsToMeasure
+  std::map<int, int> events2Idx;
 
   // The label associated with this measurement
   std::string valLabel;
   
   // Indicates the number of PAPIMeasure objects that are currently measuring the counters
-  static int numMeasurers;
+  static ThreadLocalStorage1<int, int> numMeasurers;
   
   // Records the set of PAPI counters currently being measured (non-empty iff numMeasurers>0)
-  static papiEvents curEvents;
+  static ThreadLocalStorageVector<int> curMeasuredEvents;
+
+  // Records whether we were able to successfully start PAPI counting of the selected counters
+  bool PAPIOperational;
   
   public:
   PAPIMeasure(const papiEvents& events);
@@ -497,6 +579,13 @@ class PAPIMeasure : public measure {
   // before the call to resume().
   void resume();
  
+  // Returns the string names of the counters currently being measured
+  std::list<std::string> getMeasuredCounterNames();
+  
+  // Returns a list that maps all the raw and derived counters in events to their observed values,
+  // using the raw counter values in accumValues.
+  std::list<std::pair<std::string, attrValue> > getAccumValues();
+  
   // Complete the measurement and add the observation to the trace associated with this measurement
   void end();
   
@@ -513,7 +602,7 @@ class PAPIMeasure : public measure {
 // Base class of measurement objects that measure MSRs 
 class MSRMeasure {
   protected:
-  static int numMeasurers;
+  static ThreadLocalStorage1<int, int> numMeasurers;
   MSRMeasure();
   ~MSRMeasure();
 };
@@ -546,7 +635,7 @@ class RAPLMeasure : public measure, public MSRMeasure {
   Euse accumDramE[NUM_SOCKETS];
 
   // The data structure that maintains the current state of the RAPL counters
-  struct rapl_data rapl;
+  struct rapl_data rapl[NUM_SOCKETS];
   
   // The label associated with this measurement
   std::string valLabel;
@@ -703,7 +792,7 @@ class TraceMerger : public BlockMerger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
+                       const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
 }; // class TraceMerger
 
 class TraceStreamMerger : public Merger {
@@ -712,7 +801,7 @@ class TraceStreamMerger : public Merger {
               std::map<std::string, streamRecord*>& outStreamRecords,
               std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
               properties* props=NULL);
-       
+  
   static Merger* create(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
                         std::map<std::string, streamRecord*>& outStreamRecords,
                         std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
@@ -730,7 +819,7 @@ class TraceStreamMerger : public Merger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
+                       const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
 }; // class TraceStreamMerger
 
 class ProcessedTraceStreamMerger : public TraceMerger {
@@ -757,7 +846,7 @@ class ProcessedTraceStreamMerger : public TraceMerger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
+                       const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
 }; // class ProcessedTraceStreamMerger
 
 class TraceObsMerger : public Merger {
@@ -778,7 +867,7 @@ class TraceObsMerger : public Merger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
+                       const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
 }; // class TraceObsMerger
 
 class TraceStreamRecord: public streamRecord {

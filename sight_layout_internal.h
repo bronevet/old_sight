@@ -32,14 +32,6 @@ class layoutHandlerInstantiator : public sight::common::LoadTimeRegistry{
   static std::map<std::string, layoutExitHandler>*  layoutExitHandlers;
 
   layoutHandlerInstantiator();
-  /*  // Initialize the handlers mappings, using environment variables to make sure that
-    // only the first instance of this layoutHandlerInstantiator creates these objects.
-    if(!getenv("SIGHT_LAYOUT_HANDLERS_INSTANTIATED")) {
-      layoutEnterHandlers = new std::map<std::string, layoutEnterHandler>();
-      layoutExitHandlers  = new std::map<std::string, layoutExitHandler>();
-      setenv("SIGHT_LAYOUT_HANDLERS_INSTANTIATED", "1", 1);
-    }
-  }*/
 
   // Called exactly once for each class that derives from LoadTimeRegistry to initialize its static data structures.  
   static void init();
@@ -49,7 +41,7 @@ class sightLayoutHandlerInstantiator : layoutHandlerInstantiator {
   public:
   sightLayoutHandlerInstantiator();
 };
-extern sightLayoutHandlerInstantiator sightLayoutHandlerInstantance;
+extern sightLayoutHandlerInstantiator sightLayoutHandlerInstance;
 
 // Default entry/exit handlers to use when no special handling is needed
 void* defaultEntryHandler(properties::iterator props);
@@ -82,6 +74,80 @@ extern std::string username;
 void* SightInit(properties::iterator props);
 
 class dbgStream;
+
+
+/* #################### DESIGN NOTES ####################
+Clocks are a mechanism to associate a timestamps with each emitted tag. These timestamps must 
+increase monotonically within a single process' log (they may be equal but never decrease) and
+must be comparable across different logs, establishing a partial order between events between 
+them. A simple example of a clock is real system time, allowing us to display tags in their
+chronological order when we merge multiple logs. Another example is MPI where a clock is a vector
+mapping each FIFO channel to the number of messages sent/received on it.
+
+All sightObjs have one or more clocks associated with them and during the layout phase we
+call their respective handlers to maintain the current time and to place divs into the generated
+HTMLs to mark points where the time changes. These points can then be manipulated based on
+their relative time values.
+
+When merging or laying out logs Sight need to decode the tags that encode the different clocks. Each clock creates
+a mapping between the names of clocks and functions that map their encodings to clock objects. This
+is done by creating class that inherits from MergeHandlerInstantiator or layoutHandlerInstantiator. Each 
+clock widget must create a static instance of this class and in the constructor of this class must map 
+the name of its clock to a function called when a clock update is observed during either merge or layout.
+widgets/clock_structure.C and widgets/clock_layout.C provide examples of how this mechanism is used.
+############################################################ */
+
+// Tracks the current time, as reported by all the currently active clocks
+class sightClock
+{
+  // Maps the unique name of each currently active clock to the current time that it 
+  // reports (represented as an attrValue). A clock's name may combine the name of 
+  // its class with any additional info needed to differentiate multiple clocks of 
+  // the same type (e.g. stepClocks)
+  static std::map<std::string, attrValue> curTime;
+  
+  // Records whether the clock has been modified since the last time it was read
+  static bool modified;
+
+  // Records the JavaScript comparison functions to be used for all the clocks
+  static std::map<std::string, std::string> compFuncs;
+  
+  public:
+  // Called by the handlers of the individual clocks to update their current time
+  static void updateTime(const std::string& clockName, const attrValue& time);
+  
+  // Returns the current time across all the individual clocks as a JavaScript hash that
+  // maps the name of each clock to its value
+  static std::string getCurTimeJS();
+  
+  // Returns whether the clock has been modified since the last time getCurTimeJS()
+  // was called
+  static bool isModified() { return modified; }
+  
+  // Returns the JavaScript functions that establish a partial order among the values of
+  // all the individual clocks as a JavaScript hash that maps the name of each clock to 
+  // its comparator function
+  static std::string getComparatorsJS();
+
+  // Returns a mapping from clock names to their respective comparison functions
+  //const std::map<std::string, std::string>& getCompFuncs() { return compFuncs; }
+}; // class sightClock
+
+
+/*
+sightObj is the base class for all entities in Sight that correspond to entities in the
+structured log. sightObj takes care of deserializing and tracking the current time
+*/
+
+class sightObj {
+  // Counts the number of clock divs we've placed so that we can give them unique IDs
+  static int maxClockID;
+  
+  public:
+  sightObj() {}
+  sightObj(properties::iterator props);
+}; // class sightObj
+
 typedef std::list<std::pair<int, std::list<int> > > location;
 
 // Uniquely identifies a location with the debug information, including the file and region hierarchy
@@ -106,7 +172,7 @@ class anchor
   static int minAnchorID;
   int anchorID;
   
-  // Associates each anchor with its location (if known). Useful for connecting anchor objects with started out
+  // Associates each anchor with its location (if known). Useful for connecting anchor objects that started out
   // unlocated (e.g. forward links) and then were located when we reached their target. Since there may be multiple
   // copies of the original unlocated anchor running around, these copies won't be automatically updated. However,
   // this map will always keep the latest information.
@@ -177,10 +243,17 @@ class anchor
   std::string getLinkJS() const;
     
   std::string str(std::string indent="") const;
-};
+}; // class anchor
+
+/*****************
+ ***** block *****
+ *****************/
+
+void* blockEnterHandler(properties::iterator props);
+void  blockExitHandler(void* obj);
 
 // A block out debug output, which may be filled by various visual elements
-class block
+class block: public sightObj
 {
   std::string label;
   location    loc;
@@ -472,6 +545,9 @@ public:
   void printSummaryFileContainerHTML(std::string absoluteFileName, std::string relativeFileName, std::string title);
   void printDetailFileContainerHTML(std::string absoluteFileName, std::string title);
   
+  // Generate a JavaScript command that loads the sub-file pointed to by the given location
+  std::string genLoadSubFile(const location& loc);
+
   // Called when a block is entered.
   // b: The block that is being entered
   // newFileEntered: records whether by entering this block we're also entering a new file
@@ -509,12 +585,86 @@ bool isEnabled();
 
 extern dbgStream dbg;
 
-class indent {
+/******************
+ ***** indent *****
+ ******************/
+
+void* indentEnterHandler(properties::iterator props);
+void  indentExitHandler(void* obj);
+
+class indent : public sightObj{
 public:
   indent(properties::iterator props);
     
   ~indent();
 };
+
+/**********************
+ ***** comparison *****
+ **********************/
+
+void* comparisonEnterHandler(properties::iterator props);
+void  comparisonExitHandler(void* obj);
+void* interComparisonHandler(properties::iterator props);
+
+class comparison: public block
+{
+  public:
+
+  // properties: maps property names to their values
+  comparison(properties::iterator props);
+  
+  private:
+  // Common initialization code
+  void init();
+  
+  public:
+    
+  // Called to notify this block that a sub-block was started/completed inside of it. 
+  // Returns true of this notification should be propagated to the blocks 
+  // that contain this block and false otherwise.
+  bool subBlockEnterNotify(block* subBlock) { return true; }
+  bool subBlockExitNotify (block* subBlock) { return true; }
+  
+  ~comparison();
+}; // comparison
+
+/**********************
+ ***** uniqueMark *****
+ **********************/
+
+class uniqueMarkLayoutHandlerInstantiator  : layoutHandlerInstantiator{
+  public:
+  uniqueMarkLayoutHandlerInstantiator();
+};
+extern uniqueMarkLayoutHandlerInstantiator uniqueMarkLayoutHandlerInstance;
+
+class uniqueMark: public block
+{
+  protected:
+  // Strings that encode the JavaScript arrays of all labels and IDs.
+  std::string allLabels;
+  std::string allIDs;
+  public:
+  uniqueMark(properties::iterator props);
+  public:
+    
+  // Called to notify this block that a sub-block was started/completed inside of it. 
+  // Returns true of this notification should be propagated to the blocks 
+  // that contain this block and false otherwise.
+  bool subBlockEnterNotify(block* subBlock) { return false; }
+  bool subBlockExitNotify (block* subBlock) { return false; }
+  
+  // Called to enable the block to print its entry and exit text
+  virtual void printEntry(std::string loadCmd);
+  virtual void printExit();
+  
+  ~uniqueMark();
+}; // uniqueMark
+
+/*void* uniqueMarkEnterHandler(properties::iterator props);
+void  uniqueMarkExitHandler(void* obj);*/
+
 
 // Given a string, returns a version of the string with all the control characters that may appear in the 
 // string escaped to that the string can be written out to Dbg::dbg with no formatting issues.

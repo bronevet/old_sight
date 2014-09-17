@@ -116,21 +116,21 @@ std::string serializeTraceObservation(const std::map<std::string, attrValue>& ct
   // Emit the average of the window to the output file
   for(map<string, attrValue>::const_iterator c=ctxt.begin(); c!=ctxt.end(); c++) {
     if(!first) s << " "; else first = false;
-    escapedStr cName(c->first,  ":", escapedStr::unescaped);
-    escapedStr cVal(c->second.serialize(), ":", escapedStr::unescaped);
+    escapedStr cName(c->first,  ": ", escapedStr::unescaped);
+    escapedStr cVal(c->second.serialize(), ": ", escapedStr::unescaped);
     s << "ctxt:"<<cName.escape()<<":"<<cVal.escape();
   }
 
   for(map<string, attrValue>::const_iterator o=obs.begin(); o!=obs.end(); o++) {
     if(!first) s << " "; else first = false;
-    escapedStr oName(o->first,  ":", escapedStr::unescaped);
-    escapedStr oVal(o->second.serialize(), ":", escapedStr::unescaped);
+    escapedStr oName(o->first,  ": ", escapedStr::unescaped);
+    escapedStr oVal(o->second.serialize(), ": ", escapedStr::unescaped);
     s << "obs:"<<oName.escape()<<":"<<oVal.escape();
   }
 
   for(map<string, int>::const_iterator a=anchor.begin(); a!=anchor.end(); a++) {
     if(!first) s << " "; else first = false;
-    escapedStr aName(a->first,  ":", escapedStr::unescaped);
+    escapedStr aName(a->first,  ": ", escapedStr::unescaped);
     s << "anchor:"<<aName.escape()<<":"<<a->second;
   }
   

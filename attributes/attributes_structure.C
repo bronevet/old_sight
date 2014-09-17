@@ -9,7 +9,8 @@ using namespace sight;
 namespace sight {
 namespace structure{
   
-structure::attributesC attributes;
+ThreadLocalStorage0<structure::attributesC> attributes;
+//ThreadLocalStorage0<attrNullOp> NullOp;
 attrNullOp NullOp;
 
 /******************
@@ -19,32 +20,39 @@ attrNullOp NullOp;
 // Applies the given functor to this given value. Throws an exception if the functor
 // is not applicable to this value type.
 bool attrOp::apply() const {
-  const set<attrValue>& vals = attributes.get(key);
-  if(vals.size() == 0) {
-    cerr << "attrOp::apply() ERROR: applying operation to empty set of values!"<<endl;
-    exit(-1);
-  }
-  
-  for(set<attrValue>::iterator v=vals.begin(); v!=vals.end(); v++) {
-    bool ret;
-         if(v->type == attrValue::strT   && implementsString()) ret = applyString(*((string*)v->store));
-    else if(v->type == attrValue::ptrT   && implementsPtr())    ret = applyPtr   (*((void**)v->store));
-    else if(v->type == attrValue::intT   && implementsInt())    ret = applyInt   (*((long*)v->store));
-    else if(v->type == attrValue::floatT && implementsFloat())  ret = applyFloat (*((double*)v->store));
-    else {
-      cerr << "attrOp::apply() ERROR: attribute operation "<<str()<<" not compatible with value "<<v->str()<<"!"<<endl;
+  if(key!="") {
+    const set<attrValue>& vals = attributes->get(key);
+    if(vals.size() == 0) {
+      cerr << "attrOp::apply() ERROR: applying operation to empty set of values!"<<endl;
       exit(-1);
     }
     
-    // If all the applications must return true but one returns false, the result is false
-    if(type == all && ret==false) return false;
-    // If any the applications must return true and one returns true, the result is true
-    if(type == any && ret==true) return true;
+    for(set<attrValue>::iterator v=vals.begin(); v!=vals.end(); v++) {
+      bool ret;
+           if(v->type == attrValue::strT   && implementsString()) ret = applyString(*((string*)v->store));
+      else if(v->type == attrValue::ptrT   && implementsPtr())    ret = applyPtr   (*((void**)v->store));
+      else if(v->type == attrValue::intT   && implementsInt())    ret = applyInt   (*((long*)v->store));
+      else if(v->type == attrValue::floatT && implementsFloat())  ret = applyFloat (*((double*)v->store));
+      else {
+        cerr << "attrOp::apply() ERROR: attribute operation "<<str()<<" not compatible with value "<<v->str()<<"!"<<endl;
+        exit(-1);
+      }
+      
+      // If all the applications must return true but one returns false, the result is false
+      if(type == all && ret==false) return false;
+      // If any the applications must return true and one returns true, the result is true
+      if(type == any && ret==true) return true;
+    }
+  } else {
+    // Can only happen for attrNULL, attrTrue and attrFalse queries, so call any of the apply
+    // methods without specifying the value
+    long tmp;
+    return applyInt(tmp);
   }
-  
+
   // If type==all/any, then allsub-applications must have returned true/false
-  if(type == all) return true;
-  else if(type == any) return false;
+  if(type == all) return false;
+  else if(type == any) return true;
   
   cerr << "attrOp::apply() ERROR: unknown type "<<type<<"!"<<endl;
   exit(-1);
@@ -240,24 +248,24 @@ attr::attr(std::string key, double      val, properties* props) : sightObj(setPr
 
 template<typename T>
 void attr::init(std::string key, T val, properties* props) {
-//cout << "attr::init("<<key<<", "<<val<<"), attributes.exists(key)="<<attributes.exists(key)<<"\n"; cout.flush();
+//cout << "attr::init("<<key<<", "<<val<<"), attributes->exists(key)="<<attributes->exists(key)<<"\n"; cout.flush();
   // Register the new value for the given key
-  if(attributes.exists(key)) {
+  if(attributes->exists(key)) {
     keyPreviouslySet = true;
-    const std::set<attrValue>& curValues = attributes.get(key);
+    const std::set<attrValue>& curValues = attributes->get(key);
     assert(curValues.size()==1);
     
     oldVal = *(curValues.begin());
-    attributes.replace(key, this->val); 
+    attributes->replace(key, this->val); 
   } else {
     keyPreviouslySet = false;
-    attributes.add(key, this->val); 
+    attributes->add(key, this->val); 
   }
 }
 
 template<typename T>
 properties* attr::setProperties(std::string key, T val, properties* props) {
-//cout << "attr::init("<<key<<", "<<val<<"), attributes.exists(key)="<<attributes.exists(key)<<"\n"; cout.flush();
+//cout << "attr::init("<<key<<", "<<val<<"), attributes->exists(key)="<<attributes->exists(key)<<"\n"; cout.flush();
   if(props==NULL) props = new properties();
   
   map<string, string> pMap;
@@ -287,10 +295,10 @@ attr::~attr() {
 //cout << "attr::~attr("<<key<<", "<<val.str()<<"), keyPreviouslySet="<<keyPreviouslySet<<"\n"; cout.flush();
   // If this mapping replaced some prior mapping, return key to its original state
   if(keyPreviouslySet)
-    attributes.replace(key, oldVal);
+    attributes->replace(key, oldVal);
   // Otherwise, just remove the entire mapping
   else
-    attributes.remove(key);
+    attributes->remove(key);
 }
 // Returns the key of this attribute
 string attr::getKey() const
@@ -370,8 +378,8 @@ void attrOr_exit(void* subQ) { delete (attrOr*)subQ; }
 }
 
 attrIf::attrIf(attrOp* op) : attrSubQueryIf(op)
-{ attributes.push(this); }
-attrIf::~attrIf() { attributes.pop(); }
+{ attributes->push(this); }
+attrIf::~attrIf() { attributes->pop(); }
 
 // Directly calls the destructor of this object. This is necessary because when an application crashes
 // Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since
@@ -390,14 +398,14 @@ void attrIf_exit(void* subQ) { delete (attrIf*)subQ; }
 
 // C interface
 extern "C" {
-void* attrTrue_enter() { return new attrTrue(); }
-void attrTrue_exit(void* subQ) { delete (attrTrue*)subQ; }
+void* attrIfTrue_enter() { return new attrIfTrue(); }
+void attrIfTrue_exit(void* subQ) { delete (attrIfTrue*)subQ; }
 }
 
 // C interface
 extern "C" {
-void* attrFalse_enter() { return new attrFalse(); }
-void attrFalse_exit(void* subQ) { delete (attrFalse*)subQ; }
+void* attrIfFalse_enter() { return new attrIfFalse(); }
+void attrIfFalse_exit(void* subQ) { delete (attrIfFalse*)subQ; }
 }
 
 /*********************************************
@@ -462,7 +470,7 @@ AttributeMerger::AttributeMerger(std::vector<std::pair<properties::tagType, prop
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
 void AttributeMerger::mergeKey(properties::tagType type, properties::iterator tag, 
-                               std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+                               const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
   Merger::mergeKey(type, tag.next(), inStreamRecords, info);
   
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
@@ -510,9 +518,9 @@ void andFunc(bool cond, int depth, string indent) {
   bool nextCond = rand()%2;
   attr a(vname.str(), (long)nextCond);
   attrAnd aAnd(vname.str(), new attrEQ((long)1, attrOp::any));
-  //cout << indent << "andFunc(cond="<<cond<<"): nextCond="<<nextCond<<", depth="<<depth<<", query="<<attributes.query()<<endl;
+  //cout << indent << "andFunc(cond="<<cond<<"): nextCond="<<nextCond<<", depth="<<depth<<", query="<<attributes->query()<<endl;
  
-  assert(verbA(attributes.query() == (cond && nextCond)));
+  assert(verbA(attributes->query() == (cond && nextCond)));
   nextFunc(cond && nextCond, depth+1, indent+"    ");
 }
 
@@ -521,9 +529,9 @@ void orFunc(bool cond, int depth, string indent) {
   bool nextCond = rand()%2;
   attr a(vname.str(), (long)nextCond);
   attrOr aOr(vname.str(), new attrEQ((long)1, attrOp::any));
-  //cout << indent << "orFunc(cond="<<cond<<"): nextCond="<<nextCond<<", depth="<<depth<<", query="<<attributes.query()<<endl;
+  //cout << indent << "orFunc(cond="<<cond<<"): nextCond="<<nextCond<<", depth="<<depth<<", query="<<attributes->query()<<endl;
  
-  assert(verbA(attributes.query() == (cond || nextCond))); 
+  assert(verbA(attributes->query() == (cond || nextCond))); 
   nextFunc(cond || nextCond, depth+1, indent+"    ");
 } 
 
@@ -532,9 +540,9 @@ void ifFunc(bool cond, int depth, string indent) {
   bool nextCond = rand()%2;
   attr a(vname.str(), (long)nextCond);
   attrIf aIf(vname.str(), new attrEQ((long)1, attrOp::any));
-  //cout << indent << "ifFunc(cond="<<cond<<"): nextCond="<<nextCond<<", depth="<<depth<<", query="<<attributes.query()<<endl;
+  //cout << indent << "ifFunc(cond="<<cond<<"): nextCond="<<nextCond<<", depth="<<depth<<", query="<<attributes->query()<<endl;
  
-  assert(verbA(attributes.query() == nextCond)); 
+  assert(verbA(attributes->query() == nextCond)); 
   nextFunc(nextCond, depth+1, indent+"    ");
 } 
 
@@ -542,7 +550,7 @@ void ifFunc(bool cond, int depth, string indent) {
   cout << indent << "fib("<<x<<")\n";
   attr a("x", (long)x);
   attrIf aif("x", new attrEQ((long)x, attrOp::any));
-  cout << indent << "x="<<x<<", query="<<attributes.query()<<endl;
+  cout << indent << "x="<<x<<", query="<<attributes->query()<<endl;
   if(x<=1) {
     cout << indent << "return 1\n";
     return 1;

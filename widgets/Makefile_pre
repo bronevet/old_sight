@@ -1,27 +1,35 @@
 WIDGETS_COMMON_O := scope/scope_common.o graph/graph_common.o valSelector/valSelector_common.o trace/trace_common.o module/module_common.o source/source_common.o
 WIDGETS_COMMON_H := scope/scope_common.h graph/graph_common.h valSelector/valSelector_common.h trace/trace_common.h module/module_common.h source/source_common.h
-WIDGETS_STRUCTURE_O := scope/scope_structure.o graph/graph_structure.o valSelector/valSelector_structure.o trace/trace_structure.o module/module_structure.o source/source_structure.o clock/clock_structure.o
-WIDGETS_STRUCTURE_H := scope/scope_structure.h graph/graph_structure.h valSelector/valSelector_structure.h trace/trace_structure.h module/module_structure.h source/source_structure.h clock/clock_structure.h
-WIDGETS_LAYOUT_O := scope/scope_layout.o graph/graph_layout.o valSelector/valSelector_layout.o trace/trace_layout.o module/module_layout.o source/source_layout.o clock/clock_layout.o
-WIDGETS_LAYOUT_H := scope/scope_layout.h graph/graph_layout.h valSelector/valSelector_layout.h trace/trace_layout.h module/module_layout.h source/source_layout.o clock/clock_layout.h
+WIDGETS_STRUCTURE_O := scope/scope_structure.o graph/graph_structure.o valSelector/valSelector_structure.o trace/trace_structure.o module/module_structure.o source/source_structure.o clock/clock_structure.o parallel/parallel_structure.o parallel/sight_pthread.o
+WIDGETS_STRUCTURE_H := scope/scope_structure.h graph/graph_structure.h valSelector/valSelector_structure.h trace/trace_structure.h module/module_structure.h source/source_structure.h clock/clock_structure.h parallel/parallel_structure.h parallel/sight_pthread.h
+WIDGETS_LAYOUT_O := scope/scope_layout.o graph/graph_layout.o valSelector/valSelector_layout.o trace/trace_layout.o module/module_layout.o source/source_layout.o clock/clock_layout.o parallel/parallel_layout.o
+WIDGETS_LAYOUT_H := scope/scope_layout.h graph/graph_layout.h valSelector/valSelector_layout.h trace/trace_layout.h module/module_layout.h source/source_layout.o clock/clock_layout.h parallel/parallel_layout.h
 WIDGETS := ${WIDGETS_O} ${WIDGETS_H}
 
-MAKE_DEFINES = ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" CC=${CC} CCC=${CCC} KULFI_ENABLED=${KULFI_ENABLED} LLVM32_SRC_PATH=${LLVM32_SRC_PATH} LLVM32_BUILD_PATH=${LLVM32_BUILD_PATH} LLVM32_INSTALL_PATH=${LLVM32_INSTALL_PATH}
+MAKE_DEFINES = ROOT_PATH=${ROOT_PATH} RAPL_ENABLED=${RAPL_ENABLED} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" CC=${CC} CCC=${CCC} KULFI_ENABLED=${KULFI_ENABLED} LLVM32_SRC_PATH=${LLVM32_SRC_PATH} LLVM32_BUILD_PATH=${LLVM32_BUILD_PATH} LLVM32_INSTALL_PATH=${LLVM32_INSTALL_PATH}
 
-all: gsl papi \
+all: gsl papi libmsr synoptic \
      ${WIDGETS_COMMON_O} ${WIDGETS_COMMON_H} ${WIDGETS_STRUCTURE_O} ${WIDGETS_STRUCTURE_H} ${WIDGETS_LAYOUT_O} ${WIDGETS_LAYOUT_H}  \
+     box \
      kulfi \
      shellinabox/bin/shellinaboxd${EXE} mongoose/mongoose${EXE} graphviz/bin/dot${EXE} \
-     xdotool \
-     noVNC \
+     vnc \
      source/sh_main.js source/sh_cpp.js \
      threejs \
+     jsPlumb \
      external_scripts
 	chmod 755 canviz-0.1 
 	chmod 644 canviz-0.1/*
 	chmod 755 canviz-0.1/excanvas canviz-0.1/lib canviz-0.1/path canviz-0.1/prototype
 	chmod 644 canviz-0.1/*/*
 #     ID3-Decision-Tree \
+
+ifeq (${VNC_ENABLED}, 1)
+vnc:  xdotool noVNC
+else
+vnc:
+endif
+
 
 scope/scope_common.o: scope/scope_common.C scope/scope_common.h ../attributes/attributes_common.h ../sight_common.h
 	${CCC} ${SIGHT_CFLAGS} scope/scope_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o scope/scope_common.o
@@ -87,6 +95,18 @@ clock/clock_structure.o: clock/clock_structure.C clock/clock_structure.h
 clock/clock_layout.o: clock/clock_layout.C clock/clock_layout.h
 	${CCC} ${SIGHT_CFLAGS} clock/clock_layout.C -I.. -Igsl/include -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o clock/clock_layout.o
 
+parallel/parallel_structure.o: parallel/parallel_structure.C parallel/parallel_structure.h
+	${CCC} ${SIGHT_CFLAGS} parallel/parallel_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o parallel/parallel_structure.o
+
+parallel/parallel_layout.o: parallel/parallel_layout.C parallel/parallel_layout.h
+	${CCC} ${SIGHT_CFLAGS} parallel/parallel_layout.C -I.. -Igsl/include -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o parallel/parallel_layout.o
+
+parallel/sight_pthread.o: parallel/sight_pthread.C parallel/sight_pthread.h parallel/parallel_structure.h
+	${CCC} ${SIGHT_CFLAGS} parallel/sight_pthread.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o parallel/sight_pthread.o
+
+.PHONY: box
+box:
+	cd box; ${MAKE} ${MAKE_DEFINES}
 
 ifeq (${KULFI_ENABLED}, 1)
 .PHONY: kulfi
@@ -138,21 +158,22 @@ mongoose/mongoose${EXE}:
 
 graphviz/bin/dot${EXE}: expat
 ifeq (${OS},Cygwin)
-	rm -rf graphviz-2.32.zip release
-	wget http://www.graphviz.org/pub/graphviz/stable/windows/graphviz-2.32.zip
-	unzip graphviz-2.32.zip
+	rm -rf graphviz-2.24.zip release
+	wget http://www.graphviz.org/pub/graphviz/stable/windows/graphviz-2.24.zip
+	unzip graphviz-2.24.zip
 	mkdir graphviz
 	mv release/* graphviz
-	rm -r graphviz-2.32.zip release
+	rm -r graphviz-2.24.zip release
 	chmod 755 graphviz/bin/*
 else
-	wget http://www.graphviz.org/pub/graphviz/stable/SOURCES/graphviz-2.32.0.tar.gz
-	tar -xf graphviz-2.32.0.tar.gz
-	cd graphviz-2.32.0; export CC=${CC}; export CXX=${CCC}; ./configure --prefix=${ROOT_PATH}/widgets/graphviz --disable-swig --disable-sharp --disable-go --disable-io --disable-java --disable-lua --disable-ocaml --disable-perl --disable-php --disable-python --disable-r --disable-ruby --disable-tcl --without-pic --without-efence --with-expat=yes --with-expatlibdir=${ROOT_PATH}/widgets/expat/lib --with-expatincludedir=${ROOT_PATH}/widgets/expat/include --without-devil --without-webp --without-poppler --without-ghostscript --without-visio --without-pangocairo --without-lasi --without-glitz --without-freetype2 --without-fontconfig --without-gdk-pixbuf --without-gtk --without-gtkgl --without-gtkglext --without-gts --without-glade --without-ming --without-qt --without-quartz --without-gdiplus --without-libgd --without-glut --without-sfdp --without-smyrna --without-ortho --without-digcola --without-ipsepcola --enable-static --disable-shared
-	cd graphviz-2.32.0; ${MAKE}
-	cd graphviz-2.32.0; ${MAKE} install
+	wget http://www.graphviz.org/pub/graphviz/stable/SOURCES/graphviz-2.24.0.tar.gz
+	tar -xf graphviz-2.24.0.tar.gz
+	cd graphviz-2.24.0; export CC=gcc; export CXX=g++; ./configure --prefix=${ROOT_PATH}/widgets/graphviz --disable-swig --disable-sharp --disable-go --disable-io --disable-java --disable-lua --disable-ocaml --disable-perl --disable-php --disable-python --disable-r --disable-ruby --disable-tcl --without-pic --without-efence --with-expat=yes --with-expatlibdir=${ROOT_PATH}/widgets/expat/lib --with-expatincludedir=${ROOT_PATH}/widgets/expat/include --without-devil --without-webp --without-poppler --without-ghostscript --without-visio --without-pangocairo --without-lasi --without-glitz --without-freetype2 --without-fontconfig --without-gdk-pixbuf --without-gtk --without-gtkgl --without-gtkglext --without-gts --without-glade --without-ming --without-qt --without-quartz --without-gdiplus --without-libgd --without-glut --without-sfdp --without-smyrna --without-ortho --without-digcola --without-ipsepcola --enable-static --disable-shared
+	cp graphviz_vmalloc_features graphviz-2.24.0/lib/vmalloc/features/vmalloc
+	cd graphviz-2.24.0; export CC=gcc; export CXX=g++; ${MAKE}
+	cd graphviz-2.24.0; export CC=gcc; export CXX=g++; ${MAKE} install
 	mv graphviz/bin/dot_static graphviz/bin/dot
-	rm -r graphviz-2.32.0 graphviz-2.32.0.tar.gz
+	rm -r graphviz-2.24.0 graphviz-2.24.0.tar.gz
 endif
 
 expat:
@@ -193,14 +214,32 @@ gsl:
 	tar -xf gsl-1.9.tar.gz 
 	cd gsl-1.9; CC=${CC}; ./configure --prefix=${ROOT_PATH}/widgets/gsl
 	cd gsl-1.9; make; make install
-	rm -r gsl-1.9
+	rm -r gsl-1.9 gsl-1.9.tar.gz
 
 papi:
 	rm -f papi-5.3.0.tar.gz
 	wget http://icl.cs.utk.edu/projects/papi/downloads/papi-5.3.0.tar.gz
 	tar -xf papi-5.3.0.tar.gz 
-	cd papi-5.3.0/src; export CC=${CC}; export F77=gfortran; ./configure -prefix=${ROOT_PATH}/widgets/papi; make; make install
+	cd papi-5.3.0/src; ./configure -prefix=${ROOT_PATH}/widgets/papi CC=gcc F77=gfortran; 
+	cd papi-5.3.0/src; export CC=gcc; export F77=gfortran; make LDCONFIG=true CC=gcc F77=gfortran; make install
 	rm -fr papi-5.3.0 papi-5.3.0.tar.gz
+
+ifeq (${RAPL_ENABLED}, 1)
+libmsr: libmsr/lib/libmsr.so
+else
+libmsr:
+endif
+
+libmsr/lib/libmsr.so:
+	../getGithub https://github.com/scalability-llnl/libmsr/archive/master.zip zip unzip
+	mv libmsr-master libmsr
+	cd libmsr/src; make CC=${CC}
+
+synoptic:
+	wget http://synoptic.googlecode.com/files/synoptic-0.1.tar.gz
+	tar -xf synoptic-0.1.tar.gz
+	mv synoptic-0.1 synoptic
+	rm synoptic-0.1.tar.gz
 
 # JavaScript files from standard JS libraries that we wish to keep local copies of
 
@@ -252,11 +291,16 @@ THREE:
 Stats.js:
 	wget http://stemkoski.github.io/Three.js/js/Stats.js
 
+jsPlumb:
+	../getGithub https://github.com/sporritt/jsPlumb/archive/master.zip zip unzip
+	mv jsPlumb-master jsPlumb
+
 clean:
 	rm -fr xdotool
 #	rm -rf ID3-Decision-Tree
 	../killP mongoose/mongoose
 	../killP shellinabox/bin/shellinaboxd
-	rm -rf *.o shellinabox* mongoose* noVNC graphviz papi
+	rm -rf *.o shellinabox* mongoose* noVNC graphviz papi gsl synoptic libmsr
 	rm -f yui-min.js jquery-1.8.1.min.js underscore-min.js d3.v3.min.js d3.v3.js
+	rm -f jquery-1.9.1.min.js jquery-ui.css jquery-ui.js
 	rm -f Three.js Detector.js OrbitControls.js THREEx.WindowResize.js Stats.js

@@ -11,7 +11,7 @@ namespace structure {
  ***** valSelector *****
  ***********************/
 
-int valSelector::maxSelID=0;
+ThreadLocalStorage1<int, int> valSelector::maxSelID(0);
 
 valSelector::valSelector(properties* props) : sightObj(props) {
   attrKeyKnown = false;
@@ -111,9 +111,9 @@ string colorSelector::observeSelection(const attrValue& val) {
 // Returns the string reprentation of the current value.
 string colorSelector::observeSelection() {
   if(!attrKeyKnown) { cerr << "colorSelector::observeSelection() ERROR: calling version of function that expects that the colorSelector knows the attribute to look up to choose the color but no attribute name was provided!"<<endl; exit(-1); }
-  if(!attributes.exists(attrKey)) { cerr << "colorSelector::observeSelection() ERROR: attribute "<<attrKey<<" is not currently mapped to any values!!"<<endl; exit(-1); }
+  if(!attributes->exists(attrKey)) { cerr << "colorSelector::observeSelection() ERROR: attribute "<<attrKey<<" is not currently mapped to any values!!"<<endl; exit(-1); }
   
-  const std::set<attrValue>& values = attributes.get(attrKey);
+  const std::set<attrValue>& values = attributes->get(attrKey);
   assert(values.size()>0);
   return values.begin()->getAsStr();
 }
@@ -129,11 +129,11 @@ list<sightObj*> activeFormats;
 // by the given value selector
 void start_internal(valSelector& sel, const attrValue* val, string name) { 
   // Each text-colored region is given a different uniqueID to make it possible to apply formatting to each one 
-  // independently. Region identities are assigned using the instanceID counter, which is continually incremented
-  static int instanceID=0;
+  // independently. Region identities are assi)gned using the instanceID counter, which is continually incremented
+  static ThreadLocalStorage1<int, int> instanceID(0);
   
   // Only bother if this text will be emitted
-  if(!attributes.query()) return;
+  if(!attributes->query()) return;
   
   string valueStr;
   if(val) valueStr = sel.observeSelection(*val);
@@ -151,7 +151,7 @@ void start_internal(valSelector& sel, const attrValue* val, string name) {
 
 void end_internal(string name) {
   // Only bother if this text will be emitted
-  if(!attributes.query()) return;
+  if(!attributes->query()) return;
   
   // Pop the most recent formatting annotation from activeFormats
   assert(activeFormats.size()>0);
@@ -256,7 +256,7 @@ ColorSelectorMerger::ColorSelectorMerger(std::vector<std::pair<properties::tagTy
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
 void ColorSelectorMerger::mergeKey(properties::tagType type, properties::iterator tag, 
-                           std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+                           const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
   Merger::mergeKey(type, tag.next(), inStreamRecords, info);
   
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
@@ -309,7 +309,7 @@ ColorMerger::ColorMerger(std::vector<std::pair<properties::tagType, properties::
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
 void ColorMerger::mergeKey(properties::tagType type, properties::iterator tag, 
-                           std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+                           const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
   Merger::mergeKey(type, tag.next(), inStreamRecords, info);
   
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
@@ -317,8 +317,10 @@ void ColorMerger::mergeKey(properties::tagType type, properties::iterator tag,
     // We only merge color annotations that correspond to the same colorSelector in the outgoing stream. 
     // ColorSelector IDs are merged when we enter them, which is guaranteed to have occured before
     // we process the color annotations associated with them.
-    streamID inSID(properties::getInt(tag, "selID"), inStreamRecords["colorSelector"]->getVariantID());
-    streamID outSID = ((ColorStreamRecord*)inStreamRecords["colorSelector"])->in2outID(inSID);
+    std::map<std::string, streamRecord*>::const_iterator rIt=inStreamRecords.find("colorSelector"); assert(rIt!=inStreamRecords.end());
+    ColorStreamRecord* CSR = (ColorStreamRecord*)rIt->second;
+    streamID inSID(properties::getInt(tag, "selID"), CSR->getVariantID());
+    streamID outSID = CSR->in2outID(inSID);
     info.add(txt()<<outSID.ID);
   }
 }

@@ -315,6 +315,36 @@ class attrRange : public attrOp
   std::string str() const { return "attrRange"; }
 };
 
+// Always returns true
+class attrTrue : public universalAttrOp
+{
+  public:
+  attrTrue() : universalAttrOp("", attrOp::any) {}
+ 
+  bool applyString(std::string& that) const { return true; }
+  bool applyPtr(void*& that)          const { return true; }
+  bool applyInt(long& that)           const { return true; }
+  bool applyFloat(double& that)       const { return true; }
+  
+  // Returns a human-readable representation of this object
+  std::string str() const { return "attrTrue"; }
+};
+
+// Always returns false
+class attrFalse : public universalAttrOp
+{
+  public:
+  attrFalse() : universalAttrOp("", attrOp::any) {}
+  
+  bool applyString(std::string& that) const { return false; }
+  bool applyPtr(void*& that)          const { return false; }
+  bool applyInt(long& that)           const { return false; }
+  bool applyFloat(double& that)       const { return false; }
+  
+  // Returns a human-readable representation of this object
+  std::string str() const { return "attrFalse"; }
+};
+
 // *****************************
 // ***** Attribute Queries *****
 // *****************************
@@ -470,7 +500,7 @@ class attributesC : public common::attributesC, public sightObj
   bool query();
 };
 
-extern structure::attributesC attributes;
+extern ThreadLocalStorage0<structure::attributesC> attributes;
 
 // *******************************
 // ***** Attribute Interface *****
@@ -576,8 +606,8 @@ void attr_exit(void* a);
 class attrAnd: public attrSubQueryAnd {
   public:
   attrAnd(attrOp* op) : attrSubQueryAnd(op)
-  { attributes.push(this); }
-  ~attrAnd() { attributes.pop(); }
+  { attributes->push(this); }
+  ~attrAnd() { attributes->pop(); }
   
   // Directly calls the destructor of this object. This is necessary because when an application crashes
   // Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
@@ -597,8 +627,8 @@ void attrAnd_exit(void* subQ);
 class attrOr: public attrSubQueryOr {
   public:
   attrOr(attrOp* op) : attrSubQueryOr(op)
-  { attributes.push(this); }
-  ~attrOr() { attributes.pop(); }
+  { attributes->push(this); }
+  ~attrOr() { attributes->pop(); }
   
   // Directly calls the destructor of this object. This is necessary because when an application crashes
   // Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
@@ -635,30 +665,30 @@ void* attrIf_enter(attrOp *op);
 void attrIf_exit(void* subQ);
 }
 
-class attrTrue: public attrSubQueryTrue {
+class attrIfTrue: public attrSubQueryTrue {
   public:
-  attrTrue() : attrSubQueryTrue()
-  { attributes.push(this); }
-  ~attrTrue() { attributes.pop(); }
+  attrIfTrue() : attrSubQueryTrue()
+  { attributes->push(this); }
+  ~attrIfTrue() { attributes->pop(); }
 };
 
 // C interface
 extern "C" {
-void* attrTrue_enter();
-void attrTrue_exit(void* subQ);
+void* attrIfTrue_enter();
+void attrIfTrue_exit(void* subQ);
 }
 
-class attrFalse: public attrSubQueryFalse {
+class attrIfFalse: public attrSubQueryFalse {
   public:
-  attrFalse() : attrSubQueryFalse()
-  { attributes.push(this); }
-  ~attrFalse() { attributes.pop(); }
+  attrIfFalse() : attrSubQueryFalse()
+  { attributes->push(this); }
+  ~attrIfFalse() { attributes->pop(); }
 };
 
 // C interface
 extern "C" {
-void* attrFalse_enter();
-void attrFalse_exit(void* subQ);
+void* attrIfFalse_enter();
+void attrIfFalse_exit(void* subQ);
 }
 
 class AttributeMergeHandlerInstantiator: public MergeHandlerInstantiator {
@@ -687,7 +717,7 @@ class AttributeMerger : public Merger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
+                       const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
 }; // class AttributeMerger
 
   

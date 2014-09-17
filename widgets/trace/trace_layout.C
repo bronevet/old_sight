@@ -1,5 +1,8 @@
 #include "../../sight_layout_internal.h"
 #include "trace_layout.h"
+#include "errno.h"
+#include "string.h"
+//#include "boost/filesystem/path.hpp"
 
 using namespace std;
 
@@ -184,7 +187,7 @@ traceObserverQueue::traceObserverQueue() {
 }
 
 traceObserverQueue::traceObserverQueue(const std::list<traceObserver*>& observersL)/* : queue(observersL)*/ {
-cout << "traceObserverQueue::traceObserverQueue() #observersL.size="<<observersL.size()<<endl;
+//cout << "traceObserverQueue::traceObserverQueue() #observersL.size="<<observersL.size()<<endl;
   // If observersL is non-empty
   if(observersL.size()>0) {
     firstO = observersL.front();
@@ -198,10 +201,10 @@ cout << "traceObserverQueue::traceObserverQueue() #observersL.size="<<observersL
     // The traceObserver most recently encountered by the loop
     traceObserver* recentO=*o;
 
-    cout << "  firstO="<<firstO<<", lastO="<<lastO<<", queue="<<this<<endl;
+//    cout << "  firstO="<<firstO<<", lastO="<<lastO<<", queue="<<this<<endl;
     
     for(o++; o!=observersL.end(); o++) {
-      cout << "    traceObserverQueue recentO="<<recentO<<" <-- *o="<<*o<<endl;
+//      cout << "    traceObserverQueue recentO="<<recentO<<" <-- *o="<<*o<<endl;
       recentO->registerObserver(*o);
       recentO = *o;
     }
@@ -356,7 +359,10 @@ void traceObserverQueue::obsFinished() {
 externalTraceProcessor_File::externalTraceProcessor_File(std::string processorFName, std::string obsFName) : 
   processorFName(processorFName), obsFName(obsFName) 
 {
+  //cout << "processorFName="<<processorFName<<endl;
+  //cout << "obsFName="<<obsFName<<endl;
   traceFile.open(obsFName.c_str());
+  //cout << "traceFile.is_open()="<<traceFile.is_open()<<endl;
   finished = false;
 }
 
@@ -412,9 +418,9 @@ void externalTraceProcessor_File::obsFinished() {
   // Execute the processing application
   ostringstream s; 
   s << processorFName;
-  for(list<string>::iterator b=beforeParams.begin(); b!=beforeParams.end(); b++) s << " "<<*b;
-  s << " "<<obsFName;
-  for(list<string>::iterator a=afterParams.begin(); a!=afterParams.end(); a++) s << " "<<*a;
+  for(list<string>::iterator b=beforeParams.begin(); b!=beforeParams.end(); b++) s << " \""<<*b<<"\"";
+  s << " \""<<obsFName<<"\"";
+  for(list<string>::iterator a=afterParams.begin(); a!=afterParams.end(); a++) s << " \""<<*a<<"\"";
   //cout << "Command = "<<s.str()<<endl;
 
   // In case the processor executable is linked with Sight, unset the mutex environment variables from 
@@ -470,6 +476,98 @@ void externalTraceProcessor_File::obsFinished() {
   
   // Inform this trace's observers that it has finished
   traceObserver::obsFinished();
+}
+
+/******************************
+ ***** traceFileWriterTSV *****
+ ******************************/
+
+traceFileWriterTSV::traceFileWriterTSV(std::string outFName) {
+  // Create the directory in which outFName resides, if it does not already exist
+  /*boost::filesystem::path p(outFName);
+  boost::system::error_code ec;
+  if(!boost::filesystem::create_directory(p.parent_path(), ec)) { cerr << "traceFileWriterTSV::traceFileWriterTSV ERROR creating directory \""<<p.parent_path().string()<<"\"! "<<ec.message()<<endl; assert(0); }*/
+  mkpath(outFName, 0755, false);
+  
+  out.open(outFName.c_str(), std::ofstream::out);
+  if(!out.is_open()) { cerr << "traceFileWriterTSV::traceFileWriterTSV() ERROR opening file \""<<outFName<<"\" for writing! "<<strerror(errno)<<endl; assert(0); }
+  numObservations=0;
+}
+
+// Interface implemented by objects that listen for observations a traceStream reads. Such objects
+// call traceStream::registerObserver() to inform a given traceStream that it should observations.
+void traceFileWriterTSV::observe(int traceID,
+             const std::map<std::string, std::string>& ctxt, 
+             const std::map<std::string, std::string>& obs,
+             const std::map<std::string, anchor>&      obsAnchor) {
+  /*cout << "traceFileWriterTSV::observe("<<traceID<<")"<<endl;
+  cout << "    ctxt=";
+  for(map<string, string>::const_iterator c=ctxt.begin(); c!=ctxt.end(); c++) { cout << c->first << "=>"<<c->second<<" "; }
+  cout << endl;
+  cout << "    obs=";
+  for(map<string, string>::const_iterator o=obs.begin(); o!=obs.end(); o++) { cout << o->first << "=>"<<o->second<<" "; }
+  cout << endl;*/
+
+  // Get the keys of ctxt and obs
+  set<string> curCtxtKeys;
+  for(map<string, string>::const_iterator i=ctxt.begin(); i!=ctxt.end(); i++)
+    curCtxtKeys.insert(i->first);
+  
+  set<string> curTraceKeys;
+  for(map<string, string>::const_iterator i=obs.begin(); i!=obs.end(); i++)
+    curTraceKeys.insert(i->first);
+    
+  // Verify that all observations have the same context and trace keys
+  if(numObservations==0) {
+    ctxtKeys = curCtxtKeys;
+    traceKeys = curTraceKeys;
+  } else {
+    if(ctxtKeys != curCtxtKeys)   { cerr << "traceFileWriterTSV::observe() ERROR: Inconsistent context keys. Previously observed "<<set2str(ctxtKeys)<<" but this observation has "<<set2str(curCtxtKeys)<<"!"; assert(0); }
+    if(traceKeys != curTraceKeys) { cerr << "traceFileWriterTSV::observe() ERROR: Inconsistent trace keys. Previously observed "<<set2str(traceKeys)<<" but this observation has "<<set2str(curTraceKeys)<<"!"; assert(0); }
+  }
+  
+  // Print out the header line
+  if(numObservations==0) {
+    for(map<string, string>::const_iterator i=ctxt.begin(); i!=ctxt.end(); i++) {
+      if(i!=ctxt.begin()) out << "\t";
+      out << i->first;
+    }
+    if(ctxt.size()>0) out << "\t";
+    for(map<string, string>::const_iterator i=obs.begin(); i!=obs.end(); i++) {
+      if(i!=obs.begin()) out << "\t";
+      out << i->first;
+    }
+    out << endl;
+  }
+  
+  // Print out the observation line
+  for(map<string, string>::const_iterator i=ctxt.begin(); i!=ctxt.end(); i++) {
+    if(i!=ctxt.begin()) out << "\t";
+    attrValue val(i->second, attrValue::unknownT);
+    out << val.getAsStr();
+    //cout << val.getAsStr();
+  }
+  if(ctxt.size()>0) out << "\t";
+  for(map<string, string>::const_iterator i=obs.begin(); i!=obs.end(); i++) {
+    if(i!=obs.begin()) out << "\t";
+    attrValue val(i->second, attrValue::unknownT);
+    out << val.getAsStr();
+    //cout << val.getAsStr();
+  }
+  out << endl;
+  //cout << endl;
+  
+  numObservations++;
+}
+
+// Called when the stream of observations has finished to allow the implementor to perform clean-up tasks.
+// This method is optional.
+void traceFileWriterTSV::obsFinished() {
+}
+
+traceFileWriterTSV::~traceFileWriterTSV() {
+  assert(out.is_open());
+  out.close();
 }
 
 /***********************

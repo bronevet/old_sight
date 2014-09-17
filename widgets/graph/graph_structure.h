@@ -31,10 +31,10 @@ class graph: public structure::block
   int graphID;
   
   // Maximum ID assigned to any graph object
-  static int maxGraphID;
+  static ThreadLocalStorage1<int, int> maxGraphID;
 
   // Maximum ID assigned to any graph node
-  static int maxNodeID;
+  static ThreadLocalStorage1<int, int> maxNodeID;
   
   // Records whether this scope is included in the emitted output (true) or not (false)
   bool active;
@@ -98,6 +98,15 @@ class graph: public structure::block
   
   // Add an undirected edge between the location of the a anchor and the location of the b anchor
   virtual void addUndirEdge(anchor a, anchor b);
+
+  // Add an invisible edge that forces the target to be placed after the source
+  virtual void addInvisDepEdge(anchor a, anchor b);
+
+  // Start a graphviz cluster
+  virtual void startSubGraph();
+  virtual void startSubGraph(const std::string& label);
+  // End a graphviz cluster
+  virtual void endSubGraph();
   
   // Called to notify this block that a sub-block was started/completed inside of it. 
   // Returns true of this notification should be propagated to the blocks 
@@ -109,6 +118,15 @@ class graph: public structure::block
   // Emits a tag for the given node
   void emitNodeTag(int anchorID, std::string label, int nodeID);
 }; // graph
+
+// Creates a graphviz cluster within a given graph
+class subgraph
+{
+  graph& g;
+  public:
+  subgraph(graph& g, const std::string& label);
+  ~subgraph();
+}; // subgraph
 
 class GraphMergeHandlerInstantiator: public MergeHandlerInstantiator {
   public:
@@ -142,7 +160,7 @@ class GraphMerger : public BlockMerger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
+                       const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
 }; // class GraphMerger
 
 class GraphStreamRecord: public streamRecord {
@@ -244,7 +262,7 @@ class DirEdgeMerger : public Merger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+                       const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
     Merger::mergeKey(type, tag.next(), inStreamRecords, info);
   }
 }; // class DirEdgeMerger
@@ -267,7 +285,7 @@ class UndirEdgeMerger : public Merger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+                       const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
     Merger::mergeKey(type, tag.next(), inStreamRecords, info);
   }
 }; // class UndirEdgeMerger
@@ -290,7 +308,7 @@ class NodeMerger : public Merger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+                       const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
     Merger::mergeKey(type, tag.next(), inStreamRecords, info);
   }
 }; // class NodeMerger

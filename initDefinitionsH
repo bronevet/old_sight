@@ -1,0 +1,17 @@
+#!/usr/bin/python
+
+import sys
+import os
+curDir = os.path.dirname(os.path.realpath(__file__));
+
+if(len(sys.argv) != 2) :
+    sys.exit("Usage: initDefinitionsH RAPL_ENABLED");
+
+RAPL_ENABLED = int(sys.argv[1]);
+
+with open('definitions.h', 'w') as f:
+  f.write("#pragma once\n");
+  f.write("#define SIGHT_ROOT_PATH \""+curDir+"\"\n");
+  if(RAPL_ENABLED) :
+    f.write("#define RAPL\n")
+

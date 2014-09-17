@@ -43,7 +43,7 @@ properties* mfem::setProperties(Mesh* mesh, GridFunction* soln, int widgetID, co
     
   // If the current attribute query evaluates to true (we're emitting debug output) AND
   // either onoffOp is not provided or its evaluates to true
-  if(attributes.query() && (onoffOp? onoffOp->apply(): true)) {
+  if(attributes->query() && (onoffOp? onoffOp->apply(): true)) {
     props->active = true;
     
     initEnvironment();
@@ -67,7 +67,7 @@ void mfem::initEnvironment() {
   if(initialized) return;
   initialized = true;
   
-  pair<string, string> paths = dbg.createWidgetDir("mfem");
+  pair<string, string> paths = dbg->createWidgetDir("mfem");
   outDir = paths.first;
   htmlOutDir = paths.second;
   //cout << "outDir="<<outDir<<" htmlOutDir="<<htmlOutDir<<endl;

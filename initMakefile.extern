@@ -4,18 +4,22 @@ import sys
 import os
 curDir = os.path.dirname(os.path.realpath(__file__));
 
-if(len(sys.argv) != 4) :
-    sys.exit("Usage: initMakefile.extern CC CCC RAPL_ENABLED");
+if(len(sys.argv) != 4 and len(sys.argv) != 7) :
+    sys.exit("Usage: initMakefile.extern CC CCC RAPL_ENABLED LLVM32_SRC_PATH LLVM32_BUILD_PATH LLVM32_INSTALL_PATH");
 
 CC = sys.argv[1];
 CCC = sys.argv[2];
-RAPL_ENABLED = sys.argv[3];
+RAPL_ENABLED = int(sys.argv[3]);
+if(len(sys.argv)==7) :
+  LLVM32_SRC_PATH = sys.argv[4]
+  LLVM32_BUILD_PATH = sys.argv[5]
+  LLVM32_INSTALL_PATH = sys.argv[6]
 
 f = open('Makefile.extern', 'w')
 
 f.write("ROOT_PATH = "+curDir+"\n");
 
-f.write("""SIGHT_CFLAGS = -I${ROOT_PATH} \\
+f.write("""SIGHT_CFLAGS = -I${ROOT_PATH} -I${ROOT_PATH}/widgets/parallel \\
                -I${ROOT_PATH}/tools/callpath/src -I${ROOT_PATH}/tools/adept-utils/include \\
                -I${ROOT_PATH}/widgets/papi/include\\
                -I${ROOT_PATH}/widgets/libmsr/include\n""");
@@ -28,7 +32,9 @@ f.write("""SIGHT_LINKFLAGS_NORPATH = -L${ROOT_PATH} -lsight_structure \\
                   -L${ROOT_PATH}/widgets/libmsr/lib -lmsr \\
                   -lpthread\n""");
 
-f.write("""SIGHT_LINKFLAGS = -L${ROOT_PATH} -lsight_structure \\
+f.write("""SIGHT_LINKFLAGS = \\
+                  -Wl,-rpath ${ROOT_PATH} \\
+                  -L${ROOT_PATH} -lsight_structure \\
                   -L${ROOT_PATH}/tools/adept-utils/lib -ladept_cutils -ladept_timing -ladept_utils \\
                   -Wl,-rpath ${ROOT_PATH}/tools/adept-utils/lib \\
                   -L${ROOT_PATH}/tools/callpath/src/src -lcallpath \\
@@ -46,5 +52,41 @@ if(int(RAPL_ENABLED)==1) :
 f.write(""" \\
                   -lpthread\n""");
 
+f.write(""" 
+# Flags to use when linking a version of slayout that include object files
+# for additional widgets and capabilities
+
+# Dynamic linking
+SIGHT_LAYOUT_DYNAMIC_LINKFLAGS = \\
+                  -Wl,-rpath ${ROOT_PATH} \\
+                  ${ROOT_PATH}/libsight_layout.so \\
+                  -Wl,-rpath ${ROOT_PATH}/widgets/gsl/lib -L${ROOT_PATH}/widgets/gsl/lib -lgsl -lgslcblas \\
+                  ${ROOT_PATH}/tools/adept-utils/lib/libadept_cutils.so \\
+                  ${ROOT_PATH}/tools/adept-utils/lib/libadept_timing.so \\
+                  ${ROOT_PATH}/tools/adept-utils/lib/libadept_utils.so \\
+                  -Wl,-rpath ${ROOT_PATH}/tools/adept-utils/lib \\
+                  ${ROOT_PATH}/tools/callpath/src/src/libcallpath.so \\
+                  -Wl,-rpath ${ROOT_PATH}/tools/callpath/src/src \\
+                  ${ROOT_PATH}/widgets/papi/lib/libpapi.a \\
+                 -lpthread\n""");
+
+## Static linking
+#SIGHT_LAYOUT_STATIC_LINKFLAGS = \\
+#                  -Wl,--whole-archive ${ROOT_PATH} libsight_layout.a -Wl,-no-whole-archive \\
+#                  ${ROOT_PATH}/tools/adept-utils/lib/libadept_cutils.so \\
+#                  ${ROOT_PATH}/tools/adept-utils/lib/libadept_timing.so \\
+#                  ${ROOT_PATH}/tools/adept-utils/lib/libadept_utils.so \\
+#                  -Wl,-rpath ${ROOT_PATH}/tools/adept-utils/lib \\
+#                  ${ROOT_PATH}/tools/callpath/src/src/libcallpath.so \\
+#                  -Wl,-rpath ${ROOT_PATH}/tools/callpath/src/src \\
+#                  ${ROOT_PATH}/widgets/papi/lib/libpapi.a \\
+#                 -lpthread
+
 f.write("CC = "+CC+"\n");
 f.write("CCC = "+CCC+"\n");
+
+if(len(sys.argv)==7) :
+  f.write("\n")
+  f.write("LLVM32_SRC_PATH = "+LLVM32_SRC_PATH+"\n")
+  f.write("LLVM32_BUILD_PATH = "+LLVM32_BUILD_PATH+"\n")
+  f.write("LLVM32_INSTALL_PATH = "+LLVM32_INSTALL_PATH+"\n")

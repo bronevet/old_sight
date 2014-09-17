@@ -3,6 +3,7 @@
 #include <map>
 #include <assert.h>
 #include <unistd.h>
+#include <climits>
 using namespace std;
 using namespace sight;
 
@@ -27,10 +28,42 @@ int main (int argc, char *argv[])
   
   double initTemp = 10; // The initial temperature at the center of the grid
   
-  int X = ceil(1/dx)+2; // Number of cells in the X dimension, plus 2 for the boundaries
-  int Y = ceil(1/dy)+2; // Number of cells in the Y dimension, plus 2 for the boundaries
+  int X = ceil(1/dx); // Number of cells in the X dimension, 2 allocated for the boundaries
+  if(X<=2) { cerr << "ERROR: dx("<<dx<<") is too small to fit at least 1 mesh element between the boundaries!\n"; assert(0); }
+  int Y = ceil(1/dy); // Number of cells in the Y dimension, 2 allocated for the boundaries
+  if(Y<=2) { cerr << "ERROR: dy("<<dy<<") is too small to fit at least 1 mesh element between the boundaries!\n"; assert(0); }
   int T = ceil(1/dt); // Number of time steps
   dbg << "X="<<X<<", Y="<<Y<<", T="<<T<<endl;
+  // Records the spatial discretization used, which can be related to the spatial discretizations used in other runs
+  vector<int> spatialDiscretizationBasis(2);
+  int MAX_GRID=1000000000;
+  // We bound the number of spatial elements in each dimension to MAX_GRID. Comparing 1x1 meshes with those larger 
+  // than MAX_GRID x  is not feasible when using a fixed point representation for mesh locations and floating
+  // point representation is vulnerable to round-off error, which cannot be handled by sightVectorFields.
+  assert(ceil(1/dx)<MAX_GRID);
+  spatialDiscretizationBasis[0] = int(MAX_GRID * (1 / ceil(1/dx)));
+  spatialDiscretizationBasis[1] = int(MAX_GRID * (1 / ceil(1/dy)));
+  
+  /*std::vector<port> outs;
+  {
+    double* temp = new double[(X-2)*(Y-2)];
+    for(int x=0; x<X-2; x++) {
+      for(int y=0; y<Y-2; y++) {
+        temp[idx(x,y,X-2)] = double(x)/(X-2) + double(y)/(Y-2);
+      }
+    }
+    sightVectorField q(sightArray(sightArray::dims(X, Y), temp), spatialDiscretizationBasis);
+    compModule mod(instance("Test", 1, 1), 
+                 inputs(port(context("dt", dt))),
+                 outs,
+                 isReference, 
+                 context("dx", dx,
+                         "dy", dy),
+                 compNamedMeasures("time", new timeMeasure(), noComp()));
+    
+    mod.setOutCtxt(0, compContext("temp", sightVectorField(sightArray(sightArray::dims(X, Y), temp), spatialDiscretizationBasis),
+                                  LkComp(2, attrValue::floatT, true)));
+  }*/
   
   double* nextTemp = new double[X*Y];
   double* lastTemp = new double[X*Y];
@@ -39,24 +72,25 @@ int main (int argc, char *argv[])
     #if defined(TRACE)
     trace heatmapTrace("Initial Temp", trace::context("x", "y"), trace::showBegin, trace::heatmap);
     #endif
-  for(int x=0; x<X; x++) {
-    #if defined(TRACE)
-    attr xAttr("x", x);
-    #endif
-    for(int y=0; y<Y; y++) {
+    for(int x=0; x<X; x++) {
       #if defined(TRACE)
-      attr yAttr("y", y);
+      attr xAttr("x", x);
       #endif
-      // If this is the center box
-      if(x>=X*4/10 && x<=X*6/10 && y>=Y*4/10 && y<=Y*6/10) lastTemp[idx(x,y,X)] = initTemp;
-      else                                                 lastTemp[idx(x,y,X)] = 0;
-      nextTemp[idx(x,y,X)] = 0;
-      #if defined(TRACE)
-      traceAttr("Initial Temp", "temperature", attrValue(lastTemp[idx(x,y,Y)])/*, s.getAnchor()*/);
-      #endif
-      //dbg << "temp["<<x<<"]["<<y<<"]==["<<idx(x,y,Y)<<"] = "<<temp[idx(x,y,Y)]<<endl;
+      for(int y=0; y<Y; y++) {
+        #if defined(TRACE)
+        attr yAttr("y", y);
+        #endif
+        // If this is the center box
+        if(x>=X*4/10 && x<=X*6/10 && y>=Y*4/10 && y<=Y*6/10) lastTemp[idx(x,y,X)] = initTemp;
+        else                                                 lastTemp[idx(x,y,X)] = 0;
+        nextTemp[idx(x,y,X)] = 0;
+        #if defined(TRACE)
+        traceAttr("Initial Temp", "temperature", attrValue(lastTemp[idx(x,y,Y)])/*, s.getAnchor()*/);
+        #endif
+        //dbg << "temp["<<x<<"]["<<y<<"]==["<<idx(x,y,Y)<<"] = "<<temp[idx(x,y,Y)]<<endl;
+      }
     }
-  } }
+  }
   
   std::vector<port> externalOutputs;
   compModule mod(instance("Heat Computation", 1, 1), 
@@ -77,7 +111,9 @@ int main (int argc, char *argv[])
                  inputs(port(context("k", k,
                                      "initTemp", initTemp)),
                         port(context("t", t)),
-                        port(compContext("temp", sightArray(sightArray::dims(X,Y), nextTemp), LkComp(2, attrValue::floatT, true)))),
+                        //port(compContext("temp", sightArray(sightArray::dims(X,Y), nextTemp), LkComp(2, attrValue::floatT, true)))),
+                        port(compContext("temp",  sightVectorField(sightArray(sightArray::dims(X, Y), nextTemp), spatialDiscretizationBasis), 
+                                         LkComp(2, attrValue::floatT, true)))),
                  externalTSOutputs,
                  isReference, 
                  context("dx", dx,
@@ -85,14 +121,12 @@ int main (int argc, char *argv[])
                          "dt", dt),
                  compNamedMeasures("time", new timeMeasure(), noComp(),
                                    "PAPI", new PAPIMeasure(papiEvents(PAPI_L1_TCM, PAPI_L2_TCM, PAPI_L3_TCM)), noComp()));
-    //attr tAttr("t", t);
-    //attr vAttr("verbose", t%(T/10) == 0);
-    //attrIf aI(new attrNEQ("verbose", 0));
-    //attrFalse aF();
+
     #if defined(TRACE)
     trace heatmapTrace(txt()<<"Temp t="<<t, trace::context("x", "y"), trace::showBegin, trace::heatmap);
     #endif
     
+    // Iterate over the inner (non-boundary mesh elements)
     for(int x=1; x<X-1; x++) {
       #if defined(TRACE)
       attr xAttr("x", x);
@@ -105,7 +139,7 @@ int main (int argc, char *argv[])
         /*scope s(txt()<<"x="<<x<<" y="<<y);
         dbg << "lastTemp["<<x<<"]["<<y<<"] = "<<lastTemp[idx(x,y,Y)]<<endl;*/
         if(tsMod.existsModOption("k")) {
-          cout << "k specified. old val="<<k<<", new val="<<tsMod.getModOption("k").getAsFloat()<<endl;
+          //cout << "k specified. old val="<<k<<", new val="<<tsMod.getModOption("k").getAsFloat()<<endl;
           k = tsMod.getModOption("k").getAsFloat();
         }
         
@@ -131,10 +165,14 @@ int main (int argc, char *argv[])
     double* tmp = lastTemp;
     lastTemp = nextTemp;
     nextTemp = tmp;
-    tsMod.setOutCtxt(0, compContext("temp", sightArray(sightArray::dims(X,Y), nextTemp), LkComp(2, attrValue::floatT, true)));
+    //tsMod.setOutCtxt(0, compContext("temp", sightArray(sightArray::dims(X,Y), nextTemp), LkComp(2, attrValue::floatT, true)));
+    tsMod.setOutCtxt(0, compContext("temp", sightVectorField(sightArray(sightArray::dims(X, Y), nextTemp), spatialDiscretizationBasis),
+                                    LkComp(2, attrValue::floatT, true)));
     //cout << ">"<<endl;
   }
-  mod.setOutCtxt(0, compContext("temp", sightArray(sightArray::dims(X,Y), nextTemp), LkComp(2, attrValue::floatT, true)));
+  //mod.setOutCtxt(0, compContext("temp", sightArray(sightArray::dims(X,Y), nextTemp), LkComp(2, attrValue::floatT, true)));
+  mod.setOutCtxt(0, compContext("temp", sightVectorField(sightArray(sightArray::dims(X, Y), nextTemp), spatialDiscretizationBasis),
+                                LkComp(2, attrValue::floatT, true)));
   
   delete nextTemp;
   delete lastTemp;

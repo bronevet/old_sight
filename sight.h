@@ -7,6 +7,8 @@
 #include "widgets/module/module_structure.h"
 #include "widgets/source/source_structure.h"
 #include "widgets/clock/clock_structure.h"
+#include "widgets/parallel/parallel_structure.h"
+#include "widgets/box/box_api_cpp.h"
 
 using namespace sight::structure;
 

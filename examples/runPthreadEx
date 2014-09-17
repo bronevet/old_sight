@@ -1,0 +1,5 @@
+export SIGHT_FILE_OUT=1
+./$1 $2
+../hier_merge dbg.$1 dbg.$1.individual.thread_*
+rm -r dbg.$1.individual*
+../slayout dbg.$1

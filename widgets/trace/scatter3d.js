@@ -1360,65 +1360,65 @@ function getAttrType(data, attrIdx, hostDivID, axisSize) {
   // If attrType has not yet been initialized, initialize it based on all the data points we may observe
   if(rangeMin[hostDivID][attrIdx] === undefined) {
     for(d in data) { if(data.hasOwnProperty(d)) {
-  	  // Skip tuples that we do not have a value for this data attribute
-  	  if(data[d][attrIdx] === undefined) continue;
+      // Skip tuples that we do not have a value for this data attribute
+      if(data[d][attrIdx] === undefined) continue;
   	  
-  	  // If the value is not already in categories, map the attribute index to a unique value, (we use the current size of categories)
-  	  if(categories[data[d][attrIdx]] === undefined) {
-  	    categories[data[d][attrIdx]] = categoriesArray.length;
-  	    categoriesArray.push(data[d][attrIdx]);
-  	  }
+      // If the value is not already in categories, map the attribute index to a unique value, (we use the current size of categories)
+      if(categories[data[d][attrIdx]] === undefined) {
+        categories[data[d][attrIdx]] = categoriesArray.length;
+        categoriesArray.push(data[d][attrIdx]);
+      }
       
-  	  // If we have not yet encountered a non-numeric value
-  	  if(isNumeric) {
-  	    // If this value is numeric, we update the min and max
-  	    if(isNumber(data[d][attrIdx]) || String(data[d][attrIdx]).toLowerCase()=="nan" || String(data[d][attrIdx]).toLowerCase()=="inf") {
-  	  	  if(isNumber(data[d][attrIdx])) {
-  	  	    var val = parseFloat(data[d][attrIdx]); 
+      // If we have not yet encountered a non-numeric value
+      if(isNumeric) {
+        // If this value is numeric, we update the min and max
+        if(isNumber(data[d][attrIdx]) || String(data[d][attrIdx]).toLowerCase()=="nan" || String(data[d][attrIdx]).toLowerCase()=="inf") {
+          if(isNumber(data[d][attrIdx])) {
+            var val = parseFloat(data[d][attrIdx]); 
   	  	    
-  	  	    if(val>0 && minPositiveVal > val) minPositiveVal = val;
-  	  	    if(minVal > val) minVal = val;
-  	  	    if(maxVal < val) maxVal = val;
-  	  	  }
-  	    // If this value is non-numeric we record that this data attribute is categorical
-  	    } else {
-  	      isNumeric = false;
-  	    }
-  	  }
+            if(val>0 && minPositiveVal > val) minPositiveVal = val;
+            if(minVal > val) minVal = val;
+            if(maxVal < val) maxVal = val;
+          }
+        // If this value is non-numeric we record that this data attribute is categorical
+        } else {
+          isNumeric = false;
+        }
+      }
     } }
     
     // Stretch the range to keep the min and max from being too close to 0 
     // (the range can only become larger as a result of this stretching)
-    if(-1e-10<minVal && minVal < 0) minVal = -1e-10;
-    if(0>minPositiveVal && minPositiveVal < 1e-10) minPositiveVal = 0;
+    if(-1e-20<minVal && minVal < 0) minVal = -1e-20;
+    if(0>minPositiveVal && minPositiveVal < 1e-20) minPositiveVal = 0;
     
-    if(0>maxVal && maxVal < 1e-10) maxVal = 1e-10;
-    if(-1e-10<maxVal && maxVal < 0) maxVal = 0;
+    if(0>maxVal && maxVal < 1e-20) maxVal = 1e-20;
+    if(-1e-20<maxVal && maxVal < 0) maxVal = 0;
 	
-	  minVal_AllData = minVal;
-	  maxVal_AllData = maxVal;
-	  minPositiveVal_AllData = minPositiveVal;
+    minVal_AllData = minVal;
+    maxVal_AllData = maxVal;
+    minPositiveVal_AllData = minPositiveVal;
 
-    // If the attribute is numeric but consists of just NaNs, consider it categorical
-    if(isNumeric && categoriesArray.length==1 && String(categoriesArray[0]).toLowerCase()=="nan")
-	  isNumeric = false;
+    // If the attribute is numeric but consists of just NaNs and/or Infs, consider it categorical
+    if(isNumeric && (maxVal<minVal))
+      isNumeric = false;
 	
-	  numCategories = categoriesArray.length;
+    numCategories = categoriesArray.length;
   // If attrType has been initialized, update it to reflect only the currently selected data points
   } else {
-	  isNumeric = (attrType[hostDivID][attrIdx]["type"] == "numeric");
-	  if(isNumeric) {
-        minVal = rangeMin[hostDivID][attrIdx];
-	    minVal_AllData = attrType[hostDivID][attrIdx]["min_AllData"];
-	    maxVal = rangeMax[hostDivID][attrIdx];
-	    maxVal_AllData = attrType[hostDivID][attrIdx]["max_AllData"];
-	    minPositiveVal = Math.max(minVal, attrType[hostDivID][attrIdx]["minPositive_AllData"]);
-	    minPositiveVal_AllData = attrType[hostDivID][attrIdx]["minPositive_AllData"];
-	  } else {
-	    categories = attrType[hostDivID][attrIdx]["categories"];
-        categoriesArray = attrType[hostDivID][attrIdx]["categoriesArray"];
-	  }
-	  numCategories = attrType[hostDivID][attrIdx]["numCategories"];
+    isNumeric = (attrType[hostDivID][attrIdx]["type"] == "numeric");
+    if(isNumeric) {
+      minVal = rangeMin[hostDivID][attrIdx];
+      minVal_AllData = attrType[hostDivID][attrIdx]["min_AllData"];
+      maxVal = rangeMax[hostDivID][attrIdx];
+      maxVal_AllData = attrType[hostDivID][attrIdx]["max_AllData"];
+      minPositiveVal = Math.max(minVal, attrType[hostDivID][attrIdx]["minPositive_AllData"]);
+      minPositiveVal_AllData = attrType[hostDivID][attrIdx]["minPositive_AllData"];
+    } else {
+      categories = attrType[hostDivID][attrIdx]["categories"];
+      categoriesArray = attrType[hostDivID][attrIdx]["categoriesArray"];
+    }
+    numCategories = attrType[hostDivID][attrIdx]["numCategories"];
   }
   
   var scaleR;

@@ -20,10 +20,10 @@ namespace sight {
 namespace structure {
 
 // Maximum ID assigned to any graph object
-int graph::maxGraphID=0;
+ThreadLocalStorage1<int, int> graph::maxGraphID(0);
 
 // Maximum ID assigned to any graph node
-int graph::maxNodeID=0;
+ThreadLocalStorage1<int, int> graph::maxNodeID(0);
 
 graph::graph(bool includeAllSubBlocks, properties* props) : 
   block("Graph", setProperties(maxGraphID, "", NULL, props)), includeAllSubBlocks(includeAllSubBlocks)
@@ -64,7 +64,7 @@ properties* graph::setProperties(int graphID, std::string dotText, const attrOp*
     
   // If the current attribute query evaluates to true (we're emitting debug output) AND
   // either onoffOp is not provided or its evaluates to true
-  if(attributes.query() && (onoffOp? onoffOp->apply(): true)) {
+  if(attributes->query() && (onoffOp? onoffOp->apply(): true)) {
     props->active = true;
     map<string, string> pMap;
     pMap["graphID"] = txt()<<maxGraphID;
@@ -123,7 +123,7 @@ void graph::setGraphEncoding(string dotText) {
   pMap["dot"] = dotText;
   p.add("graphEncoding", pMap);
   
-  dbg.tag(p);
+  dbg->tag(p);
 }
 
 // Add a directed edge from the location of the from anchor to the location of the to anchor
@@ -150,8 +150,8 @@ void graph::addDirEdge(anchor from, anchor to) {
   pMap["graphID"] = txt()<<graphID;
   p.add("dirEdge", pMap);
   
-  //dbg.tag("dirEdge", properties, false);
-  dbg.tag(p);
+  //dbg->tag("dirEdge", properties, false);
+  dbg->tag(p);
 }
 
 // Add an undirected edge between the location of the a anchor and the location of the b anchor
@@ -175,9 +175,62 @@ void graph::addUndirEdge(anchor a, anchor b) {
   pMap["b"] = txt()<<b.getID();
   pMap["graphID"] = txt()<<graphID;
   p.add("undirEdge", pMap);
-  //dbg.tag("undEdge", properties, false);
+  //dbg->tag("undEdge", properties, false);
   
-  dbg.tag(p);
+  dbg->tag(p);
+}
+
+// Add an invisible edge that forces the target to be placed after the source
+void graph::addInvisDepEdge(anchor a, anchor b) {
+  // If we only emit nodes that are connected by edges
+  if(!includeAllSubBlocks) {
+    // If the node of either side of this edge has been observed but not yet connected, emit its tag now
+    if(nodesObservedNotEmitted.find(a.getID()) != nodesObservedNotEmitted.end()/* && nodesConnected.find(a) == nodesConnected.end()*/)
+      emitNodeTag(a.getID(), nodesObservedNotEmitted[a.getID()].first, nodesObservedNotEmitted[a.getID()].second);
+    if(nodesObservedNotEmitted.find(b.getID()) != nodesObservedNotEmitted.end()/* && nodesConnected.find(b) == nodesConnected.end()*/)
+      emitNodeTag(b.getID(), nodesObservedNotEmitted[b.getID()].first, nodesObservedNotEmitted[b.getID()].second);
+  
+    // Record that both nodes have been connected
+    nodesConnected.insert(a);
+    nodesConnected.insert(b);
+  }
+  
+  properties p;
+  map<string, string> pMap;
+  pMap["a"] = txt()<<a.getID();
+  pMap["b"] = txt()<<b.getID();
+  pMap["graphID"] = txt()<<graphID;
+  p.add("invisEdge", pMap);
+  //dbg->tag("undEdge", properties, false);
+  
+  dbg->tag(p);  
+}
+  
+
+// Start a graphviz cluster
+void graph::startSubGraph() {
+  properties p;
+  map<string, string> pMap;
+  pMap["graphID"]  = txt()<<graphID;
+  p.add("subGraph", pMap);
+  dbg->enter(p);
+}
+
+void graph::startSubGraph(const std::string& label) {
+  properties p;
+  map<string, string> pMap;
+  pMap["label"] = label;
+  pMap["graphID"]  = txt()<<graphID;
+  p.add("subGraph", pMap);
+  dbg->enter(p);
+}
+
+// End a graphviz cluster
+void graph::endSubGraph() {
+  properties p;
+  map<string, string> pMap;
+  p.add("subGraph", pMap);
+  dbg->exit(p);
 }
 
 /* ADD THIS IF WE WISH TO HAVE NODES THAT EXISTED INSIDE THE GRAPH BUT WERE NOT CONNECTED VIA EDGES*/
@@ -195,7 +248,7 @@ bool graph::subBlockEnterNotify(block* subBlock) {
   //if(!includeAllSubBlocks)
   else
     // Record that this node has been observed
-    nodesObservedNotEmitted[subBlock->getAnchor().getID()] = make_pair(subBlock->getLabel(), maxNodeID);
+    nodesObservedNotEmitted[subBlock->getAnchor().getID()] = make_pair(subBlock->getLabel(), (int)maxNodeID);
   
   maxNodeID++;
   
@@ -218,7 +271,18 @@ void graph::emitNodeTag(int anchorID, std::string label, int nodeID) {
   // This node has now been emitted
   nodesObservedNotEmitted.erase(anchorID);
 
-  dbg.tag(p);
+  dbg->tag(p);
+}
+
+/********************
+ ***** subgraph *****
+ ********************/
+subgraph::subgraph(graph& g, const std::string& label): g(g) {
+  g.startSubGraph(label);
+}
+
+subgraph::~subgraph() {
+  g.endSubGraph();
 }
 
 /*****************************************
@@ -366,7 +430,7 @@ properties* GraphMerger::setProperties(std::vector<std::pair<properties::tagType
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
 // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
 void GraphMerger::mergeKey(properties::tagType type, properties::iterator tag, 
-                           std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+                           const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
   BlockMerger::mergeKey(type, tag.next(), inStreamRecords, info);
 }
 

@@ -1,8 +1,13 @@
-#include "sight.h"
+//#include "sight.h"
 #include <map>
 #include <vector>
 #include <assert.h>
-using namespace std;
+#include "sight.h"
+#include "sight_pthread.h"
+//#include <pthread.h>
+#include <unistd.h>
+//#include <omp.h>
+//using namespace std;
 using namespace sight;
 
 int fib(int a);
@@ -27,18 +32,18 @@ int main(int argc, char** argv)
 {
   if(argc<2) { printf("Usage: 0.Demo maxDepth\n"); exit(-1); }
   int maxDepth = atoi(argv[1]);
-  
+ 
   // The absolute path of this file. This is necessary to have Sight include the relevant regions of 
   // source code in the output.
   string thisFile = txt()<<ROOT_PATH<<"/examples/0.Demo.C";
   
   SightInit(argc, argv, "Demo", txt()<<"dbg.0.Demo.maxDepth_"<<maxDepth);
-   
+  
   dbg << "<h1>Demonstration of Sight</h1>" << endl;
   
   { 
     scope s("No formatting", scope::high);
-    { source src("source", source::regions(source::reg(thisFile, "NFStart",      "NFEnd"),
+    { sight::structure::source src("source", source::regions(source::reg(thisFile, "NFStart",      "NFEnd"),
                                            source::reg(thisFile, "fibBaseStart", "fibBaseEnd"))); }
     
 #pragma sightLoc NFStart
@@ -52,7 +57,7 @@ int main(int argc, char** argv)
   
   { 
     scope s("Indentation", scope::high);
-    { source src("source", source::regions(source::reg(thisFile, "IndStart",       "IndEnd"),
+    { sight::structure::source src("source", source::regions(source::reg(thisFile, "IndStart",       "IndEnd"),
                                            source::reg(thisFile, "fibIndentStart", "fibIndentEnd"))); }
     
 #pragma sightLoc IndStart
@@ -66,7 +71,7 @@ int main(int argc, char** argv)
   
   { 
     scope s("Indentation Mixed with Scoping", scope::high);
-    { source src("source", source::regions(source::reg(thisFile, "IndScopeStart",  "IndScopeEnd"),
+    { sight::structure::source src("source", source::regions(source::reg(thisFile, "IndScopeStart",  "IndScopeEnd"),
                                            source::reg(thisFile, "fibIndentStart", "fibIndentEnd"))); }
     
 #pragma sightLoc IndScopeStart
@@ -76,10 +81,10 @@ int main(int argc, char** argv)
     }
 #pragma sightLoc IndScopeEnd
   }
-  
+ 
   { 
     scope s("Multi-level Scoping", scope::high);
-    { source src("source", source::regions(source::reg(thisFile, "MultScopeStart", "MultScopeEnd"),
+    { sight::structure::source src("source", source::regions(source::reg(thisFile, "MultScopeStart", "MultScopeEnd"),
                                            source::reg(thisFile, "fibScopeStart",  "fibScopeEnd"))); }
     
 #pragma sightLoc MultScopeStart
@@ -89,10 +94,10 @@ int main(int argc, char** argv)
     }
 #pragma sightLoc MultScopeEnd
   }
-  
+   
   { 
     scope s("Multi-level Scoping with Links", scope::high);
-    { source src("source", source::regions(source::reg(thisFile, "MultScopeLinksStart", "MultScopeLinksEnd"),
+    { sight::structure::source src("source", source::regions(source::reg(thisFile, "MultScopeLinksStart", "MultScopeLinksEnd"),
                                            source::reg(thisFile, "fibScopeLinksStart",  "fibScopeLinksEnd"))); }
     
 #pragma sightLoc MultScopeLinksStart
@@ -108,10 +113,10 @@ int main(int argc, char** argv)
     }
 #pragma sightLoc MultScopeLinksEnd
   }
-  
+
   { 
     scope s("Multi-level Scoping with Graphs", scope::high);
-    { source src("source", source::regions(source::reg(thisFile, "MultScopeGraphsStart", "MultScopeGraphsEnd"),
+    { sight::structure::source src("source", source::regions(source::reg(thisFile, "MultScopeGraphsStart", "MultScopeGraphsEnd"),
                                            source::reg(thisFile, "fibGraphStart",        "fibGraphEnd"))); }
 
 #pragma sightLoc MultScopeGraphsStart
@@ -125,7 +130,7 @@ int main(int argc, char** argv)
 
   {
     scope s("Performance Analysis", scope::high);
-    { source src("source", source::regions(source::reg(thisFile, "PerfAnalysisStart", "PerfAnalysisEnd"),
+    { sight::structure::source src("source", source::regions(source::reg(thisFile, "PerfAnalysisStart", "PerfAnalysisEnd"),
                                            source::reg(thisFile, "fibStart",          "fibEnd"),
                                            source::reg(thisFile, "fibLinearStart",    "fibLinearEnd"))); }
     
@@ -153,7 +158,7 @@ int main(int argc, char** argv)
 
   {
     scope s("Modular Analysis", scope::high);
-    { source src("source", source::regions(source::reg(thisFile, "ModularStart",    "ModularEnd"),
+    { sight::structure::source src("source", source::regions(source::reg(thisFile, "ModularStart",    "ModularEnd"),
                                            source::reg(thisFile, "modularFibStart", "modularFibEnd"))); }
     
 #pragma sightLoc ModularStart
@@ -161,6 +166,7 @@ int main(int argc, char** argv)
     fibModule(9,0);
 #pragma sightLoc ModularEnd
   }
+
   
 /*  { 
     scope s("Modular Analysis", scope::high);
