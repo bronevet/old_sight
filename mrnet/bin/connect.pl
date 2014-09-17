@@ -19,9 +19,9 @@ sub connect_be {
   		system("$cmd");
 	}else {
    		#remote BE - connect via ssh
-		#unset SIGHT_FILE_OUT;
-		#export MRNET_MERGE_EXEC="./smrnet_be 127.0.0.1 $PARENT_PORT $PARENT_RANK 127.0.0.1 $BE_RANK";
-		
+		$sight_mrnet_env="$conn_str";
+		$cmd = "ssh -n $be_host_name 'export MRNET_MERGE_EXEC=$sight_mrnet_env ;$sight_app $app_params'";		
+		system("$cmd");
 	}
 }
 

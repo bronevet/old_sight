@@ -8,7 +8,7 @@ a.) first export LD_LIBRARY_PATH to point to the MRNet libraries. You can easily
 
 b.) initiate the MRnet Front-End
 
-./smrnet_fe top_file_s2 libsmrnet_filter.so 4
+    ./smrnet_fe top_file_s2 libsmrnet_filter.so 4
 
 
 
@@ -20,17 +20,19 @@ a.) first export LD_LIBRARY_PATH to point to the MRNet libraries. You can easily
 
     source ../lib/sourced.file
 
-b.) users should connet MRnet Backend emiitters to the already started MRnet Front-End. Following script 
-is a sample to connect on localhost with exmaple usage --> 
+b.) modify "app.params" file appropriately. Each line represent the parameters for sight application
+      
+          #executable/binary    #host      #app parameters  
+   ie:- ./12.SampleMRnetEmitter 127.0.0.1  p1 p2   
+ 
+   for example if 4 application instances are connecting to MRNet tree then 4 lines should be present.
 
-[source be_process.sh <PARENT_PORT> <PARENT_RANK> <EMITTER_RANK>]
+c.) users should connet MRnet Backend emiitters to the already started MRnet Front-End. The file app.params
+should be modified correctly before connecting.
 
-ie:-
-source be_process.sh 56313 0 2330 
-source be_process.sh 56313 0 2331
-source be_process.sh 56313 0 2332
-source be_process.sh 56313 0 2333 
+   ./connect.pl
 
-==========================================================================================================
+optionally users can give connection file and a app.params file to the program.
 
+   ./connect.pl [connections.file] [app.parameters file]
 
