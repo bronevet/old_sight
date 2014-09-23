@@ -13,8 +13,8 @@
 #include <assert.h>
 #include "sight_common.h"
 #include "utils.h"
-#include "tools/callpath/include/Callpath.h"
-#include "tools/callpath/include/CallpathRuntime.h"
+#include "callpath/include/Callpath.h"
+#include "callpath/include/CallpathRuntime.h"
 #include "thread_local_storage.h"
 #include <signal.h>
 

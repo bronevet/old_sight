@@ -11,12 +11,23 @@ SIGHT_MRNET_H := mrnet/AtomicSyncPrimitives.h mrnet/mrnet_integration.h mrnet/mr
 sight := ${sight_O} ${sight_H} gdbLineNum.pl sightDefines.pl
 
 ROOT_PATH = ${CURDIR}
+REPO_PATH = ${SIGHT_REPO}
 
-SIGHT_CFLAGS = -g -fPIC -I${ROOT_PATH} -I${ROOT_PATH}/attributes -I${ROOT_PATH}/widgets/parallel \
-                -I${ROOT_PATH}/tools/callpath/src -I${ROOT_PATH}/tools/adept-utils/include \
-                -I${ROOT_PATH}/tools/boost_1_55_0 \
-                -I${ROOT_PATH}/widgets/papi/include \
-                -I${ROOT_PATH}/widgets/libmsr/include \
+#ifeq ($(strip $(REPO_PATH)),)
+#REPO_PATH = ~/.sight_repo
+#endif
+ifeq ($(strip $(REPO_PATH)),)
+REPO_DIR = $(shell dirname ~/.sight_repo)
+REPO_BASE= $(shell basename ~/.sight_repo)
+REPO_PATH= ${REPO_DIR}/${REPO_BASE}
+endif
+
+
+SIGHT_CFLAGS = -g -fPIC -I${ROOT_PATH} -I${REPO_PATH} -I${ROOT_PATH}/attributes -Iwidgets/parallel \
+                -I${REPO_PATH}/callpath/src -I${REPO_PATH}/adept-utils/include \
+                -I${REPO_PATH}/boost_1_55_0 \
+                -I${REPO_PATH}/papi/include \
+                -I${REPO_PATH}/libmsr/include \
                 -I${ROOT_PATH}/mrnet \
 		-I${ROOT_PATH}/mrnet/lib/include/mrnet  \
 		-I${ROOT_PATH}/mrnet/lib/include  \
@@ -25,15 +36,15 @@ SIGHT_CFLAGS = -g -fPIC -I${ROOT_PATH} -I${ROOT_PATH}/attributes -I${ROOT_PATH}/
 
 SIGHT_LINKFLAGS = \
                   -Wl,-rpath ${ROOT_PATH} \
-                  ${ROOT_PATH}/tools/adept-utils/lib/libadept_cutils.so \
-                  ${ROOT_PATH}/tools/adept-utils/lib/libadept_timing.so \
-                  ${ROOT_PATH}/tools/adept-utils/lib/libadept_utils.so \
-                  -Wl,-rpath ${ROOT_PATH}/tools/adept-utils/lib \
-                  ${ROOT_PATH}/tools/callpath/src/src/libcallpath.so \
-                  -Wl,-rpath ${ROOT_PATH}/tools/callpath/src/src \
-                  ${ROOT_PATH}/widgets/gsl/lib/libgsl.so \
-                  ${ROOT_PATH}/widgets/gsl/lib/libgslcblas.so \
-                  -Wl,-rpath ${ROOT_PATH}/widgets/gsl/lib \
+                  ${REPO_PATH}/adept-utils/lib/libadept_cutils.so \
+                  ${REPO_PATH}/adept-utils/lib/libadept_timing.so \
+                  ${REPO_PATH}/adept-utils/lib/libadept_utils.so \
+                  -Wl,-rpath ${REPO_PATH}/adept-utils/lib \
+                  ${REPO_PATH}/callpath/src/src/libcallpath.so \
+                  -Wl,-rpath ${REPO_PATH}/callpath/src/src \
+                  ${REPO_PATH}/gsl/lib/libgsl.so \
+                  ${REPO_PATH}/gsl/lib/libgslcblas.so \
+                  -Wl,-rpath ${REPO_PATH}/gsl/lib \
 	          -lpthread -lpapi
 
 
@@ -54,8 +65,8 @@ MRNET_LIBS = -L${ROOT_PATH}/mrnet/lib/lib -lmrnet -lxplat -lm -lpthread -ldl
 
 RAPL_ENABLED = 1
 ifeq (${RAPL_ENABLED}, 1)
-SIGHT_LINKFLAGS += ${ROOT_PATH}/widgets/libmsr/lib/libmsr.so \
-                    -Wl,-rpath ${ROOT_PATH}/widgets/libmsr/lib
+SIGHT_LINKFLAGS += ${REPO_PATH}/libmsr/lib/libmsr.so \
+                    -Wl,-rpath ${REPO_PATH}/libmsr/lib
 endif
 	                
 	                #-Wl,-rpath ${ROOT_PATH}/widgets/papi/lib \
@@ -124,7 +135,7 @@ MPICC = ${ROOT_PATH}/tools/mpiclang
 MPICCC = ${ROOT_PATH}/tools/mpiclang++
 endif
 
-MAKE_DEFINES = ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} VNC_ENABLED=${VNC_ENABLED} MPI_ENABLED=${MPI_ENABLED} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" CC=${CC} CCC=${CCC} KULFI_ENABLED=${KULFI_ENABLED} LLVM32_SRC_PATH=${LLVM32_SRC_PATH} LLVM32_BUILD_PATH=${LLVM32_BUILD_PATH} LLVM32_INSTALL_PATH=${LLVM32_INSTALL_PATH}
+MAKE_DEFINES = REPO_PATH=${REPO_PATH} ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} VNC_ENABLED=${VNC_ENABLED} MPI_ENABLED=${MPI_ENABLED} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" CC=${CC} CCC=${CCC} KULFI_ENABLED=${KULFI_ENABLED} LLVM32_SRC_PATH=${LLVM32_SRC_PATH} LLVM32_BUILD_PATH=${LLVM32_BUILD_PATH} LLVM32_INSTALL_PATH=${LLVM32_INSTALL_PATH}
 
 # Set to "!" if we wish to enable examples that use MPI
 MPI_ENABLED = 0
@@ -236,8 +247,8 @@ libsight_structure.so: ${SIGHT_STRUCTURE_O} ${SIGHT_STRUCTURE_H} ${SIGHT_COMMON_
 #libsight_structure.a: ${SIGHT_STRUCTURE_O} ${SIGHT_STRUCTURE_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre
 #	ar -r libsight_structure.a ${SIGHT_STRUCTURE_O} ${SIGHT_COMMON_O} widgets/*/*_structure.o widgets/*/*_common.o
 
-libsight_layout.so: ${SIGHT_LAYOUT_O} ${SIGHT_LAYOUT_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre widgets/gsl/lib/libgsl.so widgets/gsl/lib/libgslcblas.so
-	${CC} -shared -Wl,-soname,libsight_layout.so -o libsight_layout.so ${SIGHT_LAYOUT_O} ${SIGHT_COMMON_O} widgets/*/*_layout.o widgets/*/*_common.o -Lwidgets/gsl/lib -lgsl -lgslcblas
+libsight_layout.so: ${SIGHT_LAYOUT_O} ${SIGHT_LAYOUT_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre ${REPO_PATH}/gsl/lib/libgsl.so ${REPO_PATH}/gsl/lib/libgslcblas.so
+	${CC} -shared -Wl,-soname,libsight_layout.so -o libsight_layout.so ${SIGHT_LAYOUT_O} ${SIGHT_COMMON_O} widgets/*/*_layout.o widgets/*/*_common.o -L${REPO_PATH}/gsl/lib -lgsl -lgslcblas
 #widgets/gsl/lib/libgsl.a widgets/gsl/lib/libgslcblas.a
 #-Wl,-rpath widgets/gsl/lib -Wl,--whole-archive widgets/gsl/lib/libgsl.so widgets/gsl/lib/libgslcblas.so -Wl,--no-whole-archive
 
@@ -256,10 +267,10 @@ sight_common.o: sight_common.C sight_common_internal.h attributes/attributes_com
 	${CCC} ${SIGHT_CFLAGS} sight_common.C -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o sight_common.o
 
 sight_structure.o: sight_structure.C sight_structure_internal.h attributes/attributes_structure.h sight_common_internal.h attributes/attributes_common.h maketools
-	${CCC} ${SIGHT_CFLAGS} sight_structure.C -Itools/dtl -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o sight_structure.o
+	${CCC} ${SIGHT_CFLAGS} sight_structure.C -I${REPO_PATH}/dtl -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o sight_structure.o
 
 sight_merge.o: sight_merge.C sight_merge.h sight_structure_internal.h sight_common_internal.h attributes/attributes_common.h maketools
-	${CCC} ${SIGHT_CFLAGS} sight_merge.C -Itools/dtl -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o sight_merge.o
+	${CCC} ${SIGHT_CFLAGS} sight_merge.C -I${ROOT_PATH}/dtl -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o sight_merge.o
 
 sight_layout.o: sight_layout.C sight_layout_internal.h attributes/attributes_layout.h sight_common_internal.h attributes/attributes_common.h
 	${CCC} ${SIGHT_CFLAGS} sight_layout.C -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o sight_layout.o
@@ -281,11 +292,13 @@ attributes/attributes_layout.o: attributes/attributes_layout.C attributes/attrib
 # Rule for compiling the aspects of widgets that libsight.a requires
 .PHONY: widgets_pre
 widgets_pre: maketools
-	cd widgets; make -f Makefile_pre ${MAKE_DEFINES}
+	cd ${REPO_PATH}; make -f ${ROOT_PATH}/widgets/Makefile_pre ${MAKE_DEFINES}
+	#cd widgets; make -f Makefile_pre ${MAKE_DEFINES}
 
 # Rule for compiling the aspects of widgets that require libsight.a
 widgets_post: libsight_layout.so libsight_structure.so
-	cd widgets; make -f Makefile_post ${MAKE_DEFINES}
+	cd ${REPO_PATH}; make -f ${ROOT_PATH}/widgets/Makefile_post ${MAKE_DEFINES}
+	#cd widgets; make -f Makefile_post ${MAKE_DEFINES}
 
 mrnet_pre: mrnet/lib/lib/libmrnet.a
 #	cd mrnet; make -f Makefile_pre ROOT_PATH=${ROOT_PATH} all
@@ -293,8 +306,16 @@ mrnet_pre: mrnet/lib/lib/libmrnet.a
 mrnet/lib/lib/libmrnet.a: 
 	cd mrnet; make -f Makefile_pre ROOT_PATH=${ROOT_PATH} all
 	
-maketools: mrnet_pre
-	cd tools; make -f Makefile ${MAKE_DEFINES}
+.PHONY: check_repo_env 
+check_repo_env:
+	if test -d ${REPO_PATH}; then echo "sight repository : ${REPO_PATH} exist"; else echo "creating repository : ${REPO_PATH}"; mkdir ${REPO_PATH}; fi
+	
+maketools: mrnet_pre check_repo_env
+	cd ${REPO_PATH}; make -f ${ROOT_PATH}/tools/Makefile ${MAKE_DEFINES}
+	#cd tools; make -f Makefile ${MAKE_DEFINES}
+
+clean_repo:
+	rm -rf ${REPO_PATH}/*
 
 binreloc.o: binreloc.c binreloc.h
 	${CCC} ${SIGHT_CFLAGS} binreloc.c -c -o binreloc.o
@@ -321,14 +342,14 @@ definitions.h: initDefinitionsH Makefile
 	./initDefinitionsH ${RAPL_ENABLED}
 
 clean: sight_mrnet_clean
-	cd widgets; make -f Makefile_pre clean
-	cd widgets; make -f Makefile_post clean
-	cd tools; make -f Makefile clean
+	cd widgets; make -f Makefile_pre clean ${MAKE_DEFINES}
+	cd widgets; make -f Makefile_post clean ${MAKE_DEFINES}
+	cd tools; make -f Makefile clean ${MAKE_DEFINES}
 	cd tools make clean
 	cd examples; make clean
 #	cd apps/mcbench; ./clean-linux-x86_64.sh
 	cd apps/mfem; make clean
-	rm -rf dbg dbg.* *.a *.o widgets/shellinabox* widgets/mongoose* widgets/graphviz* gdbLineNum.pl
+	rm -rf dbg dbg.* *.a *.o gdbLineNum.pl
 	rm -rf script/taffydb sightDefines.pl gdbscript
 	rm -f slayout hier_merge
 

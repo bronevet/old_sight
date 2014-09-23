@@ -1,9 +1,9 @@
-WIDGETS_COMMON_O := scope/scope_common.o graph/graph_common.o valSelector/valSelector_common.o trace/trace_common.o module/module_common.o source/source_common.o
-WIDGETS_COMMON_H := scope/scope_common.h graph/graph_common.h valSelector/valSelector_common.h trace/trace_common.h module/module_common.h source/source_common.h
-WIDGETS_STRUCTURE_O := scope/scope_structure.o graph/graph_structure.o valSelector/valSelector_structure.o trace/trace_structure.o module/module_structure.o source/source_structure.o clock/clock_structure.o parallel/parallel_structure.o parallel/sight_pthread.o
-WIDGETS_STRUCTURE_H := scope/scope_structure.h graph/graph_structure.h valSelector/valSelector_structure.h trace/trace_structure.h module/module_structure.h source/source_structure.h clock/clock_structure.h parallel/parallel_structure.h parallel/sight_pthread.h
-WIDGETS_LAYOUT_O := scope/scope_layout.o graph/graph_layout.o valSelector/valSelector_layout.o trace/trace_layout.o module/module_layout.o source/source_layout.o clock/clock_layout.o parallel/parallel_layout.o
-WIDGETS_LAYOUT_H := scope/scope_layout.h graph/graph_layout.h valSelector/valSelector_layout.h trace/trace_layout.h module/module_layout.h source/source_layout.o clock/clock_layout.h parallel/parallel_layout.h
+WIDGETS_COMMON_O := ${ROOT_PATH}/widgets/scope/scope_common.o ${ROOT_PATH}/widgets/graph/graph_common.o ${ROOT_PATH}/widgets/valSelector/valSelector_common.o ${ROOT_PATH}/widgets/trace/trace_common.o ${ROOT_PATH}/widgets/module/module_common.o ${ROOT_PATH}/widgets/source/source_common.o
+WIDGETS_COMMON_H := ${ROOT_PATH}/widgets/scope/scope_common.h ${ROOT_PATH}/widgets/graph/graph_common.h ${ROOT_PATH}/widgets/valSelector/valSelector_common.h ${ROOT_PATH}/widgets/trace/trace_common.h ${ROOT_PATH}/widgets/module/module_common.h ${ROOT_PATH}/widgets/source/source_common.h
+WIDGETS_STRUCTURE_O := ${ROOT_PATH}/widgets/scope/scope_structure.o ${ROOT_PATH}/widgets/graph/graph_structure.o ${ROOT_PATH}/widgets/valSelector/valSelector_structure.o ${ROOT_PATH}/widgets/trace/trace_structure.o ${ROOT_PATH}/widgets/module/module_structure.o ${ROOT_PATH}/widgets/source/source_structure.o ${ROOT_PATH}/widgets/clock/clock_structure.o ${ROOT_PATH}/widgets/parallel/parallel_structure.o ${ROOT_PATH}/widgets/parallel/sight_pthread.o
+WIDGETS_STRUCTURE_H := ${ROOT_PATH}/widgets/scope/scope_structure.h ${ROOT_PATH}/widgets/graph/graph_structure.h ${ROOT_PATH}/widgets/valSelector/valSelector_structure.h ${ROOT_PATH}/widgets/trace/trace_structure.h ${ROOT_PATH}/widgets/module/module_structure.h ${ROOT_PATH}/widgets/source/source_structure.h ${ROOT_PATH}/widgets/clock/clock_structure.h ${ROOT_PATH}/widgets/parallel/parallel_structure.h ${ROOT_PATH}/widgets/parallel/sight_pthread.h
+WIDGETS_LAYOUT_O := ${ROOT_PATH}/widgets/scope/scope_layout.o ${ROOT_PATH}/widgets/graph/graph_layout.o ${ROOT_PATH}/widgets/valSelector/valSelector_layout.o ${ROOT_PATH}/widgets/trace/trace_layout.o ${ROOT_PATH}/widgets/module/module_layout.o ${ROOT_PATH}/widgets/source/source_layout.o ${ROOT_PATH}/widgets/clock/clock_layout.o ${ROOT_PATH}/widgets/parallel/parallel_layout.o
+WIDGETS_LAYOUT_H := ${ROOT_PATH}/widgets/scope/scope_layout.h ${ROOT_PATH}/widgets/graph/graph_layout.h ${ROOT_PATH}/widgets/valSelector/valSelector_layout.h ${ROOT_PATH}/widgets/trace/trace_layout.h ${ROOT_PATH}/widgets/module/module_layout.h ${ROOT_PATH}/widgets/source/source_layout.o ${ROOT_PATH}/widgets/clock/clock_layout.h ${ROOT_PATH}/widgets/parallel/parallel_layout.h
 WIDGETS := ${WIDGETS_O} ${WIDGETS_H}
 
 MAKE_DEFINES = ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" CC=${CC} CCC=${CCC} KULFI_ENABLED=${KULFI_ENABLED} LLVM32_SRC_PATH=${LLVM32_SRC_PATH} LLVM32_BUILD_PATH=${LLVM32_BUILD_PATH} LLVM32_INSTALL_PATH=${LLVM32_INSTALL_PATH}
@@ -13,14 +13,14 @@ all: gsl papi libmsr synoptic \
      kulfi \
      shellinabox/bin/shellinaboxd${EXE} mongoose/mongoose${EXE} graphviz/bin/dot${EXE} \
      vnc \
-     source/sh_main.js source/sh_cpp.js \
+     ${ROOT_PATH}/widgets/source/sh_main.js ${ROOT_PATH}/widgets/source/sh_cpp.js \
      threejs \
      jsPlumb \
      external_scripts
-	chmod 755 canviz-0.1 
-	chmod 644 canviz-0.1/*
-	chmod 755 canviz-0.1/excanvas canviz-0.1/lib canviz-0.1/path canviz-0.1/prototype
-	chmod 644 canviz-0.1/*/*
+	chmod 755 ${ROOT_PATH}/widgets/canviz-0.1 
+	chmod 644 ${ROOT_PATH}/widgets/canviz-0.1/*
+	chmod 755 ${ROOT_PATH}/widgets/canviz-0.1/excanvas ${ROOT_PATH}/widgets/canviz-0.1/lib ${ROOT_PATH}/widgets/canviz-0.1/path ${ROOT_PATH}/widgets/canviz-0.1/prototype
+	chmod 644 ${ROOT_PATH}/widgets/canviz-0.1/*/*
 #     ID3-Decision-Tree \
 
 ifeq (${VNC_ENABLED}, 1)
@@ -30,78 +30,78 @@ vnc:
 endif
 
 
-scope/scope_common.o: scope/scope_common.C scope/scope_common.h ../attributes/attributes_common.h ../sight_common.h
-	${CCC} ${SIGHT_CFLAGS} scope/scope_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o scope/scope_common.o
+${ROOT_PATH}/widgets/scope/scope_common.o: ${ROOT_PATH}/widgets/scope/scope_common.C ${ROOT_PATH}/widgets/scope/scope_common.h ${ROOT_PATH}/attributes/attributes_common.h ${ROOT_PATH}/sight_common.h
+	${CCC} ${SIGHT_CFLAGS} ${ROOT_PATH}/widgets/scope/scope_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o ${ROOT_PATH}/widgets/scope/scope_common.o
 
-scope/scope_structure.o: scope/scope_structure.C scope/scope_structure.h ../attributes/attributes_structure.h ../sight_structure.h
-	${CCC} ${SIGHT_CFLAGS} scope/scope_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o scope/scope_structure.o
+${ROOT_PATH}/widgets/scope/scope_structure.o: ${ROOT_PATH}/widgets/scope/scope_structure.C ${ROOT_PATH}/widgets/scope/scope_structure.h ${ROOT_PATH}/attributes/attributes_structure.h ${ROOT_PATH}/sight_structure.h
+	${CCC} ${SIGHT_CFLAGS} ${ROOT_PATH}/widgets/scope/scope_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o ${ROOT_PATH}/widgets/scope/scope_structure.o
 
-scope/scope_layout.o: scope/scope_layout.C scope/scope_layout.h ../attributes/attributes_layout.h ../sight_layout.h
-	${CCC} ${SIGHT_CFLAGS} scope/scope_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o scope/scope_layout.o
-
-
-graph/graph_common.o: graph/graph_common.C graph/graph_common.h ../attributes/attributes_common.h ../sight_common.h
-	${CCC} ${SIGHT_CFLAGS} graph/graph_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o graph/graph_common.o
-
-graph/graph_structure.o: graph/graph_structure.C graph/graph_structure.h ../attributes/attributes_structure.h ../sight_structure.h
-	${CCC} ${SIGHT_CFLAGS} graph/graph_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o graph/graph_structure.o
-
-graph/graph_layout.o: graph/graph_layout.C graph/graph_layout.h ../attributes/attributes_layout.h ../sight_layout.h
-	${CCC} ${SIGHT_CFLAGS} graph/graph_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o graph/graph_layout.o
+${ROOT_PATH}/widgets/scope/scope_layout.o: ${ROOT_PATH}/widgets/scope/scope_layout.C ${ROOT_PATH}/widgets/scope/scope_layout.h ${ROOT_PATH}/attributes/attributes_layout.h ${ROOT_PATH}/sight_layout.h
+	${CCC} ${SIGHT_CFLAGS} ${ROOT_PATH}/widgets/scope/scope_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o ${ROOT_PATH}/widgets/scope/scope_layout.o
 
 
-valSelector/valSelector_common.o: valSelector/valSelector_common.C valSelector/valSelector_common.h ../sight_common.h
-	${CCC} ${SIGHT_CFLAGS} valSelector/valSelector_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o valSelector/valSelector_common.o
+${ROOT_PATH}/widgets/graph/graph_common.o: ${ROOT_PATH}/widgets/graph/graph_common.C ${ROOT_PATH}/widgets/graph/graph_common.h ${ROOT_PATH}/attributes/attributes_common.h ${ROOT_PATH}/sight_common.h
+	${CCC} ${SIGHT_CFLAGS} ${ROOT_PATH}/widgets/graph/graph_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o ${ROOT_PATH}/widgets/graph/graph_common.o
 
-valSelector/valSelector_structure.o: valSelector/valSelector_structure.C valSelector/valSelector_structure.h ../sight_structure.h
-	${CCC} ${SIGHT_CFLAGS} valSelector/valSelector_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o valSelector/valSelector_structure.o
+${ROOT_PATH}/widgets/graph/graph_structure.o: ${ROOT_PATH}/widgets/graph/graph_structure.C ${ROOT_PATH}/widgets/graph/graph_structure.h ${ROOT_PATH}/attributes/attributes_structure.h ${ROOT_PATH}/sight_structure.h
+	${CCC} ${SIGHT_CFLAGS} ${ROOT_PATH}/widgets/graph/graph_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o ${ROOT_PATH}/widgets/graph/graph_structure.o
 
-valSelector/valSelector_layout.o: valSelector/valSelector_layout.C valSelector/valSelector_layout.h ../sight_layout.h
-	${CCC} ${SIGHT_CFLAGS} valSelector/valSelector_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o valSelector/valSelector_layout.o
-
-
-trace/trace_common.o: trace/trace_common.C trace/trace_common.h ../sight_common.h
-	${CCC} ${SIGHT_CFLAGS} trace/trace_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o trace/trace_common.o
-
-trace/trace_structure.o: trace/trace_structure.C trace/trace_structure.h ../sight_structure.h
-	${CCC} ${SIGHT_CFLAGS} trace/trace_structure.C -I.. -Ipapi/include -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o trace/trace_structure.o
-
-trace/trace_layout.o: trace/trace_layout.C trace/trace_layout.h ../sight_layout.h
-	${CCC} ${SIGHT_CFLAGS} trace/trace_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o trace/trace_layout.o
+${ROOT_PATH}/widgets/graph/graph_layout.o: ${ROOT_PATH}/widgets/graph/graph_layout.C ${ROOT_PATH}/widgets/graph/graph_layout.h ${ROOT_PATH}/attributes/attributes_layout.h ${ROOT_PATH}/sight_layout.h
+	${CCC} ${SIGHT_CFLAGS} ${ROOT_PATH}/widgets/graph/graph_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o ${ROOT_PATH}/widgets/graph/graph_layout.o
 
 
-module/module_common.o: module/module_common.C module/module_common.h ../attributes/attributes_common.h ../sight_common.h
-	${CCC} ${SIGHT_CFLAGS} module/module_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o module/module_common.o
+${ROOT_PATH}/widgets/valSelector/valSelector_common.o: ${ROOT_PATH}/widgets/valSelector/valSelector_common.C ${ROOT_PATH}/widgets/valSelector/valSelector_common.h ${ROOT_PATH}/sight_common.h
+	${CCC} ${SIGHT_CFLAGS} ${ROOT_PATH}/widgets/valSelector/valSelector_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o ${ROOT_PATH}/widgets/valSelector/valSelector_common.o
 
-module/module_structure.o: module/module_structure.C module/module_structure.h ../attributes/attributes_structure.h ../sight_structure.h gsl papi
-	${CCC} ${SIGHT_CFLAGS} module/module_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o module/module_structure.o
+${ROOT_PATH}/widgets/valSelector/valSelector_structure.o: ${ROOT_PATH}/widgets/valSelector/valSelector_structure.C ${ROOT_PATH}/widgets/valSelector/valSelector_structure.h ${ROOT_PATH}/sight_structure.h
+	${CCC} ${SIGHT_CFLAGS} ${ROOT_PATH}/widgets/valSelector/valSelector_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o ${ROOT_PATH}/widgets/valSelector/valSelector_structure.o
 
-module/module_layout.o: module/module_layout.C module/module_layout.h ../attributes/attributes_layout.h ../sight_layout.h
-	${CCC} ${SIGHT_CFLAGS} module/module_layout.C -I.. -Igsl/include -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o module/module_layout.o
+${ROOT_PATH}/widgets/valSelector/valSelector_layout.o: ${ROOT_PATH}/widgets/valSelector/valSelector_layout.C ${ROOT_PATH}/widgets/valSelector/valSelector_layout.h ${ROOT_PATH}/sight_layout.h
+	${CCC} ${SIGHT_CFLAGS} ${ROOT_PATH}/widgets/valSelector/valSelector_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o ${ROOT_PATH}/widgets/valSelector/valSelector_layout.o
 
-source/source_common.o: source/source_common.C source/source_common.h ../attributes/attributes_common.h ../sight_common.h
-	${CCC} ${SIGHT_CFLAGS} source/source_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o source/source_common.o
 
-source/source_structure.o: source/source_structure.C source/source_structure.h ../attributes/attributes_structure.h ../sight_structure.h
-	${CCC} ${SIGHT_CFLAGS} source/source_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o source/source_structure.o
+${ROOT_PATH}/widgets/trace/trace_common.o: ${ROOT_PATH}/widgets/trace/trace_common.C ${ROOT_PATH}/widgets/trace/trace_common.h ${ROOT_PATH}/sight_common.h
+	${CCC} ${SIGHT_CFLAGS} ${ROOT_PATH}/widgets/trace/trace_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o ${ROOT_PATH}/widgets/trace/trace_common.o
 
-source/source_layout.o: source/source_layout.C source/source_layout.h ../attributes/attributes_layout.h ../sight_layout.h
-	${CCC} ${SIGHT_CFLAGS} source/source_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o source/source_layout.o
+${ROOT_PATH}/widgets/trace/trace_structure.o: ${ROOT_PATH}/widgets/trace/trace_structure.C ${ROOT_PATH}/widgets/trace/trace_structure.h ${ROOT_PATH}/sight_structure.h
+	${CCC} ${SIGHT_CFLAGS} ${ROOT_PATH}/widgets/trace/trace_structure.C -I.. -Ipapi/include -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o ${ROOT_PATH}/widgets/trace/trace_structure.o
 
-clock/clock_structure.o: clock/clock_structure.C clock/clock_structure.h
-	${CCC} ${SIGHT_CFLAGS} clock/clock_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o clock/clock_structure.o
+${ROOT_PATH}/widgets/trace/trace_layout.o: ${ROOT_PATH}/widgets/trace/trace_layout.C ${ROOT_PATH}/widgets/trace/trace_layout.h ${ROOT_PATH}/sight_layout.h
+	${CCC} ${SIGHT_CFLAGS} ${ROOT_PATH}/widgets/trace/trace_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o ${ROOT_PATH}/widgets/trace/trace_layout.o
 
-clock/clock_layout.o: clock/clock_layout.C clock/clock_layout.h
-	${CCC} ${SIGHT_CFLAGS} clock/clock_layout.C -I.. -Igsl/include -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o clock/clock_layout.o
 
-parallel/parallel_structure.o: parallel/parallel_structure.C parallel/parallel_structure.h
-	${CCC} ${SIGHT_CFLAGS} parallel/parallel_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o parallel/parallel_structure.o
+${ROOT_PATH}/widgets/module/module_common.o: ${ROOT_PATH}/widgets/module/module_common.C ${ROOT_PATH}/widgets/module/module_common.h ${ROOT_PATH}/attributes/attributes_common.h ${ROOT_PATH}/sight_common.h
+	${CCC} ${SIGHT_CFLAGS} ${ROOT_PATH}/widgets/module/module_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o ${ROOT_PATH}/widgets/module/module_common.o
 
-parallel/parallel_layout.o: parallel/parallel_layout.C parallel/parallel_layout.h
-	${CCC} ${SIGHT_CFLAGS} parallel/parallel_layout.C -I.. -Igsl/include -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o parallel/parallel_layout.o
+${ROOT_PATH}/widgets/module/module_structure.o: ${ROOT_PATH}/widgets/module/module_structure.C ${ROOT_PATH}/widgets/module/module_structure.h ${ROOT_PATH}/attributes/attributes_structure.h ${ROOT_PATH}/sight_structure.h gsl papi
+	${CCC} ${SIGHT_CFLAGS} ${ROOT_PATH}/widgets/module/module_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o ${ROOT_PATH}/widgets/module/module_structure.o
 
-parallel/sight_pthread.o: parallel/sight_pthread.C parallel/sight_pthread.h parallel/parallel_structure.h
-	${CCC} ${SIGHT_CFLAGS} parallel/sight_pthread.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o parallel/sight_pthread.o
+${ROOT_PATH}/widgets/module/module_layout.o: ${ROOT_PATH}/widgets/module/module_layout.C ${ROOT_PATH}/widgets/module/module_layout.h ${ROOT_PATH}/attributes/attributes_layout.h ${ROOT_PATH}/sight_layout.h
+	${CCC} ${SIGHT_CFLAGS} ${ROOT_PATH}/widgets/module/module_layout.C -I.. -Igsl/include -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o ${ROOT_PATH}/widgets/module/module_layout.o
+
+${ROOT_PATH}/widgets/source/source_common.o: ${ROOT_PATH}/widgets/source/source_common.C ${ROOT_PATH}/widgets/source/source_common.h ${ROOT_PATH}/attributes/attributes_common.h ${ROOT_PATH}/sight_common.h
+	${CCC} ${SIGHT_CFLAGS} ${ROOT_PATH}/widgets/source/source_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o ${ROOT_PATH}/widgets/source/source_common.o
+
+${ROOT_PATH}/widgets/source/source_structure.o: ${ROOT_PATH}/widgets/source/source_structure.C ${ROOT_PATH}/widgets/source/source_structure.h ${ROOT_PATH}/attributes/attributes_structure.h ${ROOT_PATH}/sight_structure.h
+	${CCC} ${SIGHT_CFLAGS} ${ROOT_PATH}/widgets/source/source_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o ${ROOT_PATH}/widgets/source/source_structure.o
+
+${ROOT_PATH}/widgets/source/source_layout.o: ${ROOT_PATH}/widgets/source/source_layout.C ${ROOT_PATH}/widgets/source/source_layout.h ${ROOT_PATH}/attributes/attributes_layout.h ${ROOT_PATH}/sight_layout.h
+	${CCC} ${SIGHT_CFLAGS} ${ROOT_PATH}/widgets/source/source_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o ${ROOT_PATH}/widgets/source/source_layout.o
+
+${ROOT_PATH}/widgets/clock/clock_structure.o: ${ROOT_PATH}/widgets/clock/clock_structure.C ${ROOT_PATH}/widgets/clock/clock_structure.h
+	${CCC} ${SIGHT_CFLAGS} ${ROOT_PATH}/widgets/clock/clock_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o ${ROOT_PATH}/widgets/clock/clock_structure.o
+
+${ROOT_PATH}/widgets/clock/clock_layout.o: ${ROOT_PATH}/widgets/clock/clock_layout.C ${ROOT_PATH}/widgets/clock/clock_layout.h
+	${CCC} ${SIGHT_CFLAGS} ${ROOT_PATH}/widgets/clock/clock_layout.C -I.. -Igsl/include -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o ${ROOT_PATH}/widgets/clock/clock_layout.o
+
+${ROOT_PATH}/widgets/parallel/parallel_structure.o: ${ROOT_PATH}/widgets/parallel/parallel_structure.C ${ROOT_PATH}/widgets/parallel/parallel_structure.h
+	${CCC} ${SIGHT_CFLAGS} ${ROOT_PATH}/widgets/parallel/parallel_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o ${ROOT_PATH}/widgets/parallel/parallel_structure.o
+
+${ROOT_PATH}/widgets/parallel/parallel_layout.o: ${ROOT_PATH}/widgets/parallel/parallel_layout.C ${ROOT_PATH}/widgets/parallel/parallel_layout.h
+	${CCC} ${SIGHT_CFLAGS} ${ROOT_PATH}/widgets/parallel/parallel_layout.C -I.. -Igsl/include -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o ${ROOT_PATH}/widgets/parallel/parallel_layout.o
+
+${ROOT_PATH}/widgets/parallel/sight_pthread.o: ${ROOT_PATH}/widgets/parallel/sight_pthread.C ${ROOT_PATH}/widgets/parallel/sight_pthread.h ${ROOT_PATH}/widgets/parallel/parallel_structure.h
+	${CCC} ${SIGHT_CFLAGS} ${ROOT_PATH}/widgets/parallel/sight_pthread.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o ${ROOT_PATH}/widgets/parallel/sight_pthread.o
 
 
 ifeq (${KULFI_ENABLED}, 1)
@@ -129,7 +129,7 @@ shellinabox/bin/shellinaboxd${EXE}:
 	rm -f shellinabox-2.14.tar.gz
 	cd widgets; wget --no-check-certificate https://shellinabox.googlecode.com/files/shellinabox-2.14.tar.gz
 	cd widgets; tar -xf shellinabox-2.14.tar.gz
-	cd shellinabox-2.14; ./configure --prefix=${ROOT_PATH}/widgets/shellinabox
+	cd shellinabox-2.14; ./configure --prefix=${REPO_PATH}/shellinabox
 	cd shellinabox-2.14; ${MAKE}
 	cd shellinabox-2.14; ${MAKE} install
 	rm -r shellinabox-2.14 shellinabox-2.14.tar.gz
@@ -164,8 +164,8 @@ ifeq (${OS},Cygwin)
 else
 	wget http://www.graphviz.org/pub/graphviz/stable/SOURCES/graphviz-2.24.0.tar.gz
 	tar -xf graphviz-2.24.0.tar.gz
-	cd graphviz-2.24.0; export CC=gcc; export CXX=g++; ./configure --prefix=${ROOT_PATH}/widgets/graphviz --disable-swig --disable-sharp --disable-go --disable-io --disable-java --disable-lua --disable-ocaml --disable-perl --disable-php --disable-python --disable-r --disable-ruby --disable-tcl --without-pic --without-efence --with-expat=yes --with-expatlibdir=${ROOT_PATH}/widgets/expat/lib --with-expatincludedir=${ROOT_PATH}/widgets/expat/include --without-devil --without-webp --without-poppler --without-ghostscript --without-visio --without-pangocairo --without-lasi --without-glitz --without-freetype2 --without-fontconfig --without-gdk-pixbuf --without-gtk --without-gtkgl --without-gtkglext --without-gts --without-glade --without-ming --without-qt --without-quartz --without-gdiplus --without-libgd --without-glut --without-sfdp --without-smyrna --without-ortho --without-digcola --without-ipsepcola --enable-static --disable-shared
-	cp graphviz_vmalloc_features graphviz-2.24.0/lib/vmalloc/features/vmalloc
+	cd graphviz-2.24.0; export CC=gcc; export CXX=g++; ./configure --prefix=${REPO_PATH}/graphviz --disable-swig --disable-sharp --disable-go --disable-io --disable-java --disable-lua --disable-ocaml --disable-perl --disable-php --disable-python --disable-r --disable-ruby --disable-tcl --without-pic --without-efence --with-expat=yes --with-expatlibdir=${REPO_PATH}/expat/lib --with-expatincludedir=${REPO_PATH}/expat/include --without-devil --without-webp --without-poppler --without-ghostscript --without-visio --without-pangocairo --without-lasi --without-glitz --without-freetype2 --without-fontconfig --without-gdk-pixbuf --without-gtk --without-gtkgl --without-gtkglext --without-gts --without-glade --without-ming --without-qt --without-quartz --without-gdiplus --without-libgd --without-glut --without-sfdp --without-smyrna --without-ortho --without-digcola --without-ipsepcola --enable-static --disable-shared
+	#cp graphviz_vmalloc_features graphviz-2.24.0/lib/vmalloc/features/vmalloc
 	cd graphviz-2.24.0; export CC=gcc; export CXX=g++; ${MAKE}
 	cd graphviz-2.24.0; export CC=gcc; export CXX=g++; ${MAKE} install
 	mv graphviz/bin/dot_static graphviz/bin/dot
@@ -176,7 +176,7 @@ expat:
 ifneq (${OS},Cygwin)
 	wget http://downloads.sourceforge.net/expat/expat-2.0.1.tar.gz
 	tar -xf expat-2.0.1.tar.gz 
-	cd expat-2.0.1; ./configure --prefix=${ROOT_PATH}/widgets/expat
+	cd expat-2.0.1; ./configure --prefix=${REPO_PATH}/expat
 	cd expat-2.0.1; make; make install
 	rm -r expat-2.0.1 expat-2.0.1.tar.gz
 endif
@@ -186,7 +186,7 @@ endif
 #	#cd widgets; wget --no-check-certificate https://github.com/willkurt/ID3-Decision-Tree/archive/master.zip
 #	#cd widgets; mv master master.zip; unzip master.zip
 #	#rm -r master*
-#	../getGithub https://github.com/willkurt/ID3-Decision-Tree/archive/master.zip zip unzip
+#	${ROOT_PATH}/getGithub https://github.com/willkurt/ID3-Decision-Tree/archive/master.zip zip unzip
 #	mv ID3-Decision-Tree-master ID3-Decision-Tree
 #	chmod 755 ID3-Decision-Tree
 #	chmod 644 ID3-Decision-Tree/*
@@ -198,17 +198,17 @@ noVNC:
 	#wget --no-check-certificate http://github.com/kanaka/noVNC/tarball/master
 	#mv master master.tar.gz
 	#tar -xf master.tar.gz
-	../getGithub http://github.com/kanaka/noVNC/tarball/master tar.gz "tar -xf"
+	${ROOT_PATH}/getGithub http://github.com/kanaka/noVNC/tarball/master tar.gz "tar -xf"
 	mv kanaka-noVNC-* noVNC
 
 #.PHONY: funcFit
 #funcFit:
-#	cd funcFit; ${MAKE} ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" CC=${CC} CCC=${CCC} GSL_PATH=${ROOT_PATH}/widgets/gsl
+#	cd ${ROOT_PATH}/widgets/funcFit; ${MAKE} ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" CC=${CC} CCC=${CCC} GSL_PATH=${REPO_PATH}/gsl
 
 gsl:
 	wget ftp://ftp.gnu.org/gnu/gsl/gsl-1.9.tar.gz
 	tar -xf gsl-1.9.tar.gz 
-	cd gsl-1.9; CC=${CC}; ./configure --prefix=${ROOT_PATH}/widgets/gsl
+	cd gsl-1.9; CC=${CC}; ./configure --prefix=${REPO_PATH}/gsl
 	cd gsl-1.9; make; make install
 	rm -r gsl-1.9 gsl-1.9.tar.gz
 
@@ -216,14 +216,14 @@ papi:
 	rm -f papi-5.3.0.tar.gz
 	wget http://icl.cs.utk.edu/projects/papi/downloads/papi-5.3.0.tar.gz
 	tar -xf papi-5.3.0.tar.gz 
-	cd papi-5.3.0/src; ./configure -prefix=${ROOT_PATH}/widgets/papi CC=gcc F77=gfortran; 
+	cd papi-5.3.0/src; ./configure -prefix=${REPO_PATH}/papi CC=gcc F77=gfortran; 
 	cd papi-5.3.0/src; export CC=gcc; export F77=gfortran; make LDCONFIG=true CC=gcc F77=gfortran; make install
 	rm -fr papi-5.3.0 papi-5.3.0.tar.gz
 
 libmsr: libmsr/lib/libmsr.so
 
 libmsr/lib/libmsr.so:
-	../getGithub https://github.com/scalability-llnl/libmsr/archive/master.zip zip unzip
+	${ROOT_PATH}/getGithub https://github.com/scalability-llnl/libmsr/archive/master.zip zip unzip
 	mv libmsr-master libmsr
 	cd libmsr/src; make CC=${CC}
 
@@ -256,10 +256,10 @@ d3.v3.min.js:
 	cd widgets; wget http://d3js.org/d3.v3.min.js
 	cd widgets; wget http://d3js.org/d3.v3.js
 
-source/sh_main.js:
+${ROOT_PATH}/widgets/source/sh_main.js:
 	cd source; wget http://shjs.sourceforge.net/sh_main.js
 
-source/sh_cpp.js:
+${ROOT_PATH}/widgets/source/sh_cpp.js:
 	cd source; wget http://shjs.sourceforge.net/lang/sh_cpp.js
 
 threejs: Three.js Detector.js OrbitControls.js THREEx.WindowResize.js Stats.js THREE
@@ -277,21 +277,21 @@ THREEx.WindowResize.js:
 	wget http://stemkoski.github.io/Three.js/js/THREEx.WindowResize.js
 
 THREE:
-	../getGithub http://github.com/mrdoob/three.js/zipball/master zip unzip
+	${ROOT_PATH}/getGithub http://github.com/mrdoob/three.js/zipball/master zip unzip
 	mv mrdoob-three.js-* THREE
 
 Stats.js:
 	wget http://stemkoski.github.io/Three.js/js/Stats.js
 
 jsPlumb:
-	../getGithub https://github.com/sporritt/jsPlumb/archive/master.zip zip unzip
+	${ROOT_PATH}/getGithub https://github.com/sporritt/jsPlumb/archive/master.zip zip unzip
 	mv jsPlumb-master jsPlumb
 
 clean:
 	rm -fr xdotool
 #	rm -rf ID3-Decision-Tree
-	../killP mongoose/mongoose
-	../killP shellinabox/bin/shellinaboxd
+	${ROOT_PATH}/killP mongoose/mongoose
+	${ROOT_PATH}/killP shellinabox/bin/shellinaboxd
 	rm -rf *.o shellinabox* mongoose* noVNC graphviz papi gsl synoptic libmsr
 	rm -f yui-min.js jquery-1.8.1.min.js underscore-min.js d3.v3.min.js d3.v3.js
 	rm -f jquery-1.9.1.min.js jquery-ui.css jquery-ui.js
