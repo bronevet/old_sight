@@ -28,10 +28,10 @@ SIGHT_CFLAGS = -g -fPIC -I${ROOT_PATH} -I${REPO_PATH} -I${ROOT_PATH}/attributes 
                 -I${REPO_PATH}/boost_1_55_0 \
                 -I${REPO_PATH}/papi/include \
                 -I${REPO_PATH}/libmsr/include \
-                -I${ROOT_PATH}/mrnet \
-		-I${ROOT_PATH}/mrnet/lib/include/mrnet  \
-		-I${ROOT_PATH}/mrnet/lib/include  \
-		-I${ROOT_PATH}/mrnet/lib/include/xplat \
+                -I${REPO_PATH}/mrnet \
+		-I${REPO_PATH}/mrnet/include/mrnet  \
+		-I${REPO_PATH}/mrnet/include  \
+		-I${REPO_PATH}/mrnet/include/xplat \
                 -I${ROOT_PATH}/mrnet 
 
 SIGHT_LINKFLAGS = \
@@ -49,9 +49,9 @@ SIGHT_LINKFLAGS = \
 
 
 MRNET_CXXFLAGS = -g -D__STDC_LIMIT_MACROS -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS  \
-				-I${ROOT_PATH}/mrnet/lib/include/mrnet  \
-				-I${ROOT_PATH}/mrnet/lib/include  \
-        		-I${ROOT_PATH}/mrnet/lib/include/xplat \
+				-I${REPO_PATH}/mrnet/include/mrnet  \
+				-I${REPO_PATH}/mrnet/include  \
+        		-I${REPO_PATH}/mrnet/include/xplat \
                 -I${ROOT_PATH}/mrnet \
                     -Dos_linux \
                     -Wall -Wno-system-headers -Wfloat-equal -Wconversion -Wshadow -Wpointer-arith \
@@ -61,7 +61,7 @@ LDFLAGS = -Wl,-E
 
 MRNET_SOFLAGS = -fPIC -shared -rdynamic
 
-MRNET_LIBS = -L${ROOT_PATH}/mrnet/lib/lib -lmrnet -lxplat -lm -lpthread -ldl
+MRNET_LIBS = -L${REPO_PATH}/mrnet/lib -lmrnet -lxplat -lm -lpthread -ldl
 
 RAPL_ENABLED = 1
 ifeq (${RAPL_ENABLED}, 1)
@@ -192,7 +192,7 @@ sight_mrnet: mrnet_pre sight_mrnet_fe sight_mrnet_be sight_mrnet_so sight_mrnet_
 	mv smrnet_fe mrnet/bin
 	mv smrnet_be mrnet/bin
 	cp libsmrnet_filter.so mrnet/bin
-	mv libsmrnet_filter.so mrnet/lib/lib
+	mv libsmrnet_filter.so mrnet/lib/
 	cp examples/12.SampleMRnetEmitter mrnet/bin
 
 sight_mrnet_fe: ${SIGHT_MRNET_FE} ${SIGHT_MRNET_H}
@@ -214,7 +214,7 @@ sight_mrnet_clean:
 	rm -rf mrnet/bin/*.out
 	rm -rf mrnet/bin/*_out
 	rm -rf mrnet/bin/12.SampleMRnetEmitter
-	rm -rf mrnet/lib
+	rm -rf mrnet/lib/*
 
 #runMCBench:
 #	apps/mcbench/src/MCBenchmark.exe --nCores=1 --distributedSource --numParticles=13107 --nZonesX=256 --nZonesY=256 --xDim=16 --yDim=16 --mirrorBoundary --multiSigma --nThreadCore=1
@@ -300,11 +300,12 @@ widgets_post: libsight_layout.so libsight_structure.so
 	cd ${REPO_PATH}; make -f ${ROOT_PATH}/widgets/Makefile_post ${MAKE_DEFINES}
 	#cd widgets; make -f Makefile_post ${MAKE_DEFINES}
 
-mrnet_pre: mrnet/lib/lib/libmrnet.a
-#	cd mrnet; make -f Makefile_pre ROOT_PATH=${ROOT_PATH} all
+.PHONY: mrnet_pre
+mrnet_pre: #mrnet/lib/lib/libmrnet.a
+	cd ${REPO_PATH}; make -f ${ROOT_PATH}/mrnet/Makefile_pre ROOT_PATH=${ROOT_PATH} REPO_PATH=${REPO_PATH} all
 
-mrnet/lib/lib/libmrnet.a: 
-	cd mrnet; make -f Makefile_pre ROOT_PATH=${ROOT_PATH} all
+#mrnet/lib/lib/libmrnet.a: 
+#	cd mrnet; make -f Makefile_pre ROOT_PATH=${ROOT_PATH} all
 	
 .PHONY: check_repo_env 
 check_repo_env:

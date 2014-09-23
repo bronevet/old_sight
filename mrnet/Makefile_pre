@@ -1,22 +1,24 @@
-all: mrnet
+all: mrnet_setup
 
-mrnet: 	path
+mrnet_setup:  path mrnet 
+
+mrnet: 	
 	wget ftp://ftp.cs.wisc.edu/paradyn/mrnet/mrnet_4.1.0.tar.gz
 	tar -xf mrnet_4.1.0.tar.gz
-	cp mrnet_includes/Network.h mrnet_4.1.0/include/mrnet ; cp mrnet_includes/Stream.h mrnet_4.1.0/include/mrnet
-	cd mrnet_4.1.0; ./configure --prefix=${ROOT_PATH}/mrnet/lib
+	cp ${ROOT_PATH}/mrnet/mrnet_includes/Network.h mrnet_4.1.0/include/mrnet ; cp ${ROOT_PATH}/mrnet/mrnet_includes/Stream.h mrnet_4.1.0/include/mrnet
+	cd mrnet_4.1.0; ./configure --prefix=${REPO_PATH}/mrnet
 	cd mrnet_4.1.0/build/*/; make all; make install
-	export LD_LIBRARY_PATH=${ROOT_PATH}/mrnet/lib/lib:$LD_LIBRARY_PATH
-	cp mrnet_4.1.0/build/*/xplat_*.h lib/include/xplat
-	cp mrnet_4.1.0/build/*/mrnet_*.h lib/include/mrnet
+	export LD_LIBRARY_PATH=${REPO_PATH}/mrnet/lib:$LD_LIBRARY_PATH
+	cp mrnet_4.1.0/build/*/xplat_*.h ${REPO_PATH}/mrnet/include/xplat
+	cp mrnet_4.1.0/build/*/mrnet_*.h ${REPO_PATH}/mrnet/include/mrnet
 	rm -r mrnet_4.1.0 mrnet_4.1.0.tar.gz
 
+.PHONY: path
 path:
-	rm -rf lib
-	mkdir lib/
 	echo "#!/bin/sh" > sourced.file
-	echo "export LD_LIBRARY_PATH=${ROOT_PATH}/mrnet/lib/lib:${LD_LIBRARY_PATH}"  >> sourced.file
-	mv sourced.file lib/
+	echo "export LD_LIBRARY_PATH=${REPO_PATH}/mrnet/lib:${LD_LIBRARY_PATH}"  >> sourced.file
+	echo "export LD_LIBRARY_PATH=${ROOT_PATH}/mrnet/lib:${LD_LIBRARY_PATH}"  >> sourced.file
+	mv sourced.file ${ROOT_PATH}/mrnet/lib/
 
 clean:
 	rm -fr xdotool
