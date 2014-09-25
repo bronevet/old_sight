@@ -8,6 +8,8 @@ WIDGETS := ${WIDGETS_O} ${WIDGETS_H}
 
 MAKE_DEFINES = ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" CC=${CC} CCC=${CCC} KULFI_ENABLED=${KULFI_ENABLED} LLVM32_SRC_PATH=${LLVM32_SRC_PATH} LLVM32_BUILD_PATH=${LLVM32_BUILD_PATH} LLVM32_INSTALL_PATH=${LLVM32_INSTALL_PATH}
 
+include ${ROOT_PATH}/Makefile_pkg_chk.inc
+
 all: gsl papi libmsr synoptic \
      ${WIDGETS_COMMON_O} ${WIDGETS_COMMON_H} ${WIDGETS_STRUCTURE_O} ${WIDGETS_STRUCTURE_H} ${WIDGETS_LAYOUT_O} ${WIDGETS_LAYOUT_H}  \
      kulfi \
@@ -212,6 +214,7 @@ gsl:
 	cd gsl-1.9; make; make install
 	rm -r gsl-1.9 gsl-1.9.tar.gz
 
+ifeq (${PAPI_exist},1)
 papi:
 	rm -f papi-5.3.0.tar.gz
 	wget http://icl.cs.utk.edu/projects/papi/downloads/papi-5.3.0.tar.gz
@@ -219,13 +222,20 @@ papi:
 	cd papi-5.3.0/src; ./configure -prefix=${REPO_PATH}/papi CC=gcc F77=gfortran; 
 	cd papi-5.3.0/src; export CC=gcc; export F77=gfortran; make LDCONFIG=true CC=gcc F77=gfortran; make install
 	rm -fr papi-5.3.0 papi-5.3.0.tar.gz
+else
+papi:
+endif
 
+ifeq (${LIBMSR_exist},1)
 libmsr: libmsr/lib/libmsr.so
 
 libmsr/lib/libmsr.so:
 	${ROOT_PATH}/getGithub https://github.com/scalability-llnl/libmsr/archive/master.zip zip unzip
 	mv libmsr-master libmsr
 	cd libmsr/src; make CC=${CC}
+else
+libmsr:
+endif
 
 synoptic:
 	wget http://synoptic.googlecode.com/files/synoptic-0.1.tar.gz

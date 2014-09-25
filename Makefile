@@ -22,12 +22,13 @@ REPO_BASE= $(shell basename ~/.sight_repo)
 REPO_PATH= ${REPO_DIR}/${REPO_BASE}
 endif
 
+include Makefile_pkg_chk.inc
 
 SIGHT_CFLAGS = -g -fPIC -I${ROOT_PATH} -I${REPO_PATH} -I${ROOT_PATH}/attributes -Iwidgets/parallel \
                 -I${REPO_PATH}/callpath/src -I${REPO_PATH}/adept-utils/include \
                 -I${REPO_PATH}/boost_1_55_0 \
-                -I${REPO_PATH}/papi/include \
-                -I${REPO_PATH}/libmsr/include \
+                $(call COND_INC,PAPI,-I${REPO_PATH}/papi/include) \
+                $(call COND_INC,LIBMSR,-I${REPO_PATH}/libmsr/include) \
                 -I${REPO_PATH}/mrnet \
 		-I${REPO_PATH}/mrnet/include/mrnet  \
 		-I${REPO_PATH}/mrnet/include  \
@@ -45,7 +46,7 @@ SIGHT_LINKFLAGS = \
                   ${REPO_PATH}/gsl/lib/libgsl.so \
                   ${REPO_PATH}/gsl/lib/libgslcblas.so \
                   -Wl,-rpath ${REPO_PATH}/gsl/lib \
-	          -lpthread -lpapi
+	          -lpthread $(call COND_LIBS,PAPI,-lpapi)
 
 
 MRNET_CXXFLAGS = -g -D__STDC_LIMIT_MACROS -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS  \
@@ -65,8 +66,8 @@ MRNET_LIBS = -L${REPO_PATH}/mrnet/lib -lmrnet -lxplat -lm -lpthread -ldl
 
 RAPL_ENABLED = 1
 ifeq (${RAPL_ENABLED}, 1)
-SIGHT_LINKFLAGS += ${REPO_PATH}/libmsr/lib/libmsr.so \
-                    -Wl,-rpath ${REPO_PATH}/libmsr/lib
+SIGHT_LINKFLAGS += ${REPO_PATH}/libmsr/lib/libmsr.so $(call COND_LIBS,LIBMSR,) \
+                    -Wl,-rpath $(call COND_LIBS,LIBMSR,${REPO_PATH}/libmsr/lib)
 endif
 	                
 	                #-Wl,-rpath ${ROOT_PATH}/widgets/papi/lib \
