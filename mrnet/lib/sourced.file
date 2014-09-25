@@ -1,0 +1,3 @@
+#!/bin/sh
+export LD_LIBRARY_PATH=/u/uswickra/.sight_repo/mrnet/lib:
+export LD_LIBRARY_PATH=/nfs/deep-thought/home/users/uswickra/sight/sight/mrnet/lib:

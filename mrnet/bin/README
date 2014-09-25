@@ -16,9 +16,10 @@ b.) initiate the MRnet Front-End
 Starting the Emitter for MRNet Merge
 ==========================================================================================================
 a.) first export LD_LIBRARY_PATH to point to the MRNet libraries. You can easily do this with following
-    command
+    command. Then export sight's mrnet/bin directory to UNIX/LINUX PATH variable
 
     source ../lib/sourced.file
+    export PATH=$PATH:${SIGHT_HOME}/mrnet/bin
 
 b.) modify "app.params" file appropriately. Each line represent the parameters for sight application
       

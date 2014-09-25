@@ -196,16 +196,16 @@ sight_mrnet: mrnet_pre sight_mrnet_fe sight_mrnet_be sight_mrnet_so sight_mrnet_
 	mv libsmrnet_filter.so mrnet/lib/
 	cp examples/12.SampleMRnetEmitter mrnet/bin
 
-sight_mrnet_fe: ${SIGHT_MRNET_FE} ${SIGHT_MRNET_H}
+sight_mrnet_fe: ${SIGHT_MRNET_FE} ${SIGHT_MRNET_H} mrnet_pre
 	${CCC} ${MRNET_CXXFLAGS} ${LDFLAGS} mrnet/mrnet_front.C  -o smrnet_fe${EXE} ${MRNET_LIBS}
 
-sight_mrnet_so: ${SIGHT_MRNET_SO} ${SIGHT_MRNET_H} process.C process.h core
+sight_mrnet_so: ${SIGHT_MRNET_SO} ${SIGHT_MRNET_H} process.C process.h core mrnet_pre
 	${CCC} ${SIGHT_CFLAGS} ${MRNET_CXXFLAGS} ${MRNET_SOFLAGS}  mrnet/mrnet_producer.C  mrnet/mrnet_tr_callback.C mrnet/mrnet_threads.C  -Wl,--whole-archive libsight_structure.so  -Wl,-no-whole-archive -DMFEM -I. ${SIGHT_LINKFLAGS} -o libsmrnet_filter.so
 
-sight_mrnet_be: ${SIGHT_MRNET_BE} ${SIGHT_MRNET_H}
+sight_mrnet_be: ${SIGHT_MRNET_BE} ${SIGHT_MRNET_H} mrnet_pre
 	${CCC} ${MRNET_CXXFLAGS} ${LDFLAGS} mrnet/mrnet_emmitter.C -o smrnet_be${EXE} ${MRNET_LIBS}
 
-sight_mrnet_samples:
+sight_mrnet_samples: mrnet_pre
 	${CCC} ${SIGHT_CFLAGS} examples/12.SampleMRnetEmitter.C -I. -I./widgets -L. -lsight_structure ${SIGHT_LINKFLAGS} -o examples/12.SampleMRnetEmitter${EXE}
 
 sight_mrnet_clean: 
@@ -302,7 +302,7 @@ widgets_post: libsight_layout.so libsight_structure.so
 	#cd widgets; make -f Makefile_post ${MAKE_DEFINES}
 
 .PHONY: mrnet_pre
-mrnet_pre: #mrnet/lib/lib/libmrnet.a
+mrnet_pre: check_repo_env #mrnet/lib/lib/libmrnet.a
 	cd ${REPO_PATH}; make -f ${ROOT_PATH}/mrnet/Makefile_pre ROOT_PATH=${ROOT_PATH} REPO_PATH=${REPO_PATH} all
 
 #mrnet/lib/lib/libmrnet.a: 
@@ -312,7 +312,7 @@ mrnet_pre: #mrnet/lib/lib/libmrnet.a
 check_repo_env:
 	if test -d ${REPO_PATH}; then echo "sight repository : ${REPO_PATH} exist"; else echo "creating repository : ${REPO_PATH}"; mkdir ${REPO_PATH}; fi
 	
-maketools: mrnet_pre check_repo_env
+maketools: mrnet_pre
 	cd ${REPO_PATH}; make -f ${ROOT_PATH}/tools/Makefile ${MAKE_DEFINES}
 	#cd tools; make -f Makefile ${MAKE_DEFINES}
 
