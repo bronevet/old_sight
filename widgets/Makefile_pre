@@ -233,6 +233,7 @@ endif
 libmsr/lib/libmsr.so:
 	../getGithub https://github.com/scalability-llnl/libmsr/archive/master.zip zip unzip
 	mv libmsr-master libmsr
+	cp libmsr_Makefile libmsr/src/Makefile
 	cd libmsr/src; make CC=${CC}
 
 synoptic:
