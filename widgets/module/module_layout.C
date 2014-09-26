@@ -503,7 +503,7 @@ void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int
     dotFile << "><FONT POINT-SIZE=\"26\">"<<(maxButtonID++)<<":"<<escape(moduleName)<<"</FONT></TD></TR>"<<endl;
   }
   
-  if(numInputs>0) {
+  if(modules[moduleID]->ctxtNames.size()>0) {
 /*    // If we observed values during the execution of this module group  
     if(modules[moduleID]->traceAttrNames.size()>0) {
       // Polynomial fit of the observations
@@ -618,8 +618,9 @@ void modularApp::exitModule(void* obj) {
 // Register the given module object (keeps data on the raw observations) and polyFitObserver object 
 void modularApp::registerModule(int moduleID, sight::layout::module* m, polyFitObserver* pf) {
   assert(modularApp::activeMA);
+  assert(m);
   modularApp::activeMA->modules[moduleID] = m;
-  modularApp::activeMA->polyFits[moduleID] = pf;
+  if(pf) modularApp::activeMA->polyFits[moduleID] = pf;
 }
 
 // Add a directed edge from one port to another
@@ -642,9 +643,11 @@ void* modularApp::addEdge(properties::iterator props) {
 }
 
 // Records whether we should emit the observations of each module into a separate table for use by external tools
-bool modularApp::emitObsIndividualDataTable;
+bool modularApp::emitObsIndividualDataTable=false;
 // Records whether we should emit the observations of all modular into a single table for use by external tools
-bool modularApp::emitObsCommonDataTable;
+bool modularApp::emitObsCommonDataTable=false;
+// Records whether we should run the funcFit library to find readable functions that describe the data
+bool modularApp::runFuncFit=false;
 
 /******************
  ***** module *****
@@ -1534,12 +1537,17 @@ moduleTraceStream::moduleTraceStream(properties::iterator props, traceObserver* 
       // Create a fresh instance of module to analyze data of this stream
       mFilter = new module(moduleID);
 
-      polyFitter = new polyFitFilter();
-      polyFitCollector = new polyFitObserver();
-      polyFitter->registerObserver(polyFitCollector);
+      if(modularApp::runFuncFit) {
+        polyFitter = new polyFitFilter();
+        polyFitCollector = new polyFitObserver();
+        polyFitter->registerObserver(polyFitCollector);
+        registerObserver(polyFitter);
+      } else {
+        polyFitter = NULL;
+        polyFitCollector = NULL;
+      }
 
       registerObserver(mFilter);
-      registerObserver(polyFitter);
       registerObserver(this);
 
       // If we need to record all the observations in a file
@@ -1680,16 +1688,22 @@ compModuleTraceStream::compModuleTraceStream(properties::iterator props, traceOb
     
     mFilter = new module(moduleID);
     
-    polyFitter = new polyFitFilter();
-    polyFitCollector = new polyFitObserver();
-    polyFitter->registerObserver(polyFitCollector);
-
+    if(modularApp::runFuncFit) {
+      polyFitter = new polyFitFilter();
+      polyFitCollector = new polyFitObserver();
+      polyFitter->registerObserver(polyFitCollector);
+    } else {
+      polyFitter = NULL;
+      polyFitCollector = NULL;
+    }
+    
     // cmFilter observes this traceStream and performs comparisons
     registerObserver(cmFilter);
     
     // All the others observe the comparison observations that it emits
     cmFilter->registerObserver(mFilter);
-    cmFilter->registerObserver(polyFitter);
+    if(modularApp::runFuncFit)
+      cmFilter->registerObserver(polyFitter);
     cmFilter->registerObserver(this);
     
     // If we need to record all the observations in a file

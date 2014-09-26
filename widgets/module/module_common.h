@@ -288,6 +288,9 @@ class module {
     // Adds the given key/attrValue pair to this context
     void add(std::string key, const attrValue& val);
     
+    // Adds the given key/attrValue pair to this context
+    void add(std::string key, const attrValue& val, const notes& note);
+    
     // Add all the key/attrValue pairs from the given context to this one, overwriting keys as needed
     void add(const context& that);
     

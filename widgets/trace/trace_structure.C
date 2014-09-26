@@ -1466,7 +1466,13 @@ void RAPLMeasure::end() {
       ts->traceFullObservation(fullMeasureCtxt, trace::observation((string)(txt()<<labelStr<<"Energy_DRAM_S"<<socket), accumDramE[socket].E),          anchor::noAnchor);
       ts->traceFullObservation(fullMeasureCtxt, trace::observation((string)(txt()<<labelStr<<"Power_CPU_S"<<socket),   accumCpuE[socket].getPower()),  anchor::noAnchor);
       ts->traceFullObservation(fullMeasureCtxt, trace::observation((string)(txt()<<labelStr<<"Power_DRAM_S"<<socket),  accumDramE[socket].getPower()), anchor::noAnchor);
-      ts->traceFullObservation(fullMeasureCtxt, trace::observation((string)(txt()<<labelStr<<"EDP_S"<<socket),         (accumCpuE[socket].E+accumDramE[socket].E)/accumCpuE[socket].T), anchor::noAnchor);
+      // Compute the energy delay product = energy * time. Since either the CPU or memory measurements may
+      // not be working, only use them if they have sane values.
+      ts->traceFullObservation(fullMeasureCtxt, 
+                               trace::observation((string)(txt()<<labelStr<<"EDP_S"<<socket),
+                                 ((accumCpuE[socket].E<1e10?accumCpuE[socket].E:0)+
+                                  (accumDramE[socket].E<1e10?accumDramE[socket].E:0))/accumCpuE[socket].T), 
+                               anchor::noAnchor);
     } else {
       ts->traceAttrObserved(txt()<<labelStr<<"Energy_CPU_S"<<socket,  accumCpuE[socket].E,           anchor::noAnchor);
       ts->traceAttrObserved(txt()<<labelStr<<"Energy_DRAM_S"<<socket, accumDramE[socket].E,          anchor::noAnchor);

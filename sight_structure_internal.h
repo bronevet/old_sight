@@ -1422,6 +1422,7 @@ public:
   //std::string tagStr(std::string name, const std::map<std::string, std::string>& properties, bool inheritedFrom);
   std::string tagStr(const properties& props);
 }; // dbgStream
+typedef dbgStream SightStream;
 
 // Extension of ThreadLocalStorage to opaquely wrap dbgStream
 /*class ThreadLocalDbgStream: public ThreadLocalStorageOStream<dbgStream>/ *, public ThreadLocalStorage0<dbgStream>* / {

@@ -25,17 +25,17 @@ def main(argv):
   elif("AMG_MTX" in os.environ) : mtx = os.environ["AMG_MTX"].split()
   else :                          mtx = ["default"]#, "laplace", "27pt", "jumps"];
   print "mtx="+str(mtx)
-  solver = ["PCG_AMG", "PCG_Diag", "GMRES_AMG", "GMRES_Diag"];
-  pooldist = ["0", "1"];
-  power = ["25", "50", "75", "100"];
-  refine = ["1", "6", "12"];
-  ncube = ["10", "40", "100"];
-  tol = ["1e-06", "1e-05", "1e-04"]
+  solver = ["PCG_AMG"]#, "PCG_Diag", "GMRES_AMG", "GMRES_Diag"];
+  pooldist = ["1"]#["0", "1"];
+  power = ["100"]#["25", "50", "75", "100"];
+  refine = ["12"]#["1", "6", "12"];
+  ncube = ["100"]#["10", "40", "100"];
+  tol = ["1e-6"]#["1e-06", "1e-05", "1e-04"]
   # The distribution of processors among the x, y z dimensions. The last entry must correspond to 
   # the distribution with the largest values in each dimension. The problem size is pMult*px*py*pz of the largest entry.
   # px, py and pz must be powers of 2.
   pSize = [4,2,2]
-  numprocs = [[2,2,2], [4,2,2], [4,4,2]]
+  numprocs = [[2,2,2]]#[[2,2,2], [4,2,2], [4,4,2]]
   
   #os.system("rm -rf data")
   os.system("rm -rf data/*.core dbg.AMG2013* *.core")
