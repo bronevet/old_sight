@@ -7,6 +7,7 @@ SIGHT_LAYOUT_H := sight.h sight_layout_internal.h attributes/attributes_layout.h
 sight := ${sight_O} ${sight_H} gdbLineNum.pl sightDefines.pl
 
 ROOT_PATH = ${CURDIR}
+PNMPI_PATH = ${ROOT_PATH}/widgets/PnMPI/INSTALL/
 
 SIGHT_CFLAGS = -g -fPIC -I${ROOT_PATH} -I${ROOT_PATH}/attributes -I${ROOT_PATH}/widgets/parallel \
                 -I${ROOT_PATH}/tools/callpath/src -I${ROOT_PATH}/tools/adept-utils/include \
@@ -26,6 +27,7 @@ SIGHT_LINKFLAGS = \
                   ${ROOT_PATH}/widgets/gsl/lib/libgslcblas.so \
                   -Wl,-rpath ${ROOT_PATH}/widgets/gsl/lib \
 	          -lpthread
+                  #-L ${PNMPI_PATH}lib -lpnmpi -Wl,-rpath,${PNMPI_PATH}
 
 RAPL_ENABLED = 1
 ifeq (${RAPL_ENABLED}, 1)

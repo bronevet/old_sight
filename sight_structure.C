@@ -1204,6 +1204,7 @@ Merger::Merger(std::vector<std::pair<properties::tagType, properties::iterator> 
       //assert(*names.begin() == "text");
       
       // Create a Merger object for the current clock, using it to update props with the clock's merged properties
+      if((*MergeHandlerInstantiator::MergeHandlers)[*names.begin()]==NULL){ cerr << "ERROR: merge handler "<<*names.begin() <<" not found!"<< endl; exit(-1); }
       Merger* m = (*MergeHandlerInstantiator::MergeHandlers)[*names.begin()](tags, outStreamRecords, inStreamRecords, props);
       // Reset this Merger's properties pointer to NULL so that props doesn't get deallocated when we deallocate m
       m->resetProps();
@@ -1230,6 +1231,7 @@ void Merger::mergeKey(properties::tagType type, properties::iterator tag,
     if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging keys!"<<endl; exit(-1); }
     if(type==properties::enterTag) {
       // Call the current clock's mergeKey method
+      if((*MergeHandlerInstantiator::MergeHandlers)[tag.name()]==NULL){ cerr << "ERROR: merge handler "<<tag.name() <<" not found!"<< endl; exit(-1); }
       (*MergeHandlerInstantiator::MergeKeyHandlers)[tag.name()](type, tag, inStreamRecords, info);
     } else { }
     
@@ -2048,18 +2050,18 @@ properties* BlockMerger::setProperties(std::vector<std::pair<properties::tagType
     set<streamAnchor> outAnchors; // Set of anchorIDs, within the anchor ID space of the outgoing stream, that terminate at this block
     // Iterate over all the anchors that terminate at this block within all the incoming streams and add their corresponding 
     // IDs within the outgoing stream to outAnchors
-dbg << "<h3>Merging block "<<pMap["label"]<<", #tags="<<tags.size()<<"</h3>"<<endl;
+/*dbg << "<h3>Merging block "<<pMap["label"]<<", #tags="<<tags.size()<<"</h3>"<<endl;
 dbg << "dbg->location="<<dbg->getLocation().str()<<endl;
-dbg << "outLocation="<<((dbgStreamStreamRecord*)outStreamRecords["sight"])->getLocation().str()<<endl;
+dbg << "outLocation="<<((dbgStreamStreamRecord*)outStreamRecords["sight"])->getLocation().str()<<endl;*/
     for(int i=0; i<tags.size(); i++) {
       AnchorStreamRecord* as = (AnchorStreamRecord*)inStreamRecords[i]["anchor"];
       
       // Iterate over all the anchors within incoming stream i that terminate at this block
       int inNumAnchors = properties::getInt(tags[i].second, "numAnchors");
-dbg << "tag "<<i<<", inNumAnchors="<<inNumAnchors<<endl;
+//dbg << "tag "<<i<<", inNumAnchors="<<inNumAnchors<<endl;
       for(int a=0; a<inNumAnchors; a++) {
         streamAnchor curInAnchor(properties::getInt(tags[i].second, txt()<<"anchor_"<<a), inStreamRecords[i]);
-dbg << "outLocation="<<((dbgStreamStreamRecord*)inStreamRecords[i]["sight"])->getLocation().str()<<endl;
+//dbg << "outLocation="<<((dbgStreamStreamRecord*)inStreamRecords[i]["sight"])->getLocation().str()<<endl;
         
         if(as->in2outIDs.find(curInAnchor.getID()) == as->in2outIDs.end())
           cerr << "ERROR: Do not have a mapping for anchor "<<curInAnchor.str()<<" on incoming stream "<<i<<" to its anchorID in the outgoing stream!";

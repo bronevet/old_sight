@@ -97,7 +97,7 @@ function insertOrderedDiv(divRef, ID) {
 // it is placed lower down the page
 // startID - the ID from which the layout process should start. Useful for redrawing the layout
 //           after some piece of the output gets resized.
-function layoutOrderedDivs(startID) {
+function layoutOrderedDivs(/*startID*/) {
     orderedDivs.Map(function(ID, cur) { 
       var newWatermark = watermark;
       for(var i=0; i<cur['divs'].length; i++) {

@@ -344,7 +344,8 @@ function showParallelArrows() {
   parArrowsFrom = {};
   parBarriers = {};
 
-  addLazyWindowResizeEvent(refreshParallelArrows);
+  //addLazyWindowResizeEvent(refreshParallelArrows);
+  addRefreshHandler(refreshParallelArrows);
 }
 
 // Refreshes the positions of the arrows between causally-related events based on the current
@@ -363,17 +364,11 @@ function refreshParallelArrows() {
     }}
     
     if(!isVisible) {
-      //vizID2Obj[vizID].addClass("hidden");
-      //vizID2Obj[vizID].setVisible(isVisible);
-      //jsPlumb.hide(vizID2Obj[vizID]);
-      //jsPlumb.detachAllConnections(vizID2Obj[vizID]);
-      vizID2Obj[vizID].setVisible(false);
-      vizID2Obj[vizID].setEnabled(false);
-      vizID2Obj[vizID].setStyle({visibility:"hidden"});
+      vizID2Obj[vizID].setVisible(isVisible);
     }
   }}
   
   jsPlumbInstance.repaintEverything();
-  addLazyWindowResizeEvent(refreshParallelArrows);
+//  addLazyWindowResizeEvent(refreshParallelArrows);
 }
 

@@ -8,7 +8,7 @@ WIDGETS := ${WIDGETS_O} ${WIDGETS_H}
 
 MAKE_DEFINES = ROOT_PATH=${ROOT_PATH} RAPL_ENABLED=${RAPL_ENABLED} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" CC=${CC} CCC=${CCC} KULFI_ENABLED=${KULFI_ENABLED} LLVM32_SRC_PATH=${LLVM32_SRC_PATH} LLVM32_BUILD_PATH=${LLVM32_BUILD_PATH} LLVM32_INSTALL_PATH=${LLVM32_INSTALL_PATH}
 
-all: gsl papi libmsr synoptic \
+all: gsl papi libmsr synoptic PnMPI/INSTALL/lib/libpnmpi.so PnMPI/INSTALL/lib/pnmpi-modules/commsub-sclock.so \
      ${WIDGETS_COMMON_O} ${WIDGETS_COMMON_H} ${WIDGETS_STRUCTURE_O} ${WIDGETS_STRUCTURE_H} ${WIDGETS_LAYOUT_O} ${WIDGETS_LAYOUT_H}  \
      box \
      kulfi \
@@ -17,7 +17,8 @@ all: gsl papi libmsr synoptic \
      source/sh_main.js source/sh_cpp.js \
      threejs \
      jsPlumb \
-     external_scripts
+     external_scripts \
+     muster parallel/cluster
 	chmod 755 canviz-0.1 
 	chmod 644 canviz-0.1/*
 	chmod 755 canviz-0.1/excanvas canviz-0.1/lib canviz-0.1/path canviz-0.1/prototype
@@ -90,6 +91,7 @@ source/source_layout.o: source/source_layout.C source/source_layout.h ../attribu
 	${CCC} ${SIGHT_CFLAGS} source/source_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o source/source_layout.o
 
 clock/clock_structure.o: clock/clock_structure.C clock/clock_structure.h
+#	${MPICCC} ${SIGHT_CFLAGS} clock/clock_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o clock/clock_structure.o
 	${CCC} ${SIGHT_CFLAGS} clock/clock_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o clock/clock_structure.o
 
 clock/clock_layout.o: clock/clock_layout.C clock/clock_layout.h
@@ -241,6 +243,38 @@ synoptic:
 	tar -xf synoptic-0.1.tar.gz
 	mv synoptic-0.1 synoptic
 	rm synoptic-0.1.tar.gz
+
+PnMPI:
+	git clone ssh://git@cz-stash.llnl.gov:7999/pnmpi/pnmpi-main.git -b pnmpi-2014-rc1 PnMPI
+
+PnMPI/BUILD:PnMPI
+	cd PnMPI; git submodule update --init
+	mkdir -p PnMPI/BUILD
+
+PnMPI/INSTALL/lib/libpnmpi.so:PnMPI/BUILD
+	cd PnMPI/BUILD ; export CC=${CC}; export CXX=${CCC}; cmake ../ -DCMAKE_INSTALL_PREFIX=../INSTALL; make install
+
+parallel/commsub-sclock.so:parallel/commsub-sclock.cpp PnMPI/modules/comm/comm.cpp PnMPI
+	echo "building sclock module:"; echo "	mpig++  ${SIGHT_CFLAGS} -fPIC -g -shared -Wl,-soname,commsub-sclock.so -o parallel/commsub-sclock.so 	-DSUBMODNAME='"sclock"' -IPnMPI/src -IPnMPI/modules/datatype -IPnMPI/modules/requests	-IPnMPI/modules/status -IPnMPI/BUILD/src parallel/commsub-sclock.cpp PnMPI/modules/comm/comm.cpp"
+	mpig++  ${SIGHT_CFLAGS} -fPIC -g -o parallel/commsub-comm.o \
+	-IPnMPI/src -IPnMPI/modules/datatype -IPnMPI/INSTALL/include -IPnMPI/modules/requests \
+	-IPnMPI/modules/status -IPnMPI/modules/comm -IPnMPI/BUILD/src PnMPI/modules/comm/comm.cpp -c
+	mpig++  ${SIGHT_CFLAGS} -fPIC -g -o parallel/commsub-sclock.o \
+	-DSUBMODNAME='"sclock"' -IPnMPI/src -IPnMPI/modules/datatype -IPnMPI/INSTALL/include -IPnMPI/modules/requests \
+	-IPnMPI/modules/status -IPnMPI/modules/comm -IPnMPI/BUILD/src parallel/commsub-sclock.cpp -c
+	g++ ${SIGHT_CFLAGS} -fPIC -g  -shared -Wl,-soname,commsub-sclock.so -o parallel/commsub-sclock.so \
+	parallel/commsub-sclock.o parallel/commsub-comm.o
+
+PnMPI/INSTALL/lib/pnmpi-modules/commsub-sclock.so: parallel/commsub-sclock.so
+	PnMPI/INSTALL/bin/pnmpi-patch parallel/commsub-sclock.so PnMPI/INSTALL/lib/pnmpi-modules/commsub-sclock.so
+
+muster:
+	git clone https://github.com/scalability-llnl/muster.git
+	cd muster && mkdir locall && cd locall && cmake -DCMAKE_INSTALL_PREFIX=${PWD}/muster/INSTALL-dir ..  && make && make install
+
+parallel/cluster: parallel/cluster.cpp muster
+	mpig++ -Lmuster/INSTALL-dir/lib/ -lmuster muster/locall/tests/libtest-support.a parallel/cluster.cpp -o parallel/cluster -Imuster/INSTALL-dir/include -Imuster/tests -Imuster/external
+
 
 # JavaScript files from standard JS libraries that we wish to keep local copies of
 

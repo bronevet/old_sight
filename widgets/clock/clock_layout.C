@@ -46,10 +46,17 @@ void* scalarCausalClockEnterHandler(properties::iterator props) {
   return NULL;
 }
 
+// Parses a given scalarCausalClock and records the updated time with sightClock
+void* scalarCausalClockEnterHandler(properties::iterator props) { 
+  sightClock::updateTime("scalarCausalClock", props.getInt("time"));
+  return NULL;
+}
+
 // Specify the callbacks that will be invoked when various clocks are encountered
 clockLayoutHandlerInstantiator::clockLayoutHandlerInstantiator() { 
   (*layoutEnterHandlers)["timeClock"]         = &timeClockEnterHandler;
   (*layoutEnterHandlers)["stepClock"]         = &stepClockEnterHandler;
+  (*layoutEnterHandlers)["mpiClock"]         = &mpiClockEnterHandler;
   (*layoutEnterHandlers)["scalarCausalClock"] = &scalarCausalClockEnterHandler;
 }
 clockLayoutHandlerInstantiator clockLayoutHandlerInstance;

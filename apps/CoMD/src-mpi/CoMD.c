@@ -91,6 +91,8 @@ int main(int argc, char** argv)
    
    Command cmd = parseCommandLine(argc, argv);
    
+   int my_rank;
+   MPI_Comm_rank(MPI_COMM_WORLD, &my_rank); 
    SightInit(argc, argv, "CoMD", 
              txt()<<"dbg.CoMD"
 #if defined(MODULES)
@@ -106,6 +108,7 @@ int main(int argc, char** argv)
 #if defined(TRACE_PATH)
                   << ".TracePath"
 #endif
+                  << ".rank_"<<my_rank
            );
 
    SimFlat* sim;

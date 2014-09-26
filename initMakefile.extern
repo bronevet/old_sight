@@ -43,7 +43,8 @@ f.write("""SIGHT_LINKFLAGS = \\
                   -Wl,-rpath ${ROOT_PATH}/widgets/papi/lib \\
                   ${ROOT_PATH}/widgets/gsl/lib/libgsl.so \\
                   ${ROOT_PATH}/widgets/gsl/lib/libgslcblas.so \\
-                  -Wl,-rpath ${ROOT_PATH}/widgets/gsl/lib""");
+                  -Wl,-rpath ${ROOT_PATH}/widgets/gsl/lib \\
+                  -L ${ROOT_PATH}/widgets/PnMPI/INSTALL/lib -lpnmpi -Wl,-rpath,${ROOT_PATH}/widgets/PnMPI/INSTALL/lib""");
 if(int(RAPL_ENABLED)==1) :
     f.write(""" \\
                   ${ROOT_PATH}/widgets/libmsr/lib/libmsr.so \\

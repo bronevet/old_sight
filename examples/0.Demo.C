@@ -1,4 +1,3 @@
-//#include "sight.h"
 #include <map>
 #include <vector>
 #include <assert.h>

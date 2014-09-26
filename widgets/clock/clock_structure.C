@@ -1,4 +1,9 @@
 #include "clock_structure.h"
+#include <mpi.h>
+#include <pnmpimod.h>
+
+typedef void (*PNMPIMOD_SClock_getSTime_t)(long long** );
+
 using namespace std;
 using namespace sight::common;
 
@@ -172,7 +177,7 @@ properties* scalarCausalClock::setProperties(properties* props) {
   // Update the clock
   modified();
   
-  // Store the currrent time in props
+  // Store the current time in props
   map<string, string> pMap;
   pMap["time"] = txt()<<time;
   //cout << pthread_self() << ": setProperties() time="<<time<<endl;
@@ -386,6 +391,59 @@ void StepClockMerger::mergeKey(properties::tagType type, properties::iterator ta
     info.add(tag.get("curStep"));
   }
 }
+  /**************************
+   ***** MpiClockMerger *****
+   ************************** /
+
+  MpiClockMerger::MpiClockMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+				 std::map<std::string, streamRecord*>& outStreamRecords,
+				 std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+				 properties* props) :
+    Merger(advance(tags), outStreamRecords, inStreamRecords,
+	   setProperties(tags, outStreamRecords, inStreamRecords, props))
+  { }
+
+  // Sets the properties of the merged object                                                                                                           
+  properties* MpiClockMerger::setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+					    map<string, streamRecord*>& outStreamRecords,
+					    vector<map<string, streamRecord*> >& inStreamRecords,
+					    properties* props) {
+    if(props==NULL) props = new properties();
+
+    assert(tags.size()>0);
+    vector<string> names = getNames(tags); assert(allSame<string>(names));
+    assert(*names.begin() == "mpiClock");
+
+    map<string, string> pMap;
+    properties::tagType type = streamRecord::getTagType(tags);
+    if(type==properties::unknownTag) {
+      cerr << "ERROR: inconsistent tag types when merging Clock!"<<endl; exit(-1); }
+    if(type==properties::enterTag) {
+      // Emit the local and global clock ID, which must be the same for all tags 
+      vector<string> t = getValues(tags, "time");
+      assert(allSame<string>(t));
+      pMap["time"] = txt()<<*t.begin();
+    }
+    props->add("mpiClock", pMap);
+
+    return props;
+  }
+
+  // Sets a list of strings that denotes a unique ID according to which instances of this merger's
+  // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
+  // Each level of the inheritance hierarchy may add zero or more elements to the given list and
+  // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
+  void MpiClockMerger::mergeKey(properties::tagType type, properties::iterator tag,
+				std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+    properties::iterator blockTag = tag;
+
+    if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
+    if(type==properties::enterTag) {
+      // Differentiate clocks according to their time
+      info.add(properties::getInt(tag, "time"));
+    }
+  }
+*/
 
 /***********************************
  ***** ScalarCausalClockMerger *****

@@ -42,6 +42,33 @@ function addLazyWindowResizeEventEnd(data) {
   }
 }
 
+/**************************
+ ***** Screen Refresh *****
+ **************************/
+
+// Contains references to all functions that should be called when the view layout changes
+// (e.g. something gets hidden or the screen is resized) to relayout different widgets.
+var refreshHandlers = [];
+
+// Add a new function to be called when the view needs to be refreshed
+function addRefreshHandler(func) {
+  refreshHandlers.push(func);
+}
+
+// Execute all the refresh functions
+function execRefreshHandlers() {
+   for(i in refreshHandlers) { if(refreshHandlers.hasOwnProperty(i)) {
+     refreshHandlers[i]();
+   }}
+}
+
+// Set the refresh handlers to be called whenever the browser window is resized
+addLazyWindowResizeEvent(execRefreshHandlers);
+
+/*****************************
+ ***** Visibility Status *****
+ *****************************/
+
 // Switch a given block's visibility state between hidden and unhidden. In hidden state
 // the block becomes very small, pulling subsequent text up in the page.
 function unhide(blockID) {
