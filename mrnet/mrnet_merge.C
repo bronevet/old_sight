@@ -51,6 +51,8 @@ namespace mrnmergeing{
             this->net = net ;
             this->strm_id = strm_id;
             this->tag_id = tag_id;
+            //special setting enable interleaved Merge only
+            tagGroup::useInterleavedMergeOnly = true ;
         }
 
         /**

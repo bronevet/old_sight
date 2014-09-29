@@ -23,6 +23,8 @@ all: gsl papi libmsr synoptic \
 	chmod 644 ${ROOT_PATH}/widgets/canviz-0.1/*
 	chmod 755 ${ROOT_PATH}/widgets/canviz-0.1/excanvas ${ROOT_PATH}/widgets/canviz-0.1/lib ${ROOT_PATH}/widgets/canviz-0.1/path ${ROOT_PATH}/widgets/canviz-0.1/prototype
 	chmod 644 ${ROOT_PATH}/widgets/canviz-0.1/*/*
+	cp  ${REPO_PATH}/*.js ${ROOT_PATH}/widgets/
+	cp  ${REPO_PATH}/*.css ${ROOT_PATH}/widgets/
 #     ID3-Decision-Tree \
 
 ifeq (${VNC_ENABLED}, 1)
@@ -306,3 +308,4 @@ clean:
 	rm -f yui-min.js jquery-1.8.1.min.js underscore-min.js d3.v3.min.js d3.v3.js
 	rm -f jquery-1.9.1.min.js jquery-ui.css jquery-ui.js
 	rm -f Three.js Detector.js OrbitControls.js THREEx.WindowResize.js Stats.js
+	rm -f ${ROOT_PATH}/widgets/*.js ${ROOT_PATH}/widgets/*.css 

@@ -19,6 +19,7 @@ namespace merge {
 #else
 #define ITER_ACTION(text) 
 #endif
+bool tagGroup::useInterleavedMergeOnly = false;
 
 MergeState::MergeState(const vector<baseStructureParser<FILE>*>& parsers
                        #ifdef VERBOSE
@@ -68,7 +69,7 @@ MergeState::MergeState(const MergeState& that,
   out = that.out;
   variantStackDepth = that.variantStackDepth;
   multGroupID = that.multGroupID;
-  
+
   collectGroupVectorIdx<baseStructureParser<FILE>*>(that.parsers, gs.parserIndexes, parsers);
   collectGroupVectorIdx<pair<properties::tagType, const properties*> >(that.nextTag, gs.parserIndexes, nextTag);
 

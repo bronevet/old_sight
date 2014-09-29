@@ -58,6 +58,7 @@ class tagGroup {
   std::string objName;
   // A list of key strings provided by the object-specific merger
   MergeInfo info;
+  static bool useInterleavedMergeOnly;
   
   // Creates a tagGroup by invoking a MergeKeyHandler for the type and properties object of some tag on some incoming 
   // stream, where the current merging state on state stream is captured in inStreamRecord
@@ -68,7 +69,10 @@ class tagGroup {
     if(MergeHandlerInstantiator::MergeKeyHandlers->find(props->name()) == MergeHandlerInstantiator::MergeKeyHandlers->end()) { cerr << "ERROR: no merge handler for tag \""<<props->name()<<"\"!"<<endl; }
     assert(MergeHandlerInstantiator::MergeKeyHandlers->find(props->name()) != MergeHandlerInstantiator::MergeKeyHandlers->end());
     (*MergeHandlerInstantiator::MergeKeyHandlers)[props->name()](type, props->begin(), inStreamRecord, info); 
-    
+
+    if(useInterleavedMergeOnly && objName != "text"){
+        info.setMergeKind(MergeInfo::interleave);
+    }
     #ifdef VERBOSE
     dbg << info.str()<<endl;
     #endif
