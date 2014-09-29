@@ -27,15 +27,15 @@ SIGHT_LINKFLAGS = \
                   -Wl,-rpath ${ROOT_PATH}/widgets/gsl/lib \
 	          -lpthread
 
-RAPL_ENABLED = 1
+RAPL_ENABLED = 0
 ifeq (${RAPL_ENABLED}, 1)
 SIGHT_CFLAGS += -I${ROOT_PATH}/widgets/libmsr/include
 SIGHT_LINKFLAGS += ${ROOT_PATH}/widgets/libmsr/lib/libmsr.so \
                     -Wl,-rpath ${ROOT_PATH}/widgets/libmsr/lib
 endif
 	                
-override CC=clang #icc #gcc
-override CCC=clang++ #icpc #clang++ #g++
+override CC=gcc #clang #icc #gcc
+override CCC=g++ #clang++ #icpc #clang++ #g++
 MPICC = mpi${CC}
 MPICCC = mpi${CCC}
 
@@ -83,7 +83,8 @@ VNC_ENABLED := 0
 endif
 
 # By default we disable KULFI-based fault injection since it requires LLVM
-KULFI_ENABLED := 1
+#KULFI_ENABLED := 1 
+KULFI_ENABLED := 0
 	
 ifeq (${KULFI_ENABLED}, 1)
 # Sight must use the same LLVM Clang compiler as KULFI does
@@ -132,14 +133,10 @@ runExamples: core
 	cd examples; make ${MAKE_DEFINES} run
 	cd examples; make ${MAKE_DEFINES} runPthread
 
-<<<<<<< HEAD
-runApps: libsight_structure.a slayout${EXE} hier_merge${EXE} apps mfem
-=======
 runPthreadExamples: core
 	cd examples; make ${MAKE_DEFINES} runPthread
 
 runApps: libsight_structure.so slayout${EXE} hier_merge${EXE} apps
->>>>>>> gbDevelop
 	cd examples; ../apps/mfem/mfem/examples/mfemComp.pl
 	cd examples; ../apps/mfem/mfem/examples/ex2 ../apps/mfem/mfem/data/beam-tet.mesh 2
 	cd examples; ../apps/mfem/mfem/examples/ex3 ../apps/mfem/mfem/data/ball-nurbs.mesh

@@ -248,7 +248,8 @@ var displayTraceCalled = {};
 }*/
 
 // hoa edit
-function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, vizList, inwin, showFresh, showLabels, refreshView)
+//function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, vizList, inwin, showFresh, showLabels, refreshView)
+function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, viz, inwin, showFresh, showLabels, refreshView)
 {  
   var numContextAttrs=0;
   for(var i in ctxtAttrs) { if(ctxtAttrs.hasOwnProperty(i)) { numContextAttrs++; } }
@@ -267,9 +268,11 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, vizList, inw
   // viz methods
   // start processing multiple viz methods
   var met = [];
-  for(var k=0; k < vizList.length; k++)
-  {
-      var viz = vizList[k];
+  
+  // hoa temp comment out
+  //for(var k=0; k < vizList.length; k++)
+  //{
+  //    var viz = vizList[k];
      
       /*
       met.push(new LertButton(viz, function()
@@ -1009,8 +1012,11 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, vizList, inw
          //}));
       }
       // end rendering a visualization method
-  }
   
+  // hoa temp comment out of vizList loop
+  //}
+  
+
   // box alert for multiple visualization methods
   /*
   var message = "Please select the visualization method:";

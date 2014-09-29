@@ -22,12 +22,6 @@ class moduleLayoutHandlerInstantiator : layoutHandlerInstantiator {
 };
 extern moduleLayoutHandlerInstantiator moduleLayoutHandlerInstance;
 
-class moduleConfHandlerInstantiator : common::confHandlerInstantiator {
-  public:
-  moduleConfHandlerInstantiator();
-};
-extern moduleConfHandlerInstantiator moduleConfHandlerInstance;
-
 class moduleTraceStream;
 
 // Records the information of a given module when the module is entered so that we have it available 
@@ -213,8 +207,6 @@ class polyFitObserver: public traceObserver
   std::string saveFitText() const;
 }; // polyFitObserver
 
-class SynopticModuleObsLogger;
-
 class modularApp: public block, public common::module
 {
   friend class module;
@@ -235,9 +227,6 @@ class modularApp: public block, public common::module
   
   // Unique ID of this modular app
   int appID;
-  
-  // Stack of the module markers that are currently in scope within this modularApp
-  static std::list<sight::layout::moduleInfo> mMarkerStack;
   
   // Stack of the modules that are currently in scope within this modularApp
   static std::list<sight::layout::moduleInfo> mStack;
@@ -271,19 +260,6 @@ class modularApp: public block, public common::module
   
   // Returns the unique instance of modularApp currently active
   static modularApp* getInstance() { assert(activeMA); return activeMA; }
-  const std::string& getAppName() { return appName; }
-  static const std::string getOutDir() { return outDir; }
-  static const std::string getHtmlOutDir() { return htmlOutDir; }
-  static const std::list<sight::layout::moduleInfo> getMMarkerStack() { return mMarkerStack; }
-  static const std::list<sight::layout::moduleInfo> getMStack() { return mStack; }
-  
-  // Returns a string that uniquely identifies all the module markers currently on the stack, using the 
-  // given string to separate the strings of different module instances.
-  std::string getModuleMarkerStackName(std::string separator="_");
-  
-  // Returns a string that uniquely identifies all the modules currently on the stack, using the 
-  // given string to separate the strings of different module instances.
-  std::string getModuleStackName(std::string separator="_");
   
   // Initialize the environment within which generated graphs will operate, including
   // the JavaScript files that are included as well as the directories that are available.
@@ -308,22 +284,7 @@ class modularApp: public block, public common::module
   //    it should be either "module" or "output".
   // bgColor - The background color of the buttons
   //void showButtons(int numInputs, int numOutputs, int ID, std::string prefix, std::string bgColor);
- 
-  // Enter a new moduleMarker within the current modularApp
-  // numInputs/numOutputs - the number of inputs/outputs of this module node
-  // ID - the unique ID of this module node
-  void enterModuleMarker(std::string moduleName, int numInputs, int numOutputs);
-
-  // Static version of enterModuleMarker() that pulls the from/to anchor IDs from the properties iterator and calls
-  // enterModule() in the currently active modularApp
-  static void* enterModuleMarker(properties::iterator props);
-
-  // Exit a module within the current modularApp
-  void exitModuleMarker();
-
-  // Static version of exitModuleMarker() that calls exitModuleMarker() in the currently active modularApp
-  static void exitModuleMarker(void* obj);
-
+  
   // Enter a new module within the current modularApp
   // numInputs/numOutputs - the number of inputs/outputs of this module node
   // ID - the unique ID of this module node
@@ -352,37 +313,6 @@ class modularApp: public block, public common::module
   // that contain this block and false otherwise.
   bool subBlockEnterNotify(block* subBlock) { return false; }
   bool subBlockExitNotify (block* subBlock) { return false; }
-  
-  // Records whether we should emit the observations of each module into a separate table for use by external tools
-  static bool emitObsIndividualDataTable;
-  // Records whether we should emit the observations of all modular into a single table for use by external tools
-  static bool emitObsCommonDataTable;
-
-  // If emitObsCommonDataTable, points to the instance of SynopticModuleObsLogger that monitors and 
-  // records all module observations.
-  SynopticModuleObsLogger* commonDataTableLogger;
-  
-  // -------------------------
-  // ----- Configuration -----
-  // -------------------------
-  // Currently there isn't anything that can be configured but in the future we may wish to
-  // add measurements that will be taken on all modules
-  public:
-  class ModularAppConfiguration : public common::Configuration{
-    public:
-    ModularAppConfiguration(properties::iterator props) : common::Configuration(props.next()) {
-      emitObsIndividualDataTable = props.exists("emitObsIndividualDataTable");
-      emitObsCommonDataTable     = props.exists("emitObsCommonDataTable");
-    }
-  };
-
-  static common::Configuration* configure(properties::iterator props) {
-    // Create a ModuleConfiguration object, using the invocation of the constructor hierarchy to
-    // record the configuration details with the respective widgets from which modules inherit
-    ModularAppConfiguration* c = new ModularAppConfiguration(props);
-    delete c;
-    return NULL;
-  }
 }; // class modularApp
 
 // Specialization of traceStreams for the case where they are hosted by a module
@@ -399,7 +329,6 @@ class moduleTraceStream: public traceStream
   module* mFilter;
   polyFitFilter* polyFitter;
   polyFitObserver* polyFitCollector;
-  traceFileWriterTSV* fileWriter;
   
   // The queue that passes all incoming observations through cmFilter and then forwards them to modularApp.
   //traceObserverQueue* queue;
@@ -510,41 +439,5 @@ class processedModuleTraceStream: public moduleTraceStream
   static void *enterTraceStream(properties::iterator props);
 }; // class processedModuleTraceStream
 
-// This is a trace observer that processes incoming module by writing them into the given file 
-// Synoptic format, writing for each module observation two lines, one with the entry timestamp
-// and one with the exit timestamp. SynopticModuleObsLogger requires the use of timeStampMeasures.
-// Only records with such timestamps are emitted into the log.
-class SynopticModuleObsLogger: public traceObserver {
-  // Map the IDs of the traces this logger is observing to their string labels
-  std::map<int, std::string> traceID2Label;
-  
-  // The file that the observations will be emitted to
-  std::ofstream out;
-  
-  // The root file name that this instance will use to write output to
-  std::string outFName;
-
-  // The number of observations seen
-  int numObservations;
-  
-  public: 
-  SynopticModuleObsLogger(std::string outFName);
-  ~SynopticModuleObsLogger();
-  
-  // Records the mapping from the given traceID to the given label
-  void recordTraceLabel(int traceID, std::string label) { traceID2Label[traceID] = label; }
-  
-  // Interface implemented by objects that listen for observations a traceStream reads. Such objects
-  // call traceStream::registerObserver() to inform a given traceStream that it should observations.
-  void observe(int traceID,
-               const std::map<std::string, std::string>& ctxt, 
-               const std::map<std::string, std::string>& obs,
-               const std::map<std::string, anchor>&      obsAnchor);
-  
-  // Called when the stream of observations has finished to allow the implementor to perform clean-up tasks.
-  // This method is optional.
-  void obsFinished();
-}; // class SynopticModuleObsLogger
-  
 }; // namespace layout
 }; // namespace sight
