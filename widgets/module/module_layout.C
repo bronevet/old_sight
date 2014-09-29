@@ -471,8 +471,8 @@ void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int
     */
     
     cmd << "registerModuleButtonCmd("<<maxButtonID<<", \""<< moduleTraces[moduleID]->getDisplayJSCmd(contextAttrs, traceAttrs, "",trace::scatter3d,true, true, false, true)<< "\");"<<endl;
-    //cmd << "registerModuleButtonCmd("<<(maxButtonID+100)<<", \""<< moduleTraces[moduleID]->getDisplayJSCmd(contextAttrs, traceAttrs, "", "ccp",true, true, false, true)<< "\");"<<endl;
-    //scmd << "registerModuleButtonCmd("<<(maxButtonID+200)<<", \""<< moduleTraces[moduleID]->getDisplayJSCmd(contextAttrs, traceAttrs, "", "pcp",true, true, false, true)<< "\");"<<endl;
+    cmd << "registerModuleButtonCmd("<<(maxButtonID+100)<<", \""<< moduleTraces[moduleID]->getDisplayJSCmd(contextAttrs, traceAttrs, "",trace::ccp,true, true, false, true)<< "\");"<<endl;
+    cmd << "registerModuleButtonCmd("<<(maxButtonID+200)<<", \""<< moduleTraces[moduleID]->getDisplayJSCmd(contextAttrs, traceAttrs, "", trace::pcp,true, true, false, true)<< "\");"<<endl;
 
     string vizl = "scatter3d:ccp:pcp";
     //datFile << "nodeid="<< moduleID << ",buttonID = " << maxButtonID << ",vizList =" << vizl << endl;

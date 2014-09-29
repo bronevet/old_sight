@@ -85,7 +85,7 @@ function traceRecord(traceLabel, traceVals, traceValLinks, contextVals, viz)
   
   // Create an object that contains the data of the current observation
   var allVals = {};
-  if(viz == 'table' || viz == 'lines' || viz == 'scatter3d' || viz == 'decTree' || viz == 'heatmap' || viz == 'boxplot') {
+  if(viz == 'table' || viz == 'lines' || viz == 'scatter3d' || viz == 'decTree' || viz == 'heatmap' || viz == 'boxplot'|| viz == 'ccp'|| viz == 'pcp') {
     // Add the data
     for(ctxtKey in contextVals) { if(contextVals.hasOwnProperty(ctxtKey)) {
       allVals[ctxtKey] = contextVals[ctxtKey];
