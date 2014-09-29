@@ -39,8 +39,6 @@ void MRNetThread::init(std::set<Rank> ranks) {
             std::vector<DataPckt> *inputQueue = new std::vector<DataPckt>;
             atomic_cond_t *signal = new atomic_cond_t;
             *signal = ATOMIC_SYNC_COND_INITIALIZER ;
-            int* fSignal = new int;
-            *fSignal = 0 ;
 
             inputSignals[r] = signal;
             bufferData[r] = inputQueue;
@@ -162,11 +160,24 @@ void MRNetThread::consumerFunc() {
 #endif
     );
     state.merge();
+
+    //cleanup structures
+    destroy();
 }
 
 void MRNetThread::destroy() {
-    delete thread1;
+//    delete thread1;
     delete inQueueMutex;
+    delete synchronizer;
+    int i = 0;
+    for(std::vector<sight::baseStructureParser<FILE>*>::iterator it = iterators.begin(); it < iterators.end(); it++){
+        sight::baseStructureParser<FILE>* parser = *it;
+        delete parser ;
+        delete inputSignals[i];
+        delete bufferData[i];
+        i++;
+    }
+
     //todo remove all heap buffers and signals ,etc safely
 }
 
