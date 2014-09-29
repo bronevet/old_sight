@@ -169,7 +169,7 @@ else
 	wget http://www.graphviz.org/pub/graphviz/stable/SOURCES/graphviz-2.24.0.tar.gz
 	tar -xf graphviz-2.24.0.tar.gz
 	cd graphviz-2.24.0; export CC=gcc; export CXX=g++; ./configure --prefix=${ROOT_PATH}/widgets/graphviz --disable-swig --disable-sharp --disable-go --disable-io --disable-java --disable-lua --disable-ocaml --disable-perl --disable-php --disable-python --disable-r --disable-ruby --disable-tcl --without-pic --without-efence --with-expat=yes --with-expatlibdir=${ROOT_PATH}/widgets/expat/lib --with-expatincludedir=${ROOT_PATH}/widgets/expat/include --without-devil --without-webp --without-poppler --without-ghostscript --without-visio --without-pangocairo --without-lasi --without-glitz --without-freetype2 --without-fontconfig --without-gdk-pixbuf --without-gtk --without-gtkgl --without-gtkglext --without-gts --without-glade --without-ming --without-qt --without-quartz --without-gdiplus --without-libgd --without-glut --without-sfdp --without-smyrna --without-ortho --without-digcola --without-ipsepcola --enable-static --disable-shared
-	cp graphviz_vmalloc_features graphviz-2.24.0/lib/vmalloc/features/vmalloc
+	#cp graphviz_vmalloc_features graphviz-2.24.0/lib/vmalloc/features/vmalloc
 	cd graphviz-2.24.0; export CC=gcc; export CXX=g++; ${MAKE}
 	cd graphviz-2.24.0; export CC=gcc; export CXX=g++; ${MAKE} install
 	mv graphviz/bin/dot_static graphviz/bin/dot
@@ -213,7 +213,7 @@ gsl:
 	wget ftp://ftp.gnu.org/gnu/gsl/gsl-1.9.tar.gz
 	tar -xf gsl-1.9.tar.gz 
 	cd gsl-1.9; CC=${CC}; ./configure --prefix=${ROOT_PATH}/widgets/gsl
-	cd gsl-1.9; make; make install
+	cd gsl-1.9; make; make install; cd gsl; ls lib64 >/dev/null && ln -s lib64 lib;
 	rm -r gsl-1.9 gsl-1.9.tar.gz
 
 papi:
@@ -221,7 +221,7 @@ papi:
 	wget http://icl.cs.utk.edu/projects/papi/downloads/papi-5.3.0.tar.gz
 	tar -xf papi-5.3.0.tar.gz 
 	cd papi-5.3.0/src; ./configure -prefix=${ROOT_PATH}/widgets/papi CC=gcc F77=gfortran; 
-	cd papi-5.3.0/src; export CC=gcc; export F77=gfortran; make LDCONFIG=true CC=gcc F77=gfortran; make install
+	cd papi-5.3.0/src; export CC=gcc; export F77=gfortran; make LDCONFIG=true CC=gcc F77=gfortran; make install; cd papi; ls lib64 >/dev/null && ln -s lib64 lib;
 	rm -fr papi-5.3.0 papi-5.3.0.tar.gz
 
 ifeq (${RAPL_ENABLED}, 1)
