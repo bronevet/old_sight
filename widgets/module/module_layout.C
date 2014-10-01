@@ -471,8 +471,8 @@ void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int
     */
     
     cmd << "registerModuleButtonCmd("<<maxButtonID<<", \""<< moduleTraces[moduleID]->getDisplayJSCmd(contextAttrs, traceAttrs, "",trace::scatter3d,true, true, false, true)<< "\");"<<endl;
-    cmd << "registerModuleButtonCmd("<<(maxButtonID+100)<<", \""<< moduleTraces[moduleID]->getDisplayJSCmd(contextAttrs, traceAttrs, "",trace::ccp,true, true, false, true)<< "\");"<<endl;
-    cmd << "registerModuleButtonCmd("<<(maxButtonID+200)<<", \""<< moduleTraces[moduleID]->getDisplayJSCmd(contextAttrs, traceAttrs, "", trace::pcp,true, true, false, true)<< "\");"<<endl;
+    //cmd << "registerModuleButtonCmd("<<(maxButtonID+100)<<", \""<< moduleTraces[moduleID]->getDisplayJSCmd(contextAttrs, traceAttrs, "",trace::ccp,true, true, false, true)<< "\");"<<endl;
+    //cmd << "registerModuleButtonCmd("<<(maxButtonID+200)<<", \""<< moduleTraces[moduleID]->getDisplayJSCmd(contextAttrs, traceAttrs, "", trace::pcp,true, true, false, true)<< "\");"<<endl;
 
     string vizl = "scatter3d:ccp:pcp";
     //datFile << "nodeid="<< moduleID << ",buttonID = " << maxButtonID << ",vizList =" << vizl << endl;
@@ -509,14 +509,17 @@ void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int
     //cout << "polyFits[moduleID]="<<polyFits[moduleID]<<", polyFits[moduleID]->numFits()="<<polyFits[moduleID]->numFits()<<endl;
 
 	// hoa edit
-	//ioInfoFile << moduleID << ":"<<polyFits[moduleID]->numFits()<< endl;
+	//ioInfoFile << moduleID << ":"<<polyFits[moduleID]->numFits()<< endl;make
+
+    // hoa edit for merging
+    ioInfoFile <<moduleID << ";"<<polyFits[moduleID]->numFits() << ";"<< polyFits[moduleID]->saveFitText()<<endl;
 
     if(polyFits[moduleID] && polyFits[moduleID]->numFits()>0)
     {
       dotFile << "\t\t"<<polyFits[moduleID]->getFitText()<<""<<endl;
 
-      //ioInfoFile <<"numFits="<<polyFits[moduleID]->numFits()<<endl;
-      ioInfoFile <<moduleID << ";"<<polyFits[moduleID]->numFits() << ";"<< polyFits[moduleID]->saveFitText()<<endl;
+      // hoa edit for merging
+      //ioInfoFile <<"bt"<<moduleID << ";"<<polyFits[moduleID]->numFits() << ";"<< polyFits[moduleID]->saveFitText()<<endl;
     }
     
     

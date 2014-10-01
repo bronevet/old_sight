@@ -213,7 +213,7 @@ gsl:
 	wget ftp://ftp.gnu.org/gnu/gsl/gsl-1.9.tar.gz
 	tar -xf gsl-1.9.tar.gz 
 	cd gsl-1.9; CC=${CC}; ./configure --prefix=${ROOT_PATH}/widgets/gsl
-	cd gsl-1.9; make; make install; cd gsl; ls lib64 >/dev/null && ln -s lib64 lib;
+	cd gsl-1.9; make; make install; cd gsl; ls lib64 >/dev/null && ln -s lib64 lib;  
 	rm -r gsl-1.9 gsl-1.9.tar.gz
 
 papi:
@@ -221,8 +221,7 @@ papi:
 	wget http://icl.cs.utk.edu/projects/papi/downloads/papi-5.3.0.tar.gz
 	tar -xf papi-5.3.0.tar.gz 
 	cd papi-5.3.0/src; ./configure -prefix=${ROOT_PATH}/widgets/papi CC=gcc F77=gfortran; 
-	cd papi-5.3.0/src; export CC=gcc; export F77=gfortran; make LDCONFIG=true CC=gcc F77=gfortran; make install; cd papi; ls lib64 >/dev/null && ln -s lib64 lib;
-	rm -fr papi-5.3.0 papi-5.3.0.tar.gz
+	cd papi-5.3.0/src; export CC=gcc; export F77=gfortran; make LDCONFIG=true CC=gcc F77=gfortran; make install; cd papi; ls lib64 >/dev/null && ln -s lib64 lib; rm -fr papi-5.3.0 papi-5.3.0.tar.gz
 
 ifeq (${RAPL_ENABLED}, 1)
 libmsr: libmsr/lib/libmsr.so
