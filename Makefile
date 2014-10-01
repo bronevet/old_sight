@@ -63,8 +63,8 @@ REMOTE_ENABLED := 0
 else
 # Default distribution disables remote access since this capability requires us to run a web server
 # and many compute centers disallow this
-#REMOTE_ENABLED := 1
-REMOTE_ENABLED := 0
+REMOTE_ENABLED := 1
+#REMOTE_ENABLED := 0
 endif
 
 ifneq (${OS}, Cygwin)
@@ -85,7 +85,7 @@ VNC_ENABLED := 0
 endif
 
 # By default we disable KULFI-based fault injection since it requires LLVM
-KULFI_ENABLED := 1
+KULFI_ENABLED := 0
 	
 ifeq (${KULFI_ENABLED}, 1)
 # Sight must use the same LLVM Clang compiler as KULFI does
@@ -147,9 +147,6 @@ ifeq (${MPI_ENABLED}, 1)
 	cd examples; ../apps/CoMD/bin/CoMD-mpi.tracepath
 	cd examples; ../apps/CoMD/bin/CoMD-mpi.tracepos
 	cd examples; ../apps/CoMD/CoMDCompare.pl
-endif
-ifeq (${REMOTE_ENABLED}, 1)
-	cd examples; ../apps/mfem/mfem/examples/ex1 ../apps/mfem/mfem/data/beam-quad.mesh
 endif
 
 #runMCBench:

@@ -596,11 +596,13 @@ class MergeInfo {
   public:
   typedef std::list<std::string> mergeKey;
   // Identifies the way in which this tag should be merged with others
-  //   align: Tags with matching keys should be aligned and tags that align should be merged and emitted as one.
-  //          When no alignment is possible, the merge should show the different non-alignable tags as variants.
-  //   interleave: Tags of this type are not directly comparable and must thus be interleaved in the outgoing
-  //          stream with no attempt made to align them.
-  typedef enum {align, interleave} mergeKindT;
+  typedef enum {
+    align, // Tags with matching keys should be aligned and tags that align should be merged and emitted as one.
+           //    When no alignment is possible, the merge should show the different non-alignable tags as variants.
+    interleave, // Tags of this type are not directly comparable and must thus be interleaved in the outgoing
+                //    stream with no attempt made to align them.
+    interleave_aligned // Tags with matching keys are aligned, non-matching tags are interleaved.
+  } mergeKindT;
   
   private:
   mergeKey key;
@@ -643,7 +645,7 @@ class MergeInfo {
     }
     cout << "]]";*/
     s << "[MergeInfo: universal="<<universal<<", ";
-    s << "mergeKind="<<(mergeKind==align?"align":(mergeKind==interleave?"interleave":"???"))<<", ";
+    s << "mergeKind="<<(mergeKind==align?"align":(mergeKind==interleave?"interleave":(mergeKind==interleave_aligned?"interleave_aligned":"???")))<<", ";
     s << "key=[";
     for(std::list<std::string>::const_iterator k=key.begin(); k!=key.end(); k++) {
       if(k!=key.begin()) s << ", ";
@@ -711,8 +713,8 @@ class streamRecord : public printable {
   
   public:
   
-  streamRecord(int vID,              std::string objName) : vID(vID), maxID(0), objName(objName) {}  
-  streamRecord(const variantID& vID, std::string objName) : vID(vID), maxID(0), objName(objName) {}
+  streamRecord(int vID,              std::string objName) : vID(vID), maxID(-1), objName(objName) {}  
+  streamRecord(const variantID& vID, std::string objName) : vID(vID), maxID(-1), objName(objName) {}
   // vSuffixID: ID that identifies this variant within the next level of variants in the heirarchy
   streamRecord(const streamRecord& that, int vSuffixID) : vID(that.vID), maxID(that.maxID), in2outIDs(that.in2outIDs), objName(that.objName) {
     vID.enterVariant(vSuffixID);
@@ -1691,7 +1693,13 @@ class UniqueMarkMerger : public BlockMerger {
   // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info,
+  //
+  // Default variant that allows uniqueMarks with different IDs to be merged.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
+                       const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
+ 
+  // Variant that does not allow uniqueMarks with different IDs to be merged 
+  static void mergeKey_separateByID(properties::tagType type, properties::iterator tag, 
                        const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
 }; // class UniqueMarkMerger
 

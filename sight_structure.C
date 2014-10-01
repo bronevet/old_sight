@@ -474,7 +474,7 @@ void SightThreadInit() {
 }
 
 void SightThreadFinalize() {
-  cout << pthread_self()<<": SightThreadFinalize\n";
+//  cout << pthread_self()<<": SightThreadFinalize\n";
   // Unregister this thread's soStacks from threadSoStacks
   pthread_mutex_lock(&threadSoStacksMutex);
   if(threadSoStacks.find(pthread_self()) != threadSoStacks.end()) {
@@ -1045,7 +1045,7 @@ int streamRecord::mergeIDs(std::string objName, std::string IDName,
                            std::map<std::string, streamRecord*>& outStreamRecords,
                            std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
                            int mergedID) {
-  //cout << "streamRecord::mergeIDs()\n";
+  dbg << "<b>streamRecord::mergeIDs()</b>"<<endl;
   
   // Find the anchorID in the outgoing stream that the anchors in the incoming streams will be mapped to.
   // First, see if the anchors on the incoming streams have already been assigned an anchorID on the outgoing stream
@@ -1056,7 +1056,8 @@ int streamRecord::mergeIDs(std::string objName, std::string IDName,
   streamID outSID = ret.second;
 
   streamRecord* outS = outStreamRecords[objName];
-  
+
+  dbg << "&outStreamRecords="<<&outStreamRecords<<", outSIDKnown="<<outSIDKnown<<", outSID="<<outSID.str()<<", mergedID="<<mergedID<<endl;
   // If none of the anchors on the incoming stream have been mapped to an anchor in the outgoing stream,
   // create a fresh anchorID in the outgoing stream, advancing the maximum anchor ID in the process
   if(!outSIDKnown) {
@@ -1067,8 +1068,9 @@ int streamRecord::mergeIDs(std::string objName, std::string IDName,
       outS->maxID = (outS->maxID <= mergedID? outS->maxID = mergedID+1: outS->maxID);
     
     outSID = streamID(mergedID, outS->getVariantID());
-    //cout << "streamRecord::mergeIDs(), assigned new ID on outgoing stream outSID="<<outSID.str()<<endl;
+//    cout << "streamRecord::mergeIDs(), assigned new ID on outgoing stream outSID="<<outSID.str()<<endl;
   }
+  dbg << "After mergedID="<<mergedID<<endl;
   
   // Update inStreamRecords to map the anchor's ID within each incoming stream to the assigned ID in the outgoing stream
     for(int i=0; i<tags.size(); i++) {
@@ -1077,21 +1079,20 @@ int streamRecord::mergeIDs(std::string objName, std::string IDName,
       // The anchor's ID within the current incoming stream
       streamID inSID(properties::getInt(tags[i].second, IDName), s->getVariantID());
       
-      /*cout << "|   "<<i<<": inSID="<<inSID.str()<<", in2outIDs=(#"<<s->in2outIDs.size()<<")"<<endl;
+      dbg << "|   "<<i<<": inSID="<<inSID.str()<<", in2outIDs=(#"<<s->in2outIDs.size()<<")"<<endl;
       for(map<streamID, streamID>::iterator j=s->in2outIDs.begin(); j!=s->in2outIDs.end(); j++)
-        cout << "|       "<<j->first.str()<<" => "<<j->second.str()<<endl;*/
+        dbg << "|       "<<j->first.str()<<" => "<<j->second.str()<<endl;
       
       // Yell if we're changing an existing mapping
       if((s->in2outIDs.find(inSID) != s->in2outIDs.end()) && s->in2outIDs[inSID] != outSID)
       { cerr << "ERROR: merging ID "<<inSID.str()<<" for object "<<objName<<" from incoming stream "<<i<<" multiple times. Old mapping: "<<s->in2outIDs[inSID].str()<<". New mapping: "<<outSID.str()<<"."<<endl; assert(0); }
-      //cout << "|    outSID="<<outSID.str()<<endl;
+      dbg << "|    outSID="<<outSID.str()<<endl;
       
       s->in2outIDs[inSID] = outSID;
     }
     
   // Assign to the merged block the next ID for this output stream
   pMap[IDName] = txt()<<outSID.ID;
-  //pMap["vID"] = outS->getVariantID().serialize();
   
   return outSID.ID;
 }
@@ -1133,6 +1134,9 @@ std::pair<bool, streamID> streamRecord::sameID_ex(
     streamID inSID(properties::getInt(tags[i].second, IDName), 
                    inStreamRecords[i][objName]->getVariantID());
     
+    dbg << "streamRecord::sameID_ex() i="<<i<<", s="<<s->str()<<endl;
+    dbg << "inSID="<<inSID.str()<<", found="<<(s->in2outIDs.find(inSID) != s->in2outIDs.end())<<endl;
+
     if(s->in2outIDs.find(inSID) != s->in2outIDs.end()) {
       // If we've already found an outSID, make this it is the same one
       if(outSIDKnown) {
@@ -3020,11 +3024,28 @@ properties* UniqueMarkMerger::setProperties(std::vector<std::pair<properties::ta
 // Sets a list of strings that denotes a unique ID according to which instances of this merger's 
 // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
-// call their parents so they can add any info,
+// call their parents so they can add any info.
+//
+// Default variant that allows uniqueMarks with different IDs to be merged.
 void UniqueMarkMerger::mergeKey(properties::tagType type, properties::iterator tag, 
 				   const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
   BlockMerger::mergeKey(type, tag.next(), inStreamRecords, info);
 }
+
+// Variant that does not allow uniqueMarks with different IDs to be merged.
+void UniqueMarkMerger::mergeKey_separateByID(properties::tagType type, properties::iterator tag, 
+				   const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+//cout << "UniqueMarkMerger::mergeKey tag="<<tag.str()<<endl;
+  BlockMerger::mergeKey(type, tag.next(), inStreamRecords, info);
+
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; assert(0); }
+  if(type==properties::enterTag) {
+    int numIDs = tag.getInt("numIDs");
+    for(int i=0; i<numIDs; i++)
+      info.add(tag.get(txt()<<"ID"<<i));
+  }
+}
+
 // Wrapper of the printf function that emits text to the dbg stream
 //ThreadLocalStorageArray<char> printbuf(100000);
 int dbgprintf(const char * format, ... )    
@@ -3107,7 +3128,7 @@ void AbortHandlerInstantiator::appExited() {
   // Only do exit processing if Sight has not already been destroyed
   if(sightObj::SightDestroyed) return;
   
-  cout << pthread_self()<<": AbortHandlerInstantiator::appExited() #ExitHandlers="<<ExitHandlers->size()<<endl;
+//  cout << pthread_self()<<": AbortHandlerInstantiator::appExited() #ExitHandlers="<<ExitHandlers->size()<<endl;
   // Call all the functions registered to listen for the application's exit
   for(map<string, ExitHandler>::iterator h=ExitHandlers->begin(); h!=ExitHandlers->end(); h++)
     (h->second)();

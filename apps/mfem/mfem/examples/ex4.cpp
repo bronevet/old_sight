@@ -147,7 +147,7 @@ int main (int argc, char *argv[])
    mesh->Print(sol_sock);
    x.Save(sol_sock);
    sol_sock.send();*/
-   #if defined(VNC_ENABLED)
+   #if defined(REMOTE_ENABLED)
    mfem::emitMesh(mesh, &x);
    #endif
 

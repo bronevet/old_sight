@@ -2,17 +2,18 @@
 URL=$1
 EXT=$2;
 OPEN=$3;
+NAME=$4;
 
-rm -rf master*
+rm -rf ${NAME}*
 
 wget --no-check-certificate $URL
 
-if [ -f master ];
+if [ -f ${NAME} ];
 then
-mv master master.$EXT
+mv ${NAME} ${NAME}.$EXT
 fi
 
-$OPEN master.$EXT
-rm master.$EXT
+$OPEN ${NAME}.$EXT
+rm ${NAME}.$EXT
 
 

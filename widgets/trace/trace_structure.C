@@ -1683,7 +1683,7 @@ properties* TraceStreamMerger::setProperties(std::vector<std::pair<properties::t
                                        properties* props) {
   if(props==NULL) props = new properties();
   props = props;
-  
+ scope s("TraceStreamMerger::setProperties"); 
   map<string, string> pMap;
   properties::tagType type = streamRecord::getTagType(tags); 
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Trace!"<<endl; assert(0);; }
@@ -1731,6 +1731,11 @@ properties* TraceStreamMerger::setProperties(std::vector<std::pair<properties::t
     }
   }
   props->add("traceStream", pMap);
+dbg << "TraceStreamMerger outStreamRecords="<<&outStreamRecords<<endl;
+{scope sout("outStreamRecords");
+for(std::map<std::string, streamRecord*>::const_iterator o=outStreamRecords.begin(); o!=outStreamRecords.end(); o++)
+  dbg << o->first<<": "<<o->second->str("    ")<<endl;
+}
 
   return props;
 }
@@ -2055,6 +2060,9 @@ std::string TraceStreamRecord::str(std::string indent) const {
   ostringstream s;
   s << "[TraceStreamRecord: ";
   s << streamRecord::str(indent+"    ") << endl;  
+  s << indent << "merge(#"<<merge.size()<<")="<<endl;
+  for(map<int, trace::mergeT>::const_iterator m=merge.begin(); m!=merge.end(); m++)
+    s << indent << "    "<<m->first<<" => "<<common::trace::mergeT2Str(m->second)<<endl;
   s << indent << "]";
   
   return s.str();

@@ -4,7 +4,9 @@ EXE := .exe
 endif
 
 sight_H := ../*.h ../*/*.h ../widgets/*/*.h
-TESTERS = 0.Demo${EXE} \
+TESTERS = 12.RemoteModuleEdges
+
+#0.Demo${EXE} \
           1.StructuredFormatting${EXE} \
           2.ConditionalFormatting${EXE} \
           3.Navigation${EXE} \
@@ -22,7 +24,7 @@ PTHREAD_TESTERS = pthreadMutexEx${EXE} pthreadCondEx${EXE} pthreadThreadsEx${EXE
                   pthreadBug1${EXE} pthreadBug2${EXE} pthreadBug3${EXE} \
                   pthreadBug4${EXE} pthreadBug5${EXE} pthreadBug6${EXE}
 
-all: ${PTHREAD_TESTERS} ${TESTERS}
+all: ${TESTERS} # ${PTHREAD_TESTERS}
 
 MPI-examples:
 	make -C MPI_examples
@@ -119,6 +121,10 @@ run: ${TESTERS}
 11.ExternTraceProcess${EXE}: 11.ExternTraceProcess.C ../libsight_structure.so ${sight_H}
 	${CCC} -g 11.ExternTraceProcess.windowing.C -I.. -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 11.ExternTraceProcess.windowing${EXE}
 	${CCC} -g ${SIGHT_CFLAGS} 11.ExternTraceProcess.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 11.ExternTraceProcess${EXE}
+
+12.RemoteModuleEdges${EXE}: 12.RemoteModuleEdges.C ../libsight_structure.so ${sight_H}
+	${CCC} ${SIGHT_CFLAGS} 12.RemoteModuleEdges.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 12.RemoteModuleEdges${EXE}
+
 
 runPthread: ${PTHREAD_TESTERS}
 #	rm -rf dbg.*

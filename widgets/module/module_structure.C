@@ -151,6 +151,53 @@ std::string group::str() const {
 std::string port::str() const {
   return txt() << "[port: g="<<g.str()<<", ctxt="<<ctxt->str() << " : "<<(type==sight::common::module::input?"In":"Out")<<" : "<<index<<"]";
 }
+
+/****************************
+ ***** remoteModuleEdge *****
+ ****************************/
+
+remoteModuleEdge::remoteModuleEdge(const std::string& ID, sight::common::module::ioT type, int index,                        properties* props) : 
+  uniqueMark("remoteModuleEdge", ID, setProperties(type, index, NULL,     props))
+{}
+
+remoteModuleEdge::remoteModuleEdge(const std::string& ID, sight::common::module::ioT type, int index, const attrOp& onoffOp, properties* props) : 
+  uniqueMark("remoteModuleEdge", ID, setProperties(type, index, &onoffOp, props))
+{}
+
+// Sets the properties of this object
+properties* remoteModuleEdge::setProperties(sight::common::module::ioT type, int index, const attrOp* onoffOp, properties* props)
+{
+  if(props==NULL) props = new properties();
+    
+  // If the current attribute query evaluates to true (we're emitting debug output) AND
+  // either onoffOp is not provided or its evaluates to true
+  if(attributes->query() && (onoffOp? onoffOp->apply(): true)) {
+    props->active = true;
+    map<string, string> pMap;
+    pMap["type"] = txt()<<type;
+    pMap["index"] = txt()<<index;
+    pMap["moduleID"] = txt()<<modularApp::getInstance()->getCurModule()->getModuleID();
+    props->add("remoteModuleEdge", pMap);
+  }
+  else
+    props->active = false;
+  return props;
+}
+
+// Directly calls the destructor of this object. This is necessary because when an application crashes
+// Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
+// there is no way to directly call the destructor of a given object when it may have several levels
+// of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
+// it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
+// an object will invoke the destroy() method of the most-derived class.
+void remoteModuleEdge::destroy() {
+  this->~remoteModuleEdge();
+}
+
+remoteModuleEdge::~remoteModuleEdge() {
+  assert(!destroyed);
+}
+
   
 /************************
  ***** instanceTree *****
@@ -849,7 +896,7 @@ void module::init(const std::vector<port>& ins, properties* derivedProps) {
 
     // Record any publicized inputs
     addPublicizedInputs(ins, numPublicizedInputs, modularApp::getInstance()->publicizedInputs,
-                  modularApp::getInstance()->publicizedInputNotes);
+                        modularApp::getInstance()->publicizedInputNotes);
     
     // Add edges between the modules from which this module's inputs came and this module
     for(int i=0; i<ins.size(); i++)
@@ -1052,7 +1099,9 @@ void module::setInCtxt(int idx, const context& c) {
   if(!props->active) return;
   if(idx>=g.numInputs()) { cerr << "ERROR: cannot set context of input "<<idx<<" of module \""<<g.str()<<"\"! This module was declared to have "<<g.numInputs()<<" inputs."<<endl; }
   assert(idx<g.numInputs());
+  if(ins.size()<=idx) ins.resize(idx+1);
   ins[idx].setCtxt(c);
+cout<<"ins.size()="<<ins.size()<<endl;
 }
 
 // Adds the given key/attrValue pair to the context of the given output port
@@ -1118,6 +1167,7 @@ void module::setTraceCtxt() {
 
   // Add to it the context of this module based on the contexts of its inputs
   for(int i=0; i<ins.size(); i++) {
+    if(ins[i].ctxt==NULL) continue;
     for(std::map<std::string, attrValue>::const_iterator c=ins[i].ctxt->configuration.begin(); c!=ins[i].ctxt->configuration.end(); c++) {
       traceCtxt[encodeCtxtName("module", "input", txt()<<i, c->first)] = c->second;
     }
@@ -1978,6 +2028,8 @@ ModuleMergeHandlerInstantiator::ModuleMergeHandlerInstantiator() {
   (*MergeKeyHandlers)["moduleCtrl"]          = ModuleCtrlMerger::mergeKey;
   (*MergeHandlers   )["moduleEdge"]          = ModuleEdgeMerger::create;
   (*MergeKeyHandlers)["moduleEdge"]          = ModuleEdgeMerger::mergeKey;
+  (*MergeHandlers   )["remoteModuleEdge"]    = RemoteModuleEdgeMerger::create;
+  (*MergeKeyHandlers)["remoteModuleEdge"]    = RemoteModuleEdgeMerger::mergeKey;
   (*MergeHandlers   )["moduleTS"]            = ModuleTraceStreamMerger::create;
   (*MergeKeyHandlers)["moduleTS"]            = ModuleTraceStreamMerger::mergeKey;
   
@@ -2009,12 +2061,18 @@ ModularAppMerger::ModularAppMerger(std::vector<std::pair<properties::tagType, pr
         BlockMerger(advance(tags), outStreamRecords, inStreamRecords, 
                     setProperties(tags, outStreamRecords, inStreamRecords, props)) { }
 
+std::map<std::string, streamRecord*> ModularAppMerger::moduleOutStreamRecords;
+
 // Sets the properties of the merged object
 properties* ModularAppMerger::setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                                        map<string, streamRecord*>& outStreamRecords,
                                        vector<map<string, streamRecord*> >& inStreamRecords,
                                        properties* props) {
   if(props==NULL) props = new properties();
+
+  // Copy the provided outStreamRecords to moduleOutStreamRecords so that all the processing
+  // for this modularApp from the tags inside it can operate using a common ModuleStreamRecord
+  moduleOutStreamRecords = outStreamRecords;
   
   assert(tags.size()>0);
 
@@ -2076,7 +2134,59 @@ ModularAppStructureMerger::ModularAppStructureMerger(std::vector<std::pair<prope
                          vector<map<string, streamRecord*> >& inStreamRecords,
                          properties* props) : 
         Merger(advance(tags), outStreamRecords, inStreamRecords, 
-                    setProperties(tags, outStreamRecords, inStreamRecords, props)) { }
+                    setProperties(tags, outStreamRecords, inStreamRecords, props))
+{
+  properties::tagType type = streamRecord::getTagType(tags);
+  if(type==properties::enterTag || type==properties::exitTag) {
+    vector<string> names = getNames(tags); assert(allSame<string>(names));
+    assert(*names.begin() == "modularAppBody" || 
+           *names.begin() == "modularAppStructure");
+
+    properties edgeExitProps("moduleEdge");
+
+    if(type==properties::exitTag && *names.begin() == "modularAppStructure") {
+      ModuleStreamRecord* globalMSR = ModularAppMerger::getMSR();
+      //cout << "modularAppStructure EXIT MSR="<<globalMSR->str()<<endl;
+      
+      // Iterate through the remote edges, emitting any edges that are not already in edges
+      for(set<pair<ModuleStreamRecord::remoteMergePort, ModuleStreamRecord::remoteMergePort> >::const_iterator e=globalMSR->remoteEdges.begin(); 
+          e!=globalMSR->remoteEdges.end(); e++) {
+        //cout << "        "<<e->first.str()<<" ==> "<<e->second.str()<<endl;
+
+        // If the given remote edge is not a duplicate of another edge that already appears in globalMSR->edges
+        ModuleStreamRecord::mergePort fromPort(globalMSR->getModuleID(e->first.g),  e->first);
+        ModuleStreamRecord::mergePort toPort  (globalMSR->getModuleID(e->second.g), e->second);
+        if(globalMSR->edges.find(make_pair(fromPort, toPort)) == globalMSR->edges.end()) {
+          // Add it to edges
+          globalMSR->edges[(make_pair(fromPort, toPort))] = make_pair(1, 1.0);
+/*        if(globalMSR->edges.find(*e) == globalMSR->edges.end()) {
+          // Add it to edges
+          globalMSR->edges[*e] = make_pair(1, 1.0);*/
+
+          // Emit an edge tag
+          map<string, string> pMap;
+          properties edgeEnterProps;
+
+          pMap["fromCID"] = txt() << globalMSR->getModuleID(e->first.g);
+          pMap["toCID"]   = txt() << globalMSR->getModuleID(e->second.g);
+    
+          pMap["fromT"] = txt() << e->first.type;
+          pMap["fromP"] = txt() << e->first.index;
+          pMap["toT"]   = txt() << e->second.type;
+          pMap["toP"]   = txt() << e->second.index;
+
+          pMap["fromCount"] = "1";
+          pMap["prob"] = "1";
+    
+          edgeEnterProps.add("moduleEdge", pMap);
+    
+          moreTagsBefore.push_back(make_pair(properties::enterTag, edgeEnterProps));
+          moreTagsBefore.push_back(make_pair(properties::exitTag,  edgeExitProps));
+        }
+      }
+    }
+  }
+}
 
 // Sets the properties of the merged object
 properties* ModularAppStructureMerger::setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
@@ -2094,7 +2204,7 @@ properties* ModularAppStructureMerger::setProperties(std::vector<std::pair<prope
     vector<string> names = getNames(tags); assert(allSame<string>(names));
     assert(*names.begin() == "modularAppBody" || 
            *names.begin() == "modularAppStructure");
-    
+   
     props->add(*names.begin(), pMap);
   }
   
@@ -2137,6 +2247,7 @@ properties* ModuleMerger::setProperties(std::vector<std::pair<properties::tagTyp
   if(props==NULL) props = new properties();
   
   assert(tags.size()>0);
+  ModuleStreamRecord* msr = ((ModuleStreamRecord*)(outStreamRecords)["module"]);
 
   map<string, string> pMap;
   properties::tagType type = streamRecord::getTagType(tags); 
@@ -2153,11 +2264,13 @@ properties* ModuleMerger::setProperties(std::vector<std::pair<properties::tagTyp
     //int nodeID = ModuleStreamRecord::mergeNodeIDs("moduleID", pMap, tags, outStreamRecords, inStreamRecords);
     //pMap["moduleID"] = txt() << nodeID;
     
+    dbg << "ModuleMerger msr="<<msr<<endl<<msr->str()<<endl;
+    
     pMap["name"]       = getSameValue(tags, "name");
     pMap["numInputs"]  = getSameValue(tags, "numInputs");
     pMap["numOutputs"] = getSameValue(tags, "numOutputs");
 
-    group g = ((ModuleStreamRecord*)(outStreamRecords)["module"])->enterModule(
+    group g = msr->enterModule(
                            instance(pMap["name"], attrValue::parseInt(pMap["numInputs"]), attrValue::parseInt(pMap["numOutputs"])));
 
     // If this is a module tag, which is placed at the end of the modularApp and records information
@@ -2170,9 +2283,9 @@ properties* ModuleMerger::setProperties(std::vector<std::pair<properties::tagTyp
                            inStreamRecords);*/
       
       // We must have previously assigned a streamID in the outgoing stream to this module group
-      dbg << "g="<<g.str()<<", observed="<<((ModuleStreamRecord*)(outStreamRecords)["module"])->isModuleObserved(g)<<endl;
-      assert(((ModuleStreamRecord*)(outStreamRecords)["module"])->isModuleObserved(g));
-      pMap["moduleID"] = txt() << ((ModuleStreamRecord*)(outStreamRecords)["module"])->getModuleID(g);
+      dbg << "g="<<g.str()<<", observed="<<msr->isModuleObserved(g)<<endl;
+      assert(msr->isModuleObserved(g));
+      pMap["moduleID"] = txt() << msr->getModuleID(g);
       //pMap["moduleID"] = txt()<<streamRecord::mergeIDs("module", "moduleID", pMap, tags, outStreamRecords, inStreamRecords);
       
       pMap["count"] = txt()<<vSum(str2int(getValues(tags, "count")));
@@ -2198,7 +2311,7 @@ properties* ModuleMerger::setProperties(std::vector<std::pair<properties::tagTyp
     
     //if(*names.begin() == "moduleMarker") {
     //ModuleStreamRecord::exitModule(inStreamRecords);
-      ((ModuleStreamRecord*)(outStreamRecords)["module"])->exitModule();
+      msr->exitModule();
     //}
     
     
@@ -2217,7 +2330,8 @@ void ModuleMerger::mergeKey(properties::tagType type, properties::iterator tag,
   // Do not call the parent class' mergeKey method since we do not want to
   // merge modules based on clock values.
   //Merger::mergeKey(type, tag.next(), inStreamRecords, info);
-    
+  assert(tag.name() == "moduleMarker" || tag.name() == "module");
+ 
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
   if(type==properties::enterTag) {
     // We only merge module tags that correspond to the same module in the outgoing stream. This ID is assigned 
@@ -2238,6 +2352,13 @@ void ModuleMerger::mergeKey(properties::tagType type, properties::iterator tag,
       info.add(txt()<<outSID.ID);
     }*/
   }
+
+  // Modules need to be aligned in the merged output
+/*  if(tag.name() == "module")
+    info.setMergeKind(MergeInfo::align);
+  else*/
+    // moduleMarkers need to be interleaved in the merged output rather than aligned.
+    info.setMergeKind(MergeInfo::interleave_aligned);
 }
 
 /*****************************
@@ -2294,8 +2415,61 @@ ModuleEdgeMerger::ModuleEdgeMerger(std::vector<std::pair<properties::tagType, pr
                          map<string, streamRecord*>& outStreamRecords,
                          vector<map<string, streamRecord*> >& inStreamRecords,
                          properties* props) : 
-        Merger(advance(tags), outStreamRecords, inStreamRecords, 
-                    setProperties(tags, outStreamRecords, inStreamRecords, props)) { }
+        Merger(advance(tags), outStreamRecords, inStreamRecords, props)
+{}
+/*        Merger(advance(tags), outStreamRecords, inStreamRecords, 
+                    setProperties(tags, outStreamRecords, inStreamRecords, props))* /
+{ 
+  if(props==NULL) props = new properties();
+  this->props = props;
+
+  properties::tagType type = streamRecord::getTagType(tags); 
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Module Edges!"<<endl; exit(-1); }
+  if(type==properties::enterTag) {
+    vector<string> names = getNames(tags); assert(allSame<string>(names));
+    assert(*names.begin() == "moduleEdge");
+
+    //ModuleStreamRecord* msr = ((ModuleStreamRecord*)outStreamRecords["module"]);
+    ModuleStreamRecord* msr = ModularAppMerger::getMSR();
+    assert(msr);
+    
+    // Merge the IDs of the module nodes on both sides of the edge, along all the streams
+    map<string, string> pMap;
+    int fromNodeID = streamRecord::mergeIDs("module", "fromCID", pMap, tags, outStreamRecords, inStreamRecords);
+    int toNodeID   = streamRecord::mergeIDs("module", "toCID",   pMap, tags, outStreamRecords, inStreamRecords);
+    
+    // The variants must connect the same port indexes with the same types (input/output)
+    vector<long> fromT = str2int(getValues(tags, "fromT"));
+    assert(allSame<long>(fromT));
+    
+    vector<long> fromP = str2int(getValues(tags, "fromP"));
+    assert(allSame<long>(fromP));
+    
+    vector<long> toT = str2int(getValues(tags, "toT"));
+    assert(allSame<long>(toT));
+    
+    vector<long> toP = str2int(getValues(tags, "toP"));
+    assert(allSame<long>(toP));
+    
+    // Compute the average of the fraction of times we entered this edge's source module group and then took
+    // this edge, weighted by the number of times we enter the source module group within each incoming stream.
+    std::vector<long> fromCount = str2int  (getValues(tags, "fromCount"));
+    std::vector<double> prob    = str2float(getValues(tags, "prob"));
+    assert(fromCount.size() == prob.size());
+    
+    long sumCount=0;
+    double sumProb=0;
+    for(int i=0; i<fromCount.size(); i++) {
+      sumCount += fromCount[i];
+      sumProb  += fromCount[i] * prob[i];
+    }
+
+    msr->addEdge(fromNodeID, *fromP.begin(), toNodeID, *toP.begin(), sumCount, sumProb / sumCount);
+  }
+
+  // We don't emit edges until the end of modularAppStructure
+  dontEmit();
+}*/
 
 // Sets the properties of the merged object
 properties* ModuleEdgeMerger::setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
@@ -2316,11 +2490,15 @@ properties* ModuleEdgeMerger::setProperties(std::vector<std::pair<properties::ta
     /*vector<string> cpValues = getValues(tags, "callPath");
     assert(allSame<string>(cpValues));
     pMap["callPath"] = *cpValues.begin();*/
+
+    //ModuleStreamRecord msr = ((ModuleStreamRecord*)outStreamRecords["module"]);
+    ModuleStreamRecord* msr = ModularAppMerger::getMSR();
+    assert(msr);
     
     // Merge the IDs of the module nodes on both sides of the edge, along all the streams
     int fromNodeID = streamRecord::mergeIDs("module", "fromCID", pMap, tags, outStreamRecords, inStreamRecords);
     //int fromNodeID = ModuleStreamRecord::mergeNodeIDs("fromCID", pMap, tags, outStreamRecords, inStreamRecords);
-    pMap["fromCID"] = txt() << fromNodeID;
+//    pMap["fromCID"] = txt() << fromNodeID;
       
     int toNodeID   = streamRecord::mergeIDs("module", "toCID",   pMap, tags, outStreamRecords, inStreamRecords);
     //int toNodeID = ModuleStreamRecord::mergeNodeIDs("toCID", pMap, tags, outStreamRecords, inStreamRecords);
@@ -2357,6 +2535,10 @@ properties* ModuleEdgeMerger::setProperties(std::vector<std::pair<properties::ta
     }
     pMap["fromCount"] = txt()<<sumCount;
     pMap["prob"] = txt()<<(sumProb / sumCount);
+
+    msr->addEdge(fromNodeID, strtol(fromP.begin()->c_str(), NULL, 10), 
+                 toNodeID,   strtol(toP.begin()->c_str(),   NULL, 10), 
+                 sumCount, sumProb / sumCount);
     
     props->add("moduleEdge", pMap);
   } else {
@@ -2399,8 +2581,73 @@ void ModuleEdgeMerger::mergeKey(properties::tagType type, properties::iterator t
     info.add(tag.get("toT"));
     info.add(tag.get("toP"));
   }
+  // Module edges need to be interleaved in the merged output rather than aligned.
+  info.setMergeKind(MergeInfo::interleave);
 }
 
+/**********************************
+ ***** RemoteModuleEdgeMerger *****
+ **********************************/
+
+RemoteModuleEdgeMerger::RemoteModuleEdgeMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+                         map<string, streamRecord*>& outStreamRecords,
+                         vector<map<string, streamRecord*> >& inStreamRecords,
+                         properties* props) : 
+        UniqueMarkMerger(advance(tags), outStreamRecords, inStreamRecords, props)
+{
+  assert(this->props);
+
+  properties::tagType type = streamRecord::getTagType(tags); 
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Module Edges!"<<endl; exit(-1); }
+  if(type==properties::enterTag) {
+    vector<string> names = getNames(tags); assert(allSame<string>(names));
+    assert(*names.begin() == "remoteModuleEdge");
+
+    //ModuleStreamRecord* msr = ((ModuleStreamRecord*)outStreamRecords["module"]);
+    ModuleStreamRecord* msr = ModularAppMerger::getMSR();
+    assert(msr);
+
+    // Merge the IDs of the module nodes on both sides of the edge, along all the streams
+    map<string, string> pMap;
+//    int moduleID = streamRecord::mergeIDs("module", "moduleID", pMap, tags, outStreamRecords, inStreamRecords);
+    group g = ((ModuleStreamRecord*)(outStreamRecords)["module"])->getGroup();
+    
+    vector<long> type = str2int(getValues(tags, "type"));
+    assert(allSame<long>(type));
+
+    vector<long> index = str2int(getValues(tags, "index"));
+    assert(allSame<long>(index));
+
+    properties::iterator umIt = this->props->find("uniqueMark");
+    assert(umIt.get("numIDs")=="1");
+    string uniqueID = umIt.get("ID0");
+ 
+    msr->addRemotePort(uniqueID, g, (sight::common::module::ioT)*type.begin(), *index.begin());
+  }
+
+  // We don't emit edges until the end of modularAppStructure
+  dontEmit();
+}
+
+// Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+// tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
+// Each level of the inheritance hierarchy may add zero or more elements to the given list and 
+// call their parents so they can add any info,
+void RemoteModuleEdgeMerger::mergeKey(properties::tagType type, properties::iterator tag, 
+                                const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+//cout << "RemoteModuleEdgeMerger::mergeKey tag="<<tag.str()<<endl;
+  UniqueMarkMerger::mergeKey_separateByID(type, tag.next(), inStreamRecords, info);
+    
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; exit(-1); }
+  if(type==properties::enterTag) {
+    // Edges between different modules and ports are separated
+    info.add(tag.get("moduleID"));
+    info.add(tag.get("type"));
+    info.add(tag.get("index"));
+  }
+  // Remote module edges need to be interleaved in the merged output rather than aligned.
+  info.setMergeKind(MergeInfo::interleave);
+}
 /***********************************
  ***** ModuleTraceStreamMerger *****
  ***********************************/
@@ -2410,7 +2657,9 @@ ModuleTraceStreamMerger::ModuleTraceStreamMerger(
                          std::map<std::string, streamRecord*>& outStreamRecords,
                          std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
                          properties* props) :
-                    TraceStreamMerger(advance(tags), outStreamRecords, inStreamRecords, 
+//                    TraceStreamMerger(advance(tags), outStreamRecords, inStreamRecords, 
+//                                      setProperties(tags, outStreamRecords, inStreamRecords, props))
+                    TraceStreamMerger(advance(tags), ModularAppMerger::getModuleOutStreamRecords(), inStreamRecords, 
                                       setProperties(tags, outStreamRecords, inStreamRecords, props))
 {
   properties::tagType type = streamRecord::getTagType(tags); 
@@ -2443,24 +2692,13 @@ properties* ModuleTraceStreamMerger::setProperties(
     pMap["name"] = getSameValue(tags, "name");
     pMap["numInputs"] = getSameValue(tags, "numInputs");
     pMap["numOutputs"] = getSameValue(tags, "numOutputs");
+
+dbg << "ModuleTraceStreamMerger outStreamRecords="<<&ModularAppMerger::getModuleOutStreamRecords()<<endl;
+
+    ModuleStreamRecord* globalMSR = ModularAppMerger::getMSR();
+dbg << "BEFORE globalMSR="<<globalMSR<<"="<<globalMSR->str()<<endl;
     
-    // Now check to see if the current group on each incoming stream has already been assigned an ID on the
-    // outgoing stream
-    /*streamID outSID;
-    bool sidAssigned=false; // Records whether the ID on the outgoing stream has been assigned
-    for(std::vector<std::map<std::string, streamRecord*> >::iterator in=inStreamRecords.begin(); in!=inStreamRecords.end(); in++) {
-      ModuleStreamRecord* ms = (ModuleStreamRecord*)(*in)["module"];
-      group g = ms->getGroup();
-      if(((ModuleStreamRecord*)outStreamRecords["module"])->isModuleObserved(g)) {
-        if(!sidAssigned) {
-          outSID = ms->getModuleID(g);
-          sidAssigned = true;
-        } else {
-          if(outSID != ms->getModuleID(g)) { cerr << "ERROR: Attempting to merge module IDs of multiple incoming streams but they are mapped to different anchorIDs in the outgoing stream!"<<endl; assert(0); }
-        }
-      }
-    }*/
-    //group g = ModuleStreamRecord::getGroup(inStreamRecords);
+    //group g = ((ModuleStreamRecord*)(outStreamRecords)["module"])->getGroup();
     group g = ((ModuleStreamRecord*)(outStreamRecords)["module"])->getGroup();
     int moduleID;
     
@@ -2469,13 +2707,13 @@ properties* ModuleTraceStreamMerger::setProperties(
     std::vector<std::pair<properties::tagType, properties::iterator> > TraceStreamTags = advance(tags);
     
     // If we've previously assigned a streamID in the outgoing stream to this module group
-    if(((ModuleStreamRecord*)(outStreamRecords)["module"])->isModuleObserved(g)) {
+    if(globalMSR->isModuleObserved(g)) {
       // This means that a moduleTS tag for this module group has already been emitted and thus, we will
       // not be emitting another one.
       // Set the dontEmit field in pMap to communicate this fact to the ModuleTraceStreamMerger constructor
       pMap["dontEmit"] = "1";
       
-      moduleID = ((ModuleStreamRecord*)(outStreamRecords)["module"])->getModuleID(g);
+      moduleID = globalMSR->getModuleID(g);
       
       // We get into this case where the merger cannot align different instances of ModuleTraceStream,
       //   causing one instance to appear on one incoming stream before the same ModuleTraceStream appear
@@ -2484,33 +2722,35 @@ properties* ModuleTraceStreamMerger::setProperties(
       //   to use it.
       // When TraceStreamMerger calls mergeIDs() in TraceStreamMerger::TraceStreamMerger() call right 
       //   after this function ends it will get this traceID.
-      int traceID = ((ModuleStreamRecord*)(outStreamRecords)["module"])->getModuleTraceID(g);
-      streamRecord::mergeIDs("traceStream", "traceID", pMap, TraceStreamTags, outStreamRecords, inStreamRecords, traceID);
+      int traceID = globalMSR->getModuleTraceID(g);
+      streamRecord::mergeIDs("traceStream", "traceID", pMap, TraceStreamTags, ModularAppMerger::getModuleOutStreamRecords(), inStreamRecords, traceID);
     // If we've never previously observed this module group
     } else {
       // Generate a fresh ID for all the modules along the incoming streams
-      moduleID = ((ModuleStreamRecord*)(outStreamRecords)["module"])->genModuleID();
+      moduleID = globalMSR->genModuleID();
       
       // Make sure that the traceIDs of the traceStreams associated with the aligned modules along the 
       //   incoming streams are mapped to the same traceID along the outgoing stream. 
       // When TraceStreamMerger calls mergeIDs() in TraceStreamMerger::TraceStreamMerger() call right 
       //   after this function ends it will get this traceID.
-      int traceID = streamRecord::mergeIDs("traceStream", "traceID", pMap, TraceStreamTags, outStreamRecords, inStreamRecords);
+      int traceID = streamRecord::mergeIDs("traceStream", "traceID", pMap, TraceStreamTags, ModularAppMerger::getModuleOutStreamRecords(), inStreamRecords);
       
       // Associate the new moduleID and traceID with the module group
       //dbg << "g="<<g.str()<<", observing module"<<endl;
-      ((ModuleStreamRecord*)(outStreamRecords)["module"])->setModuleID(g, moduleID, traceID);
+      globalMSR->setModuleID(g, moduleID, traceID);
       
       pMap["moduleID"] = txt() << moduleID;
     }
     
     // Record the mapping from the moduleIDs of each incoming stream to this moduleID
-    int mergedID = streamRecord::mergeIDs("module", "moduleID", pMap, tags, outStreamRecords, inStreamRecords, moduleID);
+    int mergedID = streamRecord::mergeIDs("module", "moduleID", pMap, tags, ModularAppMerger::getModuleOutStreamRecords(), inStreamRecords, moduleID);
     assert(mergedID == moduleID);
+
+dbg << "AFTER globalMSR="<<globalMSR<<"="<<globalMSR->str()<<endl;
   } else if(type==properties::exitTag) {
   }
   props->add("moduleTS", pMap);
-  
+	  
   return props;
 }
 
@@ -2533,6 +2773,9 @@ void ModuleTraceStreamMerger::mergeKey(properties::tagType type, properties::ite
     info.add(tag.get("numInputs"));
     info.add(tag.get("numOutputs"));
   }
+
+  // module traceStreams need to be interleaved in the merged output rather than aligned.
+  info.setMergeKind(MergeInfo::interleave_aligned);
 }
 
 /****************************
@@ -2970,9 +3213,9 @@ void ModuleStreamRecord::resumeFrom(std::vector<std::map<std::string, streamReco
     else if(iStack != ms->iStack) { cerr << "ERROR: inconsistent stacks of module instances along different incoming streams!"<<endl; }
   }
   
-  // Set observedModules to be the union of its counterparts in streams
-  observedModules.clear();
-  observedModulesTS.clear();
+  // Set observedModules to be the union of itself and its counterparts in streams
+//  observedModules.clear();
+//  observedModulesTS.clear();
   
   for(vector<map<string, streamRecord*> >::iterator s=streams.begin(); s!=streams.end(); s++) {
     ModuleStreamRecord* ms = (ModuleStreamRecord*)(*s)["module"];
@@ -2992,14 +3235,51 @@ void ModuleStreamRecord::resumeFrom(std::vector<std::map<std::string, streamReco
   for(map<ModuleStreamRecord::moduleInfo, int>::iterator i=observedModules.begin(); i!=observedModules.end(); i++)
     cout << "|     "<<i->first.str()<<" : "<<i->second<<endl;*/
   
-  // Set maxModuleID to be the maximum of its counterparts in streams
-  maxModuleID = -1;
+  // Set maxModuleID to be the maximum of itself and its counterparts in streams
+//  maxModuleID = -1;
   for(vector<map<string, streamRecord*> >::iterator s=streams.begin(); s!=streams.end(); s++) {
     ModuleStreamRecord* ms = (ModuleStreamRecord*)(*s)["module"];
     maxModuleID = (ms->maxModuleID > maxModuleID? ms->maxModuleID: maxModuleID);
   }
 }
-  
+
+void ModuleStreamRecord::addEdge(int fromModuleID, int fromIdx, int toModuleID, int toIdx, int count, double prob) { 
+//  cout << "Adding local edge <"<<fromModuleID<<", "<<fromIdx<<"> => <"<<toModuleID<<", "<<toIdx<<">"<<endl;
+  edges.insert(make_pair(make_pair(mergePort(fromModuleID, sight::common::module::input,  fromIdx),
+                                   mergePort(toModuleID,   sight::common::module::output, toIdx)),
+                         make_pair(count, prob))); }
+
+void ModuleStreamRecord::addRemoteEdge(const remoteMergePort& from, const remoteMergePort& to) {
+//  cout << "Adding remote edge <"<<from.str()<<", "<<to.str()<<">"<<endl;
+  remoteEdges.insert(make_pair(from, to));
+}
+
+void ModuleStreamRecord::addRemotePort(const std::string& uniqueID, const group& g, sight::common::module::ioT type, int index) {
+  remoteMergePort p(uniqueID, g, type, index);
+//  cout << "Adding remote edge "<<p.str()<<endl;
+//  cout << "this="<<str()<<endl;
+  // Find the matching port (output for type==input, input for type==output) with the same uniqueID
+  map<pair<string, sight::common::module::ioT>, remoteMergePort>::iterator it=remotePorts.find(
+                                   make_pair(uniqueID, 
+                                             type==sight::common::module::input? sight::common::module::output: 
+                                                                                 sight::common::module::input));
+  // If we've already observed a matching remotePort
+  if(it!=remotePorts.end()) {
+    // Create a new edge connecting the two ports
+    if(type==sight::common::module::input) addRemoteEdge(p, it->second);
+    else                                   addRemoteEdge(it->second, p);
+      
+    // Remove the matching port from remotePorts
+    remotePorts.erase(it);
+
+  // If this is the first time we've seen a remotePort with the given unique ID
+  } else {
+    //cout << "inserting half-edge"<<endl;
+    // Add it to remotePorts
+    remotePorts[make_pair(uniqueID, type)] = p;
+  }
+}
+ 
 std::string ModuleStreamRecord::str(std::string indent) const {
   ostringstream s;
   s << "[ModuleStreamRecord: ";
@@ -3008,6 +3288,23 @@ std::string ModuleStreamRecord::str(std::string indent) const {
   s << indent << "mStack(#"<<mStack.size()<<")="<<endl;
   for(std::list<streamRecord*>::const_iterator m=mStack.begin(); m!=mStack.end(); m++, i++)
     s << indent << i << ": "<< (*m)->str(indent) << endl;*/
+  s << indent << "    observedModules(#"<<observedModules.size()<<")="<<endl;
+  for(map<group, int>::const_iterator m=observedModules.begin(); m!=observedModules.end(); m++)
+    s << indent << "        "<<m->first.str()<<" => "<<m->second<<endl;
+  
+  s << indent << "    edges(#"<<edges.size()<<")="<<endl;
+  for(std::map<std::pair<mergePort, mergePort>, std::pair<int, double> >::const_iterator e=edges.begin();
+      e!=edges.end(); e++) {
+    s << indent << "        <"<<e->first.first.str()<<" | "<<e->first.second.str()<<"> : count="<<e->second.first<<", prob="<<e->second.second<<endl;
+  }
+  s << indent << "    remotePorts(#"<<remotePorts.size()<<")="<<endl;
+  for(map<pair<string, sight::common::module::ioT>, remoteMergePort>::const_iterator p=remotePorts.begin(); p!=remotePorts.end(); p++) {
+    s << indent << "        "<<(p->first.second==sight::common::module::input?"input":"output")<<":"<<p->first.first<<" => "<<p->second.str()<<endl;
+  }
+  s << indent << "    remoteEdges(#"<<remoteEdges.size()<<")="<<endl;
+  for(set<std::pair<remoteMergePort, remoteMergePort> >::const_iterator e=remoteEdges.begin(); e!=remoteEdges.end(); e++) {
+    s << indent << "        "<<e->first.str()<<" ==> "<<e->second.str()<<endl;
+  }
   s << indent << "]";
   
   return s.str();

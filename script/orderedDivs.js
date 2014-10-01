@@ -128,4 +128,5 @@ function layoutOrderedDivs(/*startID*/) {
 }
 
 
-
+// Register layoutOrderedDivs to be called on refresh
+addRefreshHandler(layoutOrderedDivs);

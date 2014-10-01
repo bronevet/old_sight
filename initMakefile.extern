@@ -24,13 +24,19 @@ f.write("""SIGHT_CFLAGS = -I${ROOT_PATH} -I${ROOT_PATH}/widgets/parallel \\
                -I${ROOT_PATH}/widgets/papi/include\\
                -I${ROOT_PATH}/widgets/libmsr/include\n""");
 
+
 f.write("""SIGHT_LINKFLAGS_NORPATH = -L${ROOT_PATH} -lsight_structure \\
                   -L${ROOT_PATH}/tools/adept-utils/lib -ladept_cutils -ladept_timing -ladept_utils \\
                   -L${ROOT_PATH}/tools/callpath/src/src -lcallpath \\
                   -L${ROOT_PATH}/widgets/papi/lib -lpapi \\
-                  -L${ROOT_PATH}/widgets/gsl/lib -lgsl -lgslcblas \\
-                  -L${ROOT_PATH}/widgets/libmsr/lib -lmsr \\
+                  -L${ROOT_PATH}/widgets/gsl/lib -lgsl -lgslcblas""");
+if(int(RAPL_ENABLED)==1) :
+    f.write(""" \\
+                  -L${ROOT_PATH}/widgets/libmsr/lib -lmsr""");
+
+f.write(""" \\
                   -lpthread\n""");
+
 
 f.write("""SIGHT_LINKFLAGS = \\
                   -Wl,-rpath ${ROOT_PATH} \\
@@ -43,8 +49,8 @@ f.write("""SIGHT_LINKFLAGS = \\
                   -Wl,-rpath ${ROOT_PATH}/widgets/papi/lib \\
                   ${ROOT_PATH}/widgets/gsl/lib/libgsl.so \\
                   ${ROOT_PATH}/widgets/gsl/lib/libgslcblas.so \\
-                  -Wl,-rpath ${ROOT_PATH}/widgets/gsl/lib \\
-                  -L ${ROOT_PATH}/widgets/PnMPI/INSTALL/lib -lpnmpi -Wl,-rpath,${ROOT_PATH}/widgets/PnMPI/INSTALL/lib""");
+                  -Wl,-rpath ${ROOT_PATH}/widgets/gsl/lib""");
+#                  -L ${ROOT_PATH}/widgets/PnMPI/INSTALL/lib -lpnmpi -Wl,-rpath,${ROOT_PATH}/widgets/PnMPI/INSTALL/lib""");
 if(int(RAPL_ENABLED)==1) :
     f.write(""" \\
                   ${ROOT_PATH}/widgets/libmsr/lib/libmsr.so \\

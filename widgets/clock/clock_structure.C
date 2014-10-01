@@ -1,6 +1,6 @@
 #include "clock_structure.h"
-#include <mpi.h>
-#include <pnmpimod.h>
+//!!!!!#include <mpi.h>
+//!!!!!#include <pnmpimod.h>
 
 typedef void (*PNMPIMOD_SClock_getSTime_t)(long long** );
 

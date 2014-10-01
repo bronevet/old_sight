@@ -8,7 +8,7 @@ WIDGETS := ${WIDGETS_O} ${WIDGETS_H}
 
 MAKE_DEFINES = ROOT_PATH=${ROOT_PATH} RAPL_ENABLED=${RAPL_ENABLED} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" CC=${CC} CCC=${CCC} KULFI_ENABLED=${KULFI_ENABLED} LLVM32_SRC_PATH=${LLVM32_SRC_PATH} LLVM32_BUILD_PATH=${LLVM32_BUILD_PATH} LLVM32_INSTALL_PATH=${LLVM32_INSTALL_PATH}
 
-all: gsl papi libmsr synoptic PnMPI/INSTALL/lib/libpnmpi.so PnMPI/INSTALL/lib/pnmpi-modules/commsub-sclock.so \
+all: gsl papi libmsr synoptic \
      ${WIDGETS_COMMON_O} ${WIDGETS_COMMON_H} ${WIDGETS_STRUCTURE_O} ${WIDGETS_STRUCTURE_H} ${WIDGETS_LAYOUT_O} ${WIDGETS_LAYOUT_H}  \
      box \
      kulfi \
@@ -23,9 +23,10 @@ all: gsl papi libmsr synoptic PnMPI/INSTALL/lib/libpnmpi.so PnMPI/INSTALL/lib/pn
 	chmod 644 canviz-0.1/*
 	chmod 755 canviz-0.1/excanvas canviz-0.1/lib canviz-0.1/path canviz-0.1/prototype
 	chmod 644 canviz-0.1/*/*
+#PnMPI/INSTALL/lib/libpnmpi.so PnMPI/INSTALL/lib/pnmpi-modules/commsub-sclock.so \
 #     ID3-Decision-Tree \
 
-ifeq (${VNC_ENABLED}, 1)
+ifeq (${REMOTE_ENABLED}, 1)
 vnc:  xdotool noVNC
 else
 vnc:
@@ -91,8 +92,8 @@ source/source_layout.o: source/source_layout.C source/source_layout.h ../attribu
 	${CCC} ${SIGHT_CFLAGS} source/source_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o source/source_layout.o
 
 clock/clock_structure.o: clock/clock_structure.C clock/clock_structure.h
-#	${MPICCC} ${SIGHT_CFLAGS} clock/clock_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o clock/clock_structure.o
 	${CCC} ${SIGHT_CFLAGS} clock/clock_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o clock/clock_structure.o
+#	${MPICCC} ${SIGHT_CFLAGS} clock/clock_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o clock/clock_structure.o
 
 clock/clock_layout.o: clock/clock_layout.C clock/clock_layout.h
 	${CCC} ${SIGHT_CFLAGS} clock/clock_layout.C -I.. -Igsl/include -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o clock/clock_layout.o
@@ -192,7 +193,7 @@ endif
 #	#cd widgets; wget --no-check-certificate https://github.com/willkurt/ID3-Decision-Tree/archive/master.zip
 #	#cd widgets; mv master master.zip; unzip master.zip
 #	#rm -r master*
-#	../getGithub https://github.com/willkurt/ID3-Decision-Tree/archive/master.zip zip unzip
+#	../getGithub https://github.com/willkurt/ID3-Decision-Tree/archive/master.zip zip unzip master
 #	mv ID3-Decision-Tree-master ID3-Decision-Tree
 #	chmod 755 ID3-Decision-Tree
 #	chmod 644 ID3-Decision-Tree/*
@@ -204,7 +205,7 @@ noVNC:
 	#wget --no-check-certificate http://github.com/kanaka/noVNC/tarball/master
 	#mv master master.tar.gz
 	#tar -xf master.tar.gz
-	../getGithub http://github.com/kanaka/noVNC/tarball/master tar.gz "tar -xf"
+	../getGithub http://github.com/kanaka/noVNC/tarball/master tar.gz "tar -xf" master master
 	mv kanaka-noVNC-* noVNC
 
 #.PHONY: funcFit
@@ -233,7 +234,7 @@ libmsr:
 endif
 
 libmsr/lib/libmsr.so:
-	../getGithub https://github.com/scalability-llnl/libmsr/archive/master.zip zip unzip
+	../getGithub https://github.com/scalability-llnl/libmsr/archive/master.zip zip unzip master
 	mv libmsr-master libmsr
 	cp libmsr_Makefile libmsr/src/Makefile
 	cd libmsr/src; make CC=${CC}
@@ -320,15 +321,17 @@ THREEx.WindowResize.js:
 	wget http://stemkoski.github.io/Three.js/js/THREEx.WindowResize.js
 
 THREE:
-	../getGithub http://github.com/mrdoob/three.js/zipball/master zip unzip
+	../getGithub http://github.com/mrdoob/three.js/zipball/master zip unzip master
 	mv mrdoob-three.js-* THREE
 
 Stats.js:
 	wget http://stemkoski.github.io/Three.js/js/Stats.js
 
 jsPlumb:
-	../getGithub https://github.com/sporritt/jsPlumb/archive/master.zip zip unzip
-	mv jsPlumb-master jsPlumb
+#	../getGithub https://github.com/sporritt/jsPlumb/archive/master.zip zip unzip
+#	mv jsPlumb-master jsPlumb
+	../getGithub https://github.com/sporritt/jsPlumb/archive/dev/1.6.2.zip zip unzip 1.6.2
+	mv jsPlumb-dev-1.6.2 jsPlumb
 
 clean:
 	rm -fr xdotool
