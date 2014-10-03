@@ -348,7 +348,7 @@ void modularApp::exitModuleMarker(void* obj) {
 // numInputs/numOutputs - the number of inputs/outputs of this module node
 // ID - the unique ID of this module node
 void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int numOutputs, int count) {
-  cout << "modularApp::enterModule("<<moduleName<<") numInputs="<<numInputs<<", #modules["<<moduleID<<"]->ctxtNames="<<modules[moduleID]->ctxtNames.size()<<endl;
+//  cout << "modularApp::enterModule("<<moduleName<<") numInputs="<<numInputs<<", #modules["<<moduleID<<"]->ctxtNames="<<modules[moduleID]->ctxtNames.size()<<endl;
   
   // Inform the traceStream associated with this module that it is finished. We need this stream to wrap up
   // all of its processing and analysis now, rather than before it is deallocated.

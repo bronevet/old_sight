@@ -1101,7 +1101,7 @@ void module::setInCtxt(int idx, const context& c) {
   assert(idx<g.numInputs());
   if(ins.size()<=idx) ins.resize(idx+1);
   ins[idx].setCtxt(c);
-cout<<"ins.size()="<<ins.size()<<endl;
+//cout<<"ins.size()="<<ins.size()<<endl;
 }
 
 // Adds the given key/attrValue pair to the context of the given output port
