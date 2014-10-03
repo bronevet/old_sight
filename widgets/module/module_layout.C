@@ -91,6 +91,7 @@ modularApp::modularApp(properties::iterator props) : block(properties::next(prop
   appName = properties::get(props, "appName");
   appID = properties::getInt(props, "appID");
   
+
   dbg.ownerAccessing();
 
   // hoa edit
@@ -127,7 +128,6 @@ modularApp::modularApp(properties::iterator props) : block(properties::next(prop
   // data for input and output variable information of modules
   ostringstream ioInfoFName;
   ioInfoFName << outDir << "/ioInfo.txt";
-  ioInfoFile.open(ioInfoFName.str().c_str());
 
 }
 
@@ -471,8 +471,8 @@ void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int
     */
     
     cmd << "registerModuleButtonCmd("<<maxButtonID<<", \""<< moduleTraces[moduleID]->getDisplayJSCmd(contextAttrs, traceAttrs, "",trace::scatter3d,true, true, false, true)<< "\");"<<endl;
-    //cmd << "registerModuleButtonCmd("<<(maxButtonID+100)<<", \""<< moduleTraces[moduleID]->getDisplayJSCmd(contextAttrs, traceAttrs, "",trace::ccp,true, true, false, true)<< "\");"<<endl;
-    //cmd << "registerModuleButtonCmd("<<(maxButtonID+200)<<", \""<< moduleTraces[moduleID]->getDisplayJSCmd(contextAttrs, traceAttrs, "", trace::pcp,true, true, false, true)<< "\");"<<endl;
+    cmd << "registerModuleButtonCmd("<<(maxButtonID+100)<<", \""<< moduleTraces[moduleID]->getDisplayJSCmd(contextAttrs, traceAttrs, "",trace::ccp,true, true, false, true)<< "\");"<<endl;
+    cmd << "registerModuleButtonCmd("<<(maxButtonID+200)<<", \""<< moduleTraces[moduleID]->getDisplayJSCmd(contextAttrs, traceAttrs, "", trace::pcp,true, true, false, true)<< "\");"<<endl;
 
     string vizl = "scatter3d:ccp:pcp";
     //datFile << "nodeid="<< moduleID << ",buttonID = " << maxButtonID << ",vizList =" << vizl << endl;
