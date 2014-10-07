@@ -51,9 +51,9 @@ BIN_DIR=../bin
 
 # Check for double precision
 ifeq ($(DOUBLE_PRECISION), ON)
-CFLAGS += -DDOUBLE
+CFLAGS += -DDOUBLE_TYPE
 else
-CFLAGS += -DSINGLE
+CFLAGS += -DSINGLE_TYPE
 endif
 
 # Set executable name and add includes & libraries for MPI if needed.
