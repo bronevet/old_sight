@@ -1,3 +1,28 @@
+MPI based programme  |
+======================
+a.) place app.params file in a directory of your choice ie:- (${Your_HOME}/${Working Dir}). 
+    format of app.params file is as follows
+
+        #executable/binary_path   #app parameters  
+   ie:- ${PATH}/12.SampleMRnetEmitter     p1 p2   
+
+NOTE: if your binary path is in $PATH env variable then only binary/app name would suffice.
+
+b.) Following is the format for execution of sight mrnet merge with MPI. Note apprpriate hostfile,etc should be provided
+    if mpi execution environment does not provide them.
+
+mpirun -n [procs] ${path_to_binary}/smrnet_fe_mpi <working/config dir> <filter so path> [<num BE applications>]
+
+ie:-
+mpirun -n 4 ./smrnet_fe_mpi ${Your_HOME}/${Working Dir} ${path_to_lib}/libsmrnet_filter.so
+
+
+
+
+Non - MPI configuration  |
+==========================
+
+
 ==========================================================================================================
 Starting the Front End MRNet
 ==========================================================================================================

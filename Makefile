@@ -7,7 +7,7 @@ SIGHT_LAYOUT_H := sight.h sight_layout_internal.h attributes/attributes_layout.h
 SIGHT_MRNET_FE := mrnet/mrnet_front.C
 SIGHT_MRNET_SO := mrnet/mrnet_merge.C mrnet/mrnet_producer.C mrnet/mrnet_tr_callback.C mrnet/mrnet_threads.C
 SIGHT_MRNET_BE := mrnet/mrnet_emmitter.C
-SIGHT_MRNET_H := mrnet/AtomicSyncPrimitives.h mrnet/mrnet_integration.h mrnet/mrnet_iterator.h
+SIGHT_MRNET_H := mrnet/AtomicSyncPrimitives.h mrnet/mrnet_integration.h mrnet/mrnet_iterator.h mrnet/mrnet_front.h
 sight := ${sight_O} ${sight_H} gdbLineNum.pl sightDefines.pl
 
 ROOT_PATH = ${CURDIR}
@@ -74,7 +74,7 @@ endif
 override CC=clang #icc #gcc
 override CCC=clang++ #icpc #clang++ #g++
 MPICC = mpi${CC}
-MPICCC = mpi${CCC}
+MPICCC = mpicxx
 
 OS := $(shell uname -o)
 ifeq (${OS}, Cygwin)
@@ -189,8 +189,9 @@ endif
 
 
 #rules for MRNet Integration
-sight_mrnet: mrnet_pre sight_mrnet_fe sight_mrnet_be sight_mrnet_so sight_mrnet_samples
+sight_mrnet: mrnet_pre sight_mrnet_fe sight_mrnet_fe_mpi sight_mrnet_be sight_mrnet_so sight_mrnet_samples
 	mv smrnet_fe mrnet/bin
+	mv smrnet_fe_mpi mrnet/bin
 	mv smrnet_be mrnet/bin
 	cp libsmrnet_filter.so mrnet/bin
 	mv libsmrnet_filter.so mrnet/lib/
@@ -198,6 +199,9 @@ sight_mrnet: mrnet_pre sight_mrnet_fe sight_mrnet_be sight_mrnet_so sight_mrnet_
 
 sight_mrnet_fe: ${SIGHT_MRNET_FE} ${SIGHT_MRNET_H} mrnet_pre
 	${CCC} ${MRNET_CXXFLAGS} ${LDFLAGS} mrnet/mrnet_front.C  -o smrnet_fe${EXE} ${MRNET_LIBS}
+
+sight_mrnet_fe_mpi: ${SIGHT_MRNET_FE} mrnet/launcher.C mrnet/mrnet_front_mpi.C ${SIGHT_MRNET_H} mrnet_pre
+	${MPICCC} ${MRNET_CXXFLAGS} ${LDFLAGS} mrnet/mrnet_front_mpi.C mrnet/launcher.C -o smrnet_fe_mpi${EXE} ${MRNET_LIBS}
 
 sight_mrnet_so: ${SIGHT_MRNET_SO} ${SIGHT_MRNET_H} process.C process.h core mrnet_pre
 	${CCC} ${SIGHT_CFLAGS} ${MRNET_CXXFLAGS} ${MRNET_SOFLAGS}  mrnet/mrnet_producer.C  mrnet/mrnet_tr_callback.C mrnet/mrnet_threads.C  -Wl,--whole-archive libsight_structure.so  -Wl,-no-whole-archive -DMFEM -I. ${SIGHT_LINKFLAGS} -o libsmrnet_filter.so
