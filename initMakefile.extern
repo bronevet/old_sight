@@ -4,16 +4,18 @@ import sys
 import os
 curDir = os.path.dirname(os.path.realpath(__file__));
 
-if(len(sys.argv) != 4 and len(sys.argv) != 7) :
-    sys.exit("Usage: initMakefile.extern CC CCC RAPL_ENABLED LLVM32_SRC_PATH LLVM32_BUILD_PATH LLVM32_INSTALL_PATH");
+if(len(sys.argv) != 6 and len(sys.argv) != 9) :
+    sys.exit("Usage: initMakefile.extern CC CCC MPICC MPICCC RAPL_ENABLED LLVM32_SRC_PATH LLVM32_BUILD_PATH LLVM32_INSTALL_PATH");
 
 CC = sys.argv[1];
 CCC = sys.argv[2];
-RAPL_ENABLED = int(sys.argv[3]);
-if(len(sys.argv)==7) :
-  LLVM32_SRC_PATH = sys.argv[4]
-  LLVM32_BUILD_PATH = sys.argv[5]
-  LLVM32_INSTALL_PATH = sys.argv[6]
+MPICC = sys.argv[3];
+MPICCC = sys.argv[4];
+RAPL_ENABLED = int(sys.argv[5]);
+if(len(sys.argv)==9) :
+  LLVM32_SRC_PATH = sys.argv[6]
+  LLVM32_BUILD_PATH = sys.argv[7]
+  LLVM32_INSTALL_PATH = sys.argv[8]
 
 f = open('Makefile.extern', 'w')
 
@@ -91,6 +93,8 @@ SIGHT_LAYOUT_DYNAMIC_LINKFLAGS = \\
 
 f.write("CC = "+CC+"\n");
 f.write("CCC = "+CCC+"\n");
+f.write("MPICC = "+MPICC+"\n");
+f.write("MPICCC = "+MPICCC+"\n");
 
 if(len(sys.argv)==7) :
   f.write("\n")

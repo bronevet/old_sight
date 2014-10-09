@@ -254,7 +254,7 @@ sightDefines.pl:
 
 Makefile.extern: initMakefile.extern Makefile
 	chmod 755 initMakefile.extern
-	./initMakefile.extern ${CC} ${CCC} ${RAPL_ENABLED} ${LLVM32_SRC_PATH} ${LLVM32_BUILD_PATH} ${LLVM32_INSTALL_PATH}
+	./initMakefile.extern ${CC} ${CCC} ${MPICC} ${MPICCC} ${RAPL_ENABLED} ${LLVM32_SRC_PATH} ${LLVM32_BUILD_PATH} ${LLVM32_INSTALL_PATH}
 
 definitions.h: initDefinitionsH Makefile
 	chmod 755 initDefinitionsH
