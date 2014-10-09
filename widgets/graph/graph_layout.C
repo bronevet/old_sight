@@ -187,7 +187,7 @@ void graph::outputCanvizDotGraph(std::string dot) {
   //ostringstream cmd; cmd << DOT_PATH << "dot -Tsvg -o"<<imgPath<<" "<<dotFName.str() << "-Tcmapx -o"<<mapFName.str()<<"&"; 
   // Create the explicit DOT file that details the graph's layout
   //ostringstream cmd; cmd << DOT_PATH << "dot "<<origDotFName.str()<<" -Txdot -o"<<placedDotFName.str()<<"&"; 
-  ostringstream cmd; cmd << ROOT_PATH << "/widgets/graphviz/bin/dot "<<origDotFName.str()<<" -Txdot -o"<<placedDotFName.str();//<<"&"; 
+  ostringstream cmd; cmd << ROOT_PATH << "/widgets/graphviz/bin/dot \""<<origDotFName.str()<<"\" -Txdot -o"<<placedDotFName.str();//<<"&"; 
   //cout << "Command \""<<cmd.str()<<"\"\n";
   system(cmd.str().c_str());
   

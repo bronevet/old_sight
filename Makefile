@@ -39,7 +39,7 @@ endif
 override CC=clang #icc #gcc
 override CCC=clang++ #icpc #clang++ #g++
 MPICC = mpi${CC}
-MPICCC = mpi${CCC}
+MPICCC = ${ROOT_PATH}/tools/mpi${CCC}
 
 OS := $(shell uname -o)
 ifeq (${OS}, Cygwin)
@@ -104,8 +104,8 @@ endif
 MAKE_DEFINES = ROOT_PATH=${ROOT_PATH} RAPL_ENABLED=${RAPL_ENABLED} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} VNC_ENABLED=${VNC_ENABLED} MPI_ENABLED=${MPI_ENABLED} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" CC=${CC} CCC=${CCC} KULFI_ENABLED=${KULFI_ENABLED} LLVM32_SRC_PATH=${LLVM32_SRC_PATH} LLVM32_BUILD_PATH=${LLVM32_BUILD_PATH} LLVM32_INSTALL_PATH=${LLVM32_INSTALL_PATH}
 
 # Set to "!" if we wish to enable examples that use MPI
-MPI_ENABLED = 0
-#MPI_ENABLED = 1
+#MPI_ENABLED = 0
+MPI_ENABLED = 1
 
 .PHONY: apps
 ifeq (${MPI_ENABLED}, 1)
@@ -137,22 +137,25 @@ runExamples: core
 runPthreadExamples: core
 	cd examples; make ${MAKE_DEFINES} runPthread
 
-runApps: libsight_structure.so slayout${EXE} hier_merge${EXE} apps
+runApps: runMFEM runCoMD
+
+runMFEM: mfem libsight_structure.so slayout${EXE} hier_merge${EXE}
 	cd examples; ../apps/mfem/mfem/examples/mfemComp.pl
 	cd examples; ../apps/mfem/mfem/examples/ex2 ../apps/mfem/mfem/data/beam-tet.mesh 2
 	cd examples; ../apps/mfem/mfem/examples/ex3 ../apps/mfem/mfem/data/ball-nurbs.mesh
 	cd examples; ../apps/mfem/mfem/examples/ex4 ../apps/mfem/mfem/data/fichera-q3.mesh
 ifeq (${MPI_ENABLED}, 1)
+runCoMD: CoMD libsight_structure.so slayout${EXE} hier_merge${EXE}
 	cd examples; ../apps/CoMD/bin/CoMD-mpi.modules
 	cd examples; ../apps/CoMD/bin/CoMD-mpi.tracepath
 	cd examples; ../apps/CoMD/bin/CoMD-mpi.tracepos
 	cd examples; ../apps/CoMD/CoMDCompare.pl
+else
+runCoMD:
 endif
 
 #runMCBench:
 #	apps/mcbench/src/MCBenchmark.exe --nCores=1 --distributedSource --numParticles=13107 --nZonesX=256 --nZonesY=256 --xDim=16 --yDim=16 --mirrorBoundary --multiSigma --nThreadCore=1
-
-runApps: libsight_structure.so slayout${EXE} hier_merge${EXE} apps runMFEM runCoMD #runMCBench
 
 slayout.o: slayout.C process.C process.h
 	${CCC} ${SIGHT_CFLAGS} slayout.C -I. -c -o slayout.o

@@ -84,6 +84,10 @@ static void printThings(SimFlat* s, int iStep, double elapsedTime);
 static void printSimulationDataYaml(FILE* file, SimFlat* s);
 static void sanityChecks(Command cmd, double cutoff, double latticeConst, char latticeType[8]);
 
+#ifdef DO_MPI
+#include <mpi.h>
+#endif
+
 int main(int argc, char** argv)
 {
    // Prolog
@@ -91,8 +95,10 @@ int main(int argc, char** argv)
    
    Command cmd = parseCommandLine(argc, argv);
    
+#ifdef DO_MPI
    int my_rank;
    MPI_Comm_rank(MPI_COMM_WORLD, &my_rank); 
+#endif
    SightInit(argc, argv, "CoMD", 
              txt()<<"dbg.CoMD"
 #if defined(MODULES)
@@ -108,7 +114,9 @@ int main(int argc, char** argv)
 #if defined(TRACE_PATH)
                   << ".TracePath"
 #endif
+#ifdef DO_MPI
                   << ".rank_"<<my_rank
+#endif
            );
 
    SimFlat* sim;
@@ -132,8 +140,8 @@ int main(int argc, char** argv)
    //printSimulationDataYaml(yamlFile, sim);
    printSimulationDataYaml(screenOut, sim);
    
-   attr initA("initialized", true);
-   attrIf initCond(new attrEQ("initialized", true));
+   { attr initA("initialized", true);
+   { attrIf initCond(new attrEQ("initialized", true));
 
    validate = initValidate(sim); // atom counts, energy
    timestampBarrier("Initialization Finished\n");
@@ -250,7 +258,7 @@ int main(int argc, char** argv)
 #if defined(MODULES)
    } // modularApp
 #endif
-    
+   }} 
    timestampBarrier("CoMD Ending\n");
    profileFinalize();
    destroyParallel();

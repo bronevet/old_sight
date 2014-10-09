@@ -39,7 +39,7 @@ string escapeNodeWhitespace(string s)
 
 std::string data2str(const map<string, string>& data) {
   ostringstream s;
-  for(map<string, string>::const_iterator d=data.begin(); d!=data.end(); d++) { cout << d->first << "=>"<<d->second<<" "; }
+  for(map<string, string>::const_iterator d=data.begin(); d!=data.end(); d++) { s << d->first << "=>"<<d->second<<" "; }
   return s.str();
 }
 
@@ -2109,13 +2109,13 @@ void SynopticModuleObsLogger::observe(int traceID,
   map<string, string>::const_iterator startO = obs.find("module:measure:timestamp:Start");
   if(startO != obs.end()) {
     out << "\"" << esLabel.escape() << "-Start\" "<<attrValue(startO->second, attrValue::unknownT).getAsStr()<<endl;
-    cout << "\"" << esLabel.escape() << "-Start\" "<<attrValue(startO->second, attrValue::unknownT).getAsStr()<<endl;
+//    cout << "\"" << esLabel.escape() << "-Start\" "<<attrValue(startO->second, attrValue::unknownT).getAsStr()<<endl;
   }
   
   map<string, string>::const_iterator endO = obs.find("module:measure:timestamp:End");
   if(endO != obs.end()) {
     out << "\"" << esLabel.escape() << "-End\" "<<attrValue(endO->second, attrValue::unknownT).getAsStr()<<endl;
-    cout << "\"" << esLabel.escape() << "-End\" "<<attrValue(endO->second, attrValue::unknownT).getAsStr()<<endl;
+//    cout << "\"" << esLabel.escape() << "-End\" "<<attrValue(endO->second, attrValue::unknownT).getAsStr()<<endl;
     numObservations++;
   }
 }
