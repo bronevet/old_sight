@@ -14,10 +14,11 @@
 namespace sight {
 namespace structure {
 
-class dottable
+
+class dottableFG
 {
   public:
-  virtual ~dottable() {}
+  virtual ~dottableFG() {}
   // Returns a string that containts the representation of the object as a graph in the DOT language
   // that has the given name
   virtual std::string toDOT(std::string flowgraphName)=0;
@@ -80,7 +81,7 @@ class flowgraph: public structure::block
   
   // Given a reference to an object that can be represented as a dot graph,  create an image from it and add it to the output.
   // Return the path of the image.
-  static void genFlowGraph(dottable& obj);
+  static void genFlowGraph(dottableFG& obj);
 
   // Given a representation of a graph in dot format, create an image from it and add it to the output.
   // Return the path of the image.

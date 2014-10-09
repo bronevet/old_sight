@@ -106,7 +106,7 @@ flowgraph::~flowgraph() {
 
 // Given a reference to an object that can be represented as a dot graph,  create an image from it and add it to the output.
 // Return the path of the image.
-void flowgraph::genFlowGraph(dottable& obj) {
+void flowgraph::genFlowGraph(dottableFG& obj) {
   flowgraph g(obj.toDOT("flowgraphsight"));
 }
 
