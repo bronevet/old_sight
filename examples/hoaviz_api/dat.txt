@@ -2,3 +2,7 @@
 1,1,scatter3d:ccp:pcp
 2,2,scatter3d:ccp:pcp
 3,3,scatter3d:ccp:pcp
+0,0,scatter3d:ccp:pcp
+1,1,scatter3d:ccp:pcp
+2,2,scatter3d:ccp:pcp
+3,3,scatter3d:ccp:pcp

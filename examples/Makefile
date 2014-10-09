@@ -5,7 +5,9 @@ endif
 
 sight_H := ../*.h ../*/*.h ../widgets/*/*.h
 
-TESTERS = 12.HoaVizAPI${EXE}
+TESTERS = 1.StructuredFormatting${EXE} \
+12.HoaVizAPI${EXE}
+
 #		  0.Demo${EXE} \
 #          1.StructuredFormatting${EXE} \
 #          2.ConditionalFormatting${EXE} \
@@ -32,7 +34,7 @@ run: ${TESTERS}
 #	rm -rf dbg.0.Demo.*;
 #	../slayout${EXE} dbg.0.Demo/structure;
 #	
-#	./1.StructuredFormatting${EXE};
+	./1.StructuredFormatting${EXE};
 #	
 #	./2.ConditionalFormatting${EXE};
 #	
@@ -87,9 +89,9 @@ run: ${TESTERS}
 #0.Demo${EXE}: 0.Demo.C ../libsight_structure.so ${sight_H}
 #	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" 0.Demo.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 0.Demo${EXE}
 #
-#1.StructuredFormatting${EXE}: 1.StructuredFormatting.C ../libsight_structure.so ${sight_H}
-#	${CCC} ${SIGHT_CFLAGS} 1.StructuredFormatting.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 1.StructuredFormatting${EXE}
-#
+1.StructuredFormatting${EXE}: 1.StructuredFormatting.C ../libsight_structure.so ${sight_H}
+	${CCC} ${SIGHT_CFLAGS} 1.StructuredFormatting.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 1.StructuredFormatting${EXE}
+
 #2.ConditionalFormatting${EXE}: 2.ConditionalFormatting.C ../libsight_structure.so ${sight_H}
 #	${CCC} ${SIGHT_CFLAGS} 2.ConditionalFormatting.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 2.ConditionalFormatting${EXE}
 #
