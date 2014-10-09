@@ -26,7 +26,7 @@ adept-utils.zip:
 	#wget --no-check-certificate https://github.com/tgamblin/adept-utils/archive/master.zip
 	#mv master master.zip
 	#mv master.zip adept-utils.zip
-	../getGithub https://github.com/tgamblin/adept-utils/archive/master.zip zip unzip
+	../getGithub https://github.com/tgamblin/adept-utils/archive/master.zip zip unzip master
 
 adept-utils: boost_1_55_0 # adept-utils.zip
 	rm -fr adept-utils adept-utils-master
@@ -34,7 +34,7 @@ adept-utils: boost_1_55_0 # adept-utils.zip
 	#mv master master.zip
 	#mv master.zip adept-utils.zip
 	#unzip adept-utils.zip
-	../getGithub https://github.com/tgamblin/adept-utils/archive/master.zip zip unzip
+	../getGithub https://github.com/tgamblin/adept-utils/archive/master.zip zip unzip master
 	#rm adept-utils.zip
 	mv adept-utils-master adept-utils
 #	cp adept-utils-makefiles/CMakeLists.root.txt   adept-utils
@@ -49,7 +49,7 @@ callpath.zip:
 	#wget --no-check-certificate https://github.com/tgamblin/callpath/archive/master.zip
 	#mv master master.zip
 	#mv master.zip callpath.zip
-	../getGithub https://github.com/tgamblin/callpath/archive/master.zip zip unzip
+	../getGithub https://github.com/tgamblin/callpath/archive/master.zip zip unzip master
 
 callpath.tar.gz:
 	#rm -f callpath.tar.gz*
@@ -58,7 +58,7 @@ callpath.tar.gz:
 	
 callpath: adept-utils # callpath.tar.gz
 	rm -rf callpath-master callpath
-	../getGithub https://github.com/tgamblin/callpath/archive/master.zip zip unzip
+	../getGithub https://github.com/tgamblin/callpath/archive/master.zip zip unzip master
 	mv callpath-master callpath
 	rm -f callpath/CMakeCache.txt callpath/*/CMakeCache.txt
 	cp CMakeLists.callpath.txt callpath/CMakeLists.txt
