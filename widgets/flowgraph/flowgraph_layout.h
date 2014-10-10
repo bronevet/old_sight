@@ -25,7 +25,10 @@ typedef common::flowgraphEdge<anchor> flowgraphEdge;
 class flowgraph: public block
 {
   protected:
-  
+
+  std::vector< std::pair <int, std::string> > nodesFG;
+  std::vector< std::pair <int, int> > parentsFG;
+
 	// Maps a block's location to its ID and label
   std::map<anchor, std::string> nodes;
   // The maximum ID associated with any node in this graph
@@ -60,11 +63,10 @@ class flowgraph: public block
   ~flowgraph();
 
   // Generates and returns the dot graph code for this graphgenDotGraph
-  virtual std::string genDotFlowGraph();
+  virtual std::string genDataFlowGraph();
   
   // Given a string representation of a dot graph, emits the graph's visual representation 
-  // as a Canviz widget into the debug output.
-  void outputCanvizDotFlowGraph(std::string dot);
+  void outputDataFlowGraph(std::string dot);
   
   // Initialize the environment within which generated graphs will operate, including
   // the JavaScript files that are included as well as the directories that are available.
@@ -77,9 +79,18 @@ class flowgraph: public block
   std::ofstream ioInfoFile;
 
   // Sets the structure of the current graph by specifying its dot encoding
-  void setFlowGraphEncoding(std::string dotText);
+  void setFlowGraphEncoding(std::string dataText);
   static void* setFlowGraphEncoding(properties::iterator props);
- 
+
+  // add node
+  void add_node(int nodeID, std::string nodeName, int num_inputs, int num_outputs, int parentID);
+  // input data for statistic visualization
+  void add_viz(int nodeID, int buttonID, std::string viz);
+  // connection between input fromID of from_nodeID and output toID of to_nodeID
+  void add_inout(int fromID, int from_nodeID, int toID, int to_nodeID);
+  // data for input and output variable information
+  void add_ioInfo(int nodeID, int num_polyFit, std::string fitText);
+
   // Add a directed edge from the location of the from anchor to the location of the to anchor
   void addDirEdgeFG(anchor from, anchor to);
   static void* addDirEdgeFG(properties::iterator props);

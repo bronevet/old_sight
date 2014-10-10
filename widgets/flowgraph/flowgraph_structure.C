@@ -41,24 +41,24 @@ flowgraph::flowgraph(std::set<anchor>& pointsTo, const attrOp& onoffOp, bool inc
   block("flowgraph", pointsTo, setProperties(maxFlowGraphID, "", &onoffOp, props)), includeAllSubBlocks(includeAllSubBlocks)
 { flowgraphID=maxFlowGraphID++; }
 
-flowgraph::flowgraph(string dotText,                                                          bool includeAllSubBlocks, properties* props) :
-  block("flowgraph", setProperties(maxFlowGraphID, dotText, NULL, props)), includeAllSubBlocks(includeAllSubBlocks)
+flowgraph::flowgraph(string dataText,                                                          bool includeAllSubBlocks, properties* props) :
+  block("flowgraph", setProperties(maxFlowGraphID, dataText, NULL, props)), includeAllSubBlocks(includeAllSubBlocks)
 { flowgraphID=maxFlowGraphID++; }
 
-flowgraph::flowgraph(string dotText,                                   const attrOp& onoffOp, bool includeAllSubBlocks, properties* props) :
-  block("flowgraph", setProperties(maxFlowGraphID, dotText, &onoffOp, props)), includeAllSubBlocks(includeAllSubBlocks)
+flowgraph::flowgraph(string dataText,                                   const attrOp& onoffOp, bool includeAllSubBlocks, properties* props) :
+  block("flowgraph", setProperties(maxFlowGraphID, dataText, &onoffOp, props)), includeAllSubBlocks(includeAllSubBlocks)
 { flowgraphID=maxFlowGraphID++; }
 
-flowgraph::flowgraph(string dotText, anchor& pointsTo,                                        bool includeAllSubBlocks, properties* props) :
-  block("flowgraph", pointsTo, setProperties(maxFlowGraphID, dotText, NULL, props)), includeAllSubBlocks(includeAllSubBlocks)
+flowgraph::flowgraph(string dataText, anchor& pointsTo,                                        bool includeAllSubBlocks, properties* props) :
+  block("flowgraph", pointsTo, setProperties(maxFlowGraphID, dataText, NULL, props)), includeAllSubBlocks(includeAllSubBlocks)
 { flowgraphID=maxFlowGraphID++; }
 
-flowgraph::flowgraph(string dotText, std::set<anchor>& pointsTo,       const attrOp& onoffOp, bool includeAllSubBlocks, properties* props) :
-  block("flowgraph", pointsTo, setProperties(maxFlowGraphID, dotText, &onoffOp, props)), includeAllSubBlocks(includeAllSubBlocks)
+flowgraph::flowgraph(string dataText, std::set<anchor>& pointsTo,       const attrOp& onoffOp, bool includeAllSubBlocks, properties* props) :
+  block("flowgraph", pointsTo, setProperties(maxFlowGraphID, dataText, &onoffOp, props)), includeAllSubBlocks(includeAllSubBlocks)
 { flowgraphID=maxFlowGraphID++; }
 
 // Sets the properties of this object
-properties* flowgraph::setProperties(int flowgraphID, std::string dotText, const attrOp* onoffOp, properties* props)
+properties* flowgraph::setProperties(int flowgraphID, std::string dataText, const attrOp* onoffOp, properties* props)
 {
   if(props==NULL) props = new properties();
     
@@ -68,7 +68,7 @@ properties* flowgraph::setProperties(int flowgraphID, std::string dotText, const
     props->active = true;
     map<string, string> pMap;
     pMap["flowgraphID"] = txt()<<maxFlowGraphID;
-    if(dotText != "") pMap["dotText"] = dotText;
+    if(dataText != "") pMap["dataText"] = dataText;
     //pMap["callPath"] = cp2str(CPRuntime.doStackwalk());
     props->add("flowgraph", pMap);
   }
@@ -104,23 +104,17 @@ flowgraph::~flowgraph() {
       emitNodeTag(i->getID(), nodesObservedNotEmitted[i->getID()].first, nodesObservedNotEmitted[i->getID()].second);
 }
 
-// Given a reference to an object that can be represented as a dot graph,  create an image from it and add it to the output.
+// Given a representation of a graph in data text format, create an image from it and add it to the output.
 // Return the path of the image.
-void flowgraph::genFlowGraph(dottableFG& obj) {
-  flowgraph g(obj.toDOT("flowgraphsight"));
-}
-
-// Given a representation of a graph in dot format, create an image from it and add it to the output.
-// Return the path of the image.
-void flowgraph::genFlowGraph(std::string dotText) {
-  flowgraph g(dotText);
+void flowgraph::genFlowGraph(std::string dataText) {
+  flowgraph g(dataText);
 }
 
 // Sets the structure of the current graph by specifying its dot encoding
-void flowgraph::setFlowGraphEncoding(string dotText) {
+void flowgraph::setFlowGraphEncoding(string dataText) {
   properties p;
   map<string, string> pMap;
-  pMap["dot"] = dotText;
+  pMap["data"] = dataText;
   p.add("flowgraphEncoding", pMap);
   
   dbg->tag(p);
@@ -412,13 +406,13 @@ properties* FlowGraphMerger::setProperties(std::vector<std::pair<properties::tag
     // Merge the graph IDs along all the streams
     streamRecord::mergeIDs("flowgraph", "flowgraphID", pMap, tags, outStreamRecords, inStreamRecords);
      
-    pMap["dotText"] = "";
+    pMap["dataText"] = "";
     for(std::vector<std::pair<properties::tagType, properties::iterator> >::iterator t=tags.begin(); t!=tags.end(); t++) {
-      if(t->second.exists("dotText"))
-        pMap["dotText"] += properties::get(t->second, "dotText");
+      if(t->second.exists("dataText"))
+        pMap["dataText"] += properties::get(t->second, "dataText");
     }
-    // If the dotText field was not set on any of the incoming streams, remove it from pMap
-    if(pMap["dotText"] == "") pMap.erase("dotText");
+    // If the dataText field was not set on any of the incoming streams, remove it from pMap
+    if(pMap["dataText"] == "") pMap.erase("dataText");
   }
   props->add("flowgraph", pMap);
   
@@ -471,14 +465,7 @@ void FlowGraphStreamRecord::resumeFrom(std::vector<std::map<string, streamRecord
       for(set<streamFlowGraphEdge>::iterator e=i->second.begin(); e!=i->second.end(); e++)
         edges[i->first].insert(*e);
     }
-    
-    /*cout << idx<<": gStack=[";
-    for(list<int>::iterator i=gs->gStack.begin(); i!=gs->gStack.end(); i++) {
-      if(i!=gStack.begin()) cout << " ";
-      cout << *i;
-    }
-    cout << "]"<<endl;*/
-    
+
     // Union gs->gStack into gStack
     list<int>::iterator unionIt=gStack.begin();
     list<int>::const_iterator curIt=gs->gStack.begin();
@@ -496,13 +483,7 @@ void FlowGraphStreamRecord::resumeFrom(std::vector<std::map<string, streamRecord
       curIt++;
     }
   }
-  
-  /*cout << "Union gStack=[";
-  for(list<int>::iterator i=gStack.begin(); i!=gStack.end(); i++) {
-    if(i!=gStack.begin()) cout << " ";
-    cout << *i;
-  }
-  cout << "]"<<endl;*/
+
 }
 
 // Indicates that we've entered a graph (for incoming streams)
@@ -606,10 +587,7 @@ DirEdgeMergerFG::DirEdgeMergerFG(std::vector<std::pair<properties::tagType, prop
       streamID fromInSID(properties::getInt(tags[i].second, "from"), inStreamRecords[i]["flowgraph"]->getVariantID());
       streamID toInSID  (properties::getInt(tags[i].second, "to"),   inStreamRecords[i]["flowgraph"]->getVariantID());
       
-      /*cout << "DirEdgeMergerFG::DirEdgeMergerFG() "<<i<<": tags="<<properties::str(tags[i].second)<<endl;
-      cout << "    fromInSID="<<fromInSID.str()<<", toInSID="<<toInSID.str()<<endl;*/
-      
-      ((FlowGraphStreamRecord*)(*r)["flowgraph"])->addEdge(properties::getInt(tags[i].second, "flowgraphID"),
+       ((FlowGraphStreamRecord*)(*r)["flowgraph"])->addEdge(properties::getInt(tags[i].second, "flowgraphID"),
                                                    FlowGraphStreamRecord::streamFlowGraphEdge(
                                                               streamAnchor(fromInSID, inStreamRecords[i]),
                                                               streamAnchor(toInSID,   inStreamRecords[i]),
@@ -686,10 +664,7 @@ NodeMergerFG::NodeMergerFG(std::vector<std::pair<properties::tagType, properties
     streamRecord::mergeIDs("anchor", "anchorID", pMap, tags, outStreamRecords, inStreamRecords);
     
     pMap["label"] = getMergedValue(tags, "label");
-    
-    /*vector<string> cpValues = getValues(tags, "callPath");
-    assert(allSame<string>(cpValues));
-    pMap["callPath"] = *cpValues.begin();*/
+
   }
   
   props->add("node", pMap);

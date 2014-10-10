@@ -14,16 +14,6 @@
 namespace sight {
 namespace structure {
 
-
-class dottableFG
-{
-  public:
-  virtual ~dottableFG() {}
-  // Returns a string that containts the representation of the object as a graph in the DOT language
-  // that has the given name
-  virtual std::string toDOT(std::string flowgraphName)=0;
-};
-
 typedef common::flowgraphEdge<anchor> flowgraphEdge;
 
 class flowgraph: public structure::block
@@ -57,14 +47,14 @@ class flowgraph: public structure::block
   flowgraph(                                                 const attrOp& onoffOp, bool includeAllSubBlocks=false, properties* props=NULL);
   flowgraph(                     anchor& pointsTo,                                  bool includeAllSubBlocks=false, properties* props=NULL);
   flowgraph(                     std::set<anchor>& pointsTo, const attrOp& onoffOp, bool includeAllSubBlocks=false, properties* props=NULL);
-  flowgraph(std::string dotText,                                                    bool includeAllSubBlocks=false, properties* props=NULL);
-  flowgraph(std::string dotText,                             const attrOp& onoffOp, bool includeAllSubBlocks=false, properties* props=NULL);
-  flowgraph(std::string dotText, anchor& pointsTo,                                  bool includeAllSubBlocks=false, properties* props=NULL);
-  flowgraph(std::string dotText, std::set<anchor>& pointsTo, const attrOp& onoffOp, bool includeAllSubBlocks=false, properties* props=NULL);
+  flowgraph(std::string dataText,                                                    bool includeAllSubBlocks=false, properties* props=NULL);
+  flowgraph(std::string dataText,                             const attrOp& onoffOp, bool includeAllSubBlocks=false, properties* props=NULL);
+  flowgraph(std::string dataText, anchor& pointsTo,                                  bool includeAllSubBlocks=false, properties* props=NULL);
+  flowgraph(std::string dataText, std::set<anchor>& pointsTo, const attrOp& onoffOp, bool includeAllSubBlocks=false, properties* props=NULL);
     
   private:
   // Sets the properties of this object
-  static properties* setProperties(int flowgraphID, std::string dotText, const attrOp* onoffOp, properties* props);
+  static properties* setProperties(int flowgraphID, std::string dataText, const attrOp* onoffOp, properties* props);
   
   //void init(const attrOp* onoffOp, properties* props);
   
@@ -78,21 +68,17 @@ class flowgraph: public structure::block
   // it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
   // an object will invoke the destroy() method of the most-derived class.
   virtual void destroy();
-  
-  // Given a reference to an object that can be represented as a dot graph,  create an image from it and add it to the output.
-  // Return the path of the image.
-  static void genFlowGraph(dottableFG& obj);
 
-  // Given a representation of a graph in dot format, create an image from it and add it to the output.
+  // Given a representation of a graph in data text format, create an image from it and add it to the output.
   // Return the path of the image.
-  static void genFlowGraph(std::string dot);
+  static void genFlowGraph(std::string data);
   
   // Initialize the environment within which generated graphs will operate, including
   // the JavaScript files that are included as well as the directories that are available.
   static void initEnvironment();
  
-  // Sets the structure of the current graph by specifying its dot encoding
-  void setFlowGraphEncoding(std::string dotText);
+  // Sets the structure of the current graph by specifying its text format encoding
+  void setFlowGraphEncoding(std::string dataText);
   
   // Add a directed edge from the location of the from anchor to the location of the to anchor
   virtual void addDirEdgeFG(anchor from, anchor to);

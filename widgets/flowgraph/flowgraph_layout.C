@@ -24,8 +24,8 @@ void  flowgraphExitHandler(void* obj) { flowgraph* g = static_cast<flowgraph*>(o
 flowgraphLayoutHandlerInstantiator::flowgraphLayoutHandlerInstantiator() {
   (*layoutEnterHandlers)["flowgraph"]   = &flowgraphEnterHandler;
   (*layoutExitHandlers )["flowgraph"]   = &flowgraphExitHandler;
-  (*layoutEnterHandlers)["dotEncodingFG"] = &flowgraph::setFlowGraphEncoding;
-  (*layoutExitHandlers )["dotEncodingFG"] = &defaultExitHandler;
+  (*layoutEnterHandlers)["dataEncodingFG"] = &flowgraph::setFlowGraphEncoding;
+  (*layoutExitHandlers )["dataEncodingFG"] = &defaultExitHandler;
   (*layoutEnterHandlers)["dirEdgeFG"]     = &flowgraph::addDirEdgeFG;
   (*layoutExitHandlers )["dirEdgeFG"]     = &defaultExitHandler;
   (*layoutEnterHandlers)["undirEdgeFG"]   = &flowgraph::addUndirEdgeFG;
@@ -62,8 +62,8 @@ flowgraph::flowgraph(properties::iterator props) : block(properties::next(props)
   dbg.userAccessing();
   
   // If the dot encoding of the graph is already provided, emit it immediately
-  if(props.exists("dotText")) {
-    outputCanvizDotFlowGraph(properties::get(props, "dotText"));
+  if(props.exists("dataText")) {
+    outputDataFlowGraph(properties::get(props, "dataText"));
     flowgraphOutput = true;
   // Otherwise, wait to observe the nodes and edges of the graph before emitting it in the destructor
   } else
@@ -74,7 +74,9 @@ flowgraph::flowgraph(properties::iterator props) : block(properties::next(props)
   // Add the current graph to the map of ative graphs
   active[flowgraphID] = this;
 
-    dbg << "<iframe id=\"flGrFrame\" src=\"widgets/flowgraph/index.html\" width=\"1300\" height=\"1200\"></iframe>\n";
+    dbg << "<iframe id=\"flGrFrame\" src=\"widgets/flowgraph/index.html\" width=\"2300\" height=\"1200\"></iframe>\n";
+
+    /*
     // node file
 	ostringstream tFName;
 	tFName   << outDir << "/node.txt";
@@ -90,7 +92,8 @@ flowgraph::flowgraph(properties::iterator props) : block(properties::next(props)
 	// data for input and output variable information of modules
 	ostringstream ioInfoFName;
 	ioInfoFName << outDir << "/ioInfo.txt";
-
+	ioInfoFile.open(ioInfoFName.str().c_str());
+	*/
 }
 
 // Initialize the environment within which generated graphs will operate, including
@@ -105,14 +108,6 @@ void flowgraph::initEnvironment() {
   outDir = paths.first;
   htmlOutDir = paths.second;
   
-  dbg.includeFile("canviz-0.1");
-  
-  dbg.includeWidgetScript("canviz-0.1/prototype/prototype.js", "text/javascript");
-  dbg.includeWidgetScript("canviz-0.1/path/path.js",           "text/javascript");
-  dbg.includeWidgetScript("canviz-0.1/canviz.css",             "text/css");
-  dbg.includeWidgetScript("canviz-0.1/canviz.js",              "text/javascript");
-  dbg.includeWidgetScript("canviz-0.1/x11colors.js",           "text/javascript");
-
   dbg.includeFile("flowgraph/processing.js"); dbg.includeWidgetScript("flowgraph/processing.js", "text/javascript");
   dbg.includeFile("flowgraph/flgr.js"); dbg.includeWidgetScript("flowgraph/flgr.js", "text/javascript");
   dbg.includeFile("flowgraph/hoaViz.pde");
@@ -122,13 +117,15 @@ void flowgraph::initEnvironment() {
 
 flowgraph::~flowgraph() {
   if(!flowgraphOutput) {
-    outputCanvizDotFlowGraph(genDotFlowGraph());
+    outputDataFlowGraph(genDataFlowGraph());
   }
 
+  /*
   tFile.close();
   inouFile.close();
   datFile.close();
   ioInfoFile.close();
+  */
   
   dbg.exitBlock();
   
@@ -139,29 +136,18 @@ flowgraph::~flowgraph() {
   active.erase(flowgraphID);
 }
 
-// Generates and returns the dot graph code for this graph
-string flowgraph::genDotFlowGraph() {
-  ostringstream dot;
-  dot << "digraph G {"<<endl;
+// Generates and returns the data graph code for this graph
+string flowgraph::genDataFlowGraph() {
 
-  /*cout << "graph::genDotGraph() #nodes="<<nodes.size()<<", #edges="<<edges.size()<<endl;
+  ostringstream data;
 
-  cout << "nodes("<<nodes.size()<<")="<<endl;
-  for(map<anchor, string>::iterator b=nodes.begin(); b!=nodes.end(); b++)
-    cout << "    " << b->first.getID()<< " => [" << b->second << ", " << b->first.getLinkJS() << "]"<<endl;
-
-  cout << "edges("<<edges.size()<<")="<<endl;
-  for(list<graphEdge>::iterator e=edges.begin(); e!=edges.end(); e++)
-    cout << "    "<<e->getFrom().str()<<" => "<<e->getTo().str()<<endl;
-*/
   for(map<anchor, string>::iterator b=nodes.begin(); b!=nodes.end(); b++)
   {
-    dot << "\tnode_"<<b->first.getID()<<" [shape=box, label=\""<<b->second<<"\", href=\"javascript:"<<b->first.getLinkJS()<<"\"];\n";
-
-    //tFile << moduleID <<":"<< moduleName <<":"<< numInputs <<":"<<numOutputs<<":"<<containerModuleID<<endl;
-    tFile << b->first.getID() <<":"<< b->first.getID() <<":"<< "1" <<":"<<"1"<<":"<<b->second<<endl;
+	data <<  b->first.getID() <<":"<< b->first.getID() <<":"<< "1" <<":"<<"1"<<":"<<b->second << endl;
+    tFile << b->first.getID() <<":"<< b->first.getID() <<":"<< "1" <<":"<<"1"<<":"<<b->second << endl;
     string vizl = "scatter3d:ccp:pcp";
     datFile << b->first.getID() <<","<< b->first.getID() <<","<<vizl<<endl;
+
   }
   // Between the time when an edge was inserted into edges and now, the anchors on both sides of each
   // edge should have been located (attached to a concrete location in the output). This means that
@@ -173,78 +159,114 @@ string flowgraph::genDotFlowGraph() {
   for(list<flowgraphEdge>::iterator e=edges.begin(); e!=edges.end(); e++)
     uniqueEdges.insert(*e);
 
-  /*cout << "edges="<<endl;
-  for(set<graphEdge>::iterator e=uniqueEdges.begin(); e!=uniqueEdges.end(); e++) {
-    cout << "    from="<<e->from.str("    ")<<" : found="<<(nodes.find(e->from.getLocation())!=nodes.end())<<" : "<<dbg.blockGlobalStr(e->from.getLocation())<<endl;
-    cout << "    to="<<e->to.str("    ")    <<" : found="<<(nodes.find(e->to.getLocation())!=nodes.end())  <<" : "<<dbg.blockGlobalStr(e->to.getLocation())  <<endl;
-    cout << "    from="<<e->from.str("    ")<<" : "<<nodes[e->from.getLocation()].first<<endl;
-    cout << "    to="<<e->to.str("    ")    <<" : "<<nodes[e->to.getLocation()].first<<endl;
-  }*/
   for(set<flowgraphEdge>::iterator e=uniqueEdges.begin(); e!=uniqueEdges.end(); e++)
   {
-    dot << "\tnode_" << e->from.getID() << 
-           " -> "<<
-           "node_" << e->to.getID();
+	inouFile <<"0"<<"_output_"<<e->to.getID()<<":"<<"0"<<"_input_"<<e->to.getID()<< endl;
+    data << "0"<<"_output_"<<e->to.getID()<<":"<<"0"<<"_input_"<<e->to.getID()<< endl;
+
     ostringstream style; bool emptyStyle=true;
     if(!e->directed) { if(!emptyStyle) { style << " "; } style << "dir=none";    emptyStyle=false; }
     if(!e->visible)  { if(!emptyStyle) { style << " "; } style << "style=invis"; emptyStyle=false; }
-    if(!emptyStyle) dot << "[" << style.str() << "]";
-    dot << ";\n";
-
-    inouFile <<"0"<<"_output_"<<e->to.getID()<<":"<<"0"<<"_input_"<<e->to.getID()<< endl;
+    if(!emptyStyle) data << "[" << style.str() << "]";
   }
 
-  dot << " }";
-
-  return dot.str();
+  return data.str();
 }
 
-// Given a string representation of a dot graph, emits the graph's visual representation 
-// as a Canviz widget into the debug output.
-void flowgraph::outputCanvizDotFlowGraph(std::string dot) {
-//  #ifdef DOT_PATH
-  ostringstream origDotFName;   origDotFName   << outDir << "/orig."   << flowgraphID << ".dot";
-  ostringstream placedDotFName; placedDotFName << outDir << "/placed." << flowgraphID << ".dot";
+// Given a string representation of a data flowgraph, emits the graph's visual representation
+void flowgraph::outputDataFlowGraph(std::string data) {
+	ostringstream dataFName;   dataFName << outDir << "/data.txt";
 
-  ofstream dotFile;
-  dotFile.open(origDotFName.str().c_str());
-  dotFile << dot;
-  dotFile.close();
+	ofstream dataFile;
+	dataFile.open(dataFName.str().c_str());
+	dataFile << data;
+	dataFile.close();
 
-  // Create the SVG file's picture of the dot file
-  //ostringstream cmd; cmd << DOT_PATH << "dot -Tsvg -o"<<imgPath<<" "<<dotFName.str() << "-Tcmapx -o"<<mapFName.str()<<"&"; 
-  // Create the explicit DOT file that details the graph's layout
-  //ostringstream cmd; cmd << DOT_PATH << "dot "<<origDotFName.str()<<" -Txdot -o"<<placedDotFName.str()<<"&"; 
-  ostringstream cmd; cmd << ROOT_PATH << "/widgets/graphviz/bin/dot "<<origDotFName.str()<<" -Txdot -o"<<placedDotFName.str();//<<"&"; 
-  //cout << "Command \""<<cmd.str()<<"\"\n";
-  system(cmd.str().c_str());
-  
-  dbg.widgetScriptCommand(txt() << 
-     "  var canviz_"<<flowgraphID<<";\n" <<
-     "  canviz_"<<flowgraphID<<" = new Canviz('graph_container_"<<flowgraphID<<"');\n" <<
-     //dbg << "  canviz_"<<graphID<<".setImagePath('graphs/images/');\n";
-     "  canviz_"<<flowgraphID<<".setScale(1);\n" <<
-     "  canviz_"<<flowgraphID<<".load('"<<htmlOutDir<<"/placed." << flowgraphID << ".dot');\n");
+	string vizlist = "scatter3d:ccp:pcp";
+   	 int nodeID = 0;
+   	int parentID = -1;
+    	nodesFG.clear();
+	parentsFG.clear();
+	int br_num = 0;
+	int nod_num = 0;
+	std::istringstream ss(data);
+	std::string token;
+	int oldnode = 0;
 
-  flowgraphOutput = true;
+	//process branches
+	while(std::getline(ss, token, ';'))	{
+		std::istringstream s(token);
+		std::string t;
+		br_num++;
+
+		while(std::getline(s, t, '-')) {
+			if(oldnode == 0)
+				nod_num = nodeID-1;
+			else
+				oldnode = 0;					
+			
+			if(nodeID == 0)	{
+				nodesFG.push_back(std::make_pair(nodeID, t));
+				parentsFG.push_back(std::make_pair(nodeID, parentID));
+				nodeID++;
+			}
+			else {
+				oldnode = 0;
+				for(int i=0; i < (int)nodesFG.size(); i++) {
+					if(t.compare(nodesFG[i].second)==0)
+					{
+						oldnode = 1;
+						nod_num = nodesFG[i].first;
+					}
+				}
+				if(oldnode == 0) {
+					nodesFG.push_back(std::make_pair(nodeID, t));
+					
+					parentsFG.push_back(std::make_pair(nodeID, nod_num));
+					nodeID++;
+				}
+
+			}
+		}
+	}
+
+	for(int i=0; i < (int)nodesFG.size(); i++) {
+		   add_node(nodesFG[i].first, nodesFG[i].second, 1, 1, parentsFG[i].second);
+		   add_viz(nodesFG[i].first, nodesFG[i].first, vizlist);
+	}
+
+	ostringstream inouFName;
+	inouFName << outDir << "/inout.txt";
+	inouFile.open(inouFName.str().c_str(), std::fstream::app);
+	//inouFile <<fromID<<"_output_"<<from_nodeID<<":"<<toID<<"_input_"<<to_nodeID<< endl;
+	inouFile.close();
+
+	ostringstream ioInfoFName;
+	ioInfoFName << outDir << "/ioInfo.txt";
+	ioInfoFile.open(ioInfoFName.str().c_str(), std::fstream::app);
+	//ioInfoFile << nodeID <<";"<< num_polyFit<<";"<<fitText<<endl;
+	ioInfoFile.close();
+
+	// end process branches
+
+	flowgraphOutput = true;
 }
 
 // Sets the structure of the current graph by specifying its dot encoding
-void flowgraph::setFlowGraphEncoding(string dotText) {
-  outputCanvizDotFlowGraph(dotText);
+void flowgraph::setFlowGraphEncoding(string dataText) {
+  outputDataFlowGraph(dataText);
 }
 
 void* flowgraph::setFlowGraphEncoding(properties::iterator props) {
   int flowgraphID = properties::getInt(props, "flowgraphID");
   assert(active.find(flowgraphID) != active.end());
   
-  active[flowgraphID]->setFlowGraphEncoding(properties::get(props, "dot"));
+  active[flowgraphID]->setFlowGraphEncoding(properties::get(props, "data"));
   return NULL;
 }
 
 // Add a directed edge from the location of the from anchor to the location of the to anchor
 void flowgraph::addDirEdgeFG(anchor from, anchor to) {
-  //cout << "graph::addDirEdge("<<from.getID()<<" => "<<to.getID()<<")"<<endl;
   edges.push_back(flowgraphEdge(from, to, true, true));
 }
 
@@ -294,17 +316,55 @@ void* flowgraph::addInvisEdgeFG(properties::iterator props) {
   return NULL;
 }
 
+void flowgraph::add_node(int nodeID, string nodeName, int num_inputs, int num_outputs, int parentID)
+{
+	ostringstream tFName;
+	tFName   << outDir << "/node.txt";
+	tFile.open(tFName.str().c_str(), std::fstream::app);
+	tFile << nodeID <<":"<< nodeName <<":"<< num_inputs <<":"<<num_outputs<<":"<<parentID<<endl;
+	tFile.close();
+}
+
+// input data for statistic visualization
+void flowgraph::add_viz(int nodeID, int buttonID, string viz)
+{
+	ostringstream datFName;
+	datFName << outDir << "/dat.txt";
+	datFile.open(datFName.str().c_str(), std::fstream::app);
+	datFile << nodeID << "," << buttonID << "," << viz << endl;
+	datFile.close();
+}
+
+// connection between input fromID of from_nodeID and output toID of to_nodeID
+void flowgraph::add_inout(int fromID, int from_nodeID, int toID, int to_nodeID)
+{
+	ostringstream inouFName;
+	inouFName << outDir << "/inout.txt";
+	inouFile.open(inouFName.str().c_str(), std::fstream::app);
+	inouFile <<fromID<<"_output_"<<from_nodeID<<":"<<toID<<"_input_"<<to_nodeID<< endl;
+	inouFile.close();
+}
+
+// data for input and output variable information of modules
+void flowgraph::add_ioInfo(int nodeID, int num_polyFit, string fitText)
+{
+	ostringstream ioInfoFName;
+	ioInfoFName << outDir << "/ioInfo.txt";
+	ioInfoFile.open(ioInfoFName.str().c_str(), std::fstream::app);
+	ioInfoFile << nodeID <<";"<< num_polyFit<<";"<<fitText<<endl;
+	ioInfoFile.close();
+}
+
 // Add a node to the graph
 void flowgraph::addNodeFG(anchor a, string label) {
   nodes[a] = label;
+  tFile << a.getID() <<":"<< label <<":"<< "1" <<":"<<"1"<<":"<<"1"<<endl;
+  datFile << a.getID() << "," << a.getID() << "," << "scatter3d:ccp:pcp" << endl;
 }
 
 void* flowgraph::addNodeFG(properties::iterator props) {
   int flowgraphID = properties::getInt(props, "flowgraphID");
-    /*cout << "addNode() props="<<properties::str(props)<<endl;
-    cout << "active="<<endl;
-    for(map<int, graph*>::iterator i=active.begin(); i!=active.end(); i++)
-      cout << "    "<<i->first<<": "<<i->second->getLabel()<<endl;*/
+
   if(active.find(flowgraphID) == active.end()) {
     cerr << "ERROR: graph with ID "<<flowgraphID<<" is not active when the following node was added: "<<props.str()<<endl;
     cerr << "active(#"<<active.size()<<")=<";
@@ -323,13 +383,10 @@ void* flowgraph::addNodeFG(properties::iterator props) {
 
 // Start a sub-graph
 void flowgraph::startSubFlowGraph() {
-//  dot << "subgraph cluster_"<<clusterCntr<<" {"<<endl;
   subFlowGraphCounter++;
 }
 
 void flowgraph::startSubFlowGraph(const std::string& label) {
-/*  dot << "subgraph cluster_"<<clusterCntr<<" {"<<endl;
-  dot << "label = \""<<label<<"\";"<<endl;*/
   subFlowGraphCounter++;
 }
 
@@ -346,5 +403,6 @@ void* flowgraph::startSubFlowGraph(properties::iterator props) {
 void flowgraph::endSubFlowGraph(void* obj) {
 
 }
+
 }; // namespace layout
 }; // namespace sight

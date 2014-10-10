@@ -308,7 +308,7 @@ void draw()
   }
   else
   {
-    nodewidth = 40*font_size;
+    nodewidth = 20*font_size;
     depth_distance = 6*font_size;
   }
 
@@ -485,7 +485,7 @@ void draw()
   }
   else
   {
-    newWid = int(100+nodewidth*(depth_width+2));
+    newWid = int(100+nodewidth*(depth_width+8));
     newHei = depth_distance;
   }
   for(int k=0; k< (depth_length); k++)
