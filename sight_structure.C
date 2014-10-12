@@ -2867,7 +2867,8 @@ ComparisonMerger::ComparisonMerger(std::vector<std::pair<properties::tagType, pr
   properties::tagType type = streamRecord::getTagType(tags); 
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Comparison!"<<endl; assert(0); }
   if(type==properties::enterTag) {
-    pMap["ID"] = getMergedValue(tags, "ID");
+    pMap["ID"] = tags.begin()->second.get("ID");
+    pMap["inline"] = tags.begin()->second.get("inline");
   }
   
   props->add("comparison", pMap);
@@ -2885,7 +2886,10 @@ void ComparisonMerger::mergeKey(properties::tagType type, properties::iterator t
   if(type==properties::enterTag) {
     // Comparison tags with the same ID must be perfectly aligned in all logs
 //    info.setUniversal(true);
-    info.add(tag.get("ID"));
+    // Add this tag's ID only if we were not asked to fuse all aligned comparison tags together
+    if(getenv("SIGHT_MERGE_FUSE_COMPARISON")==NULL)
+      info.add(tag.get("ID"));
+    info.add(tag.get("inline"));
   }
 }
 

@@ -216,6 +216,9 @@ class MergeState {
   
   // Returns whether all the tag groups correspond to entries to comparison tags
   bool isAllComparisonEntry() const;
+
+  // Returns whether all the tag groups correspond to exits from comparison tags
+  bool isAllComparisonExit() const;
   
   // Returns the number of tag groups among the current set of tags among all the incoming streams
   int getNumGroups() const;
