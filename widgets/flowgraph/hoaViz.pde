@@ -365,7 +365,7 @@ void draw()
     hnode[i] = nodeheight + depth_distance;
     if(numin[i]>0 || numout[i]>0)
       hnode[i] += nodeheight;
-    if(statistic_viz == 1)
+    //if(statistic_viz == 1)
       hnode[i] += nodeheight;
     if(iorel_info==1)
       hnode[i] += ionodeInfo_height[i]*font_size;
@@ -564,18 +564,21 @@ void mousePressed()
 { 
   for(int i=0; i<lnodes_length; i++)
   {
-    String[] vizInf = split(vizMeth[i],','); 
-    String[] nVi = split(vizInf[2],':');
-    int nvi_len = nVi.length;
-    for(int k=0; k<nvi_len; k++)
+    if(statistic_viz == 1)
     {
-      float stY, enY, stX, enX;
-      stY = ycnode[i]+2*nodeheight;
-      enY = ycnode[i]+3*nodeheight;
-      stX = (xcnode[i] + k*wnode[i]/nvi_len);
-      enX = (xcnode[i] + (k+1)*wnode[i]/nvi_len);
-      if(mouseX >= stX && mouseX <= enX && mouseY >= stY && mouseY <= enY)
-        clickModule(vizInf[0], int(vizInf[1])+k*100, names[i], (100*mouseX/width+10), 100*mouseY/height);
+      String[] vizInf = split(vizMeth[i],','); 
+      String[] nVi = split(vizInf[2],':');
+      int nvi_len = nVi.length;
+      for(int k=0; k<nvi_len; k++)
+      {
+        float stY, enY, stX, enX;
+        stY = ycnode[i]+2*nodeheight;
+        enY = ycnode[i]+3*nodeheight;
+        stX = (xcnode[i] + k*wnode[i]/nvi_len);
+        enX = (xcnode[i] + (k+1)*wnode[i]/nvi_len);
+        if(mouseX >= stX && mouseX <= enX && mouseY >= stY && mouseY <= enY)
+          clickModule(vizInf[0], int(vizInf[1])+k*100, names[i], (100*mouseX/width+10), 100*mouseY/height);
+      }
     }
     
     if(viewMeth == 1 || viewMeth == 2)
@@ -776,21 +779,24 @@ void draw_nodes(int inod, float xc, float yc, float wn, float hn)
     text(names[inod], xc+wn/2, yc+nodeheight+nodeheight/1.5);
     
     // 3. draw visualization methods box
-    String[] vizInf = split(vizMeth[0],','); 
-    String[] nVi = split(vizInf[2],':');
-    int nvilen = nVi.length;
-    for(int k=0; k<nvilen; k++)
+    if(statistic_viz == 1)
     {
-      stroke(0);
-      strokeWeight(1);
-      colorMode(HSB);
-      fill(k*255/nvilen, 20, 250);
-      rect(xc + k*wn/nvilen, yc+2*nodeheight, wn/nvilen, nodeheight);
-     
-      fill(50);
-      text(nVi[k], xc + (k+1/2)*wn/nvilen, yc+ 2*nodeheight + nodeheight/1.5);
+      String[] vizInf = split(vizMeth[0],','); 
+      String[] nVi = split(vizInf[2],':');
+      int nvilen = nVi.length;
+      for(int k=0; k<nvilen; k++)
+      {
+        stroke(0);
+        strokeWeight(1);
+        colorMode(HSB);
+        fill(k*255/nvilen, 20, 250);
+        rect(xc + k*wn/nvilen, yc+2*nodeheight, wn/nvilen, nodeheight);
+       
+        fill(50);
+        text(nVi[k], xc + (k+1/2)*wn/nvilen, yc+ 2*nodeheight + nodeheight/1.5);
+      }
     }
-  
+    
     // 4. draw input, output information
     if(iorel_info == 1)
     {
@@ -832,7 +838,10 @@ void draw_nodes(int inod, float xc, float yc, float wn, float hn)
         for(int k=1; k<nodrel_len[inod];k++)
         {
           fill(100, 200, 255);
-          draw_arrow(xcnode[int(depnod[0])] + wnode[int(depnod[0])]/2, ycnode[int(depnod[0])] + hnode[int(depnod[0])] - depth_distance, xcnode[int(depnod[k])]+wnode[int(depnod[k])]/2, ycnode[int(depnod[k])]);
+          if(numin[k] == 0 && numout[k] == 0)
+              draw_arrow(xcnode[int(depnod[0])] + wnode[int(depnod[0])]/2, ycnode[int(depnod[0])] + hnode[int(depnod[0])] - depth_distance, xcnode[int(depnod[k])]+wnode[int(depnod[k])]/2, ycnode[int(depnod[k])]+nodeheight);
+          else
+              draw_arrow(xcnode[int(depnod[0])] + wnode[int(depnod[0])]/2, ycnode[int(depnod[0])] + hnode[int(depnod[0])] - depth_distance, xcnode[int(depnod[k])]+wnode[int(depnod[k])]/2, ycnode[int(depnod[k])]);
         }      
       }
     }

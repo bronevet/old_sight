@@ -231,9 +231,15 @@ void flowgraph::outputDataFlowGraph(std::string data) {
 	}
 
 	for(int i=0; i < (int)nodesFG.size(); i++) {
-		   add_node(nodesFG[i].first, nodesFG[i].second, 1, 1, parentsFG[i].second);
-		   add_viz(nodesFG[i].first, nodesFG[i].first, vizlist);
+		   add_node(nodesFG[i].first, nodesFG[i].second, 0, 0, parentsFG[i].second);
+		   //add_viz(nodesFG[i].first, nodesFG[i].first, vizlist);
 	}
+
+	ostringstream datFName;
+        datFName << outDir << "/dat.txt";
+        datFile.open(datFName.str().c_str(), std::fstream::app);
+        //datFile << nodeID << "," << buttonID << "," << viz << endl;
+        datFile.close();
 
 	ostringstream inouFName;
 	inouFName << outDir << "/inout.txt";
