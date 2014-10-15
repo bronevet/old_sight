@@ -85,6 +85,7 @@ int node_col = -1;
 float scaleFactor;
 float updateWinsize;
 int[] temp = new int[nsi];
+String graphname;
   
 void setup() 
 { 
@@ -99,6 +100,10 @@ void setup()
   aFont = createFont(fontList[0], font_size, true);
   textFont(aFont);
   
+  getGraName();
+  graphname = graName;
+  //println("graName="+graName);
+  
   // initialize parameters
   scaleFactor = 1;
   // x,y coordinate for root node
@@ -107,18 +112,34 @@ void setup()
   viewMeth = 3;
   
   // node information: ModuleID:ModuleName:num_input:num_output:ContainterModuleID(parent)
-  lnodes = loadStrings("node.txt");
+  lnodes = loadStrings("node_"+graphname+".txt");
   lnodes_length = lnodes.length;
   // connection between input and output of nodes   
-  lconn = loadStrings("inout.txt");
+  lconn = loadStrings("inout_"+graphname+".txt");
   // visualization methods: sc3d, ccp, pcp, ... 
-  vizMeth = loadStrings("dat.txt");
+  vizMeth = loadStrings("dat_"+graphname+".txt");
   if(vizMeth.length>0)
     statistic_viz = 1;
   // detail information of input and output relationship text
-  ioInfo = loadStrings("ioInfo.txt");
+  ioInfo = loadStrings("ioInfo_"+graphname+".txt");
   if(ioInfo.length>0)
     iorel_info = 1;
+    
+  // move rows that have parentID = -1 to the top
+  for(int i=0; i< lnodes_length; i++)
+  {
+    String[] inode = split(lnodes[i],':');
+    containerID[i] = int(inode[4]);
+    if(containerID[i] == -1)
+    {
+      String tmp = lnodes[i];
+      for(int j=i; j>0; j--)
+      {
+        lnodes[j]=lnodes[j-1];   
+      }
+      lnodes[0] = tmp;
+    }
+  }
   
   // compoute node information 
   for(int i=0; i< lnodes_length; i++)
@@ -960,6 +981,7 @@ void draw_curvearrow(float x1, float y1, float x2, float y2, int leri)
     line(0, 0, 5, -5);
     popMatrix();
 } 
+
 
 
 

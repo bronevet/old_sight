@@ -28,6 +28,11 @@ function dataset()
   nu = numTraceAttrs;
 }
 
+function getGraName()
+{
+  graName = getQueryParam("graName");
+}
+
 function getQueryParam(param) {
     var result =  window.location.search.match(
         new RegExp("(\\?|&)" + param + "(\\[\\])?=([^&]*)")

@@ -28,6 +28,7 @@ class flowgraph: public block
 
   std::vector< std::pair <int, std::string> > nodesFG;
   std::vector< std::pair <int, int> > parentsFG;
+  std::string graphName;
 
 	// Maps a block's location to its ID and label
   std::map<anchor, std::string> nodes;

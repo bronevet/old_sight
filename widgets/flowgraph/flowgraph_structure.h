@@ -72,6 +72,9 @@ class flowgraph: public structure::block
   // Given a representation of a graph in data text format, create an image from it and add it to the output.
   // Return the path of the image.
   static void genFlowGraph(std::string data);
+  static void addnode(std::string data);
+  static void addedge(std::string data);
+  static void drawGraph(std::string graphname);
   
   // Initialize the environment within which generated graphs will operate, including
   // the JavaScript files that are included as well as the directories that are available.
@@ -79,7 +82,7 @@ class flowgraph: public structure::block
  
   // Sets the structure of the current graph by specifying its text format encoding
   void setFlowGraphEncoding(std::string dataText);
-  
+
   // Add a directed edge from the location of the from anchor to the location of the to anchor
   virtual void addDirEdgeFG(anchor from, anchor to);
   

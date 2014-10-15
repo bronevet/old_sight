@@ -110,6 +110,17 @@ void flowgraph::genFlowGraph(std::string dataText) {
   flowgraph g(dataText);
 }
 
+void flowgraph::addnode(std::string data){
+  flowgraph g("addnode:"+data);
+}
+void flowgraph::addedge(std::string data){
+  flowgraph g("addedge:"+data);
+}
+
+void flowgraph::drawGraph(std::string graphname){
+  flowgraph g("drawgraph:"+graphname);
+}
+
 // Sets the structure of the current graph by specifying its dot encoding
 void flowgraph::setFlowGraphEncoding(string dataText) {
   properties p;
