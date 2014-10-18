@@ -42,6 +42,5 @@ class flowgraphEdge {
   }
 };
 
-  
 } // namespace common
 } // namespace sight

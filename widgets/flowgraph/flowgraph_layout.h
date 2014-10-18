@@ -63,8 +63,9 @@ class flowgraph: public block
   flowgraph(properties::iterator props);
   ~flowgraph();
 
-  // Generates and returns the dot graph code for this graphgenDotGraph
+  // Generates and returns the graph code for this genDataFlowGraph
   virtual std::string genDataFlowGraph();
+
   
   // Given a string representation of a dot graph, emits the graph's visual representation 
   void outputDataFlowGraph(std::string dot);
@@ -88,7 +89,7 @@ class flowgraph: public block
   // input data for statistic visualization
   void add_viz(int nodeID, int buttonID, std::string viz);
   // connection between input fromID of from_nodeID and output toID of to_nodeID
-  void add_inout(int fromID, int from_nodeID, int toID, int to_nodeID);
+  void add_inout(int from_nodeID, int fromID, int to_nodeID, int toID);
   // data for input and output variable information
   void add_ioInfo(int nodeID, int num_polyFit, std::string fitText);
 
@@ -122,7 +123,17 @@ class flowgraph: public block
   // that contain this block and false otherwise.
   bool subBlockEnterNotify(block* subBlock) { return false; }
   bool subBlockExitNotify (block* subBlock) { return false; }
+
 };
+
+/*
+class flowGraphNode{
+public:
+	flowGraphNode(std::string graphName);
+
+
+};
+*/
 
 }; // namespace layout
 }; // namespace sight

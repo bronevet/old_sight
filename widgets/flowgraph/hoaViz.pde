@@ -386,8 +386,11 @@ void draw()
     hnode[i] = nodeheight + depth_distance;
     if(numin[i]>0 || numout[i]>0)
       hnode[i] += nodeheight;
-    //if(statistic_viz == 1)
+    if(numin[i]==0 && numout[i]==0)
       hnode[i] += nodeheight;
+    if(statistic_viz == 1)
+      hnode[i] += nodeheight;
+      
     if(iorel_info==1)
       hnode[i] += ionodeInfo_height[i]*font_size;
     

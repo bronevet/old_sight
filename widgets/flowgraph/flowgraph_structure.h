@@ -71,11 +71,26 @@ class flowgraph: public structure::block
 
   // Given a representation of a graph in data text format, create an image from it and add it to the output.
   // Return the path of the image.
-  static void genFlowGraph(std::string data);
-  static void addnode(std::string data);
-  static void addedge(std::string data);
-  static void drawGraph(std::string graphname);
-  
+  void genFlowGraph(std::string data);
+  void startGraph();
+  void addNode(std::string nodeName);
+  void addNode(std::string childNode, std::string parentNode);
+  void addEdge(std::string startNode, std::string endNode);
+  void endGraph();
+
+  void graphNodeStart(std::string nodeName);
+  void graphNodeEnd(std::string nodeName);
+  void addNodeEdge(std::string startNode, std::string endNode);
+  void endNodeGraph();
+
+  /*
+  static void flowGraphStart(std::string graphName);
+  static void flowGraphNodeStart(std::string nameNode);
+  static void flowGraphNodeEnd(std::string nameNode);
+  static void flowGraphEnd(std::string graphName);
+  */
+
+
   // Initialize the environment within which generated graphs will operate, including
   // the JavaScript files that are included as well as the directories that are available.
   static void initEnvironment();
@@ -109,6 +124,13 @@ class flowgraph: public structure::block
   void emitNodeTag(int anchorID, std::string label, int nodeID);
 }; // flowgraph
 
+class flowGraphNode{
+  flowgraph& g;
+  public:
+  flowGraphNode(flowgraph& g); 
+  ~flowGraphNode();
+};
+
 // Creates a graphviz cluster within a given graph
 class subflowgraph
 {
@@ -117,6 +139,7 @@ class subflowgraph
   subflowgraph(flowgraph& g, const std::string& label);
   ~subflowgraph();
 }; // subgraph
+
 
 class FlowGraphMergeHandlerInstantiator: public MergeHandlerInstantiator {
   public:

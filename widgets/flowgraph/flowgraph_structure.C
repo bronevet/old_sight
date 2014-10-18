@@ -106,20 +106,112 @@ flowgraph::~flowgraph() {
 
 // Given a representation of a graph in data text format, create an image from it and add it to the output.
 // Return the path of the image.
+
+// generate flow graph by string
+void flowgraph::genFlowGraph(std::string dataText) {
+	stringstream ss;
+	ss << flowgraphID;
+	string str = ss.str();
+	flowgraph g(str+dataText);
+}
+
+void flowgraph::startGraph(){
+	stringstream ss;
+	ss << flowgraphID;
+	string str = ss.str();
+	flowgraph g(str+"{}");
+}
+
+// add node and edge by method 1
+void flowgraph::addNode(std::string nodeName){
+	stringstream ss;
+	ss << flowgraphID;
+	string str = ss.str();
+	flowgraph g("addnode:"+str+"{"+nodeName+"}");
+}
+
+void flowgraph::addNode(std::string childNode, std::string parentNode)
+{
+	stringstream ss;
+	ss << flowgraphID;
+	string str = ss.str();
+	flowgraph g("addnode:"+str+"{"+parentNode+"-"+childNode+"}");
+}
+
+void flowgraph::addEdge(std::string startNode, std::string endNode){
+	stringstream ss;
+	ss << flowgraphID;
+	string str = ss.str();
+	flowgraph g("addedge:"+str+"{"+startNode+"-"+endNode);
+}
+
+void flowgraph::endGraph(){
+	stringstream ss;
+	ss << flowgraphID;
+	string str = ss.str();
+	flowgraph g("drawgraph:"+str);
+}
+
+void flowgraph::graphNodeStart(std::string nodeName){
+	stringstream ss;
+	ss << flowgraphID;
+	string str = ss.str();
+	flowgraph g("graphNodeStart:"+str+"{"+nodeName);
+}
+
+void flowgraph::graphNodeEnd(std::string nodeName){
+	stringstream ss;
+	ss << flowgraphID;
+	string str = ss.str();
+	flowgraph g("graphNodeEnd:"+str+"{"+nodeName);
+}
+
+void flowgraph::addNodeEdge(std::string startNode, std::string endNode){
+	stringstream ss;
+	ss << flowgraphID;
+	string str = ss.str();
+	flowgraph g("addNodeEdge:"+str+"{"+startNode+"-"+endNode);
+}
+
+void flowgraph::endNodeGraph(){
+	stringstream ss;
+	ss << flowgraphID;
+	string str = ss.str();
+	flowgraph g("drawNodeGraph:"+str);
+}
+
+
+/*
+// generate flow graph by string
 void flowgraph::genFlowGraph(std::string dataText) {
   flowgraph g(dataText);
 }
 
+// add node and edge by method 1
 void flowgraph::addnode(std::string data){
   flowgraph g("addnode:"+data);
 }
 void flowgraph::addedge(std::string data){
   flowgraph g("addedge:"+data);
 }
-
 void flowgraph::drawGraph(std::string graphname){
   flowgraph g("drawgraph:"+graphname);
 }
+
+// add node and edge by method 2
+void flowgraph::flowGraphStart(std::string graphName){
+  flowgraph g("flowGraphStart:"+graphName);
+}
+void flowgraph::flowGraphNodeStart(std::string nameNode){
+  flowgraph g("flowGraphNodeStart:"+nameNode);
+}
+void flowgraph::flowGraphNodeEnd(std::string nameNode){
+  flowgraph g("flowGraphNodeEnd:"+nameNode);
+}
+void flowgraph::flowGraphEnd(std::string graphName){
+  flowgraph g("drawgraph:"+graphName);
+}
+*/
 
 // Sets the structure of the current graph by specifying its dot encoding
 void flowgraph::setFlowGraphEncoding(string dataText) {
@@ -697,6 +789,7 @@ std::string NodeStreamRecordFG::str(std::string indent) const {
   s << streamRecord::str(indent+"    ") << "]";
   return s.str();
 }
+
 
 
 }; // namespace structure

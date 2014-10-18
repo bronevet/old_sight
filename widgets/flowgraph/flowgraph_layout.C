@@ -177,167 +177,315 @@ string flowgraph::genDataFlowGraph() {
 // Given a string representation of a data flowgraph, emits the graph's visual representation
 void flowgraph::outputDataFlowGraph(std::string graphdata) {
 
-	std::string datatmp, data;
-	std::string tok1, tok2;
+	std::string t1, t2;
 	int ind = 0;
+	int drawNodeGraph = 0;
 
-	if(graphdata.find("addnode:") == 0 || graphdata.find("addedge:") == 0)
+	if(graphdata.find("graphNodeStart:") == 0 || graphdata.find("graphNodeEnd:") == 0 || graphdata.find("drawNodeGraph:") == 0)
 	{
-		std::string graphtmp;
+		std::string graphtmp, nodeName;
 		std::istringstream grd(graphdata);
-		std::string to;
-		int ind=0;
-		while(std::getline(grd, to, ':'))	{
+		ind=0;
+		while(std::getline(grd, t1, ':'))	{
 			if(ind == 1)
-				graphtmp = to;
+				graphtmp = t1;
 			ind++;
 		}
 		// get graph name and data
-		std::istringstream grdata1(graphtmp);
+		std::istringstream grdat(graphtmp);
 		ind=0;
-		while(std::getline(grdata1, tok1, '{'))	{
+		while(std::getline(grdat, t2, '{'))	{
 			if(ind == 0)
-				graphName = tok1;
+				graphName = t2;
 			else
-				datatmp = tok1;
+				nodeName = t2;
 			ind++;
 		}
 
-		std::string line,preData;
-		ostringstream dataFName;   dataFName << outDir << "/data_"<<graphName<<".txt";
-		ifstream dataF;
-		dataF.open(dataFName.str().c_str());
-		while ( getline (dataF,line) ) {
-		  preData += line;
+		if( graphdata.find("drawNodeGraph:") != 0 )
+		{
+			ostringstream dataFName;
+			dataFName << outDir << "/graphNode_"<<graphName<<".txt";
+			ofstream dataFile;
+			dataFile.open(dataFName.str().c_str(), std::fstream::app);
+			if(graphdata.find("graphNodeStart:") == 0)
+				dataFile << "["+nodeName;
+			if(graphdata.find("graphNodeEnd:") == 0)
+				dataFile << "]";
+			dataFile.close();
 		}
-		dataF.close();
+		else
+		{
 
-		graphdata = graphName+"{"+preData +";"+datatmp;
-	}
+			std::string line,preNodes;
+			ostringstream dataFName;
+			dataFName << outDir << "/graphNode_"<<graphName<<".txt";
+			ifstream dataF;
+			dataF.open(dataFName.str().c_str());
+			while ( getline (dataF,line) ) {
+				preNodes += line;
+			}
+			dataF.close();
 
 
-	if(graphdata.find("drawgraph:") != 0)
-	{
-		// get graph name and data
-		std::istringstream grdata(graphdata);
-		ind=0;
-		while(std::getline(grdata, tok2, '{'))	{
-			if(ind == 0)
-				graphName = tok2;
-			else
-				datatmp = tok2;
-			ind++;
-		}
+			ostringstream nFName;
+			nFName << outDir << "/graphNodeList_"<<graphName<<".txt";
+			ofstream nFile;
+			nFile.open(nFName.str().c_str(), std::fstream::app);
 
-		std::istringstream grdat(datatmp);
-		std::string tok;
-		ind = 0;
-		while(std::getline(grdat, tok, '}'))	{
-			if(ind == 0)
-				data = tok;
-			ind++;
-		}
+			std:string tok;
+			std::istringstream nod(preNodes);
+			std::vector< std::string > nodeList;
+			while(std::getline(nod, tok, '['))	{
+				nodeList.push_back(tok);
+			}
 
-		std::string fnode(outDir + "/node_" + graphName + ".txt");
-		remove(fnode.c_str());
-		std::string fdat(outDir + "/dat_" + graphName + ".txt");
-		remove(fdat.c_str());
-		std::string finout(outDir + "/inout_" + graphName + ".txt");
-		remove(finout.c_str());
-		std::string finfo(outDir + "/ioInfo_" + graphName + ".txt");
-		remove(finfo.c_str());
+			std::string nodeRel;
 
-		ostringstream dataFName;   dataFName << outDir << "/data_"<<graphName<<".txt";
-		ofstream dataFile;
-		dataFile.open(dataFName.str().c_str());
-		dataFile << data;
-		dataFile.close();
-
-		string vizlist = "scatter3d:ccp:pcp";
-		int nodeID = 0;
-		int parentID = -1;
-		nodesFG.clear();
-		parentsFG.clear();
-		int br_num = 0;
-		int nod_num = 0;
-		std::istringstream ss(data);
-		std::string token;
-		int oldnode = 0;
-
-		//process branches
-		while(std::getline(ss, token, ';'))	{
-			std::istringstream s(token);
-			std::string t;
-			br_num++;
-			int rel_num = 0;
-			while(std::getline(s, t, '-')) {
-				if(oldnode == 0)
+			int i=1;
+			//nodeRel = nodeList[1];
+			while(i < (int)nodeList.size())
+			{
+				//nFile << nodeList[i] << endl;
+				//if(nodeList[i].find(']') == 0)
+				size_t found = nodeList[i].find("]");
+				if(found!=std::string::npos)
 				{
-					if(rel_num == 0)
-						nod_num = -1;
-					else
-						nod_num = nodeID-1;
+					nodeList[i] = nodeList[i].substr(0,found);
+					nodeRel += nodeList[i]+";";
+					nodeList[i] = nodeList[i-1];
+					if(i < ((int)nodeList.size()-1))
+						i = i-1;
 				}
 				else
-					oldnode = 0;
+				{
+					nodeRel += nodeList[i]+"-";
+				}
+				i++;
+			}
 
-				if(nodeID == 0)	{
-					nodesFG.push_back(std::make_pair(nodeID, t));
-					parentsFG.push_back(std::make_pair(nodeID, parentID));
-					nodeID++;
-				}
-				else {
-					oldnode = 0;
-					for(int i=0; i < (int)nodesFG.size(); i++) {
-						if(t.compare(nodesFG[i].second)==0)
-						{
-							oldnode = 1;
-							nod_num = nodesFG[i].first;
-						}
-					}
-					if(oldnode == 0) {
-						nodesFG.push_back(std::make_pair(nodeID, t));
-						parentsFG.push_back(std::make_pair(nodeID, nod_num));
-						nodeID++;
-					}
-				}
-				rel_num++;
+			nFile << nodeRel;
+			nFile.close();
+
+			drawNodeGraph = 1;
+			graphdata = graphName+"{"+nodeRel+"}";
+		}
+	}
+
+	if(graphdata.find("graphNodeStart:") != 0 && graphdata.find("graphNodeEnd:") != 0)
+	{
+		std::string datatmp_add, datatmp, data;
+		int add_edge = 0;
+		std::string tok1, tok2;
+		//int ind = 0;
+
+		if(graphdata.find("addnode:") == 0 || graphdata.find("addedge:") == 0)
+		{
+			std::string graphtmp;
+			std::istringstream grd(graphdata);
+			std::string to;
+			int ind=0;
+			while(std::getline(grd, to, ':'))	{
+				if(ind == 1)
+					graphtmp = to;
+				ind++;
+			}
+			// get graph name and data
+			std::istringstream grdata1(graphtmp);
+			ind=0;
+			while(std::getline(grdata1, tok1, '{'))	{
+				if(ind == 0)
+					graphName = tok1;
+				else
+					datatmp_add = tok1;
+				ind++;
+			}
+
+			std::string line,preData;
+			ostringstream dataFName;
+			dataFName << outDir << "/data_"<<graphName<<".txt";
+			ifstream dataF;
+			dataF.open(dataFName.str().c_str());
+			while ( getline (dataF,line) ) {
+			  preData += line;
+			}
+			dataF.close();
+
+			if(graphdata.find("addnode:") == 0)
+			{
+				if(preData.compare("") == 0)
+					graphdata = graphName+"{"+preData +datatmp_add;
+				else
+					graphdata = graphName+"{"+preData +";"+datatmp_add;
+			}
+			if(graphdata.find("addedge:") == 0)
+			{
+				add_edge = 1;
+				graphdata = graphName+"{"+preData+"}";
 			}
 		}
 
-		for(int i=0; i < (int)nodesFG.size(); i++) {
-			   add_node(nodesFG[i].first, nodesFG[i].second, 0, 0, parentsFG[i].second);
-			   //add_viz(nodesFG[i].first, nodesFG[i].first, vizlist);
+
+		if(graphdata.find("drawgraph:") != 0)
+		{
+			// get graph name and data
+			std::istringstream grdata(graphdata);
+			ind=0;
+			while(std::getline(grdata, tok2, '{'))	{
+				if(ind == 0)
+					graphName = tok2;
+				else
+					datatmp = tok2;
+				ind++;
+			}
+
+			std::istringstream grdat(datatmp);
+			std::string tok;
+			ind = 0;
+			while(std::getline(grdat, tok, '}'))	{
+				if(ind == 0)
+					data = tok;
+				ind++;
+			}
+
+			std::string fnode(outDir + "/node_" + graphName + ".txt");
+			remove(fnode.c_str());
+			std::string fdat(outDir + "/dat_" + graphName + ".txt");
+			remove(fdat.c_str());
+			//std::string finout(outDir + "/inout_" + graphName + ".txt");
+			//remove(finout.c_str());
+			std::string finfo(outDir + "/ioInfo_" + graphName + ".txt");
+			remove(finfo.c_str());
+
+			ostringstream dataFName;   dataFName << outDir << "/data_"<<graphName<<".txt";
+			ofstream dataFile;
+			dataFile.open(dataFName.str().c_str());
+			dataFile << data;
+			dataFile.close();
+
+			string vizlist = "scatter3d:ccp:pcp";
+			int nodeID = 0;
+			int parentID = -1;
+			nodesFG.clear();
+			parentsFG.clear();
+			int br_num = 0;
+			int nod_num = 0;
+			std::istringstream ss(data);
+			std::string token;
+			int oldnode = 0;
+
+			//process branches
+			while(std::getline(ss, token, ';'))	{
+				std::istringstream s(token);
+				std::string t;
+				br_num++;
+				int rel_num = 0;
+				while(std::getline(s, t, '-')) {
+					if(oldnode == 0)
+					{
+						if(rel_num == 0)
+							nod_num = -1;
+						else
+							nod_num = nodeID-1;
+					}
+					else
+						oldnode = 0;
+
+					if(nodeID == 0)	{
+						nodesFG.push_back(std::make_pair(nodeID, t));
+						parentsFG.push_back(std::make_pair(nodeID, parentID));
+						nodeID++;
+					}
+					else {
+						oldnode = 0;
+						for(int i=0; i < (int)nodesFG.size(); i++) {
+							if(t.compare(nodesFG[i].second)==0)
+							{
+								oldnode = 1;
+								nod_num = nodesFG[i].first;
+							}
+						}
+						if(oldnode == 0) {
+							nodesFG.push_back(std::make_pair(nodeID, t));
+							parentsFG.push_back(std::make_pair(nodeID, nod_num));
+							nodeID++;
+						}
+					}
+					rel_num++;
+				}
+			}
+
+			int num_inputs = 0;
+			int num_outputs = 0;
+			if(add_edge == 1)
+			{
+				//ostringstream lFName;
+				//lFName << outDir << "/luu_"<<graphName<<".txt";
+				//ofstream lFile;
+				//lFile.open(lFName.str().c_str(), std::fstream::app);
+				//lFile << datatmp_add << endl;
+				//lFile.close();
+
+				num_inputs = 1;
+				num_outputs = 1;
+
+				std::istringstream s(datatmp_add);
+				std::string t, startNode, endNode;
+				int from_nodeID, to_nodeID;
+				int ind = 0;
+				while(std::getline(s, t, '-')) {
+					if(ind == 0)
+						startNode = t;
+					else
+						endNode = t;
+					ind++;
+				}
+				for(int i=0; i < (int)nodesFG.size(); i++) {
+					if(startNode.compare(nodesFG[i].second) == 0)
+						from_nodeID = nodesFG[i].first;
+					if(endNode.compare(nodesFG[i].second) == 0)
+						to_nodeID = nodesFG[i].first;
+				}
+				add_inout(from_nodeID, 1, to_nodeID, 0);
+				add_edge = 0;
+			}
+			else
+			{
+				ostringstream inouFName;
+				inouFName << outDir << "/inout_"<<graphName<<".txt";
+				inouFile.open(inouFName.str().c_str(), std::fstream::app);
+				inouFile.close();
+			}
+
+			for(int i=0; i < (int)nodesFG.size(); i++) {
+				   add_node(nodesFG[i].first, nodesFG[i].second, num_inputs, num_outputs, parentsFG[i].second);
+			}
+
+			ostringstream datFName;
+			datFName << outDir << "/dat_"<<graphName<<".txt";
+			datFile.open(datFName.str().c_str(), std::fstream::app);
+			datFile.close();
+
+			ostringstream ioInfoFName;
+			ioInfoFName << outDir << "/ioInfo_"<<graphName<<".txt";
+			ioInfoFile.open(ioInfoFName.str().c_str(), std::fstream::app);
+			ioInfoFile.close();
+			// end process branches
 		}
 
-		ostringstream datFName;
-		datFName << outDir << "/dat_"<<graphName<<".txt";
-		datFile.open(datFName.str().c_str(), std::fstream::app);
-		datFile.close();
+		if(graphdata.find("drawgraph:") == 0 || drawNodeGraph == 1)
+		{
+			std::istringstream grd(graphdata);
+			std::string to;
+			int ind=0;
+			while(std::getline(grd, to, ':'))	{
+				if(ind == 1)
+					graphName = to;
+				ind++;
+			}
 
-		ostringstream inouFName;
-		inouFName << outDir << "/inout_"<<graphName<<".txt";
-		inouFile.open(inouFName.str().c_str(), std::fstream::app);
-		inouFile.close();
-
-		ostringstream ioInfoFName;
-		ioInfoFName << outDir << "/ioInfo_"<<graphName<<".txt";
-		ioInfoFile.open(ioInfoFName.str().c_str(), std::fstream::app);
-		ioInfoFile.close();
-		// end process branches
-	}
-	else
-	{
-		std::istringstream grd(graphdata);
-		std::string to;
-		int ind=0;
-		while(std::getline(grd, to, ':'))	{
-			if(ind == 1)
-				graphName = to;
-			ind++;
+			dbg << "<iframe id=\"flGrFrame\" src=\"widgets/flowgraph/index.html?graName="<< graphName << "\" width=\"1600\" height=\"1000\"></iframe>\n";
 		}
-
-		dbg << "<iframe id=\"flGrFrame\" src=\"widgets/flowgraph/index.html?graName="<< graphName << "\" width=\"1600\" height=\"1000\"></iframe>\n";
 	}
 
 	flowgraphOutput = true;
@@ -427,12 +575,12 @@ void flowgraph::add_viz(int nodeID, int buttonID, string viz)
 }
 
 // connection between input fromID of from_nodeID and output toID of to_nodeID
-void flowgraph::add_inout(int fromID, int from_nodeID, int toID, int to_nodeID)
+void flowgraph::add_inout(int from_nodeID, int fromID, int to_nodeID, int toID)
 {
 	ostringstream inouFName;
 	inouFName << outDir << "/inout_"<<graphName<<".txt";
 	inouFile.open(inouFName.str().c_str(), std::fstream::app);
-	inouFile <<fromID<<"_output_"<<from_nodeID<<":"<<toID<<"_input_"<<to_nodeID<< endl;
+	inouFile <<from_nodeID<<"_output_"<<fromID<<":"<<to_nodeID<<"_input_"<<toID<< endl;
 	inouFile.close();
 }
 
@@ -494,6 +642,7 @@ void* flowgraph::startSubFlowGraph(properties::iterator props) {
 void flowgraph::endSubFlowGraph(void* obj) {
 
 }
+
 
 }; // namespace layout
 }; // namespace sight
