@@ -202,8 +202,8 @@ void flowgraph::outputDataFlowGraph(std::string graphdata) {
 			ind++;
 		}
 
-		if( graphdata.find("drawNodeGraph:") != 0 )
-		{
+		//if( graphdata.find("drawNodeGraph:") != 0 )
+		//{
 			ostringstream dataFName;
 			dataFName << outDir << "/graphNode_"<<graphName<<".txt";
 			ofstream dataFile;
@@ -213,25 +213,25 @@ void flowgraph::outputDataFlowGraph(std::string graphdata) {
 			if(graphdata.find("graphNodeEnd:") == 0)
 				dataFile << "]";
 			dataFile.close();
-		}
-		else
-		{
+		//}
+		//else
+		//{
 
 			std::string line,preNodes;
-			ostringstream dataFName;
-			dataFName << outDir << "/graphNode_"<<graphName<<".txt";
-			ifstream dataF;
-			dataF.open(dataFName.str().c_str());
-			while ( getline (dataF,line) ) {
+			ostringstream daFName;
+			daFName << outDir << "/graphNode_"<<graphName<<".txt";
+			ifstream daF;
+			daF.open(daFName.str().c_str());
+			while ( getline (daF,line) ) {
 				preNodes += line;
 			}
-			dataF.close();
+			daF.close();
 
 
-			ostringstream nFName;
-			nFName << outDir << "/graphNodeList_"<<graphName<<".txt";
-			ofstream nFile;
-			nFile.open(nFName.str().c_str(), std::fstream::app);
+			//ostringstream nFName;
+			//nFName << outDir << "/graphNodeList_"<<graphName<<".txt";
+			//ofstream nFile;
+			//nFile.open(nFName.str().c_str(), std::fstream::app);
 
 			std:string tok;
 			std::istringstream nod(preNodes);
@@ -243,11 +243,8 @@ void flowgraph::outputDataFlowGraph(std::string graphdata) {
 			std::string nodeRel;
 
 			int i=1;
-			//nodeRel = nodeList[1];
 			while(i < (int)nodeList.size())
 			{
-				//nFile << nodeList[i] << endl;
-				//if(nodeList[i].find(']') == 0)
 				size_t found = nodeList[i].find("]");
 				if(found!=std::string::npos)
 				{
@@ -264,12 +261,12 @@ void flowgraph::outputDataFlowGraph(std::string graphdata) {
 				i++;
 			}
 
-			nFile << nodeRel;
-			nFile.close();
+			//nFile << nodeRel;
+			//nFile.close();
 
 			drawNodeGraph = 1;
 			graphdata = graphName+"{"+nodeRel+"}";
-		}
+		//}
 	}
 
 	if(graphdata.find("graphNodeStart:") != 0 && graphdata.find("graphNodeEnd:") != 0)
@@ -473,7 +470,8 @@ void flowgraph::outputDataFlowGraph(std::string graphdata) {
 			// end process branches
 		}
 
-		if(graphdata.find("drawgraph:") == 0 || drawNodeGraph == 1)
+		//if(graphdata.find("drawgraph:") == 0 || drawNodeGraph == 1)
+		if(graphdata.find("drawgraph:") == 0)
 		{
 			std::istringstream grd(graphdata);
 			std::string to;

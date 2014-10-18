@@ -12,23 +12,26 @@ int main(int argc, char** argv)
 	dbg << "<h1>Example 12: HoaVizAPI</h1>" << endl;
 
 	// generate graph 1 by method 1
-	flowgraph fg;
+    flowgraph fg;
     fg.startGraph();
     fg.graphNodeStart("a");
     fg.graphNodeStart("b");
     fg.graphNodeStart("c");
+    fg.addEdge("a", "c");
     fg.graphNodeEnd("c");
     fg.graphNodeStart("d");
     fg.graphNodeStart("e");
     fg.graphNodeStart("f");
     fg.graphNodeEnd("f");
     fg.graphNodeStart("k");
+    fg.addEdge("c","k");
     fg.graphNodeEnd("k");
     fg.graphNodeEnd("e");
     fg.graphNodeEnd("d");
     fg.graphNodeEnd("b");
     fg.graphNodeEnd("a");
-    fg.endNodeGraph();
+    fg.addEdge("a", "f");
+    fg.endGraph();
 
     // generate graph 2 by method 2
 	flowgraph gr;
