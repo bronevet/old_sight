@@ -130,6 +130,8 @@ flowgraph::~flowgraph() {
   
   dbg.exitBlock();
   
+
+
   // Remove the current graph from the map of active graphs
   assert(active.size()>0);
   assert(active.find(flowgraphID) != active.end());

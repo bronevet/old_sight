@@ -13,7 +13,6 @@ int main(int argc, char** argv)
 
 	// generate graph 1 by method 1
     flowgraph fg;
-    fg.startGraph();
     fg.graphNodeStart("a");
     fg.graphNodeStart("b");
     fg.graphNodeStart("c");
@@ -31,11 +30,9 @@ int main(int argc, char** argv)
     fg.graphNodeEnd("b");
     fg.graphNodeEnd("a");
     fg.addEdge("a", "f");
-    fg.endGraph();
 
     // generate graph 2 by method 2
 	flowgraph gr;
-	gr.startGraph();
 	gr.addNode("a");
 	gr.addNode("b","a");
 	gr.addNode("c","b");
@@ -43,7 +40,6 @@ int main(int argc, char** argv)
 	gr.addNode("e","d");
 	gr.addEdge("a","c");
 	gr.addEdge("a","e");
-	gr.endGraph();
 
 	// generate graph 3
 	flowgraph g;
@@ -51,12 +47,10 @@ int main(int argc, char** argv)
 	g.addNode("time");
 	g.addEdge("time","c");
 	g.addEdge("time","k");
-	g.endGraph();
 
 	// generate graph 4
 	flowgraph flg;
 	flg.genFlowGraph("{m1-m2-m3;m2-m4}");
-	flg.endGraph();
 
   return 0;
 }

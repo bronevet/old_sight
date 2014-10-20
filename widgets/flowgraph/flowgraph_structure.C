@@ -25,6 +25,8 @@ ThreadLocalStorage1<int, int> flowgraph::maxFlowGraphID(0);
 // Maximum ID assigned to any graph node
 ThreadLocalStorage1<int, int> flowgraph::maxNodeID(0);
 
+int stGraph = -1;
+
 flowgraph::flowgraph(bool includeAllSubBlocks, properties* props) :
   block("flowgraph", setProperties(maxFlowGraphID, "", NULL, props)), includeAllSubBlocks(includeAllSubBlocks)
 { flowgraphID=maxFlowGraphID++; }
@@ -60,6 +62,7 @@ flowgraph::flowgraph(string dataText, std::set<anchor>& pointsTo,       const at
 // Sets the properties of this object
 properties* flowgraph::setProperties(int flowgraphID, std::string dataText, const attrOp* onoffOp, properties* props)
 {
+
   if(props==NULL) props = new properties();
     
   // If the current attribute query evaluates to true (we're emitting debug output) AND
@@ -74,6 +77,16 @@ properties* flowgraph::setProperties(int flowgraphID, std::string dataText, cons
   }
   else
     props->active = false;
+
+  if(stGraph == -1 || stGraph != flowgraphID)
+  {
+	stringstream ss;
+	ss << flowgraphID;
+	string str = ss.str();
+
+	dbg << "<div id=\"hoaViz\"><iframe id=\"flGrFrame\" src=\"widgets/flowgraph/index.html?graName="<< str << "\" width=\"1600\" height=\"1000\"></iframe></div>\n";
+	stGraph = flowgraphID;
+  }
   return props;
 }
 
@@ -84,12 +97,14 @@ properties* flowgraph::setProperties(int flowgraphID, std::string dataText, cons
 // it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
 // an object will invoke the destroy() method of the most-derived class.
 void flowgraph::destroy() {
+
   this->~flowgraph();
 }
 
 flowgraph::~flowgraph() {
-  assert(!destroyed);
-    
+
+	assert(!destroyed);
+
   // Refresh nodesConnected based on all the location information collected for the graph node anchors during execution
   // by filling a new set. Anchor IDs are only updated to become consistent with their final location when they're copied
   // to make sure that updated information about anchor locations doesn't invalidate data structures. Thus, we get
@@ -109,6 +124,7 @@ flowgraph::~flowgraph() {
 
 // generate flow graph by string
 void flowgraph::genFlowGraph(std::string dataText) {
+	stGraph++;
 	stringstream ss;
 	ss << flowgraphID;
 	string str = ss.str();
@@ -124,14 +140,15 @@ void flowgraph::startGraph(){
 
 // add node and edge by method 1
 void flowgraph::addNode(std::string nodeName){
+	stGraph++;
 	stringstream ss;
 	ss << flowgraphID;
 	string str = ss.str();
 	flowgraph g("addnode:"+str+"{"+nodeName+"}");
 }
 
-void flowgraph::addNode(std::string childNode, std::string parentNode)
-{
+void flowgraph::addNode(std::string childNode, std::string parentNode){
+	stGraph++;
 	stringstream ss;
 	ss << flowgraphID;
 	string str = ss.str();
@@ -139,6 +156,7 @@ void flowgraph::addNode(std::string childNode, std::string parentNode)
 }
 
 void flowgraph::addEdge(std::string startNode, std::string endNode){
+	stGraph++;
 	stringstream ss;
 	ss << flowgraphID;
 	string str = ss.str();
@@ -146,6 +164,7 @@ void flowgraph::addEdge(std::string startNode, std::string endNode){
 }
 
 void flowgraph::endGraph(){
+	stGraph++;
 	stringstream ss;
 	ss << flowgraphID;
 	string str = ss.str();
@@ -153,6 +172,7 @@ void flowgraph::endGraph(){
 }
 
 void flowgraph::graphNodeStart(std::string nodeName){
+	stGraph++;
 	stringstream ss;
 	ss << flowgraphID;
 	string str = ss.str();
@@ -160,6 +180,7 @@ void flowgraph::graphNodeStart(std::string nodeName){
 }
 
 void flowgraph::graphNodeEnd(std::string nodeName){
+	stGraph++;
 	stringstream ss;
 	ss << flowgraphID;
 	string str = ss.str();
@@ -167,6 +188,7 @@ void flowgraph::graphNodeEnd(std::string nodeName){
 }
 
 void flowgraph::addNodeEdge(std::string startNode, std::string endNode){
+	stGraph++;
 	stringstream ss;
 	ss << flowgraphID;
 	string str = ss.str();
@@ -174,6 +196,7 @@ void flowgraph::addNodeEdge(std::string startNode, std::string endNode){
 }
 
 void flowgraph::endNodeGraph(){
+	stGraph++;
 	stringstream ss;
 	ss << flowgraphID;
 	string str = ss.str();

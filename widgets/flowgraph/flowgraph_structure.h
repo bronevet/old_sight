@@ -20,7 +20,7 @@ class flowgraph: public structure::block
 {
   // Unique ID of this graph object
   int flowgraphID;
-  
+
   // Maximum ID assigned to any graph object
   static ThreadLocalStorage1<int, int> maxFlowGraphID;
 
@@ -60,7 +60,6 @@ class flowgraph: public structure::block
   
   public:
   ~flowgraph();
-
   // Directly calls the destructor of this object. This is necessary because when an application crashes
   // Sight must clean up its state by calling the destructors of all the currently-active sightObjs. Since 
   // there is no way to directly call the destructor of a given object when it may have several levels
