@@ -1,4 +1,5 @@
 #include "sight_merge.h"
+#include "widgets/scope/scope_structure.h"
 using namespace std;
 
 namespace sight {

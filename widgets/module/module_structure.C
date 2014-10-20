@@ -4,6 +4,8 @@
 #include "module_structure.h"
 #include "../../sight_common.h"
 #include "module_common.h"
+#include "../trace/trace_structure.h"
+#include "../trace/trace_common.h"
 #include <fstream>
 #include <iostream>
 #include <sstream>

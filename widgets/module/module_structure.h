@@ -11,6 +11,7 @@
 #include "../../attributes/attributes_structure.h"
 #include "module_common.h"
 #include "../../sight_structure_internal.h"
+#include "../trace/trace_structure.h"
 #include "Callpath.h"
 #include <pthread.h>
 

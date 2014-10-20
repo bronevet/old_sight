@@ -12,7 +12,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/time.h>
-
+#include "scope_structure.h"
 
 using namespace std;
 using namespace sight::common;

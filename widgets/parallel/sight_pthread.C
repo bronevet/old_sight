@@ -1,12 +1,18 @@
 #include <pthread.h>
 #include <string.h>
-#include "sight_structure.h"
+#include "sight_structure_internal.h"
 #include "sight_common.h"
 #include "thread_local_storage.h"
 #define PTHREAD_C
 #include "sight_pthread.h"
+#include "../widgets/clock/clock_structure.h"
+#include "../../attributes/attributes_common.h"
+#include "../../attributes/attributes_structure.h"
+#include "parallel_structure.h"
 using namespace sight;
 
+namespace sight {
+namespace structure {
 static pthread_mutex_t causalityMutex = PTHREAD_MUTEX_INITIALIZER;
 static std::map<pthread_t, scalarCausalClock*> causality;
 
@@ -576,3 +582,5 @@ int sight_pthread_cond_broadcast(sight_pthread_cond_t *scond) {
   return 0;
 }
 
+}; // namespace structure 
+}; // namespace sight

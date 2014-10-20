@@ -4,9 +4,7 @@ EXE := .exe
 endif
 
 sight_H := ../*.h ../*/*.h ../widgets/*/*.h
-TESTERS = 12.RemoteModuleEdges
-
-#0.Demo${EXE} \
+TESTERS = #0.Demo${EXE} \
           1.StructuredFormatting${EXE} \
           2.ConditionalFormatting${EXE} \
           3.Navigation${EXE} \
@@ -121,10 +119,6 @@ run: ${TESTERS}
 11.ExternTraceProcess${EXE}: 11.ExternTraceProcess.C ../libsight_structure.so ${sight_H}
 	${CCC} -g 11.ExternTraceProcess.windowing.C -I.. -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 11.ExternTraceProcess.windowing${EXE}
 	${CCC} -g ${SIGHT_CFLAGS} 11.ExternTraceProcess.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 11.ExternTraceProcess${EXE}
-
-12.RemoteModuleEdges${EXE}: 12.RemoteModuleEdges.C ../libsight_structure.so ${sight_H}
-	${CCC} ${SIGHT_CFLAGS} 12.RemoteModuleEdges.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 12.RemoteModuleEdges${EXE}
-
 
 runPthread: ${PTHREAD_TESTERS}
 #	rm -rf dbg.*

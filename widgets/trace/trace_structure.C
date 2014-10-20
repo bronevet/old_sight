@@ -1,5 +1,7 @@
 #include "../../sight_common.h"
 #include "../../sight_structure.h"
+#include "../widgets/scope/scope_structure.h"
+#include "trace_structure.h"
 using namespace std;
 using namespace sight::common;
   
