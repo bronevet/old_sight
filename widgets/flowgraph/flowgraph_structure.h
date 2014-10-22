@@ -78,6 +78,7 @@ class flowgraph: public structure::block
   void endGraph();
 
   void graphNodeStart(std::string nodeName);
+  void graphNodeStart(std::string nodeName, int verID, int horID);
   void graphNodeEnd(std::string nodeName);
   void addNodeEdge(std::string startNode, std::string endNode);
   void endNodeGraph();

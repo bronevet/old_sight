@@ -10,8 +10,25 @@ int main(int argc, char** argv)
 
 	// It is possible to write arbitrary text to the debug output
 	dbg << "<h1>Example 12: HoaVizAPI</h1>" << endl;
+    
+    // genegrate graph by vertical/horizontal layout
+    flowgraph g;
+    g.graphNodeStart("a",0,0);
+    g.graphNodeStart("c",1,0);
+    g.graphNodeEnd("c");
+    g.graphNodeStart("k",1,1);
+    g.graphNodeEnd("k");    
+    g.graphNodeStart("b",1,2);
+    g.graphNodeStart("d",2,2);
+    g.graphNodeEnd("d");
+    g.graphNodeStart("e",3,2);
+    g.graphNodeEnd("e");
+    g.graphNodeEnd("b");
+    g.graphNodeEnd("a");
+    g.addEdge("a","d");
+    g.addEdge("c","e");
 
-	// generate graph 1 by method 1
+    //generate graph 1 by method 1
     flowgraph fg;
     fg.graphNodeStart("a");
     fg.graphNodeStart("b");
@@ -41,16 +58,17 @@ int main(int argc, char** argv)
 	gr.addEdge("a","c");
 	gr.addEdge("a","e");
 
+        /*
 	// generate graph 3
-	flowgraph g;
-	g.genFlowGraph("{a-b-c;b-d-e-f;e-k;e-m}");
-	g.addNode("time");
-	g.addEdge("time","c");
-	g.addEdge("time","k");
+	flowgraph g3;
+	g3.genFlowGraph("{a-b-c;b-d-e-f;e-k;e-m}");
+	g3.addNode("time");
+	g3.addEdge("time","c");
+	g3.addEdge("time","k");
 
 	// generate graph 4
 	flowgraph flg;
 	flg.genFlowGraph("{m1-m2-m3;m2-m4}");
-
+        */
   return 0;
 }

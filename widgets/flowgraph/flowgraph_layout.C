@@ -182,8 +182,9 @@ void flowgraph::outputDataFlowGraph(std::string graphdata) {
 	std::string t1, t2;
 	int ind = 0;
 	int drawNodeGraph = 0;
+	std::string vertID, horiID;
 
-	if(graphdata.find("graphNodeStart:") == 0 || graphdata.find("graphNodeEnd:") == 0 || graphdata.find("drawNodeGraph:") == 0)
+	if(graphdata.find("graphNodeStart:") == 0 || graphdata.find("graphNodeEnd:") == 0 ||  graphdata.find("verhorNodeStart") == 0 || graphdata.find("drawNodeGraph:") == 0)
 	{
 		std::string graphtmp, nodeName;
 		std::istringstream grd(graphdata);
@@ -196,13 +197,32 @@ void flowgraph::outputDataFlowGraph(std::string graphdata) {
 		// get graph name and data
 		std::istringstream grdat(graphtmp);
 		ind=0;
+		int in2 = 0;
 		while(std::getline(grdat, t2, '{'))	{
 			if(ind == 0)
 				graphName = t2;
 			else
-				nodeName = t2;
+			{
+				if(graphdata.find("verhorNodeStart") == 0)
+				{
+					std::istringstream s(t2);
+					std::string t3;
+					while(std::getline(s, t3 , '-')) {
+						if(in2 == 0)
+							nodeName = t3;
+						else if(in2 == 1)
+							vertID = t3;
+						else
+							horiID = t3;
+						in2 += 1;
+					}
+				}
+				else
+					nodeName = t2;
+			}	
 			ind++;
 		}
+
 
 		//if( graphdata.find("drawNodeGraph:") != 0 )
 		//{
@@ -210,11 +230,24 @@ void flowgraph::outputDataFlowGraph(std::string graphdata) {
 			dataFName << outDir << "/graphNode_"<<graphName<<".txt";
 			ofstream dataFile;
 			dataFile.open(dataFName.str().c_str(), std::fstream::app);
+
+                        ostringstream vhFName;
+                        vhFName << outDir << "/vert_hori_"<<graphName<<".txt";
+                        ofstream vhFile;
+                        vhFile.open(vhFName.str().c_str(), std::fstream::app);
+
 			if(graphdata.find("graphNodeStart:") == 0)
 				dataFile << "["+nodeName;
+		        if(graphdata.find("verhorNodeStart:") == 0)
+                        {
+			       dataFile << "["+nodeName;
+			       //vhFile << nodeName + ":" + vertID + ":" + horiID + "\n";	
+				vhFile << nodeName + ":" + vertID + ":" + horiID + "\n"; 
+			}
 			if(graphdata.find("graphNodeEnd:") == 0)
 				dataFile << "]";
 			dataFile.close();
+			vhFile.close();
 		//}
 		//else
 		//{
@@ -270,6 +303,7 @@ void flowgraph::outputDataFlowGraph(std::string graphdata) {
 			graphdata = graphName+"{"+nodeRel+"}";
 		//}
 	}
+
 
 	if(graphdata.find("graphNodeStart:") != 0 && graphdata.find("graphNodeEnd:") != 0)
 	{
@@ -469,6 +503,12 @@ void flowgraph::outputDataFlowGraph(std::string graphdata) {
 			ioInfoFName << outDir << "/ioInfo_"<<graphName<<".txt";
 			ioInfoFile.open(ioInfoFName.str().c_str(), std::fstream::app);
 			ioInfoFile.close();
+                        
+                        ostringstream vhFName;
+                        vhFName << outDir << "/vert_hori_"<<graphName<<".txt";
+                        ofstream vhFile;
+                        vhFile.open(vhFName.str().c_str(), std::fstream::app);
+                        vhFile.close();
 			// end process branches
 		}
 

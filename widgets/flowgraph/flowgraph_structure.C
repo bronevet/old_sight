@@ -179,6 +179,24 @@ void flowgraph::graphNodeStart(std::string nodeName){
 	flowgraph g("graphNodeStart:"+str+"{"+nodeName);
 }
 
+void flowgraph::graphNodeStart(std::string nodeName, int verID, int horID){
+	stGraph++;
+	stringstream ss;
+	ss << flowgraphID;
+	string str = ss.str();
+
+        stringstream ss1;
+        ss1 << verID;
+        string str1 = ss1.str();
+
+        stringstream ss2;
+        ss2 << horID;;
+        string str2 = ss2.str();
+	flowgraph g("verhorNodeStart:"+str+"{"+nodeName+"-"+str1+"-"+str2);
+
+}
+
+
 void flowgraph::graphNodeEnd(std::string nodeName){
 	stGraph++;
 	stringstream ss;
