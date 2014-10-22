@@ -224,86 +224,101 @@ void flowgraph::outputDataFlowGraph(std::string graphdata) {
 		}
 
 
-		//if( graphdata.find("drawNodeGraph:") != 0 )
-		//{
-			ostringstream dataFName;
-			dataFName << outDir << "/graphNode_"<<graphName<<".txt";
-			ofstream dataFile;
-			dataFile.open(dataFName.str().c_str(), std::fstream::app);
+		ostringstream dataFName;
+		dataFName << outDir << "/graphNode_"<<graphName<<".txt";
+		ofstream dataFile;
+		dataFile.open(dataFName.str().c_str(), std::fstream::app);
 
-                        ostringstream vhFName;
-                        vhFName << outDir << "/vert_hori_"<<graphName<<".txt";
-                        ofstream vhFile;
-                        vhFile.open(vhFName.str().c_str(), std::fstream::app);
+		ostringstream vhFName;
+		vhFName << outDir << "/vert_hori_"<<graphName<<".txt";
+		ofstream vhFile;
+		vhFile.open(vhFName.str().c_str(), std::fstream::app);
 
-			if(graphdata.find("graphNodeStart:") == 0)
-				dataFile << "["+nodeName;
-		        if(graphdata.find("verhorNodeStart:") == 0)
-                        {
-			       dataFile << "["+nodeName;
-			       //vhFile << nodeName + ":" + vertID + ":" + horiID + "\n";	
-				vhFile << nodeName + ":" + vertID + ":" + horiID + "\n"; 
-			}
-			if(graphdata.find("graphNodeEnd:") == 0)
-				dataFile << "]";
-			dataFile.close();
-			vhFile.close();
-		//}
-		//else
-		//{
+		if(graphdata.find("graphNodeStart:") == 0)
+			dataFile << "["+nodeName;
+			if(graphdata.find("verhorNodeStart:") == 0)
+					{
+			   dataFile << "["+nodeName;
+			   //vhFile << nodeName + ":" + vertID + ":" + horiID + "\n";
+			vhFile << nodeName + ":" + vertID + ":" + horiID + "\n";
+		}
+		if(graphdata.find("graphNodeEnd:") == 0)
+			dataFile << "]";
+		dataFile.close();
+		vhFile.close();
 
-			std::string line,preNodes;
-			ostringstream daFName;
-			daFName << outDir << "/graphNode_"<<graphName<<".txt";
-			ifstream daF;
-			daF.open(daFName.str().c_str());
-			while ( getline (daF,line) ) {
-				preNodes += line;
-			}
-			daF.close();
+		std::string line,preNodes;
+		ostringstream daFName;
+		daFName << outDir << "/graphNode_"<<graphName<<".txt";
+		ifstream daF;
+		daF.open(daFName.str().c_str());
+		while ( getline (daF,line) ) {
+			preNodes += line;
+		}
+		daF.close();
 
+		std:string tok;
+		std::istringstream nod(preNodes);
+		std::vector< std::string > nodeList;
+		std::vector< int > countNode;
+		std::vector< int > end_subgr;
+		while(std::getline(nod, tok, '['))	{
+			nodeList.push_back(tok);
+			countNode.push_back(0);
+			end_subgr.push_back(0);
+		}
 
-			//ostringstream nFName;
-			//nFName << outDir << "/graphNodeList_"<<graphName<<".txt";
-			//ofstream nFile;
-			//nFile.open(nFName.str().c_str(), std::fstream::app);
+		std::string nodeRel;
 
-			std:string tok;
-			std::istringstream nod(preNodes);
-			std::vector< std::string > nodeList;
-			while(std::getline(nod, tok, '['))	{
-				nodeList.push_back(tok);
-			}
-
-			std::string nodeRel;
-
-			int i=1;
-			while(i < (int)nodeList.size())
-			{
-				size_t found = nodeList[i].find("]");
+		int i=1;
+		int tam = 0;
+		while(i < (int)nodeList.size())
+		{
+			size_t found = nodeList[i].find("]");
+			int c = 0;
+			for(int j=0; j<nodeList[i].length(); j++)
 				if(found!=std::string::npos)
-				{
-					nodeList[i] = nodeList[i].substr(0,found);
-					nodeRel += nodeList[i]+";";
+					c++;
+
+			if(c > 0)
+				c -= 1;
+			countNode[i] = c;
+
+			tam += countNode[i];
+			if(tam == i)
+				end_subgr[i] = 1;
+
+			i++;
+		}
+		i = 1;
+		while(i < (int)nodeList.size())
+		{
+			size_t found = nodeList[i].find("]");
+
+			if(found!=std::string::npos)
+			{
+				nodeList[i] = nodeList[i].substr(0,found);
+				nodeRel += nodeList[i]+";";
+				nodeList[i] = nodeList[i-1];
+				if(countNode[i] > 1)
+					nodeList[i] = nodeList[i-countNode[i]-1];
+				if(countNode[i] == 1)
 					nodeList[i] = nodeList[i-1];
-					if(i < ((int)nodeList.size()-1))
-						i = i-1;
-				}
-				else
-				{
-					nodeRel += nodeList[i]+"-";
-				}
-				i++;
+
+				if(i < ((int)nodeList.size()-1))
+					i = i-1;
 			}
+			else
+			{
+				if(end_subgr[i] != 1)
+					nodeRel += nodeList[i]+"-";
+			}
+			i++;
+		}
 
-			//nFile << nodeRel;
-			//nFile.close();
-
-			drawNodeGraph = 1;
-			graphdata = graphName+"{"+nodeRel+"}";
-		//}
+		drawNodeGraph = 1;
+		graphdata = graphName+"{"+nodeRel+"}";
 	}
-
 
 	if(graphdata.find("graphNodeStart:") != 0 && graphdata.find("graphNodeEnd:") != 0)
 	{
@@ -452,13 +467,6 @@ void flowgraph::outputDataFlowGraph(std::string graphdata) {
 			int num_outputs = 0;
 			if(add_edge == 1)
 			{
-				//ostringstream lFName;
-				//lFName << outDir << "/luu_"<<graphName<<".txt";
-				//ofstream lFile;
-				//lFile.open(lFName.str().c_str(), std::fstream::app);
-				//lFile << datatmp_add << endl;
-				//lFile.close();
-
 				num_inputs = 1;
 				num_outputs = 1;
 
