@@ -1,8 +1,12 @@
-#pragma once 
+#pragma once
 #include <pthread.h>
 #include <string.h>
-#include "sight_structure.h"
+#undef PUBLIC_API
+#include "utils.h"
+#include "sight_structure_internal.h"
 #include "sight_common.h"
+#include "sight_widgets.h"
+#include "sight_control.h"
 #include "thread_local_storage.h"
 
 namespace sight {

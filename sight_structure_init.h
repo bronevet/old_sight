@@ -21,7 +21,6 @@
 #include <deque>
 #include <boost/graph/topological_sort.hpp>
 #include <boost/graph/adjacency_list.hpp>
-
 namespace sight {
 namespace structure{
 
