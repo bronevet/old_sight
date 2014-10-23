@@ -4,7 +4,7 @@ EXE := .exe
 endif
 
 sight_H := ../*.h ../*/*.h ../widgets/*/*.h
-TESTERS = #0.Demo${EXE} \
+TESTERS = 0.Demo${EXE} \
           1.StructuredFormatting${EXE} \
           2.ConditionalFormatting${EXE} \
           3.Navigation${EXE} \

@@ -878,6 +878,8 @@ void module::init(const std::vector<port>& ins, properties* derivedProps) {
   isDerived = (derivedProps!=NULL); // This is an instance of an object that derives from module if its constructor sets props to non-NULL
   if(derivedProps==NULL) derivedProps = new properties();
   this->ins = ins;
+  if(this->ins.size() < g.numInputs())
+    this->ins.resize(g.numInputs());
   
   if(modularApp::isInstanceActive() && derivedProps->active) {
     moduleID = modularApp::genModuleID(g);
@@ -1170,8 +1172,10 @@ void module::setTraceCtxt() {
   // Add to it the context of this module based on the contexts of its inputs
   for(int i=0; i<ins.size(); i++) {
     if(ins[i].ctxt==NULL) continue;
-    for(std::map<std::string, attrValue>::const_iterator c=ins[i].ctxt->configuration.begin(); c!=ins[i].ctxt->configuration.end(); c++) {
-      traceCtxt[encodeCtxtName("module", "input", txt()<<i, c->first)] = c->second;
+    if(ins[i].ctxt) {
+      for(std::map<std::string, attrValue>::const_iterator c=ins[i].ctxt->configuration.begin(); c!=ins[i].ctxt->configuration.end(); c++) {
+        traceCtxt[encodeCtxtName("module", "input", txt()<<i, c->first)] = c->second;
+      }
     }
   }
 }

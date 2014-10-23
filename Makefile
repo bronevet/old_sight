@@ -280,7 +280,7 @@ script/taffydb:
 	#cd script; wget --no-check-certificate https://github.com/typicaljoe/taffydb/archive/master.zip
 	#cd script; mv master master.zip; unzip master.zip
 	#rm script/master*
-	cd script; ../getGithub https://github.com/typicaljoe/taffydb/archive/master.zip zip unzip
+	cd script; ../getGithub https://github.com/typicaljoe/taffydb/archive/master.zip zip unzip master
 	mv script/taffydb-master script/taffydb
 	chmod 755 script/taffydb
 	chmod 644 script/taffydb/*
