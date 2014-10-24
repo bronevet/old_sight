@@ -291,6 +291,7 @@ void setup()
   }
   */
   
+  redraw();
   noLoop();
 }
  
@@ -485,7 +486,7 @@ void draw()
   }
   else
   {
-    newWid = int(100+nodewidth*(depth_width+2));
+    newWid = int(100+nodewidth*(depth_width+8));
     newHei = depth_distance;
   }
   for(int k=0; k< (depth_length); k++)

@@ -128,7 +128,7 @@ modularApp::modularApp(properties::iterator props) : block(properties::next(prop
   // data for input and output variable information of modules
   ostringstream ioInfoFName;
   ioInfoFName << outDir << "/ioInfo.txt";
-
+  ioInfoFile.open(ioInfoFName.str().c_str());
 }
 
 // Initialize the environment within which generated graphs will operate, including
