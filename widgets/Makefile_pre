@@ -17,12 +17,13 @@ all: gsl papi libmsr synoptic \
      source/sh_main.js source/sh_cpp.js \
      threejs \
      jsPlumb \
-     external_scripts \
-     muster parallel/cluster
+     external_scripts
 	chmod 755 canviz-0.1 
 	chmod 644 canviz-0.1/*
 	chmod 755 canviz-0.1/excanvas canviz-0.1/lib canviz-0.1/path canviz-0.1/prototype
 	chmod 644 canviz-0.1/*/*
+
+#muster parallel/cluster
 #PnMPI/INSTALL/lib/libpnmpi.so PnMPI/INSTALL/lib/pnmpi-modules/commsub-sclock.so \
 #     ID3-Decision-Tree \
 

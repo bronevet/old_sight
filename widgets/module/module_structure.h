@@ -1365,7 +1365,7 @@ class ModuleEdgeMerger : public Merger {
   { return new ModuleEdgeMerger(tags, outStreamRecords, inStreamRecords, props); }
   
   // Sets the properties of the merged object
-  static properties* setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+  static properties* setProperties(std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
                                    std::map<std::string, streamRecord*>& outStreamRecords,
                                    std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
                                    properties* props);

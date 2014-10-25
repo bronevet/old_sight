@@ -2421,7 +2421,8 @@ ModuleEdgeMerger::ModuleEdgeMerger(std::vector<std::pair<properties::tagType, pr
                          map<string, streamRecord*>& outStreamRecords,
                          vector<map<string, streamRecord*> >& inStreamRecords,
                          properties* props) : 
-        Merger(advance(tags), outStreamRecords, inStreamRecords, props)
+        Merger(advance(tags), outStreamRecords, inStreamRecords,
+            setProperties(tags, outStreamRecords, inStreamRecords, props))
 {}
 /*        Merger(advance(tags), outStreamRecords, inStreamRecords, 
                     setProperties(tags, outStreamRecords, inStreamRecords, props))* /
@@ -2478,7 +2479,7 @@ ModuleEdgeMerger::ModuleEdgeMerger(std::vector<std::pair<properties::tagType, pr
 }*/
 
 // Sets the properties of the merged object
-properties* ModuleEdgeMerger::setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+properties* ModuleEdgeMerger::setProperties(std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
                                        map<string, streamRecord*>& outStreamRecords,
                                        vector<map<string, streamRecord*> >& inStreamRecords,
                                        properties* props) {

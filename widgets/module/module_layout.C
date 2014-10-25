@@ -631,7 +631,7 @@ void modularApp::addEdge(int fromCID, common::module::ioT fromT, int fromP,
   dotFile << "\tnode"<<fromCID<<"_Out:"<<portName(fromT, fromP)<<":s"<<
              " -> "<<
                "node"<<toCID  <<":"<<portName(toT,   toP  )<<":n "<<
-             "[penwidth="<<(1+prob*3)<<"];\n";
+             "[penwidth="<<(1/*+prob*3*/)<<"];\n";
 }
 
 // Static version of the call that pulls the from/to anchor IDs from the properties iterator and calls addUndirEdge() in the currently active graph
