@@ -20,7 +20,7 @@ foreach my $lat (3.615, 10, 20) {
   $dt *=2;
 } }
 
-sys("$dir/hier_merge dbg.CoMD.CompModules zipper dbg.CoMD.CompModules.dt_*.lat_*/structure");
+sys("$dir/hier_merge dbg.CoMD.CompModules dbg.CoMD.CompModules.dt_*.lat_*/structure");
 sys("$dir/slayout dbg.CoMD.CompModules/structure");
 
 sys("rm *.yaml", $verbose);

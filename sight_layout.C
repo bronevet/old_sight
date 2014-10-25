@@ -198,6 +198,7 @@ bool saved_appExecInfo=false; // Indicates whether the application execution inf
 int argc = 0;
 string* argv = NULL;
 string execFile;
+string PWD;
 
 // All the aliases of the name of the host that this application is currently executing on
 list<string> hostnames;
@@ -231,6 +232,14 @@ void* SightInit(properties::iterator props) {
       argv[i] = properties::get(props, txt()<<"argv_"<<i);
 
     execFile = properties::get(props, "execFile");
+
+    int numEnvVars = props.getInt("numEnvVars");
+    for(int i=0; i<numEnvVars; i++) {
+      if(props.get(txt()<<"envName_"<<i)=="PWD") {
+        PWD = properties::get(props, txt()<<"envVal_"<<i);
+        break;
+      }
+    }
 
   #if REMOTE_ENABLED
   if(!isPortUsed(GDB_PORT)) {
@@ -351,9 +360,11 @@ std::string sightClock::getComparatorsJS() {
 int sightObj::maxClockID=0;
 
 sightObj::sightObj(properties::iterator props) {
-  if(maxClockID==0) {
+  static bool layoutOrderedDivsPlaced=false;
+  if(!layoutOrderedDivsPlaced) {
     // After all the clock insertions are complete, perform the order-sensitive div layout
     dbg.widgetScriptEpilogCommand("layoutOrderedDivs();");
+    layoutOrderedDivsPlaced=true;
   }
 
   // The sightObj constructor is called with the props iterator set immediately

@@ -1,5 +1,7 @@
 #include "../../sight_common.h"
 #include "../../sight_structure.h"
+#include "../widgets/scope/scope_structure.h"
+#include "trace_structure.h"
 using namespace std;
 using namespace sight::common;
   
@@ -1466,7 +1468,13 @@ void RAPLMeasure::end() {
       ts->traceFullObservation(fullMeasureCtxt, trace::observation((string)(txt()<<labelStr<<"Energy_DRAM_S"<<socket), accumDramE[socket].E),          anchor::noAnchor);
       ts->traceFullObservation(fullMeasureCtxt, trace::observation((string)(txt()<<labelStr<<"Power_CPU_S"<<socket),   accumCpuE[socket].getPower()),  anchor::noAnchor);
       ts->traceFullObservation(fullMeasureCtxt, trace::observation((string)(txt()<<labelStr<<"Power_DRAM_S"<<socket),  accumDramE[socket].getPower()), anchor::noAnchor);
-      ts->traceFullObservation(fullMeasureCtxt, trace::observation((string)(txt()<<labelStr<<"EDP_S"<<socket),         (accumCpuE[socket].E+accumDramE[socket].E)/accumCpuE[socket].T), anchor::noAnchor);
+      // Compute the energy delay product = energy * time. Since either the CPU or memory measurements may
+      // not be working, only use them if they have sane values.
+      ts->traceFullObservation(fullMeasureCtxt, 
+                               trace::observation((string)(txt()<<labelStr<<"EDP_S"<<socket),
+                                 ((accumCpuE[socket].E<1e10?accumCpuE[socket].E:0)+
+                                  (accumDramE[socket].E<1e10?accumDramE[socket].E:0))/accumCpuE[socket].T), 
+                               anchor::noAnchor);
     } else {
       ts->traceAttrObserved(txt()<<labelStr<<"Energy_CPU_S"<<socket,  accumCpuE[socket].E,           anchor::noAnchor);
       ts->traceAttrObserved(txt()<<labelStr<<"Energy_DRAM_S"<<socket, accumDramE[socket].E,          anchor::noAnchor);
@@ -1677,7 +1685,7 @@ properties* TraceStreamMerger::setProperties(std::vector<std::pair<properties::t
                                        properties* props) {
   if(props==NULL) props = new properties();
   props = props;
-  
+ scope s("TraceStreamMerger::setProperties"); 
   map<string, string> pMap;
   properties::tagType type = streamRecord::getTagType(tags); 
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Trace!"<<endl; assert(0);; }
@@ -1725,6 +1733,11 @@ properties* TraceStreamMerger::setProperties(std::vector<std::pair<properties::t
     }
   }
   props->add("traceStream", pMap);
+dbg << "TraceStreamMerger outStreamRecords="<<&outStreamRecords<<endl;
+{scope sout("outStreamRecords");
+for(std::map<std::string, streamRecord*>::const_iterator o=outStreamRecords.begin(); o!=outStreamRecords.end(); o++)
+  dbg << o->first<<": "<<o->second->str("    ")<<endl;
+}
 
   return props;
 }
@@ -2049,6 +2062,9 @@ std::string TraceStreamRecord::str(std::string indent) const {
   ostringstream s;
   s << "[TraceStreamRecord: ";
   s << streamRecord::str(indent+"    ") << endl;  
+  s << indent << "merge(#"<<merge.size()<<")="<<endl;
+  for(map<int, trace::mergeT>::const_iterator m=merge.begin(); m!=merge.end(); m++)
+    s << indent << "    "<<m->first<<" => "<<common::trace::mergeT2Str(m->second)<<endl;
   s << indent << "]";
   
   return s.str();

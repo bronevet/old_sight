@@ -5,7 +5,7 @@
 #define __MYTYPE_H_
 
 /// \def SINGLE determines whether single or double precision is built
-#ifdef SINGLE
+#ifdef SINGLE_TYPE
 typedef float real_t;  //!< define native type for CoMD as single precision
   #define FMT1 "%g"    //!< /def format argument for floats 
   #define EMT1 "%e"    //!< /def format argument for eng floats

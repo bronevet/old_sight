@@ -1,11 +1,16 @@
-#pragma once 
+#pragma once
 #include <pthread.h>
 #include <string.h>
-#include "sight_structure.h"
+#undef PUBLIC_API
+#include "utils.h"
+#include "sight_structure_internal.h"
 #include "sight_common.h"
+#include "sight_widgets.h"
+#include "sight_control.h"
 #include "thread_local_storage.h"
-using namespace sight;
 
+namespace sight {
+namespace structure {
 /**************************************************
  ***** Thread Initialization and Finalization *****
  **************************************************/
@@ -199,3 +204,5 @@ int sight_pthread_cond_broadcast(sight_pthread_cond_t *scond);
 #define ppthread_cond_signal     pthread_cond_signal
 #define ppthread_cond_broadcast  pthread_cond_broadcast
 #endif
+}; // namespace structure 
+}; // namespace sight

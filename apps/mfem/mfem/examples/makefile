@@ -53,35 +53,35 @@ serial: ex1 ex2 ex3 ex4
 parallel: ex1p ex2p ex3p ex4p
 
 # Flag to define as part of compilation that communicates whether VNC is enabled
-ifeq (${VNC_ENABLED}, 1)
-VNCDEF = -DVNC_ENABLED=1
+ifeq (${REMOTE_ENABLED}, 1)
+REMOTEDEF = -DREMOTE_ENABLED=1
 else
-VNCDEF = 
+REMOTEDEF = 
 endif
 
 ex1: ex1.cpp
-	$(CC) $(OPTS) ex1.cpp -o ex1 $(LIBS) ${VNCDEF}
+	$(CC) $(OPTS) ex1.cpp -o ex1 $(LIBS) ${REMOTEDEF}
 
 ex1p: ex1p.cpp
-	$(MPICC) $(MPIOPTS) ex1p.cpp -o ex1p $(MPILIBS) ${VNCDEF}
+	$(MPICC) $(MPIOPTS) ex1p.cpp -o ex1p $(MPILIBS) ${REMOTEDEF}
 
 ex2: ex2.cpp
-	$(CC) $(OPTS) ex2.cpp -o ex2 $(LIBS) ${VNCDEF}
+	$(CC) $(OPTS) ex2.cpp -o ex2 $(LIBS) ${REMOTEDEF}
 
 ex2p: ex2p.cpp
-	$(MPICC) $(MPIOPTS) ex2p.cpp -o ex2p $(MPILIBS) ${VNCDEF}
+	$(MPICC) $(MPIOPTS) ex2p.cpp -o ex2p $(MPILIBS) ${REMOTEDEF}
 
 ex3: ex3.cpp
-	$(CC) $(OPTS) ex3.cpp -o ex3 $(LIBS) ${VNCDEF}
+	$(CC) $(OPTS) ex3.cpp -o ex3 $(LIBS) ${REMOTEDEF}
 
 ex3p: ex3p.cpp
-	$(MPICC) $(MPIOPTS) ex3p.cpp -o ex3p $(MPILIBS) ${VNCDEF}
+	$(MPICC) $(MPIOPTS) ex3p.cpp -o ex3p $(MPILIBS) ${REMOTEDEF}
 
 ex4: ex4.cpp
-	$(CC) $(OPTS) ex4.cpp -o ex4 $(LIBS) ${VNCDEF}
+	$(CC) $(OPTS) ex4.cpp -o ex4 $(LIBS) ${REMOTEDEF}
 
 ex4p: ex4p.cpp
-	$(MPICC) $(MPIOPTS) ex4p.cpp -o ex4p $(MPILIBS) ${VNCDEF}
+	$(MPICC) $(MPIOPTS) ex4p.cpp -o ex4p $(MPILIBS) ${REMOTEDEF}
 
 debug:
 	make "OPTS=$(DEBUG_OPTS)" serial

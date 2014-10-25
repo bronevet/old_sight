@@ -11,6 +11,7 @@
 #include "source_common.h"
 #include "../../sight_common_internal.h"
 #include "../../sight_structure_internal.h"
+#include "../widgets/scope/scope_structure.h"
 
 namespace sight {
 namespace structure {

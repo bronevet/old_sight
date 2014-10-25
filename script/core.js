@@ -42,26 +42,100 @@ function addLazyWindowResizeEventEnd(data) {
   }
 }
 
+/**************************
+ ***** Screen Refresh *****
+ **************************/
+
+// Contains references to all functions that should be called when the view layout changes
+// (e.g. something gets hidden or the screen is resized) to relayout different widgets.
+var refreshHandlers = [];
+
+// Add a new function to be called when the view needs to be refreshed
+function addRefreshHandler(func) {
+  refreshHandlers.push(func);
+}
+
+// Execute all the refresh functions
+function execRefreshHandlers() {
+   for(i in refreshHandlers) { if(refreshHandlers.hasOwnProperty(i)) {
+     refreshHandlers[i]();
+   }}
+   
+   // We've now refreshed the view, so now all objects are unchanged 
+   // with respect to the current view
+   resetChangedObjs();
+}
+
+// Set the refresh handlers to be called whenever the browser window is resized
+addLazyWindowResizeEvent(execRefreshHandlers);
+
+// Set of objects (map from their IDs to some value) that have changed since the last screen refresh.
+// Reset inside execRefreshHandlers() on each view refresh.
+var changedObjs = {};
+
+// At page load time all objects are fresh and not laid out. Further, at other times all objects will
+// change at the same time. Instad of adding them all to changedObjs, we just set this flag.
+var allObjectsChanged = true; 
+
+// Records that a given object has changed
+function objChanged(obj) {
+  changedObjs[obj.id] = 1;
+}
+
+// Records that all objects have changed
+function allObjChanged() {
+  allObjectsChanged = true;
+  changedObjs = {};
+}
+
+// Returns whether the given object has changed since the last reset
+function isChanged(obj) {
+  return allObjectsChanged || (obj.id in changedObjs);
+}
+
+// Forgets all the info on which objects have changed
+function resetChangedObjs() {
+  allObjectsChanged = false;
+  changedObjs = {};
+}
+
+/*****************************
+ ***** Visibility Status *****
+ *****************************/
+
 // Switch a given block's visibility state between hidden and unhidden. In hidden state
 // the block becomes very small, pulling subsequent text up in the page.
 function unhide(blockID) {
   var parentDiv = document.getElementById("div"+blockID);
   if (parentDiv) {
     // Hide the parent div
-    parentDiv.className=(parentDiv.className=='hidden')?'unhidden':'hidden';
+    var oldVisible = (parentDiv.className=='unhidden')
+    parentDiv.className=(oldVisible?'hidden':'unhidden');
+    
+    objChanged(parentDiv);
+    
     // Get all the tables
     var childTbls = document.getElementsByTagName("table");
-    condition = new RegExp("table"+blockID+"[0-9_-]*");
+    var conditionTbl = new RegExp("table"+blockID+"[_-]([0-9]*[_-])*");
     for (var i=0; i<childTbls.length; i++){ 
       var child = childTbls[i];
       // Set the visibility status of each child table to be the same as its parent div
-      if ("table"+blockID!=child.id && child.nodeType==1 && child.id!=undefined && child.id.match(condition)) {
-          child.className=parentDiv.className;
+      if ("table"+blockID!=child.id && child.nodeType==1 && child.id!=undefined && child.id.match(conditionTbl)) {
+        child.className=parentDiv.className;
       }
     }
+    
+    var childDivs = document.getElementsByTagName("div");
+    var conditionDiv = new RegExp("div"+blockID+"[_-]([0-9]*[_-])*");
+    for (var i=0; i<childDivs.length; i++){
+      var child = childDivs[i];
+      if (child.id!=undefined && child.id.match(conditionDiv))
+        objChanged(child);
+    }
   }
-  layoutOrderedDivs();
-  refreshParallelArrows();
+  //layoutOrderedDivs();
+  //refreshParallelArrows();
+  execRefreshHandlers();
 }
 
 // Returns whether the given div is hidden by looking at the chain of ancestor divs this div is
@@ -80,15 +154,24 @@ function toggleVisibility(blockID, visible) {
   if (parentDiv) {
     // Hide the parent div
     parentDiv.className=(visible?'unhidden':'hidden');
+    
     // Get all the tables
     var childTbls = document.getElementsByTagName("table");
-    condition = new RegExp("table"+blockID+"[0-9_-]*");
+    var conditionTbl = new RegExp("table"+blockID+"[_-]([0-9]*[_-])*");
     for (var i=0; i<childTbls.length; i++){ 
       var child = childTbls[i];
       // Set the visibility status of each child table to be the same as its parent div
       //console.log("child.id="+child.id+" blockID="+blockID+" eq="+("table"+blockID==child.id));
       if ("table"+blockID==child.id)
         child.className=parentDiv.className;
+    }
+    
+    var childDivs = document.getElementsByTagName("div");
+    var conditionDiv = new RegExp("div"+blockID+"[_-]([0-9]*[_-])*");
+    for (var i=0; i<childDivs.length; i++){
+      var child = childDivs[i];
+      if (child.id!=undefined && child.id.match(conditionDiv))
+        objChanged(child);
     }
   }
 }

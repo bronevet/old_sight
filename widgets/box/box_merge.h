@@ -53,21 +53,21 @@ class BoxMerger : public sight::structure::BlockMerger {
   // props: pointer to the properties object that describes the merged object. Initially props=NULL and 
   //       must be created by the most-derived constructor.
   BoxMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
-              std::map<std::string, streamRecord*>& outStreamRecords,
-              std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+              std::map<std::string, structure::streamRecord*>& outStreamRecords,
+              std::vector<std::map<std::string, structure::streamRecord*> >& inStreamRecords,
               properties* props=NULL);
 
   // Sets the properties of the merged object
   static properties* setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
-                                   std::map<std::string, streamRecord*>& outStreamRecords,
-                                   std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                                   std::map<std::string, structure::streamRecord*>& outStreamRecords,
+                                   std::vector<std::map<std::string, structure::streamRecord*> >& inStreamRecords,
                                    properties* props);
                                    
   // Returns an instance of the Merger that will merge the objects in tags, which are assumed to have
   // the same keys, as returned by mergeKey.  
   static Merger* create(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
-                        std::map<std::string, streamRecord*>& outStreamRecords,
-                        std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                        std::map<std::string, structure::streamRecord*>& outStreamRecords,
+                        std::vector<std::map<std::string, structure::streamRecord*> >& inStreamRecords,
                         properties* props)
   { return new BoxMerger(tags, outStreamRecords, inStreamRecords, props); }
   
@@ -76,8 +76,8 @@ class BoxMerger : public sight::structure::BlockMerger {
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info,
   static void mergeKey(properties::tagType type, properties::iterator tag, 
-                       const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
+                       const std::map<std::string, structure::streamRecord*>& inStreamRecords, structure::MergeInfo& info);
 }; // class BoxMerger
 
 } // namespace structure
-} // namespace sight
+} // namespace sight 

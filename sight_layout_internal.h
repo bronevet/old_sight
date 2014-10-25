@@ -63,6 +63,7 @@ extern bool saved_appExecInfo; // Indicates whether the application execution in
 extern int argc;
 extern std::string* argv;
 extern std::string execFile;
+extern std::string PWD;
 
 // All the aliases of the name of the host that this application is currently executing on
 extern std::list<std::string> hostnames;

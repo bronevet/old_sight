@@ -73,7 +73,7 @@ properties* BoxMerger::setProperties(std::vector<std::pair<properties::tagType, 
 
     // BoxMerger::mergeKey() only allows merging of boxes with the same styles. As such, take the style
     // property from the first object and put it into pMap
-    pMap["style"] = tags.begin()->second.get("stylel");
+    pMap["style"] = tags.begin()->second.get("style");
     
     props->add("box", pMap);
   } else {

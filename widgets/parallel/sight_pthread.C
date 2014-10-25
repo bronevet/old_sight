@@ -1,12 +1,18 @@
 #include <pthread.h>
 #include <string.h>
-#include "sight_structure.h"
+#include "sight_structure_internal.h"
 #include "sight_common.h"
 #include "thread_local_storage.h"
 #define PTHREAD_C
 #include "sight_pthread.h"
+#include "../widgets/clock/clock_structure.h"
+#include "../../attributes/attributes_common.h"
+#include "../../attributes/attributes_structure.h"
+#include "parallel_structure.h"
 using namespace sight;
 
+namespace sight {
+namespace structure {
 static pthread_mutex_t causalityMutex = PTHREAD_MUTEX_INITIALIZER;
 static std::map<pthread_t, scalarCausalClock*> causality;
 
@@ -30,15 +36,20 @@ PthreadThreadInitFinInstantiator::PthreadThreadInitFinInstantiator() {
 
 void PthreadThreadInitFinInstantiator::initialize() {
   // Assign each thread to a separate log based on its thread ID
-  globalComparisons = new comparison(txt()<<pthread_self());
+  if(getenv("DISABLE_PTHREAD_COMPARISON")==NULL)
+    globalComparisons = new comparison(txt()<<pthread_self());
+  else
+    globalComparisons = NULL;
   //cout << pthread_self()<<": PthreadThreadInitFinInstantiator::initialize() *globalComparisons="<<globalComparisons<<endl;
 }
 
 void PthreadThreadInitFinInstantiator::finalize() {
   //cout << pthread_self()<<": PthreadThreadInitFinInstantiator::finalize() *globalComparisons="<<globalComparisons<<endl;
   // Assign each thread to a separate log based on its thread ID
-  assert(globalComparisons != NULL);
-  delete globalComparisons;
+  if(getenv("DISABLE_PTHREAD_COMPARISON")==NULL) {
+    assert(globalComparisons != NULL);
+    delete globalComparisons;
+  }
 }
 
 PthreadThreadInitFinInstantiator PthreadThreadInitFinInstance;
@@ -226,10 +237,13 @@ void *sightThreadInitializer(void* data) {
     /*commRecv(txt()<<"Spawner_"<<((pthreadRoutineData*)data)->spawner<<"_"<<((pthreadRoutineData*)data)->spawnCnt,
              txt()<<"Spawnee_"<<pthread_self());*/
 
+    {
+    attr a("Causal", "SpawnJoin"); 
     rc = receiveCausality(txt()<<"Spawner_"<<((pthreadRoutineData*)data)->spawner<<"_"<<((pthreadRoutineData*)data)->spawnCnt,
                           ((pthreadRoutineData*)data)->spawner,
                           txt()<<"Spawnee_"<<pthread_self(),
                           "Spawned", true);
+    }
 
     rc = pthread_mutex_unlock(&causalityMutex);
     if(rc!=0) { fprintf(stderr, "sightThreadInitializer() ERROR unlocking causalityMutex! %s\n", strerror(rc)); assert(0); }
@@ -264,7 +278,7 @@ void *sightThreadInitializer(void* data) {
 static ThreadLocalStorage1<int, int> numThreadsSpawned(0);
 
 int sight_pthread_create(pthread_t * thread,
-                         const pthread_attr_t * attr,
+                         const pthread_attr_t * thrAttr,
                          void *(*start_routine)(void*), void * arg) {
   // Allocate a wrapper for the arguments to sightThreadInitializer()
   pthreadRoutineData* data = (pthreadRoutineData*)malloc(sizeof(pthreadRoutineData));
@@ -287,12 +301,15 @@ int sight_pthread_create(pthread_t * thread,
   
   // Add a causality send edge from the spawner thread to the spawnee thread
   //commSend(txt()<<"Spawner_"<<pthread_self()<<"_"<<data->spawnCnt, "");
+  {
+  attr a("Causal", "SpawnJoin"); 
   int rc = sendCausality(txt()<<"Spawner_"<<pthread_self()<<"_"<<data->spawnCnt, "Spawn");
   if(rc!=0) return rc;
+  }
   
   numThreadsSpawned++;
   
-  return pthread_create(thread, attr, sightThreadInitializer, data);
+  return pthread_create(thread, thrAttr, sightThreadInitializer, data);
 }
 
 void sight_pthread_exit(void *value_ptr) {
@@ -311,10 +328,12 @@ int sight_pthread_join(pthread_t thread, void **value_ptr) {
 
   // Add a causality send edge from the thread's termination to the join call
   //commRecv(txt()<<"End_"<<thread, txt()<<"Joiner_"<<pthread_self()<<"_"<<thread);
+  {
+  attr a("Causal", "SpawnJoin"); 
   rc = receiveCausality(txt()<<"End_"<<thread, thread,
                         txt()<<"Joiner_"<<pthread_self()<<"_"<<thread,
                         "Join");
-  
+  } 
   return rc;
 }
 
@@ -563,3 +582,5 @@ int sight_pthread_cond_broadcast(sight_pthread_cond_t *scond) {
   return 0;
 }
 
+}; // namespace structure 
+}; // namespace sight

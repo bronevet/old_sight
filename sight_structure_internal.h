@@ -19,8 +19,12 @@
 #include <signal.h>
 
 #include <deque>
-#include <boost/graph/topological_sort.hpp>
-#include <boost/graph/adjacency_list.hpp>
+
+// Include the sight_structure_init.h header if we're compiling one of the internal
+// Sight files. This header includes some boost libraries that conflict with symbols in some apps.
+#if !defined(PUBLIC_API)
+#include "sight_structure_init.h"
+#endif
 
 namespace sight {
 namespace structure{
@@ -65,80 +69,6 @@ extern ThreadLocalStorageList<std::pair<std::string, std::string> > globalCompar
 int getSOStackDepth();
 int getSOStackDepth(common::dbgStream* outStream);
 
-// This mechanism allows different widgets to register their own code to be called when each
-//    thread is started and stopped. This includes both the main thread and threads created
-//    using pthread_create. Each widget can provide initialization and finalization methods,
-//    and order them relative to other widgets' methods to maintain relative order among different
-//    initialization/finalization logic.
-// Initializers/finalizers are specified by 
-//    - deriving a widget-specific class from ThreadInitFinInstantiator that uses method 
-//      addFuncs() in its constructor to register the widget-specific functions, and
-//    - declaring a single global variable of this type.
-typedef void (*ThreadInitializer)();
-typedef void (*ThreadFinalizer)();
-
-class ThreadInitFinInstantiator : public sight::common::LoadTimeRegistry {
-  // The maximum unique ID assigned to any threadFuncs so far
-  static int* maxUID;
-  class threadFuncs {
-    public:
-    int UID;
-    ThreadInitializer init;
-    ThreadFinalizer   fin;
-    set<std::string> mustFollow;
-    set<std::string> mustPrecede;
-    
-    threadFuncs(ThreadInitializer init, ThreadFinalizer fin,
-                const set<std::string>& mustFollow, const set<std::string>& mustPrecede) :
-              UID((*maxUID)++), init(init), fin(fin), mustFollow(mustFollow), mustPrecede(mustPrecede) {}
-    
-    std::string str() const {
-      return txt()<<"[threadFuncs: UID="<<UID<<", mustFollow="<<set2str(mustFollow)<<", mustPrecede="<<set2str(mustPrecede)<<"]";
-    }
-  };
-  public:
-  // Keep track of the funcs that are currently registered to initialize and finalize threads
-  // Maps the string labels of funcs to their threadFuncs data structures
-  //   Each threadFuncs has a unique ID that is used as the vertex number in the dependence
-  //   graph, which is implemented using the Boost Graph Library
-  static std::map<std::string, threadFuncs*>* funcsM;
-  // Vector of pointers to the threadFuncs in funcsM, where the index of each record is
-  //   equal to its UID.
-  static std::vector<threadFuncs*>* funcsV;
-
-  // Records the dependencies among the entries in funcs
-  static boost::adjacency_list<boost::listS, boost::vecS, boost::directedS>* depGraph;
-
-  // Records the topological order among the funcs
-  static std::deque<int>* topoOrder;
-  
-  // Records whether the dependence graph is upto-date relative to the current
-  // entries in funcs
-  static bool* depGraphUptoDate;
-  
-  ThreadInitFinInstantiator();
-  
-  // Called exactly once for each class that derives from LoadTimeRegistry to initialize its static data structures.
-  static void init();
-  
-  // Adds the given initialization/finalization funcs under the given widet label.
-  // mustFollow - set of widget labels that the given functors must follow during initialization
-  // mustPrecede - set of widget labels that the given functors must precede during initialization
-  //    finalization is performed in reverse
-  static void addFuncs(const std::string& label, ThreadInitializer init, ThreadFinalizer fin,
-                       const common::easyset<std::string>& mustFollow, const common::easyset<std::string>& mustPrecede);
-  
-  // Update the dependence graph based on funcs, if it not already upto-date
-  static void computeDepGraph();
-  
-  // Calls all the initializers in their topological order
-  static void initialize();
-
-  // Calls all the finalizers in their topological order (reverse of initializers)
-  static void finalize();
-  
-  static std::string str();
-};
 
 class dbgStream;
 
@@ -596,11 +526,13 @@ class MergeInfo {
   public:
   typedef std::list<std::string> mergeKey;
   // Identifies the way in which this tag should be merged with others
-  //   align: Tags with matching keys should be aligned and tags that align should be merged and emitted as one.
-  //          When no alignment is possible, the merge should show the different non-alignable tags as variants.
-  //   interleave: Tags of this type are not directly comparable and must thus be interleaved in the outgoing
-  //          stream with no attempt made to align them.
-  typedef enum {align, interleave} mergeKindT;
+  typedef enum {
+    align, // Tags with matching keys should be aligned and tags that align should be merged and emitted as one.
+           //    When no alignment is possible, the merge should show the different non-alignable tags as variants.
+    interleave, // Tags of this type are not directly comparable and must thus be interleaved in the outgoing
+                //    stream with no attempt made to align them.
+    interleave_aligned // Tags with matching keys are aligned, non-matching tags are interleaved.
+  } mergeKindT;
   
   private:
   mergeKey key;
@@ -643,7 +575,7 @@ class MergeInfo {
     }
     cout << "]]";*/
     s << "[MergeInfo: universal="<<universal<<", ";
-    s << "mergeKind="<<(mergeKind==align?"align":(mergeKind==interleave?"interleave":"???"))<<", ";
+    s << "mergeKind="<<(mergeKind==align?"align":(mergeKind==interleave?"interleave":(mergeKind==interleave_aligned?"interleave_aligned":"???")))<<", ";
     s << "key=[";
     for(std::list<std::string>::const_iterator k=key.begin(); k!=key.end(); k++) {
       if(k!=key.begin()) s << ", ";
@@ -711,8 +643,8 @@ class streamRecord : public printable {
   
   public:
   
-  streamRecord(int vID,              std::string objName) : vID(vID), maxID(0), objName(objName) {}  
-  streamRecord(const variantID& vID, std::string objName) : vID(vID), maxID(0), objName(objName) {}
+  streamRecord(int vID,              std::string objName) : vID(vID), maxID(-1), objName(objName) {}  
+  streamRecord(const variantID& vID, std::string objName) : vID(vID), maxID(-1), objName(objName) {}
   // vSuffixID: ID that identifies this variant within the next level of variants in the heirarchy
   streamRecord(const streamRecord& that, int vSuffixID) : vID(that.vID), maxID(that.maxID), in2outIDs(that.in2outIDs), objName(that.objName) {
     vID.enterVariant(vSuffixID);
@@ -1422,6 +1354,7 @@ public:
   //std::string tagStr(std::string name, const std::map<std::string, std::string>& properties, bool inheritedFrom);
   std::string tagStr(const properties& props);
 }; // dbgStream
+typedef dbgStream SightStream;
 
 // Extension of ThreadLocalStorage to opaquely wrap dbgStream
 /*class ThreadLocalDbgStream: public ThreadLocalStorageOStream<dbgStream>/ *, public ThreadLocalStorage0<dbgStream>* / {
@@ -1690,7 +1623,13 @@ class UniqueMarkMerger : public BlockMerger {
   // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
   // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
   // call their parents so they can add any info,
+  //
+  // Default variant that allows uniqueMarks with different IDs to be merged.
   static void mergeKey(properties::tagType type, properties::iterator tag, 
+                       const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
+ 
+  // Variant that does not allow uniqueMarks with different IDs to be merged 
+  static void mergeKey_separateByID(properties::tagType type, properties::iterator tag, 
                        const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
 }; // class UniqueMarkMerger
 

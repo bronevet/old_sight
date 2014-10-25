@@ -71,6 +71,35 @@ class stepClock: public sightClock {
   std::string str() const;
 }; // class stepClock
 
+/*
+  // Scalar Clock for mpi programs
+  class mpiClock: public sightClock {
+  private:
+    // Pointer to the scalar clock from the PnMPI module 
+    long long* curTime;
+    
+    // The value of curTime most recently read in a call to modified()
+    long long lastTime;
+
+    int mpiClockID;
+    // Records all the currently active instance of timeClock. Since all instances of timeClock
+    // correspond to the same real clock, we register the clock once for all currently active instances of timeClocK.
+    static std::set<mpiClock*> active;
+
+  public:
+    mpiClock();
+
+    ~mpiClock();
+
+    properties* setProperties(properties* props);
+
+    // Returns true if the clock has been modified since the time of its registration or the last time modified() was called.
+    bool modified();
+
+    std::string str() const;
+  }; // class mpiClock   
+*/
+
 // A scalar clock for tracking causal order in concurrent applications
 class scalarCausalClock: public sightClock {
   private:
@@ -188,6 +217,32 @@ class StepClockStreamRecord: public streamRecord {
     return s.str();
   }
 }; // class StepClockStreamRecord
+
+/*// Merger for mpiClock tag
+ class MpiClockMerger : public Merger {
+ public:
+	MpiClockMerger(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+			std::map<std::string, streamRecord*>& outStreamRecords,
+			std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+			properties* props=NULL);
+	static Merger* create(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
+							std::map<std::string, streamRecord*>& outStreamRecords,
+							std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+							properties* props)
+	  { return new MpiClockMerger(tags, outStreamRecords, inStreamRecords, props); }
+	  // Sets the properties of the merged object
+	  static properties* setProperties(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+	                                   std::map<std::string, streamRecord*>& outStreamRecords,
+	                                   std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+	                                   properties* props);
+	// Sets a list of strings that denotes a unique ID according to which instances of this merger's
+	// tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
+	// Each level of the inheritance hierarchy may add zero or more elements to the given list and
+	// call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
+	static void mergeKey(properties::tagType type, properties::iterator tag,
+                       std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info);
+}; // class MpiClockMerger
+*/
 
 // Merger for scalarCausalClock tag
 class ScalarCausalClockMerger : public Merger {

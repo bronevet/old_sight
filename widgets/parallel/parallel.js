@@ -182,8 +182,9 @@ function addVizObj2BlockID(blockID, vizObjs) {
     vizID2Obj[vizObjs[i].id] = vizObjs[i];
     
     // Map the viz object's ID to blockID
-    if(!(vizObjs[i] in vizObjects2BlockID)) vizObjects2BlockID[vizObjs[i].id] = {};
+    if(!(vizObjs[i].id in vizObjects2BlockID)) vizObjects2BlockID[vizObjs[i].id] = {};
     vizObjects2BlockID[vizObjs[i].id][blockID] = 1;
+    console.log(vizObjs[i].id+" mappped at "+blockID);
   } }
 }
 
@@ -283,7 +284,8 @@ function showParallelArrows() {
 	jsPlumbInstance.doWhileSuspended(function() {
 	    mapParArrows(parArrowsTo, 
                function(targetBlockID, sourceBlockID, targetLabel, sourceLabel) {
-                console.log(sourceBlockID+", "+targetBlockID);
+//                console.log(sourceBlockID+", "+targetBlockID);
+//if(sourceLabel=="R") return;
                 var from = jsPlumbInstance.addEndpoint("div"+sourceBlockID, sourceEndpoint, { anchor:"BottomCenter", uuid:sourceBlockID+"BottomCenter" });
                 if(sourceLabel!="") from.addOverlay([ "Label", { id:"label", cssClass:"arrowParNodeLabel", label:sourceLabel}]);
                 var to = jsPlumbInstance.addEndpoint("div"+targetBlockID, targetEndpoint, { anchor:"TopCenter", uuid:targetBlockID+"TopCenter" });
@@ -295,11 +297,13 @@ function showParallelArrows() {
                 // Record the visualization objects mapped to the source/target blockIDs
                 addVizObj2BlockID(sourceBlockID, [from, to/*, connection*/]);
                 addVizObj2BlockID(targetBlockID, [from, to/*, connection*/]);
+                //console.log(from.id+"("+sourceLabel+") => "+connection.id+" => "+to.id+"("+targetLabel+")");
                });
                
        mapParArrows(parArrowsFrom, 
                function(sourceBlockID, targetBlockID, sourceLabel, targetLabel) {
-                console.log(sourceBlockID+", "+targetBlockID);
+//                console.log(sourceBlockID+", "+targetBlockID);
+//if(sourceLabel=="R") return;
                 var from = jsPlumbInstance.addEndpoint("div"+sourceBlockID, sourceEndpoint, { anchor:"BottomCenter", uuid:sourceBlockID+"BottomCenter" });
                 if(sourceLabel!="") from.addOverlay([ "Label", { id:"label", cssClass:"arrowParNodeLabel", label:sourceLabel}]);
                 var to = jsPlumbInstance.addEndpoint("div"+targetBlockID, targetEndpoint, { anchor:"TopCenter", uuid:targetBlockID+"TopCenter" });
@@ -311,6 +315,7 @@ function showParallelArrows() {
                 // Record the visualization objects mapped to the source/target blockIDs
                 addVizObj2BlockID(sourceBlockID, [from, to/*, connection*/]);
                 addVizObj2BlockID(targetBlockID, [from, to/*, connection*/]);
+                //console.log(from.id+"("+sourceLabel+") => "+connection.id+" => "+to.id+"("+targetLabel+")");
                });
                
        mapBarriers(function(barriers, label) {
@@ -344,7 +349,8 @@ function showParallelArrows() {
   parArrowsFrom = {};
   parBarriers = {};
 
-  addLazyWindowResizeEvent(refreshParallelArrows);
+  //addLazyWindowResizeEvent(refreshParallelArrows);
+  addRefreshHandler(refreshParallelArrows);
 }
 
 // Refreshes the positions of the arrows between causally-related events based on the current
@@ -352,28 +358,31 @@ function showParallelArrows() {
 function refreshParallelArrows() {
   // Iterate over all the visualization objects created in showParallelArrows() and set their visibility status based on the visibility status
   for(vizID in vizObjects2BlockID) { if(vizObjects2BlockID.hasOwnProperty(vizID)) {
-    // Iterate over all the blockIDs this object is associated with and check if they're all visible
+    // Iterate over all the blockIDs this object is associated with and check if they've changed 
+    // and if so, if any of them was changed to be not visible.
     var isVisible=true;
+    var changeObserved=false;
     for(blockID in vizObjects2BlockID[vizID]) { if(vizObjects2BlockID[vizID].hasOwnProperty(blockID)); {
       var blockDiv = document.getElementById("div"+blockID);
-      if(isHidden(blockDiv)) {
-        isVisible=false;
-        break;
+      if(isChanged(blockDiv)) {
+        changeObserved=true;
+        if(isHidden(blockDiv)) {
+          isVisible=false;
+          break;
+        }
       }
     }}
     
-    if(!isVisible) {
-      //vizID2Obj[vizID].addClass("hidden");
-      //vizID2Obj[vizID].setVisible(isVisible);
-      //jsPlumb.hide(vizID2Obj[vizID]);
-      //jsPlumb.detachAllConnections(vizID2Obj[vizID]);
-      vizID2Obj[vizID].setVisible(false);
-      vizID2Obj[vizID].setEnabled(false);
-      vizID2Obj[vizID].setStyle({visibility:"hidden"});
+    // If any of the divs this visualization object was associated with have changed, 
+    // set its visibility to their visiblity status (visible if all are visible, 
+    // hidden if any are hidden)
+    if(changeObserved) {
+      //console.log("visibility of "+vizID+" => "+isVisible);
+      vizID2Obj[vizID].setVisible(isVisible);
     }
   }}
   
   jsPlumbInstance.repaintEverything();
-  addLazyWindowResizeEvent(refreshParallelArrows);
+//  addLazyWindowResizeEvent(refreshParallelArrows);
 }
 

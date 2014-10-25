@@ -1,12 +1,8 @@
-//#include "sight.h"
 #include <map>
 #include <vector>
 #include <assert.h>
-#include "sight.h"
 #include "sight_pthread.h"
-//#include <pthread.h>
 #include <unistd.h>
-//#include <omp.h>
 //using namespace std;
 using namespace sight;
 

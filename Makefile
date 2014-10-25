@@ -7,6 +7,7 @@ SIGHT_LAYOUT_H := sight.h sight_layout_internal.h attributes/attributes_layout.h
 sight := ${sight_O} ${sight_H} gdbLineNum.pl sightDefines.pl
 
 ROOT_PATH = ${CURDIR}
+PNMPI_PATH = ${ROOT_PATH}/widgets/PnMPI/INSTALL/
 
 SIGHT_CFLAGS = -g -fPIC -I${ROOT_PATH} -I${ROOT_PATH}/attributes -I${ROOT_PATH}/widgets/parallel \
                 -I${ROOT_PATH}/tools/callpath/src -I${ROOT_PATH}/tools/adept-utils/include \
@@ -26,6 +27,7 @@ SIGHT_LINKFLAGS = \
                   ${ROOT_PATH}/widgets/gsl/lib/libgslcblas.so \
                   -Wl,-rpath ${ROOT_PATH}/widgets/gsl/lib \
 	          -lpthread
+                  #-L ${PNMPI_PATH}lib -lpnmpi -Wl,-rpath,${PNMPI_PATH}
 
 RAPL_ENABLED = 0
 ifeq (${RAPL_ENABLED}, 1)
@@ -37,7 +39,7 @@ endif
 override CC=gcc #clang #icc #gcc
 override CCC=g++ #clang++ #icpc #clang++ #g++
 MPICC = mpi${CC}
-MPICCC = mpi${CCC}
+MPICCC = ${ROOT_PATH}/tools/mpi${CCC}
 
 OS := $(shell uname -o)
 ifeq (${OS}, Cygwin)
@@ -100,11 +102,11 @@ MPICC = ${ROOT_PATH}/tools/mpiclang
 MPICCC = ${ROOT_PATH}/tools/mpiclang++
 endif
 
-MAKE_DEFINES = ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} VNC_ENABLED=${VNC_ENABLED} MPI_ENABLED=${MPI_ENABLED} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" CC=${CC} CCC=${CCC} KULFI_ENABLED=${KULFI_ENABLED} LLVM32_SRC_PATH=${LLVM32_SRC_PATH} LLVM32_BUILD_PATH=${LLVM32_BUILD_PATH} LLVM32_INSTALL_PATH=${LLVM32_INSTALL_PATH}
+MAKE_DEFINES = ROOT_PATH=${ROOT_PATH} RAPL_ENABLED=${RAPL_ENABLED} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} VNC_ENABLED=${VNC_ENABLED} MPI_ENABLED=${MPI_ENABLED} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" CC=${CC} CCC=${CCC} KULFI_ENABLED=${KULFI_ENABLED} LLVM32_SRC_PATH=${LLVM32_SRC_PATH} LLVM32_BUILD_PATH=${LLVM32_BUILD_PATH} LLVM32_INSTALL_PATH=${LLVM32_INSTALL_PATH}
 
 # Set to "!" if we wish to enable examples that use MPI
-MPI_ENABLED = 0
-#MPI_ENABLED = 1
+#MPI_ENABLED = 0
+MPI_ENABLED = 1
 
 .PHONY: apps
 ifeq (${MPI_ENABLED}, 1)
@@ -136,25 +138,25 @@ runExamples: core
 runPthreadExamples: core
 	cd examples; make ${MAKE_DEFINES} runPthread
 
-runApps: libsight_structure.so slayout${EXE} hier_merge${EXE} apps
+runApps: runMFEM runCoMD
+
+runMFEM: mfem libsight_structure.so slayout${EXE} hier_merge${EXE}
 	cd examples; ../apps/mfem/mfem/examples/mfemComp.pl
 	cd examples; ../apps/mfem/mfem/examples/ex2 ../apps/mfem/mfem/data/beam-tet.mesh 2
 	cd examples; ../apps/mfem/mfem/examples/ex3 ../apps/mfem/mfem/data/ball-nurbs.mesh
 	cd examples; ../apps/mfem/mfem/examples/ex4 ../apps/mfem/mfem/data/fichera-q3.mesh
 ifeq (${MPI_ENABLED}, 1)
+runCoMD: CoMD libsight_structure.so slayout${EXE} hier_merge${EXE}
 	cd examples; ../apps/CoMD/bin/CoMD-mpi.modules
 	cd examples; ../apps/CoMD/bin/CoMD-mpi.tracepath
 	cd examples; ../apps/CoMD/bin/CoMD-mpi.tracepos
 	cd examples; ../apps/CoMD/CoMDCompare.pl
-endif
-ifeq (${REMOTE_ENABLED}, 1)
-	cd examples; ../apps/mfem/mfem/examples/ex1 ../apps/mfem/mfem/data/beam-quad.mesh
+else
+runCoMD:
 endif
 
 #runMCBench:
 #	apps/mcbench/src/MCBenchmark.exe --nCores=1 --distributedSource --numParticles=13107 --nZonesX=256 --nZonesY=256 --xDim=16 --yDim=16 --mirrorBoundary --multiSigma --nThreadCore=1
-
-runApps: libsight_structure.so slayout${EXE} hier_merge${EXE} apps runMFEM runCoMD #runMCBench
 
 slayout.o: slayout.C process.C process.h
 	${CCC} ${SIGHT_CFLAGS} slayout.C -I. -c -o slayout.o
@@ -253,7 +255,7 @@ sightDefines.pl:
 
 Makefile.extern: initMakefile.extern Makefile
 	chmod 755 initMakefile.extern
-	./initMakefile.extern ${CC} ${CCC} ${RAPL_ENABLED} ${LLVM32_SRC_PATH} ${LLVM32_BUILD_PATH} ${LLVM32_INSTALL_PATH}
+	./initMakefile.extern ${CC} ${CCC} ${MPICC} ${MPICCC} ${RAPL_ENABLED} ${LLVM32_SRC_PATH} ${LLVM32_BUILD_PATH} ${LLVM32_INSTALL_PATH}
 
 definitions.h: initDefinitionsH Makefile
 	chmod 755 initDefinitionsH
@@ -279,7 +281,7 @@ script/taffydb:
 	#cd script; wget --no-check-certificate https://github.com/typicaljoe/taffydb/archive/master.zip
 	#cd script; mv master master.zip; unzip master.zip
 	#rm script/master*
-	cd script; ../getGithub https://github.com/typicaljoe/taffydb/archive/master.zip zip unzip
+	cd script; ../getGithub https://github.com/typicaljoe/taffydb/archive/master.zip zip unzip master
 	mv script/taffydb-master script/taffydb
 	chmod 755 script/taffydb
 	chmod 644 script/taffydb/*

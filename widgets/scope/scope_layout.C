@@ -163,9 +163,13 @@ void scope::printEntry(string loadCmd) {
     #if REMOTE_ENABLED
     if(saved_appExecInfo) {
       ostringstream setGDBLink; 
-      setGDBLink << "\"javascript:setGDBLink(this, ':"<<GDB_PORT<<"/gdbwrap.cgi?execFile="<<execFile<<"&tgtCount="<<blockIDFromStructure<<"&args=";
+      setGDBLink << "\"javascript:setGDBLink(this, ':"<<GDB_PORT<<"/gdbwrap.cgi?"<<
+                           "execFile="<<execFile<<"&"<<
+                           "tgtCount="<<blockIDFromStructure<<"&"<<
+                           "PWD="<<PWD<<"&"<<
+                           "args=";
       for(int i=1; i<argc; i++) {
-        if(i!=1) dbg << " ";
+        if(i!=1) setGDBLink << " ";
         setGDBLink<< argv[i];
       }
       setGDBLink << "')\"";

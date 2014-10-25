@@ -52,6 +52,12 @@ module::context::context(properties::iterator props, std::string prefix) {
 }
 
 // Adds the given key/attrValue pair to this context
+void module::context::add(std::string key, const attrValue& val, const notes& note) {
+  configuration[key] = val;
+  configNotes[key] = note;
+}
+
+// Adds the given key/attrValue pair to this context
 void module::context::add(std::string key, const attrValue& val)
 { configuration[key] = val; }
 

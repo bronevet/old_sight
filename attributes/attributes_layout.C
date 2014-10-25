@@ -78,12 +78,13 @@ attr::attr(properties::iterator props) :
 attr::~attr() {
   if(!common::isEnabled()) return;
 //cout << "attr::~attr("<<key<<", "<<val.str()<<")\n";
+
   // If this mapping replaced some prior mapping, return key to its original state
-  /*if(keyPreviouslySet)
+  if(keyPreviouslySet)
     attributes.replace(key, oldVal);
   // Otherwise, just remove the entire mapping
   else
-    attributes.remove(key);*/
+    attributes.remove(key);
   
   dbg.exitAttrSubBlock();  
 }

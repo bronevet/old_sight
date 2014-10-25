@@ -12,10 +12,10 @@ CODE_ROOT = SIGHT_ROOT+"/apps/lulesh"
 
 os.environ["SIGHT_FILE_OUT"] = "1"
 
-prec = [4, 8, 16]
+prec = [8]#[4, 8, 16]
 spatial = [3, 7, 15, 31, 63]
-dtime = ["-1e-6"]
-power = [100]#[30, 40, 50, 75, 100]
+dtime = ["-1e-06"]
+power = [30, 40, 50, 60, 70, 80, 90, 100]
 mem = ["soa"] #["soa", "aos"]
 numExperiments=1
 
@@ -94,7 +94,8 @@ idx = 0
 
 allPaths = [];
 
-for expID in range(numExperiments) :
+#for expID in range(numExperiments) :
+for expID in range(3) :
  for ip in range(len(prec)) :
   p = prec[ip]
   for iS in range(len(spatial)) :
@@ -113,21 +114,21 @@ for expID in range(numExperiments) :
 
 os.chdir("..")
 
-# Merge all the runs
-sys(SIGHT_ROOT+"/hier_merge dbg.Lulesh."+experimentName+" zipper "+" ".join(allPaths), True)
-
-# Lay out the html output
-print "SLAYOUT"
-os.environ["SIGHT_LAYOUT_CONFIG"] = SIGHT_ROOT+"/examples/emitObsDataTable.conf"
-sys(SIGHT_ROOT+"/slayout dbg.Lulesh."+experimentName, True)
-
-print "PACKAGING"
-sys("rm -f dbg.Lulesh."+experimentName, True)
-sys("tar -cf dbg.Lulesh."+experimentName+".tar dbg.Lulesh."+experimentName, True)
-sys("gzip dbg.Lulesh."+experimentName+".tar", True)
-
-# Remove the core files
-os.system("rm -f data/*.core");
+### # Merge all the runs
+### sys(SIGHT_ROOT+"/hier_merge dbg.Lulesh."+experimentName+" "+" ".join(allPaths), True)
+### 
+### # Lay out the html output
+### print "SLAYOUT"
+### os.environ["SIGHT_LAYOUT_CONFIG"] = SIGHT_ROOT+"/examples/emitObsDataTable.conf"
+### sys(SIGHT_ROOT+"/slayout dbg.Lulesh."+experimentName, True)
+### 
+### print "PACKAGING"
+### sys("rm -f dbg.Lulesh."+experimentName, True)
+### sys("tar -cf dbg.Lulesh."+experimentName+".tar dbg.Lulesh."+experimentName, True)
+### sys("gzip dbg.Lulesh."+experimentName+".tar", True)
+### 
+### # Remove the core files
+### os.system("rm -f data/*.core");
 
 
 

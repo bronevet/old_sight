@@ -50,6 +50,7 @@ void* scalarCausalClockEnterHandler(properties::iterator props) {
 clockLayoutHandlerInstantiator::clockLayoutHandlerInstantiator() { 
   (*layoutEnterHandlers)["timeClock"]         = &timeClockEnterHandler;
   (*layoutEnterHandlers)["stepClock"]         = &stepClockEnterHandler;
+  //(*layoutEnterHandlers)["mpiClock"]         = &mpiClockEnterHandler;
   (*layoutEnterHandlers)["scalarCausalClock"] = &scalarCausalClockEnterHandler;
 }
 clockLayoutHandlerInstantiator clockLayoutHandlerInstance;
