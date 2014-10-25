@@ -3,6 +3,7 @@
 using namespace std;
 
 #include "sight_structure.h"
+#include "widgets/graph/graph_structure.h"
 using namespace sight;
 using namespace sight::structure;
 

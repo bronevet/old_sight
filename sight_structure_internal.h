@@ -740,7 +740,7 @@ class Merger {
          std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
          properties* props, bool ignoreClocks=false);
   
-  const properties& getProps() const { return *props; }
+  const properties& getProps() const { assert(props); return *props; }
   
   protected:
   // Called by derived objects to indicate that this tag should not be emitted
