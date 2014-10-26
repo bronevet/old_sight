@@ -18,11 +18,16 @@
 namespace sight {
 namespace structure {
 
+/*************************
+ ***** Configuration *****
+ *************************/
+
 class moduleConfHandlerInstantiator : common::confHandlerInstantiator {
   public:
   moduleConfHandlerInstantiator();
 };
 extern moduleConfHandlerInstantiator moduleConfHandlerInstance;
+
 
 class moduleTraceStream;
 
@@ -607,6 +612,9 @@ class modularApp: public block
   // Returns a pointer to the current instance of modularApp
   static modularApp* getInstance() { assert(*activeMA.get()); return *activeMA.get(); }
   
+  // Sets the named measurements in the currently active modularApp instance
+  static void setNamedMeasures(const namedMeasures& meas);
+
   // Assigns a unique ID to the given module group, as needed and returns this ID
   static int addModuleGroup(const group& g);
   
