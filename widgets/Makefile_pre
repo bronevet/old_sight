@@ -183,7 +183,7 @@ else
 	wget http://www.graphviz.org/pub/graphviz/stable/SOURCES/graphviz-2.24.0.tar.gz
 	tar -xf graphviz-2.24.0.tar.gz
 	cd graphviz-2.24.0; export CC=gcc; export CXX=g++; ./configure --prefix=${ROOT_PATH}/widgets/graphviz --disable-swig --disable-sharp --disable-go --disable-io --disable-java --disable-lua --disable-ocaml --disable-perl --disable-php --disable-python --disable-r --disable-ruby --disable-tcl --without-pic --without-efence --with-expat=yes --with-expatlibdir=${ROOT_PATH}/widgets/expat/lib --with-expatincludedir=${ROOT_PATH}/widgets/expat/include --without-devil --without-webp --without-poppler --without-ghostscript --without-visio --without-pangocairo --without-lasi --without-glitz --without-freetype2 --without-fontconfig --without-gdk-pixbuf --without-gtk --without-gtkgl --without-gtkglext --without-gts --without-glade --without-ming --without-qt --without-quartz --without-gdiplus --without-libgd --without-glut --without-sfdp --without-smyrna --without-ortho --without-digcola --without-ipsepcola --enable-static --disable-shared
-	#cp graphviz_vmalloc_features graphviz-2.24.0/lib/vmalloc/features/vmalloc
+	cp graphviz_vmalloc_features graphviz-2.24.0/lib/vmalloc/features/vmalloc
 	cd graphviz-2.24.0; export CC=gcc; export CXX=g++; ${MAKE}
 	cd graphviz-2.24.0; export CC=gcc; export CXX=g++; ${MAKE} install
 	mv graphviz/bin/dot_static graphviz/bin/dot

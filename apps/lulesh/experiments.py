@@ -7,7 +7,7 @@ import subprocess
 import re
 import math
 
-SIGHT_ROOT = "/g/g15/bronevet/code/tmp/sight"
+SIGHT_ROOT = "~/work/merge_gbD_hoaV/sight"
 CODE_ROOT = SIGHT_ROOT+"/apps/lulesh"
 
 os.environ["SIGHT_FILE_OUT"] = "1"
