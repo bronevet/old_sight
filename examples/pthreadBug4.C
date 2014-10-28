@@ -7,8 +7,6 @@
 * SOURCE: 07/06/05 Blaise Barney
 * LAST REVISED: 01/29/09  Blaise Barney
 ******************************************************************************/
-//#include <pthread.h>
-#include "sight.h"
 #include "sight_pthread.h"
 using namespace sight;
 #include <stdio.h>

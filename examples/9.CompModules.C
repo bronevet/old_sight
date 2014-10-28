@@ -24,7 +24,9 @@ int main (int argc, char *argv[])
   
   SightInit(argc, argv, "9.CompModules", txt()<<"dbg.9.CompModules.dx_"<<dx<<".dy_"<<dy<<".dt_"<<dt<<".k="<<k<<(isReference? ".Reference": ""));
 
-  compModularApp mfemApp("Heat Equation"/*, namedMeasures("time0", new timeMeasure())*/); 
+  //compModularApp mfemApp("Heat Equation"/*, namedMeasures("time0", new timeMeasure())*/);
+  modularApp::setNamedMeasures(namedMeasures("time", new timeMeasure(),
+                                             "PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS, PAPI_L2_TC_MR))));
   
   double initTemp = 10; // The initial temperature at the center of the grid
   
@@ -93,11 +95,11 @@ int main (int argc, char *argv[])
   }
   
   std::vector<port> externalOutputs;
-  compModule mod(instance("Heat Computation", 1, 1), 
+  compModule mod(instance("Heat Computation", 1, /*1*/0),
                  inputs(port(context("k", k,
                                      "initTemp", initTemp))),
                  externalOutputs,
-                 isReference, 
+                 isReference,
                  context("dx", dx,
                          "dy", dy,
                          "dt", dt),
@@ -107,15 +109,16 @@ int main (int argc, char *argv[])
   // Time step 
   for(int t=0; t<T; t++) {
     std::vector<port> externalTSOutputs;
-    compModule tsMod(instance("TimeStep", 3, 1), 
+    compModule tsMod(instance("TimeStep", 3, /*1*/0),
                  inputs(port(context("k", k,
                                      "initTemp", initTemp)),
                         port(context("t", t)),
                         //port(compContext("temp", sightArray(sightArray::dims(X,Y), nextTemp), LkComp(2, attrValue::floatT, true)))),
-                        port(compContext("temp",  sightVectorField(sightArray(sightArray::dims(X, Y), nextTemp), spatialDiscretizationBasis), 
-                                         LkComp(2, attrValue::floatT, true)))),
+                        port(compContext("temp",  sightVectorField(sightArray(sightArray::dims(X, Y), nextTemp), spatialDiscretizationBasis),
+                                         LkComp(2, attrValue::floatT, true)))
+                        ),
                  externalTSOutputs,
-                 isReference, 
+                 isReference,
                  context("dx", dx,
                          "dy", dy,
                          "dt", dt),
@@ -138,10 +141,10 @@ int main (int argc, char *argv[])
         
         /*scope s(txt()<<"x="<<x<<" y="<<y);
         dbg << "lastTemp["<<x<<"]["<<y<<"] = "<<lastTemp[idx(x,y,Y)]<<endl;*/
-        if(tsMod.existsModOption("k")) {
+/*        if(tsMod.existsModOption("k")) {
           //cout << "k specified. old val="<<k<<", new val="<<tsMod.getModOption("k").getAsFloat()<<endl;
           k = tsMod.getModOption("k").getAsFloat();
-        }
+        }*/
         
         nextTemp[idx(x,y,X)] = lastTemp[idx(x,y,X)]+
                                k*(dt/dx/dx)*
@@ -165,14 +168,12 @@ int main (int argc, char *argv[])
     double* tmp = lastTemp;
     lastTemp = nextTemp;
     nextTemp = tmp;
-    //tsMod.setOutCtxt(0, compContext("temp", sightArray(sightArray::dims(X,Y), nextTemp), LkComp(2, attrValue::floatT, true)));
-    tsMod.setOutCtxt(0, compContext("temp", sightVectorField(sightArray(sightArray::dims(X, Y), nextTemp), spatialDiscretizationBasis),
-                                    LkComp(2, attrValue::floatT, true)));
+/*    tsMod.setOutCtxt(0, compContext("temp", sightVectorField(sightArray(sightArray::dims(X, Y), nextTemp), spatialDiscretizationBasis),
+                                    LkComp(2, attrValue::floatT, true)));*/
     //cout << ">"<<endl;
   }
-  //mod.setOutCtxt(0, compContext("temp", sightArray(sightArray::dims(X,Y), nextTemp), LkComp(2, attrValue::floatT, true)));
-  mod.setOutCtxt(0, compContext("temp", sightVectorField(sightArray(sightArray::dims(X, Y), nextTemp), spatialDiscretizationBasis),
-                                LkComp(2, attrValue::floatT, true)));
+/*  mod.setOutCtxt(0, compContext("temp", sightVectorField(sightArray(sightArray::dims(X, Y), nextTemp), spatialDiscretizationBasis),
+                                LkComp(2, attrValue::floatT, true)));*/
   
   delete nextTemp;
   delete lastTemp;

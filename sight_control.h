@@ -1,7 +1,7 @@
 // Special preprocessor macros that make it easy to turn Sight operations on and off
 // at compilation to eliminate its cost during runs that do not need Sight.
 #pragma once
-#include "sight.h"
+//#include "sight.h"
 
 // Applications that wish to disable Sight completely #define DISABLE_SIGHT
 #ifdef DISABLE_SIGHT

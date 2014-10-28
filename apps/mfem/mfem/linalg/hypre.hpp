@@ -20,10 +20,6 @@
 #include "_hypre_parcsr_mv.h"
 #include "_hypre_parcsr_ls.h"
 
-#include "dbglog.h"
-using namespace dbglog;
-
-
 /// Wrapper for hypre's parallel vector class
 class HypreParVector : public Vector
 {

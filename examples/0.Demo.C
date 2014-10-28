@@ -1,7 +1,7 @@
 #include <map>
 #include <vector>
 #include <assert.h>
-#include "sight_pthread.h"
+#include "sight.h"
 #include <unistd.h>
 //using namespace std;
 using namespace sight;
@@ -155,7 +155,6 @@ int main(int argc, char** argv)
                                            source::reg(thisFile, "modularFibStart", "modularFibEnd"))); }
     
 #pragma sightLoc ModularStart
-    modularApp modularFibonacci("Fibonacci"); 
     fibModule(10, 0);
 #pragma sightLoc ModularEnd
   }

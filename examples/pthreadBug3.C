@@ -6,8 +6,6 @@
 * AUTHOR: Blaise Barney
 * LAST REVISED: 07/16/14
 ******************************************************************************/
-//#include <pthread.h>
-#include "sight.h"
 #include "sight_pthread.h"
 using namespace sight;
 #include <stdio.h>

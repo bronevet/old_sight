@@ -640,6 +640,13 @@ void modularApp::setNamedMeasures(const namedMeasures& meas) {
   getInstance()->meas = meas;
 }
 
+// Sets the named measurements in the currently active modularApp instance
+void modularApp::setCompNamedMeasures(const compNamedMeasures& cMeas) {
+  setNamedMeasures(cMeas.getNamedMeasures());
+  assert(getInstance());
+  getInstance()->measComp = cMeas.getComparators();
+}
+
 // Assigns a unique ID to the given module group, as needed and returns this ID
 int modularApp::addModuleGroup(const group& g) {
   
@@ -1337,7 +1344,7 @@ std::string compContext::str() const {
 
 /**************************
  ***** compModularApp *****
- **************************/
+ ************************** /
 
 compModularApp::compModularApp(const std::string& appName,                                                       properties* props) : 
   modularApp(appName,                                   props)
@@ -1368,6 +1375,7 @@ void compModularApp::destroy() {
 compModularApp::~compModularApp() {
   assert(!destroyed);
 }
+*/
 
 /**********************
  ***** compModule *****
@@ -1607,21 +1615,29 @@ attrValue compModule::getModOption(std::string name) {
  ***** springModularApp  *****
  *****************************/
 
-springModularApp::springModularApp(const std::string& appName,                                                        properties* props) :
-    compModularApp(appName, props)
+/*springModularApp::springModularApp(const std::string& appName,                                                        properties* props) :
+    modularApp(appName, props)
 { init(); }
 
 springModularApp::springModularApp(const std::string& appName, const attrOp& onoffOp,                                 properties* props)  :
-    compModularApp(appName, props)
+    modularApp(appName, props)
 { init(); }
 
 springModularApp::springModularApp(const std::string& appName,                        const compNamedMeasures& cMeas, properties* props) :
-    compModularApp(appName, props)
+    modularApp(appName, props)
 { init(); }
 
 springModularApp::springModularApp(const std::string& appName, const attrOp& onoffOp, const compNamedMeasures& cMeas, properties* props)  :
-    compModularApp(appName, props)
+    modularApp(appName, props)
+{ init(); }*/
+
+springModularApp* springModularApp::instance=NULL;
+
+springModularApp::springModularApp()
 { init(); }
+
+springModularApp* springModularApp::getInstance()
+{ return instance; }
 
 #include <sched.h>
 
@@ -1681,7 +1697,7 @@ long long randomLL() {
 }
 
 void springModularApp::init() {
-  if(!props->active) return;
+  //if(!props->active) return;
   
   bufSize=0;
   if(getenv("SPRING_BUF_SIZE"))
@@ -1723,7 +1739,7 @@ void springModularApp::init() {
 // of inheritance above sightObj, each object must enable Sight to directly call its destructor by calling
 // it inside the destroy() method. The fact that this method is virtual ensures that calling destroy() on 
 // an object will invoke the destroy() method of the most-derived class.
-void springModularApp::destroy() {
+/*void springModularApp::destroy() {
   this->~springModularApp();
 }
 
@@ -1740,7 +1756,7 @@ springModularApp::~springModularApp() {
    
     delete data;
   }
-}
+}*/
 
 /************************
  ***** springModule *****

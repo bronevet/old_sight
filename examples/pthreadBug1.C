@@ -9,8 +9,6 @@
 *   et al. O'Reilly and Associates.
 * LAST REVISED: 07/06/05  Blaise Barney
 ******************************************************************************/
-//#include <pthread.h>
-#include "sight.h"
 #include "sight_pthread.h"
 using namespace sight;
 #include <stdio.h>
