@@ -572,11 +572,10 @@ void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int
     //cout << "polyFits[moduleID]="<<polyFits[moduleID]<<", polyFits[moduleID]->numFits()="<<polyFits[moduleID]->numFits()<<endl;
 
     // hoa edit for merging
-	ioInfoFile <<moduleID << ";"<<polyFits[moduleID]->numFits() << ";"<< polyFits[moduleID]->saveFitText()<<endl;
-
-	if(polyFits[moduleID] && polyFits[moduleID]->numFits()>0)
+    if(polyFits[moduleID] && polyFits[moduleID]->numFits()>0) {
+      ioInfoFile <<moduleID << ";"<<polyFits[moduleID]->numFits() << ";"<< polyFits[moduleID]->saveFitText()<<endl;
       dotFile << "\t\t"<<polyFits[moduleID]->getFitText()<<""<<endl;
-
+    }
 
     //cout << "#modules[moduleID]->traceAttrNames="<<modules[moduleID]->traceAttrNames.size()<<endl;
     
