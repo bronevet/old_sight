@@ -588,7 +588,7 @@ void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int
   else
   {
 	// hoa edit
-	ioInfoFile << moduleID << ";0"<< endl;
+	//ioInfoFile << moduleID << ";0"<< endl;
   }
 
   if(!exitEmitted)
