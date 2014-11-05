@@ -56,6 +56,7 @@ class instance {
   //instance(const instance& that) : name(that.name), numInputs(that.numInputs), numOutputs(that.numOutputs) {}
   
   // hoa edit
+  instance(const std::string& name, int numInputs, int numOutputs) : name(name), numInputs(numInputs), numOutputs(numOutputs), vertID(-1), horiID(-1) {}
   instance(const std::string& name, int numInputs, int numOutputs, int vertID, int horiID) : name(name), numInputs(numInputs), numOutputs(numOutputs), vertID(vertID), horiID(horiID) {}
   instance(const instance& that) : name(that.name), numInputs(that.numInputs), numOutputs(that.numOutputs), vertID(that.vertID), horiID(that.horiID) {}
 
