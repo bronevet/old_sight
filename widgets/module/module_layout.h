@@ -39,9 +39,11 @@ class moduleInfo {
   int numInputs;
   int numOutputs;
   int count;
+  int vertID;
+  int horiID;
   
-  moduleInfo(const std::string& moduleName, int moduleID, int numInputs, int numOutputs, int count) :
-    moduleName(moduleName), moduleID(moduleID), numInputs(numInputs), numOutputs(numOutputs), count(count)
+  moduleInfo(const std::string& moduleName, int moduleID, int numInputs, int numOutputs, int count, int vertID, int horiID) :
+    moduleName(moduleName), moduleID(moduleID), numInputs(numInputs), numOutputs(numOutputs), count(count), vertID(vertID), horiID(horiID)
   {}
 };
 
@@ -263,6 +265,7 @@ class modularApp: public block, public common::module
   std::ofstream inouFile;
   std::ofstream datFile;
   std::ofstream ioInfoFile;
+  std::ofstream vertHoriFile;
 
   public:
   
@@ -312,7 +315,10 @@ class modularApp: public block, public common::module
   // Enter a new moduleMarker within the current modularApp
   // numInputs/numOutputs - the number of inputs/outputs of this module node
   // ID - the unique ID of this module node
-  void enterModuleMarker(std::string moduleName, int numInputs, int numOutputs);
+   
+  // hoa edit
+  //void enterModuleMarker(std::string moduleName, int numInputs, int numOutputs);
+  void enterModuleMarker(std::string moduleName, int numInputs, int numOutputs, int vertID, int horiID);
 
   // Static version of enterModuleMarker() that pulls the from/to anchor IDs from the properties iterator and calls
   // enterModule() in the currently active modularApp
@@ -327,7 +333,10 @@ class modularApp: public block, public common::module
   // Enter a new module within the current modularApp
   // numInputs/numOutputs - the number of inputs/outputs of this module node
   // ID - the unique ID of this module node
-  void enterModule(std::string node, int moduleID, int numInputs, int numOutputs, int count);
+  // hoa edit
+  //void enterModule(std::string node, int moduleID, int numInputs, int numOutputs, int counts);
+  void enterModule(std::string node, int moduleID, int numInputs, int numOutputs, int counts, int vertID, int horiID);
+  
   // Static version of enterModule() that pulls the from/to anchor IDs from the properties iterator and calls 
   // enterModule() in the currently active modularApp
   static void* enterModule(properties::iterator props);
@@ -397,6 +406,8 @@ class moduleTraceStream: public traceStream
   std::string name;
   int numInputs;
   int numOutputs;
+  int vertID; 
+  int horiID;
   
   // The observers that processes observations of this object
   module* mFilter;

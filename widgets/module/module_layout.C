@@ -136,7 +136,7 @@ modularApp::modularApp(properties::iterator props) : block(properties::next(prop
   // hoa edit
   //dbg << "<div> <canvas id=\"flGra\" data-processing-sources=\"widgets/module/flGra.pde\" width=\"1200\" height=\"900\"> </canvas> </div>\n";
   //dbg << "<a href=\"widgets/module/index.html\">Flow Graph</a>\n";
-  dbg << "<iframe id=\"flGrFrame\" src=\"widgets/module/index.html\" width=\"1300\" height=\"1200\"></iframe>\n";
+  dbg << "<iframe id=\"flGrFrame\" src=\"widgets/module/index.html\" width=\"2000\" height=\"1200\"></iframe>\n";
 
   dbg << "<div id=\"module_container_"<<appID<<"\"></div>\n";
   dbg.userAccessing();
@@ -166,6 +166,10 @@ modularApp::modularApp(properties::iterator props) : block(properties::next(prop
   ostringstream ioInfoFName;
   ioInfoFName << outDir << "/ioInfo.txt";
   ioInfoFile.open(ioInfoFName.str().c_str());
+  // define vertical/horizontal layout
+  ostringstream vertHoriFName;
+  vertHoriFName << outDir << "/vert_hori.txt";
+  vertHoriFile.open(vertHoriFName.str().c_str());
 
   // If we were asked to emit all observations from all modules into a file,
   // create a traceObserver to do this. This traceObserver will be connected to the
@@ -247,6 +251,7 @@ modularApp::~modularApp() {
   inouFile.close();
   datFile.close();
   ioInfoFile.close();
+  vertHoriFile.close();
 
   dbg.exitBlock();
 
@@ -355,13 +360,29 @@ int maxButtonID=0; // The maximum ID that has ever been assigned to a button
 // Enter a new moduleMarker within the current modularApp
 // numInputs/numOutputs - the number of inputs/outputs of this module node
 // ID - the unique ID of this module node
-void modularApp::enterModuleMarker(string moduleName, int numInputs, int numOutputs) {
+// hoa edit
+void modularApp::enterModuleMarker(string moduleName, int numInputs, int numOutputs, int vertID, int horiID) {
+  // Add a moduleInfo object that records this moduleMarker to the modularApp's stack
+  mMarkerStack.push_back(sight::layout::moduleInfo(moduleName, -1, numInputs, numOutputs, -1, vertID, horiID));
+}
+/*
+void modularApp::enterModuleMarker(string moduleName, int numInputs, int numOutput) {
   // Add a moduleInfo object that records this moduleMarker to the modularApp's stack
   mMarkerStack.push_back(sight::layout::moduleInfo(moduleName, -1, numInputs, numOutputs, -1));
 }
+*/
 
 // Static version of enterModuleMarker() that pulls the from/to anchor IDs from the properties iterator and calls
 // enterModule() in the currently active modularApp
+// hoa edit
+void* modularApp::enterModuleMarker(properties::iterator props) {
+  assert(modularApp::activeMA);
+  modularApp::activeMA->enterModuleMarker(props.get("name"),
+                                          props.getInt("numInputs"),
+                                          props.getInt("numOutputs"), props.getInt("vertID"), props.getInt("horiID"));
+  return NULL;
+}
+/*
 void* modularApp::enterModuleMarker(properties::iterator props) {
   assert(modularApp::activeMA);
   modularApp::activeMA->enterModuleMarker(props.get("name"),
@@ -369,6 +390,7 @@ void* modularApp::enterModuleMarker(properties::iterator props) {
                                           props.getInt("numOutputs"));
   return NULL;
 }
+*/
 
 // Exit a module within the current modularApp
 void modularApp::exitModuleMarker() {
@@ -385,7 +407,7 @@ void modularApp::exitModuleMarker(void* obj) {
 // Enter a new module within the current modularApp
 // numInputs/numOutputs - the number of inputs/outputs of this module node
 // ID - the unique ID of this module node
-void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int numOutputs, int count) {
+void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int numOutputs, int count, int vertID, int horiID) {
 //  cout << "modularApp::enterModule("<<moduleName<<") numInputs="<<numInputs<<", #modules["<<moduleID<<"]->ctxtNames="<<modules[moduleID]->ctxtNames.size()<<endl;
 
   // Inform the traceStream associated with this module that it is finished. We need this stream to wrap up
@@ -398,6 +420,9 @@ void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int
 
   // hoa edit
   tFile << moduleID <<":"<< moduleName <<":"<< numInputs <<":"<<numOutputs<<":"<<containerModuleID<<endl;
+  
+  if(vertID > -1 || horiID > -1 )
+        vertHoriFile << moduleName << ":" << vertID << ":" << horiID << endl;  
 
   // Start a subgraph for the current module
   dotFile << "subgraph cluster"<<moduleID<<" {"<<endl;
@@ -520,7 +545,6 @@ void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int
   
   {
     // Node Info
-
     // Collect the names of all the context and trace attributes
     list<string> contextAttrs;
     for(map<string, list<string> >::iterator c=modules[moduleID]->ctxtNames.begin(); c!=modules[moduleID]->ctxtNames.end(); c++) {
@@ -635,7 +659,9 @@ void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int
   dotFile << "{rank=sink;node"<<moduleID<<"_Out;}"<<endl;
   
   // Add a moduleInfo object that records this module to the modularApp's stack
-  mStack.push_back(sight::layout::moduleInfo(moduleName, moduleID, numInputs, numOutputs, count));
+  // hoa edit
+  mStack.push_back(sight::layout::moduleInfo(moduleName, moduleID, numInputs, numOutputs, count, vertID, horiID));
+  //mStack.push_back(sight::layout::moduleInfo(moduleName, moduleID, numInputs, numOutputs, count));
   
   //cout << "modularApp::enterModule() done\n";
 }
@@ -655,7 +681,7 @@ void* modularApp::enterModule(properties::iterator props) {
                                     moduleID,
                                     ts->numInputs,
                                     ts->numOutputs,
-                                    properties::getInt(props, "count"));
+                                    properties::getInt(props, "count"), properties::getInt(props, "vertID"), properties::getInt(props, "horiID"));
   return NULL;
 }
 
@@ -1606,6 +1632,9 @@ moduleTraceStream::moduleTraceStream(properties::iterator props, traceObserver* 
   name       = props.get("name");
   numInputs  = props.getInt("numInputs");
   numOutputs = props.getInt("numOutputs");
+  // hoa edit
+  vertID = props.getInt("vertID");
+  horiID = props.getInt("horiID");
   
   // Get the currently active module that this traceStream belongs to
   /*assert(modularApp::mStack.size()>0);

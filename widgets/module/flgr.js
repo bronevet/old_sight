@@ -1,13 +1,9 @@
 function clickModule(nodeid, buttonid, nameinod, mouX, mouY)
 {
-  //alert(mouX+"-"+mouY);
-  //alert("node"+nodeid+"-"+buttonid + "-"+nameinod);
+  alert("nodeid="+nodeid+"buttonid=" +buttonid);
   var div = document.createElement('div');
   div.id = 'CanvizBox_node'+nodeid;
   div.style='position: absolute; top:'+mouY+'%; left:'+mouX+'%';
-  //div.style='position:fixed; top:'+mouY+'%; left:'+mouX+'%';
-  //div.innerHTML = "<a onclick=\"ClickOnModuleNode("+nodeid", this, "+buttonid+");\" target=\"_self\" href=\"#\">"+nameinod+"</a>";
-  //div.innerHTML = '<a onclick="ClickOnModuleNode(node1, this, 3);" target="_self" href="#">'+nameinod+'</a>';
   document.getElementById('canvas').appendChild(div);
   ClickOnModuleNode('node'+nodeid, this, buttonid);
 }
@@ -30,6 +26,11 @@ function dataset()
   numTraceAttrs = getQueryParam("numTraceAttrs"); 
   hostDivID = getQueryParam("hostDivID"); 
   nu = numTraceAttrs;
+}
+
+function getGraName()
+{
+  graName = getQueryParam("graName");
 }
 
 function getQueryParam(param) {

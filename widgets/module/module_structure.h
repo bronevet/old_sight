@@ -47,9 +47,17 @@ class instance {
   int numInputs;
   int numOutputs;
 
+  // hoa edit
+  int vertID;
+  int horiID;
+
   instance() {}
-  instance(const std::string& name, int numInputs, int numOutputs) : name(name), numInputs(numInputs), numOutputs(numOutputs) {}
-  instance(const instance& that) : name(that.name), numInputs(that.numInputs), numOutputs(that.numOutputs) {}
+  //instance(const std::string& name, int numInputs, int numOutputs) : name(name), numInputs(numInputs), numOutputs(numOutputs) {}
+  //instance(const instance& that) : name(that.name), numInputs(that.numInputs), numOutputs(that.numOutputs) {}
+  
+  // hoa edit
+  instance(const std::string& name, int numInputs, int numOutputs, int vertID, int horiID) : name(name), numInputs(numInputs), numOutputs(numOutputs), vertID(vertID), horiID(horiID) {}
+  instance(const instance& that) : name(that.name), numInputs(that.numInputs), numOutputs(that.numOutputs), vertID(that.vertID), horiID(that.horiID) {}
 
   instance(properties::iterator props);
 
@@ -104,6 +112,12 @@ class group {
   
   // Returns the number of outnputs of the most deeply nested instance within this group
   int numOutputs() const;
+
+  // hoa edit
+  // Returns the vertical ID of the most deeply nested instance within this group
+  int vertID() const;
+  // Returns the horizontal ID of the most deeply nested instance within this group
+  int horiID() const;
   
   // Returns the most deeply nested instance within this group
   const instance& getInst() const;
@@ -439,6 +453,10 @@ class module: public sightObj, public common::module
   std::string name() const { return g.name(); }
   int numInputs()  const { return g.numInputs(); }
   int numOutputs() const { return g.numOutputs(); }
+  //hoa edit
+  int vertID() const {return g.vertID();}
+  int horiID() const {return g.horiID();}
+  
   int getModuleID() const { return moduleID; }
   const group& getGroup() const { return g; }
   

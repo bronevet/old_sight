@@ -88,7 +88,15 @@ int main(int argc, char** argv)
   
   // Generate the initial particle positions
   std::vector<port> initOutputs;
-  { module initModule(instance("Initialization", 0, 1), initOutputs, namedMeasures("PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS, PAPI_L2_TC_MR))));
+  { 
+    // hoa edit - name_module, numInput, numOutput, verticalID, horizontalID
+    // vertical/horizontal layout
+    // instance(string module_name,int numInputs,int numOutputs,int verticalID,int horizontalID)
+    module initModule(instance("Initialization", 0, 1, 0, 0), initOutputs, namedMeasures("PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS, PAPI_L2_TC_MR))));
+    // default layout
+    //module initModule(instance("Initialization", 0, 1, -1, -1), initOutputs, namedMeasures("PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS, PAPI_L2_TC_MR))));
+
+
     for(int p=0; p<numParticles; p++) {
       vector<double> curPos;
       for(int d=0; d<numDims; d++) curPos.push_back(((double)rand()/(double)RAND_MAX));
@@ -103,20 +111,37 @@ int main(int argc, char** argv)
   std::vector<port> neighOutputs;
   map<int, set<int> > neighbors;
   for(int t=0; t<numTS; t++) {
-    module timeStepModule(instance("TimeStep", 1, 0), inputs(port(context("t", t))), 
+    
+    //hoa edit
+    // vertical/horizontal layout
+    module timeStepModule(instance("TimeStep", 1, 0, 0, 1), inputs(port(context("t", t))), 
                           namedMeasures("PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS, PAPI_L2_TC_MR))));
-
+    
+    // default layout
+    //module timeStepModule(instance("TimeStep", 1, 0, -1, -1), inputs(port(context("t", t))), 
+    //                      namedMeasures("PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS, PAPI_L2_TC_MR))));
+    
     //scope s(txt()<<"Iteration "<<t);
     if(t%neghRefreshPeriod==0) {
       //scope s("Computing neighbors");
       // Find each particle's nearest neighbors
       
-      module neighModule(instance("Neighbors", 1, 1), 
+      // hoa edit
+      // vertical/horizontal layout 
+      module neighModule(instance("Neighbors", 1, 1, 2, 1), 
                                inputs(// particles
                                       (t==0? initOutputs[0]: forceOutputs[0])),
                                neighOutputs,
                                namedMeasures("PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS, PAPI_L2_TC_MR))));
-      
+            
+        // default layout
+        /*
+	module neighModule(instance("Neighbors", 1, 1, -1, -1), 
+                               inputs(// particles
+                                      (t==0? initOutputs[0]: forceOutputs[0])),
+                               neighOutputs,
+                               namedMeasures("PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS, PAPI_L2_TC_MR))));
+       */
       // Maps each particles (idx in particle) to the set of its neighbors
       
       int totalNeighbors=0;
@@ -143,16 +168,30 @@ int main(int argc, char** argv)
     
     // Compute the forces on all particles from their neighbors and update their positions
     {
-      //scope s("Computing forces");
-      module forceModule(instance("Forces", 2, 1), 
+      scope s("Computing forces");
+
+      // hoa edit
+      // vertical/horizontal layout      	
+      module forceModule(instance("Forces", 2, 1, 1, 1), 
+                       inputs(// particles
+                                (t==0? initOutputs[0]: forceOutputs[0]),
+                                // neighbors
+                                neighOutputs[0]),
+                         forceOutputs,
+                         namedMeasures("PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS, PAPI_L2_TC_MR))));
+           
+
+      // default layout
+      /*        
+      module forceModule(instance("Forces", 2, 1, -1, -1), 
                          inputs(// particles
                                 (t==0? initOutputs[0]: forceOutputs[0]),
                                 // neighbors
                                 neighOutputs[0]),
                          forceOutputs,
                          namedMeasures("PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS, PAPI_L2_TC_MR))));
-  
-      
+      */
+     
       for(map<int, set<int> >::iterator p=neighbors.begin(); p!=neighbors.end(); p++) {
         // Initialize the force vector to 0
         vector<double> force;

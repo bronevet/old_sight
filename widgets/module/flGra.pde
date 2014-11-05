@@ -28,6 +28,7 @@ String[] lconn;
 String[] node_relation = new String[nsi];
 // depth of nodes for graph layout
 int[] node_depth = new int[nsi];
+int[] node_endw = new int[nsi];
 String[] depthList = new String[nsi];
 int[][] temp_depthList = new int[nsi][nsi];
 int[] nodrel_len = new int[nsi];
@@ -36,6 +37,7 @@ int depth_width;
 String[] vizMeth = new String[nsi];
 // detail information of input and output relationship text
 String[] ioInfo = new String[nsi];
+String[] vert_hori = new String[nsi];
 String[] nVi;
 // depth distance
 float depth_distance;
@@ -55,6 +57,11 @@ int[] containerID = new int[nsi];
 int[] numconn = new int[nsi];
 // io relation information for each node if has
 String[] ionodeInfo = new String[nsi];
+// vertical id
+int[] verID = new int[nsi];
+// horizontal id
+int[] horID = new int[nsi];
+
 int[] ionodeInfo_height = new int[nsi];
 // y coordinate of nodes
 float[] xcnode = new float[nsi];
@@ -85,6 +92,9 @@ int node_col = -1;
 float scaleFactor;
 float updateWinsize;
 int[] temp = new int[nsi];
+String graphname;
+// hori_vert_layout = 0 for automatic layout; = 1 for manual vertical/horizontal layout
+int hori_vert_layout;
   
 void setup() 
 { 
@@ -99,6 +109,12 @@ void setup()
   aFont = createFont(fontList[0], font_size, true);
   textFont(aFont);
   
+  hori_vert_layout = 0;
+  
+  getGraName();
+  graphname = graName;
+  //println("graName="+graName);
+  
   // initialize parameters
   scaleFactor = 1;
   // x,y coordinate for root node
@@ -106,6 +122,26 @@ void setup()
   //ynode = 50;
   viewMeth = 3;
   
+  /*
+  // node information: ModuleID:ModuleName:num_input:num_output:ContainterModuleID(parent)
+  lnodes = loadStrings("node_"+graphname+".txt");
+  lnodes_length = lnodes.length;
+  // connection between input and output of nodes   
+  lconn = loadStrings("inout_"+graphname+".txt");
+  // visualization methods: sc3d, ccp, pcp, ... 
+  vizMeth = loadStrings("dat_"+graphname+".txt");
+   
+  if(vizMeth.length>0)
+    statistic_viz = 1;
+  // detail information of input and output relationship text
+  ioInfo = loadStrings("ioInfo_"+graphname+".txt");
+    
+  vert_hori = loadStrings("vert_hori_"+graphname+".txt");
+  if(vert_hori.length>0)
+    hori_vert_layout = 1;
+  */
+  
+  // for module
   // node information: ModuleID:ModuleName:num_input:num_output:ContainterModuleID(parent)
   lnodes = loadStrings("node.txt");
   lnodes_length = lnodes.length;
@@ -113,12 +149,38 @@ void setup()
   lconn = loadStrings("inout.txt");
   // visualization methods: sc3d, ccp, pcp, ... 
   vizMeth = loadStrings("dat.txt");
+   
   if(vizMeth.length>0)
     statistic_viz = 1;
   // detail information of input and output relationship text
   ioInfo = loadStrings("ioInfo.txt");
+  
+  vert_hori = loadStrings("vert_hori.txt");
+  if(vert_hori.length>0)
+    hori_vert_layout = 1;
+  // end for module
+  
   if(ioInfo.length>0)
     iorel_info = 1;
+    
+  // hoa tam  
+  /*  
+  // move rows that have parentID = -1 to the top
+  for(int i=0; i< lnodes_length; i++)
+  {
+    String[] inode = split(lnodes[i],':');
+    containerID[i] = int(inode[4]);
+    if(containerID[i] == -1)
+    {
+      String tmp = lnodes[i];
+      for(int j=i; j>0; j--)
+      {
+        lnodes[j]=lnodes[j-1];   
+      }
+      lnodes[0] = tmp;
+    }
+  }
+  */
   
   // compoute node information 
   for(int i=0; i< lnodes_length; i++)
@@ -137,7 +199,7 @@ void setup()
     // initialize depth node data
     //node_relation[i] = nodeID[i]+":"; 
     node_relation[i] = i+":"; 
-    node_depth[i] = ""; 
+    node_depth[i] = 0; 
     depthList[i] = "";
     //temp_depthList[i] = "";
     
@@ -183,6 +245,7 @@ void setup()
   depth_length = 0;
   depth_width = 0;
   
+  // compute depth_length of depthList
   for(int i=0; i<lnodes_length; i++)
   {
     String[] depnod = split(node_relation[i],":");
@@ -195,7 +258,7 @@ void setup()
     {
       depth_length = nuDep+1;
       node_depth[i] = nuDep; 
-      nuDep += 1;      
+      //nuDep += 1;
     }
     else
     {
@@ -215,12 +278,13 @@ void setup()
       
     for(int k=0; k<nodrel_len[i]; k++)
       int ino = int(depnod[k]);
-      if(containerID[ino]>0 && nodrel_len[ino]<2 && node_depth[ino]<(depth_length-1))
+      if(containerID[ino]>=0 && nodrel_len[ino]<2 && node_depth[ino]<(depth_length-1))
         temp[ino] = 1;
    
     nodedepth_height[node_depth[i]] = 0;
   }
  
+ // compute depthList for output layout
  int savel = 0;
  for(int l=0;l<depth_length;l++)
  {
@@ -230,18 +294,22 @@ void setup()
       {
         if(containerID[m] < 0)
         {
-          depthList[l] += m+ ":";  
-           
+          depthList[l] += m+ ":";
+          if(nodrel_len[m] < 2)
+            depthList[l+1] += "-1:";  
           String[] dep = split(node_relation[m],":");
+          
+          // k = 0
+          int deno = int(dep[0]);
+          for(int t=0;t<(nodrel_len[deno]-1);t++)
+             depthList[node_depth[deno]] += "-2:"; 
+          
           for(int k=1; k<nodrel_len[m]; k++)
           {
             int deno = int(dep[k]);
             depthList[node_depth[deno]] += deno+ ":";
-            
             for(int t=0;t<(nodrel_len[deno]-2);t++)
-            {
                depthList[node_depth[deno]] += "-2:"; 
-            }
             if(deno == 4)
               depthList[node_depth[deno]] += "-2:";
             savel = l+1;
@@ -264,33 +332,112 @@ void setup()
        else if(de>=0)
        {
           String[] nodere = split(node_relation[de],":");
-          //for(int m=1; m<(nodere.length-1); m++)
           for(int m=1; m<(nodrel_len[de]); m++)
           {
             int den = int(nodere[m]);
             depthList[i] += den+ ":"; 
-            // if(nodrel_len[den] > 2)
-             for(int t=0;t<(nodrel_len[den]-2);t++)
+            for(int t=0;t<(nodrel_len[den]-2);t++)
                 depthList[i] += "-2:"; 
           }
        }
      }
  }
+ 
+  /*
+  depthList[0]="0:-2:-2:5:-2:-2:-2:14:-2:";
+  depthList[1]="1:2:-2:6:-2:9:12:15:";
+  depthList[2]="-1:3:4:7:8:10:13:16:";
+  depthList[3]="-1:-1:-1:-1:-1:11:-1:17:";
+  */
   
+  /*
+  hori_vert_layout = 1;
+  depth_length = 8;
+  depthList[0]="0:-1:5:-1:-1:";
+  depthList[1]="1:2:6:-1:9:";
+  depthList[2]="-1:3:7:8:10:";
+  depthList[3]="-1:4:12:-1:11:";
+  depthList[4]="-1:-1:13:-1:-1:";
+  depthList[5]="14:";
+  depthList[6]="15:";
+  depthList[7]="16:";
+  */
+  // update node_depth when change vertical/horizontal layout
+  if(hori_vert_layout == 1)
+  {
+    int max_verID = 0;
+    int max_horID = 0;
+    int[] tmpVH = new int[nsi];
+    
+    for(int i=0; i<vert_hori.length; i++)
+    {
+      String[] hove = split(vert_hori[i],':');
+      // vertical id
+      verID[i] = int(hove[1]);
+      if(max_verID < verID[i])
+        max_verID = verID[i];
+      // horizontal id
+      horID[i] = int(hove[2]);
+      if(max_horID < horID[i])
+        max_horID = horID[i];
+    }
+    
+    depth_length = max_verID + 1;
+    for(int i=0; i<depth_length;i++)
+    {
+      depthList[i] = "";
+      for(int k=0; k <= max_horID; k++)
+        tmpVH[k] = -1;
+      
+      for(int j=0; j<vert_hori.length; j++)
+        if(verID[j] == i)
+          tmpVH[horID[j]] = j;
+      
+      for(int k=0; k <= max_horID; k++)
+        depthList[i] += tmpVH[k]+":";
+    }
+    
+    // update node_depth when change vertical/horizontal layout
+    for(int i=0; i<lnodes_length; i++)
+    {
+      for(int j=0; j<depth_length; j++)
+      {
+        String[] delis = split(depthList[j], ":");
+        for(int k=0;k<(delis.length-1);k++)
+          if(i == int(delis[k]))
+            node_depth[i] = j;
+      }
+    }
+  }
+
+
+
+  
+  for(int j=0; j<depth_length; j++)
+  {
+    String[] delis = split(depthList[j], ":");
+    for(int k=0;k<(delis.length-1);k++)
+    {
+      if(int(delis[k]) >= 0)
+        node_endw[int(delis[k])] = k;
+    }
+  }
+   
   // set up current depth length
   current_depth_length = depth_length;
   
   /*
   for(int i=0; i<depth_length; i++)
     println("depthList["+i+"]="+depthList[i]); 
+    
   for(int i=0; i<lnodes_length; i++)
   {
+    println("node_endw["+i+"]="+node_endw[i]); 
    //println("node_depth["+i+"]="+node_depth[i]); 
-   println("node_relation["+i+"]="+node_relation[i]); 
+   //println("node_relation["+i+"]="+node_relation[i]); 
    // println("temp["+i+"]="+temp[i]); 
   }
   */
-  
   redraw();
   noLoop();
 }
@@ -302,6 +449,9 @@ void draw()
   nodeheight = 1.8*font_size;
   //nodeheight = height/(8*depth_length);
   //nodewidth = width/(depth_width + 1);
+  
+  //nodewidth = 10*font_size;
+    
   if(lnodes_length > 8)
   {
     nodewidth = 28*font_size;
@@ -312,7 +462,6 @@ void draw()
     nodewidth = 40*font_size;
     depth_distance = 6*font_size;
   }
-
   depth_distance = 6*font_size;
   
   
@@ -353,8 +502,11 @@ void draw()
     String[] depnod = split(node_relation[i],":");
     if((depnod.length-1) < (depth_length-2))
       if(depth_width < (depnod.length-1))
-        depth_width = (depnod.length-1);
+        //depth_width = (depnod.length-1);
+        depth_width = (depnod.length);
   }
+  
+  //depth_width = depth_width*(depth_length-3);
   
   //nodeheight = height/(10*depth_length);
   //nodewidth = width/(depth_width + 7);
@@ -366,8 +518,11 @@ void draw()
     hnode[i] = nodeheight + depth_distance;
     if(numin[i]>0 || numout[i]>0)
       hnode[i] += nodeheight;
+    if(numin[i]==0 && numout[i]==0)
+      hnode[i] += nodeheight;
     if(statistic_viz == 1)
       hnode[i] += nodeheight;
+      
     if(iorel_info==1)
       hnode[i] += ionodeInfo_height[i]*font_size;
     
@@ -382,46 +537,12 @@ void draw()
   for(int i=0; i<lnodes_length; i++)
   {   
     // position of nodes
-    /*
-    if(containerID[i] < 0)
-    {
-      if(viewMeth == 2)
-        xcnode[i] = xnode+depth_length*font_size;
-      else
-        xcnode[i] = xnode + (width-xnode)/(depth_width+3);
-    }
-    else
-    {
-      for(int j=0; j<depth_length; j++)
-      {
-        String[] delis = split(depthList[j], ":");
-        for(int k=0;k<(delis.length-1);k++)
-          if(i == int(delis[k]))
-          {
-            //if(viewMeth == 2)
-            //  xcnode[i] = xnode + k*(width-xnode)/(delis.length-1) + j*font_size;
-            //else
-            //  xcnode[i] = xnode + k*(width-xnode)/(delis.length-1);
-            
-            if(viewMeth == 2)
-              xcnode[i] = xnode + k*(width-xnode)/(depth_width+6) + j*font_size;
-            else
-              xcnode[i] = xnode + k*(width-xnode)/(depth_width+6);
-          }
-      }
-    }
-    */
     for(int j=0; j<depth_length; j++)
     {
       String[] delis = split(depthList[j], ":");
       for(int k=0;k<(delis.length-1);k++)
         if(i == int(delis[k]))
-        {
-          //if(viewMeth == 2)
-          //  xcnode[i] = xnode + k*(width-xnode)/(delis.length-1) + j*font_size;
-          //else
-          //  xcnode[i] = xnode + k*(width-xnode)/(delis.length-1);
-          
+        { 
           if(viewMeth == 2)
             xcnode[i] = xnode + k*(width-xnode)/(depth_width+6) + j*font_size;
           else
@@ -440,7 +561,7 @@ void draw()
     }
   }
   
-  
+  // update information for nested view
   if(viewMeth == 2)
   {
     // update xcnode
@@ -450,7 +571,7 @@ void draw()
       if(nodrel_len[i]>2)
       {
         String[] depnod = split(node_relation[i],":");
-        xcnode[i] = xcnode[int(depnod[1])] - font_size;
+        xcnode[i] = xcnode[int(depnod[1])]- font_size;
       }
     }
     // update width of node
@@ -466,10 +587,20 @@ void draw()
             if(i == int(depli[k]))
             {
               String[] depnod = split(node_relation[i],":");
-              if(nodrel_len[i]>2)
-                wnode[i] =  xcnode[int(depnod[depnod.length-2])] - xcnode[int(depnod[1])] + wnode[int(depnod[depnod.length-2])] + font_size;
-              else if(nodrel_len[i] == 2)
-                wnode[i] = wnode[int(depnod[1])] + font_size;
+                if(nodrel_len[i]>2)
+                {
+                  //wnode[i] =  xcnode[int(depnod[depnod.length-2])] - xcnode[int(depnod[1])] + wnode[int(depnod[depnod.length-2])] + font_size;
+                  for(int h = 0; h<(depnod.length-2); h++)
+                  {
+                    if(node_endw[int(depnod[h])] > node_endw[int(depnod[depnod.length-2])])
+                      wnode[i] =  xcnode[int(depnod[h])] - xcnode[int(depnod[1])] + wnode[int(depnod[h])] + font_size;
+                    else
+                      wnode[i] =  xcnode[int(depnod[depnod.length-2])] - xcnode[int(depnod[1])] + wnode[int(depnod[depnod.length-2])] + font_size;
+                  }
+                }
+                else if(nodrel_len[i] == 2)
+                  wnode[i] = wnode[int(depnod[1])] + font_size;
+              
             }
           }
         }
@@ -481,12 +612,12 @@ void draw()
   int newWid, newHei;
   if(lnodes_length > 8)
   {
-    newWid = int(100+nodewidth*(depth_width+8));
+    newWid = int(200+nodewidth*(depth_width+8));
     newHei = depth_distance;
   }
   else
   {
-    newWid = int(100+nodewidth*(depth_width+8));
+    newWid = int(200+nodewidth*(depth_width+8));
     newHei = depth_distance;
   }
   for(int k=0; k< (depth_length); k++)
@@ -565,18 +696,21 @@ void mousePressed()
 { 
   for(int i=0; i<lnodes_length; i++)
   {
-    String[] vizInf = split(vizMeth[i],','); 
-    String[] nVi = split(vizInf[2],':');
-    int nvi_len = nVi.length;
-    for(int k=0; k<nvi_len; k++)
+    if(statistic_viz == 1)
     {
-      float stY, enY, stX, enX;
-      stY = ycnode[i]+2*nodeheight;
-      enY = ycnode[i]+3*nodeheight;
-      stX = (xcnode[i] + k*wnode[i]/nvi_len);
-      enX = (xcnode[i] + (k+1)*wnode[i]/nvi_len);
-      if(mouseX >= stX && mouseX <= enX && mouseY >= stY && mouseY <= enY)
-        clickModule(vizInf[0], int(vizInf[1])+k*100, names[i], (100*mouseX/width+10), 100*mouseY/height);
+      String[] vizInf = split(vizMeth[i],','); 
+      String[] nVi = split(vizInf[2],':');
+      int nvi_len = nVi.length;
+      for(int k=0; k<nvi_len; k++)
+      {
+        float stY, enY, stX, enX;
+        stY = ycnode[i]+2*nodeheight;
+        enY = ycnode[i]+3*nodeheight;
+        stX = (xcnode[i] + k*wnode[i]/nvi_len);
+        enX = (xcnode[i] + (k+1)*wnode[i]/nvi_len);
+        if(mouseX >= stX && mouseX <= enX && mouseY >= stY && mouseY <= enY)
+          clickModule(vizInf[0], int(vizInf[1])+k*100, names[i], (100*mouseX/width+10), 100*mouseY/height);
+      }
     }
     
     if(viewMeth == 1 || viewMeth == 2)
@@ -649,7 +783,6 @@ void keyPressed()
     font_size += 1;
     if(width+int(scaleFactor)>100 && height+int(scaleFactor/10) > 100)
     {
-      //size(width+int(scaleFactor), height+int(scaleFactor/10));
       size(width+int(scaleFactor), height+int(scaleFactor/5));
       background(255);
       smooth();
@@ -777,21 +910,24 @@ void draw_nodes(int inod, float xc, float yc, float wn, float hn)
     text(names[inod], xc+wn/2, yc+nodeheight+nodeheight/1.5);
     
     // 3. draw visualization methods box
-    String[] vizInf = split(vizMeth[0],','); 
-    String[] nVi = split(vizInf[2],':');
-    int nvilen = nVi.length;
-    for(int k=0; k<nvilen; k++)
+    if(statistic_viz == 1)
     {
-      stroke(0);
-      strokeWeight(1);
-      colorMode(HSB);
-      fill(k*255/nvilen, 20, 250);
-      rect(xc + k*wn/nvilen, yc+2*nodeheight, wn/nvilen, nodeheight);
-     
-      fill(50);
-      text(nVi[k], xc + (k+1/2)*wn/nvilen, yc+ 2*nodeheight + nodeheight/1.5);
+      String[] vizInf = split(vizMeth[0],','); 
+      String[] nVi = split(vizInf[2],':');
+      int nvilen = nVi.length;
+      for(int k=0; k<nvilen; k++)
+      {
+        stroke(0);
+        strokeWeight(1);
+        colorMode(HSB);
+        fill(k*255/nvilen, 20, 250);
+        rect(xc + k*wn/nvilen, yc+2*nodeheight, wn/nvilen, nodeheight);
+       
+        fill(50);
+        text(nVi[k], xc + (k+1/2)*wn/nvilen, yc+ 2*nodeheight + nodeheight/1.5);
+      }
     }
-  
+    
     // 4. draw input, output information
     if(iorel_info == 1)
     {
@@ -814,6 +950,27 @@ void draw_nodes(int inod, float xc, float yc, float wn, float hn)
       if(nodrel_len[inod]>1)
       {
         // draw nest box
+        if(hori_vert_layout == 1)
+        {
+          noFill();
+          float len = 0;
+          String[] depnod = split(node_relation[inod],":");
+          int tpDep = node_depth[int(depnod[0])];
+          int endDep = current_depth_length-1;
+          for(int k=1; k<nodrel_len[inod];k++)
+          {
+            if(node_depth[int(depnod[k])] >= tpDep)
+              endDep = node_depth[int(depnod[k])]+nodrel_len[int(depnod[k])];
+          }
+           
+          for(int k=node_depth[inod]; k<endDep;k++)
+          {
+            len += nodedepth_height[k];
+          }
+            rect(xc, yc+hn-depth_distance, wn, len-hn);
+        }
+        else
+        {
          noFill();
          float len = 0;
          for(int k=node_depth[inod]; k< (current_depth_length-1);k++)
@@ -821,6 +978,7 @@ void draw_nodes(int inod, float xc, float yc, float wn, float hn)
            len += nodedepth_height[k];
          }
          rect(xc, yc+hn-depth_distance, wn, len-hn);
+        }
       }
     }
     // draw data recursion - tree if has
@@ -833,7 +991,21 @@ void draw_nodes(int inod, float xc, float yc, float wn, float hn)
         for(int k=1; k<nodrel_len[inod];k++)
         {
           fill(100, 200, 255);
-          draw_arrow(xcnode[int(depnod[0])] + wnode[int(depnod[0])]/2, ycnode[int(depnod[0])] + hnode[int(depnod[0])] - depth_distance, xcnode[int(depnod[k])]+wnode[int(depnod[k])]/2, ycnode[int(depnod[k])]);
+          if((node_depth[int(depnod[k])] - node_depth[inod]) == 1)
+          {
+            if(numin[k] == 0 && numout[k] == 0)
+                draw_arrow(xcnode[int(depnod[0])] + wnode[int(depnod[0])]/2, ycnode[int(depnod[0])] + hnode[int(depnod[0])] - depth_distance, xcnode[int(depnod[k])]+wnode[int(depnod[k])]/2, ycnode[int(depnod[k])]+nodeheight);
+            else
+                draw_arrow(xcnode[int(depnod[0])] + wnode[int(depnod[0])]/2, ycnode[int(depnod[0])] + hnode[int(depnod[0])] - depth_distance, xcnode[int(depnod[k])]+wnode[int(depnod[k])]/2, ycnode[int(depnod[k])]);
+          }
+          else
+          {
+            if(numin[k] == 0 && numout[k] == 0)
+              draw_curvearrow(xcnode[int(depnod[0])] + wnode[int(depnod[0])]/2, ycnode[int(depnod[0])] + hnode[int(depnod[0])] - depth_distance, xcnode[int(depnod[k])]+wnode[int(depnod[k])]/2, ycnode[int(depnod[k])]+nodeheight,4);
+            else
+              draw_curvearrow(xcnode[int(depnod[0])] + wnode[int(depnod[0])]/2, ycnode[int(depnod[0])] + hnode[int(depnod[0])] - depth_distance, xcnode[int(depnod[k])]+wnode[int(depnod[k])]/2, ycnode[int(depnod[k])],4);
+          
+          }
         }      
       }
     }
@@ -881,7 +1053,7 @@ void draw_curvearrow(float x1, float y1, float x2, float y2, int leri)
         xc2 = xc1;
         yc1 = y1 - d/3;
         yc2 = y1 - 2*d/3;
-    }  
+    }
     // right side
     else if(leri == 0)
     {
@@ -900,6 +1072,15 @@ void draw_curvearrow(float x1, float y1, float x2, float y2, int leri)
           yc2 = y1 + 2*d/3;
         }
     }
+    // left side
+    if(leri == 4)
+    {
+        xc1 = x1 - d/8;
+        xc2 = xc1;
+        yc1 = y1 + d/3;
+        yc2 = y1 + 2*d/3;
+        stroke(25);
+    }  
     else
     {
       if(y1==y2)
@@ -929,8 +1110,8 @@ void draw_curvearrow(float x1, float y1, float x2, float y2, int leri)
     }
        
     // draw curve
-    bezier(x1, y1, xc1, yc1, xc2, yc2, x2, y2);
-    //arc(x1, y1, x2-x1, 2*nodeheight, -PI, 0);
+    //  arc(x1, y1, x2-x1, 2*nodeheight, -PI, 0);
+      bezier(x1, y1, xc1, yc1, xc2, yc2, x2, y2);
     
     // draw arrow
     pushMatrix();
@@ -952,6 +1133,7 @@ void draw_curvearrow(float x1, float y1, float x2, float y2, int leri)
     line(0, 0, 5, -5);
     popMatrix();
 } 
+
 
 
 
