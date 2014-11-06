@@ -122,25 +122,6 @@ void setup()
   //ynode = 50;
   viewMeth = 3;
   
-  /*
-  // node information: ModuleID:ModuleName:num_input:num_output:ContainterModuleID(parent)
-  lnodes = loadStrings("node_"+graphname+".txt");
-  lnodes_length = lnodes.length;
-  // connection between input and output of nodes   
-  lconn = loadStrings("inout_"+graphname+".txt");
-  // visualization methods: sc3d, ccp, pcp, ... 
-  vizMeth = loadStrings("dat_"+graphname+".txt");
-   
-  if(vizMeth.length>0)
-    statistic_viz = 1;
-  // detail information of input and output relationship text
-  ioInfo = loadStrings("ioInfo_"+graphname+".txt");
-    
-  vert_hori = loadStrings("vert_hori_"+graphname+".txt");
-  if(vert_hori.length>0)
-    hori_vert_layout = 1;
-  */
-  
   // for module
   // node information: ModuleID:ModuleName:num_input:num_output:ContainterModuleID(parent)
   lnodes = loadStrings("node.txt");
@@ -343,25 +324,6 @@ void setup()
      }
  }
  
-  /*
-  depthList[0]="0:-2:-2:5:-2:-2:-2:14:-2:";
-  depthList[1]="1:2:-2:6:-2:9:12:15:";
-  depthList[2]="-1:3:4:7:8:10:13:16:";
-  depthList[3]="-1:-1:-1:-1:-1:11:-1:17:";
-  */
-  
-  /*
-  hori_vert_layout = 1;
-  depth_length = 8;
-  depthList[0]="0:-1:5:-1:-1:";
-  depthList[1]="1:2:6:-1:9:";
-  depthList[2]="-1:3:7:8:10:";
-  depthList[3]="-1:4:12:-1:11:";
-  depthList[4]="-1:-1:13:-1:-1:";
-  depthList[5]="14:";
-  depthList[6]="15:";
-  depthList[7]="16:";
-  */
   // update node_depth when change vertical/horizontal layout
   if(hori_vert_layout == 1)
   {
@@ -409,9 +371,6 @@ void setup()
       }
     }
   }
-
-
-
   
   for(int j=0; j<depth_length; j++)
   {
@@ -429,15 +388,15 @@ void setup()
   /*
   for(int i=0; i<depth_length; i++)
     println("depthList["+i+"]="+depthList[i]); 
-    
   for(int i=0; i<lnodes_length; i++)
   {
-    println("node_endw["+i+"]="+node_endw[i]); 
-   //println("node_depth["+i+"]="+node_depth[i]); 
-   //println("node_relation["+i+"]="+node_relation[i]); 
+   //println("node_endw["+i+"]="+node_endw[i]); 
+   println("node_depth["+i+"]="+node_depth[i]); 
+   println("node_relation["+i+"]="+node_relation[i]); 
    // println("temp["+i+"]="+temp[i]); 
   }
   */
+  
   redraw();
   noLoop();
 }
@@ -459,7 +418,7 @@ void draw()
   }
   else
   {
-    nodewidth = 40*font_size;
+    nodewidth = 30*font_size;
     depth_distance = 6*font_size;
   }
   depth_distance = 6*font_size;
@@ -469,7 +428,7 @@ void draw()
   xnode = depth_distance;
   // update the lnodes_length here for resize window 
   //nodeheight = 1.8*font_size;
-
+  
   // update depth length
   int changedep = 1;
   for(int j=depth_length-1; j>=0; j--)
@@ -493,8 +452,10 @@ void draw()
       j = -1;
     }
   }
-  depth_length = current_depth_length;
   
+  if(lnodes_length != depth_length)
+    depth_length = current_depth_length;
+    
   // update depth width
   depth_width = 0;
   for(int i=0; i<lnodes_length; i++)
@@ -535,19 +496,22 @@ void draw()
   }
   
   for(int i=0; i<lnodes_length; i++)
-  {   
+  { 
     // position of nodes
     for(int j=0; j<depth_length; j++)
     {
       String[] delis = split(depthList[j], ":");
+          
       for(int k=0;k<(delis.length-1);k++)
+      {
         if(i == int(delis[k]))
         { 
           if(viewMeth == 2)
             xcnode[i] = xnode + k*(width-xnode)/(depth_width+6) + j*font_size;
           else
-            xcnode[i] = xnode + k*(width-xnode)/(depth_width+6);
+            xcnode[i] = xnode + k*(width-xnode)/(depth_width+6); 
         }
+      }
     }
     
     if(node_depth[i]==0)
@@ -626,6 +590,7 @@ void draw()
   }
   if(scaleFactor == 1)
     size(newWid, newHei);
+   
   
   if(viewMeth == 1 || viewMeth == 2)
     draw_methButton(viewMeth);
