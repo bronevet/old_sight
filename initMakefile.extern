@@ -4,16 +4,18 @@ import sys
 import os
 curDir = os.path.dirname(os.path.realpath(__file__));
 
-if(len(sys.argv) != 4 and len(sys.argv) != 7) :
-    sys.exit("Usage: initMakefile.extern CC CCC RAPL_ENABLED LLVM32_SRC_PATH LLVM32_BUILD_PATH LLVM32_INSTALL_PATH");
+if(len(sys.argv) != 6 and len(sys.argv) != 9) :
+    sys.exit("Usage: initMakefile.extern CC CCC MPICC MPICCC RAPL_ENABLED LLVM32_SRC_PATH LLVM32_BUILD_PATH LLVM32_INSTALL_PATH");
 
 CC = sys.argv[1];
 CCC = sys.argv[2];
-RAPL_ENABLED = int(sys.argv[3]);
-if(len(sys.argv)==7) :
-  LLVM32_SRC_PATH = sys.argv[4]
-  LLVM32_BUILD_PATH = sys.argv[5]
-  LLVM32_INSTALL_PATH = sys.argv[6]
+MPICC = sys.argv[3];
+MPICCC = sys.argv[4];
+RAPL_ENABLED = int(sys.argv[5]);
+if(len(sys.argv)==9) :
+  LLVM32_SRC_PATH = sys.argv[6]
+  LLVM32_BUILD_PATH = sys.argv[7]
+  LLVM32_INSTALL_PATH = sys.argv[8]
 
 f = open('Makefile.extern', 'w')
 
@@ -24,13 +26,19 @@ f.write("""SIGHT_CFLAGS = -I${ROOT_PATH} -I${ROOT_PATH}/widgets/parallel \\
                -I${ROOT_PATH}/widgets/papi/include\\
                -I${ROOT_PATH}/widgets/libmsr/include\n""");
 
+
 f.write("""SIGHT_LINKFLAGS_NORPATH = -L${ROOT_PATH} -lsight_structure \\
                   -L${ROOT_PATH}/tools/adept-utils/lib -ladept_cutils -ladept_timing -ladept_utils \\
                   -L${ROOT_PATH}/tools/callpath/src/src -lcallpath \\
                   -L${ROOT_PATH}/widgets/papi/lib -lpapi \\
-                  -L${ROOT_PATH}/widgets/gsl/lib -lgsl -lgslcblas \\
-                  -L${ROOT_PATH}/widgets/libmsr/lib -lmsr \\
+                  -L${ROOT_PATH}/widgets/gsl/lib -lgsl -lgslcblas""");
+if(int(RAPL_ENABLED)==1) :
+    f.write(""" \\
+                  -L${ROOT_PATH}/widgets/libmsr/lib -lmsr""");
+
+f.write(""" \\
                   -lpthread\n""");
+
 
 f.write("""SIGHT_LINKFLAGS = \\
                   -Wl,-rpath ${ROOT_PATH} \\
@@ -44,6 +52,7 @@ f.write("""SIGHT_LINKFLAGS = \\
                   ${ROOT_PATH}/widgets/gsl/lib/libgsl.so \\
                   ${ROOT_PATH}/widgets/gsl/lib/libgslcblas.so \\
                   -Wl,-rpath ${ROOT_PATH}/widgets/gsl/lib""");
+#                  -L ${ROOT_PATH}/widgets/PnMPI/INSTALL/lib -lpnmpi -Wl,-rpath,${ROOT_PATH}/widgets/PnMPI/INSTALL/lib""");
 if(int(RAPL_ENABLED)==1) :
     f.write(""" \\
                   ${ROOT_PATH}/widgets/libmsr/lib/libmsr.so \\
@@ -84,6 +93,8 @@ SIGHT_LAYOUT_DYNAMIC_LINKFLAGS = \\
 
 f.write("CC = "+CC+"\n");
 f.write("CCC = "+CCC+"\n");
+f.write("MPICC = "+MPICC+"\n");
+f.write("MPICCC = "+MPICCC+"\n");
 
 if(len(sys.argv)==7) :
   f.write("\n")

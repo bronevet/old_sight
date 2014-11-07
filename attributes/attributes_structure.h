@@ -315,6 +315,36 @@ class attrRange : public attrOp
   std::string str() const { return "attrRange"; }
 };
 
+// Always returns true
+class attrTrue : public universalAttrOp
+{
+  public:
+  attrTrue() : universalAttrOp("", attrOp::any) {}
+ 
+  bool applyString(std::string& that) const { return true; }
+  bool applyPtr(void*& that)          const { return true; }
+  bool applyInt(long& that)           const { return true; }
+  bool applyFloat(double& that)       const { return true; }
+  
+  // Returns a human-readable representation of this object
+  std::string str() const { return "attrTrue"; }
+};
+
+// Always returns false
+class attrFalse : public universalAttrOp
+{
+  public:
+  attrFalse() : universalAttrOp("", attrOp::any) {}
+  
+  bool applyString(std::string& that) const { return false; }
+  bool applyPtr(void*& that)          const { return false; }
+  bool applyInt(long& that)           const { return false; }
+  bool applyFloat(double& that)       const { return false; }
+  
+  // Returns a human-readable representation of this object
+  std::string str() const { return "attrFalse"; }
+};
+
 // *****************************
 // ***** Attribute Queries *****
 // *****************************
@@ -635,30 +665,30 @@ void* attrIf_enter(attrOp *op);
 void attrIf_exit(void* subQ);
 }
 
-class attrTrue: public attrSubQueryTrue {
+class attrIfTrue: public attrSubQueryTrue {
   public:
-  attrTrue() : attrSubQueryTrue()
+  attrIfTrue() : attrSubQueryTrue()
   { attributes->push(this); }
-  ~attrTrue() { attributes->pop(); }
+  ~attrIfTrue() { attributes->pop(); }
 };
 
 // C interface
 extern "C" {
-void* attrTrue_enter();
-void attrTrue_exit(void* subQ);
+void* attrIfTrue_enter();
+void attrIfTrue_exit(void* subQ);
 }
 
-class attrFalse: public attrSubQueryFalse {
+class attrIfFalse: public attrSubQueryFalse {
   public:
-  attrFalse() : attrSubQueryFalse()
+  attrIfFalse() : attrSubQueryFalse()
   { attributes->push(this); }
-  ~attrFalse() { attributes->pop(); }
+  ~attrIfFalse() { attributes->pop(); }
 };
 
 // C interface
 extern "C" {
-void* attrFalse_enter();
-void attrFalse_exit(void* subQ);
+void* attrIfFalse_enter();
+void attrIfFalse_exit(void* subQ);
 }
 
 class AttributeMergeHandlerInstantiator: public MergeHandlerInstantiator {

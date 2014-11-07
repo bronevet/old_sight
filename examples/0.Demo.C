@@ -1,4 +1,3 @@
-//#include "sight.h"
 #include <map>
 #include <vector>
 #include <assert.h>
@@ -32,7 +31,7 @@ int main(int argc, char** argv)
  
   // The absolute path of this file. This is necessary to have Sight include the relevant regions of 
   // source code in the output.
-  string thisFile = txt()<<ROOT_PATH<<"/examples/0.Demo.C";
+  string thisFile = txt()<<"/media/sf_Appcode/SightGBDev/SightGBDev/sight/sight_mrnet/sight/examples/0.Demo.C";
   
   SightInit(argc, argv, "Demo", txt()<<"dbg.0.Demo.maxDepth_"<<maxDepth);
   

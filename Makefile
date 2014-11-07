@@ -12,6 +12,7 @@ sight := ${sight_O} ${sight_H} gdbLineNum.pl sightDefines.pl
 
 ROOT_PATH = ${CURDIR}
 REPO_PATH = ${SIGHT_REPO}
+PNMPI_PATH = ${REPO_PATH}/PnMPI/INSTALL/
 
 #ifeq ($(strip $(REPO_PATH)),)
 #REPO_PATH = ~/.sight_repo
@@ -24,7 +25,7 @@ endif
 
 include Makefile_pkg_chk.inc
 
-SIGHT_CFLAGS = -g -fPIC -I${ROOT_PATH} -I${REPO_PATH} -I${ROOT_PATH}/attributes -Iwidgets/parallel \
+SIGHT_CFLAGS = -g -gdwarf-2 -fPIC -I${ROOT_PATH} -I${REPO_PATH} -I${ROOT_PATH}/attributes -Iwidgets/parallel \
                 -I${REPO_PATH}/callpath/src -I${REPO_PATH}/adept-utils/include \
                 -I${REPO_PATH}/boost_1_55_0 \
                 $(call COND_INC,PAPI,-I${REPO_PATH}/papi/include) \
@@ -45,8 +46,11 @@ SIGHT_LINKFLAGS = \
                   -Wl,-rpath ${REPO_PATH}/callpath/src/src \
                   ${REPO_PATH}/gsl/lib/libgsl.so \
                   ${REPO_PATH}/gsl/lib/libgslcblas.so \
+                  ${REPO_PATH}/papi/lib/libpapi.so \
+                  -Wl,-rpath ${REPO_PATH}/papi/lib \
                   -Wl,-rpath ${REPO_PATH}/gsl/lib \
-	          -lpthread $(call COND_LIBS,PAPI,-lpapi)
+	          -lpthread #$(call COND_LIBS,PAPI,-lpapi)
+ 					#-L ${PNMPI_PATH}lib -lpnmpi -Wl,-rpath,${PNMPI_PATH}
 
 
 MRNET_CXXFLAGS = -g -D__STDC_LIMIT_MACROS -D__STDC_CONSTANT_MACROS -D__STDC_FORMAT_MACROS  \
@@ -138,7 +142,7 @@ endif
 
 MAKE_DEFINES = REPO_PATH=${REPO_PATH} ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} VNC_ENABLED=${VNC_ENABLED} MPI_ENABLED=${MPI_ENABLED} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" CC=${CC} CCC=${CCC} KULFI_ENABLED=${KULFI_ENABLED} LLVM32_SRC_PATH=${LLVM32_SRC_PATH} LLVM32_BUILD_PATH=${LLVM32_BUILD_PATH} LLVM32_INSTALL_PATH=${LLVM32_INSTALL_PATH}
 
-# Set to "!" if we wish to enable examples that use MPI
+# Set to "1" if we wish to enable examples that use MPI
 MPI_ENABLED = 0
 #MPI_ENABLED = 1
 
@@ -172,16 +176,21 @@ runExamples: core
 runPthreadExamples: core
 	cd examples; make ${MAKE_DEFINES} runPthread
 
-runApps: libsight_structure.so slayout${EXE} hier_merge${EXE} apps
+runApps: runMFEM runCoMD
+
+runMFEM: mfem libsight_structure.so slayout${EXE} hier_merge${EXE}
 	cd examples; ../apps/mfem/mfem/examples/mfemComp.pl
 	cd examples; ../apps/mfem/mfem/examples/ex2 ../apps/mfem/mfem/data/beam-tet.mesh 2
 	cd examples; ../apps/mfem/mfem/examples/ex3 ../apps/mfem/mfem/data/ball-nurbs.mesh
 	cd examples; ../apps/mfem/mfem/examples/ex4 ../apps/mfem/mfem/data/fichera-q3.mesh
 ifeq (${MPI_ENABLED}, 1)
+runCoMD: CoMD libsight_structure.so slayout${EXE} hier_merge${EXE}
 	cd examples; ../apps/CoMD/bin/CoMD-mpi.modules
 	cd examples; ../apps/CoMD/bin/CoMD-mpi.tracepath
 	cd examples; ../apps/CoMD/bin/CoMD-mpi.tracepos
 	cd examples; ../apps/CoMD/CoMDCompare.pl
+else
+runCoMD:
 endif
 ifeq (${REMOTE_ENABLED}, 1)
 	cd examples; ../apps/mfem/mfem/examples/ex1 ../apps/mfem/mfem/data/beam-quad.mesh
@@ -247,7 +256,7 @@ libsight_common.a: ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre
 	ar -r libsight_common.a ${SIGHT_COMMON_O} widgets/*/*_common.o
 
 libsight_structure.so: ${SIGHT_STRUCTURE_O} ${SIGHT_STRUCTURE_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre
-	${CC} -shared  -Wl,-soname,libsight_structure.so -o libsight_structure.so  ${SIGHT_STRUCTURE_O} ${SIGHT_COMMON_O} widgets/*/*_structure.o widgets/parallel/sight_pthread.o widgets/*/*_common.o ${MRNET_LIBS}
+	${CC} -shared  -Wl,-soname,libsight_structure.so -o libsight_structure.so  ${SIGHT_STRUCTURE_O} ${SIGHT_COMMON_O} widgets/*/*_structure.o widgets/parallel/sight_pthread.o ${ROOT_PATH}/widgets/box/box_api_cpp.o ${ROOT_PATH}/widgets/box/box_merge.o widgets/*/*_common.o ${MRNET_LIBS}
 
 #libsight_structure.a: ${SIGHT_STRUCTURE_O} ${SIGHT_STRUCTURE_H} ${SIGHT_COMMON_O} ${SIGHT_COMMON_H} widgets_pre
 #	ar -r libsight_structure.a ${SIGHT_STRUCTURE_O} ${SIGHT_COMMON_O} widgets/*/*_structure.o widgets/*/*_common.o
@@ -341,7 +350,7 @@ sightDefines.pl:
 
 Makefile.extern: initMakefile.extern Makefile
 	chmod 755 initMakefile.extern
-	./initMakefile.extern ${CC} ${CCC} ${RAPL_ENABLED} ${LLVM32_SRC_PATH} ${LLVM32_BUILD_PATH} ${LLVM32_INSTALL_PATH}
+	./initMakefile.extern ${CC} ${CCC} ${MPICC} ${MPICCC} ${RAPL_ENABLED} ${LLVM32_SRC_PATH} ${LLVM32_BUILD_PATH} ${LLVM32_INSTALL_PATH}
 
 definitions.h: initDefinitionsH Makefile
 	chmod 755 initDefinitionsH
@@ -367,7 +376,7 @@ script/taffydb:
 	#cd script; wget --no-check-certificate https://github.com/typicaljoe/taffydb/archive/master.zip
 	#cd script; mv master master.zip; unzip master.zip
 	#rm script/master*
-	cd script; ../getGithub https://github.com/typicaljoe/taffydb/archive/master.zip zip unzip
+	cd script; ../getGithub https://github.com/typicaljoe/taffydb/archive/master.zip zip unzip master
 	mv script/taffydb-master script/taffydb
 	chmod 755 script/taffydb
 	chmod 644 script/taffydb/*

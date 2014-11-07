@@ -148,7 +148,8 @@ void scope::printEntry(string loadCmd) {
   dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"<tr width=\"100%\"><td width=0></td><td width=\"100%\">";
   if(labelInteractive) {
     dbg <<"<h2>\n";
-    dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"<a name=\"anchor"<<getBlockID()<<"\" href=\"javascript:unhide('"<<getBlockID()<<"');\">";
+    //dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"<a name=\"anchor"<<getBlockID()<<"\" href=\"javascript:unhide('"<<getBlockID()<<"');\">";
+    dbg << "\t\t\t"<<tabs(dbg.blockDepth()+1)<<"<a href=\"javascript:unhide('"<<getBlockID()<<"');\">";
   }
   
   if(labelShown) {
@@ -162,9 +163,13 @@ void scope::printEntry(string loadCmd) {
     #if REMOTE_ENABLED
     if(saved_appExecInfo) {
       ostringstream setGDBLink; 
-      setGDBLink << "\"javascript:setGDBLink(this, ':"<<GDB_PORT<<"/gdbwrap.cgi?execFile="<<execFile<<"&tgtCount="<<blockIDFromStructure<<"&args=";
+      setGDBLink << "\"javascript:setGDBLink(this, ':"<<GDB_PORT<<"/gdbwrap.cgi?"<<
+                           "execFile="<<execFile<<"&"<<
+                           "tgtCount="<<blockIDFromStructure<<"&"<<
+                           "PWD="<<PWD<<"&"<<
+                           "args=";
       for(int i=1; i<argc; i++) {
-        if(i!=1) dbg << " ";
+        if(i!=1) setGDBLink << " ";
         setGDBLink<< argv[i];
       }
       setGDBLink << "')\"";

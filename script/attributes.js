@@ -147,14 +147,16 @@ function filterByAttr(viewType) {
   query = {};
   filterByAttr_subQuery(Object.keys(allQueries), 0, query, viewType);
   
-  
   resetKeyValTable('attrTable');
+  
+  // Call the window refresh handlers
+  execRefreshHandlers();
 }
 
 function filterByAttr_subQuery(keys, keyIdx, query, viewType) {
   if(keyIdx < keys.length) {
     if(allQueries.hasOwnProperty(keys[keyIdx])) {
-      for(var i in allQueries[keys[keyIdx]]) { //if(allQueries[keys[keyIdx]].hasOwnProperty(value)) {
+      for(var i in allQueries[keys[keyIdx]]) { if(allQueries[keys[keyIdx]].hasOwnProperty(i)) {
         if(viewType == "add" || viewType == "remove") {
           query[keys[keyIdx]] = {'==':allQueries[keys[keyIdx]][i]};
           filterByAttr_subQuery(keys, keyIdx+1, query, viewType);
@@ -166,7 +168,7 @@ function filterByAttr_subQuery(keys, keyIdx, query, viewType) {
           filterByAttr_subQuery(keys, keyIdx+1, query, "remove");
         }
         delete query[keys[keyIdx]];
-      } //}
+      } }
     }
   // If we've constructed the current query
   } else {

@@ -98,6 +98,15 @@ class graph: public structure::block
   
   // Add an undirected edge between the location of the a anchor and the location of the b anchor
   virtual void addUndirEdge(anchor a, anchor b);
+
+  // Add an invisible edge that forces the target to be placed after the source
+  virtual void addInvisDepEdge(anchor a, anchor b);
+
+  // Start a graphviz cluster
+  virtual void startSubGraph();
+  virtual void startSubGraph(const std::string& label);
+  // End a graphviz cluster
+  virtual void endSubGraph();
   
   // Called to notify this block that a sub-block was started/completed inside of it. 
   // Returns true of this notification should be propagated to the blocks 
@@ -109,6 +118,15 @@ class graph: public structure::block
   // Emits a tag for the given node
   void emitNodeTag(int anchorID, std::string label, int nodeID);
 }; // graph
+
+// Creates a graphviz cluster within a given graph
+class subgraph
+{
+  graph& g;
+  public:
+  subgraph(graph& g, const std::string& label);
+  ~subgraph();
+}; // subgraph
 
 class GraphMergeHandlerInstantiator: public MergeHandlerInstantiator {
   public:

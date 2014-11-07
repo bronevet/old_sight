@@ -191,6 +191,15 @@ bool MergeState::isAllComparisonEntry() const {
   return true;
 }
 
+// Returns whether all the tag groups correspond to exits from comparison tags
+bool MergeState::isAllComparisonExit() const {
+  for(map<tagGroup, groupStreams>::const_iterator ts=tag2stream.begin(); ts!=tag2stream.end(); ts++) {
+    if(ts->first.objName != "comparison" || ts->first.type != properties::exitTag)
+      return false;
+  }
+  return true;
+}
+
 // Returns the number of tag groups among the current set of tags among all the incoming streams
 int MergeState::getNumGroups() const
 { return tag2stream.size(); }
@@ -847,19 +856,24 @@ void MergeState::merge() {
     } else if(isAllComparisonEntry()) {
       ITER_ACTION("All comparison tags");
       assert(out);
-      
-      // stackDepth is unchanged since mergeInsideTag() will read from the entry upto and 
-      // including the exit tag of the comparison
-      mergeMultipleGroups("comparison", tag2stream, /*includeCurrentTag*/ false
-                              #ifdef VERBOSE
-                              , curIterA, lastRecurA
-                              #endif
-                             );
-      multGroupID++;
-      
-      // Note that the call to mergeMultipleNonUniversalEnterGroups will process the exit tags of
-      // all the comparisons that are currently in nextTags (using mergeInsideTag()), so we never 
-      // need to worry about comparison exit tags.
+     
+/*      // If we were asked to ignore comparison tags, skip this tag
+      if(getenv("SIGHT_MERGE_IGNORE_COMPARISON"))
+        readyForNextTag();
+      else {*/
+        // stackDepth is unchanged since mergeInsideTag() will read from the entry upto and 
+        // including the exit tag of the comparison
+        mergeMultipleGroups("comparison", tag2stream, /*includeCurrentTag*/ false
+                                #ifdef VERBOSE
+                                , curIterA, lastRecurA
+                                #endif
+                               );
+        multGroupID++;
+        
+        // Note that the call to mergeMultipleNonUniversalEnterGroups will process the exit tags of
+        // all the comparisons that are currently in nextTags (using mergeInsideTag()), so we never 
+        // need to worry about comparison exit tags.
+//      }
     
       goto LOOP_END;
     
@@ -880,9 +894,12 @@ void MergeState::merge() {
       //   is not possible for one stream to be in the middle of an interleaving tag while another stream
       //   is waiting to align an alignment tag. Thus, interleaving tags cannot prevent alignment
       //   and cannot participate in the decision to create tag variants.
-      if(getNumTagGroupsByMergeKind(MergeInfo::interleave)>0) {
+//cout << "getNumTagGroupsByMergeKind(MergeInfo::interleave)="<<getNumTagGroupsByMergeKind(MergeInfo::interleave)<<", getNumTagGroupsByMergeKind(MergeInfo::interleave_aligned)="<<getNumTagGroupsByMergeKind(MergeInfo::interleave_aligned)<<", getCommonGroupStreams().parserIndexes.size()="<<getCommonGroupStreams().parserIndexes.size()<<endl;
+      if(getNumTagGroupsByMergeKind(MergeInfo::interleave)>0 ||
+         (getNumTagGroupsByMergeKind(MergeInfo::interleave_aligned)>0 && getNumGroups()>1)) {
         // If we're dealing with multiple streams, process the inteave tag on each stream separately
-        if(getNumTagGroupsByMergeKind(MergeInfo::interleave)>1 || getCommonGroupStreams().parserIndexes.size()>1) {
+        if(getNumTagGroupsByMergeKind(MergeInfo::interleave)+getNumTagGroupsByMergeKind(MergeInfo::interleave_aligned)>1 || 
+           getNumGroups()>1 || getCommonGroupStreams().parserIndexes.size()>1) {
           ITER_ACTION("Processing interleaving tags on multiple streams");
           for(map<tagGroup, groupStreams>::iterator ts=tag2stream.begin(); ts!=tag2stream.end(); ) {
             if(ts->first.info.getMergeKind()==MergeInfo::interleave) {
@@ -897,6 +914,32 @@ void MergeState::merge() {
                 lastRecurA.insert(groupState.outgoingA);
                 #endif
               }
+              map<tagGroup, groupStreams>::iterator ts2=ts;
+              ++ts;
+              readyForNextTag(ts2->first, ts2->second);
+            } else if(ts->first.info.getMergeKind()==MergeInfo::interleave_aligned) {
+//              map<tagGroup, groupStreams> filtered;
+//              filtered[ts->first] = ts->second;
+//              mergeMultipleGroups("variants", filtered, /*includeCurrentTag*/ true
+//                                  #ifdef VERBOSE
+//                                  , curIterA, lastRecurA
+//                                  #endif
+//                                 );
+//              multGroupID++;
+//              ++ts;
+//-----------------
+//              mergeTagAndAdvance(ts->first, ts->second, stackDepth);
+//              ++ts;
+//-----------------
+              MergeState groupState(*this, ts->first, ts->second, 0, /*readyForNewTags*/ false, /*createNewOutStreamRecords*/ false
+                                    #ifdef VERBOSE
+                                    , curIterA 
+                                    #endif
+                                   );
+              groupState.merge();
+              #ifdef VERBOSE
+              lastRecurA.insert(groupState.outgoingA);
+              #endif
               map<tagGroup, groupStreams>::iterator ts2=ts;
               ++ts;
               readyForNextTag(ts2->first, ts2->second);
@@ -944,18 +987,10 @@ void MergeState::merge() {
           #ifdef VERBOSE
           dbg << "enterTS="<<ts.first.str()<<" => "<<ts.second.str()<<endl;
           #endif
-//          //mergeTagAndAdvance(ts.first, ts.second, stackDepth);
-//          {
-//            MergeState groupState(*this, ts.first, ts.second, 0, /*readyForNewTags*/ false, /*createNewOutStreamRecords*/ false);
-//            groupState.merge();
-//          }
-//
-//          // Make us ready for more tags on the streams associated with this tag group
-//          readyForNextTag(ts.first, ts.second);
-          
+
           map<tagGroup, groupStreams> filtered;
           filtered[ts.first] = ts.second;
-          mergeMultipleGroups("variants", filtered, /*includeCurrentTag*/true
+          mergeMultipleGroups("variants", filtered, /*includeCurrentTag*/ true
                               #ifdef VERBOSE
                               , curIterA, lastRecurA
                               #endif
@@ -964,7 +999,7 @@ void MergeState::merge() {
         
         // Else, there are multiple enter tag groups in tag2stream. (no more than one other 
         // may correspond to exits since we only call merge on tags that are in the same tagGroup). 
-        // We now create several log variants, applying marge to the incoming streams of each enter, non-universal 
+        // We now create several log variants, applying merge to the incoming streams of each enter, non-universal 
         // tag group and pointing to the sub-log of each group using a variant tag.
         } else {
           ITER_ACTION(txt()<<"Processing multiple enter tag groups");

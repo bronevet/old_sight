@@ -42,9 +42,9 @@ namespace mrnmergeing{
 #ifdef VERBOSE
                 , graph& g, anchor incomingA, anchor outgoingA
 #endif
-           ):MergeState( parsers,
+           ):MergeState( parsers
 #ifdef VERBOSE
-                g, incomingA, outgoingA
+                , g, incomingA, outgoingA
 #endif
         ){
             this->strm = strm ;

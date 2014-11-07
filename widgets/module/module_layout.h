@@ -346,6 +346,8 @@ class modularApp: public block, public common::module
   static bool emitObsIndividualDataTable;
   // Records whether we should emit the observations of all modular into a single table for use by external tools
   static bool emitObsCommonDataTable;
+  // Records whether we should run the funcFit library to find readable functions that describe the data
+  static bool runFuncFit;
 
   // If emitObsCommonDataTable, points to the instance of SynopticModuleObsLogger that monitors and 
   // records all module observations.
@@ -362,6 +364,7 @@ class modularApp: public block, public common::module
     ModularAppConfiguration(properties::iterator props) : common::Configuration(props.next()) {
       emitObsIndividualDataTable = props.exists("emitObsIndividualDataTable");
       emitObsCommonDataTable     = props.exists("emitObsCommonDataTable");
+      runFuncFit                 = props.exists("runFuncFit");
     }
   };
 

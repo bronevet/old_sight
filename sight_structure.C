@@ -82,6 +82,23 @@ std::map<pthread_t, map<dbgStream*, std::list<sightObj*> >* > threadSoStacks;
 // Mutex that controls access to threadSoStacks.
 pthread_mutex_t threadSoStacksMutex = PTHREAD_MUTEX_INITIALIZER;
 
+std::list<sightObj*>& soStack(dbgStream* outStream) {
+  return staticSoStack[outStream];
+}
+
+std::map<dbgStream*, std::list<sightObj*> >& soStackAllStreams() {
+  return *(staticSoStack.get());
+}
+
+// Returns the depth of the sightObjects stack
+int getSOStackDepth() {
+  return soStack(&dbg).size();
+}
+
+int getSOStackDepth(dbgStream* outStream) {
+  return soStack(outStream).size();
+}
+
 /*************************************
  ***** ThreadInitFinInstantiator *****
  *************************************/
@@ -151,23 +168,46 @@ void ThreadInitFinInstantiator::computeDepGraph() {
   
   // Iterate over funcs, adding each dependency to depGraph
   int i=0;
+  //cout << pthread_self()<<":     #funcsM="<<funcsM->size()<<endl;
+  // Map where the keys are the funcs that are not connected to any other funcs. These may be placed
+  // anywhere in the topological order. Initialized to contain all funcs, which are then removed
+  // as they're connected by edges
+  set<int> unconnected;
+  for(map<string, threadFuncs*>::iterator f=funcsM->begin(); f!=funcsM->end(); f++)
+    unconnected.insert(f->second->UID);
+
+  // Iterate over all funcs and connect them to their predecessors and successors via edges
   for(map<string, threadFuncs*>::iterator f=funcsM->begin(); f!=funcsM->end(); f++) {
+    int numEdges=0;
     // Add edges from all labels that the current func must follow to the current func
     for(set<std::string>::iterator i=f->second->mustFollow.begin(); i!=f->second->mustFollow.end(); i++) {
       // Find the current label in the funcs map and add an edge from it to f
       std::map<std::string, threadFuncs*>::iterator other=funcsM->find(*i);
-      if(other != funcsM->end()) boost::add_edge(other->second->UID, f->second->UID, *depGraph);
+      if(other != funcsM->end()){
+		boost::add_edge(other->second->UID, f->second->UID, *depGraph);
+		unconnected.erase(other->second->UID);
+        unconnected.erase(f->second->UID);
+      }
     }
     
     // Add edges from the current func to all the labels that follow it
     for(set<std::string>::iterator i=f->second->mustPrecede.begin(); i!=f->second->mustPrecede.end(); i++) {
       // Find the current label in the funcs map and add an edge to it from f
       std::map<std::string, threadFuncs*>::iterator other=funcsM->find(*i);
-      if(other != funcsM->end()) boost::add_edge(f->second->UID, other->second->UID, *depGraph);
+      if(other != funcsM->end()) {
+		boost::add_edge(f->second->UID, other->second->UID, *depGraph);
+		unconnected.erase(other->second->UID);
+        unconnected.erase(f->second->UID);
+		}
     }
   }
   
+  // Topologically sort the funcs that are connected with dependence edges 
   boost::topological_sort(*depGraph, front_inserter(*topoOrder), vertex_index_map(boost::identity_property_map()));
+
+  // Append to topoOrder all the funcs that are not connected via edges
+  for(set<int>::iterator i=unconnected.begin(); i!=unconnected.end(); i++)
+    topoOrder->push_back(*i);
   
   // The dependence graph is now upto date
   *depGraphUptoDate = true;
@@ -177,6 +217,11 @@ void ThreadInitFinInstantiator::computeDepGraph() {
 void ThreadInitFinInstantiator::initialize() {
   computeDepGraph();
   
+  /*cout << pthread_self()<<": ThreadInitFinInstantiator::initialize()"<<endl;
+  for(std::map<std::string, threadFuncs*>::iterator i=funcsM->begin(); i!=funcsM->end(); i++)
+    cout << "    "<<i->first<<": "<<i->second->UID<<endl;
+ 
+  cout << pthread_self()<<": #topoOrder="<<topoOrder->size()<<endl; */
   for(deque<int>::iterator i=topoOrder->begin(); i!=topoOrder->end(); ++i) {
     assert(funcsV->size()>*i);
     (*funcsV)[*i]->init();
@@ -189,7 +234,7 @@ void ThreadInitFinInstantiator::finalize() {
   
   for(deque<int>::reverse_iterator i=topoOrder->rbegin(); i!=topoOrder->rend(); ++i) {
     assert(funcsV->size()>*i);
-    (*funcsV)[*i]->init();
+    (*funcsV)[*i]->fin();
   }
 }
 
@@ -216,6 +261,7 @@ ThreadLocalStorage0<dbgStream*> threadDbgStream;
 bool isMainThreadDbg(dbgStream* ds)
 { return isMainThread && ds==threadDbgStream; }
 
+/*
 std::list<sightObj*>& soStack(dbgStream* outStream) {
   return staticSoStack[outStream];
 }
@@ -223,7 +269,7 @@ std::list<sightObj*>& soStack(dbgStream* outStream) {
 std::map<dbgStream*, std::list<sightObj*> >& soStackAllStreams() {
   //return staticSoStack;
   return *(staticSoStack.get());
-}
+}*/
 
 
 // mainThread: Set to true if this function is being called from the main thread directly by the other.
@@ -451,6 +497,7 @@ void SightThreadInit() {
 }
 
 void SightThreadFinalize() {
+//  cout << pthread_self()<<": SightThreadFinalize\n";
   // Unregister this thread's soStacks from threadSoStacks
   pthread_mutex_lock(&threadSoStacksMutex);
   if(threadSoStacks.find(pthread_self()) != threadSoStacks.end()) {
@@ -1021,7 +1068,7 @@ int streamRecord::mergeIDs(std::string objName, std::string IDName,
                            std::map<std::string, streamRecord*>& outStreamRecords,
                            std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
                            int mergedID) {
-  //cout << "streamRecord::mergeIDs()\n";
+  dbg << "<b>streamRecord::mergeIDs()</b>"<<endl;
   
   // Find the anchorID in the outgoing stream that the anchors in the incoming streams will be mapped to.
   // First, see if the anchors on the incoming streams have already been assigned an anchorID on the outgoing stream
@@ -1032,7 +1079,8 @@ int streamRecord::mergeIDs(std::string objName, std::string IDName,
   streamID outSID = ret.second;
 
   streamRecord* outS = outStreamRecords[objName];
-  
+
+  dbg << "&outStreamRecords="<<&outStreamRecords<<", outSIDKnown="<<outSIDKnown<<", outSID="<<outSID.str()<<", mergedID="<<mergedID<<endl;
   // If none of the anchors on the incoming stream have been mapped to an anchor in the outgoing stream,
   // create a fresh anchorID in the outgoing stream, advancing the maximum anchor ID in the process
   if(!outSIDKnown) {
@@ -1053,14 +1101,14 @@ int streamRecord::mergeIDs(std::string objName, std::string IDName,
       // The anchor's ID within the current incoming stream
       streamID inSID(properties::getInt(tags[i].second, IDName), s->getVariantID());
       
-      /*cout << "|   "<<i<<": inSID="<<inSID.str()<<", in2outIDs=(#"<<s->in2outIDs.size()<<")"<<endl;
+      dbg << "|   "<<i<<": inSID="<<inSID.str()<<", in2outIDs=(#"<<s->in2outIDs.size()<<")"<<endl;
       for(map<streamID, streamID>::iterator j=s->in2outIDs.begin(); j!=s->in2outIDs.end(); j++)
-        cout << "|       "<<j->first.str()<<" => "<<j->second.str()<<endl;*/
+        dbg << "|       "<<j->first.str()<<" => "<<j->second.str()<<endl;
       
       // Yell if we're changing an existing mapping
       if((s->in2outIDs.find(inSID) != s->in2outIDs.end()) && s->in2outIDs[inSID] != outSID)
       { cerr << "ERROR: merging ID "<<inSID.str()<<" for object "<<objName<<" from incoming stream "<<i<<" multiple times. Old mapping: "<<s->in2outIDs[inSID].str()<<". New mapping: "<<outSID.str()<<"."<<endl; assert(0); }
-      //cout << "|    outSID="<<outSID.str()<<endl;
+      dbg << "|    outSID="<<outSID.str()<<endl;
       
       s->in2outIDs[inSID] = outSID;
     }
@@ -1109,6 +1157,9 @@ std::pair<bool, streamID> streamRecord::sameID_ex(
     streamID inSID(properties::getInt(tags[i].second, IDName), 
                    inStreamRecords[i][objName]->getVariantID());
     
+    dbg << "streamRecord::sameID_ex() i="<<i<<", s="<<s->str()<<endl;
+    dbg << "inSID="<<inSID.str()<<", found="<<(s->in2outIDs.find(inSID) != s->in2outIDs.end())<<endl;
+
     if(s->in2outIDs.find(inSID) != s->in2outIDs.end()) {
       // If we've already found an outSID, make this it is the same one
       if(outSIDKnown) {
@@ -2024,18 +2075,18 @@ properties* BlockMerger::setProperties(std::vector<std::pair<properties::tagType
     set<streamAnchor> outAnchors; // Set of anchorIDs, within the anchor ID space of the outgoing stream, that terminate at this block
     // Iterate over all the anchors that terminate at this block within all the incoming streams and add their corresponding 
     // IDs within the outgoing stream to outAnchors
-dbg << "<h3>Merging block "<<pMap["label"]<<", #tags="<<tags.size()<<"</h3>"<<endl;
+/*dbg << "<h3>Merging block "<<pMap["label"]<<", #tags="<<tags.size()<<"</h3>"<<endl;
 dbg << "dbg->location="<<dbg->getLocation().str()<<endl;
-dbg << "outLocation="<<((dbgStreamStreamRecord*)outStreamRecords["sight"])->getLocation().str()<<endl;
+dbg << "outLocation="<<((dbgStreamStreamRecord*)outStreamRecords["sight"])->getLocation().str()<<endl;*/
     for(int i=0; i<tags.size(); i++) {
       AnchorStreamRecord* as = (AnchorStreamRecord*)inStreamRecords[i]["anchor"];
       
       // Iterate over all the anchors within incoming stream i that terminate at this block
       int inNumAnchors = properties::getInt(tags[i].second, "numAnchors");
-dbg << "tag "<<i<<", inNumAnchors="<<inNumAnchors<<endl;
+//dbg << "tag "<<i<<", inNumAnchors="<<inNumAnchors<<endl;
       for(int a=0; a<inNumAnchors; a++) {
         streamAnchor curInAnchor(properties::getInt(tags[i].second, txt()<<"anchor_"<<a), inStreamRecords[i]);
-dbg << "outLocation="<<((dbgStreamStreamRecord*)inStreamRecords[i]["sight"])->getLocation().str()<<endl;
+//dbg << "outLocation="<<((dbgStreamStreamRecord*)inStreamRecords[i]["sight"])->getLocation().str()<<endl;
         
         if(as->in2outIDs.find(curInAnchor.getID()) == as->in2outIDs.end())
           cerr << "ERROR: Do not have a mapping for anchor "<<curInAnchor.str()<<" on incoming stream "<<i<<" to its anchorID in the outgoing stream!";
@@ -2503,7 +2554,7 @@ dbgStream::~dbgStream() {
   
   if (!initialized)
     return;
-
+  
   // If this is the main thread, finalize it before it terminates
   if(isMainThreadDbg(this))
     SightThreadFinalize();
@@ -3039,7 +3090,8 @@ ComparisonMerger::ComparisonMerger(std::vector<std::pair<properties::tagType, pr
   properties::tagType type = streamRecord::getTagType(tags); 
   if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging Comparison!"<<endl; assert(0); }
   if(type==properties::enterTag) {
-    pMap["ID"] = getMergedValue(tags, "ID");
+    pMap["ID"] = tags.begin()->second.get("ID");
+    pMap["inline"] = tags.begin()->second.get("inline");
   }
   
   props->add("comparison", pMap);
@@ -3057,7 +3109,10 @@ void ComparisonMerger::mergeKey(properties::tagType type, properties::iterator t
   if(type==properties::enterTag) {
     // Comparison tags with the same ID must be perfectly aligned in all logs
 //    info.setUniversal(true);
-    info.add(tag.get("ID"));
+    // Add this tag's ID only if we were not asked to fuse all aligned comparison tags together
+    if(getenv("SIGHT_MERGE_FUSE_COMPARISON")==NULL)
+      info.add(tag.get("ID"));
+    info.add(tag.get("inline"));
   }
 }
 
@@ -3196,11 +3251,28 @@ properties* UniqueMarkMerger::setProperties(std::vector<std::pair<properties::ta
 // Sets a list of strings that denotes a unique ID according to which instances of this merger's 
 // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
 // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
-// call their parents so they can add any info,
+// call their parents so they can add any info.
+//
+// Default variant that allows uniqueMarks with different IDs to be merged.
 void UniqueMarkMerger::mergeKey(properties::tagType type, properties::iterator tag, 
 				   const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
   BlockMerger::mergeKey(type, tag.next(), inStreamRecords, info);
 }
+
+// Variant that does not allow uniqueMarks with different IDs to be merged.
+void UniqueMarkMerger::mergeKey_separateByID(properties::tagType type, properties::iterator tag, 
+				   const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+//cout << "UniqueMarkMerger::mergeKey tag="<<tag.str()<<endl;
+  BlockMerger::mergeKey(type, tag.next(), inStreamRecords, info);
+
+  if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when computing merge attribute key!"<<endl; assert(0); }
+  if(type==properties::enterTag) {
+    int numIDs = tag.getInt("numIDs");
+    for(int i=0; i<numIDs; i++)
+      info.add(tag.get(txt()<<"ID"<<i));
+  }
+}
+
 // Wrapper of the printf function that emits text to the dbg stream
 //ThreadLocalStorageArray<char> printbuf(100000);
 int dbgprintf(const char * format, ... )    
@@ -3335,9 +3407,10 @@ void AbortHandlerInstantiator::finalizeSight() {
   }*/
   //killOtherThreads();
   // On Termination deallocate all the currently live sightObjs
-  sightObj::destroyAll();
-  
+
+
   SightThreadFinalize();
+  sightObj::destroyAll();
 
   // If a copy of dbg has been allocated for this thread
   //cout << "AbortHandlerInstantiator::finalizeSight() dbg.isValueMappedForThread()="<<dbg.isValueMappedForThread()<<endl;

@@ -14,7 +14,8 @@ my $q = CGI->new;
 #my $username = $q->param('username'); if($username eq "") { missingParam("username"); die; }
 my $hostname = `hostname`; chomp $hostname;
 my $execFile = $q->param('execFile'); if($execFile eq "") { missingParam("execFile"); die; }
-my $tgtCount = $q->param('tgtCount'); if($tgtCount eq "") { missingParam("tgtCount"); die;  }
+my $tgtCount = $q->param('tgtCount'); if($tgtCount eq "") { missingParam("tgtCount"); die; }
+my $PWD      = $q->param('PWD');      if($PWD eq "")      { missingParam("PWD");      die; }
 my $args     = $q->param('args');     #if($args eq "") { missingParam("args"); return; }
 
 #if(scalar(@ARGV)<=3) { die "Usage: gdbwrap.pl execFile tgtCount args"; }
@@ -28,12 +29,16 @@ print $f "set pagination off\n";
 #print $f "set logging file gdb.txt\n";
 print $f "set logging on\n";
 print $f "set breakpoint pending on\n";
+print $f "cd $PWD\n";
 print $f "file $execFile\n";
 #print $f "sharedlibrary sight.o\n";
 #print $f "break advanceBlockCount\n";
-print $f "break sight_structure.C:$main::gdbLineNum\n";
-print $f "cond 1 sight::structure::block::blockID==$tgtCount\n";
+print $f "break main\n";
 print $f "r $args\n";
+print $f "break sight_structure.C:$main::gdbLineNum\n";
+#print $f "cond 2 sight::structure::block::blockID==$tgtCount\n";
+print $f "cond 2 blockID==$tgtCount\n";
+print $f "continue\n";
 print $f "finish\n";
 print $f "finish\n";
 print $f "finish\n";

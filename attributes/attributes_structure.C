@@ -20,32 +20,39 @@ attrNullOp NullOp;
 // Applies the given functor to this given value. Throws an exception if the functor
 // is not applicable to this value type.
 bool attrOp::apply() const {
-  const set<attrValue>& vals = attributes->get(key);
-  if(vals.size() == 0) {
-    cerr << "attrOp::apply() ERROR: applying operation to empty set of values!"<<endl;
-    exit(-1);
-  }
-  
-  for(set<attrValue>::iterator v=vals.begin(); v!=vals.end(); v++) {
-    bool ret;
-         if(v->type == attrValue::strT   && implementsString()) ret = applyString(*((string*)v->store));
-    else if(v->type == attrValue::ptrT   && implementsPtr())    ret = applyPtr   (*((void**)v->store));
-    else if(v->type == attrValue::intT   && implementsInt())    ret = applyInt   (*((long*)v->store));
-    else if(v->type == attrValue::floatT && implementsFloat())  ret = applyFloat (*((double*)v->store));
-    else {
-      cerr << "attrOp::apply() ERROR: attribute operation "<<str()<<" not compatible with value "<<v->str()<<"!"<<endl;
+  if(key!="") {
+    const set<attrValue>& vals = attributes->get(key);
+    if(vals.size() == 0) {
+      cerr << "attrOp::apply() ERROR: applying operation to empty set of values!"<<endl;
       exit(-1);
     }
     
-    // If all the applications must return true but one returns false, the result is false
-    if(type == all && ret==false) return false;
-    // If any the applications must return true and one returns true, the result is true
-    if(type == any && ret==true) return true;
+    for(set<attrValue>::iterator v=vals.begin(); v!=vals.end(); v++) {
+      bool ret;
+           if(v->type == attrValue::strT   && implementsString()) ret = applyString(*((string*)v->store));
+      else if(v->type == attrValue::ptrT   && implementsPtr())    ret = applyPtr   (*((void**)v->store));
+      else if(v->type == attrValue::intT   && implementsInt())    ret = applyInt   (*((long*)v->store));
+      else if(v->type == attrValue::floatT && implementsFloat())  ret = applyFloat (*((double*)v->store));
+      else {
+        cerr << "attrOp::apply() ERROR: attribute operation "<<str()<<" not compatible with value "<<v->str()<<"!"<<endl;
+        exit(-1);
+      }
+      
+      // If all the applications must return true but one returns false, the result is false
+      if(type == all && ret==false) return false;
+      // If any the applications must return true and one returns true, the result is true
+      if(type == any && ret==true) return true;
+    }
+  } else {
+    // Can only happen for attrNULL, attrTrue and attrFalse queries, so call any of the apply
+    // methods without specifying the value
+    long tmp;
+    return applyInt(tmp);
   }
-  
+
   // If type==all/any, then allsub-applications must have returned true/false
-  if(type == all) return true;
-  else if(type == any) return false;
+  if(type == all) return false;
+  else if(type == any) return true;
   
   cerr << "attrOp::apply() ERROR: unknown type "<<type<<"!"<<endl;
   exit(-1);
@@ -391,14 +398,14 @@ void attrIf_exit(void* subQ) { delete (attrIf*)subQ; }
 
 // C interface
 extern "C" {
-void* attrTrue_enter() { return new attrTrue(); }
-void attrTrue_exit(void* subQ) { delete (attrTrue*)subQ; }
+void* attrIfTrue_enter() { return new attrIfTrue(); }
+void attrIfTrue_exit(void* subQ) { delete (attrIfTrue*)subQ; }
 }
 
 // C interface
 extern "C" {
-void* attrFalse_enter() { return new attrFalse(); }
-void attrFalse_exit(void* subQ) { delete (attrFalse*)subQ; }
+void* attrIfFalse_enter() { return new attrIfFalse(); }
+void attrIfFalse_exit(void* subQ) { delete (attrIfFalse*)subQ; }
 }
 
 /*********************************************

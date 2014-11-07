@@ -182,8 +182,9 @@ function addVizObj2BlockID(blockID, vizObjs) {
     vizID2Obj[vizObjs[i].id] = vizObjs[i];
     
     // Map the viz object's ID to blockID
-    if(!(vizObjs[i] in vizObjects2BlockID)) vizObjects2BlockID[vizObjs[i].id] = {};
+    if(!(vizObjs[i].id in vizObjects2BlockID)) vizObjects2BlockID[vizObjs[i].id] = {};
     vizObjects2BlockID[vizObjs[i].id][blockID] = 1;
+    console.log(vizObjs[i].id+" mappped at "+blockID);
   } }
 }
 
@@ -191,48 +192,6 @@ var jsPlumbInstance;
 
 // Called to draw arrows between causally-related events in different portions of the log
 function showParallelArrows() {
-/*  // Initialize the canvas
-  if(parArrowCanvas === undefined) parArrowCanvas = createCanvasOverlay();
-  // Grab a drawing context for the canvas
-  var ctx = parArrowCanvas.canvas.getContext('2d');
-  
-  mapParArrows(parArrowsFrom, 
-               function(sourceCenter, targetCenter) {
-                 if(sourceCenter.x>=0 && sourceCenter.y>=0 && targetCenter.x>=0 && targetCenter.y>=0)
-                   drawArrow(ctx, sourceCenter.x, sourceCenter.y, targetCenter.x, targetCenter.y);
-               });
-               
-  mapParArrows(parArrowsTo, 
-               function(targetCenter, sourceCenter) {
-                 if(sourceCenter.x>=0 && sourceCenter.y>=0 && targetCenter.x>=0 && targetCenter.y>=0)
-                   drawArrow(ctx, sourceCenter.x, sourceCenter.y, targetCenter.x, targetCenter.y);
-               });
-
-  mapBarriers(function(centers) {
-                // Find the left and right edge of the centers
-                var left=999999, right=-1;
-                for(i in centers) {
-                  left  = Math.min(left,  centers[i].x);
-                  right = Math.max(right, centers[i].x);
-                }
-
-                // Find the average y coordinate of the centers
-                var avgY=0;
-                for(i in centers) avgY += centers[i].y;
-                avgY /= centers.length;
-
-                ctx.beginPath();
-                //console.log("["+left+","+avgY+"] - ["+right+","+avgY+"]");
-                ctx.moveTo(left,  avgY);
-                ctx.lineWidth = 5;
-                ctx.lineTo(right, avgY);
-                ctx.stroke();
-              });
-  
-  // Redraw arrows whenever the window is resized
-  //addEvent(window, "resize", refreshParallelArrows);
-  addLazyWindowResizeEvent(refreshParallelArrows);*/
-  
   jsPlumb.ready(function() {
 
 	jsPlumbInstance = jsPlumb.getInstance({
@@ -283,7 +242,8 @@ function showParallelArrows() {
 		},				
 		isSource:true,
 		//connector:[ "Flowchart", { stub:[40, 60], gap:10, cornerRadius:5, alwaysRespectStubs:true } ],								                
-		connector:[ "Straight", { stub:0, gap:0} ],
+		//connector:[ "Straight", { stub:0, gap:0} ],
+		connector:[ "Bezier", { curviness: 10} ],
 		connectorStyle:connectorPaintStyle,
 		//hoverPaintStyle:endpointHoverStyle,
 		//connectorHoverStyle:connectorHoverStyle,
@@ -324,7 +284,8 @@ function showParallelArrows() {
 	jsPlumbInstance.doWhileSuspended(function() {
 	    mapParArrows(parArrowsTo, 
                function(targetBlockID, sourceBlockID, targetLabel, sourceLabel) {
-                console.log(sourceBlockID+", "+targetBlockID);
+//                console.log(sourceBlockID+", "+targetBlockID);
+//if(sourceLabel=="R") return;
                 var from = jsPlumbInstance.addEndpoint("div"+sourceBlockID, sourceEndpoint, { anchor:"BottomCenter", uuid:sourceBlockID+"BottomCenter" });
                 if(sourceLabel!="") from.addOverlay([ "Label", { id:"label", cssClass:"arrowParNodeLabel", label:sourceLabel}]);
                 var to = jsPlumbInstance.addEndpoint("div"+targetBlockID, targetEndpoint, { anchor:"TopCenter", uuid:targetBlockID+"TopCenter" });
@@ -336,11 +297,13 @@ function showParallelArrows() {
                 // Record the visualization objects mapped to the source/target blockIDs
                 addVizObj2BlockID(sourceBlockID, [from, to/*, connection*/]);
                 addVizObj2BlockID(targetBlockID, [from, to/*, connection*/]);
+                //console.log(from.id+"("+sourceLabel+") => "+connection.id+" => "+to.id+"("+targetLabel+")");
                });
                
        mapParArrows(parArrowsFrom, 
                function(sourceBlockID, targetBlockID, sourceLabel, targetLabel) {
-                console.log(sourceBlockID+", "+targetBlockID);
+//                console.log(sourceBlockID+", "+targetBlockID);
+//if(sourceLabel=="R") return;
                 var from = jsPlumbInstance.addEndpoint("div"+sourceBlockID, sourceEndpoint, { anchor:"BottomCenter", uuid:sourceBlockID+"BottomCenter" });
                 if(sourceLabel!="") from.addOverlay([ "Label", { id:"label", cssClass:"arrowParNodeLabel", label:sourceLabel}]);
                 var to = jsPlumbInstance.addEndpoint("div"+targetBlockID, targetEndpoint, { anchor:"TopCenter", uuid:targetBlockID+"TopCenter" });
@@ -352,6 +315,7 @@ function showParallelArrows() {
                 // Record the visualization objects mapped to the source/target blockIDs
                 addVizObj2BlockID(sourceBlockID, [from, to/*, connection*/]);
                 addVizObj2BlockID(targetBlockID, [from, to/*, connection*/]);
+                //console.log(from.id+"("+sourceLabel+") => "+connection.id+" => "+to.id+"("+targetLabel+")");
                });
                
        mapBarriers(function(barriers, label) {
@@ -378,10 +342,15 @@ function showParallelArrows() {
 	});
 
 	jsPlumb.fire("jsPlumbDemoLoaded", jsPlumbInstance);
-	
-});
+  });
 
-  addLazyWindowResizeEvent(refreshParallelArrows);
+  // Erase the records of all the arrows that have already been shown
+  parArrowsTo = {};
+  parArrowsFrom = {};
+  parBarriers = {};
+
+  //addLazyWindowResizeEvent(refreshParallelArrows);
+  addRefreshHandler(refreshParallelArrows);
 }
 
 // Refreshes the positions of the arrows between causally-related events based on the current
@@ -389,28 +358,31 @@ function showParallelArrows() {
 function refreshParallelArrows() {
   // Iterate over all the visualization objects created in showParallelArrows() and set their visibility status based on the visibility status
   for(vizID in vizObjects2BlockID) { if(vizObjects2BlockID.hasOwnProperty(vizID)) {
-    // Iterate over all the blockIDs this object is associated with and check if they're all visible
+    // Iterate over all the blockIDs this object is associated with and check if they've changed 
+    // and if so, if any of them was changed to be not visible.
     var isVisible=true;
+    var changeObserved=false;
     for(blockID in vizObjects2BlockID[vizID]) { if(vizObjects2BlockID[vizID].hasOwnProperty(blockID)); {
       var blockDiv = document.getElementById("div"+blockID);
-      if(isHidden(blockDiv)) {
-        isVisible=false;
-        break;
+      if(isChanged(blockDiv)) {
+        changeObserved=true;
+        if(isHidden(blockDiv)) {
+          isVisible=false;
+          break;
+        }
       }
     }}
     
-    if(!isVisible) {
-      //vizID2Obj[vizID].addClass("hidden");
-      //vizID2Obj[vizID].setVisible(isVisible);
-      //jsPlumb.hide(vizID2Obj[vizID]);
-      //jsPlumb.detachAllConnections(vizID2Obj[vizID]);
-      vizID2Obj[vizID].setVisible(false);
-      vizID2Obj[vizID].setEnabled(false);
-      vizID2Obj[vizID].setStyle({visibility:"hidden"});
+    // If any of the divs this visualization object was associated with have changed, 
+    // set its visibility to their visiblity status (visible if all are visible, 
+    // hidden if any are hidden)
+    if(changeObserved) {
+      //console.log("visibility of "+vizID+" => "+isVisible);
+      vizID2Obj[vizID].setVisible(isVisible);
     }
   }}
   
   jsPlumbInstance.repaintEverything();
-  addLazyWindowResizeEvent(refreshParallelArrows);
+//  addLazyWindowResizeEvent(refreshParallelArrows);
 }
 

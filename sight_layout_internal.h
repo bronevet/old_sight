@@ -63,6 +63,7 @@ extern bool saved_appExecInfo; // Indicates whether the application execution in
 extern int argc;
 extern std::string* argv;
 extern std::string execFile;
+extern std::string PWD;
 
 // All the aliases of the name of the host that this application is currently executing on
 extern std::list<std::string> hostnames;
@@ -545,6 +546,9 @@ public:
   void printSummaryFileContainerHTML(std::string absoluteFileName, std::string relativeFileName, std::string title);
   void printDetailFileContainerHTML(std::string absoluteFileName, std::string title);
   
+  // Generate a JavaScript command that loads the sub-file pointed to by the given location
+  std::string genLoadSubFile(const location& loc);
+
   // Called when a block is entered.
   // b: The block that is being entered
   // newFileEntered: records whether by entering this block we're also entering a new file

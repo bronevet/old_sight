@@ -68,7 +68,7 @@ int main(int argc, char **argv)
                 for (int i = 0; i < num_iters; i++) {
                     while (!feof(f)) {
                         size_t bytes_read = populateBuffer(sendAr, f);
-#ifdef DEBUG_ON
+//#ifdef DEBUG_ON
                         fprintf(stdout, "BE: Sending wave %d ..\n", wave++);
                         fprintf(stdout, "BE: Sending wave wait send Auc.. bytes read : %d \n", bytes_read);
 
@@ -76,7 +76,7 @@ int main(int argc, char **argv)
                             printf("%c",sendAr[j]);
                         }
                         printf("\n\n\n");
-#endif
+//#endif
                         if (stream->send(tag, "%ac", sendAr, bytes_read) == -1) {
                             fprintf(stderr, "BE: stream::send(%%d) failure in PROT_CONCAT\n");
                             tag = PROT_EXIT;

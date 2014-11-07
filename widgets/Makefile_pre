@@ -6,19 +6,23 @@ WIDGETS_LAYOUT_O := ${ROOT_PATH}/widgets/scope/scope_layout.o ${ROOT_PATH}/widge
 WIDGETS_LAYOUT_H := ${ROOT_PATH}/widgets/scope/scope_layout.h ${ROOT_PATH}/widgets/graph/graph_layout.h ${ROOT_PATH}/widgets/valSelector/valSelector_layout.h ${ROOT_PATH}/widgets/trace/trace_layout.h ${ROOT_PATH}/widgets/module/module_layout.h ${ROOT_PATH}/widgets/source/source_layout.o ${ROOT_PATH}/widgets/clock/clock_layout.h ${ROOT_PATH}/widgets/parallel/parallel_layout.h
 WIDGETS := ${WIDGETS_O} ${WIDGETS_H}
 
-MAKE_DEFINES = ROOT_PATH=${ROOT_PATH} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" CC=${CC} CCC=${CCC} KULFI_ENABLED=${KULFI_ENABLED} LLVM32_SRC_PATH=${LLVM32_SRC_PATH} LLVM32_BUILD_PATH=${LLVM32_BUILD_PATH} LLVM32_INSTALL_PATH=${LLVM32_INSTALL_PATH}
+MAKE_DEFINES = ROOT_PATH=${ROOT_PATH} RAPL_ENABLED=${RAPL_ENABLED} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" CC=${CC} CCC=${CCC} KULFI_ENABLED=${KULFI_ENABLED} LLVM32_SRC_PATH=${LLVM32_SRC_PATH} LLVM32_BUILD_PATH=${LLVM32_BUILD_PATH} LLVM32_INSTALL_PATH=${LLVM32_INSTALL_PATH}
+
+MPI_CXX=mpic++ #mpig++
 
 include ${ROOT_PATH}/Makefile_pkg_chk.inc
 
 all: gsl papi libmsr synoptic \
      ${WIDGETS_COMMON_O} ${WIDGETS_COMMON_H} ${WIDGETS_STRUCTURE_O} ${WIDGETS_STRUCTURE_H} ${WIDGETS_LAYOUT_O} ${WIDGETS_LAYOUT_H}  \
+     box \
      kulfi \
      shellinabox/bin/shellinaboxd${EXE} mongoose/mongoose${EXE} graphviz/bin/dot${EXE} \
      vnc \
      ${ROOT_PATH}/widgets/source/sh_main.js ${ROOT_PATH}/widgets/source/sh_cpp.js \
      threejs \
      jsPlumb \
-     external_scripts
+     external_scripts \
+     muster parallel/cluster
 	chmod 755 ${ROOT_PATH}/widgets/canviz-0.1 
 	chmod 644 ${ROOT_PATH}/widgets/canviz-0.1/*
 	chmod 755 ${ROOT_PATH}/widgets/canviz-0.1/excanvas ${ROOT_PATH}/widgets/canviz-0.1/lib ${ROOT_PATH}/widgets/canviz-0.1/path ${ROOT_PATH}/widgets/canviz-0.1/prototype
@@ -27,7 +31,7 @@ all: gsl papi libmsr synoptic \
 	cp  ${REPO_PATH}/*.css ${ROOT_PATH}/widgets/
 #     ID3-Decision-Tree \
 
-ifeq (${VNC_ENABLED}, 1)
+ifeq (${REMOTE_ENABLED}, 1)
 vnc:  xdotool noVNC
 else
 vnc:
@@ -107,11 +111,16 @@ ${ROOT_PATH}/widgets/parallel/parallel_layout.o: ${ROOT_PATH}/widgets/parallel/p
 ${ROOT_PATH}/widgets/parallel/sight_pthread.o: ${ROOT_PATH}/widgets/parallel/sight_pthread.C ${ROOT_PATH}/widgets/parallel/sight_pthread.h ${ROOT_PATH}/widgets/parallel/parallel_structure.h
 	${CCC} ${SIGHT_CFLAGS} ${ROOT_PATH}/widgets/parallel/sight_pthread.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o ${ROOT_PATH}/widgets/parallel/sight_pthread.o
 
+.PHONY: box
+box:
+#	cp -r ${ROOT_PATH}/widgets/box .
+	cd ${ROOT_PATH}/widgets/box; ${MAKE} ${MAKE_DEFINES}
 
 ifeq (${KULFI_ENABLED}, 1)
 .PHONY: kulfi
 kulfi:
-	cd kulfi; ${MAKE} ${MAKE_DEFINES}	
+#	cp -r ${ROOT_PATH}/widgets/kulfi .
+	cd ${ROOT_PATH}/widgets/kulfi; ${MAKE} ${MAKE_DEFINES}	
 else
 kulfi:
 endif
@@ -165,6 +174,7 @@ ifeq (${OS},Cygwin)
 	mv release/* graphviz
 	rm -r graphviz-2.24.zip release
 	chmod 755 graphviz/bin/*
+	rm ${ROOT_PATH}/widgets/graphviz; mkdir ${ROOT_PATH}/widgets/graphviz; cp -r graphviz/bin/ ${ROOT_PATH}/widgets/graphviz
 else
 	wget http://www.graphviz.org/pub/graphviz/stable/SOURCES/graphviz-2.24.0.tar.gz
 	tar -xf graphviz-2.24.0.tar.gz
@@ -174,6 +184,7 @@ else
 	cd graphviz-2.24.0; export CC=gcc; export CXX=g++; ${MAKE} install
 	mv graphviz/bin/dot_static graphviz/bin/dot
 	rm -r graphviz-2.24.0 graphviz-2.24.0.tar.gz
+	rm ${ROOT_PATH}/widgets/graphviz; mkdir ${ROOT_PATH}/widgets/graphviz; cp -r graphviz/bin/ ${ROOT_PATH}/widgets/graphviz
 endif
 
 expat:
@@ -190,7 +201,7 @@ endif
 #	#cd widgets; wget --no-check-certificate https://github.com/willkurt/ID3-Decision-Tree/archive/master.zip
 #	#cd widgets; mv master master.zip; unzip master.zip
 #	#rm -r master*
-#	${ROOT_PATH}/getGithub https://github.com/willkurt/ID3-Decision-Tree/archive/master.zip zip unzip
+#	${ROOT_PATH}/getGithub https://github.com/willkurt/ID3-Decision-Tree/archive/master.zip zip unzip master
 #	mv ID3-Decision-Tree-master ID3-Decision-Tree
 #	chmod 755 ID3-Decision-Tree
 #	chmod 644 ID3-Decision-Tree/*
@@ -202,7 +213,7 @@ noVNC:
 	#wget --no-check-certificate http://github.com/kanaka/noVNC/tarball/master
 	#mv master master.tar.gz
 	#tar -xf master.tar.gz
-	${ROOT_PATH}/getGithub http://github.com/kanaka/noVNC/tarball/master tar.gz "tar -xf"
+	${ROOT_PATH}/getGithub http://github.com/kanaka/noVNC/tarball/master tar.gz "tar -xf" master master
 	mv kanaka-noVNC-* noVNC
 
 #.PHONY: funcFit
@@ -232,7 +243,7 @@ ifeq (${LIBMSR_exist},1)
 libmsr: libmsr/lib/libmsr.so
 
 libmsr/lib/libmsr.so:
-	${ROOT_PATH}/getGithub https://github.com/scalability-llnl/libmsr/archive/master.zip zip unzip
+	${ROOT_PATH}/getGithub https://github.com/scalability-llnl/libmsr/archive/master.zip zip unzip master
 	mv libmsr-master libmsr
 	cd libmsr/src; make CC=${CC}
 else
@@ -244,6 +255,37 @@ synoptic:
 	tar -xf synoptic-0.1.tar.gz
 	mv synoptic-0.1 synoptic
 	rm synoptic-0.1.tar.gz
+
+PnMPI:
+	git clone ssh://git@cz-stash.llnl.gov:7999/pnmpi/pnmpi-main.git -b pnmpi-2014-rc1 PnMPI
+
+PnMPI/BUILD:PnMPI
+	cd PnMPI; git submodule update --init
+	mkdir -p PnMPI/BUILD
+
+PnMPI/INSTALL/lib/libpnmpi.so:PnMPI/BUILD
+	cd PnMPI/BUILD ; export CC=${CC}; export CXX=${CCC}; cmake ../ -DCMAKE_INSTALL_PREFIX=../INSTALL; make install
+
+parallel/commsub-sclock.so:parallel/commsub-sclock.cpp PnMPI/modules/comm/comm.cpp PnMPI
+	echo "building sclock module:"; echo "	${MPI_CXX}  ${SIGHT_CFLAGS} -fPIC -g -shared -Wl,-soname,commsub-sclock.so -o parallel/commsub-sclock.so 	-DSUBMODNAME='"sclock"' -IPnMPI/src -IPnMPI/modules/datatype -IPnMPI/modules/requests	-IPnMPI/modules/status -IPnMPI/BUILD/src parallel/commsub-sclock.cpp PnMPI/modules/comm/comm.cpp"
+	${MPI_CXX}  ${SIGHT_CFLAGS} -fPIC -g -o parallel/commsub-comm.o \
+	-IPnMPI/src -IPnMPI/modules/datatype -IPnMPI/INSTALL/include -IPnMPI/modules/requests \
+	-IPnMPI/modules/status -IPnMPI/modules/comm -IPnMPI/BUILD/src PnMPI/modules/comm/comm.cpp -c
+	${MPI_CXX}  ${SIGHT_CFLAGS} -fPIC -g -o parallel/commsub-sclock.o \
+	-DSUBMODNAME='"sclock"' -IPnMPI/src -IPnMPI/modules/datatype -IPnMPI/INSTALL/include -IPnMPI/modules/requests \
+	-IPnMPI/modules/status -IPnMPI/modules/comm -IPnMPI/BUILD/src parallel/commsub-sclock.cpp -c
+	g++ ${SIGHT_CFLAGS} -fPIC -g  -shared -Wl,-soname,commsub-sclock.so -o parallel/commsub-sclock.so \
+	parallel/commsub-sclock.o parallel/commsub-comm.o
+
+PnMPI/INSTALL/lib/pnmpi-modules/commsub-sclock.so: parallel/commsub-sclock.so
+	PnMPI/INSTALL/bin/pnmpi-patch parallel/commsub-sclock.so PnMPI/INSTALL/lib/pnmpi-modules/commsub-sclock.so
+
+muster:
+	git clone https://github.com/scalability-llnl/muster.git
+	cd muster && mkdir locall && cd locall && cmake -DCMAKE_INSTALL_PREFIX=${PWD}/muster/INSTALL-dir ..  && make && make install
+
+parallel/cluster: ${ROOT_PATH}/widgets/parallel/cluster.cpp muster
+	cd ${ROOT_PATH}/widgets; ${MPI_CXX} -L${REPO_PATH}/muster/INSTALL-dir/lib/ -lmuster ${REPO_PATH}/muster/locall/tests/libtest-support.a parallel/cluster.cpp -o parallel/cluster -I${REPO_PATH}/muster/INSTALL-dir/include -I${REPO_PATH}/muster/tests -I${REPO_PATH}/muster/external -I${REPO_PATH}/boost_1_55_0 ${REPO_PATH}/muster/src/*.cpp ${REPO_PATH}/muster/external/*.cpp -I${REPO_PATH}/muster/external
 
 # JavaScript files from standard JS libraries that we wish to keep local copies of
 
@@ -275,6 +317,7 @@ ${ROOT_PATH}/widgets/source/sh_cpp.js:
 	cd source; wget http://shjs.sourceforge.net/lang/sh_cpp.js
 
 threejs: Three.js Detector.js OrbitControls.js THREEx.WindowResize.js Stats.js THREE
+	cp -r THREE/ ${ROOT_PATH}/widgets	
 
 Three.js:
 	wget http://stemkoski.github.io/Three.js/js/Three.js
@@ -289,15 +332,15 @@ THREEx.WindowResize.js:
 	wget http://stemkoski.github.io/Three.js/js/THREEx.WindowResize.js
 
 THREE:
-	${ROOT_PATH}/getGithub http://github.com/mrdoob/three.js/zipball/master zip unzip
+	${ROOT_PATH}/getGithub http://github.com/mrdoob/three.js/zipball/master zip unzip master
 	mv mrdoob-three.js-* THREE
 
 Stats.js:
 	wget http://stemkoski.github.io/Three.js/js/Stats.js
 
 jsPlumb:
-	${ROOT_PATH}/getGithub https://github.com/sporritt/jsPlumb/archive/master.zip zip unzip
-	mv jsPlumb-master jsPlumb
+	${ROOT_PATH}/getGithub https://github.com/sporritt/jsPlumb/archive/dev/1.6.2.zip zip unzip 1.6.2
+	mv jsPlumb-dev-1.6.2 jsPlumb
 
 clean:
 	rm -fr xdotool

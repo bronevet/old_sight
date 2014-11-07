@@ -16,14 +16,18 @@ TESTERS = 0.Demo${EXE} \
           9.CompModules.merged${EXE} 9.CompModules.single${EXE} \
           10.SpringModules${EXE} \
           11.ExternTraceProcess${EXE} \
-          12.SampleMRnetEmitter${EXE} 
+          12.SampleMRnetEmitter${EXE} \
+		  12.RemoteModuleEdges
           
 PTHREAD_TESTERS = pthreadMutexEx${EXE} pthreadCondEx${EXE} pthreadThreadsEx${EXE} \
                   pthreadArrayLoops${EXE} dotprodPthreads${EXE} pthreadFib${EXE} #\
                   pthreadBug1${EXE} pthreadBug2${EXE} pthreadBug3${EXE} \
                   pthreadBug4${EXE} pthreadBug5${EXE} pthreadBug6${EXE}
 
-all: ${PTHREAD_TESTERS} ${TESTERS}
+all: ${TESTERS} # ${PTHREAD_TESTERS}
+
+MPI-examples:
+	make -C MPI_examples
 
 run: ${TESTERS}
 	# 0.Demo
@@ -118,6 +122,8 @@ run: ${TESTERS}
 	${CCC} -g 11.ExternTraceProcess.windowing.C -I.. -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 11.ExternTraceProcess.windowing${EXE}
 	${CCC} -g ${SIGHT_CFLAGS} 11.ExternTraceProcess.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 11.ExternTraceProcess${EXE}
 
+12.RemoteModuleEdges${EXE}: 12.RemoteModuleEdges.C ../libsight_structure.so ${sight_H}
+	${CCC} ${SIGHT_CFLAGS} 12.RemoteModuleEdges.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 12.RemoteModuleEdges${EXE}
 
 12.SampleMRnetEmitter${EXE}: 12.SampleMRnetEmitter.C ../libsight_structure.so ${sight_H}
 	${CCC} ${SIGHT_CFLAGS} 12.SampleMRnetEmitter.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 12.SampleMRnetEmitter${EXE}

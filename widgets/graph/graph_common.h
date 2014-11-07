@@ -19,13 +19,14 @@ class graphEdge {
   anchor from;
   anchor to;
   bool directed;
+  bool visible;
   
   friend class sight::layout::graph;
   friend class sight::structure::graph;
   
   public:
-  graphEdge(anchor from, anchor to, bool directed) :
-    from(from), to(to), directed(directed)
+  graphEdge(anchor from, anchor to, bool directed, bool visible) :
+    from(from), to(to), directed(directed), visible(visible)
   {}
   
   const anchor& getFrom() const { return from; }
