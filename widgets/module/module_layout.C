@@ -136,9 +136,14 @@ modularApp::modularApp(properties::iterator props) : block(properties::next(prop
   // hoa edit
   //dbg << "<div> <canvas id=\"flGra\" data-processing-sources=\"widgets/module/flGra.pde\" width=\"1200\" height=\"900\"> </canvas> </div>\n";
   //dbg << "<a href=\"widgets/module/index.html\">Flow Graph</a>\n";
-  dbg << "<iframe id=\"flGrFrame\" src=\"widgets/module/index.html\" width=\"2000\" height=\"1200\"></iframe>\n";
-
-  dbg << "<div id=\"module_container_"<<appID<<"\"></div>\n";
+  //dbg << "<iframe id=\"flGrFrame\" src=\"widgets/module/index.html\" width=\"2000\" height=\"1200\"></iframe>\n";
+  //<iframe id="flGrFrame" src="widgets/module/index.html" style="margin:0; width:100%; height:500; border:none; overflow:hidden;" scrolling="auto"></iframe>
+  // hoa edit
+  //dbg << "<iframe id=\"flGrFrame\" src=\"widgets/module/index.html\" style=\"margin:0; width:100%; height:500; border:none; overflow:hidden;\" scrolling=\"auto\"></iframe>\n";
+ 
+  // hoa edit
+  // comment out - don't use graphviz method
+  //dbg << "<div id=\"module_container_"<<appID<<"\"></div>\n";
   dbg.userAccessing();
 
   ostringstream origDotFName;   origDotFName   << outDir << "/orig."   << appID << ".dot";
@@ -147,7 +152,14 @@ modularApp::modularApp(properties::iterator props) : block(properties::next(prop
   dotFile << "\tcompound=true;"<<endl;
 
   // hoa edit
-  // node file
+ // create hoaviz canvas
+  ostringstream hoavizCanvasFName;
+  hoavizCanvasFName << outDir << "/hoaviz_canvas.txt";
+  hoavizCanvasFile.open(hoavizCanvasFName.str().c_str());
+  hoavizCanvasFile <<"<canvas id=\"flGra\" data-processing-sources=\"widgets/module/flGra.pde\" width=\"100%\" height=\"100%\"> </canvas>"<< endl;
+  hoavizCanvasFile.close();
+ 
+ // node file
   ostringstream tFName;
   //tFName   << outDir << "/node."   << appID << ".txt";
   tFName   << outDir << "/node.txt";
@@ -170,7 +182,7 @@ modularApp::modularApp(properties::iterator props) : block(properties::next(prop
   ostringstream vertHoriFName;
   vertHoriFName << outDir << "/vert_hori.txt";
   vertHoriFile.open(vertHoriFName.str().c_str());
-
+  
   // If we were asked to emit all observations from all modules into a file,
   // create a traceObserver to do this. This traceObserver will be connected to the
   // moduleTraceStreams of individual modules as they are encountered.
@@ -253,6 +265,9 @@ modularApp::~modularApp() {
   ioInfoFile.close();
   vertHoriFile.close();
 
+  // hoa edit
+  //dbg << "<iframe id=\"flGrFrame\" src=\"widgets/module/index.html\" style=\"margin:0; width:100%; height:500; border:none; overflow:hidden;\" scrolling=\"auto\"></iframe>\n";
+  
   dbg.exitBlock();
 
   // Lay out the dot graph

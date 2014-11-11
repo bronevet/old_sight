@@ -90,7 +90,7 @@ class module : public common::module, public traceObserver {
   std::set<std::string> traceAttrNames;
 
   int moduleID;
-  
+ 
   public:
   module(int moduleID);
   
@@ -266,6 +266,7 @@ class modularApp: public block, public common::module
   std::ofstream datFile;
   std::ofstream ioInfoFile;
   std::ofstream vertHoriFile;
+  std::ofstream hoavizCanvasFile;
 
   public:
   

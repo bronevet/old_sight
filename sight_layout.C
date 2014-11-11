@@ -1570,6 +1570,12 @@ void dbgStream::printDetailFileContainerHTML(string absoluteFileName, string tit
   det << "\t<head>\n";
   det << "\t<title>"<<title<<"</title>\n";
   //det << "\t<script type='text/javascript' src='https://www.google.com/jsapi?autoload={\"modules\":[{\"name\":\"visualization\",\"version\":\"1\",\"packages\":[\"orgchart\"]}]}'></script>\n";
+  // hoa edit
+  det << "\t<script src=\"widgets/module/processing.js\"></script>\n";
+  det << "\t<script type=\"text/javascript\"> function getProcessingSketchId () { return 'flGra'; } </script>\n";
+  det << "\t<script src=\"widgets/module/module.js\"></script>\n";
+  det << "\t<script src=\"widgets/module/flgr.js\"></script>\n";
+
   det << "\t<script src=\"script/hashtable.js\"></script>\n";
   det << "\t<script src=\"script/skiplists.js\"></script>\n";
   det << "\t<script src=\"script/taffydb/taffy.js\"></script>\n";
@@ -1602,6 +1608,9 @@ void dbgStream::printDetailFileContainerHTML(string absoluteFileName, string tit
   det << "\t\t\t);\n";
   det << "\t\t}\n";
   det << "\t</script>\n";
+  // hoa edit
+  det << "\t<script> loadURLIntoDiv2(document, 'widgets/module/hoaviz_canvas.txt', 'canvas') </script>\n";
+
   det << "\t</head>\n";
   det << "\t<body>\n";
   /*det << "<div id=\"attrTable\"></div>\n";
@@ -1625,6 +1634,10 @@ void dbgStream::printDetailFileContainerHTML(string absoluteFileName, string tit
 
   det << "\t\t<table width=\"100%\">\n";
   det << "\t\t\t<tr width=\"100%\"><td width=50></td><td width=\"100%\">\n";
+  
+  // hoa edit
+  det << "\t\t\t<div id=\"canvas\" width=\"100%\" height=\"100%\" class=\"unhidden\"> <div id = \"content\"> </div> </div>\n";
+
   det << "\t\t\t<div id='detailContents'></div>\n";
   det << "\t\t\t</td></tr>\n";
   det << "\t\t</table>\n";

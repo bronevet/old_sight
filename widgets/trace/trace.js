@@ -545,8 +545,8 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, viz, inwin, 
             if(inwin == true)
             {
                var newDiv = "";
-               newDiv += "<div id=\"vizFrameBut\" style=\"font-size:15pt; text-decoration:underline;\"><img src=\"../../img/close.png\" onclick=\"removeIFrame('vizFrame');\"></div>\n";
-               newDiv += "<iframe id=\"vizFrame\" src=\"../trace/web-export/index.html?data="+data+ "&attrNames="+attrNames+"&minVals="+minVals+"&maxVals="+maxVals+"&numContextAttrs="+numContextAttrs+"&numTraceAttrs="+numTraceAttrs+"&hostDivID="+hostDivID +"\" width=\"900\" height=\"900\"></iframe>\n";
+               newDiv += "<div id=\"vizFrameBut\" style=\"font-size:15pt; text-decoration:underline;\"><img src=\"img/close.png\" onclick=\"removeIFrame('vizFrame');\"></div>\n";
+               newDiv += "<iframe id=\"vizFrame\" src=\"widgets/trace/web-export/index.html?data="+data+ "&attrNames="+attrNames+"&minVals="+minVals+"&maxVals="+maxVals+"&numContextAttrs="+numContextAttrs+"&numTraceAttrs="+numTraceAttrs+"&hostDivID="+hostDivID +"\" width=\"950\" height=\"950\" frameborder =\"0\" scrolling = \"auto\"></iframe>\n";
             
                hostDiv.innerHTML += newDiv;
             
@@ -560,7 +560,7 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, viz, inwin, 
             }
             else
             // open in new window
-            newwindow=window.open("../trace/web-export/index.html?data="+data+"&attrNames="+attrNames+"&minVals="+minVals+"&maxVals="+maxVals+"&numContextAttrs="+numContextAttrs+"&numTraceAttrs="+numTraceAttrs+"&hostDivID="+hostDivID,"CCP",'height=900,width=900');
+            newwindow=window.open("widgets/trace/web-export/index.html?data="+data+"&attrNames="+attrNames+"&minVals="+minVals+"&maxVals="+maxVals+"&numContextAttrs="+numContextAttrs+"&numTraceAttrs="+numTraceAttrs+"&hostDivID="+hostDivID,"CCP",'height=950,width=950');
         //}));
     }
     // end correlation coordinate plots
@@ -655,8 +655,8 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, viz, inwin, 
             if(inwin == true)
             {
                var newDiv = "";
-               newDiv += "<div id=\"vizFrameBut\" style=\"font-size:15pt; text-decoration:underline;\"><img src=\"../../img/close.png\" onclick=\"removeIFrame('vizFrame');\"></div>\n";
-               newDiv += "<iframe id=\"vizFrame\" src=\"../trace/pcp/web-export/index.html?data="+data+"&attrNames="+attrNames+"&minVals="+minVals+"&maxVals="+maxVals+"&numContextAttrs="+numContextAttrs+"&numTraceAttrs="+numTraceAttrs+"&hostDivID="+hostDivID +"\" width=\"1220\" height=\"320\"></iframe>\n";
+               newDiv += "<div id=\"vizFrameBut\" style=\"font-size:15pt; text-decoration:underline;\"><img src=\"img/close.png\" onclick=\"removeIFrame('vizFrame');\"></div>\n";
+               newDiv += "<iframe id=\"vizFrame\" src=\"widgets/trace/pcp/web-export/index.html?data="+data+"&attrNames="+attrNames+"&minVals="+minVals+"&maxVals="+maxVals+"&numContextAttrs="+numContextAttrs+"&numTraceAttrs="+numTraceAttrs+"&hostDivID="+hostDivID +"\" width=\"1220\" height=\"320\" frameborder =\"0\" scrolling = \"auto\"></iframe>\n";
             
                hostDiv.innerHTML += newDiv;
             
@@ -670,7 +670,7 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, viz, inwin, 
             }
             else
             // open in new window
-            newwindow=window.open("../trace/pcp/web-export/index.html?data="+data+"&attrNames="+attrNames+"&minVals="+minVals+"&maxVals="+maxVals+"&numContextAttrs="+numContextAttrs+"&numTraceAttrs="+numTraceAttrs+"&hostDivID="+hostDivID,"PCP",'height=300,width=1200');
+            newwindow=window.open("widgets/trace/pcp/web-export/index.html?data="+data+"&attrNames="+attrNames+"&minVals="+minVals+"&maxVals="+maxVals+"&numContextAttrs="+numContextAttrs+"&numTraceAttrs="+numTraceAttrs+"&hostDivID="+hostDivID,"PCP",'height=300,width=1200');
        //}));
     }
     // end parallel coordinates plots
@@ -1061,5 +1061,6 @@ function removeIFrame(frid)
     var buDiv = document.getElementById(frid+"But");
         buDiv.parentNode.removeChild(buDiv);
 }
+
 
 

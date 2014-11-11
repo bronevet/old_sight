@@ -122,21 +122,21 @@ void setup()
   //ynode = 50;
   viewMeth = 3;
   
-  // for module
+   // for module
   // node information: ModuleID:ModuleName:num_input:num_output:ContainterModuleID(parent)
-  lnodes = loadStrings("node.txt");
+  lnodes = loadStrings("widgets/module/node.txt");
   lnodes_length = lnodes.length;
   // connection between input and output of nodes   
-  lconn = loadStrings("inout.txt");
+  lconn = loadStrings("widgets/module/inout.txt");
   // visualization methods: sc3d, ccp, pcp, ... 
-  vizMeth = loadStrings("dat.txt");
+  vizMeth = loadStrings("widgets/module/dat.txt");
    
   if(vizMeth.length>0)
     statistic_viz = 1;
   // detail information of input and output relationship text
-  ioInfo = loadStrings("ioInfo.txt");
+  ioInfo = loadStrings("widgets/module/ioInfo.txt");
   
-  vert_hori = loadStrings("vert_hori.txt");
+  vert_hori = loadStrings("widgets/module/vert_hori.txt");
   if(vert_hori.length>0)
     hori_vert_layout = 1;
   // end for module
