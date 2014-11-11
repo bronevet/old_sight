@@ -47,6 +47,7 @@ int selected = -1;
 int dim_selected;
 float dim_selected_x;
 float dim_selected_y;
+String dimName_center;
 
 void setup() 
 { 
@@ -124,9 +125,9 @@ void setup()
  
   for(int i=0; i<num; i++)
   {
-    //dimNames[i] = listNames[numContext+i];
+    //dimNames[i] = listNames[i];
     String[] listN = split(listNames[i],':');
-    dimNames[i] = listN[listN.length-1];
+    dimNames[i] = listN[listN.length-3]+ ":" + listN[listN.length-2]+ ":"+listN[listN.length-1];
   }
   
   // set up number and angle of dimensions
@@ -173,8 +174,8 @@ void setup()
     //println("dimmax["+i+"]= "+dim_max[i]);
   }
   // End of finding min, max of each dimension
-  
-  noLoop();
+  dimName_center = dimNames[num-1];
+  //noLoop();
   
 }
  
@@ -184,17 +185,20 @@ void draw()
     
   stroke(224, 255, 0, 30);
   fill(224, 255, 0, 30);
-  //fill(#FF0026);
-  //stroke(#FF0026);
   strokeWeight(3);
   //ellipse(width/2-radius*width/2, height/2-radius*height/2, radius*width/2, radius*height/2);
   //ellipse((1-radius)*width/2, (1-radius)*height/2, radius*width/2, radius*height/2);
   ellipse(width/2, height/2, radius*width, radius*height);
 
   sf_focus(0);
+  stroke(224, 255, 0, 30);
+  fill(0);
+  strokeWeight(3);
+
   textAlign(CENTER);
   //text("d"+dimLoc[num-1], width/2, height/2);
-  text("d"+dimLoc[num-1]+"-"+dimNames[num-1], width/2 - 10, height/2);
+  //text("d"+dimLoc[num-1]+"-"+dimNames[num-1], width/2 - 10, height/2);
+  text("d"+dimLoc[num-1]+"-"+dimNames[dimLoc[num-1]], width/2 - 10, height/2);
 
   sf_context(1);
 
@@ -217,10 +221,24 @@ void sf_focus(int sf)
     float yc0 = height*ycCompute(dimAng[i], 0.1);
     float xc1 = width*xcCompute(dimAng[i], radius);
     float yc1 = height*ycCompute(dimAng[i], radius);
-    float xt = width*xcCompute(dimAng[i], radius-0.08);
-    float yt = height*ycCompute(dimAng[i], radius-0.08);
+    float xt, yt;
+    if(i == 0)
+    {
+      xt = width*xcCompute(dimAng[i], radius-0.12);
+      yt = height*ycCompute(dimAng[i], radius-0.12);
+    }
+    else
+    {
+      xt = width*xcCompute(dimAng[i], radius-0.08);
+      yt = height*ycCompute(dimAng[i], radius-0.08);
+    }
     
     draw_ccp(d0, d1, xc0, yc0, xc1, yc1, xt, yt, sf);
+    
+    stroke(#898484);
+    strokeWeight(1);
+    fill(255);
+    ellipse(xc1, yc1, 20,20);
   }
 }
 
@@ -429,7 +447,7 @@ void mousePressed()
   // outside small leaves
   if (abs(selpr - rad) < 30)
   {
-    for(int i = 1; i < num; i++)
+    for(int i = 0; i < num; i++)
     {  
       xc = width*xcCompute(dimAng[i], radius);
       yc = height*ycCompute(dimAng[i], radius);
@@ -439,8 +457,10 @@ void mousePressed()
       if( ( abs( xc - mouseX ) <= abs( xclosest - mouseX ) ) && (abs( yc - mouseY ) <= abs( yclosest - mouseY ) ) && abs(AngleCompute(xc, yc) - AngleCompute(mouseX, mouseY)) <= abs(AngleCompute(xclosest, yclosest) - AngleCompute(mouseX, mouseY)))
          closest = i;
     }
+    if (closest == (num-1))
+      closest = 0;
  
-    if( ( abs( xclosest - mouseX ) < 20 ) && ( abs( yclosest - mouseY ) < 20 ))
+    if( ( abs( xclosest - mouseX ) < 10 ) && ( abs( yclosest - mouseY ) < 10 ))
     {
       selected = closest;
       dim_selected = closest;
@@ -452,10 +472,13 @@ void mousePressed()
       dimLoc[dim_selected] = dimLoc[num-1];
       dimLoc[num-1]= tp0;
       
+      // swap labels
+      /*
       String tp1 = dimNames[dim_selected];
       dimNames[dim_selected] = dimNames[num-1];
       dimNames[num-1]= tp1;
-      
+      */
+ 
       //for(int i = 0; i < num; i++)
       //   dimAng[i] = i*360/(num-1);
       

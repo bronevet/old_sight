@@ -22,8 +22,14 @@ function dataset()
   maxVals = getQueryParam("maxVals"); 
   numContextAttrs = getQueryParam("numContextAttrs"); 
   numTraceAttrs = getQueryParam("numTraceAttrs"); 
-  hostDivID = getQueryParam("hostDivID"); 
+  hostDivID = getQueryParam("hostDivID");
   
+  showFresh = getQueryParam("showFresh");
+  showLabels = getQueryParam("showLabels");
+  refreshView = getQueryParam("refreshView");
+  ctxtStr = getQueryParam("ctxtStr");
+  traceStr = getQueryParam("traceStr");
+     
   nu = numTraceAttrs;
 }
 

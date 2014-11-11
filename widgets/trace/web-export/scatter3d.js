@@ -1,3 +1,6 @@
+
+// hoa edited
+var inwin = 1;
 var initialized=false;
 var clock;
 // Maps each hostID to the properties of the 3D scene within it
@@ -81,31 +84,128 @@ function onDocumentMouseMove( event )
     });*/
 //pMaterial.color.setHSL( 1.0, 0.2, 0.7 );
 
+// hoa
+function thu(data, attrNames, minVals, maxVals,
+numCtxtVars, numTraceAttrs, hostDivID)
+{
+    document.write("data = "+data);
+    document.write("numTraceAttrs"+numTraceAttrs);
+}
 
 // Called from trace.js to show or un-hide the 3d scatter plot visualization
-function showScatter3D(data, attrNames, minVals, maxVals, 
-                       numCtxtVars, numTraceAttrs, hostDivID) {
-  // Records whether we've already initialized the state of this hostDiv
+//function showScatter3D(data, attrNames, minVals, maxVals, numCtxtVars, numTraceAttrs, hostDivID)
+function showScatter3D(dataB, attrNamesB, minValsB, maxValsB, numCtxtVars, numTraceAttrs, hostDivID, inw)
+{
+  inwin = inw;
+  if(Number(inw) == 0)
+  {
+    numCtxtVars = Number(numCtxtVars);
+    numTraceAttrs = Number(numTraceAttrs);
+    numsum = Number(numCtxtVars + numTraceAttrs);
+    
+    var dat = dataB.split(',');
+    for (var i = 0; i < dat.length; i++)
+    {
+        if(dat[i].isNumber == true)
+            dat[i] = parseFloat(dat[i]);
+    }
+    
+    var data = [];
+    var datLen = dat.length;
+    
+    for(var i = 0; i < Number(datLen/numsum); i++)
+    {
+        var d = [];
+        for(var j = 0; j < numsum; j++)
+            d.push(dat[i*numsum+j]);
+        
+        data.push(d);
+    }
+    //alert(data);
+    
+    var attrNames = attrNamesB.split(',');
+    var minV = minValsB.split(',');
+    var minVals = [];
+    for(var i = 0; i < minV.length; i++)
+        minVals.push(parseFloat(minV[i]));
+    
+    var maxV = maxValsB.split(',');
+    var maxVals = [];
+    for(var i = 0; i < maxV.length; i++)
+        maxVals.push(parseFloat(maxV[i]));
+  }
+  else
+  {
+     var data = dataB;
+     var attrNames = attrNamesB;
+     var minVals = minValsB;
+     var maxVals = maxValsB;
+  }
+    // Records whether we've already initialized the state of this hostDiv
   var hostDivInitialized = (typeof contents[hostDivID] !== "undefined");
+    
 
   // If the 3D visualization has already been initialized, then the user is requesting to show it after they previously hid it
   if(hostDivInitialized)
-    show3DViz(hostDivID);
-  // Otherwise, if the 3d visualization has not been initialized yet, do so now
+      show3DViz(hostDivID);
+      // Otherwise, if the 3d visualization has not been initialized yet, do so now
   else {
-    refreshScatter3D(data, attrNames, minVals, maxVals, 
+    refreshScatter3D(data, attrNames, minVals, maxVals,
                      numCtxtVars, numTraceAttrs, hostDivID);
     show3DViz(hostDivID);
   }
 }
-  
-function refreshScatter3D(data, attrNames, minVals, maxVals, 
-                          numCtxtVars, numTraceAttrs, hostDivID) {
+
+//function refreshScatter3D(dataB, attrNamesB, minValsB, maxValsB, numCtxtVars, numTraceAttrs, hostDivID)
+function refreshScatter3D(data, attrNames, minVals, maxVals, numCtxtVars, numTraceAttrs, hostDivID)
+{
+    
+    numsum = Number(numCtxtVars + numTraceAttrs);
+    /*
+    numCtxtVars = Number(numCtxtVars);
+    numTraceAttrs = Number(numTraceAttrs);
+    numsum = Number(numCtxtVars + numTraceAttrs);
+    
+    var dat = dataB.split(',');
+    for (i in dat )
+    {
+        if(dat[i].isNumber == true)
+            dat[i] = parseFloat(dat[i]);
+    }
+    var data = [];
+    var count1 = 0;
+    var count2 = 0;
+    var datLen = dat.length;
+    
+    for(var i = 0; i < Number(datLen/numsum); i++)
+    {
+        var d = [];
+        for(var j = 0; j < numsum; j++)
+            d.push(dat[j]);
+        
+        data.push(d);
+    }
+    
+    var attrNames = attrNamesB.split(',');
+    var minV = minValsB.split(',');
+    var minVals = [];
+    for(var i = 0; i < minV.length; i++)
+        minVals.push(parseFloat(minV[i]));
+    
+    var maxV = maxValsB.split(',');
+    var maxVals = [];
+    for(var i = 0; i < maxV.length; i++)
+        maxVals.push(parseFloat(maxV[i]));
+     */
+    
   // Records whether we've already initialized the state of this hostDiv
   var hostDivInitialized = (typeof contents[hostDivID] !== "undefined");
   
   var hostDiv = document.getElementById(hostDivID);
-  
+  //alert("hostDiv = "+ hostDiv + " and hostDivID = "+ hostDivID);
+    //alert("data="+data);
+    
+    
   ///////////
   // SCENE //
   ///////////
@@ -219,11 +319,11 @@ function refreshScatter3D(data, attrNames, minVals, maxVals,
   
   // Determine whether each data attribute is numeric or categorical
   if(!hostDivInitialized) {
-    attrType[hostDivID] = new Array(numCtxtVars+numTraceAttrs);
-    rangeMin[hostDivID] = new Array(numCtxtVars+numTraceAttrs);
-    rangeMax[hostDivID] = new Array(numCtxtVars+numTraceAttrs);
+    attrType[hostDivID] = new Array(numsum);
+    rangeMin[hostDivID] = new Array(numsum);
+    rangeMax[hostDivID] = new Array(numsum);
   }
-  for(var attrIdx=0; attrIdx<(numCtxtVars+numTraceAttrs); attrIdx++)
+  for(var attrIdx=0; attrIdx< numsum; attrIdx++)
     attrType[hostDivID][attrIdx] = getAttrType(data, attrIdx, hostDivID, attr2Viz[hostDivID][attrIdx]==vizColor? colorAxisSize: spaceAxisSize);
   
   // If this is the first time we're trying to display this host div
@@ -310,6 +410,7 @@ function refreshScatter3D(data, attrNames, minVals, maxVals,
     plotDiv.style.height = screenSize["height"];
     
     renderers[hostDivID] = renderer;
+    
   }
 
   ////////////
@@ -365,7 +466,10 @@ function refreshScatter3D(data, attrNames, minVals, maxVals,
 	
     // Determine whether all the coordinates are within the bounds set by the controls
     var withinBounds = true;
-    for(var attrIdx=0; attrIdx < numCtxtVars+numTraceAttrs; attrIdx++) {
+    for(var attrIdx=0; attrIdx < numsum; attrIdx++) {
+        
+      //alert("data[d][attrIdx] = "+data[d][attrIdx]);
+        
       if(//attr2Viz[hostDivID][attrIdx]>=0 &&
 	     attrType[hostDivID][attrIdx]["type"] != "categorical" &&
 	     (rangeMin[hostDivID][attrIdx] > data[d][attrIdx] || data[d][attrIdx] > rangeMax[hostDivID][attrIdx])) {
@@ -380,7 +484,7 @@ function refreshScatter3D(data, attrNames, minVals, maxVals,
       var pos = [];
       for(var i=0; i<3; i++) {
         var xyzAttrIdx = viz2Attr[hostDivID][i]; // the index of the data attribute being visualized using this xyz visualization
-    
+          
         // If the current visual dimension has a data attribute mapped to it
         if(xyzAttrIdx>=0 && data[d][xyzAttrIdx]!==undefined) {
 		   pos[i] = Math.floor(attrType[hostDivID][xyzAttrIdx]["scale"] ( data[d][xyzAttrIdx], 10 ));
@@ -852,6 +956,7 @@ var viz2DivID = {}; // Maps the host div id and the index of each visualization 
 // Sets up the structure of a given host div, including any controls and 3D content
 function setUpHostDiv(attrNames, minVals, maxVals, 
                       numCtxtVars, numTraceAttrs, hostDivID) {
+    
   var hostDiv = document.getElementById(hostDivID);
   hostDiv.style.position = "absolute";
   // Whenever the user clicks on the div, it'll go to the top of the z-order and become visible
@@ -868,7 +973,13 @@ function setUpHostDiv(attrNames, minVals, maxVals,
   controlHTML += "<col style=\"color: #ffffff; border: 1px solid #000000;\"/><col />";
   controlHTML += "<col style=\"color: #ffffff; border: 1px solid #000000;\"/>";
   controlHTML += "<tr>";
-  controlHTML += "<td style=\"font-size:22pt; text-decoration:underline;\"><img src=\"img/close.png\" onclick=\"hide3DViz('"+hostDivID+"'); event.stopPropagation();\"></td>\n";
+  
+  // hoa edited
+  if(inwin == 1)
+      controlHTML += "<td style=\"font-size:22pt; text-decoration:underline;\"><img src=\"../../img/close.png\" onclick=\"hide3DViz('"+hostDivID+"'); event.stopPropagation();\"></td>\n";
+  else
+      controlHTML += "<td style=\"font-size:22pt; text-decoration:underline;\"><img src=\"../../img/close.png\" onclick=\"hide3DViz('"+hostDivID+"'); event.stopPropagation();\"></td>\n";
+    
   controlHTML += "<td style=\"font-size:22pt; text-decoration:underline;\">Visualizations</td>\n"
   controlHTML += "<td>&nbsp;</td>";
   controlHTML += "<td style=\"font-size:22pt; text-decoration:underline;\">Data Ranges</td>\n"
@@ -897,7 +1008,7 @@ function setUpHostDiv(attrNames, minVals, maxVals,
   
   // Attribute Sliders
   controlHTML += "<td><table>";
-  for(var i=0; i<(numCtxtVars+numTraceAttrs); i++) {
+  for(var i=0; i<numsum; i++) {
     controlHTML  += 
             "<tr><td><div draggable=\"true\" ondragstart=\"dragAttribute(event)\" id=\""+hostDivID+"_attr_"+i+"\" style=\"font-size:20pt;\">"+attrNames[i]+":</div></td>"+
             "<td><span id=\""+hostDivID+"_range_"+i+"\" ></span></td>"+
@@ -926,13 +1037,16 @@ function setUpHostDiv(attrNames, minVals, maxVals,
   
   // Initialize the color display
   setColorDisplay(hostDivID);
-  
-  for(var i=0; i<(numCtxtVars+numTraceAttrs); i++) {
+   
+  /*
+  for(var i=0; i< (numsum-1); i++)
+  {
     //rangeMin[hostDivID][i] = attrType[hostDivID][i]["min"];
     //rangeMax[hostDivID][i] = attrType[hostDivID][i]["max"];
     var steps = attrType[hostDivID][i]["stepsFunc"](10);
-  
-    jQuery(function() {
+    
+    jQuery(function()
+    {
       jQuery( "#"+hostDivID+"_slider_"+i ).slider({
         range: true,
         min: 0, 
@@ -941,13 +1055,16 @@ function setUpHostDiv(attrNames, minVals, maxVals,
         values: [0, steps["count"]-1],
         //animate: true,
         slide: function( event, ui ) {
-          var hostDivID = slider2HostID[this.id];
-		  var steps = attrType[hostDivID][slider2Idx[this.id]]["stepsFunc_AllData"](10);
-          rangeMin[hostDivID][slider2Idx[this.id]] = steps["vals"][ui.values[0]];
-          rangeMax[hostDivID][slider2Idx[this.id]] = steps["vals"][ui.values[1]];
-          document.getElementById(slider2rangeID[this.id]).innerHTML = 
-		    steps["print"][ui.values[0]] + "-" + steps["print"][ui.values[1]];
-          
+                                                  
+         var hostDivID = slider2HostID[this.id];
+         var steps = attrType[hostDivID][slider2Idx[this.id]]["stepsFunc_AllData"](10);
+         rangeMin[hostDivID][slider2Idx[this.id]] = steps["vals"][ui.values[0]];
+         rangeMax[hostDivID][slider2Idx[this.id]] = steps["vals"][ui.values[1]];
+                                                  
+         document.getElementById(slider2rangeID[this.id]).innerHTML =
+            steps["print"][ui.values[0]] + "-" + steps["print"][ui.values[1]];
+
+             
           // Refresh the 3D scatter plot
           refreshScatter3D(contents[hostDivID]["data"],
                            contents[hostDivID]["attrNames"],
@@ -959,13 +1076,63 @@ function setUpHostDiv(attrNames, minVals, maxVals,
         }
       });
       rangeMin[hostDivID][i] = steps["vals"][0];//steps[jQuery( "#"+hostDivID+"_slider_"+i ).slider( "values", 0)];
+           
       rangeMax[hostDivID][i] = steps["vals"][steps["count"]-1];//steps[jQuery( "#"+hostDivID+"_slider_"+i ).slider( "values", 1)];
-      document.getElementById(hostDivID+"_range_"+i).innerHTML = 
+      
+      document.getElementById(hostDivID+"_range_"+i).innerHTML =
               steps["print"][jQuery( "#"+hostDivID+"_slider_"+i ).slider( "values", 0)] + 
 			  "-" + 
-			  steps["print"][jQuery( "#"+hostDivID+"_slider_"+i ).slider( "values", 1)];
+			  steps["print"][jQuery( "#"+hostDivID+"_slider_"+i ).slider( "values", 1)]+"-"+i;
+     
+     });
+   }
+   */
+    
+    // hoa edited
+    jQuery(function(){
+         for(var i=0; i< numsum; i++)
+         {
+               var steps = attrType[hostDivID][i]["stepsFunc"](10);
+
+               jQuery( "#"+hostDivID+"_slider_"+i ).slider({
+                     range: true,
+                     min: 0,
+                     max: steps["count"]-1,
+                     step: 1,
+                     values: [0, steps["count"]-1],
+                                                           //animate: true,
+                     slide: function( event, ui )
+                     {
+                        var hostDivID = slider2HostID[this.id];
+                        var steps = attrType[hostDivID][slider2Idx[this.id]]["stepsFunc_AllData"](10);
+                        rangeMin[hostDivID][slider2Idx[this.id]] = steps["vals"][ui.values[0]];
+                        rangeMax[hostDivID][slider2Idx[this.id]] = steps["vals"][ui.values[1]];
+                                                           
+                        document.getElementById(slider2rangeID[this.id]).innerHTML =
+                                steps["print"][ui.values[0]] + "-" + steps["print"][ui.values[1]];
+                                                           
+                                                           
+                        // Refresh the 3D scatter plot
+                        refreshScatter3D(contents[hostDivID]["data"],
+                                         contents[hostDivID]["attrNames"],
+                                         contents[hostDivID]["minVals"],
+                                         contents[hostDivID]["maxVals"],
+                                         contents[hostDivID]["numCtxtVars"],
+                                         contents[hostDivID]["numTraceAttrs"],
+                                         hostDivID);
+                     }
+               });
+               rangeMin[hostDivID][i] = steps["vals"][0];//steps[jQuery( "#"+hostDivID+"_slider_"+i ).slider( "values", 0)];
+               
+               rangeMax[hostDivID][i] = steps["vals"][steps["count"]-1];//steps[jQuery( "#"+hostDivID+"_slider_"+i ).slider( "values", 1)];
+               
+               document.getElementById(hostDivID+"_range_"+i).innerHTML =
+               steps["print"][jQuery( "#"+hostDivID+"_slider_"+i ).slider( "values", 0)] + 
+               "-" + 
+               steps["print"][jQuery( "#"+hostDivID+"_slider_"+i ).slider( "values", 1)];
+         }
+    
     });
-  }
 }
 
 // Show/hide the 3d visualization in the given host div

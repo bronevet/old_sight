@@ -13,8 +13,8 @@ float eps = 0.2;
 // number of dimensions
 //int num = 9;
 int num = 5;
-float startP = 0.1;
-float endP = 0.1;
+float startP = 0.18;
+float endP = 0.07;
 
 String[] lines;
 int dimLoc[] = new int[50];
@@ -110,7 +110,8 @@ void setup()
   for(int i=0; i<num; i++)
   {
     String[] listN = split(listNames[i],':');
-    dimNames[i] = listN[listN.length-1];
+    //dimNames[i] = listN[listN.length-1];
+    dimNames[i] = listN[listN.length-3]+ ":\n"+ listN[listN.length-2]+ ":\n" + listN[listN.length-1];
   }
   
   
@@ -197,12 +198,12 @@ void draw()
     //if(i == 0)
        tex = dimNames[i];
     
-    text(tex, dimPos[i]+10, startP*height - 5);
+    text(tex, dimPos[i], startP*height - 32);
     //text("d"+dimLoc[i], dimPos[i]+10, startP*height - 5);
     if(i == (num-2))
     {
       tex = dimNames[num-1];
-      text(tex, dimPos[i+1]+10, startP*height - 5);
+      text(tex, dimPos[i+1], startP*height - 32);
       //text("d"+int(dimLoc[num-1]), dimPos[i+1]+10, startP*height - 5);
     }
   }
