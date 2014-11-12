@@ -11,6 +11,7 @@
 
 namespace sight {
 namespace structure {
+
 /**************************************************
  ***** Thread Initialization and Finalization *****
  **************************************************/

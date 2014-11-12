@@ -260,6 +260,12 @@ class traceStream: public attrObserver, public common::trace, public traceObserv
   
   public:
   vizT viz;
+
+  // The path the directory where output files of the traceStream widget are stored
+  // Relative to current path
+  static std::string outDir;
+  // Relative to root of HTML document
+  static std::string htmlOutDir;
   
   // Maps the traceIDs of all the currently active traces to their trace objects
   static std::map<int, traceStream*> active;

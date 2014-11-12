@@ -574,6 +574,12 @@ traceFileWriterTSV::~traceFileWriterTSV() {
  ***** traceStream *****
  ***********************/
 
+// The path the directory where output files of the traceStream widget are stored
+// Relative to current path
+string traceStream::outDir="";
+// Relative to root of HTML document
+string traceStream::htmlOutDir="";
+
 // Maps the traceIDs of all the currently active traces to their trace objects
 std::map<int, traceStream*> traceStream::active;
 
@@ -589,6 +595,9 @@ traceStream::traceStream(properties::iterator props, std::string hostDiv, bool s
   if(!initialized) {
     // Create the directory that holds the trace-specific scripts
     dbg.createWidgetDir("trace");
+    pair<string, string> paths = dbg.createWidgetDir("trace");
+    outDir = paths.first;
+    htmlOutDir = paths.second;
     
     // Table/Lines visualization
     //dbg.includeScript("https://www.google.com/jsapi", "text/javascript");
@@ -662,6 +671,8 @@ traceStream::traceStream(properties::iterator props, std::string hostDiv, bool s
     contextAttrsInitialized = false;
   
   //traceAttrsInitialized = false;
+  registerObserver(new traceFileWriterTSV(txt()<<outDir<<"/data_individual/"<<
+                                                 "trace_"<<traceID<<".tsv"));
 
   active[traceID] = this;
 }
@@ -823,9 +834,10 @@ void traceStream::observe(int fromTraceID,
 {
   //cout << "traceStream::observe("<<fromTraceID<<") this="<<this<<", this->traceID="<<this->traceID<<", #contextAttrs="<<contextAttrs.size()<<" #ctxt="<<ctxt.size()<<", #obs="<<obs.size()<<endl;
   
-  // Read all the context attributes. If contextAttrs is empty, it is filled with the context attributes of 
+/*  // Read all the context attributes. If contextAttrs is empty, it is filled with the context attributes of 
   // this observation. Otherwise, we verify that this observation's context is identical to prior observations.
   if(contextAttrsInitialized) assert(contextAttrs.size() == ctxt.size());
+
   //for(long i=0; i<numCtxtAttrs; i++) {
   for(map<string, string>::const_iterator c=ctxt.begin(); c!=ctxt.end(); c++) {
     //string ctxtName = properties::get(props, txt()<<"cKey_"<<i);
@@ -838,6 +850,19 @@ void traceStream::observe(int fromTraceID,
       contextAttrsSet.insert(ctxtName);
     } else
       assert(contextAttrsSet.find(ctxtName) != contextAttrsSet.end());
+  }
+  // The context attributes of this trace are now definitely initialized
+  contextAttrsInitialized = true;*/
+
+  // Update contextAttrs and contextAttrsSet with any context attributes that were not previously observed
+  for(map<string, string>::const_iterator c=ctxt.begin(); c!=ctxt.end(); c++) {
+    string ctxtName = c->first;
+    set<string>::iterator i=contextAttrsSet.find(ctxtName);
+    // If this is a new context attribute, add it to contextAttrs and contextAttrsSet
+    if(i==contextAttrsSet.end()) {
+      contextAttrs.push_back(ctxtName);
+      contextAttrsSet.insert(ctxtName);
+    }
   }
   // The context attributes of this trace are now definitely initialized
   contextAttrsInitialized = true;
