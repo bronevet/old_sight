@@ -67,6 +67,8 @@ void MRNetThread::init(std::set<Rank> ranks) {
 void *MRNetThread::consumerFuncHelper(void *arg) {
     MRNetThread *thisPtr = (MRNetThread *) arg;
     thisPtr->consumerFunc();
+
+    return NULL;
 }
 
 //void MRNetThread::consumerFunc() {

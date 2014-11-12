@@ -2271,7 +2271,10 @@ int dbgBuf::sync()
 
 // Switch between the owner class and user code writing text
 void dbgBuf::userAccessing() { ownerAccess = false; synched = true; }
-void dbgBuf::ownerAccessing() { ownerAccess = true; synched = true; }
+void dbgBuf::ownerAccessing() {
+    ownerAccess = true;
+    synched = true;
+}
 
 
 /*********************
@@ -2410,6 +2413,7 @@ dbgStream::dbgStream() : common::dbgStream(&defaultFileBuf), sightObj(this), ini
 dbgStream::dbgStream(properties* props, string title, string workDir, string imgDir, std::string tmpDir)
   : common::dbgStream(&defaultFileBuf), sightObj(this), no_destruct(false)
 {
+  buf = NULL;
   init(props, title, workDir, imgDir, tmpDir);
 }
 

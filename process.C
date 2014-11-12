@@ -492,7 +492,7 @@ bool FILEStructureParser::streamError() {
 #ifdef DEBUG_ON
         printf("[MRNetQueueIterator read from incoming queue.. PID : %d [TEMP values ]  --> ", getpid());
         for(std::vector<char>::iterator itr = temp.begin() ; itr != temp.end() ; itr++){
-            printf(" : [[ %d ]] " ,*itr);
+            printf("%c" ,*itr);
         }
         printf("[   [END TEMP values ] \n ");
 #endif
@@ -511,14 +511,14 @@ bool FILEStructureParser::streamError() {
         }
 //        printData(temp);
         std::copy(temp.begin(), temp.end(), buf);
-#ifdef DEBUG_ON
+//#ifdef DEBUG_ON
         fprintf(stdout, "Parser: Read wave %d ..\n",wave++);
         fprintf(stdout, "Parser: Read wave wait send Auc.. bytes read : %d \n", num);
         for(int j = 0 ; j < num ; j++){
             printf("%c",buf[j]);
         }
         printf("\n\n\n\n\n");
-#endif
+//#endif
 
         //update total integers recieved
         total_ints += num;

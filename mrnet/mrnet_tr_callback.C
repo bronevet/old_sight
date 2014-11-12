@@ -34,6 +34,7 @@ typedef struct {
 
 glst_t *initAndGetGlobal(void **, Stream *stream, set<Rank> &peers, Network *net, int strm_id, int tag_id);
 
+bool filter_initialized = false ;
 /**
 * This is the entry point of a MRNet filter - each time packets are routed up the MRNet tree each node
 * invokes a specific filter registerd at the front end. In this case  'SightStreamAggregator' is what
@@ -88,7 +89,8 @@ void SightStreamAggregator(std::vector< PacketPtr > &packets_in,
 */
 glst_t *initAndGetGlobal(void **state_data, Stream *stream, set<Rank> &peers, Network *net, int strm_id, int tag_id) {
     glst_t *global_state;
-    if (*state_data == NULL) {
+    if (*state_data == NULL && !filter_initialized) {
+        filter_initialized = true ;
         global_state = new glst_t;
         global_state->synchronizer = new AtomicSync;
 //        global_state->it = new MRNetIterator();
