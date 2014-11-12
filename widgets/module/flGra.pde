@@ -140,7 +140,7 @@ void setup()
   if(vert_hori.length>0)
     hori_vert_layout = 1;
   // end for module
-  
+    
   if(ioInfo.length>0)
     iorel_info = 1;
     
@@ -551,20 +551,19 @@ void draw()
             if(i == int(depli[k]))
             {
               String[] depnod = split(node_relation[i],":");
+              
                 if(nodrel_len[i]>2)
                 {
-                  //wnode[i] =  xcnode[int(depnod[depnod.length-2])] - xcnode[int(depnod[1])] + wnode[int(depnod[depnod.length-2])] + font_size;
                   for(int h = 0; h<(depnod.length-2); h++)
                   {
                     if(node_endw[int(depnod[h])] > node_endw[int(depnod[depnod.length-2])])
-                      wnode[i] =  xcnode[int(depnod[h])] - xcnode[int(depnod[1])] + wnode[int(depnod[h])] + font_size;
+                      wnode[i] =  xcnode[int(depnod[h])] - xcnode[int(depnod[1])] + wnode[int(depnod[h])] + 2*font_size;
                     else
-                      wnode[i] =  xcnode[int(depnod[depnod.length-2])] - xcnode[int(depnod[1])] + wnode[int(depnod[depnod.length-2])] + font_size;
+                      wnode[i] =  xcnode[int(depnod[depnod.length-2])] - xcnode[int(depnod[1])] + wnode[int(depnod[depnod.length-2])] + 2*font_size;
                   }
                 }
                 else if(nodrel_len[i] == 2)
-                  wnode[i] = wnode[int(depnod[1])] + font_size;
-              
+                  wnode[i] = wnode[int(depnod[1])] + 2*font_size;
             }
           }
         }
@@ -577,12 +576,12 @@ void draw()
   if(lnodes_length > 8)
   {
     newWid = int(200+nodewidth*(depth_width+8));
-    newHei = depth_distance;
+    newHei = depth_distance + depth_length*font_size + nodeheight;
   }
   else
   {
     newWid = int(200+nodewidth*(depth_width+8));
-    newHei = depth_distance;
+    newHei = depth_distance + depth_length*font_size + 3*nodeheight;
   }
   for(int k=0; k< (depth_length); k++)
   {
@@ -942,7 +941,10 @@ void draw_nodes(int inod, float xc, float yc, float wn, float hn)
          {
            len += nodedepth_height[k];
          }
-         rect(xc, yc+hn-depth_distance, wn, len-hn);
+         //rect(xc, yc+hn-depth_distance, wn, len-hn);
+         
+         rect(xc, yc+hn-depth_distance, wn, len-hn+(current_depth_length - node_depth[inod])*font_size);
+         
         }
       }
     }
@@ -969,7 +971,6 @@ void draw_nodes(int inod, float xc, float yc, float wn, float hn)
               draw_curvearrow(xcnode[int(depnod[0])] + wnode[int(depnod[0])]/2, ycnode[int(depnod[0])] + hnode[int(depnod[0])] - depth_distance, xcnode[int(depnod[k])]+wnode[int(depnod[k])]/2, ycnode[int(depnod[k])]+nodeheight,4);
             else
               draw_curvearrow(xcnode[int(depnod[0])] + wnode[int(depnod[0])]/2, ycnode[int(depnod[0])] + hnode[int(depnod[0])] - depth_distance, xcnode[int(depnod[k])]+wnode[int(depnod[k])]/2, ycnode[int(depnod[k])],4);
-          
           }
         }      
       }
@@ -1098,6 +1099,7 @@ void draw_curvearrow(float x1, float y1, float x2, float y2, int leri)
     line(0, 0, 5, -5);
     popMatrix();
 } 
+
 
 
 
