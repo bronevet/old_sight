@@ -323,7 +323,7 @@ class traceStream: public attrObserver, public common::trace, public traceObserv
 
   // hoa edit
   std::string getDisplayJSCmd(const std::list<std::string>& contextAttrs, const std::list<std::string>& traceAttrs, std::string hostDiv, vizT viz, bool inwin,
-                                bool showFresh, bool showLabels, bool refreshView);
+                                bool showFresh, bool showLabels, bool refreshView, std::string moduleName);
   
   /*std::string getDisplayJSCmd(const std::list<std::string>& contextAttrs, const std::list<std::string>& traceAttrs, std::string hostDiv, const std::list<std::string>& vizList, bool inwin,
                                 bool showFresh, bool showLabels, bool refreshView);

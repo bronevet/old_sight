@@ -249,7 +249,7 @@ var displayTraceCalled = {};
 
 // hoa edit
 //function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, vizList, inwin, showFresh, showLabels, refreshView)
-function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, viz, inwin, showFresh, showLabels, refreshView)
+function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, viz, inwin, showFresh, showLabels, refreshView, moduleName)
 {  
   var numContextAttrs=0;
   for(var i in ctxtAttrs) { if(ctxtAttrs.hasOwnProperty(i)) { numContextAttrs++; } }
@@ -404,7 +404,10 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, viz, inwin, 
                 var newDiv = "";
                 if(showLabels) newDiv += ctxtStr + " : " + traceStr + "\n";
                 
-                newDiv += "<div id=\""+hostDivID+"\" style=\"height:auto; z-index: 100; border-color: #555555; border-style:solid; border-width=1px;\" class=\"ui-widget-content\"></div>\n";
+               // newDiv += "<div id=\""+hostDivID+"\" style=\"height:auto; z-index: 100; border-color: #555555; border-style:solid; border-width=1px;\" class=\"ui-widget-content\"></div>\n";
+                //newDiv += "<div id=\"mod_"+hostDivID+"\" style=\"color: #FF0000;font-size:15pt;border-style: none; top:0px;\">"+moduleName+"</div>\n";
+		            //newDiv += "<div id=\""+hostDivID+"\" style=\"height:auto; z-index: 100; border-color: #555555; border-style:solid; border-width=1px;\" class=\"ui-widget-content\"></div>\n";
+                newDiv += "<div id=\""+hostDivID+"\" style=\"height:auto; z-index: 100; border:none\" class=\"ui-widget-content\"></div>\n";
                 
                 if(showFresh) hostDiv.innerHTML =  newDiv;
                 else          hostDiv.innerHTML += newDiv;
@@ -450,10 +453,25 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, viz, inwin, 
             
             // inline window
             if(inwin == true)
-               showScatter3D(data, attrNames, minVals, maxVals, numContextAttrs, numTraceAttrs, hostDivID, 1);
+            {
+              //showScatter3D(data, attrNames, minVals, maxVals, numContextAttrs, numTraceAttrs, hostDivID, 1);
+              var newDiv = "";
+               newDiv += "<div id=\"vizFrameBut\" style=\"color: #FF0000;font-size:15pt;border-style: none; top:0px;\" width = \"50\"> <img src=\"img/close.png\" border=\"0\" onclick=\"removeIFrame('vizFrame');\" width = \"20\"/>"+moduleName+"</div>\n";
+               newDiv += "<iframe id=\"vizFrame\" src=\"widgets/trace/scatter3d.html?data="+data+"&attrNames="+attrNames+"&minVals="+minVals+"&maxVals="+maxVals+"&numContextAttrs="+numContextAttrs+"&numTraceAttrs="+numTraceAttrs+"&hostDivID="+hostDivID+"\" width=\"2600\" height=\"1100\" frameborder =\"0\" scrolling = \"auto\"></iframe>\n";
+            
+               hostDiv.innerHTML += newDiv;
+            
+               hostDiv.style.visibility = "visible";
+               // If this div is not currently at the top of the z order, place it there
+               if(hostDiv.style.zIndex != maxZ)
+               {
+                   hostDiv.style.zIndex = maxZ;
+                   maxZ++;
+               }
+            }
             else
-            // open in new window
-            newwindow = window.open("../trace/scatter3d.html?data="+data+"&attrNames="+attrNames+"&minVals="+minVals+"&maxVals="+maxVals+"&numContextAttrs="+numContextAttrs+"&numTraceAttrs="+numTraceAttrs+"&hostDivID="+hostDivID, "sc3d", "width=1000,                                                           height=1000, scrollbars=1, dependent=yes");
+              // open in new window
+              newwindow = window.open("widgets/trace/scatter3d.html?data="+data+"&attrNames="+attrNames+"&minVals="+minVals+"&maxVals="+maxVals+"&numContextAttrs="+numContextAttrs+"&numTraceAttrs="+numTraceAttrs+"&hostDivID="+hostDivID, "sc3d", "width=2600, height=1100, scrollbars=1, dependent=yes");
         //}));
      }
      // end scatter 3d
@@ -492,7 +510,8 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, viz, inwin, 
                 var newDiv = "";
                 if(showLabels) newDiv += ctxtStr + " : " + traceStr + "\n";
                 
-                newDiv += "<div id=\""+hostDivID+"\" style=\"height:auto; z-index: 100; border-color: #555555; border-style:solid; border-width=1px;\" class=\"ui-widget-content\"></div>\n";
+                //newDiv += "<div id=\""+hostDivID+"\" style=\"height:auto; z-index: 100; border-color: #555555; border-style:solid; border-width=1px;\" class=\"ui-widget-content\"></div>\n";
+                newDiv += "<div id=\""+hostDivID+"\" style=\"height:auto; border:none;\" class=\"ui-widget-content\"></div>\n";
                 
                 if(showFresh) hostDiv.innerHTML =  newDiv;
                 else          hostDiv.innerHTML += newDiv;
@@ -545,7 +564,7 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, viz, inwin, 
             if(inwin == true)
             {
                var newDiv = "";
-               newDiv += "<div id=\"vizFrameBut\" style=\"font-size:15pt; text-decoration:underline;\"><img src=\"img/close.png\" onclick=\"removeIFrame('vizFrame');\"></div>\n";
+               newDiv += "<div id=\"vizFrameBut\" style=\"color: #FF0000;font-size:15pt;border-style: none; top:0px;\" width = \"50\"> <img src=\"img/close.png\" border=\"0\" onclick=\"removeIFrame('vizFrame');\" width = \"20\"/>"+moduleName+"</div>\n";
                newDiv += "<iframe id=\"vizFrame\" src=\"widgets/trace/web-export/index.html?data="+data+ "&attrNames="+attrNames+"&minVals="+minVals+"&maxVals="+maxVals+"&numContextAttrs="+numContextAttrs+"&numTraceAttrs="+numTraceAttrs+"&hostDivID="+hostDivID +"\" width=\"950\" height=\"950\" frameborder =\"0\" scrolling = \"auto\"></iframe>\n";
             
                hostDiv.innerHTML += newDiv;
@@ -599,7 +618,7 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, viz, inwin, 
                 var newDiv = "";
                 if(showLabels) newDiv += ctxtStr + " : " + traceStr + "\n";
                 
-                newDiv += "<div id=\""+hostDivID+"\" style=\"height:auto; z-index: 100; border-color: #555555; border-style:solid; border-width=1px;\" class=\"ui-widget-content\"></div>\n";
+                newDiv += "<div id=\""+hostDivID+"\" style=\"height:auto; z-index: 100; border:none;\" class=\"ui-widget-content\"></div>\n";
                 
                 if(showFresh) hostDiv.innerHTML =  newDiv;
                 else          hostDiv.innerHTML += newDiv;
@@ -655,7 +674,7 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, viz, inwin, 
             if(inwin == true)
             {
                var newDiv = "";
-               newDiv += "<div id=\"vizFrameBut\" style=\"font-size:15pt; text-decoration:underline;\"><img src=\"img/close.png\" onclick=\"removeIFrame('vizFrame');\"></div>\n";
+               newDiv += "<div id=\"vizFrameBut\" style=\"color: #FF0000;font-size:15pt;border-style: none; top:0px;\" width = \"50\"> <img src=\"img/close.png\" border=\"0\" onclick=\"removeIFrame('vizFrame');\" width = \"20\"/>"+moduleName+"</div>\n";
                newDiv += "<iframe id=\"vizFrame\" src=\"widgets/trace/pcp/web-export/index.html?data="+data+"&attrNames="+attrNames+"&minVals="+minVals+"&maxVals="+maxVals+"&numContextAttrs="+numContextAttrs+"&numTraceAttrs="+numTraceAttrs+"&hostDivID="+hostDivID +"\" width=\"1220\" height=\"320\" frameborder =\"0\" scrolling = \"auto\"></iframe>\n";
             
                hostDiv.innerHTML += newDiv;

@@ -766,7 +766,7 @@ traceStream::~traceStream() {
 //      we should just show the plot (false)
 
 // hoa edit
-std::string traceStream::getDisplayJSCmd(const std::list<std::string>& contextAttrs, const std::list<std::string>& traceAttrs, std::string hostDiv, vizT viz, bool inwin, bool showFresh, bool showLabels, bool refreshView)
+std::string traceStream::getDisplayJSCmd(const std::list<std::string>& contextAttrs, const std::list<std::string>& traceAttrs, std::string hostDiv, vizT viz, bool inwin, bool showFresh, bool showLabels, bool refreshView, std::string moduleName)
 {
   // Default contextAttrs, traceAttrs, hostDiv and viz to be the values set within this traceStream
   const std::list<std::string> *localContextAttrs = &contextAttrs,
@@ -789,7 +789,8 @@ std::string traceStream::getDisplayJSCmd(const std::list<std::string>& contextAt
                              (inwin?  "true":"false")<<", "<<
                              (showFresh?  "true":"false")<<", "<<
                              (showLabels? "true":"false")<<", "<<
-                             (refreshView?"true":"false")<<");";
+                             (refreshView?"true":"false")<<", "<<
+                              "'"<<moduleName<<"');";
 }
 // hoa's v1
 /*
