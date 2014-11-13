@@ -449,6 +449,11 @@ class sightObj {
 
   // Destroys all the currently live sightObjs on the stack
   static void destroyAll(map<dbgStream*, list<sightObj*> >* stack=NULL);
+
+  // Destroy all the currently live sightObjs on the current thread's stack, down to
+  // the given stack depth (the given number of sightObjs will be left on the stack
+  // at the end of destroyThreadStack())
+  static void destroyThreadStack(int targetStackDepth=0);
     
   // Returns whether this object is active or not
   bool isActive() const;

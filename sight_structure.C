@@ -125,7 +125,12 @@ std::deque<int>* ThreadInitFinInstantiator::topoOrder;
 // Records whether the dependence graph is upto-date relative to the current
 // entries in funcs
 bool* ThreadInitFinInstantiator::depGraphUptoDate;
- 
+
+// The height of each thread's SOStack after it has been initialized. This is important
+// for ensuring that on shutdown we destroy any sightObjects above this point before
+// calling the finalization routines.
+ThreadLocalStorage0<int> ThreadInitFinInstantiator::initializedSOStackHeight;
+
 ThreadInitFinInstantiator::ThreadInitFinInstantiator() :
   sight::common::LoadTimeRegistry("ThreadInitFinInstantiator", 
                                   ThreadInitFinInstantiator::init)
@@ -228,12 +233,19 @@ void ThreadInitFinInstantiator::initialize() {
     assert(funcsV->size()>*i);
     (*funcsV)[*i]->init();
   }
+
+  // Record the height of the thread's soStack after initialization has completed
+  initializedSOStackHeight = getSOStackDepth();
 }
 
 // Calls all the finalizers in their topological order (reverse of initializers)
 void ThreadInitFinInstantiator::finalize() {
   computeDepGraph();
   
+  // Trim this tread's stack down to its height immediately after initialization
+  sightObj::destroyThreadStack(initializedSOStackHeight);
+
+  // Call the finalizers
   for(deque<int>::reverse_iterator i=topoOrder->rbegin(); i!=topoOrder->rend(); ++i) {
     assert(funcsV->size()>*i);
     (*funcsV)[*i]->fin();
@@ -814,8 +826,13 @@ sightObj::~sightObj() {
     // Remove this object from the stack
     if(soStack(outStream).back() != this) {
       cerr << "ERROR: attempting to exit an object that is not the most recent on the stack!"<<endl;
-      if(props) cerr << "Exiting: "<<props->str()<<endl;
-      if(soStack(outStream).back()->props) cerr << "Top of stack: "<<soStack(outStream).back()->props->str()<<endl;
+      cerr << "Exiting: "<<(props? props->str(): "NULL")<<endl;
+      cerr << "Stack:"<<endl;
+      for(list<sightObj*>::reverse_iterator i=soStack(outStream).rbegin(); i!=soStack(outStream).rend(); ++i) {
+        if((*i)->props) cerr << ": "<<(*i)->props->str(": ")<<endl;
+        else            cerr << ": NULL"<<endl;
+      }
+      //if(soStack(outStream).back()->props) cerr << "Top of stack: "<<soStack(outStream).back()->props->str()<<endl;
     }
     assert(soStack(outStream).back() == this);
     soStack(outStream).pop_back();
@@ -874,6 +891,33 @@ void sightObj::destroyAll(map<dbgStream*, list<sightObj*> >* stack) {
   // Sight has now been destroyed
   SightDestroyed = true;
 }
+
+// Destroy all the currently live sightObjs on the current thread's stack, down to
+// the given stack depth (the given number of sightObjs will be left on the stack
+// at the end of destroyThreadStack())
+void sightObj::destroyThreadStack(int targetStackDepth) {
+  // Record that we've begun the process of destroying all sight objects
+  SightDestruction = true;
+
+  // Call the destroy method of each object on this thread's soStack in reverse order
+  list<sightObj*>& stack = soStack(dbg);
+  while(stack.size()>targetStackDepth) {
+    list<sightObj*>::reverse_iterator o=stack.rbegin();
+      if((*o)->props) {
+//          cout << ">!> "<<(*o)->props->name()<<endl;
+        assert(!stackMayBeInvalidFlag);
+        (*o)->destroy();
+      } else {
+//          cout << ">!> NULL"<<endl;
+        stack.pop_back();
+      }
+    // The call to destroy will remove the last element from soStack(outStream)
+  }
+
+  // Indicate that we've completed the destruction process
+  SightDestruction = false;
+}
+
 
 // Returns whether this object is active or not
 bool sightObj::isActive() const {
