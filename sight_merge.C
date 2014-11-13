@@ -856,29 +856,39 @@ void MergeState::merge() {
     } else if(isAllComparisonEntry()) {
       ITER_ACTION("All comparison tags");
       assert(out);
-     
+
+      if(tagGroup::useInterleavedMergeOnly){
+          //skip comparison processing
+          readyForNextTag();
+          goto LOOP_END;
+      }else {
 /*      // If we were asked to ignore comparison tags, skip this tag
       if(getenv("SIGHT_MERGE_IGNORE_COMPARISON"))
         readyForNextTag();
       else {*/
-        // stackDepth is unchanged since mergeInsideTag() will read from the entry upto and 
-        // including the exit tag of the comparison
-        mergeMultipleGroups("comparison", tag2stream, /*includeCurrentTag*/ false
-                                #ifdef VERBOSE
+          // stackDepth is unchanged since mergeInsideTag() will read from the entry upto and
+          // including the exit tag of the comparison
+          mergeMultipleGroups("comparison", tag2stream, /*includeCurrentTag*/ false
+#ifdef VERBOSE
                                 , curIterA, lastRecurA
                                 #endif
-                               );
-        multGroupID++;
-        
-        // Note that the call to mergeMultipleNonUniversalEnterGroups will process the exit tags of
-        // all the comparisons that are currently in nextTags (using mergeInsideTag()), so we never 
-        // need to worry about comparison exit tags.
+          );
+          multGroupID++;
+
+          // Note that the call to mergeMultipleNonUniversalEnterGroups will process the exit tags of
+          // all the comparisons that are currently in nextTags (using mergeInsideTag()), so we never
+          // need to worry about comparison exit tags.
 //      }
-    
-      goto LOOP_END;
+
+          goto LOOP_END;
+      }
     
     // We have a single generic universal tag or multiple tag groups, which may include enter and exits
     // as well as comparison and non-comparison tags
+    }else if (isAllComparisonExit() && tagGroup::useInterleavedMergeOnly){
+        //skip comparison exit
+        readyForNextTag();
+        goto LOOP_END;
     }
 
       assert(out);
