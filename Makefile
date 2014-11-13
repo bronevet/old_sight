@@ -29,7 +29,7 @@ SIGHT_LINKFLAGS = \
 	          -lpthread
                   #-L ${PNMPI_PATH}lib -lpnmpi -Wl,-rpath,${PNMPI_PATH}
 
-RAPL_ENABLED = 1
+RAPL_ENABLED = 0
 ifeq (${RAPL_ENABLED}, 1)
 SIGHT_CFLAGS += -I${ROOT_PATH}/widgets/libmsr/include
 SIGHT_LINKFLAGS += ${ROOT_PATH}/widgets/libmsr/lib/libmsr.so \
@@ -63,8 +63,8 @@ REMOTE_ENABLED := 0
 else
 # Default distribution disables remote access since this capability requires us to run a web server
 # and many compute centers disallow this
-REMOTE_ENABLED := 1
-#REMOTE_ENABLED := 0
+#REMOTE_ENABLED := 1
+REMOTE_ENABLED := 0
 endif
 
 ifneq (${OS}, Cygwin)
@@ -85,6 +85,7 @@ VNC_ENABLED := 0
 endif
 
 # By default we disable KULFI-based fault injection since it requires LLVM
+#KULFI_ENABLED := 1 
 KULFI_ENABLED := 0
 	
 ifeq (${KULFI_ENABLED}, 1)

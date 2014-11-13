@@ -1,0 +1,161 @@
+digraph G {
+	compound=true;
+subgraph cluster0 {
+	color=black;
+	node0 [shape=none, fill=lightgrey, href="#", onclick="return ClickOnModuleNode('node0', this, ID);", label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+		<TR><TD PORT="ENTRY"><TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+			<TR><TD PORT="input_0" ><FONT POINT-SIZE="20">:input 0 </FONT></TD></TR>
+</TABLE></TD></TR>
+		<TR><TD><FONT POINT-SIZE="26">0:Setup matrix and rhs</FONT></TD></TR>
+			<TR><TD><TABLE BORDER="0" CELLBORDER="1" CELLSPACING="1">
+		<TR><TD>:measure:RAPL:EDP_S0</TD><TD>:=</TD><TD>:52.096</TD></TR>
+		<TR><TD>:measure:RAPL:Elapsed</TD><TD>:=</TD><TD>:0.196675</TD></TR>
+		<TR><TD>:measure:RAPL:Energy_CPU_S0</TD><TD>:=</TD><TD>:10.2457</TD></TR>
+		<TR><TD>:measure:RAPL:Energy_DRAM_S0</TD><TD>:=</TD><TD>:0</TD></TR>
+		<TR><TD>:measure:RAPL:Power_CPU_S0</TD><TD>:=</TD><TD>:52.096</TD></TR>
+		<TR><TD>:measure:RAPL:Power_DRAM_S0</TD><TD>:=</TD><TD>:0</TD></TR>
+	</TABLE></TD></TR>
+
+		<TR><TD PORT="EXIT"><TABLE><TR><TD BGCOLOR="#FF00FF" COLOR="#FF00FF" WIDTH="300" HEIGHT="200"></TD></TR></TABLE></TD></TR>
+</TABLE>>];
+	node0_Out [shape=none, fill=lightgrey, href="#", onclick="return ClickOnModuleNode('node0', this, ID);", label=""];
+	node0:EXIT:s  -> node0_Out [weight=100, style=invis];
+{rank=source;node0;}
+{rank=sink;node0_Out;}
+}
+subgraph cluster5 {
+	color=black;
+	node5 [shape=none, fill=lightgrey, href="#", onclick="return ClickOnModuleNode('node5', this, ID);", label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+		<TR><TD PORT="ENTRY"><TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+			<TR><TD PORT="input_0" ><FONT POINT-SIZE="20">:input 0 </FONT></TD></TR>
+</TABLE></TD></TR>
+		<TR><TD><FONT POINT-SIZE="26">1:Solve</FONT></TD></TR>
+			<TR><TD><TABLE BORDER="0" CELLBORDER="1" CELLSPACING="1">
+		<TR><TD>:measure:RAPL:EDP_S0</TD><TD>:=</TD><TD>:45.6379</TD></TR>
+		<TR><TD>:measure:RAPL:Elapsed</TD><TD>:=</TD><TD>:0.00558025</TD></TR>
+		<TR><TD>:measure:RAPL:Energy_CPU_S0</TD><TD>:=</TD><TD>:0.254806</TD></TR>
+		<TR><TD>:measure:RAPL:Energy_DRAM_S0</TD><TD>:=</TD><TD>:0</TD></TR>
+		<TR><TD>:measure:RAPL:Power_CPU_S0</TD><TD>:=</TD><TD>:45.6379</TD></TR>
+		<TR><TD>:measure:RAPL:Power_DRAM_S0</TD><TD>:=</TD><TD>:0</TD></TR>
+	</TABLE></TD></TR>
+
+		<TR><TD PORT="EXIT"><TABLE><TR><TD BGCOLOR="#FF00FF" COLOR="#FF00FF" WIDTH="300" HEIGHT="200"></TD></TR></TABLE></TD></TR>
+</TABLE>>];
+	node5_Out [shape=none, fill=lightgrey, href="#", onclick="return ClickOnModuleNode('node5', this, ID);", label=""];
+	node5:EXIT:s  -> node5_Out [weight=100, style=invis];
+{rank=source;node5;}
+{rank=sink;node5_Out;}
+subgraph cluster1 {
+	color=black;
+	node1 [shape=none, fill=lightgrey, href="#", onclick="return ClickOnModuleNode('node1', this, ID);", label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+		<TR><TD PORT="ENTRY"><TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+			<TR><TD PORT="input_0" ><FONT POINT-SIZE="20">:input 0 </FONT></TD></TR>
+</TABLE></TD></TR>
+		<TR><TD><FONT POINT-SIZE="26">2:PCG Setup</FONT></TD></TR>
+			<TR><TD><TABLE BORDER="0" CELLBORDER="1" CELLSPACING="1">
+		<TR><TD>:measure:RAPL:EDP_S0</TD><TD>:=</TD><TD>:0</TD></TR>
+		<TR><TD>:measure:RAPL:Elapsed</TD><TD>:=</TD><TD>:0.000381375</TD></TR>
+		<TR><TD>:measure:RAPL:Energy_CPU_S0</TD><TD>:=</TD><TD>:0</TD></TR>
+		<TR><TD>:measure:RAPL:Energy_DRAM_S0</TD><TD>:=</TD><TD>:0</TD></TR>
+		<TR><TD>:measure:RAPL:Power_CPU_S0</TD><TD>:=</TD><TD>:0</TD></TR>
+		<TR><TD>:measure:RAPL:Power_DRAM_S0</TD><TD>:=</TD><TD>:0</TD></TR>
+	</TABLE></TD></TR>
+
+		<TR><TD PORT="EXIT"><TABLE><TR><TD BGCOLOR="#FF00FF" COLOR="#FF00FF" WIDTH="300" HEIGHT="200"></TD></TR></TABLE></TD></TR>
+</TABLE>>];
+	node1_Out [shape=none, fill=lightgrey, href="#", onclick="return ClickOnModuleNode('node1', this, ID);", label=""];
+	node1:EXIT:s  -> node1_Out [weight=100, style=invis];
+	node5:EXIT:s -> node1:ENTRY:n              [weight=150, style=invis];
+	node1_Out      -> node5_Out [weight=150, style=invis];
+{rank=source;node1;}
+{rank=sink;node1_Out;}
+}
+subgraph cluster4 {
+	color=black;
+	node4 [shape=none, fill=lightgrey, href="#", onclick="return ClickOnModuleNode('node4', this, ID);", label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+		<TR><TD PORT="ENTRY"><TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+			<TR><TD PORT="input_0" ><FONT POINT-SIZE="20">:input 0 </FONT></TD></TR>
+</TABLE></TD></TR>
+		<TR><TD><FONT POINT-SIZE="26">3:PCG Solve</FONT></TD></TR>
+			<TR><TD><TABLE BORDER="0" CELLBORDER="1" CELLSPACING="1">
+		<TR><TD>:measure:RAPL:EDP_S0</TD><TD>:=</TD><TD>:0.878615*input:0:MPIRank + 42.419</TD></TR>
+		<TR><TD>:measure:RAPL:Elapsed</TD><TD>:=</TD><TD>:0.628149</TD></TR>
+		<TR><TD>:measure:RAPL:Energy_CPU_S0</TD><TD>:=</TD><TD>:-1.33328*input:0:MPIRank + 32.3458</TD></TR>
+		<TR><TD>:measure:RAPL:Energy_DRAM_S0</TD><TD>:=</TD><TD>:0</TD></TR>
+		<TR><TD>:measure:RAPL:Power_CPU_S0</TD><TD>:=</TD><TD>:0.878615*input:0:MPIRank + 42.419</TD></TR>
+		<TR><TD>:measure:RAPL:Power_DRAM_S0</TD><TD>:=</TD><TD>:0</TD></TR>
+	</TABLE></TD></TR>
+
+		<TR><TD PORT="EXIT"><TABLE><TR><TD BGCOLOR="#FF00FF" COLOR="#FF00FF" WIDTH="300" HEIGHT="200"></TD></TR></TABLE></TD></TR>
+</TABLE>>];
+	node4_Out [shape=none, fill=lightgrey, href="#", onclick="return ClickOnModuleNode('node4', this, ID);", label=""];
+	node4:EXIT:s  -> node4_Out [weight=100, style=invis];
+	node5:EXIT:s -> node4:ENTRY:n              [weight=150, style=invis];
+	node4_Out      -> node5_Out [weight=150, style=invis];
+{rank=source;node4;}
+{rank=sink;node4_Out;}
+subgraph cluster2 {
+	color=black;
+	node2 [shape=none, fill=lightgrey, href="#", onclick="return ClickOnModuleNode('node2', this, ID);", label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+		<TR><TD PORT="ENTRY"><TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+			<TR><TD PORT="input_0" ><FONT POINT-SIZE="20">:input 0 </FONT></TD></TR>
+</TABLE></TD></TR>
+		<TR><TD><FONT POINT-SIZE="26">4:PCG Start</FONT></TD></TR>
+			<TR><TD><TABLE BORDER="0" CELLBORDER="1" CELLSPACING="1">
+		<TR><TD>:measure:RAPL:EDP_S0</TD><TD>:=</TD><TD>:43.4402</TD></TR>
+		<TR><TD>:measure:RAPL:Elapsed</TD><TD>:=</TD><TD>:0.122845</TD></TR>
+		<TR><TD>:measure:RAPL:Energy_CPU_S0</TD><TD>:=</TD><TD>:5.33643</TD></TR>
+		<TR><TD>:measure:RAPL:Energy_DRAM_S0</TD><TD>:=</TD><TD>:0</TD></TR>
+		<TR><TD>:measure:RAPL:Power_CPU_S0</TD><TD>:=</TD><TD>:43.4402</TD></TR>
+		<TR><TD>:measure:RAPL:Power_DRAM_S0</TD><TD>:=</TD><TD>:0</TD></TR>
+	</TABLE></TD></TR>
+
+		<TR><TD PORT="EXIT"><TABLE><TR><TD BGCOLOR="#FF00FF" COLOR="#FF00FF" WIDTH="300" HEIGHT="200"></TD></TR></TABLE></TD></TR>
+</TABLE>>];
+	node2_Out [shape=none, fill=lightgrey, href="#", onclick="return ClickOnModuleNode('node2', this, ID);", label=""];
+	node2:EXIT:s  -> node2_Out [weight=100, style=invis];
+	node4:EXIT:s -> node2:ENTRY:n              [weight=150, style=invis];
+	node2_Out      -> node4_Out [weight=150, style=invis];
+{rank=source;node2;}
+{rank=sink;node2_Out;}
+}
+subgraph cluster3 {
+	color=black;
+	node3 [shape=none, fill=lightgrey, href="#", onclick="return ClickOnModuleNode('node3', this, ID);", label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+		<TR><TD PORT="ENTRY"><TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+			<TR><TD PORT="input_0" ><FONT POINT-SIZE="20">:input 0 </FONT></TD><TD PORT="input_1" ><FONT POINT-SIZE="20">:input 1 </FONT></TD></TR>
+</TABLE></TD></TR>
+		<TR><TD><FONT POINT-SIZE="26">5:PCG Step</FONT></TD></TR>
+			<TR><TD><TABLE BORDER="0" CELLBORDER="1" CELLSPACING="1">
+		<TR><TD>:measure:RAPL:EDP_S0</TD><TD>:=</TD><TD>:0.00158115*input:1:i + 43.0555</TD></TR>
+		<TR><TD>:measure:RAPL:Elapsed</TD><TD>:=</TD><TD>:0.138056</TD></TR>
+		<TR><TD>:measure:RAPL:Energy_CPU_S0</TD><TD>:=</TD><TD>:5.99975</TD></TR>
+		<TR><TD>:measure:RAPL:Energy_DRAM_S0</TD><TD>:=</TD><TD>:0</TD></TR>
+		<TR><TD>:measure:RAPL:Power_CPU_S0</TD><TD>:=</TD><TD>:0.00158115*input:1:i + 43.0555</TD></TR>
+		<TR><TD>:measure:RAPL:Power_DRAM_S0</TD><TD>:=</TD><TD>:0</TD></TR>
+		<TR><TD>:output:0:beta</TD><TD>:=</TD><TD>:0.95481</TD></TR>
+		<TR><TD>:output:0:gamma</TD><TD>:=</TD><TD>:148034</TD></TR>
+		<TR><TD>:output:0:i_prod</TD><TD>:=</TD><TD>:-5.76256e-09*input:0:MPIRank + 888207</TD></TR>
+		<TR><TD>:output:0:ratio</TD><TD>:=</TD><TD>:1.40033e-319*input:1:i</TD></TR>
+		<TR><TD>:output:0:rel_norm</TD><TD>:=</TD><TD>:0.110798</TD></TR>
+		<TR><TD>:output:0:s_dotp</TD><TD>:=</TD><TD>:77212.9</TD></TR>
+		<TR><TD>:output:1:return</TD><TD>:=</TD><TD>:0</TD></TR>
+	</TABLE></TD></TR>
+
+		<TR><TD PORT="EXIT"><TABLE><TR><TD BGCOLOR="#FF00FF" COLOR="#FF00FF" WIDTH="300" HEIGHT="200"></TD></TR></TABLE></TD></TR>
+</TABLE>>];
+	node3_Out [shape=none, fill=lightgrey, href="#", onclick="return ClickOnModuleNode('node3', this, ID);", label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+	<TR>
+		<TD WIDTH="300" PORT="output_0"><FONT POINT-SIZE="14">:Out 0</FONT></TD>
+		<TD WIDTH="300" PORT="output_1"><FONT POINT-SIZE="14">:Out 1</FONT></TD>
+	</TR>
+</TABLE>>];
+	node3:EXIT:s  -> node3_Out [weight=100, style=invis];
+	node4:EXIT:s -> node3:ENTRY:n              [weight=150, style=invis];
+	node3_Out      -> node4_Out [weight=150, style=invis];
+{rank=source;node3;}
+{rank=sink;node3_Out;}
+}
+}
+}
+}

@@ -7,5 +7,7 @@
 #include "widgets/trace/trace_layout.h"
 //#include "widgets/module_layout.h"
 //#include "widgets/source/source_layout.h"
+//hoa edit
+#include "widgets/flowgraph/flowgraph_layout.h"
 
 using namespace sight::layout;

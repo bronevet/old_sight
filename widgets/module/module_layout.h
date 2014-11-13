@@ -11,7 +11,7 @@
 #include "../../sight_common.h"
 #include "../../sight_layout.h"
 #include "module_common.h"
-#include <gsl/gsl_multifit.h>
+#include "../gsl/include/gsl/gsl_multifit.h"
 
 namespace sight {
 namespace layout {
@@ -39,9 +39,11 @@ class moduleInfo {
   int numInputs;
   int numOutputs;
   int count;
+  int vertID;
+  int horiID;
   
-  moduleInfo(const std::string& moduleName, int moduleID, int numInputs, int numOutputs, int count) :
-    moduleName(moduleName), moduleID(moduleID), numInputs(numInputs), numOutputs(numOutputs), count(count)
+  moduleInfo(const std::string& moduleName, int moduleID, int numInputs, int numOutputs, int count, int vertID, int horiID) :
+    moduleName(moduleName), moduleID(moduleID), numInputs(numInputs), numOutputs(numOutputs), count(count), vertID(vertID), horiID(horiID)
   {}
 };
 
@@ -88,7 +90,7 @@ class module : public common::module, public traceObserver {
   std::set<std::string> traceAttrNames;
 
   int moduleID;
-  
+ 
   public:
   module(int moduleID);
   
@@ -207,6 +209,10 @@ class polyFitObserver: public traceObserver
   // Returns the formatted text representation of the fits, to be included in the HTML table 
   // that encodes each module's graph node
   std::string getFitText() const;
+
+  // hoa edit
+  // Returns the formatted text representation of the fits, not include html table
+  std::string saveFitText() const;
 }; // polyFitObserver
 
 class SynopticModuleObsLogger;
@@ -234,7 +240,7 @@ class modularApp: public block, public common::module
   
   // Stack of the module markers that are currently in scope within this modularApp
   static std::list<sight::layout::moduleInfo> mMarkerStack;
-  
+
   // Stack of the modules that are currently in scope within this modularApp
   static std::list<sight::layout::moduleInfo> mStack;
   
@@ -253,6 +259,15 @@ class modularApp: public block, public common::module
   // The dot file that will hold the representation of the module interaction graph
   std::ofstream dotFile;
   
+  // hoa edit
+  // The txt file that will hold the representation of the module graph
+  std::ofstream tFile;
+  std::ofstream inouFile;
+  std::ofstream datFile;
+  std::ofstream ioInfoFile;
+  std::ofstream vertHoriFile;
+  std::ofstream hoavizCanvasFile;
+
   public:
   
   modularApp(properties::iterator props);
@@ -265,12 +280,12 @@ class modularApp: public block, public common::module
   static const std::string getHtmlOutDir() { return htmlOutDir; }
   static const std::list<sight::layout::moduleInfo> getMMarkerStack() { return mMarkerStack; }
   static const std::list<sight::layout::moduleInfo> getMStack() { return mStack; }
-  
-  // Returns a string that uniquely identifies all the module markers currently on the stack, using the 
+
+  // Returns a string that uniquely identifies all the module markers currently on the stack, using the
   // given string to separate the strings of different module instances.
   std::string getModuleMarkerStackName(std::string separator="_");
-  
-  // Returns a string that uniquely identifies all the modules currently on the stack, using the 
+
+  // Returns a string that uniquely identifies all the modules currently on the stack, using the
   // given string to separate the strings of different module instances.
   std::string getModuleStackName(std::string separator="_");
   
@@ -297,11 +312,14 @@ class modularApp: public block, public common::module
   //    it should be either "module" or "output".
   // bgColor - The background color of the buttons
   //void showButtons(int numInputs, int numOutputs, int ID, std::string prefix, std::string bgColor);
- 
+
   // Enter a new moduleMarker within the current modularApp
   // numInputs/numOutputs - the number of inputs/outputs of this module node
   // ID - the unique ID of this module node
-  void enterModuleMarker(std::string moduleName, int numInputs, int numOutputs);
+   
+  // hoa edit
+  //void enterModuleMarker(std::string moduleName, int numInputs, int numOutputs);
+  void enterModuleMarker(std::string moduleName, int numInputs, int numOutputs, int vertID, int horiID);
 
   // Static version of enterModuleMarker() that pulls the from/to anchor IDs from the properties iterator and calls
   // enterModule() in the currently active modularApp
@@ -316,7 +334,10 @@ class modularApp: public block, public common::module
   // Enter a new module within the current modularApp
   // numInputs/numOutputs - the number of inputs/outputs of this module node
   // ID - the unique ID of this module node
-  void enterModule(std::string node, int moduleID, int numInputs, int numOutputs, int count);
+  // hoa edit
+  //void enterModule(std::string node, int moduleID, int numInputs, int numOutputs, int counts);
+  void enterModule(std::string node, int moduleID, int numInputs, int numOutputs, int counts, int vertID, int horiID);
+  
   // Static version of enterModule() that pulls the from/to anchor IDs from the properties iterator and calls 
   // enterModule() in the currently active modularApp
   static void* enterModule(properties::iterator props);
@@ -386,6 +407,8 @@ class moduleTraceStream: public traceStream
   std::string name;
   int numInputs;
   int numOutputs;
+  int vertID; 
+  int horiID;
   
   // The observers that processes observations of this object
   module* mFilter;
@@ -502,41 +525,41 @@ class processedModuleTraceStream: public moduleTraceStream
   static void *enterTraceStream(properties::iterator props);
 }; // class processedModuleTraceStream
 
-// This is a trace observer that processes incoming module by writing them into the given file 
+// This is a trace observer that processes incoming module by writing them into the given file
 // Synoptic format, writing for each module observation two lines, one with the entry timestamp
 // and one with the exit timestamp. SynopticModuleObsLogger requires the use of timeStampMeasures.
 // Only records with such timestamps are emitted into the log.
 class SynopticModuleObsLogger: public traceObserver {
   // Map the IDs of the traces this logger is observing to their string labels
   std::map<int, std::string> traceID2Label;
-  
+
   // The file that the observations will be emitted to
   std::ofstream out;
-  
+
   // The root file name that this instance will use to write output to
   std::string outFName;
 
   // The number of observations seen
   int numObservations;
-  
-  public: 
+
+  public:
   SynopticModuleObsLogger(std::string outFName);
   ~SynopticModuleObsLogger();
-  
+
   // Records the mapping from the given traceID to the given label
   void recordTraceLabel(int traceID, std::string label) { traceID2Label[traceID] = label; }
-  
+
   // Interface implemented by objects that listen for observations a traceStream reads. Such objects
   // call traceStream::registerObserver() to inform a given traceStream that it should observations.
   void observe(int traceID,
-               const std::map<std::string, std::string>& ctxt, 
+               const std::map<std::string, std::string>& ctxt,
                const std::map<std::string, std::string>& obs,
                const std::map<std::string, anchor>&      obsAnchor);
-  
+
   // Called when the stream of observations has finished to allow the implementor to perform clean-up tasks.
   // This method is optional.
   void obsFinished();
 }; // class SynopticModuleObsLogger
-  
+
 }; // namespace layout
 }; // namespace sight

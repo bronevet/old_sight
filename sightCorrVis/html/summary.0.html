@@ -1,0 +1,29 @@
+<html>
+	<head>
+	<title>AMG2013</title>
+	<script src="script/hashtable.js"></script>
+	<script src="script/placement.js"></script>
+	<script src="script/attributes.js"></script>
+	<script src="script/core.js"></script>
+	<script type="text/javascript">
+	function loadURLIntoDiv(doc, url, divName) {
+		var xhr= new XMLHttpRequest();
+		xhr.open('GET', url, true);
+		xhr.onreadystatechange= function() {
+			//Wait until the data is fully loaded
+			if (this.readyState!==4) return;
+			doc.getElementById(divName).innerHTML= this.responseText;
+		};
+		xhr.send();
+	}
+
+// Set this page's initial contents
+window.onload=function () { loadURLIntoDiv(document, 'summary.0.body', 'detailContents'); }
+	</script>
+	</head>
+	<body>
+	<h1>Summary</h1>
+	<div id='detailContents'></div>
+	</body>
+</html>
+

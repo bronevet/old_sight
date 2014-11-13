@@ -1,0 +1,49 @@
+<html>
+	<head>
+	<title></title>
+	<script src="script/hashtable.js"></script>
+	<script src="script/taffydb/taffy.js"></script>
+	<script src="script/placement.js"></script>
+	<script src="script/attributes.js"></script>
+	<script src="script/core.js"></script>
+	<STYLE TYPE="text/css">
+	BODY
+		{
+		font-family:courier;
+		}
+	.hidden { display: none; }
+	.unhidden { display: block; }
+	</style>
+	<script type="text/javascript">
+		window.onload=function ()
+        {
+			loadScriptsInFile(document, 'script/script_includes', 
+				function() { loadURLIntoDiv(document, 'detail.0.body', 'detailContents', 
+					function() { loadjscssfile('script/script.0.prolog', 'text/javascript',
+						function() { loadjscssfile('script/script.0', 'text/javascript',
+						function() { loadjscssfile('script/script.0.epilog', 'text/javascript'
+							); }
+						); }
+					); }
+				); }
+			);
+		}
+	</script>
+
+	</head>
+	<body>
+<div id="attrTable" style="background-color:#ffffff"></div>
+<div id="AttrControlPanel" style="background-color:#ffffff;width:50">
+<a href="javascript:writeKeyValTable('attrTable', 'add');"><img src="img/attrAdd.gif" width=50 height=46 alt="Add by Attribute"></a><br>
+<a href="javascript:writeKeyValTable('attrTable', 'remove');"><img src="img/attrRemove.gif" width=50 height=46 alt="Remove by Attribute"></a><br>
+<a href="javascript:writeKeyValTable('attrTable', 'only');"><img src="img/attrOnly.gif" width=50 height=46 alt="Filter Only Attribute"></a><br>
+</div>
+<script type="text/javascript">AddDivPlacementEvents(function () { PlaceFixedDiv("AttrControlPanel", false); });</script>
+		<table width="100%">
+			<tr width="100%"><td width=50></td><td width="100%">
+			<div id='detailContents'></div>
+			</td></tr>
+		</table>
+	</body>
+</html>
+

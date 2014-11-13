@@ -7,7 +7,7 @@ import subprocess
 import re
 import math
 
-SIGHT_ROOT = "/g/g15/bronevet/code/tmp/sight"
+SIGHT_ROOT = "~/llnl/mergeHoaViz/sight"
 CODE_ROOT = SIGHT_ROOT+"/apps/lulesh"
 
 os.environ["SIGHT_FILE_OUT"] = "1"
@@ -15,7 +15,8 @@ os.environ["SIGHT_FILE_OUT"] = "1"
 prec = [8]#[4, 8, 16]
 spatial = [3, 7, 15, 31, 63]
 dtime = ["-1e-06"]
-power = [30, 40, 50, 60, 70, 80, 90, 100]
+#power = [30, 40, 50, 60, 70, 80, 90, 100]
+power = [0] 
 mem = ["soa"] #["soa", "aos"]
 numExperiments=1
 
@@ -76,7 +77,8 @@ def runApp(expID, p, s, d, pw, m, ref, idx) :
         print "Path \""+outPath+".rank_0.exp_"+str(expID)+"\" in directory "+os.getcwd()+" does not exist"
         sys(cmdPrefix + "; " + CODE_ROOT+"/"+execName+" "+" ".join(args)+" >out."+outPath, True);
     idx+=1
-    del os.environ["SIGHT_STRUCTURE_CONFIG"]
+    if(pw != 0):
+        del os.environ["SIGHT_STRUCTURE_CONFIG"]
     return outPath+".rank_0.exp_"+str(expID);
 
 #def merge(m, s, pd, pw, r, n, idx) :

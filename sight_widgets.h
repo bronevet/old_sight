@@ -9,4 +9,5 @@
 #include "widgets/clock/clock_structure.h"
 #include "widgets/parallel/parallel_structure.h"
 #include "widgets/box/box_api_cpp.h"
+#include "widgets/flowgraph/flowgraph_structure.h"
 

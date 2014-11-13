@@ -26,6 +26,8 @@ string trace::viz2Str(trace::vizT viz) {
     case trace::decTree:   return "decTree";
     case trace::heatmap:   return "heatmap";
     case trace::boxplot:   return "boxplot";
+    case trace::ccp:    return "ccp";
+    case trace::pcp:     return "pcp";
     default:               return "???";
   }
 }

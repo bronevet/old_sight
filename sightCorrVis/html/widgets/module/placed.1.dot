@@ -1,0 +1,495 @@
+digraph G {
+	graph [_draw_="c 7 -#ffffff C 7 -#ffffff P 4 0 -1 0 1722 1773 1722 1773 -1 ",
+		bb="0,0,1772,1722",
+		compound=true,
+		xdotversion=1.4
+	];
+	node [label="\N"];
+	subgraph cluster0 {
+		graph [_draw_="c 7 -#000000 p 4 8 1017 8 1714 352 1714 352 1017 ",
+			bb="8,1017,352,1714",
+			color=black
+		];
+		{
+			graph [rank=source];
+			node0			 [_ldraw_="S 5 -solid c 7 -#000000 p 4 24 1669 24 1702 337 1702 337 1669 S 5 -solid c 7 -#000000 p 4 27 1672 27 1699 334 1699 334 1672 F 20 \
+11 -Times-Roman c 7 -#000000 T 147.5 1677.5 -1 66.67 9 -:input 0  S 5 -solid c 7 -#000000 p 4 24 1637 24 1669 337 1669 337 1637 \
+F 26 11 -Times-Roman c 7 -#000000 T 62.5 1642.6 -1 236.13 22 -0:Setup matrix and rhs S 5 -solid c 7 -#000000 p 4 24 1504 24 1637 \
+337 1637 337 1504 S 5 -solid c 7 -#000000 p 4 28 1613 28 1633 244 1633 244 1613 F 14 11 -Times-Roman c 7 -#000000 T 65 1617.4 -1 \
+142.31 20 -:measure:RAPL:EDP_S0 S 5 -solid c 7 -#000000 p 4 245 1613 245 1633 266 1633 266 1613 F 14 11 -Times-Roman c 7 -#000000 \
+T 250 1617.4 -1 11.79 2 -:= S 5 -solid c 7 -#000000 p 4 267 1613 267 1633 333 1633 333 1613 F 14 11 -Times-Roman c 7 -#000000 T \
+279 1617.4 -1 42.39 7 -:52.096 S 5 -solid c 7 -#000000 p 4 28 1592 28 1612 244 1612 244 1592 F 14 11 -Times-Roman c 7 -#000000 T \
+67 1596.4 -1 138.41 21 -:measure:RAPL:Elapsed S 5 -solid c 7 -#000000 p 4 245 1592 245 1612 266 1612 266 1592 F 14 11 -Times-Roman \
+c 7 -#000000 T 250 1596.4 -1 11.79 2 -:= S 5 -solid c 7 -#000000 p 4 267 1592 267 1612 333 1612 333 1592 F 14 11 -Times-Roman c \
+7 -#000000 T 272 1596.4 -1 56.39 9 -:0.196675 S 5 -solid c 7 -#000000 p 4 28 1571 28 1591 244 1591 244 1571 F 14 11 -Times-Roman \
+c 7 -#000000 T 41 1575.4 -1 190.53 27 -:measure:RAPL:Energy_CPU_S0 S 5 -solid c 7 -#000000 p 4 245 1571 245 1591 266 1591 266 1571 \
+F 14 11 -Times-Roman c 7 -#000000 T 250 1575.4 -1 11.79 2 -:= S 5 -solid c 7 -#000000 p 4 267 1571 267 1591 333 1591 333 1571 F \
+14 11 -Times-Roman c 7 -#000000 T 275.5 1575.4 -1 49.39 8 -:10.2457 S 5 -solid c 7 -#000000 p 4 28 1550 28 1570 244 1570 244 1550 \
+F 14 11 -Times-Roman c 7 -#000000 T 33.5 1554.4 -1 205.29 28 -:measure:RAPL:Energy_DRAM_S0 S 5 -solid c 7 -#000000 p 4 245 1550 \
+245 1570 266 1570 266 1550 F 14 11 -Times-Roman c 7 -#000000 T 250 1554.4 -1 11.79 2 -:= S 5 -solid c 7 -#000000 p 4 267 1550 267 \
+1570 333 1570 333 1550 F 14 11 -Times-Roman c 7 -#000000 T 295 1554.4 -1 10.89 2 -:0 S 5 -solid c 7 -#000000 p 4 28 1529 28 1549 \
+244 1549 244 1529 F 14 11 -Times-Roman c 7 -#000000 T 43.5 1533.4 -1 185.86 26 -:measure:RAPL:Power_CPU_S0 S 5 -solid c 7 -#000000 \
+p 4 245 1529 245 1549 266 1549 266 1529 F 14 11 -Times-Roman c 7 -#000000 T 250 1533.4 -1 11.79 2 -:= S 5 -solid c 7 -#000000 p \
+4 267 1529 267 1549 333 1549 333 1529 F 14 11 -Times-Roman c 7 -#000000 T 279 1533.4 -1 42.39 7 -:52.096 S 5 -solid c 7 -#000000 \
+p 4 28 1508 28 1528 244 1528 244 1508 F 14 11 -Times-Roman c 7 -#000000 T 36 1512.4 -1 200.63 27 -:measure:RAPL:Power_DRAM_S0 S \
+5 -solid c 7 -#000000 p 4 245 1508 245 1528 266 1528 266 1508 F 14 11 -Times-Roman c 7 -#000000 T 250 1512.4 -1 11.79 2 -:= S 5 -\
+solid c 7 -#000000 p 4 267 1508 267 1528 333 1528 333 1508 F 14 11 -Times-Roman c 7 -#000000 T 295 1512.4 -1 10.89 2 -:0 S 5 -solid \
+c 7 -#000000 p 4 24 1292 24 1504 337 1504 337 1292 S 5 -solid c 9 -#fffffe00 C 7 -#ff00ff P 4 30 1298 30 1498 331 1498 331 1298 \
+S 5 -solid c 7 -#ff00ff p 4 30 1298 30 1498 331 1498 331 1298 S 5 -solid c 7 -#000000 p 4 27 1295 27 1501 334 1501 334 1295 ",
+				fill=lightgrey,
+				height=5.8056,
+				href="#",
+				label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+		<TR><TD PORT="ENTRY"><TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+			<TR><TD PORT="input_0" ><FONT POINT-SIZE="20">:input 0 </FONT></TD></TR>
+</TABLE></TD></TR>
+		<TR><TD><FONT POINT-SIZE="26">0:Setup matrix and rhs</FONT></TD></TR>
+			<TR><TD><TABLE BORDER="0" CELLBORDER="1" CELLSPACING="1">
+		<TR><TD>:measure:RAPL:EDP_S0</TD><TD>:=</TD><TD>:52.096</TD></TR>
+		<TR><TD>:measure:RAPL:Elapsed</TD><TD>:=</TD><TD>:0.196675</TD></TR>
+		<TR><TD>:measure:RAPL:Energy_CPU_S0</TD><TD>:=</TD><TD>:10.2457</TD></TR>
+		<TR><TD>:measure:RAPL:Energy_DRAM_S0</TD><TD>:=</TD><TD>:0</TD></TR>
+		<TR><TD>:measure:RAPL:Power_CPU_S0</TD><TD>:=</TD><TD>:52.096</TD></TR>
+		<TR><TD>:measure:RAPL:Power_DRAM_S0</TD><TD>:=</TD><TD>:0</TD></TR>
+	</TABLE></TD></TR>
+
+		<TR><TD PORT="EXIT"><TABLE><TR><TD BGCOLOR="#FF00FF" COLOR="#FF00FF" WIDTH="300" HEIGHT="200"></TD></TR></TABLE></TD></TR>
+</TABLE>>,
+				onclick="return ClickOnModuleNode('node0', this, ID);",
+				pos="180,1497",
+				shape=none,
+				width=4.5625];
+		}
+		{
+			graph [rank=sink];
+			node0_Out			 [fill=lightgrey,
+				height=0.5,
+				href="#",
+				label="",
+				onclick="return ClickOnModuleNode('node0', this, ID);",
+				pos="181,1043",
+				shape=none,
+				width=0.75];
+		}
+		node0:EXIT:s -> node0_Out		 [pos="e,181,1061.1 181,1291 181,1211.2 181,1116.8 181,1071.3",
+			style=invis,
+			weight=100];
+	}
+	subgraph cluster5 {
+		graph [_draw_="c 7 -#000000 p 4 360 8 360 1714 1764 1714 1764 8 ",
+			bb="360,8,1764,1714",
+			color=black
+		];
+		{
+			graph [rank=source];
+			node5			 [_ldraw_="S 5 -solid c 7 -#000000 p 4 399 1669 399 1702 714 1702 714 1669 S 5 -solid c 7 -#000000 p 4 402 1672 402 1699 711 1699 711 1672 \
+F 20 11 -Times-Roman c 7 -#000000 T 523.5 1677.5 -1 66.67 9 -:input 0  S 5 -solid c 7 -#000000 p 4 399 1637 399 1669 714 1669 714 \
+1637 F 26 11 -Times-Roman c 7 -#000000 T 517 1642.6 -1 79.45 7 -1:Solve S 5 -solid c 7 -#000000 p 4 399 1504 399 1637 714 1637 714 \
+1504 S 5 -solid c 7 -#000000 p 4 403 1613 403 1633 615 1633 615 1613 F 14 11 -Times-Roman c 7 -#000000 T 438 1617.4 -1 142.31 20 -:\
+measure:RAPL:EDP_S0 S 5 -solid c 7 -#000000 p 4 616 1613 616 1633 633 1633 633 1613 F 14 11 -Times-Roman c 7 -#000000 T 619 1617.4 -\
+1 11.79 2 -:= S 5 -solid c 7 -#000000 p 4 634 1613 634 1633 710 1633 710 1613 F 14 11 -Times-Roman c 7 -#000000 T 647.5 1617.4 -\
+1 49.39 8 -:45.6379 S 5 -solid c 7 -#000000 p 4 403 1592 403 1612 615 1612 615 1592 F 14 11 -Times-Roman c 7 -#000000 T 440 1596.4 -\
+1 138.41 21 -:measure:RAPL:Elapsed S 5 -solid c 7 -#000000 p 4 616 1592 616 1612 633 1612 633 1592 F 14 11 -Times-Roman c 7 -#000000 \
+T 619 1596.4 -1 11.79 2 -:= S 5 -solid c 7 -#000000 p 4 634 1592 634 1612 710 1612 710 1592 F 14 11 -Times-Roman c 7 -#000000 T \
+637 1596.4 -1 70.39 11 -:0.00558025 S 5 -solid c 7 -#000000 p 4 403 1571 403 1591 615 1591 615 1571 F 14 11 -Times-Roman c 7 -#000000 \
+T 414 1575.4 -1 190.53 27 -:measure:RAPL:Energy_CPU_S0 S 5 -solid c 7 -#000000 p 4 616 1571 616 1591 633 1591 633 1571 F 14 11 -\
+Times-Roman c 7 -#000000 T 619 1575.4 -1 11.79 2 -:= S 5 -solid c 7 -#000000 p 4 634 1571 634 1591 710 1591 710 1571 F 14 11 -Times-\
+Roman c 7 -#000000 T 644 1575.4 -1 56.39 9 -:0.254806 S 5 -solid c 7 -#000000 p 4 403 1550 403 1570 615 1570 615 1550 F 14 11 -Times-\
+Roman c 7 -#000000 T 406.5 1554.4 -1 205.29 28 -:measure:RAPL:Energy_DRAM_S0 S 5 -solid c 7 -#000000 p 4 616 1550 616 1570 633 1570 \
+633 1550 F 14 11 -Times-Roman c 7 -#000000 T 619 1554.4 -1 11.79 2 -:= S 5 -solid c 7 -#000000 p 4 634 1550 634 1570 710 1570 710 \
+1550 F 14 11 -Times-Roman c 7 -#000000 T 667 1554.4 -1 10.89 2 -:0 S 5 -solid c 7 -#000000 p 4 403 1529 403 1549 615 1549 615 1529 \
+F 14 11 -Times-Roman c 7 -#000000 T 416.5 1533.4 -1 185.86 26 -:measure:RAPL:Power_CPU_S0 S 5 -solid c 7 -#000000 p 4 616 1529 616 \
+1549 633 1549 633 1529 F 14 11 -Times-Roman c 7 -#000000 T 619 1533.4 -1 11.79 2 -:= S 5 -solid c 7 -#000000 p 4 634 1529 634 1549 \
+710 1549 710 1529 F 14 11 -Times-Roman c 7 -#000000 T 647.5 1533.4 -1 49.39 8 -:45.6379 S 5 -solid c 7 -#000000 p 4 403 1508 403 \
+1528 615 1528 615 1508 F 14 11 -Times-Roman c 7 -#000000 T 409 1512.4 -1 200.63 27 -:measure:RAPL:Power_DRAM_S0 S 5 -solid c 7 -#\
+000000 p 4 616 1508 616 1528 633 1528 633 1508 F 14 11 -Times-Roman c 7 -#000000 T 619 1512.4 -1 11.79 2 -:= S 5 -solid c 7 -#000000 \
+p 4 634 1508 634 1528 710 1528 710 1508 F 14 11 -Times-Roman c 7 -#000000 T 667 1512.4 -1 10.89 2 -:0 S 5 -solid c 7 -#000000 p \
+4 399 1292 399 1504 714 1504 714 1292 S 5 -solid c 9 -#fffffe00 C 7 -#ff00ff P 4 405 1298 405 1498 708 1498 708 1298 S 5 -solid \
+c 7 -#ff00ff p 4 405 1298 405 1498 708 1498 708 1298 S 5 -solid c 7 -#000000 p 4 402 1295 402 1501 711 1501 711 1295 ",
+				fill=lightgrey,
+				height=5.8056,
+				href="#",
+				label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+		<TR><TD PORT="ENTRY"><TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+			<TR><TD PORT="input_0" ><FONT POINT-SIZE="20">:input 0 </FONT></TD></TR>
+</TABLE></TD></TR>
+		<TR><TD><FONT POINT-SIZE="26">1:Solve</FONT></TD></TR>
+			<TR><TD><TABLE BORDER="0" CELLBORDER="1" CELLSPACING="1">
+		<TR><TD>:measure:RAPL:EDP_S0</TD><TD>:=</TD><TD>:45.6379</TD></TR>
+		<TR><TD>:measure:RAPL:Elapsed</TD><TD>:=</TD><TD>:0.00558025</TD></TR>
+		<TR><TD>:measure:RAPL:Energy_CPU_S0</TD><TD>:=</TD><TD>:0.254806</TD></TR>
+		<TR><TD>:measure:RAPL:Energy_DRAM_S0</TD><TD>:=</TD><TD>:0</TD></TR>
+		<TR><TD>:measure:RAPL:Power_CPU_S0</TD><TD>:=</TD><TD>:45.6379</TD></TR>
+		<TR><TD>:measure:RAPL:Power_DRAM_S0</TD><TD>:=</TD><TD>:0</TD></TR>
+	</TABLE></TD></TR>
+
+		<TR><TD PORT="EXIT"><TABLE><TR><TD BGCOLOR="#FF00FF" COLOR="#FF00FF" WIDTH="300" HEIGHT="200"></TD></TR></TABLE></TD></TR>
+</TABLE>>,
+				onclick="return ClickOnModuleNode('node5', this, ID);",
+				pos="556,1497",
+				shape=none,
+				width=4.5903];
+		}
+		{
+			graph [rank=sink];
+			node5_Out			 [fill=lightgrey,
+				height=0.5,
+				href="#",
+				label="",
+				onclick="return ClickOnModuleNode('node5', this, ID);",
+				pos="557,34",
+				shape=none,
+				width=0.75];
+		}
+		subgraph cluster1 {
+			graph [_draw_="c 7 -#000000 p 4 380 489 380 1260 734 1260 734 489 ",
+				bb="380,489,734,1260",
+				color=black
+			];
+			{
+				graph [rank=source];
+				node1				 [_ldraw_="S 5 -solid c 7 -#000000 p 4 396 1215 396 1248 718 1248 718 1215 S 5 -solid c 7 -#000000 p 4 399 1218 399 1245 715 1245 715 1218 \
+F 20 11 -Times-Roman c 7 -#000000 T 524 1223.5 -1 66.67 9 -:input 0  S 5 -solid c 7 -#000000 p 4 396 1183 396 1215 718 1215 718 \
+1183 F 26 11 -Times-Roman c 7 -#000000 T 489 1188.6 -1 136.51 11 -2:PCG Setup S 5 -solid c 7 -#000000 p 4 396 1050 396 1183 718 \
+1183 718 1050 S 5 -solid c 7 -#000000 p 4 400 1159 400 1179 612 1179 612 1159 F 14 11 -Times-Roman c 7 -#000000 T 435 1163.4 -1 \
+142.31 20 -:measure:RAPL:EDP_S0 S 5 -solid c 7 -#000000 p 4 613 1159 613 1179 630 1179 630 1159 F 14 11 -Times-Roman c 7 -#000000 \
+T 616 1163.4 -1 11.79 2 -:= S 5 -solid c 7 -#000000 p 4 631 1159 631 1179 714 1179 714 1159 F 14 11 -Times-Roman c 7 -#000000 T \
+667.5 1163.4 -1 10.89 2 -:0 S 5 -solid c 7 -#000000 p 4 400 1138 400 1158 612 1158 612 1138 F 14 11 -Times-Roman c 7 -#000000 T \
+437 1142.4 -1 138.41 21 -:measure:RAPL:Elapsed S 5 -solid c 7 -#000000 p 4 613 1138 613 1158 630 1158 630 1138 F 14 11 -Times-Roman \
+c 7 -#000000 T 616 1142.4 -1 11.79 2 -:= S 5 -solid c 7 -#000000 p 4 631 1138 631 1158 714 1158 714 1138 F 14 11 -Times-Roman c \
+7 -#000000 T 634 1142.4 -1 77.39 12 -:0.000381375 S 5 -solid c 7 -#000000 p 4 400 1117 400 1137 612 1137 612 1117 F 14 11 -Times-\
+Roman c 7 -#000000 T 411 1121.4 -1 190.53 27 -:measure:RAPL:Energy_CPU_S0 S 5 -solid c 7 -#000000 p 4 613 1117 613 1137 630 1137 \
+630 1117 F 14 11 -Times-Roman c 7 -#000000 T 616 1121.4 -1 11.79 2 -:= S 5 -solid c 7 -#000000 p 4 631 1117 631 1137 714 1137 714 \
+1117 F 14 11 -Times-Roman c 7 -#000000 T 667.5 1121.4 -1 10.89 2 -:0 S 5 -solid c 7 -#000000 p 4 400 1096 400 1116 612 1116 612 \
+1096 F 14 11 -Times-Roman c 7 -#000000 T 403.5 1100.4 -1 205.29 28 -:measure:RAPL:Energy_DRAM_S0 S 5 -solid c 7 -#000000 p 4 613 \
+1096 613 1116 630 1116 630 1096 F 14 11 -Times-Roman c 7 -#000000 T 616 1100.4 -1 11.79 2 -:= S 5 -solid c 7 -#000000 p 4 631 1096 \
+631 1116 714 1116 714 1096 F 14 11 -Times-Roman c 7 -#000000 T 667.5 1100.4 -1 10.89 2 -:0 S 5 -solid c 7 -#000000 p 4 400 1075 \
+400 1095 612 1095 612 1075 F 14 11 -Times-Roman c 7 -#000000 T 413.5 1079.4 -1 185.86 26 -:measure:RAPL:Power_CPU_S0 S 5 -solid \
+c 7 -#000000 p 4 613 1075 613 1095 630 1095 630 1075 F 14 11 -Times-Roman c 7 -#000000 T 616 1079.4 -1 11.79 2 -:= S 5 -solid c \
+7 -#000000 p 4 631 1075 631 1095 714 1095 714 1075 F 14 11 -Times-Roman c 7 -#000000 T 667.5 1079.4 -1 10.89 2 -:0 S 5 -solid c \
+7 -#000000 p 4 400 1054 400 1074 612 1074 612 1054 F 14 11 -Times-Roman c 7 -#000000 T 406 1058.4 -1 200.63 27 -:measure:RAPL:Power_\
+DRAM_S0 S 5 -solid c 7 -#000000 p 4 613 1054 613 1074 630 1074 630 1054 F 14 11 -Times-Roman c 7 -#000000 T 616 1058.4 -1 11.79 \
+2 -:= S 5 -solid c 7 -#000000 p 4 631 1054 631 1074 714 1074 714 1054 F 14 11 -Times-Roman c 7 -#000000 T 667.5 1058.4 -1 10.89 \
+2 -:0 S 5 -solid c 7 -#000000 p 4 396 838 396 1050 718 1050 718 838 S 5 -solid c 9 -#fffffe00 C 7 -#ff00ff P 4 402 844 402 1044 \
+712 1044 712 844 S 5 -solid c 7 -#ff00ff p 4 402 844 402 1044 712 1044 712 844 S 5 -solid c 7 -#000000 p 4 399 841 399 1047 715 \
+1047 715 841 ",
+					fill=lightgrey,
+					height=5.8056,
+					href="#",
+					label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+		<TR><TD PORT="ENTRY"><TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+			<TR><TD PORT="input_0" ><FONT POINT-SIZE="20">:input 0 </FONT></TD></TR>
+</TABLE></TD></TR>
+		<TR><TD><FONT POINT-SIZE="26">2:PCG Setup</FONT></TD></TR>
+			<TR><TD><TABLE BORDER="0" CELLBORDER="1" CELLSPACING="1">
+		<TR><TD>:measure:RAPL:EDP_S0</TD><TD>:=</TD><TD>:0</TD></TR>
+		<TR><TD>:measure:RAPL:Elapsed</TD><TD>:=</TD><TD>:0.000381375</TD></TR>
+		<TR><TD>:measure:RAPL:Energy_CPU_S0</TD><TD>:=</TD><TD>:0</TD></TR>
+		<TR><TD>:measure:RAPL:Energy_DRAM_S0</TD><TD>:=</TD><TD>:0</TD></TR>
+		<TR><TD>:measure:RAPL:Power_CPU_S0</TD><TD>:=</TD><TD>:0</TD></TR>
+		<TR><TD>:measure:RAPL:Power_DRAM_S0</TD><TD>:=</TD><TD>:0</TD></TR>
+	</TABLE></TD></TR>
+
+		<TR><TD PORT="EXIT"><TABLE><TR><TD BGCOLOR="#FF00FF" COLOR="#FF00FF" WIDTH="300" HEIGHT="200"></TD></TR></TABLE></TD></TR>
+</TABLE>>,
+					onclick="return ClickOnModuleNode('node1', this, ID);",
+					pos="557,1043",
+					shape=none,
+					width=4.6806];
+			}
+			{
+				graph [rank=sink];
+				node1_Out				 [fill=lightgrey,
+					height=0.5,
+					href="#",
+					label="",
+					onclick="return ClickOnModuleNode('node1', this, ID);",
+					pos="557,515",
+					shape=none,
+					width=0.75];
+			}
+			node1:EXIT:s -> node1_Out			 [pos="e,557,533.05 557,837 557,728.07 557,598.34 557,543.08",
+				style=invis,
+				weight=100];
+		}
+		subgraph cluster4 {
+			graph [_draw_="c 7 -#000000 p 4 742 80 742 1260 1756 1260 1756 80 ",
+				bb="742,80,1756,1260",
+				color=black
+			];
+			{
+				graph [rank=source];
+				node4				 [_ldraw_="S 5 -solid c 7 -#000000 p 4 758 1215 758 1248 1222 1248 1222 1215 S 5 -solid c 7 -#000000 p 4 761 1218 761 1245 1219 1245 1219 1218 \
+F 20 11 -Times-Roman c 7 -#000000 T 957 1223.5 -1 66.67 9 -:input 0  S 5 -solid c 7 -#000000 p 4 758 1183 758 1215 1222 1215 1222 \
+1183 F 26 11 -Times-Roman c 7 -#000000 T 922 1188.6 -1 136.51 11 -3:PCG Solve S 5 -solid c 7 -#000000 p 4 758 1050 758 1183 1222 \
+1183 1222 1050 S 5 -solid c 7 -#000000 p 4 762 1159 762 1179 974 1179 974 1159 F 14 11 -Times-Roman c 7 -#000000 T 797 1163.4 -1 \
+142.31 20 -:measure:RAPL:EDP_S0 S 5 -solid c 7 -#000000 p 4 975 1159 975 1179 992 1179 992 1159 F 14 11 -Times-Roman c 7 -#000000 \
+T 978 1163.4 -1 11.79 2 -:= S 5 -solid c 7 -#000000 p 4 993 1159 993 1179 1218 1179 1218 1159 F 14 11 -Times-Roman c 7 -#000000 \
+T 998.5 1163.4 -1 214.79 34 -:0.878615*input:0:MPIRank + 42.419 S 5 -solid c 7 -#000000 p 4 762 1138 762 1158 974 1158 974 1138 \
+F 14 11 -Times-Roman c 7 -#000000 T 799 1142.4 -1 138.41 21 -:measure:RAPL:Elapsed S 5 -solid c 7 -#000000 p 4 975 1138 975 1158 \
+992 1158 992 1138 F 14 11 -Times-Roman c 7 -#000000 T 978 1142.4 -1 11.79 2 -:= S 5 -solid c 7 -#000000 p 4 993 1138 993 1158 1218 \
+1158 1218 1138 F 14 11 -Times-Roman c 7 -#000000 T 1077.5 1142.4 -1 56.39 9 -:0.628149 S 5 -solid c 7 -#000000 p 4 762 1117 762 \
+1137 974 1137 974 1117 F 14 11 -Times-Roman c 7 -#000000 T 773 1121.4 -1 190.53 27 -:measure:RAPL:Energy_CPU_S0 S 5 -solid c 7 -#\
+000000 p 4 975 1117 975 1137 992 1137 992 1117 F 14 11 -Times-Roman c 7 -#000000 T 978 1121.4 -1 11.79 2 -:= S 5 -solid c 7 -#000000 \
+p 4 993 1117 993 1137 1218 1137 1218 1117 F 14 11 -Times-Roman c 7 -#000000 T 996 1121.4 -1 219.45 35 -:-1.33328*input:0:MPIRank + \
+32.3458 S 5 -solid c 7 -#000000 p 4 762 1096 762 1116 974 1116 974 1096 F 14 11 -Times-Roman c 7 -#000000 T 765.5 1100.4 -1 205.29 \
+28 -:measure:RAPL:Energy_DRAM_S0 S 5 -solid c 7 -#000000 p 4 975 1096 975 1116 992 1116 992 1096 F 14 11 -Times-Roman c 7 -#000000 \
+T 978 1100.4 -1 11.79 2 -:= S 5 -solid c 7 -#000000 p 4 993 1096 993 1116 1218 1116 1218 1096 F 14 11 -Times-Roman c 7 -#000000 \
+T 1100.5 1100.4 -1 10.89 2 -:0 S 5 -solid c 7 -#000000 p 4 762 1075 762 1095 974 1095 974 1075 F 14 11 -Times-Roman c 7 -#000000 \
+T 775.5 1079.4 -1 185.86 26 -:measure:RAPL:Power_CPU_S0 S 5 -solid c 7 -#000000 p 4 975 1075 975 1095 992 1095 992 1075 F 14 11 -\
+Times-Roman c 7 -#000000 T 978 1079.4 -1 11.79 2 -:= S 5 -solid c 7 -#000000 p 4 993 1075 993 1095 1218 1095 1218 1075 F 14 11 -\
+Times-Roman c 7 -#000000 T 998.5 1079.4 -1 214.79 34 -:0.878615*input:0:MPIRank + 42.419 S 5 -solid c 7 -#000000 p 4 762 1054 762 \
+1074 974 1074 974 1054 F 14 11 -Times-Roman c 7 -#000000 T 768 1058.4 -1 200.63 27 -:measure:RAPL:Power_DRAM_S0 S 5 -solid c 7 -#\
+000000 p 4 975 1054 975 1074 992 1074 992 1054 F 14 11 -Times-Roman c 7 -#000000 T 978 1058.4 -1 11.79 2 -:= S 5 -solid c 7 -#000000 \
+p 4 993 1054 993 1074 1218 1074 1218 1054 F 14 11 -Times-Roman c 7 -#000000 T 1100.5 1058.4 -1 10.89 2 -:0 S 5 -solid c 7 -#000000 \
+p 4 758 838 758 1050 1222 1050 1222 838 S 5 -solid c 9 -#fffffe00 C 7 -#ff00ff P 4 764 844 764 1044 1216 1044 1216 844 S 5 -solid \
+c 7 -#ff00ff p 4 764 844 764 1044 1216 1044 1216 844 S 5 -solid c 7 -#000000 p 4 761 841 761 1047 1219 1047 1219 841 ",
+					fill=lightgrey,
+					height=5.8056,
+					href="#",
+					label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+		<TR><TD PORT="ENTRY"><TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+			<TR><TD PORT="input_0" ><FONT POINT-SIZE="20">:input 0 </FONT></TD></TR>
+</TABLE></TD></TR>
+		<TR><TD><FONT POINT-SIZE="26">3:PCG Solve</FONT></TD></TR>
+			<TR><TD><TABLE BORDER="0" CELLBORDER="1" CELLSPACING="1">
+		<TR><TD>:measure:RAPL:EDP_S0</TD><TD>:=</TD><TD>:0.878615*input:0:MPIRank + 42.419</TD></TR>
+		<TR><TD>:measure:RAPL:Elapsed</TD><TD>:=</TD><TD>:0.628149</TD></TR>
+		<TR><TD>:measure:RAPL:Energy_CPU_S0</TD><TD>:=</TD><TD>:-1.33328*input:0:MPIRank + 32.3458</TD></TR>
+		<TR><TD>:measure:RAPL:Energy_DRAM_S0</TD><TD>:=</TD><TD>:0</TD></TR>
+		<TR><TD>:measure:RAPL:Power_CPU_S0</TD><TD>:=</TD><TD>:0.878615*input:0:MPIRank + 42.419</TD></TR>
+		<TR><TD>:measure:RAPL:Power_DRAM_S0</TD><TD>:=</TD><TD>:0</TD></TR>
+	</TABLE></TD></TR>
+
+		<TR><TD PORT="EXIT"><TABLE><TR><TD BGCOLOR="#FF00FF" COLOR="#FF00FF" WIDTH="300" HEIGHT="200"></TD></TR></TABLE></TD></TR>
+</TABLE>>,
+					onclick="return ClickOnModuleNode('node4', this, ID);",
+					pos="990,1043",
+					shape=none,
+					width=6.6528];
+			}
+			{
+				graph [rank=sink];
+				node4_Out				 [fill=lightgrey,
+					height=0.5,
+					href="#",
+					label="",
+					onclick="return ClickOnModuleNode('node4', this, ID);",
+					pos="866,106",
+					shape=none,
+					width=0.75];
+			}
+			subgraph cluster2 {
+				graph [_draw_="c 7 -#000000 p 4 762 152 762 732 1106 732 1106 152 ",
+					bb="762,152,1106,732",
+					color=black
+				];
+				{
+					graph [rank=source];
+					node2					 [_ldraw_="S 5 -solid c 7 -#000000 p 4 778 687 778 720 1091 720 1091 687 S 5 -solid c 7 -#000000 p 4 781 690 781 717 1088 717 1088 690 F 20 \
+11 -Times-Roman c 7 -#000000 T 901.5 695.5 -1 66.67 9 -:input 0  S 5 -solid c 7 -#000000 p 4 778 655 778 687 1091 687 1091 655 F \
+26 11 -Times-Roman c 7 -#000000 T 871.5 660.6 -1 126.39 11 -4:PCG Start S 5 -solid c 7 -#000000 p 4 778 522 778 655 1091 655 1091 \
+522 S 5 -solid c 7 -#000000 p 4 782 631 782 651 998 651 998 631 F 14 11 -Times-Roman c 7 -#000000 T 819 635.4 -1 142.31 20 -:measure:\
+RAPL:EDP_S0 S 5 -solid c 7 -#000000 p 4 999 631 999 651 1020 651 1020 631 F 14 11 -Times-Roman c 7 -#000000 T 1004 635.4 -1 11.79 \
+2 -:= S 5 -solid c 7 -#000000 p 4 1021 631 1021 651 1087 651 1087 631 F 14 11 -Times-Roman c 7 -#000000 T 1029.5 635.4 -1 49.39 \
+8 -:43.4402 S 5 -solid c 7 -#000000 p 4 782 610 782 630 998 630 998 610 F 14 11 -Times-Roman c 7 -#000000 T 821 614.4 -1 138.41 \
+21 -:measure:RAPL:Elapsed S 5 -solid c 7 -#000000 p 4 999 610 999 630 1020 630 1020 610 F 14 11 -Times-Roman c 7 -#000000 T 1004 \
+614.4 -1 11.79 2 -:= S 5 -solid c 7 -#000000 p 4 1021 610 1021 630 1087 630 1087 610 F 14 11 -Times-Roman c 7 -#000000 T 1026 614.4 -\
+1 56.39 9 -:0.122845 S 5 -solid c 7 -#000000 p 4 782 589 782 609 998 609 998 589 F 14 11 -Times-Roman c 7 -#000000 T 795 593.4 -\
+1 190.53 27 -:measure:RAPL:Energy_CPU_S0 S 5 -solid c 7 -#000000 p 4 999 589 999 609 1020 609 1020 589 F 14 11 -Times-Roman c 7 -#\
+000000 T 1004 593.4 -1 11.79 2 -:= S 5 -solid c 7 -#000000 p 4 1021 589 1021 609 1087 609 1087 589 F 14 11 -Times-Roman c 7 -#000000 \
+T 1029.5 593.4 -1 49.39 8 -:5.33643 S 5 -solid c 7 -#000000 p 4 782 568 782 588 998 588 998 568 F 14 11 -Times-Roman c 7 -#000000 \
+T 787.5 572.4 -1 205.29 28 -:measure:RAPL:Energy_DRAM_S0 S 5 -solid c 7 -#000000 p 4 999 568 999 588 1020 588 1020 568 F 14 11 -\
+Times-Roman c 7 -#000000 T 1004 572.4 -1 11.79 2 -:= S 5 -solid c 7 -#000000 p 4 1021 568 1021 588 1087 588 1087 568 F 14 11 -Times-\
+Roman c 7 -#000000 T 1049 572.4 -1 10.89 2 -:0 S 5 -solid c 7 -#000000 p 4 782 547 782 567 998 567 998 547 F 14 11 -Times-Roman \
+c 7 -#000000 T 797.5 551.4 -1 185.86 26 -:measure:RAPL:Power_CPU_S0 S 5 -solid c 7 -#000000 p 4 999 547 999 567 1020 567 1020 547 \
+F 14 11 -Times-Roman c 7 -#000000 T 1004 551.4 -1 11.79 2 -:= S 5 -solid c 7 -#000000 p 4 1021 547 1021 567 1087 567 1087 547 F \
+14 11 -Times-Roman c 7 -#000000 T 1029.5 551.4 -1 49.39 8 -:43.4402 S 5 -solid c 7 -#000000 p 4 782 526 782 546 998 546 998 526 \
+F 14 11 -Times-Roman c 7 -#000000 T 790 530.4 -1 200.63 27 -:measure:RAPL:Power_DRAM_S0 S 5 -solid c 7 -#000000 p 4 999 526 999 \
+546 1020 546 1020 526 F 14 11 -Times-Roman c 7 -#000000 T 1004 530.4 -1 11.79 2 -:= S 5 -solid c 7 -#000000 p 4 1021 526 1021 546 \
+1087 546 1087 526 F 14 11 -Times-Roman c 7 -#000000 T 1049 530.4 -1 10.89 2 -:0 S 5 -solid c 7 -#000000 p 4 778 310 778 522 1091 \
+522 1091 310 S 5 -solid c 9 -#fffffe00 C 7 -#ff00ff P 4 784 316 784 516 1085 516 1085 316 S 5 -solid c 7 -#ff00ff p 4 784 316 784 \
+516 1085 516 1085 316 S 5 -solid c 7 -#000000 p 4 781 313 781 519 1088 519 1088 313 ",
+						fill=lightgrey,
+						height=5.8056,
+						href="#",
+						label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+		<TR><TD PORT="ENTRY"><TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+			<TR><TD PORT="input_0" ><FONT POINT-SIZE="20">:input 0 </FONT></TD></TR>
+</TABLE></TD></TR>
+		<TR><TD><FONT POINT-SIZE="26">4:PCG Start</FONT></TD></TR>
+			<TR><TD><TABLE BORDER="0" CELLBORDER="1" CELLSPACING="1">
+		<TR><TD>:measure:RAPL:EDP_S0</TD><TD>:=</TD><TD>:43.4402</TD></TR>
+		<TR><TD>:measure:RAPL:Elapsed</TD><TD>:=</TD><TD>:0.122845</TD></TR>
+		<TR><TD>:measure:RAPL:Energy_CPU_S0</TD><TD>:=</TD><TD>:5.33643</TD></TR>
+		<TR><TD>:measure:RAPL:Energy_DRAM_S0</TD><TD>:=</TD><TD>:0</TD></TR>
+		<TR><TD>:measure:RAPL:Power_CPU_S0</TD><TD>:=</TD><TD>:43.4402</TD></TR>
+		<TR><TD>:measure:RAPL:Power_DRAM_S0</TD><TD>:=</TD><TD>:0</TD></TR>
+	</TABLE></TD></TR>
+
+		<TR><TD PORT="EXIT"><TABLE><TR><TD BGCOLOR="#FF00FF" COLOR="#FF00FF" WIDTH="300" HEIGHT="200"></TD></TR></TABLE></TD></TR>
+</TABLE>>,
+						onclick="return ClickOnModuleNode('node2', this, ID);",
+						pos="934,515",
+						shape=none,
+						width=4.5625];
+				}
+				{
+					graph [rank=sink];
+					node2_Out					 [fill=lightgrey,
+						height=0.5,
+						href="#",
+						label="",
+						onclick="return ClickOnModuleNode('node2', this, ID);",
+						pos="866,178",
+						shape=none,
+						width=0.75];
+				}
+				node2:EXIT:s -> node2_Out				 [pos="e,882.35,196.38 935,309 935,268.83 908.97,228.96 888.89,204.18",
+					style=invis,
+					weight=100];
+			}
+			subgraph cluster3 {
+				graph [_draw_="c 7 -#000000 p 4 1114 152 1114 806 1748 806 1748 152 ",
+					bb="1114,152,1748,806",
+					color=black
+				];
+				{
+					graph [rank=source];
+					node3					 [_ldraw_="S 5 -solid c 7 -#000000 p 4 1131 760 1131 793 1616 793 1616 760 S 5 -solid c 7 -#000000 p 4 1134 763 1134 790 1374 790 1374 763 \
+F 20 11 -Times-Roman c 7 -#000000 T 1221 768.5 -1 66.67 9 -:input 0  S 5 -solid c 7 -#000000 p 4 1374 763 1374 790 1613 790 1613 \
+763 F 20 11 -Times-Roman c 7 -#000000 T 1460.5 768.5 -1 66.67 9 -:input 1  S 5 -solid c 7 -#000000 p 4 1131 728 1131 760 1616 760 \
+1616 728 F 26 11 -Times-Roman c 7 -#000000 T 1312 733.6 -1 123.51 10 -5:PCG Step S 5 -solid c 7 -#000000 p 4 1131 448 1131 728 1616 \
+728 1616 448 S 5 -solid c 7 -#000000 p 4 1135 704 1135 724 1347 724 1347 704 F 14 11 -Times-Roman c 7 -#000000 T 1170 708.4 -1 142.31 \
+20 -:measure:RAPL:EDP_S0 S 5 -solid c 7 -#000000 p 4 1348 704 1348 724 1365 724 1365 704 F 14 11 -Times-Roman c 7 -#000000 T 1351 \
+708.4 -1 11.79 2 -:= S 5 -solid c 7 -#000000 p 4 1366 704 1366 724 1612 724 1612 704 F 14 11 -Times-Roman c 7 -#000000 T 1396.5 \
+708.4 -1 185.24 31 -:0.00158115*input:1:i + 43.0555 S 5 -solid c 7 -#000000 p 4 1135 683 1135 703 1347 703 1347 683 F 14 11 -Times-\
+Roman c 7 -#000000 T 1172 687.4 -1 138.41 21 -:measure:RAPL:Elapsed S 5 -solid c 7 -#000000 p 4 1348 683 1348 703 1365 703 1365 \
+683 F 14 11 -Times-Roman c 7 -#000000 T 1351 687.4 -1 11.79 2 -:= S 5 -solid c 7 -#000000 p 4 1366 683 1366 703 1612 703 1612 683 \
+F 14 11 -Times-Roman c 7 -#000000 T 1461 687.4 -1 56.39 9 -:0.138056 S 5 -solid c 7 -#000000 p 4 1135 662 1135 682 1347 682 1347 \
+662 F 14 11 -Times-Roman c 7 -#000000 T 1146 666.4 -1 190.53 27 -:measure:RAPL:Energy_CPU_S0 S 5 -solid c 7 -#000000 p 4 1348 662 \
+1348 682 1365 682 1365 662 F 14 11 -Times-Roman c 7 -#000000 T 1351 666.4 -1 11.79 2 -:= S 5 -solid c 7 -#000000 p 4 1366 662 1366 \
+682 1612 682 1612 662 F 14 11 -Times-Roman c 7 -#000000 T 1464.5 666.4 -1 49.39 8 -:5.99975 S 5 -solid c 7 -#000000 p 4 1135 641 \
+1135 661 1347 661 1347 641 F 14 11 -Times-Roman c 7 -#000000 T 1138.5 645.4 -1 205.29 28 -:measure:RAPL:Energy_DRAM_S0 S 5 -solid \
+c 7 -#000000 p 4 1348 641 1348 661 1365 661 1365 641 F 14 11 -Times-Roman c 7 -#000000 T 1351 645.4 -1 11.79 2 -:= S 5 -solid c \
+7 -#000000 p 4 1366 641 1366 661 1612 661 1612 641 F 14 11 -Times-Roman c 7 -#000000 T 1484 645.4 -1 10.89 2 -:0 S 5 -solid c 7 -#\
+000000 p 4 1135 620 1135 640 1347 640 1347 620 F 14 11 -Times-Roman c 7 -#000000 T 1148.5 624.4 -1 185.86 26 -:measure:RAPL:Power_\
+CPU_S0 S 5 -solid c 7 -#000000 p 4 1348 620 1348 640 1365 640 1365 620 F 14 11 -Times-Roman c 7 -#000000 T 1351 624.4 -1 11.79 2 -:= \
+S 5 -solid c 7 -#000000 p 4 1366 620 1366 640 1612 640 1612 620 F 14 11 -Times-Roman c 7 -#000000 T 1396.5 624.4 -1 185.24 31 -:\
+0.00158115*input:1:i + 43.0555 S 5 -solid c 7 -#000000 p 4 1135 599 1135 619 1347 619 1347 599 F 14 11 -Times-Roman c 7 -#000000 \
+T 1141 603.4 -1 200.63 27 -:measure:RAPL:Power_DRAM_S0 S 5 -solid c 7 -#000000 p 4 1348 599 1348 619 1365 619 1365 599 F 14 11 -\
+Times-Roman c 7 -#000000 T 1351 603.4 -1 11.79 2 -:= S 5 -solid c 7 -#000000 p 4 1366 599 1366 619 1612 619 1612 599 F 14 11 -Times-\
+Roman c 7 -#000000 T 1484 603.4 -1 10.89 2 -:0 S 5 -solid c 7 -#000000 p 4 1135 578 1135 598 1347 598 1347 578 F 14 11 -Times-Roman \
+c 7 -#000000 T 1202.5 582.4 -1 77.77 14 -:output:0:beta S 5 -solid c 7 -#000000 p 4 1348 578 1348 598 1365 598 1365 578 F 14 11 -\
+Times-Roman c 7 -#000000 T 1351 582.4 -1 11.79 2 -:= S 5 -solid c 7 -#000000 p 4 1366 578 1366 598 1612 598 1612 578 F 14 11 -Times-\
+Roman c 7 -#000000 T 1464.5 582.4 -1 49.39 8 -:0.95481 S 5 -solid c 7 -#000000 p 4 1135 557 1135 577 1347 577 1347 557 F 14 11 -\
+Times-Roman c 7 -#000000 T 1193.5 561.4 -1 95.66 15 -:output:0:gamma S 5 -solid c 7 -#000000 p 4 1348 557 1348 577 1365 577 1365 \
+557 F 14 11 -Times-Roman c 7 -#000000 T 1351 561.4 -1 11.79 2 -:= S 5 -solid c 7 -#000000 p 4 1366 557 1366 577 1612 577 1612 557 \
+F 14 11 -Times-Roman c 7 -#000000 T 1466.5 561.4 -1 45.89 7 -:148034 S 5 -solid c 7 -#000000 p 4 1135 536 1135 556 1347 556 1347 \
+536 F 14 11 -Times-Roman c 7 -#000000 T 1195.5 540.4 -1 91 16 -:output:0:i_prod S 5 -solid c 7 -#000000 p 4 1348 536 1348 556 1365 \
+556 1365 536 F 14 11 -Times-Roman c 7 -#000000 T 1351 540.4 -1 11.79 2 -:= S 5 -solid c 7 -#000000 p 4 1366 536 1366 556 1612 556 \
+1612 536 F 14 11 -Times-Roman c 7 -#000000 T 1369 540.4 -1 240.82 38 -:-5.76256e-09*input:0:MPIRank + 888207 S 5 -solid c 7 -#000000 \
+p 4 1135 515 1135 535 1347 535 1347 515 F 14 11 -Times-Roman c 7 -#000000 T 1201 519.4 -1 80.11 15 -:output:0:ratio S 5 -solid c \
+7 -#000000 p 4 1348 515 1348 535 1365 535 1365 515 F 14 11 -Times-Roman c 7 -#000000 T 1351 519.4 -1 11.79 2 -:= S 5 -solid c 7 -#\
+000000 p 4 1366 515 1366 535 1612 535 1612 515 F 14 11 -Times-Roman c 7 -#000000 T 1421.5 519.4 -1 135.72 23 -:1.40033e-319*input:\
+1:i S 5 -solid c 7 -#000000 p 4 1135 494 1135 514 1347 514 1347 494 F 14 11 -Times-Roman c 7 -#000000 T 1188.5 498.4 -1 105.77 18 -:\
+output:0:rel_norm S 5 -solid c 7 -#000000 p 4 1348 494 1348 514 1365 514 1365 494 F 14 11 -Times-Roman c 7 -#000000 T 1351 498.4 -\
+1 11.79 2 -:= S 5 -solid c 7 -#000000 p 4 1366 494 1366 514 1612 514 1612 494 F 14 11 -Times-Roman c 7 -#000000 T 1461 498.4 -1 \
+56.39 9 -:0.110798 S 5 -solid c 7 -#000000 p 4 1135 473 1135 493 1347 493 1347 473 F 14 11 -Times-Roman c 7 -#000000 T 1195.5 477.4 -\
+1 91.79 16 -:output:0:s_dotp S 5 -solid c 7 -#000000 p 4 1348 473 1348 493 1365 493 1365 473 F 14 11 -Times-Roman c 7 -#000000 T \
+1351 477.4 -1 11.79 2 -:= S 5 -solid c 7 -#000000 p 4 1366 473 1366 493 1612 493 1612 473 F 14 11 -Times-Roman c 7 -#000000 T 1464.5 \
+477.4 -1 49.39 8 -:77212.9 S 5 -solid c 7 -#000000 p 4 1135 452 1135 472 1347 472 1347 452 F 14 11 -Times-Roman c 7 -#000000 T 1197.5 \
+456.4 -1 87.88 16 -:output:1:return S 5 -solid c 7 -#000000 p 4 1348 452 1348 472 1365 472 1365 452 F 14 11 -Times-Roman c 7 -#000000 \
+T 1351 456.4 -1 11.79 2 -:= S 5 -solid c 7 -#000000 p 4 1366 452 1366 472 1612 472 1612 452 F 14 11 -Times-Roman c 7 -#000000 T \
+1484 456.4 -1 10.89 2 -:0 S 5 -solid c 7 -#000000 p 4 1131 236 1131 448 1616 448 1616 236 S 5 -solid c 9 -#fffffe00 C 7 -#ff00ff \
+P 4 1137 242 1137 442 1610 442 1610 242 S 5 -solid c 7 -#ff00ff p 4 1137 242 1137 442 1610 442 1610 242 S 5 -solid c 7 -#000000 \
+p 4 1134 239 1134 445 1613 445 1613 239 ",
+						fill=lightgrey,
+						height=7.8472,
+						href="#",
+						label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+		<TR><TD PORT="ENTRY"><TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+			<TR><TD PORT="input_0" ><FONT POINT-SIZE="20">:input 0 </FONT></TD><TD PORT="input_1" ><FONT POINT-SIZE="20">:input 1 </FONT></TD></TR>
+</TABLE></TD></TR>
+		<TR><TD><FONT POINT-SIZE="26">5:PCG Step</FONT></TD></TR>
+			<TR><TD><TABLE BORDER="0" CELLBORDER="1" CELLSPACING="1">
+		<TR><TD>:measure:RAPL:EDP_S0</TD><TD>:=</TD><TD>:0.00158115*input:1:i + 43.0555</TD></TR>
+		<TR><TD>:measure:RAPL:Elapsed</TD><TD>:=</TD><TD>:0.138056</TD></TR>
+		<TR><TD>:measure:RAPL:Energy_CPU_S0</TD><TD>:=</TD><TD>:5.99975</TD></TR>
+		<TR><TD>:measure:RAPL:Energy_DRAM_S0</TD><TD>:=</TD><TD>:0</TD></TR>
+		<TR><TD>:measure:RAPL:Power_CPU_S0</TD><TD>:=</TD><TD>:0.00158115*input:1:i + 43.0555</TD></TR>
+		<TR><TD>:measure:RAPL:Power_DRAM_S0</TD><TD>:=</TD><TD>:0</TD></TR>
+		<TR><TD>:output:0:beta</TD><TD>:=</TD><TD>:0.95481</TD></TR>
+		<TR><TD>:output:0:gamma</TD><TD>:=</TD><TD>:148034</TD></TR>
+		<TR><TD>:output:0:i_prod</TD><TD>:=</TD><TD>:-5.76256e-09*input:0:MPIRank + 888207</TD></TR>
+		<TR><TD>:output:0:ratio</TD><TD>:=</TD><TD>:1.40033e-319*input:1:i</TD></TR>
+		<TR><TD>:output:0:rel_norm</TD><TD>:=</TD><TD>:0.110798</TD></TR>
+		<TR><TD>:output:0:s_dotp</TD><TD>:=</TD><TD>:77212.9</TD></TR>
+		<TR><TD>:output:1:return</TD><TD>:=</TD><TD>:0</TD></TR>
+	</TABLE></TD></TR>
+
+		<TR><TD PORT="EXIT"><TABLE><TR><TD BGCOLOR="#FF00FF" COLOR="#FF00FF" WIDTH="300" HEIGHT="200"></TD></TR></TABLE></TD></TR>
+</TABLE>>,
+						onclick="return ClickOnModuleNode('node3', this, ID);",
+						pos="1373,515",
+						shape=none,
+						width=6.9514];
+				}
+				{
+					graph [rank=sink];
+					node3_Out					 [_ldraw_="S 5 -solid c 7 -#000000 p 4 1131 167 1131 188 1432 188 1432 167 F 14 11 -Times-Roman c 7 -#000000 T 1264 171.9 -1 35.39 6 -:Out \
+0 S 5 -solid c 7 -#000000 p 4 1432 167 1432 188 1732 188 1732 167 F 14 11 -Times-Roman c 7 -#000000 T 1564.5 171.9 -1 35.39 6 -:\
+Out 1 ",
+						fill=lightgrey,
+						height=0.5,
+						href="#",
+						label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+	<TR>
+		<TD WIDTH="300" PORT="output_0"><FONT POINT-SIZE="14">:Out 0</FONT></TD>
+		<TD WIDTH="300" PORT="output_1"><FONT POINT-SIZE="14">:Out 1</FONT></TD>
+	</TR>
+</TABLE>>,
+						onclick="return ClickOnModuleNode('node3', this, ID);",
+						pos="1431,178",
+						shape=none,
+						width=8.5625];
+				}
+				node3:EXIT:s -> node3_Out				 [pos="e,1399.2,196 1374,235 1374,222.08 1381.5,211.15 1391.1,202.48",
+					style=invis,
+					weight=100];
+			}
+			node4:EXIT:s -> node4_Out			 [pos="e,838.73,122.25 990,837 990,784.99 792.26,845.14 758,806 734.07,778.66 737.16,181.76 758,152 777.01,124.85 797.72,136.37 829.11,\
+126.01",
+				style=invis,
+				weight=100];
+			node4:EXIT:s -> node2:ENTRY:n			 [pos="e,935,721 990,837 990,783.51 941.66,778.51 935.62,731.08",
+				style=invis,
+				weight=150];
+			node4:EXIT:s -> node3:ENTRY:n			 [pos="e,1374,794 990,837 990,797.25 1319.1,831.04 1368,802.21",
+				style=invis,
+				weight=150];
+			node2_Out -> node4_Out			 [pos="e,866,124.1 866,159.7 866,151.98 866,142.71 866,134.11",
+				style=invis,
+				weight=150];
+			node3_Out -> node4_Out			 [pos="e,893.15,110.36 1293.5,159.97 1165,144.04 981.5,121.31 903.45,111.64",
+				style=invis,
+				weight=150];
+		}
+		node5:EXIT:s -> node5_Out		 [pos="e,529.66,41.874 557,1291 557,1209.4 428.91,1322.1 376,1260 349.2,1228.5 369,557.34 369,516 369,516 369,516 369,177 369,102.11 465.18,\
+61.703 519.95,44.766",
+			style=invis,
+			weight=100];
+		node5:EXIT:s -> node1:ENTRY:n		 [pos="e,557,1249 557,1291 557,1276.3 557,1270.3 557,1259.2",
+			style=invis,
+			weight=150];
+		node5:EXIT:s -> node4:ENTRY:n		 [pos="e,990,1249 557,1291 557,1246 932.82,1290.3 984.21,1257.5",
+			style=invis,
+			weight=150];
+		node1_Out -> node5_Out		 [pos="e,557,52.093 557,496.95 557,425.59 557,150.5 557,62.347",
+			style=invis,
+			weight=150];
+		node4_Out -> node5_Out		 [pos="e,584.36,34.861 848.02,87.963 843.99,84.893 839.55,82.028 835,80 754.46,44.075 649.4,36.434 594.36,35.056",
+			style=invis,
+			weight=150];
+	}
+}

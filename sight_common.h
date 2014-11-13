@@ -6,5 +6,7 @@
 #include "widgets/valSelector/valSelector_common.h"
 #include "widgets/trace/trace_common.h"
 #include "widgets/source/source_common.h"
+// hoa edit
+#include "widgets/flowgraph/flowgraph_common.h"
 
 //using namespace sight::common;

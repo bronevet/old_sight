@@ -388,6 +388,25 @@ function loadURLIntoDiv(doc, url, divName, continuationFunc) {
   xhr.send();
 }
   
+// hoa edit
+function loadURLIntoDiv2(doc, url, divName) {
+  var xhr= new XMLHttpRequest();
+  xhr.open('GET', url, true);
+  xhr.onreadystatechange= function() {
+    //Wait until the data is fully loaded
+    if (this.readyState!==4) return;
+    // Option 1:
+    //doc.getElementById(divName).innerHTML= this.responseText;
+    // Option 2:
+    var scriptNode = document.createElement('script_'+scriptEltID);
+    scriptEltID++;
+    scriptNode.innerHTML = this.responseText;
+    doc.getElementById(divName).appendChild(scriptNode);
+
+  };
+  xhr.send();
+}
+
 // From http://www.javascriptkit.com/javatutors/loadjavascriptcss.shtml
 //  and http://stackoverflow.com/questions/950087/how-to-include-a-javascript-file-in-another-javascript-file
 function loadjscssfile(filename, filetype, continuationFunc){

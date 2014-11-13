@@ -19,7 +19,10 @@ int fibScopeLinks(int a, scope::scopeLevel level, list<int>& stack,
                   bool doFWLinks);
 int fibGraph(int a, graph& g, anchor* parent);
 double histRecurrence(int a, const vector<double>& hist);
+
+// hoa edit
 std::pair<int, std::vector<port> > fibModule(int a, int depth);
+//int fibModule(int a, int depth);
 
 int main(int argc, char** argv)
 {
@@ -383,26 +386,77 @@ double histRecurrence(int a, const vector<double>& hist) {
 #pragma sightLoc histRecurrenceEnd
 
 #pragma sightLoc modularFibStart
+
 // Each recursive call to fibModule() generates a new module at the desired level. 
-std::pair<int, std::vector<port> > fibModule(int a, int depth) {
+// hoa edit
+std::pair<int, std::vector<port> > fibModule(int a, int depth)
+{
   std::vector<port> fibOutputs;
-  module m(instance(txt()<<"fib() depth="<<depth, 1, 1), 
-           inputs(port(context("a", a))), fibOutputs, namedMeasures("time", new timeMeasure()));
-  
-  if(a==0 || a==1) { 
-    dbg << "=1."<<endl;
-    
+  // hoa temp comment out
+  //module m(instance(txt()<<"fib() depth="<<depth, 1, 1),
+  //         inputs(port(context("a", a))), fibOutputs, namedMeasures("time", new timeMeasure()));
+
+  // hoa edit
+  //module m(instance(txt()<<"fib("<<a<<")", 1, 1),
+  //           inputs(port(context("depth", depth))), fibOutputs, namedMeasures("time", new timeMeasure()));
+
+  module m(instance(txt()<<a<<":"<<depth, 1, 1),
+   	       inputs(port(context("depth", depth))), fibOutputs, namedMeasures("time", new timeMeasure()));
+
+  if(a==0 || a==1)
+  {
+    //module m(instance(txt()<<"fib("<<a<<"):depth="<<depth, 1, 1),
+	//       inputs(port(context("depth", depth))), fibOutputs, namedMeasures("time", new timeMeasure()));
+
+	dbg << "=1."<<endl;
+
     m.setOutCtxt(0, context("val", 1));
-    
+
     return make_pair(1, fibOutputs);
-  } else {
+  }
+  else
+  {
+    //module m(instance(txt()<<"fib("<<a<<")=fib("<<a-1<<"),fib("<<a-2<<"):depth="<<depth, 1, 1),
+	//       inputs(port(context("depth", depth))), fibOutputs, namedMeasures("time", new timeMeasure()));
+
     std::pair<int, std::vector<port> > ret1 = fibModule(a-1, depth+1);
     std::pair<int, std::vector<port> > ret2 = fibModule(a-2, depth+1);
     dbg << "="<<(ret1.first + ret2.first)<<endl;
-    
     m.setOutCtxt(0, context("val", ret1.first + ret2.first));
-    
+
     return make_pair(ret1.first + ret2.first, fibOutputs);
   }
 }
+
+/*
+int fibModule(int a, int depth)
+{
+  std::vector<port> fibOutputs;
+  // hoa temp comment out
+  //module m(instance(txt()<<"fib() depth="<<depth, 1, 1),
+  //         inputs(port(context("a", a))), fibOutputs, namedMeasures("time", new timeMeasure()));
+
+  // hoa edit
+  module m(instance(txt()<<"fib("<<a<<")", 1, 1),
+             inputs(port(context("depth", depth))), fibOutputs, namedMeasures("time", new timeMeasure()));
+
+  if(a==0 || a==1)
+  {
+    dbg << "=1."<<endl;
+    m.setOutCtxt(0, context("val", 1));
+    //return make_pair(1, fibOutputs);
+    return 1;
+  }
+  else
+  {
+    int ret1 = fibModule(a-1, depth+1);
+    int ret2 = fibModule(a-2, depth+1);
+    int va = fibModule(a-1, depth+1) + fibModule(a-2, depth+1);
+    dbg << "="<< va <<endl;
+    //dbg << "="<<"fib("<<a-1<<")"<< fibModule(a-1, depth+1) << "fib("<<a-2<<")" <<  fibModule(a-2, depth+1) <<endl;
+    m.setOutCtxt(0, context("val", va));
+    return va;
+  }
+}
+*/
 #pragma sightLoc modularFibEnd
