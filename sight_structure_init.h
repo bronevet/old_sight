@@ -46,7 +46,7 @@ class ThreadInitFinInstantiator : public sight::common::LoadTimeRegistry {
     ThreadFinalizer   fin;
     set<std::string> mustFollow;
     set<std::string> mustPrecede;
-    
+
     threadFuncs(ThreadInitializer init, ThreadFinalizer fin,
                 const set<std::string>& mustFollow, const set<std::string>& mustPrecede) :
               UID((*maxUID)++), init(init), fin(fin), mustFollow(mustFollow), mustPrecede(mustPrecede) {}
@@ -75,6 +75,11 @@ class ThreadInitFinInstantiator : public sight::common::LoadTimeRegistry {
   // entries in funcs
   static bool* depGraphUptoDate;
   
+  // The height of each thread's SOStack after it has been initialized. This is important
+  // for ensuring that on shutdown we destroy any sightObjects above this point before
+  // calling the finalization routines.
+  static ThreadLocalStorage0<int> initializedSOStackHeight;
+
   ThreadInitFinInstantiator();
   
   // Called exactly once for each class that derives from LoadTimeRegistry to initialize its static data structures.
