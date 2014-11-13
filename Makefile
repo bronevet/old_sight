@@ -36,10 +36,10 @@ SIGHT_LINKFLAGS += ${ROOT_PATH}/widgets/libmsr/lib/libmsr.so \
                     -Wl,-rpath ${ROOT_PATH}/widgets/libmsr/lib
 endif
 	                
-override CC=clang #icc #gcc
-override CCC=clang++ #icpc #clang++ #g++
+override CC=icc#clang #icc #gcc
+override CCC=icpc#clang++ #icpc #clang++ #g++
 MPICC = mpi${CC}
-MPICCC = ${ROOT_PATH}/tools/mpi${CCC}
+MPICCC = mpi${CCC} #${ROOT_PATH}/tools/mpi${CCC}
 
 OS := $(shell uname -o)
 ifeq (${OS}, Cygwin)
