@@ -573,9 +573,9 @@ void modularApp::enterModule(string moduleName, int moduleID, int numInputs, int
 
     // hoa edit
     ostringstream cmd;
-    cmd << "registerModuleButtonCmd("<<maxButtonID<<", \""<< moduleTraces[moduleID]->getDisplayJSCmd(contextAttrs, traceAttrs, "",trace::scatter3d,true, false, false, true, moduleName)<< "\");"<<endl;
-    cmd << "registerModuleButtonCmd("<<(maxButtonID+100)<<", \""<< moduleTraces[moduleID]->getDisplayJSCmd(contextAttrs, traceAttrs, "",trace::ccp,true, false, false, true, moduleName)<< "\");"<<endl;
-    cmd << "registerModuleButtonCmd("<<(maxButtonID+200)<<", \""<< moduleTraces[moduleID]->getDisplayJSCmd(contextAttrs, traceAttrs, "", trace::pcp,true, false, false, true, moduleName)<< "\");"<<endl;
+    cmd << "registerModuleButtonCmd("<<maxButtonID<<", \""<< moduleTraces[moduleID]->getDisplayJSCmd(contextAttrs, traceAttrs, "",trace::scatter3d, false, true, false, true, moduleName)<< "\");"<<endl;
+    cmd << "registerModuleButtonCmd("<<(maxButtonID+100)<<", \""<< moduleTraces[moduleID]->getDisplayJSCmd(contextAttrs, traceAttrs, "",trace::ccp, false, true, false, true, moduleName)<< "\");"<<endl;
+    cmd << "registerModuleButtonCmd("<<(maxButtonID+200)<<", \""<< moduleTraces[moduleID]->getDisplayJSCmd(contextAttrs, traceAttrs, "", trace::pcp, false, true, false, true, moduleName)<< "\");"<<endl;
 
     string vizl = "scatter3d:ccp:pcp";
     //datFile << "nodeid="<< moduleID << ",buttonID = " << maxButtonID << ",vizList =" << vizl << endl;

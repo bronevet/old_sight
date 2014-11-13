@@ -1,5 +1,6 @@
 <html>
   <head>
+    <title> </title>
     <script src="../../script/hashtable.js"></script>
     <script src="../../script/taffydb/taffy.js"></script>
     <script src="../../script/placement.js"></script>
@@ -37,7 +38,8 @@
     
     </head>
  <body>
-     <div id="CanvizBox_node0" style="position: absolute; background-color: rgb(221, 221, 221); boder: 45px; top: 10px; width: 401.333px; height: 266.667px;">
+     <div id="modName" style="position: absolute; top: 10px; color:red;font-size: 20pt; left: 30px;">  </div>
+     <div id="CanvizBox_node0" style="position: absolute; background-color: rgb(221, 221, 221); boder: 45px; top: 50px; width: 401.333px; height: 266.667px;">
         <div id="CanvizBox_node0_Scatter3D" class="ui-widget-content" style="height: auto; z-index: 1000; border-color: rgb(85, 85, 85); border-style: solid; position: absolute; visibility: visible;">
         </div>
      </div>
@@ -45,14 +47,19 @@
     <script type="text/javascript">
         
     dataset();
-        
+
     var hostDivID = "CanvizBox_node0_Scatter3D";
     var inwin = 0;
     showScatter3D(data, attrNames,
                   minVals, maxVals,
                   numContextAttrs, numTraceAttrs,
                   hostDivID, inwin);
-                  
-     </script>
+    
+    var div = document.getElementById("modName");
+    div.textContent = moduleName;
+
+    document.title = "Scatter Plot 3D - " + moduleName;
+    
+    </script>
  </body>
 </html>

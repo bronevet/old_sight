@@ -445,7 +445,7 @@ void mousePressed()
   float rad = sqrt((xt0 - width/2)*(xt0 - width/2) + (yt0 - height/2)*(yt0 - height/2));
   
   // outside small leaves
-  if (abs(selpr - rad) < 30)
+  if (abs(selpr - rad) < 60)
   {
     for(int i = 0; i < num; i++)
     {  
@@ -460,7 +460,7 @@ void mousePressed()
     if (closest == (num-1))
       closest = 0;
  
-    if( ( abs( xclosest - mouseX ) < 10 ) && ( abs( yclosest - mouseY ) < 10 ))
+    if( ( abs( xclosest - mouseX ) < 100 ) && ( abs( yclosest - mouseY ) < 100 ))
     {
       selected = closest;
       dim_selected = closest;
