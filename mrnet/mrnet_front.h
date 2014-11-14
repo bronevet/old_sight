@@ -29,6 +29,7 @@ using namespace std;
 using namespace atomiccontrols;
 
 extern bool saw_failure ;
+extern FILE* merge_output_descr;
 
 extern int num_attach_callbacks;
 extern int num_detach_callbacks;

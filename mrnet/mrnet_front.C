@@ -13,6 +13,7 @@
 #include "mrnet/MRNet.h"
 #include "mrnet_integration.h"
 #include "AtomicSyncPrimitives.h"
+#include "mrnet_front.h"
 
 
 //#define VERBOSE
@@ -29,6 +30,7 @@ using namespace std;
 using namespace atomiccontrols;
 
 bool saw_failure = false;
+FILE* merge_output_descr = NULL;
 
 int num_attach_callbacks = 0;
 int num_detach_callbacks = 0;
@@ -99,45 +101,35 @@ string createDir(string workDir, string dirName) {
     return fullDirName.str();
 }
 
-int main(int argc, char **argv)
+
+int startup(char* topology_file, char* so_file, char*  _structureFile, int num_commnodes, int num_backends)
 {
     int send_val=32;
     int recv_val;
     int tag, retval;
     PacketPtr p;
 
-    if( (argc != 4) && (argc != 5) ){
-        fprintf(stderr, "Usage: %s <topology file> <so_file> <num BEs> [optional - <connection file>]\n", argv[0]);
-        exit(-1);
-    }
-    const char * topology_file = argv[1];
-    const char * so_file = argv[2];
     const char * dummy_argv=NULL;
 
     FILE * structureFile;
-    createDir(".", "mrnet.out");
+    if(merge_output_descr == NULL){
+        createDir(".", "mrnet.out");
 //    structureFile = fopen ("mrnet_merge_structure","ab+");
-    structureFile = fopen ("mrnet.out/mrnet_merge_structure","w");
-    if (structureFile!=NULL) {
+        structureFile = fopen ("mrnet.out/mrnet_merge_structure","w");
+        if (structureFile!=NULL) {
 #ifdef DEBUG_ON
-        printf("OUT File opened.. \n");
-#endif
+            printf("OUT File opened.. \n");
+    #endif
+        }
+    }else {
+        structureFile = merge_output_descr;
     }
 
     int nets = 1;
 
-    int num_backends = 1;
-    if( argc == 4 ){
-        num_backends = atoi( argv[3] );
-    }
-
 //	output file for topology connection info
     char* conn_info_fname ;
-    if(argc > 4){
-	conn_info_fname = argv[4];
-    }else {
-	conn_info_fname = "connection.params";
-    }
+    conn_info_fname = "connection.params";
 
     int n = 0;
     while( n++ < nets ) {
@@ -222,7 +214,7 @@ int main(int argc, char **argv)
         // Create a stream that will use the "SightStreamAggregator"filter for aggregation
         //Also disable default synchronization filter -> SFILTER_DONTWAIT
         Stream * add_stream = net->new_Stream( comm_BC,
-                                               filter_id,
+                filter_id,
 //                                               TFILTER_SUM,
 //                                               SFILTER_WAITFORALL );
                 SFILTER_DONTWAIT );
@@ -346,3 +338,23 @@ int main(int argc, char **argv)
 
     return 0;
 }
+
+
+int main(int argc, char **argv){
+    if( (argc != 4) && (argc != 5) ){
+        fprintf(stderr, "Usage: %s <topology file> <so_file> <num BEs> [optional - <connection file>]\n", argv[0]);
+        exit(-1);
+    }
+    const char * topology_file = argv[1];
+    const char * so_file = argv[2];
+
+    int num_backends = 1;
+    if( argc == 4 ){
+        num_backends = atoi( argv[3] );
+    }
+
+//	output file for topology connection info
+    return startup((char *)topology_file, (char*)so_file, NULL, 0, num_backends);
+
+}
+
