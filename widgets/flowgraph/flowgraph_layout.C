@@ -179,6 +179,7 @@ string flowgraph::genDataFlowGraph() {
 // Given a string representation of a data flowgraph, emits the graph's visual representation
 void flowgraph::outputDataFlowGraph(std::string graphdata) {
 
+    std::string texNode="";
 	std::string t1, t2;
 	int ind = 0;
 	int drawNodeGraph = 0;
@@ -201,6 +202,8 @@ void flowgraph::outputDataFlowGraph(std::string graphdata) {
 		while(std::getline(grdat, t2, '{'))	{
 			if(ind == 0)
 				graphName = t2;
+            else if(ind == 1)
+                texNode = t2;
 			else
 			{
 				if(graphdata.find("verhorNodeStart") == 0)
@@ -223,7 +226,16 @@ void flowgraph::outputDataFlowGraph(std::string graphdata) {
 			ind++;
 		}
 
-
+if(graphdata.find("graphNodeStart:") == 0 || graphdata.find("verhorNodeStart") == 0)
+{
+        ostringstream linkFName;
+		linkFName << outDir << "/link_"<<graphName<<".txt";
+		ofstream linkFile;
+		linkFile.open(linkFName.str().c_str(), std::fstream::app);
+	if(texNode.compare("") != 0)
+		linkFile << nodeName +"{" + texNode + "\n";
+        linkFile.close();
+}
 		ostringstream dataFName;
 		dataFName << outDir << "/graphNode_"<<graphName<<".txt";
 		ofstream dataFile;
