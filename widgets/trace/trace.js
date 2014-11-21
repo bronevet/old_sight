@@ -456,8 +456,9 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, viz, inwin, 
             {
               //showScatter3D(data, attrNames, minVals, maxVals, numContextAttrs, numTraceAttrs, hostDivID, 1);
               var newDiv = "";
-               newDiv += "<div id=\"vizFrameBut\" style=\"color: #FF0000;font-size:15pt;border-style: none; top:0px;\" width = \"50\"> <img src=\"img/close.png\" border=\"0\" onclick=\"removeIFrame('vizFrame');\" width = \"20\"/>"+moduleName+"</div>\n";
-               newDiv += "<iframe id=\"vizFrame\" src=\"widgets/trace/scatter3d.html?data="+data+"&attrNames="+attrNames+"&minVals="+minVals+"&maxVals="+maxVals+"&numContextAttrs="+numContextAttrs+"&numTraceAttrs="+numTraceAttrs+"&hostDivID="+hostDivID+"\" width=\"2600\" height=\"1100\" frameborder =\"0\" scrolling = \"auto\"></iframe>\n";
+               //newDiv += "<div id=\"vizFrameBut\" style=\"color: #FF0000;font-size:15pt;border-style: none; top:0px;\" width = \"50\"> <img src=\"img/close.png\" border=\"0\" onclick=\"removeIFrame('vizFrame');\" width = \"20\"/>"+moduleName+"</div>\n";
+               newDiv += "<div id=\"vizFrameBut\" style=\"color: #FF0000;font-size:15pt;border-style: none; top:0px;\" width = \"50\"> <img src=\"img/close.png\" border=\"0\" onclick=\"removeIFrame('vizFrame');\" width = \"20\"/></div>\n";
+               newDiv += "<iframe id=\"vizFrame\" src=\"widgets/trace/scatter3d.html?moduleName="+moduleName+"&data="+data+"&attrNames="+attrNames+"&minVals="+minVals+"&maxVals="+maxVals+"&numContextAttrs="+numContextAttrs+"&numTraceAttrs="+numTraceAttrs+"&hostDivID="+hostDivID+"\" width=\"2600\" height=\"1100\" frameborder =\"0\" scrolling = \"auto\"></iframe>\n";
             
                hostDiv.innerHTML += newDiv;
             
@@ -471,7 +472,8 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, viz, inwin, 
             }
             else
               // open in new window
-              newwindow = window.open("widgets/trace/scatter3d.html?data="+data+"&attrNames="+attrNames+"&minVals="+minVals+"&maxVals="+maxVals+"&numContextAttrs="+numContextAttrs+"&numTraceAttrs="+numTraceAttrs+"&hostDivID="+hostDivID, "sc3d", "width=2600, height=1100, scrollbars=1, dependent=yes");
+              newwindow = window.open("widgets/trace/scatter3d.html?moduleName="+moduleName+"&data="+data+"&attrNames="+attrNames+"&minVals="+minVals+"&maxVals="+maxVals+"&numContextAttrs="+numContextAttrs+"&numTraceAttrs="+numTraceAttrs+"&hostDivID="+hostDivID, "sc3d"+hostDivID, "width=2600, height=1100, scrollbars=1, dependent=yes");
+              
         //}));
      }
      // end scatter 3d
@@ -564,8 +566,9 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, viz, inwin, 
             if(inwin == true)
             {
                var newDiv = "";
-               newDiv += "<div id=\"vizFrameBut\" style=\"color: #FF0000;font-size:15pt;border-style: none; top:0px;\" width = \"50\"> <img src=\"img/close.png\" border=\"0\" onclick=\"removeIFrame('vizFrame');\" width = \"20\"/>"+moduleName+"</div>\n";
-               newDiv += "<iframe id=\"vizFrame\" src=\"widgets/trace/web-export/index.html?data="+data+ "&attrNames="+attrNames+"&minVals="+minVals+"&maxVals="+maxVals+"&numContextAttrs="+numContextAttrs+"&numTraceAttrs="+numTraceAttrs+"&hostDivID="+hostDivID +"\" width=\"950\" height=\"950\" frameborder =\"0\" scrolling = \"auto\"></iframe>\n";
+               //newDiv += "<div id=\"vizFrameBut\" style=\"color: #FF0000;font-size:15pt;border-style: none; top:0px;\" width = \"50\"> <img src=\"img/close.png\" border=\"0\" onclick=\"removeIFrame('vizFrame');\" width = \"20\"/>"+moduleName+"</div>\n";
+               newDiv += "<div id=\"vizFrameBut\" style=\"color: #FF0000;font-size:15pt;border-style: none; top:0px;\" width = \"50\"> <img src=\"img/close.png\" border=\"0\" onclick=\"removeIFrame('vizFrame');\" width = \"20\"/></div>\n";
+               newDiv += "<iframe id=\"vizFrame\" src=\"widgets/trace/web-export/index.html?moduleName="+moduleName+"&data="+data+ "&attrNames="+attrNames+"&minVals="+minVals+"&maxVals="+maxVals+"&numContextAttrs="+numContextAttrs+"&numTraceAttrs="+numTraceAttrs+"&hostDivID="+hostDivID +"\" width=\"950\" height=\"950\" frameborder =\"0\" scrolling = \"auto\"></iframe>\n";
             
                hostDiv.innerHTML += newDiv;
             
@@ -579,7 +582,7 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, viz, inwin, 
             }
             else
             // open in new window
-            newwindow=window.open("widgets/trace/web-export/index.html?data="+data+"&attrNames="+attrNames+"&minVals="+minVals+"&maxVals="+maxVals+"&numContextAttrs="+numContextAttrs+"&numTraceAttrs="+numTraceAttrs+"&hostDivID="+hostDivID,"CCP",'height=950,width=950');
+            newwindow=window.open("widgets/trace/web-export/index.html?moduleName="+moduleName+"&data="+data+"&attrNames="+attrNames+"&minVals="+minVals+"&maxVals="+maxVals+"&numContextAttrs="+numContextAttrs+"&numTraceAttrs="+numTraceAttrs+"&hostDivID="+hostDivID,"CCP"+hostDivID,'height=950,width=950');
         //}));
     }
     // end correlation coordinate plots
@@ -674,8 +677,9 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, viz, inwin, 
             if(inwin == true)
             {
                var newDiv = "";
-               newDiv += "<div id=\"vizFrameBut\" style=\"color: #FF0000;font-size:15pt;border-style: none; top:0px;\" width = \"50\"> <img src=\"img/close.png\" border=\"0\" onclick=\"removeIFrame('vizFrame');\" width = \"20\"/>"+moduleName+"</div>\n";
-               newDiv += "<iframe id=\"vizFrame\" src=\"widgets/trace/pcp/web-export/index.html?data="+data+"&attrNames="+attrNames+"&minVals="+minVals+"&maxVals="+maxVals+"&numContextAttrs="+numContextAttrs+"&numTraceAttrs="+numTraceAttrs+"&hostDivID="+hostDivID +"\" width=\"1220\" height=\"320\" frameborder =\"0\" scrolling = \"auto\"></iframe>\n";
+               //newDiv += "<div id=\"vizFrameBut\" style=\"color: #FF0000;font-size:15pt;border-style: none; top:0px;\" width = \"50\"> <img src=\"img/close.png\" border=\"0\" onclick=\"removeIFrame('vizFrame');\" width = \"20\"/>"+moduleName+"</div>\n";
+               newDiv += "<div id=\"vizFrameBut\" style=\"color: #FF0000;font-size:15pt;border-style: none; top:0px;\" width = \"50\"> <img src=\"img/close.png\" border=\"0\" onclick=\"removeIFrame('vizFrame');\" width = \"20\"/></div>\n";
+               newDiv += "<iframe id=\"vizFrame\" src=\"widgets/trace/pcp/web-export/index.html?moduleName="+moduleName+"&data="+data+"&attrNames="+attrNames+"&minVals="+minVals+"&maxVals="+maxVals+"&numContextAttrs="+numContextAttrs+"&numTraceAttrs="+numTraceAttrs+"&hostDivID="+hostDivID +"\" width=\"1220\" height=\"320\" frameborder =\"0\" scrolling = \"auto\"></iframe>\n";
             
                hostDiv.innerHTML += newDiv;
             
@@ -689,7 +693,7 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, viz, inwin, 
             }
             else
             // open in new window
-            newwindow=window.open("widgets/trace/pcp/web-export/index.html?data="+data+"&attrNames="+attrNames+"&minVals="+minVals+"&maxVals="+maxVals+"&numContextAttrs="+numContextAttrs+"&numTraceAttrs="+numTraceAttrs+"&hostDivID="+hostDivID,"PCP",'height=300,width=1200');
+            newwindow=window.open("widgets/trace/pcp/web-export/index.html?moduleName="+moduleName+"&data="+data+"&attrNames="+attrNames+"&minVals="+minVals+"&maxVals="+maxVals+"&numContextAttrs="+numContextAttrs+"&numTraceAttrs="+numTraceAttrs+"&hostDivID="+hostDivID,"PCP"+hostDivID,'height=320,width=1220');
        //}));
     }
     // end parallel coordinates plots

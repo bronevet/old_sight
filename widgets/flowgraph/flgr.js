@@ -1,6 +1,5 @@
 function clickModule(nodeid, buttonid, nameinod, mouX, mouY)
 {
-  alert("nodeid="+nodeid+"buttonid=" +buttonid);
   var div = document.createElement('div');
   div.id = 'CanvizBox_node'+nodeid;
   div.style='position: absolute; top:'+mouY+'%; left:'+mouX+'%';

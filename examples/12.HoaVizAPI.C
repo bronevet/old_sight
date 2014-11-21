@@ -11,9 +11,45 @@ int main(int argc, char** argv)
 	// It is possible to write arbitrary text to the debug output
 	dbg << "<h1>Example 12: HoaVizAPI</h1>" << endl;
     
+    // node link graph example
+
+    flowgraph glik;
+       
+	glik.graphNodeStart("a","a text log",0,0);
+	glik.graphNodeStart("c","c text log",1,0);
+	glik.graphNodeEnd("c");
+	glik.graphNodeStart("b","b text log",1,1);
+	glik.graphNodeStart("d","d text log",2,1);
+	glik.graphNodeEnd("d");
+	glik.graphNodeStart("e","e text log",3,1);
+	glik.graphNodeEnd("e");
+	glik.graphNodeEnd("b");
+	glik.graphNodeEnd("a");
+
+    glik.graphNodeStart("f","f text log",0,2);
+    glik.graphNodeStart("g","g text log",1,2);
+    glik.graphNodeStart("h","h text log",2,2);
+    glik.graphNodeEnd("h");
+    glik.graphNodeStart("m","m text log",2,3);
+    glik.graphNodeEnd("m");
+    glik.graphNodeStart("x","x text log",3,2);
+    glik.graphNodeStart("y","y text log",4,2);
+    glik.graphNodeEnd("y");
+    glik.graphNodeEnd("x");
+    glik.graphNodeEnd("g");
+    glik.graphNodeEnd("f");
+
+	glik.graphNodeStart("t1","t1 text log",4,0);
+	glik.graphNodeStart("t2","t2 text log",5,0);
+	glik.graphNodeStart("t3","t3 text log",6,0);
+	glik.graphNodeEnd("t3");
+	glik.graphNodeEnd("t2");
+	glik.graphNodeEnd("t1");
+
+    
     // generate graph by vertical/horizontal layout - example 1
 	flowgraph g;
-
+       
 	g.graphNodeStart("a",0,0);
 	g.graphNodeStart("c",1,0);
 	g.graphNodeEnd("c");
@@ -83,13 +119,15 @@ int main(int argc, char** argv)
     fg.addEdge("a", "f");
 
     // generate graph 2 by method 2
-	flowgraph gra;
+	/*
+        flowgraph gra;
 	gra.addNode("a");
 	gra.addNode("b","a");
 	gra.addNode("c","b");
 	gra.addNode("d","b");
 	gra.addNode("e","d");
-	//gr.addEdge("a","c");
+	*/
+        //gr.addEdge("a","c");
 	//gr.addEdge("a","e");
 
 	/*

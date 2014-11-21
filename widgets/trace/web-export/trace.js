@@ -670,7 +670,7 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, viz, inwin, 
             }
             else
             // open in new window
-            newwindow=window.open("widgets/trace/pcp/web-export/index.html?data="+data+"&attrNames="+attrNames+"&minVals="+minVals+"&maxVals="+maxVals+"&numContextAttrs="+numContextAttrs+"&numTraceAttrs="+numTraceAttrs+"&hostDivID="+hostDivID,"PCP",'height=300,width=1200');
+            newwindow=window.open("widgets/trace/pcp/web-export/index.html?data="+data+"&attrNames="+attrNames+"&minVals="+minVals+"&maxVals="+maxVals+"&numContextAttrs="+numContextAttrs+"&numTraceAttrs="+numTraceAttrs+"&hostDivID="+hostDivID,"PCP",'height=320,width=1220');
        //}));
     }
     // end parallel coordinates plots

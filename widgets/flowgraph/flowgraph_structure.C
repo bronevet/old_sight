@@ -176,7 +176,15 @@ void flowgraph::graphNodeStart(std::string nodeName){
 	stringstream ss;
 	ss << flowgraphID;
 	string str = ss.str();
-	flowgraph g("graphNodeStart:"+str+"{"+nodeName);
+	flowgraph g("graphNodeStart:"+str+"{"+"{"+nodeName);
+}
+    
+void flowgraph::graphNodeStart(std::string nodeName, std::string texNode){
+    stGraph++;
+    stringstream ss;
+    ss << flowgraphID;
+    string str = ss.str();
+    flowgraph g("graphNodeStart:"+str+"{"+texNode+"{"+nodeName);
 }
 
 void flowgraph::graphNodeStart(std::string nodeName, int verID, int horID){
@@ -192,9 +200,26 @@ void flowgraph::graphNodeStart(std::string nodeName, int verID, int horID){
         stringstream ss2;
         ss2 << horID;;
         string str2 = ss2.str();
-	flowgraph g("verhorNodeStart:"+str+"{"+nodeName+"-"+str1+"-"+str2);
+	flowgraph g("verhorNodeStart:"+str+"{"+"{"+nodeName+"-"+str1+"-"+str2);
 
 }
+    
+    void flowgraph::graphNodeStart(std::string nodeName, std::string texNode, int verID, int horID){
+        stGraph++;
+        stringstream ss;
+        ss << flowgraphID;
+        string str = ss.str();
+        
+        stringstream ss1;
+        ss1 << verID;
+        string str1 = ss1.str();
+        
+        stringstream ss2;
+        ss2 << horID;;
+        string str2 = ss2.str();
+        flowgraph g("verhorNodeStart:"+str+"{"+texNode+"{"+nodeName+"-"+str1+"-"+str2);
+        
+    }
 
 
 void flowgraph::graphNodeEnd(std::string nodeName){

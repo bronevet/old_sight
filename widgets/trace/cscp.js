@@ -15,7 +15,7 @@ function showCirSCP(data, attrNames, minVals, maxVals, numCtxtVars, numTraceAttr
 function dataset()
 {
   //nu = location.search.substring(1);
-  //nu = getQueryParam("nTra");
+  moduleName = getQueryParam("moduleName");
   data = getQueryParam("data");  
   attrNames = getQueryParam("attrNames"); 
   minVals = getQueryParam("minVals"); 
