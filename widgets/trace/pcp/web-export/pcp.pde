@@ -43,7 +43,10 @@ void setup()
   num = numContext+numTrace;
   
   // size of window
-  size(1200, 300);
+  if(num < 20)
+    size(1200, 300);
+  else
+    size(70*num, 300);
   background(255);
   smooth();
    
@@ -72,13 +75,31 @@ void setup()
     //println("list["+i+"]="+list[i]);
     for(int j= 0; j<(numContext + numTrace); j++)
     {
-      //println("minVa["+j+"]="+minVa[j]+"and maxVa["+j+"]="+maxVa[j]);
-      if(list[i*(numContext + numTrace)+j].matches("\\d+") == true)
-      {
-        //println("false - list["+i*(numContext + numTrace)+j+"]="+list[i*(numContext + numTrace)+j]);
       
-        if(minVa[j] != maxVa[j])
+      //if(list[i*(numContext + numTrace)+j].matches("\\d+") == true)
+      //{
+
+        if(list[i*(numContext + numTrace)+j].matches("[a-zA-Z ]") == true)
         {
+          //println("string - list["+i*(numContext + numTrace)+j+"]="+list[i*(numContext + numTrace)+j]);     
+          /*
+          if(i == 0)
+          {
+            listNames[index] = listNam[j];
+            index += 1;
+          }
+          
+          lines[i] += "0";
+          if(j < (numContext + numTrace - 1))
+            lines[i] += " ";  
+          */          
+          if(i==0)
+            num -= 1;
+        }
+        else
+        {
+          //println("number - list["+i*(numContext + numTrace)+j+"]="+list[i*(numContext + numTrace)+j]);
+
           if(i == 0)
           {
             listNames[index] = listNam[j];
@@ -89,17 +110,7 @@ void setup()
           if(j < (numContext + numTrace - 1))
             lines[i] += " ";
         }
-        else
-        {
-           if(i==0)
-             num -= 1;
-        }
-      }
-      else
-      {
-        if(i==0)
-          num -= 1;
-      }
+        //println("minVa["+j+"]="+minVa[j]+"and maxVa["+j+"]="+maxVa[j]);
     }
     //println("num = "+num);
     //println("lines["+i+"]="+lines[i]);
@@ -222,11 +233,11 @@ void draw_pcp(int v0, int v1)
   strokeWeight(1);
   // transparency = 50/255
   if(c < -eps)
-    stroke(0, 0, -c*255, 50);
+    stroke(0, 0, -c*255, 130);
   else if(c > eps)
-    stroke(c*255, 0, 0, 50);
+    stroke(c*255, 0, 0, 130);
   else
-    stroke(0, 0, 0, 50);
+    stroke(0, 0, 0, 130);
 
   for(int i = 0; i < lines.length; i+=step)  
   {
