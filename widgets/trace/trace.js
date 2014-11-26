@@ -582,7 +582,7 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, viz, inwin, 
             }
             else
             // open in new window
-            newwindow=window.open("widgets/trace/web-export/index.html?moduleName="+moduleName+"&data="+data+"&attrNames="+attrNames+"&minVals="+minVals+"&maxVals="+maxVals+"&numContextAttrs="+numContextAttrs+"&numTraceAttrs="+numTraceAttrs+"&hostDivID="+hostDivID,"CCP"+hostDivID,'height=950,width=950');
+            newwindow=window.open("widgets/trace/web-export/index.html?moduleName="+moduleName+"&data="+data+"&attrNames="+attrNames+"&minVals="+minVals+"&maxVals="+maxVals+"&numContextAttrs="+numContextAttrs+"&numTraceAttrs="+numTraceAttrs+"&hostDivID="+hostDivID,"CCP"+hostDivID,'height=950,width=950, scrollbars=1');
         //}));
     }
     // end correlation coordinate plots
@@ -693,7 +693,7 @@ function displayTrace(traceLabel, hostDivID, ctxtAttrs, traceAttrs, viz, inwin, 
             }
             else
             // open in new window
-            newwindow=window.open("widgets/trace/pcp/web-export/index.html?moduleName="+moduleName+"&data="+data+"&attrNames="+attrNames+"&minVals="+minVals+"&maxVals="+maxVals+"&numContextAttrs="+numContextAttrs+"&numTraceAttrs="+numTraceAttrs+"&hostDivID="+hostDivID,"PCP"+hostDivID,'height=320,width=1220');
+            newwindow=window.open("widgets/trace/pcp/web-export/index.html?moduleName="+moduleName+"&data="+data+"&attrNames="+attrNames+"&minVals="+minVals+"&maxVals="+maxVals+"&numContextAttrs="+numContextAttrs+"&numTraceAttrs="+numTraceAttrs+"&hostDivID="+hostDivID,"PCP"+hostDivID,'height=500,width=1220, scrollbars=1');
        //}));
     }
     // end parallel coordinates plots

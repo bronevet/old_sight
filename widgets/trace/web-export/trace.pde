@@ -17,10 +17,10 @@ float radius = 0.8;
 float radbr = 0.14;
 
 /*
-float axisW = 5;
+float axisW = 4;
 float rangeLeaf = 0.15;
 float radius = 0.8;
-float radbr = 0.08;
+float radbr = 0.14;
 */
 
 //float radbr = 0.15;
@@ -59,10 +59,17 @@ void setup()
   num = numContext+numTrace;
   
   // size of window
-  size(900, 900);
+  if(num < 20)
+    size(900, 900);
+  else
+  {
+    size(40*num, 40*num);
+    radbr = 2.8/num;
+  }
   background(255);
   smooth();
-   
+
+  
   // font size
   fontList = PFont.list();
   aFont = createFont(fontList[0], 10, true);
@@ -88,13 +95,31 @@ void setup()
     //println("list["+i+"]="+list[i]);
     for(int j= 0; j<(numContext + numTrace); j++)
     {
-      //println("minVa["+j+"]="+minVa[j]+"and maxVa["+j+"]="+maxVa[j]);
-      if(list[i*(numContext + numTrace)+j].matches("\\d+") == true)
-      {
-        //println("false - list["+i*(numContext + numTrace)+j+"]="+list[i*(numContext + numTrace)+j]);
       
-        if(minVa[j] != maxVa[j])
+      //if(list[i*(numContext + numTrace)+j].matches("\\d+") == true)
+      //{
+
+        if(list[i*(numContext + numTrace)+j].matches("[a-zA-Z ]") == true)
         {
+          //println("string - list["+i*(numContext + numTrace)+j+"]="+list[i*(numContext + numTrace)+j]);     
+          /*
+          if(i == 0)
+          {
+            listNames[index] = listNam[j];
+            index += 1;
+          }
+          
+          lines[i] += "0";
+          if(j < (numContext + numTrace - 1))
+            lines[i] += " ";  
+          */          
+          if(i==0)
+            num -= 1;
+        }
+        else
+        {
+          //println("number - list["+i*(numContext + numTrace)+j+"]="+list[i*(numContext + numTrace)+j]);
+
           if(i == 0)
           {
             listNames[index] = listNam[j];
@@ -104,6 +129,44 @@ void setup()
           lines[i] += list[i*(numContext + numTrace)+j];
           if(j < (numContext + numTrace - 1))
             lines[i] += " ";
+        }
+        //println("minVa["+j+"]="+minVa[j]+"and maxVa["+j+"]="+maxVa[j]);
+    }
+    //println("num = "+num);
+    //println("lines["+i+"]="+lines[i]);
+  }
+  
+  /*
+  for(int i=0; i<k; i++)
+  {
+    lines[i] = ""; 
+    //println("list["+i+"]="+list[i]);
+    for(int j= 0; j<(numContext + numTrace); j++)
+    {
+      //println("minVa["+j+"]="+minVa[j]+"and maxVa["+j+"]="+maxVa[j]);
+      if(list[i*(numContext + numTrace)+j].matches("\\d+") == true)
+      {
+        //println("false - list["+i*(numContext + numTrace)+j+"]="+list[i*(numContext + numTrace)+j]);
+      
+        if(minVa[j] != maxVa[j])
+        {
+          if(list[i*(numContext + numTrace)+j].matches("[a-zA-Z ]") == false)
+          {
+            if(i == 0)
+            {
+              listNames[index] = listNam[j];
+              index += 1;
+            }
+            
+            lines[i] += list[i*(numContext + numTrace)+j];
+            if(j < (numContext + numTrace - 1))
+              lines[i] += " ";
+          }
+          else
+          {
+            if(i==0)
+              num -= 1;
+          }
         }
         else
         {
@@ -120,12 +183,13 @@ void setup()
     //println("num = "+num);
     //println("lines["+i+"]="+lines[i]);
   }
+  */
   
   // set up dimensions' names
  
   for(int i=0; i<num; i++)
   {
-    //dimNames[i] = listNames[i];
+    //dimNames[i] = listNames[i]; 
     String[] listN = split(listNames[i],':');
     dimNames[i] = listN[listN.length-3]+ ":" + listN[listN.length-2]+ ":"+listN[listN.length-1];
   }
@@ -424,11 +488,17 @@ void draw_ccp(int v0, int v1, float xc0, float yc0, float xc1, float yc1, float 
    
   fill(0);  
   textAlign(CENTER);
+  // text of dimension in focus view
   if(sfn == 0)
     text("d"+v1+ "-"+dimNames[v1], xtext, ytext);
+  // text of dimension in context view
   else
-    text("d"+v1, xtext, ytext);
-  
+  {
+    if(num < 40)
+      text("d"+v1, xtext, ytext);
+    else
+      text("d"+v1, xc1, yc1);
+  }  
 }
 
  
@@ -460,7 +530,7 @@ void mousePressed()
     if (closest == (num-1))
       closest = 0;
  
-    if( ( abs( xclosest - mouseX ) < 100 ) && ( abs( yclosest - mouseY ) < 100 ))
+    if( ( abs( xclosest - mouseX ) < 100 ) && ( abs( yclosest - mouseY ) < 100))
     {
       selected = closest;
       dim_selected = closest;
