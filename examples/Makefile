@@ -5,7 +5,8 @@ endif
 
 sight_H := ../*.h ../*/*.h ../widgets/*/*.h
 
-TESTERS = 8.Modules${EXE} 12.HoaVizAPI${EXE}
+TESTERS = 13.OpenMP1${EXE} 
+#7.Merging${EXE} 8.Modules${EXE} 12.HoaVizAPI${EXE}
 #1.StructuredFormatting${EXE} 12.HoaVizAPI${EXE}
 #		  0.Demo${EXE} \
 #          1.StructuredFormatting${EXE} \
@@ -52,15 +53,17 @@ run: ${TESTERS}
 #	
 #	./6.PerfAnalysis${EXE};
 #	
+
 #	export SIGHT_FILE_OUT=1; rm -rf dbg.7.Merging*; ./7.Merging${EXE} 1; ./7.Merging${EXE} 2; ./7.Merging${EXE} 3; ./7.Merging${EXE} 4; ./7.Merging${EXE} 5; ./7.Merging${EXE} 6; 
 #	export SIGHT_FILE_OUT=1; ../hier_merge${EXE} dbg.7.Merging dbg.7.Merging.*/structure
 #	rm -rf dbg.7.Merging.*;
 #	../slayout${EXE} dbg.7.Merging/structure;
-	
-	export SIGHT_FILE_OUT=1; rm -rf dbg.8.Modules*; ./8.Modules${EXE} 1 10; ./8.Modules${EXE} 1 30; ./8.Modules${EXE} 1 100; ./8.Modules${EXE} 2 10; ./8.Modules${EXE} 2 30; ./8.Modules${EXE} 2 100; ./8.Modules${EXE} 3 10; ./8.Modules${EXE} 3 30; ./8.Modules${EXE} 3 100;
-	export SIGHT_FILE_OUT=1; ../hier_merge dbg.8.Modules dbg.8.Modules.*/structure
-	rm -rf dbg.8.Modules.*;
-	../slayout${EXE} dbg.8.Modules/structure;
+
+
+#	export SIGHT_FILE_OUT=1; rm -rf dbg.8.Modules*; ./8.Modules${EXE} 1 10; ./8.Modules${EXE} 1 30; ./8.Modules${EXE} 1 100; ./8.Modules${EXE} 2 10; ./8.Modules${EXE} 2 30; ./8.Modules${EXE} 2 100; ./8.Modules${EXE} 3 10; ./8.Modules${EXE} 3 30; ./8.Modules${EXE} 3 100;
+#	export SIGHT_FILE_OUT=1; ../hier_merge dbg.8.Modules dbg.8.Modules.*/structure
+#	rm -rf dbg.8.Modules.*;
+#	../slayout${EXE} dbg.8.Modules/structure;
 #	
 #	export SIGHT_FILE_OUT=1; ./9.CompModules.merged${EXE} 1 .025 .025 .0001 .05; ./9.CompModules.merged${EXE} 0 .025 .025 .0005 .05; ./9.CompModules.merged${EXE} 0 .025 .025 .001 .05; ./9.CompModules.merged${EXE} 0 .025 .025 .005 .05;
 #	export SIGHT_FILE_OUT=1; ./9.CompModules.merged${EXE} 0 .05  .05  .0001 .05; ./9.CompModules.merged${EXE} 0 .05  .05  .0005 .05; ./9.CompModules.merged${EXE} 0 .05  .05  .001 .05; ./9.CompModules.merged${EXE} 0 .05  .05  .005 .05;
@@ -81,7 +84,10 @@ run: ${TESTERS}
 #
 #	./11.ExternTraceProcess;
 
-	./12.HoaVizAPI${EXE};
+#	./12.HoaVizAPI${EXE};
+
+	export OMP_NUM_THREADS=8;
+	./13.OpenMP1${EXE};
 
 #	export SIGHT_FILE_OUT=1; rm -rf dbg.12.HoaVizAPI*; ./12.HoaVizAPI${EXE} 1 10; ./12.HoaVizAPI${EXE} 1 30; ./12.HoaVizAPI${EXE} 1 100; ./12.HoaVizAPI${EXE} 2 10; ./12.HoaVizAPI${EXE} 2 30; ./12.HoaVizAPI${EXE} 2 100; ./12.HoaVizAPI${EXE} 3 10; ./12.HoaVizAPI${EXE} 3 30; ./12.HoaVizAPI${EXE} 3 100;
 #	export SIGHT_FILE_OUT=1; ../hier_merge dbg.12.HoaVizAPI dbg.12.HoaVizAPI.*/structure
@@ -112,8 +118,8 @@ run: ${TESTERS}
 #7.Merging${EXE}: 7.Merging.C ../libsight_structure.so ${sight_H}
 #	${CCC} ${SIGHT_CFLAGS} 7.Merging.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 7.Merging${EXE}
 
-8.Modules${EXE}: 8.Modules.C ../libsight_structure.so ${sight_H}
-	${CCC} ${SIGHT_CFLAGS} 8.Modules.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 8.Modules${EXE}
+#8.Modules${EXE}: 8.Modules.C ../libsight_structure.so ${sight_H}
+#	${CCC} ${SIGHT_CFLAGS} 8.Modules.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 8.Modules${EXE}
 
 #9.CompModules.single${EXE}: 9.CompModules.C ../libsight_structure.so ${sight_H}
 #	${CCC} ${SIGHT_CFLAGS} 9.CompModules.C -DTRACE -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 9.CompModules.single${EXE}
@@ -128,8 +134,11 @@ run: ${TESTERS}
 #	${CCC} -g 11.ExternTraceProcess.windowing.C -I.. -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 11.ExternTraceProcess.windowing${EXE}
 #	${CCC} -g ${SIGHT_CFLAGS} 11.ExternTraceProcess.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 11.ExternTraceProcess${EXE}
 
-./12.HoaVizAPI${EXE}: ./12.HoaVizAPI.C ../libsight_structure.so ${sight_H}
-	${CCC} ${SIGHT_CFLAGS} ./12.HoaVizAPI.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o ./12.HoaVizAPI${EXE}
+#./12.HoaVizAPI${EXE}: ./12.HoaVizAPI.C ../libsight_structure.so ${sight_H}
+#	${CCC} ${SIGHT_CFLAGS} ./12.HoaVizAPI.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o ./12.HoaVizAPI${EXE}
+
+./13.OpenMP1${EXE}: ./13.OpenMP1.C ../libsight_structure.so ${sight_H}
+	${CC} ${SIGHT_CFLAGS} ./13.OpenMP1.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o ./13.OpenMP1${EXE} 
 
 #runPthread: ${PTHREAD_TESTERS}
 #
