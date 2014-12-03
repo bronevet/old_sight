@@ -29,7 +29,7 @@ SIGHT_LINKFLAGS = \
 	          -lpthread
                   #-L ${PNMPI_PATH}lib -lpnmpi -Wl,-rpath,${PNMPI_PATH}
 
-RAPL_ENABLED = 0
+RAPL_ENABLED = 1
 ifeq (${RAPL_ENABLED}, 1)
 SIGHT_CFLAGS += -I${ROOT_PATH}/widgets/libmsr/include
 SIGHT_LINKFLAGS += ${ROOT_PATH}/widgets/libmsr/lib/libmsr.so \

@@ -47,11 +47,38 @@ int main (int argc, char *argv[])
 
    SightInit(argc, argv, "ex1", "dbg.MFEM.ex2");
 
-   if (argc == 1)
+   if (argc !=5 && argc !=6 && argc !=7)
    {
-      cout << "\nUsage: ex2 <mesh_file>\n" << endl;
+      cerr << "\nUsage: ex2 <mesh_file> ref_levels finElement exactSoln emitMtx outFile\n" << endl;
       return 1;
    }
+   char* meshFile = argv[1];
+   int ref_levels = atoi(argv[2]);
+   char* finElement = argv[3];
+   bool exactSoln = atoi(argv[4]);
+   bool emitMtx = false;
+   if(argc>=6) emitMtx = atoi(argv[5]);
+   const char* outFile;
+   assert(emitMtx==false || argc>=7);
+   if(argc>=7) outFile = argv[6];
+
+   cout << "ref_levels="<<ref_levels<<", exactSoln="<<exactSoln<<", emitMtx="<<emitMtx<<endl;
+
+   int feOrder;
+   if(strcmp(finElement, "none")==0) feOrder=1;
+   else if(strcmp(finElement, "linear")==0) feOrder=1;
+   else {
+      char* feType = strtok(finElement, ":");
+      assert(feType);
+      if(strcmp(feType, "h1")==0) {
+         char* feOrderStr = strtok(NULL, ":");
+         assert(feOrderStr);
+         feOrder = atoi(feOrderStr);
+      } else
+        assert(0);
+   }
+
+
 
    // 1. Read the mesh from the given mesh file. We can handle triangular,
    //    quadrilateral, tetrahedral or hexahedral elements with the same code.
@@ -76,23 +103,23 @@ int main (int argc, char *argv[])
 
    // 2. Select the order of the finite element discretization space. For NURBS
    //    meshes, we increase the order by degree elevation.
-   int p;
+   /*int p;
    if(argc==3) p = atoi(argv[2]);
    else {
      cout << "Enter finite element space order --> " << flush;
      cin >> p;
-   }
+   }*/
 
-   if (mesh->NURBSext && p > mesh->NURBSext->GetOrder())
-      mesh->DegreeElevate(p - mesh->NURBSext->GetOrder());
+   if (mesh->NURBSext && feOrder > mesh->NURBSext->GetOrder())
+      mesh->DegreeElevate(feOrder - mesh->NURBSext->GetOrder());
 
    // 3. Refine the mesh to increase the resolution. In this example we do
    //    'ref_levels' of uniform refinement. We choose 'ref_levels' to be the
    //    largest number that gives a final mesh with no more than 5,000
    //    elements.
    {
-      int ref_levels =
-         (int)floor(log(5000./mesh->GetNE())/log(2.)/dim);
+      /*int ref_levels =
+         (int)floor(log(5000./mesh->GetNE())/log(2.)/dim);*/
       for (int l = 0; l < ref_levels; l++)
          mesh->UniformRefinement();
    }
@@ -104,7 +131,7 @@ int main (int argc, char *argv[])
    //    associated with the mesh nodes.
    FiniteElementCollection *fec;
    FiniteElementSpace *fespace;
-   if (mesh->NURBSext)
+   /*if (mesh->NURBSext)
    {
       fec = NULL;
       fespace = mesh->GetNodes()->FESpace();
@@ -113,7 +140,28 @@ int main (int argc, char *argv[])
    {
       fec = new H1_FECollection(p, dim);
       fespace = new FiniteElementSpace(mesh, fec, dim);
+   }*/
+
+   if (mesh->GetNodes()) {
+     fec = NULL;
+     fespace = mesh->GetNodes()->FESpace();
+   } else if(strcmp(finElement, "linear")==0) {
+      fec = new LinearFECollection;
+      fespace = new FiniteElementSpace(mesh, fec);
+   } else {
+     char* feType = strtok(finElement, ":");
+     assert(feType);
+     if(strcmp(feType, "h1")==0) {
+        char* feOrderStr = strtok(NULL, ":");
+        assert(feOrderStr);
+        int feOrder = atoi(feOrderStr);
+
+        fec = new H1_FECollection(feOrder, mesh->Dimension());
+     } else
+       assert(0);
+     fespace = new FiniteElementSpace(mesh, fec);
    }
+
    dbg << "Number of unknowns: " << fespace->GetVSize() << endl
         << "Assembling: " << flush;
 
@@ -172,49 +220,54 @@ int main (int argc, char *argv[])
    dbg << "done." << endl;
    const SparseMatrix &A = a->SpMat();
 
-   // 8. Define a simple symmetric Gauss-Seidel preconditioner and use it to
-   //    solve the system Ax=b with PCG.
-   GSSmoother M(A);
-   PCG(A, M, *b, x, 1, 500, 1e-8, 0.0);
+   if(emitMtx) {
+      ofstream outF(outFile, ofstream::out);
+      A.PrintMatlab(outF);
+   } else {
+      // 8. Define a simple symmetric Gauss-Seidel preconditioner and use it to
+      //    solve the system Ax=b with PCG.
+      GSSmoother M(A);
+      PCG(A, M, *b, x, 1, 500, 1e-8, 0.0);
 
-   // 9. For non-NURBS meshes, make the mesh curved based on the finite element
-   //    space. This means that we define the mesh elements through a fespace
-   //    based transformation of the reference element. This allows us to save
-   //    the displaced mesh as a curved mesh when using high-order finite
-   //    element displacement field. We assume that the initial mesh (read from
-   //    the file) is not higher order curved mesh compared to the chosen FE
-   //    space.
-   if (!mesh->NURBSext)
-      mesh->SetNodalFESpace(fespace);
+      // 9. For non-NURBS meshes, make the mesh curved based on the finite element
+      //    space. This means that we define the mesh elements through a fespace
+      //    based transformation of the reference element. This allows us to save
+      //    the displaced mesh as a curved mesh when using high-order finite
+      //    element displacement field. We assume that the initial mesh (read from
+      //    the file) is not higher order curved mesh compared to the chosen FE
+      //    space.
+      if (!mesh->NURBSext)
+         mesh->SetNodalFESpace(fespace);
 
-   // 10. Save the displaced mesh and the inverted solution (which gives the
-   //     backward displacements to the original grid). This output can be
-   //     viewed later using GLVis: "glvis -m displaced.mesh -g sol.gf".
-   {
-      GridFunction *nodes = mesh->GetNodes();
-      *nodes += x;
-      x *= -1;
-      ofstream mesh_ofs("displaced.mesh");
-      mesh_ofs.precision(8);
-      mesh->Print(mesh_ofs);
-      ofstream sol_ofs("sol.gf");
-      sol_ofs.precision(8);
-      x.Save(sol_ofs);
+      // 10. Save the displaced mesh and the inverted solution (which gives the
+      //     backward displacements to the original grid). This output can be
+      //     viewed later using GLVis: "glvis -m displaced.mesh -g sol.gf".
+      {
+         GridFunction *nodes = mesh->GetNodes();
+         *nodes += x;
+         x *= -1;
+         ofstream mesh_ofs("displaced.mesh");
+         mesh_ofs.precision(8);
+         mesh->Print(mesh_ofs);
+         ofstream sol_ofs("sol.gf");
+         sol_ofs.precision(8);
+         x.Save(sol_ofs);
+      }
+
+      // 11. (Optional) Send the above data by socket to a GLVis server. Use the
+      //     "n" and "b" keys in GLVis to visualize the displacements.
+      /*char vishost[] = "localhost";
+      int  visport   = 19916;
+      osockstream sol_sock(visport, vishost);
+      sol_sock << "solution\n";
+      sol_sock.precision(8);
+      mesh->Print(sol_sock);
+      x.Save(sol_sock);
+      sol_sock.send();*/
+      #if defined(REMOTE_ENABLED)
+      mfem::emitMesh(mesh, &x);
+      #endif
    }
-
-   // 11. (Optional) Send the above data by socket to a GLVis server. Use the
-   //     "n" and "b" keys in GLVis to visualize the displacements.
-   /*char vishost[] = "localhost";
-   int  visport   = 19916;
-   osockstream sol_sock(visport, vishost);
-   sol_sock << "solution\n";
-   sol_sock.precision(8);
-   mesh->Print(sol_sock);
-   x.Save(sol_sock);
-   sol_sock.send();*/
-   #if defined(REMOTE_ENABLED)
-   mfem::emitMesh(mesh, &x);
-   #endif
 
    // 12. Free the used memory.
    delete a;

@@ -6,17 +6,27 @@ using namespace std;
 #include "widgets/graph/graph_structure.h"
 using namespace sight;
 using namespace sight::structure;
+#include <iostream>
+#include <string>
 
 #include "sight_merge.h"
 using namespace sight::merge;
 
 int main(int argc, char** argv) {
-  if(argc<3) { cerr<<"Usage: hier_merge outDir [fNames]"<<endl; exit(-1); }
+  if(argc<2) { cerr<<"Usage: hier_merge outDir [fNames]"<<endl; exit(-1); }
   vector<FILEStructureParser*> fileParsers;
   const char* outDir = argv[1];
   //mergeType mt = str2MergeType(string(argv[2]));
-  for(int i=2; i<argc; i++) {
-    fileParsers.push_back(new FILEStructureParser(argv[i], 10000));
+  if(argc>2) {
+    for(int i=2; i<argc; i++) {
+      fileParsers.push_back(new FILEStructureParser(argv[i], 10000));
+    }
+  } else {
+    cout << "Reading input directories from stdin\n";
+    for (std::string line; std::getline(std::cin, line);) {
+      //std::cout << line << std::endl;
+      fileParsers.push_back(new FILEStructureParser(line, 10000));
+    }
   }
   
   #ifdef VERBOSE
