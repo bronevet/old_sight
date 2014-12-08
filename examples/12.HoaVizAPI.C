@@ -1,58 +1,116 @@
 #include "sight.h"
 #include <map>
-#include <map>
 #include <assert.h>
-#include <unistd.h>
 using namespace std;
 using namespace sight;
 
-// Fibonacci, where we create flowgraph edges from each call to its children.
-int fibGraph(int a, int numIters, flowgraph& g, anchor* parent);
-
 int main(int argc, char** argv)
 {
-	
-	if(argc<=1) { cerr << "Usage: 12.HoaVizAPI numIters"<<endl; exit(-1); }
-	long numIters = strtol(argv[1], NULL, 10);
+	SightInit(argc, argv, "12.HoaVizAPI", "dbg.12.HoaVizAPI");
 
-	SightInit(argc, argv, txt()<<"12.HoaVizAPI, "<<numIters<<" iterations", 
-	                    txt()<<"dbg.12.HoaVizAPI.numIters_"<<numIters);
-
+	// It is possible to write arbitrary text to the debug output
 	dbg << "<h1>Example 12: HoaVizAPI</h1>" << endl;
-	dbg << numIters << " Iterations."<<endl;
+    
+    // node link graph example
+    
+    // generate graph by vertical/horizontal layout - example 1
+	flowgraph g;
+       
+	g.graphNodeStart("a",0,0);
+	g.graphNodeStart("c",1,0);
+	g.graphNodeEnd("c");
+	g.graphNodeStart("b",1,1);
+	g.graphNodeStart("d",2,1);
+	g.graphNodeEnd("d");
+	g.graphNodeStart("e",3,1);
+	g.graphNodeEnd("e");
+	g.graphNodeEnd("b");
+	g.graphNodeEnd("a");
 
-	// example recursive Fibonacci
-	{
-		// Call a recursive Fibonacci, where we create a graph of the recursion hierarchy
-		{
-			scope s("Recursive Fibonacci", scope::medium);
-			flowgraph g;
-			fibGraph(0, numIters, g, NULL);
-		}
-	}
-}
+    g.graphNodeStart("f",0,2);
+    g.graphNodeStart("g",1,2);
+    g.graphNodeStart("h",2,2);
+    g.graphNodeEnd("h");
+    g.graphNodeStart("m",2,3);
+    g.graphNodeEnd("m");
+    g.graphNodeStart("x",3,2);
+    g.graphNodeStart("y",4,2);
+    g.graphNodeEnd("y");
+    g.graphNodeEnd("x");
+    g.graphNodeEnd("g");
+    g.graphNodeEnd("f");
 
-// Fibonacci, where we create graph edges from each call to its children.
-int fibGraph(int a, int numIters, flowgraph& g, anchor* parent) 
-{
-	attr jAttr("depth", a);
-	scope s(txt()<<"fib("<<a<<")");
-	anchor sAnchor = s.getAnchor();
+	g.graphNodeStart("t1",4,0);
+	g.graphNodeStart("t2",5,0);
+	g.graphNodeStart("t3",6,0);
+	g.graphNodeEnd("t3");
+	g.graphNodeEnd("t2");
+	g.graphNodeEnd("t1");
 
-	// Create a link from the calling scope to this one
-	if(parent) g.addDirEdgeFG(*parent, sAnchor);
+	 // generate graph by vertical/horizontal layout - example 2
+	/*
+	flowgraph gr;
+	gr.graphNodeStart("a",0,0);
+	gr.graphNodeStart("c",1,0);
+	gr.graphNodeEnd("c");
+	gr.graphNodeStart("k",1,1);
+	gr.graphNodeEnd("k");
+	gr.graphNodeStart("b",1,2);
+	gr.graphNodeStart("d",2,2);
+	gr.graphNodeEnd("d");
+    gr.graphNodeStart("e",3,2);
+    gr.graphNodeEnd("e");
+    gr.graphNodeEnd("b");
+    gr.graphNodeEnd("a");
+    gr.addEdge("a","d");
+    gr.addEdge("c","e");
+    */
+     
+	/*
+    //generate graph 1 by method 1
+    flowgraph fg;
+    fg.graphNodeStart("a");
+    fg.graphNodeStart("b");
+    fg.graphNodeStart("c");
+    fg.addEdge("a", "c");
+    fg.graphNodeEnd("c");
+    fg.graphNodeStart("d");
+    fg.graphNodeStart("e");
+    fg.graphNodeStart("f");
+    fg.graphNodeEnd("f");
+    fg.graphNodeStart("k");
+    fg.addEdge("c","k");
+    fg.graphNodeEnd("k");
+    fg.graphNodeEnd("e");
+    fg.graphNodeEnd("d");
+    fg.graphNodeEnd("b");
+    fg.graphNodeEnd("a");
+    fg.addEdge("a", "f");
+	*/
+    
+    // generate graph 2 by method 2
+	/*
+    flowgraph gra;
+	gra.addNode("a");
+	gra.addNode("b","a");
+	gra.addNode("c","b");
+	gra.addNode("d","b");
+	gra.addNode("e","d");
+	*/
+    //gr.addEdge("a","c");
+	//gr.addEdge("a","e");
 
-	if(a>=numIters) 
-	{ 
-		dbg << "="<<1<<endl;
-		attr jAttr("val", 1);
-		return 1;
-	} 
-	else 
-	{
-		int val = fibGraph(a+1, numIters, g, &sAnchor) + fibGraph(a+2, numIters, g, &sAnchor);
-		attr jAttr("val", val);
-		dbg << "="<<val<<endl;
-		return val;
-	}
+	/*
+	// generate graph 3
+	flowgraph g3;
+	g3.genFlowGraph("{a-b-c;b-d-e-f;e-k;e-m}");
+	g3.addNode("time");
+	g3.addEdge("time","c");
+	g3.addEdge("time","k");
+
+	// generate graph 4
+	flowgraph flg;
+	flg.genFlowGraph("{m1-m2-m3;m2-m4}");
+    */
+  return 0;
 }
