@@ -12,13 +12,13 @@ int fibGraph(int a, int numIters, flowgraph& g, anchor* parent);
 int main(int argc, char** argv)
 {
 	
-	if(argc<=1) { cerr << "Usage: 12.HoaVizAPI numIters"<<endl; exit(-1); }
+	if(argc<=1) { cerr << "Usage: 12. Hyperlink HoaVizAPI numIters"<<endl; exit(-1); }
 	long numIters = strtol(argv[1], NULL, 10);
 
-	SightInit(argc, argv, txt()<<"12.HoaVizAPI, "<<numIters<<" iterations", 
-	                    txt()<<"dbg.12.HoaVizAPI.numIters_"<<numIters);
+	SightInit(argc, argv, txt()<<"12.Hyperlink_HoaVizAPI, "<<numIters<<" iterations", 
+	                    txt()<<"dbg.12.Hyperlink_HoaVizAPI.numIters_"<<numIters);
 
-	dbg << "<h1>Example 12: HoaVizAPI</h1>" << endl;
+	dbg << "<h1>Example 12: Hyperlink_HoaVizAPI</h1>" << endl;
 	dbg << numIters << " Iterations."<<endl;
 
 	// example recursive Fibonacci

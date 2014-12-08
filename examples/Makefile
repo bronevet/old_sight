@@ -5,7 +5,8 @@ endif
 
 sight_H := ../*.h ../*/*.h ../widgets/*/*.h
 
-TESTERS = 13.OpenMP1${EXE} 
+TESTERS = 12.Hyperlink_HoaViz${EXE}
+#13.OpenMP1${EXE} 
 #7.Merging${EXE} 8.Modules${EXE} 12.HoaVizAPI${EXE}
 #1.StructuredFormatting${EXE} 12.HoaVizAPI${EXE}
 #		  0.Demo${EXE} \
@@ -86,8 +87,15 @@ run: ${TESTERS}
 
 #	./12.HoaVizAPI${EXE};
 
-	export OMP_NUM_THREADS=8;
-	./13.OpenMP1${EXE};
+	./12.Hyperlink_HoaViz${EXE} 3;
+
+#	export SIGHT_FILE_OUT=1; rm -rf dbg.12.HoaVizAPI*; ./12.HoaVizAPI${EXE} 1; ./12.HoaVizAPI${EXE} 2; ./12.HoaVizAPI${EXE} 3; ./12.HoaVizAPI${EXE} 4; ./12.HoaVizAPI${EXE} 5; ./12.HoaVizAPI${EXE} 6; 
+#	export SIGHT_FILE_OUT=1; ../hier_merge${EXE} dbg.12.HoaVizAPI dbg.12.HoaVizAPI.*/structure
+#	rm -rf dbg.12.HoaVizAPI.*;
+#	../slayout${EXE} dbg.12.HoaVizAPI/structure;
+
+#	export OMP_NUM_THREADS=8;
+#	./13.OpenMP1${EXE};
 
 #	export SIGHT_FILE_OUT=1; rm -rf dbg.12.HoaVizAPI*; ./12.HoaVizAPI${EXE} 1 10; ./12.HoaVizAPI${EXE} 1 30; ./12.HoaVizAPI${EXE} 1 100; ./12.HoaVizAPI${EXE} 2 10; ./12.HoaVizAPI${EXE} 2 30; ./12.HoaVizAPI${EXE} 2 100; ./12.HoaVizAPI${EXE} 3 10; ./12.HoaVizAPI${EXE} 3 30; ./12.HoaVizAPI${EXE} 3 100;
 #	export SIGHT_FILE_OUT=1; ../hier_merge dbg.12.HoaVizAPI dbg.12.HoaVizAPI.*/structure
@@ -137,8 +145,12 @@ run: ${TESTERS}
 #./12.HoaVizAPI${EXE}: ./12.HoaVizAPI.C ../libsight_structure.so ${sight_H}
 #	${CCC} ${SIGHT_CFLAGS} ./12.HoaVizAPI.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o ./12.HoaVizAPI${EXE}
 
-./13.OpenMP1${EXE}: ./13.OpenMP1.C ../libsight_structure.so ${sight_H}
-	${CC} ${SIGHT_CFLAGS} ./13.OpenMP1.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o ./13.OpenMP1${EXE} 
+./12.Hyperlink_HoaViz${EXE}: ./12.Hyperlink_HoaViz.C ../libsight_structure.so ${sight_H}
+	${CCC} ${SIGHT_CFLAGS} ./12.Hyperlink_HoaViz.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o ./12.Hyperlink_HoaViz${EXE}
+
+
+#./13.OpenMP1${EXE}: ./13.OpenMP1.C ../libsight_structure.so ${sight_H}
+#	${CC} ${SIGHT_CFLAGS} ./13.OpenMP1.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o ./13.OpenMP1${EXE} 
 
 #runPthread: ${PTHREAD_TESTERS}
 #

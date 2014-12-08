@@ -52,8 +52,9 @@ class flowgraph: public block
   // Maps the IDs of the currently active graphs to their graph objects
   static std::map<int, flowgraph*> active;
   
-  // Records whether this graph has already been output by a call to outputCanvizDotGraph()
+  // Records whether this graph has already been output by a call to outputDataFlowGraph()
   bool flowgraphOutput;
+  
 
   // Counts the number of sub graphs that have been created within this one
   int subFlowGraphCounter;
@@ -79,6 +80,7 @@ class flowgraph: public block
   std::ofstream inouFile;
   std::ofstream datFile;
   std::ofstream ioInfoFile;
+  std::ofstream hoavizCanvasFile;
 
   // Sets the structure of the current graph by specifying its dot encoding
   void setFlowGraphEncoding(std::string dataText);

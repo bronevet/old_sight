@@ -84,7 +84,7 @@ properties* flowgraph::setProperties(int flowgraphID, std::string dataText, cons
 	ss << flowgraphID;
 	string str = ss.str();
 
-	dbg << "<div id=\"hoaViz\"><iframe id=\"flGrFrame\" src=\"widgets/flowgraph/index.html?graName="<< str << "\" width=\"1600\" height=\"1000\"></iframe></div>\n";
+	//dbg << "<div id=\"hoaViz\"><iframe id=\"flGrFrame\" src=\"widgets/flowgraph/index.html?graName="<< str << "\" width=\"1600\" height=\"1000\"></iframe></div>\n";
 	stGraph = flowgraphID;
   }
   return props;
@@ -204,22 +204,22 @@ void flowgraph::graphNodeStart(std::string nodeName, int verID, int horID){
 
 }
     
-    void flowgraph::graphNodeStart(std::string nodeName, std::string texNode, int verID, int horID){
-        stGraph++;
-        stringstream ss;
-        ss << flowgraphID;
-        string str = ss.str();
-        
-        stringstream ss1;
-        ss1 << verID;
-        string str1 = ss1.str();
-        
-        stringstream ss2;
-        ss2 << horID;;
-        string str2 = ss2.str();
-        flowgraph g("verhorNodeStart:"+str+"{"+texNode+"{"+nodeName+"-"+str1+"-"+str2);
-        
-    }
+void flowgraph::graphNodeStart(std::string nodeName, std::string texNode, int verID, int horID){
+    stGraph++;
+    stringstream ss;
+    ss << flowgraphID;
+    string str = ss.str();
+    
+    stringstream ss1;
+    ss1 << verID;
+    string str1 = ss1.str();
+    
+    stringstream ss2;
+    ss2 << horID;;
+    string str2 = ss2.str();
+    flowgraph g("verhorNodeStart:"+str+"{"+texNode+"{"+nodeName+"-"+str1+"-"+str2);
+    
+}
 
 
 void flowgraph::graphNodeEnd(std::string nodeName){
@@ -284,7 +284,7 @@ void flowgraph::setFlowGraphEncoding(string dataText) {
   properties p;
   map<string, string> pMap;
   pMap["data"] = dataText;
-  p.add("flowgraphEncoding", pMap);
+  p.add("dataEncodingFG", pMap);
   
   dbg->tag(p);
 }
@@ -311,7 +311,7 @@ void flowgraph::addDirEdgeFG(anchor from, anchor to) {
   pMap["from"] = txt()<<from.getID();
   pMap["to"]   = txt()<<to.getID();
   pMap["flowgraphID"] = txt()<<flowgraphID;
-  p.add("dirEdge", pMap);
+  p.add("dirEdgeFG", pMap);
   
   //dbg->tag("dirEdge", properties, false);
   dbg->tag(p);
@@ -337,7 +337,7 @@ void flowgraph::addUndirEdgeFG(anchor a, anchor b) {
   pMap["a"] = txt()<<a.getID();
   pMap["b"] = txt()<<b.getID();
   pMap["flowgraphID"] = txt()<<flowgraphID;
-  p.add("undirEdge", pMap);
+  p.add("undirEdgeFG", pMap);
   //dbg->tag("undEdge", properties, false);
   
   dbg->tag(p);
@@ -363,7 +363,7 @@ void flowgraph::addInvisDepEdgeFG(anchor a, anchor b) {
   pMap["a"] = txt()<<a.getID();
   pMap["b"] = txt()<<b.getID();
   pMap["flowgraphID"] = txt()<<flowgraphID;
-  p.add("invisEdge", pMap);
+  p.add("invisEdgeFG", pMap);
   //dbg->tag("undEdge", properties, false);
   
   dbg->tag(p);  
@@ -375,7 +375,7 @@ void flowgraph::startSubFlowGraph() {
   properties p;
   map<string, string> pMap;
   pMap["flowgraphID"]  = txt()<<flowgraphID;
-  p.add("subFlowGraph", pMap);
+  p.add("subGraphFG", pMap);
   dbg->enter(p);
 }
 
@@ -384,7 +384,7 @@ void flowgraph::startSubFlowGraph(const std::string& label) {
   map<string, string> pMap;
   pMap["label"] = label;
   pMap["flowgraphID"]  = txt()<<flowgraphID;
-  p.add("subFlowGraph", pMap);
+  p.add("subGraphFG", pMap);
   dbg->enter(p);
 }
 
@@ -392,7 +392,7 @@ void flowgraph::startSubFlowGraph(const std::string& label) {
 void flowgraph::endSubFlowGraph() {
   properties p;
   map<string, string> pMap;
-  p.add("subFlowGraph", pMap);
+  p.add("subGraphFG", pMap);
   dbg->exit(p);
 }
 
@@ -429,7 +429,7 @@ void flowgraph::emitNodeTag(int anchorID, std::string label, int nodeID) {
   pMap["label"]    = label;
   pMap["flowgraphID"]  = txt()<<flowgraphID;
   //pMap["callPath"] = cp2str(CPRuntime.doStackwalk());
-  p.add("node", pMap);
+  p.add("nodeFG", pMap);
   
   // This node has now been emitted
   nodesObservedNotEmitted.erase(anchorID);

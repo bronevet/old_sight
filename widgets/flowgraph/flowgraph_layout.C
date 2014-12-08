@@ -62,7 +62,7 @@ flowgraph::flowgraph(properties::iterator props) : block(properties::next(props)
   dbg.userAccessing();
   
 
-  // If the dot encoding of the graph is already provided, emit it immediately
+  // If the dataText encoding of the graph is already provided, emit it immediately
   if(props.exists("dataText")) {
     outputDataFlowGraph(properties::get(props, "dataText"));
     flowgraphOutput = true;
@@ -74,6 +74,14 @@ flowgraph::flowgraph(properties::iterator props) : block(properties::next(props)
   
   // Add the current graph to the map of ative graphs
   active[flowgraphID] = this;
+
+  	// hoa edit
+	// create hoaviz canvas
+	ostringstream hoavizCanvasFName;
+	hoavizCanvasFName << outDir << "/hoaviz_canvas2.txt";
+	hoavizCanvasFile.open(hoavizCanvasFName.str().c_str());
+	hoavizCanvasFile <<"<canvas id=\"flGra\" data-processing-sources=\"widgets/flowgraph/flGra.pde\" width=\"100%\" height=\"100%\"> </canvas>"<< endl;
+	hoavizCanvasFile.close();
 
     //dbg << "<iframe id=\"flGrFrame\" src=\"widgets/flowgraph/index.html\" width=\"2300\" height=\"1200\"></iframe>\n";
 	//dbg << "<iframe id=\"flGrFrame\" src=\"widgets/flowgraph/index.html?graName="<< graphName << "\" width=\"1600\" height=\"1000\"></iframe>\n";
@@ -111,7 +119,8 @@ void flowgraph::initEnvironment() {
   
   dbg.includeFile("flowgraph/processing.js"); dbg.includeWidgetScript("flowgraph/processing.js", "text/javascript");
   dbg.includeFile("flowgraph/flgr.js"); dbg.includeWidgetScript("flowgraph/flgr.js", "text/javascript");
-  dbg.includeFile("flowgraph/hoaViz.pde");
+  //dbg.includeFile("flowgraph/hoaViz.pde");
+  dbg.includeFile("flowgraph/flGra.pde");
   dbg.includeFile("flowgraph/index.html");
 
 }
@@ -121,17 +130,14 @@ flowgraph::~flowgraph() {
     outputDataFlowGraph(genDataFlowGraph());
   }
 
-  /*
+  // hoa edit
   tFile.close();
   inouFile.close();
   datFile.close();
   ioInfoFile.close();
-  */
   
   dbg.exitBlock();
   
-
-
   // Remove the current graph from the map of active graphs
   assert(active.size()>0);
   assert(active.find(flowgraphID) != active.end());
@@ -142,15 +148,46 @@ flowgraph::~flowgraph() {
 // Generates and returns the data graph code for this graph
 string flowgraph::genDataFlowGraph() {
 
+
+	// hoa edit
+	// node file
+	ostringstream tFName;
+	tFName   << outDir << "/node_"<< flowgraphID <<".txt";
+	tFile.open(tFName.str().c_str(), std::fstream::app);
+	// input_output file
+	ostringstream inouFName;
+	inouFName << outDir << "/inout_"<< flowgraphID <<".txt";
+	inouFile.open(inouFName.str().c_str(), std::fstream::app);
+	// data for statistic visualization
+	ostringstream datFName;
+	datFName << outDir << "/dat_"<< flowgraphID <<".txt";
+	datFile.open(datFName.str().c_str(), std::fstream::app);
+	// data for input and output variable information of modules
+	ostringstream ioInfoFName;
+	ioInfoFName << outDir << "/ioInfo_"<< flowgraphID <<".txt";
+	ioInfoFile.open(ioInfoFName.str().c_str(), std::fstream::app);
+
+	ostringstream vhFName;
+	vhFName << outDir << "/vert_hori_"<<flowgraphID<<".txt";
+	ofstream vhFile;
+	vhFile.open(vhFName.str().c_str(), std::fstream::app);
+	vhFile.close();
+  
+	
+	ostringstream linkFName;
+	linkFName << outDir << "/link_"<<flowgraphID<<".txt";
+	ofstream linkFile;
+	linkFile.open(linkFName.str().c_str(), std::fstream::app);
+	
   ostringstream data;
 
   for(map<anchor, string>::iterator b=nodes.begin(); b!=nodes.end(); b++)
   {
 	data <<  b->first.getID() <<":"<< b->first.getID() <<":"<< "1" <<":"<<"1"<<":"<<b->second << endl;
-    tFile << b->first.getID() <<":"<< b->first.getID() <<":"<< "1" <<":"<<"1"<<":"<<b->second << endl;
-    string vizl = "scatter3d:ccp:pcp";
-    datFile << b->first.getID() <<","<< b->first.getID() <<","<<vizl<<endl;
-
+    
+    // hoa edit
+    //tFile << i <<":"<< b->first.getID() <<":"<< "1" <<":"<<"1"<<":"<<b->second << ":" << b->first.getLinkJS() << endl;
+    linkFile << b->second << ":" << b->first.getLinkJS() << endl;
   }
   // Between the time when an edge was inserted into edges and now, the anchors on both sides of each
   // edge should have been located (attached to a concrete location in the output). This means that
@@ -161,17 +198,31 @@ string flowgraph::genDataFlowGraph() {
   set<flowgraphEdge> uniqueEdges;
   for(list<flowgraphEdge>::iterator e=edges.begin(); e!=edges.end(); e++)
     uniqueEdges.insert(*e);
-
+  
+  map<anchor, string>::iterator b = nodes.begin();
+  tFile << b->first.getID() << ":" << b->second << ":0:0:-1" << endl;
+    
   for(set<flowgraphEdge>::iterator e=uniqueEdges.begin(); e!=uniqueEdges.end(); e++)
   {
-	inouFile <<"0"<<"_output_"<<e->to.getID()<<":"<<"0"<<"_input_"<<e->to.getID()<< endl;
+  	// hoa edit
+	//inouFile <<"0"<<"_output_"<<e->from.getID()<<":"<<"0"<<"_input_"<<e->to.getID()<< endl;
+
     data << "0"<<"_output_"<<e->to.getID()<<":"<<"0"<<"_input_"<<e->to.getID()<< endl;
+
+	for(map<anchor, string>::iterator b = nodes.begin(); b!=nodes.end(); b++)
+  	{
+  		if(b->first.getID() == e->to.getID())
+	    	tFile << e->to.getID() << ":" << b->second << ":0:0:" << e->from.getID() << endl;		
+	}
 
     ostringstream style; bool emptyStyle=true;
     if(!e->directed) { if(!emptyStyle) { style << " "; } style << "dir=none";    emptyStyle=false; }
     if(!e->visible)  { if(!emptyStyle) { style << " "; } style << "style=invis"; emptyStyle=false; }
     if(!emptyStyle) data << "[" << style.str() << "]";
   }
+
+  linkFile.close();
+  //dbg << "<iframe id=\"flGrFrame\" src=\"widgets/flowgraph/index.html?graName="<< flowgraphID << "\" width=\"1600\" height=\"1000\"></iframe>\n";
 
   return data.str();
 }
@@ -236,6 +287,15 @@ if(graphdata.find("graphNodeStart:") == 0 || graphdata.find("verhorNodeStart") =
 		linkFile << nodeName +"{" + texNode + "\n";
         linkFile.close();
 }
+
+/*
+		ostringstream linkFName;
+		linkFName << outDir << "/link_"<<graphName<<".txt";
+		ofstream linkFile;
+		linkFile.open(linkFName.str().c_str(), std::fstream::app);
+		linkFile.close();
+*/
+
 		ostringstream dataFName;
 		dataFName << outDir << "/graphNode_"<<graphName<<".txt";
 		ofstream dataFile;
@@ -524,11 +584,11 @@ if(graphdata.find("graphNodeStart:") == 0 || graphdata.find("verhorNodeStart") =
 			ioInfoFile.open(ioInfoFName.str().c_str(), std::fstream::app);
 			ioInfoFile.close();
                         
-                        ostringstream vhFName;
-                        vhFName << outDir << "/vert_hori_"<<graphName<<".txt";
-                        ofstream vhFile;
-                        vhFile.open(vhFName.str().c_str(), std::fstream::app);
-                        vhFile.close();
+            ostringstream vhFName;
+            vhFName << outDir << "/vert_hori_"<<graphName<<".txt";
+            ofstream vhFile;
+            vhFile.open(vhFName.str().c_str(), std::fstream::app);
+            vhFile.close();
 			// end process branches
 		}
 
@@ -665,7 +725,7 @@ void* flowgraph::addNodeFG(properties::iterator props) {
   int flowgraphID = properties::getInt(props, "flowgraphID");
 
   if(active.find(flowgraphID) == active.end()) {
-    cerr << "ERROR: graph with ID "<<flowgraphID<<" is not active when the following node was added: "<<props.str()<<endl;
+    cerr << "ERROR: flow graph with ID "<<flowgraphID<<" is not active when the following node was added: "<<props.str()<<endl;
     cerr << "active(#"<<active.size()<<")=<";
     for(map<int, flowgraph*>::const_iterator a=active.begin(); a!=active.end(); a++) {
       if(a!=active.begin()) cerr << ", ";

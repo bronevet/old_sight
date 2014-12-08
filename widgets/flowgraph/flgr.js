@@ -6,6 +6,19 @@ function clickModule(nodeid, buttonid, nameinod, mouX, mouY)
   document.getElementById('canvas').appendChild(div);
   ClickOnModuleNode('node'+nodeid, this, buttonid);
 }
+
+function linkJS(link)
+{
+  eval(link);
+
+  //alert("here - " + link);
+  //var t = link;
+  //var t = goToAnchor([], [1],  function() {loadSubFile(top.detail.document, [1], 'detail.0.body', 'div1-0-1_1_1_1_1', top.summary.document, 'summary.0.body', 'sumdiv1-0-1_1_1_1_1', 'script/script.0'); focusLinkDetail('1-0-1_1_1_1_1'); focusLinkSummary('1-0-1_1_1_1_1');});;
+  //goToAnchor([], [1],  function() {loadSubFile(top.detail.document, [1], 'detail.0.body', 'div1-0-1_1_1_1_1', top.summary.document, 'summary.0.body', 'sumdiv1-0-1_1_1_1_1', 'script/script.0'); focusLinkDetail('1-0-1_1_1_1_1'); focusLinkSummary('1-0-1_1_1_1_1');});
+  //goToAnchor([], [1],  function() {loadSubFile(top.detail.document, [1], 'detail.0.body', 'div1-0-1_1_1_1_1_2_1_1_1_1_1_1_1', top.summary.document, 'summary.0.body', 'sumdiv1-0-1_1_1_1_1_2_1_1_1_1_1_1_1', 'script/script.0'); focusLinkDetail('1-0-1_1_1_1_1_2_1_1_1_1_1_1_1'); focusLinkSummary('1-0-1_1_1_1_1_2_1_1_1_1_1_1_1');});
+  //goToAnchor([], [1], function() {loadSubFile(top.detail.document, [1],  'detail.0.body', 'div1-0-1_1_1_1_1_2_1', top.summary.document, 'summary.0.body', 'sumdiv1-0-1_1_1_1_1_2_1', 'script/script.0'); focusLinkDetail('1-0-1_1_1_1_1_2_1'); focusLinkSummary('1-0-1_1_1_1_1_2_1');});
+}
+
 function addvizMeth(vizM)
 {
     //alert("vizM = "+ vizM);
