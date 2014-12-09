@@ -324,6 +324,64 @@ void setup()
      }
  }
  
+
+ for(int i=depth_length - 2; i >= 0; i--)
+ {
+   String[] depli1 = split(depthList[i+1],":");
+   String[] depli = split(depthList[i],":");
+   int tmp = 0;
+   int toltmp = 0;
+          
+   for(int k=0; k<(depli.length-1); k++)
+   {
+     int de = int(depli[k]);
+     if(de >= 0 && nodrel_len[de] > 1)
+     {
+          String[] nodere = split(node_relation[de],":");
+          int den = int(nodere[1]);
+          
+          for(int j=0; j<(depli1.length-1); j++)
+          {
+             int de1 = int(depli1[j]);
+             if(de1 == den)
+             {
+               String tm = depli[k];
+               depli[k] = "";
+               if(j>k)
+               {
+                 tmp = j-k - toltmp;
+                 if(tmp > 0)
+                 {
+                   for(int m=0; m< tmp; m++)
+                   {
+                     depli[k] += "-3:";
+                   }
+                 }
+                 else
+                 tmp = 0;
+               } 
+               else
+                 tmp = 0;
+               
+               depli[k] += tm;
+               toltmp += tmp;
+               //println("k = "+k+" j = " + j + " depli[k] = "+ depli[k] + " toltmp = "+toltmp);
+               j = depli1.length;
+             }
+          }        
+     }
+     else if(de >= 0 && nodrel_len[de] == 1)
+       tmp += 1;
+   }
+   
+   depthList[i] = "";
+   for(int k=0; k<(depli.length-1); k++)
+   {
+     depthList[i] += depli[k]+":";
+   }
+ }
+ 
+ 
   // update node_depth when change vertical/horizontal layout
   if(hori_vert_layout == 1)
   {
