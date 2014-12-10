@@ -188,6 +188,7 @@ string flowgraph::genDataFlowGraph() {
     // hoa edit
     //tFile << i <<":"<< b->first.getID() <<":"<< "1" <<":"<<"1"<<":"<<b->second << ":" << b->first.getLinkJS() << endl;
     linkFile << b->second << ":" << b->first.getLinkJS() << endl;
+    //linkFile << b->first.getID() << ":" << b->second << ":" << ":" << b->first.getLinkJS() << endl;
   }
   // Between the time when an edge was inserted into edges and now, the anchors on both sides of each
   // edge should have been located (attached to a concrete location in the output). This means that
@@ -199,8 +200,8 @@ string flowgraph::genDataFlowGraph() {
   for(list<flowgraphEdge>::iterator e=edges.begin(); e!=edges.end(); e++)
     uniqueEdges.insert(*e);
   
-  map<anchor, string>::iterator b = nodes.begin();
-  tFile << b->first.getID() << ":" << b->second << ":0:0:-1" << endl;
+  //map<anchor, string>::iterator b = nodes.begin();
+  //tFile << b->first.getID() << ":" << b->second << ":0:0:-1" << endl;
     
   for(set<flowgraphEdge>::iterator e=uniqueEdges.begin(); e!=uniqueEdges.end(); e++)
   {
@@ -209,11 +210,28 @@ string flowgraph::genDataFlowGraph() {
 
     data << "0"<<"_output_"<<e->to.getID()<<":"<<"0"<<"_input_"<<e->to.getID()<< endl;
 
-	for(map<anchor, string>::iterator b = nodes.begin(); b!=nodes.end(); b++)
+    int tmp = 1;
+	for(set<flowgraphEdge>::iterator k=uniqueEdges.begin(); k!=e; k++)
+  		if(k->from.getID() == e->from.getID() || k->to.getID() == e->from.getID())
+  			tmp = 0;
+		
+	 
+    for(map<anchor, string>::iterator b = nodes.begin(); b!=nodes.end(); b++)
   	{
+  		if(tmp == 1)
+  			if(b->first.getID() == e->from.getID())
+  			{
+  				tFile << b->first.getID() << ":" << b->second << ":0:0:-1" << endl;	
+  				tmp = 0;
+  			}
+
   		if(b->first.getID() == e->to.getID())
-	    	tFile << e->to.getID() << ":" << b->second << ":0:0:" << e->from.getID() << endl;		
+  		{
+	    	tFile << e->to.getID() << ":" << b->second << ":0:0:" << e->from.getID() << endl;	
+	    	tmp = 0;	
+		}
 	}
+	
 
     ostringstream style; bool emptyStyle=true;
     if(!e->directed) { if(!emptyStyle) { style << " "; } style << "dir=none";    emptyStyle=false; }

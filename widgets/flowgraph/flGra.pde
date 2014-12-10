@@ -125,7 +125,6 @@ void setup()
   viewMeth = 3;
   
   graphname = 0;
-  
   lnodes = loadStrings("widgets/flowgraph/node_"+graphname+".txt");
   lnodes_length = lnodes.length;
   // connection between input and output of nodes   
@@ -172,7 +171,45 @@ void setup()
   if(linkNodes.length>0)
     link_node = 1;
   // end for test  
-  */  
+  */
+  /*
+  // update lnodes
+  for(int i=0; i< lnodes_length; i++)
+  {
+    String[] inode = split(lnodes[i],':');
+    int tcontain = int(inode[4]);
+    
+    int change = 1;
+    for(int j=0; j< lnodes_length; j++)
+    {
+      String[] inode1 = split(lnodes[j],':');
+      int tnodeID = int(inode1[0]);    
+      if(tcontain == tnodeID)
+        change = 0;
+    }
+    if(change == 1)
+      lnodes[i] = inode[0] + ":" + inode[1] + ":" + inode[2] + ":" + inode[3] + ":" + "-1"; 
+  }
+  */
+  
+  /*
+    // hoa tam  
+  // move rows that have parentID = -1 to the top
+  for(int i=0; i< lnodes_length; i++)
+  {
+    String[] inode = split(lnodes[i],':');
+    containerID[i] = int(inode[4]);
+    if(containerID[i] == -1)
+    {
+      String tmp = lnodes[i];
+      for(int j=i; j>0; j--)
+      {
+        lnodes[j]=lnodes[j-1];   
+      }
+      lnodes[0] = tmp;
+    }
+  }
+  */
   // compoute node information 
   for(int i=0; i< lnodes_length; i++)
   {
@@ -297,7 +334,7 @@ void setup()
           {
             int deno = int(dep[k]);
             depthList[node_depth[deno]] += deno+ ":";
-            for(int t=0;t<(nodrel_len[deno]-2);t++)
+            for(int t=0;t<(nodrel_len[deno]-3);t++)
                depthList[node_depth[deno]] += "-2:"; 
             if(deno == 4)
               depthList[node_depth[deno]] += "-2:";
@@ -449,22 +486,21 @@ void setup()
    
   // set up current depth length
   current_depth_length = depth_length;
-  
   /*
   for(int i=0; i<depth_length; i++)
     println("depthList["+i+"]="+depthList[i]); 
   */
-  /*  
+  /*
   for(int i=0; i<lnodes_length; i++)
   {
+    println("lnodes["+i+"]="+lnodes[i]);
    //println("node_endw["+i+"]="+node_endw[i]); 
    //println("node_depth["+i+"]="+node_depth[i]); 
    //println("node_relation["+i+"]="+node_relation[i]); 
-   println("nodrel_len["+i+"]="+nodrel_len[i]);   
+   //println("nodrel_len["+i+"]="+nodrel_len[i]);   
    // println("temp["+i+"]="+temp[i]); 
   }
   */
-  
   redraw();
   noLoop();
 }
@@ -537,7 +573,8 @@ void draw()
         depth_width = (depnod.length);
   }
   
-  depth_width = depth_width*(depth_length - 4);
+  depth_width = depth_width*(depth_length-1);
+  //depth_width = depth_width*(depth_length-2);
   
   //nodeheight = height/(10*depth_length);
   //nodewidth = width/(depth_width + 7);
@@ -661,6 +698,7 @@ void draw()
      link_height = nodeheight;
      newHei += int(hnode[k]);
   }
+  
   
   if(scaleFactor == 1)
     size(newWid, newHei);
@@ -1233,7 +1271,6 @@ void draw_curvearrow(float x1, float y1, float x2, float y2, int leri)
     line(0, 0, 5, -5);
     popMatrix();
 } 
-
 
 
 

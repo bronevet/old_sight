@@ -403,8 +403,12 @@ std::pair<int, std::vector<port> > fibModule(int a, int depth)
   //           inputs(port(context("depth", depth))), fibOutputs, namedMeasures("time", new timeMeasure()));
   // module initModule(instance("Initialization", 0, 1), initOutputs, namedMeasures("PAPI", new PAPIMeasure(papiEvents(PAPI_TOT_INS, PAPI_L2_TC_MR))));
 
-  module m(instance(txt()<<a<<":"<<depth, 1, 1),
-   	       inputs(port(context("depth", depth))), fibOutputs, namedMeasures("time", new timeMeasure()));
+  // origin command
+  //module m(instance(txt()<<a<<":"<<depth, 1, 1),
+  // 	       inputs(port(context("depth", depth))), fibOutputs, namedMeasures("time", new timeMeasure()));
+
+    module m(instance(txt()<<a<<"-"<<depth, 1, 1),
+           inputs(port(context("depth", depth))), fibOutputs, namedMeasures("time", new timeMeasure()));
 
   
   if(a==0 || a==1)
