@@ -5,7 +5,7 @@ endif
 
 sight_H := ../*.h ../*/*.h ../widgets/*/*.h
 
-TESTERS = 0.Demo${EXE} 0.Demo_Hyperlink_HoaViz${EXE} 12.Hyperlink_HoaViz${EXE}
+TESTERS = 0.Demo_Hyperlink_HoaViz${EXE} 0.Demo${EXE} 12.Hyperlink_HoaViz${EXE}
 #12.Hyperlink_HoaViz${EXE}
 #12.Hyperlink_HoaViz${EXE} 12.HoaVizAPI${EXE} 8.Modules${EXE}
 #0.Demo_Hyperlink_HoaViz${EXE} 12.Hyperlink_HoaViz${EXE} 12.HoaVizAPI${EXE} 8.Modules${EXE}
