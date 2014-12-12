@@ -158,8 +158,8 @@ int main(int argc, char** argv)
                                            source::reg(thisFile, "modularFibStart", "modularFibEnd"))); }
     
 #pragma sightLoc ModularStart
-    modularApp modularFibonacci("Fibonacci"); 
-    fibModule(9,0);
+    //modularApp modularFibonacci("Fibonacci"); 
+    fibModule(5,0);
 #pragma sightLoc ModularEnd
   }
 
@@ -400,9 +400,12 @@ std::pair<int, std::vector<port> > fibModule(int a, int depth)
   // hoa edit
   //module m(instance(txt()<<"fib("<<a<<")", 1, 1),
   //           inputs(port(context("depth", depth))), fibOutputs, namedMeasures("time", new timeMeasure()));
+  // origin command
+  //module m(instance(txt()<<a<<":"<<depth, 1, 1),
+  //         inputs(port(context("depth", depth))), fibOutputs, namedMeasures("time", new timeMeasure()));
 
-  module m(instance(txt()<<a<<":"<<depth, 1, 1),
-   	       inputs(port(context("depth", depth))), fibOutputs, namedMeasures("time", new timeMeasure()));
+    module m(instance(txt()<<a<<"-"<<depth, 1, 1),
+           inputs(port(context("depth", depth))), fibOutputs, namedMeasures("time", new timeMeasure()));
 
   if(a==0 || a==1)
   {

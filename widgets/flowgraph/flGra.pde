@@ -573,7 +573,8 @@ void draw()
         depth_width = (depnod.length);
   }
   
-  depth_width = depth_width*(depth_length-1);
+  depth_width = depth_width*depth_length;
+  //depth_width = depth_width*(depth_length-1);
   //depth_width = depth_width*(depth_length-2);
   
   //nodeheight = height/(10*depth_length);
@@ -614,9 +615,9 @@ void draw()
         if(i == int(delis[k]))
         { 
           if(viewMeth == 2)
-            xcnode[i] = xnode + k*(width-xnode)/(depth_width+6) + j*font_size/4;
+            xcnode[i] = xnode + k*(width-xnode)/(depth_width+font_size/2) + j*font_size/4;
           else
-            xcnode[i] = xnode + k*(width-xnode)/(depth_width+6); 
+            xcnode[i] = xnode + k*(width-xnode)/(depth_width+font_size/2); 
         }
       }
     }
