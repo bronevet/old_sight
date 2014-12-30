@@ -9,7 +9,7 @@ sight := ${sight_O} ${sight_H} gdbLineNum.pl sightDefines.pl
 ROOT_PATH = ${CURDIR}
 PNMPI_PATH = ${ROOT_PATH}/widgets/PnMPI/INSTALL/
 
-SIGHT_CFLAGS = -g -fPIC -I${ROOT_PATH} -I${ROOT_PATH}/widgets -I${ROOT_PATH}/attributes -I${ROOT_PATH}/widgets/parallel \
+SIGHT_CFLAGS = -fopenmp -g -fPIC -I${ROOT_PATH} -I${ROOT_PATH}/widgets -I${ROOT_PATH}/attributes -I${ROOT_PATH}/widgets/parallel \
                 -I${ROOT_PATH}/tools/callpath/src -I${ROOT_PATH}/tools/adept-utils/include \
                 -I${ROOT_PATH}/tools/boost_1_55_0 \
                 -I${ROOT_PATH}/widgets/papi/include 
@@ -28,6 +28,9 @@ SIGHT_LINKFLAGS = \
                   -Wl,-rpath ${ROOT_PATH}/widgets/gsl/lib \
 	          -lpthread
                   #-L ${PNMPI_PATH}lib -lpnmpi -Wl,-rpath,${PNMPI_PATH}
+ifeq (${CCC},icpc)
+  OMPFLAG = -openmp
+endif
 
 RAPL_ENABLED = 1
 ifeq (${RAPL_ENABLED}, 1)
@@ -161,8 +164,9 @@ endif
 slayout.o: slayout.C process.C process.h
 	${CCC} ${SIGHT_CFLAGS} slayout.C -I. -c -o slayout.o
 
+# Note: OMPFLAG is there to enable funcFit to link correctly with the intel compiler
 slayout${EXE}: mfem libsight_layout.so widgets_post
-	${CCC} -Wl,-rpath ${ROOT_PATH} -Wl,--whole-archive libsight_layout.so apps/mfem/mfem_layout.o -Wl,-no-whole-archive -o slayout${EXE}
+	${CCC} -Wl,-rpath ${ROOT_PATH} -Wl,--whole-archive libsight_layout.so apps/mfem/mfem_layout.o -Wl,-no-whole-archive ${OMPFLAG} -o slayout${EXE}
 #slayout${EXE}: mfem libsight_layout.so
 #	${CCC} libsight_layout.so -Wl,-rpath ${ROOT_PATH} -Wl,-rpath ${ROOT_PATH}/widgets/gsl/lib -Lwidgets/gsl/lib -lgsl -lgslcblas apps/mfem/mfem_layout.o -o slayout${EXE}
 #slayout${EXE}: mfem libsight_layout.a

@@ -309,7 +309,8 @@ attrValue& attrValue::operator=(const attrValue& that) {
     else if(type == customT)    {
 //      *((customAttrValue**)store) = *((customAttrValue**)that.store); }
       *((customAttrValue**)store) = (*((customAttrValue**)that.store))->copy();
-      cout << "attrValue::attrValue(that1): ("<<((customAttrValue**)store)<<") "<<(*((customAttrValue**)store))->serialize()<<endl; }
+      //cout << "attrValue::attrValue(that1): ("<<((customAttrValue**)store)<<") "<<(*((customAttrValue**)store))->serialize()<<endl; 
+    }
     else if(type == customSerT) { *((string*)store)           = *((string*)that.store);           }
     else if(type == unknownT) { }
     else {

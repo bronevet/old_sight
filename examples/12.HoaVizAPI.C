@@ -13,6 +13,82 @@ int main(int argc, char** argv)
     
     // node link graph example
 
+	flowgraph glik;
+       
+        glik.graphNodeStart("a",0,0);
+        glik.graphNodeStart("c",1,0);
+        glik.graphNodeEnd("c");
+        glik.graphNodeStart("b",1,1);
+        glik.graphNodeStart("d",2,1);
+        glik.graphNodeEnd("d");
+        glik.graphNodeStart("e",3,1);
+        glik.graphNodeEnd("e");
+        glik.graphNodeEnd("b");
+        glik.graphNodeEnd("a");
+
+    glik.graphNodeStart("f",0,2);
+    glik.graphNodeStart("g",1,2);
+    glik.graphNodeStart("h",2,2);
+    glik.graphNodeEnd("h");
+    glik.graphNodeStart("m",2,3);
+    glik.graphNodeEnd("m");
+    glik.graphNodeStart("x",3,2);
+    glik.graphNodeStart("y",4,2);
+    glik.graphNodeEnd("y");
+    glik.graphNodeEnd("x");
+    glik.graphNodeEnd("g");
+    glik.graphNodeEnd("f");
+
+        glik.graphNodeStart("t1",4,0);
+        glik.graphNodeStart("t2",5,0);
+        glik.graphNodeStart("t3",6,0);
+        glik.graphNodeEnd("t3");
+        glik.graphNodeEnd("t2");
+        glik.graphNodeEnd("t1");
+	
+
+
+	map<int, set<anchor> > pointsTo;
+	map<int, anchor> iterAnchor;
+ 	int numIters = 14;
+	
+	for(int i=0; i<numIters; i++)
+	{
+		// Create iteration i'i*icope, anchoring all incominlinks to it
+		scope si(txt()<<i, pointsTo[i]);
+
+		//cout << i<<": anchor="<<si.getAnchor().str()<<endl;
+
+		// We can now erase all the anchors that refer to this scope from pointsTo[] since we've successfully terminated them.
+		pointsTo[i].clear(); 
+
+		iterAnchor[i] = si.getAnchor();
+
+		// Backward link
+		if(i>0) 
+		{
+			//cout << "iterAnchor["<<(i-1)<<"]="<<iterAnchor[i-1].str()<<endl;
+			iterAnchor[i-1].linkImg(txt()<<(i-1));
+			iterAnchor.erase(i-1);
+		}
+
+		// Forward Link
+		if(i+1 < numIters) 
+		{
+			// This is an anchor that will be anchored at iteration j of the outer loop once we reach it.
+			anchor toAnchor;
+			pointsTo[i+1].insert(toAnchor);
+			//cout << "forward link toAnchor="<<toAnchor.str()<<endl;
+
+			toAnchor.linkImg(txt()<<(i+1)); dbg << endl;
+
+			// Add a graph edge from the current scope to the iteration of the number proven to be not prime
+	 		//glik.addDirEdgeFG(si.getAnchor(), toAnchor);
+	      	}
+	}
+
+  
+    /*
     flowgraph glik;
        
 	glik.graphNodeStart("a","a text log",0,0);
@@ -45,9 +121,10 @@ int main(int argc, char** argv)
 	glik.graphNodeEnd("t3");
 	glik.graphNodeEnd("t2");
 	glik.graphNodeEnd("t1");
-
+	*/
     
     // generate graph by vertical/horizontal layout - example 1
+/*    
 	flowgraph g;
        
 	g.graphNodeStart("a",0,0);
@@ -117,7 +194,7 @@ int main(int argc, char** argv)
     fg.graphNodeEnd("b");
     fg.graphNodeEnd("a");
     fg.addEdge("a", "f");
-
+*/
     // generate graph 2 by method 2
 	/*
         flowgraph gra;

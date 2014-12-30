@@ -9,6 +9,7 @@
 ******************************************************************************/
 #include "sight_pthread.h"
 using namespace sight;
+using namespace sight::structure;
 #include <stdio.h>
 #include <stdlib.h>
 

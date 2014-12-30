@@ -17,12 +17,13 @@ TESTERS = 0.Demo${EXE} \
           9.CompModules.merged${EXE} 9.CompModules.single${EXE} \
           10.SpringModules${EXE} \
           11.ExternTraceProcess${EXE} \
-	  12.HoaVizAPI${EXE}
-          
-#PTHREAD_TESTERS = pthreadMutexEx${EXE} pthreadCondEx${EXE} pthreadThreadsEx${EXE} \
-#                  pthreadArrayLoops${EXE} dotprodPthreads${EXE} pthreadFib${EXE} 
+	  12.HoaVizAPI${EXE} \
+          13.OpenMP1${EXE} 
+         
+PTHREAD_TESTERS = pthreadThreadsEx${EXE} pthreadMutexEx${EXE} pthreadCondEx${EXE} \
+                  pthreadArrayLoops${EXE} dotprodPthreads${EXE} #pthreadFib${EXE} 
 
-all: ${TESTERS} # ${PTHREAD_TESTERS}
+all:  ${TESTERS} ${PTHREAD_TESTERS}
 
 #MPI-examples:
 #	make -C MPI_examples
@@ -80,6 +81,8 @@ run: ${TESTERS}
 	# 11.ExternTraceProcess
 	./11.ExternTraceProcess
 	./12.HoaVizAPI${EXE};
+	export OMP_NUM_THREADS=8; ./13.OpenMP1${EXE};
+
 #	export SIGHT_FILE_OUT=1; rm -rf dbg.12.HoaVizAPI*; ./12.HoaVizAPI${EXE} 1 10; ./12.HoaVizAPI${EXE} 1 30; ./12.HoaVizAPI${EXE} 1 100; ./12.HoaVizAPI${EXE} 2 10; ./12.HoaVizAPI${EXE} 2 30; ./12.HoaVizAPI${EXE} 2 100; ./12.HoaVizAPI${EXE} 3 10; ./12.HoaVizAPI${EXE} 3 30; ./12.HoaVizAPI${EXE} 3 100;
 #	export SIGHT_FILE_OUT=1; ../hier_merge dbg.12.HoaVizAPI dbg.12.HoaVizAPI.*/structure
 #	rm -rf dbg.12.HoaVizAPI.*;
@@ -109,8 +112,8 @@ run: ${TESTERS}
 7.Merging${EXE}: 7.Merging.C ../libsight_structure.so ${sight_H}
 	${CCC} ${SIGHT_CFLAGS} 7.Merging.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 7.Merging${EXE}
 
-8.Modules${EXE}: 8.Modules.C ../libsight_structure.so ${sight_H}
-	${CCC} ${SIGHT_CFLAGS} 8.Modules.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 8.Modules${EXE}
+#8.Modules${EXE}: 8.Modules.C ../libsight_structure.so ${sight_H}
+#	${CCC} ${SIGHT_CFLAGS} 8.Modules.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 8.Modules${EXE}
 
 9.CompModules.single${EXE}: 9.CompModules.C ../libsight_structure.so ${sight_H}
 	${CCC} ${SIGHT_CFLAGS} 9.CompModules.C -DTRACE -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 9.CompModules.single${EXE}
@@ -128,8 +131,11 @@ run: ${TESTERS}
 ./12.HoaVizAPI${EXE}: ./12.HoaVizAPI.C ../libsight_structure.so ${sight_H}
 	${CCC} ${SIGHT_CFLAGS} ./12.HoaVizAPI.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o ./12.HoaVizAPI${EXE}
 
+./13.OpenMP1${EXE}: ./13.OpenMP1.C ../libsight_structure.so ${sight_H}
+	${CC} ${SIGHT_CFLAGS} ./13.OpenMP1.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o ./13.OpenMP1${EXE} 
+
 runPthread: ${PTHREAD_TESTERS}
-	./runPthreadEx pthreadFib 5
+	#./runPthreadEx pthreadFib 5
 	./runPthreadEx pthreadThreadsEx 5
 	./runPthreadEx pthreadMutexEx 5
 	./runPthreadEx pthreadCondEx 5

@@ -921,7 +921,11 @@ module::module(const instance& inst, const std::vector<port>& in, std::vector<po
   sightObj(setProperties(inst, props, &onoffOp, this)), g(modularApp::mStack, inst), externalOutputs(&externalOutputs), meas(meas)
 { init(in, props); }
 
+//struct timeval startModule;
+
 properties* module::setProperties(const instance& inst, properties* props, const attrOp* onoffOp, module* me) {
+//  gettimeofday(&startModule, NULL);
+
   group g(modularApp::mStack, inst);
   bool isDerived = (props!=NULL); // This is an instance of an object that derives from module if its constructor sets props to non-NULL
  
@@ -940,8 +944,8 @@ properties* module::setProperties(const instance& inst, properties* props, const
     pMap["numInputs"]  = txt()<<g.numInputs();
     pMap["numOutputs"] = txt()<<g.numOutputs();
     // hoa edit
-pMap["vertID"] = txt()<<g.vertID();
-pMap["horiID"] = txt()<<g.horiID();
+    pMap["vertID"] = txt()<<g.vertID();
+    pMap["horiID"] = txt()<<g.horiID();
 
     // If this is an instance of module rather than a class that derives from module
     //if(modularApp::isInstanceActive() && !isDerived) {
@@ -1030,6 +1034,11 @@ void module::init(const std::vector<port>& ins, properties* derivedProps) {
   measurementCompleted = false;
   
   //cout << "g="<<g.str()<<", ins.size()="<<ins.size()<<endl;
+/*  struct timeval endModule;
+  gettimeofday(&endModule, NULL);
+  printf("Elapsed Module constructor %le\n",
+                    ((endModule.tv_sec*1000000+endModule.tv_usec) - (startModule.tv_sec*1000000+startModule.tv_usec))/1000000.0);
+*/
 }
 
 // Directly calls the destructor of this object. This is necessary because when an application crashes
@@ -1043,6 +1052,9 @@ void module::destroy() {
 }
 
 module::~module() {
+/*  struct timeval startModuleDest;
+  gettimeofday(&startModuleDest, NULL);*/
+
   assert(!destroyed);
   
   //cout << "~module() props->active="<<props->active<<endl;
@@ -1117,6 +1129,10 @@ module::~module() {
     moduleCtrl.add("moduleCtrl", map<string, string>());
     dbg->exit(moduleCtrl);
   }
+/*  struct timeval endModuleDest;
+  gettimeofday(&endModuleDest, NULL);
+  printf("Elapsed Module destructor %le\n",
+                    ((endModuleDest.tv_sec*1000000+endModuleDest.tv_usec) - (startModuleDest.tv_sec*1000000+startModuleDest.tv_usec))/1000000.0);*/
 }
 
 // Called to complete the measurement of this module's execution. This measurement may be completed before

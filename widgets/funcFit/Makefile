@@ -7,10 +7,14 @@ GSL_PATH = ../gsl
 .C.o:
 	${CCC} ${SIGHT_CFLAGS} -I${GSL_PATH}/include $^ -c -o $@
 
+ifeq (${CCC},icpc)
+  OMPFLAG = -openmp
+endif
+
 all: funcFit #ga
 	
 funcFit: filter.o ${OBJ} ${ROOT_PATH}/libsight_layout.*
-	${CCC} -o funcFit filter.o ${OBJ} ${SIGHT_LINKFLAGS} -L${ROOT_PATH} -lsight_layout -lm -L${GSL_PATH}/lib -lgsl -lpthread -lgslcblas
+	${CCC} -o funcFit filter.o ${OBJ} ${SIGHT_LINKFLAGS} -L${ROOT_PATH} -lsight_layout -lm -L${GSL_PATH}/lib -lgsl -lpthread -lgslcblas ${OMPFLAG}
 
 ga: main.o datainput.o ${OBJ}
 	${CCC} -o ga main.o ${OBJ} datainput.o -lm -L${GSL_PATH}/lib -lgsl -lpthread -lgslcblas

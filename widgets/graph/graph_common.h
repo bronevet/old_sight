@@ -25,7 +25,7 @@ class graphEdge {
   friend class sight::structure::graph;
   
   public:
-  graphEdge(anchor from, anchor to, bool directed, bool visible) :
+  graphEdge(anchor from, anchor to, bool directed, bool visible=true) :
     from(from), to(to), directed(directed), visible(visible)
   {}
   

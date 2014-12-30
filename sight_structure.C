@@ -736,7 +736,7 @@ void sightObj::init(properties* props, bool isTag) {
   if(initializedDebugMainThread && !initializedDebugThisThread) SightInit_NewThread();
   
   assert(outStream);
-//  cout << "sightObj::sightObj isTag="<<isTag<<" props="<<(props? props->str(): "NULL")<<endl;
+  //cout << pthread_self() << "{{{sightObj::sightObj isTag="<<isTag<<" props="<<(props? props->str(): "NULL")<<endl;
   if(props && props->active && props->emitTag) {
     // Add the properties of any clocks associated with this sightObj
     for(map<string, set<sightClock*> >::iterator i=clocks.begin(); i!=clocks.end(); i++) {
@@ -809,7 +809,7 @@ sightObj::~sightObj() {
   assert(outStream);
   
 /*  if(soStack(outStream).size()>0 && emitExitTag) {
-    cout << "]]](#"<<soStack(outStream).size()<<") props="<<(props? props->str(): "NULL")<<endl;
+    cout << pthread_self()<<": }}}(#"<<soStack(outStream).size()<<") #outStream->blocks="<<outStream->blocks.size()<<" outStream="<<outStream<<" props="<<(props? props->str(): "NULL")<<endl;
     cout << "soStack(outStream).back()="<<(soStack(outStream).back()->props? soStack(outStream).back()->props->str(): "NULL")<<endl;
   }*/
   
@@ -857,6 +857,7 @@ sightObj::~sightObj() {
   for(list<destructNotifier>::iterator n=sightObjDestructNotifiers.begin(); n!=sightObjDestructNotifiers.end(); n++)
     (*n)(this);
   sightObjDestructNotifiers.clear();
+  //cout << "#outStream->blocks="<<outStream->blocks.size()<<endl;
 }
 
 // Destroy all the currently live sightObjs on the stack
@@ -2026,8 +2027,10 @@ block::~block() {
   assert(!destroyed);
   
   assert(props);
-  if(props->active && props->emitTag)
-    dbg->exitBlock();
+  if(props->active && props->emitTag) {
+    //cout << "block::~block() exiting block "<<getLabel()<<", #blocks="<<outStream->blocks.size()<<", dbg="<<dbg<<", outStream="<<outStream<<endl;
+    outStream->exitBlock();
+  }
 }
 
 // Increments blockD. This function serves as the one location that we can use to target conditional
@@ -2430,11 +2433,15 @@ void dbgStream::enterBlock(block* b) {
 
   blocks.push_back(b);
   loc.enterBlock();
+  //cout << pthread_self()<<": <<< #"<<blocks.size()<<" dbgStream::enterBlock() label="<<b->getLabel()<<endl;
 }
 
 // Called when a block is exited. Returns the block that was exited.
 block* dbgStream::exitBlock() {
   INIT_CHECK_RET(NULL) // Ensure that Sight is correctly initialized
+  /*if(blocks.size()>0) {
+    cout << pthread_self()<<": >>> #"<<blocks.size()<<" dbgStream::exitBlock() label="<<blocks.back()->getLabel()<<endl;
+  }*/
   assert(blocks.size()>0);
  
   loc.exitBlock();
@@ -2443,6 +2450,9 @@ block* dbgStream::exitBlock() {
   blocks.pop_back();
 
   subBlockExitNotify(lastB);
+  /*cout << pthread_self()<<": >>> #"<<blocks.size()<<endl;
+  for(std::list<block*>::iterator b=blocks.begin(); b!=blocks.end(); ++b)
+    cout << "    "<<(*b)->getLabel()<<endl;*/
 
   return lastB;
 }
