@@ -1,6 +1,6 @@
 //#include <pthread.h>
 #include "sight.h"
-//#include "sight_pthread.h"
+#include "sight_pthread.h"
 using namespace sight;
 #include <stdio.h>
 #include <stdlib.h>

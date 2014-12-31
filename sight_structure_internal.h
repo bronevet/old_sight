@@ -22,9 +22,12 @@
 
 // Include the sight_structure_init.h header if we're compiling one of the internal
 // Sight files. This header includes some boost libraries that conflict with symbols in some apps.
-#if !defined(PUBLIC_API)
+
+// hoa edit for pthread examples
+//#if !defined(PUBLIC_API)
+//#include "sight_structure_init.h"
+//#endif
 #include "sight_structure_init.h"
-#endif
 
 namespace sight {
 namespace structure{

@@ -9,7 +9,7 @@ sight := ${sight_O} ${sight_H} gdbLineNum.pl sightDefines.pl
 ROOT_PATH = ${CURDIR}
 PNMPI_PATH = ${ROOT_PATH}/widgets/PnMPI/INSTALL/
 
-SIGHT_CFLAGS = -fopenmp -g -fPIC -I${ROOT_PATH} -I${ROOT_PATH}/widgets -I${ROOT_PATH}/attributes -I${ROOT_PATH}/widgets/parallel \
+SIGHT_CFLAGS = -fopenmp -g -ggdb -fPIC -I${ROOT_PATH} -I${ROOT_PATH}/widgets -I${ROOT_PATH}/attributes -I${ROOT_PATH}/widgets/parallel \
                 -I${ROOT_PATH}/tools/callpath/src -I${ROOT_PATH}/tools/adept-utils/include \
                 -I${ROOT_PATH}/tools/boost_1_55_0 \
                 -I${ROOT_PATH}/widgets/papi/include 

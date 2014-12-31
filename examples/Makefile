@@ -5,7 +5,9 @@ endif
 
 sight_H := ../*.h ../*/*.h ../widgets/*/*.h
 
-TESTERS = 0.Demo_Hyperlink_HoaViz${EXE} 0.Demo${EXE} 12.Hyperlink_HoaViz${EXE}
+TESTERS = 
+#0.Demo_Hyperlink_HoaViz${EXE} 
+#0.Demo${EXE} 12.Hyperlink_HoaViz${EXE}
 #12.Hyperlink_HoaViz${EXE}
 #12.Hyperlink_HoaViz${EXE} 12.HoaVizAPI${EXE} 8.Modules${EXE}
 #0.Demo_Hyperlink_HoaViz${EXE} 12.Hyperlink_HoaViz${EXE} 12.HoaVizAPI${EXE} 8.Modules${EXE}
@@ -26,27 +28,27 @@ TESTERS = 0.Demo_Hyperlink_HoaViz${EXE} 0.Demo${EXE} 12.Hyperlink_HoaViz${EXE}
 #          11.ExternTraceProcess${EXE} \
 #		  12.HoaVizAPI${EXE}
           
-#PTHREAD_TESTERS = pthreadMutexEx${EXE} pthreadCondEx${EXE} pthreadThreadsEx${EXE} \
-#                  pthreadArrayLoops${EXE} dotprodPthreads${EXE} pthreadFib${EXE} 
+PTHREAD_TESTERS = pthreadMutexEx${EXE} pthreadCondEx${EXE} pthreadThreadsEx${EXE} \
+                  pthreadArrayLoops${EXE} dotprodPthreads${EXE} pthreadFib${EXE} 
 
-all: ${TESTERS} # ${PTHREAD_TESTERS}
+all: ${TESTERS} ${PTHREAD_TESTERS}
 
 #MPI-examples:
 #	make -C MPI_examples
 
 run: ${TESTERS}
 
-	export SIGHT_FILE_OUT=1; ./0.Demo${EXE} 5; ./0.Demo${EXE} 6; ./0.Demo${EXE} 7
-	export SIGHT_FILE_OUT=1; rm -rf dbg.0.Demo; ../hier_merge dbg.0.Demo dbg.0.Demo.maxDepth_5/structure dbg.0.Demo.maxDepth_6/structure dbg.0.Demo.maxDepth_7/structure
-	rm -rf dbg.0.Demo.*;
-	../slayout${EXE} dbg.0.Demo/structure;
+#	export SIGHT_FILE_OUT=1; ./0.Demo${EXE} 5; ./0.Demo${EXE} 6; ./0.Demo${EXE} 7
+#	export SIGHT_FILE_OUT=1; rm -rf dbg.0.Demo; ../hier_merge dbg.0.Demo dbg.0.Demo.maxDepth_5/structure dbg.0.Demo.maxDepth_6/structure dbg.0.Demo.maxDepth_7/structure
+#	rm -rf dbg.0.Demo.*;
+#	../slayout${EXE} dbg.0.Demo/structure;
 #	
 #	./0.Demo_Hyperlink_HoaViz${EXE} 5;
 
-	export SIGHT_FILE_OUT=1; ./0.Demo_Hyperlink_HoaViz${EXE} 5; ./0.Demo_Hyperlink_HoaViz${EXE} 6; ./0.Demo_Hyperlink_HoaViz${EXE} 7
-	export SIGHT_FILE_OUT=1; rm -rf dbg.0.Demo_Hyperlink_HoaViz; ../hier_merge dbg.0.Demo_Hyperlink_HoaViz dbg.0.Demo_Hyperlink_HoaViz.maxDepth_5/structure dbg.0.Demo_Hyperlink_HoaViz.maxDepth_6/structure dbg.0.Demo_Hyperlink_HoaViz.maxDepth_7/structure
-	rm -rf dbg.0.Demo_Hyperlink_HoaViz.*;
-	../slayout${EXE} dbg.0.Demo_Hyperlink_HoaViz/structure;
+#	export SIGHT_FILE_OUT=1; ./0.Demo_Hyperlink_HoaViz${EXE} 5; ./0.Demo_Hyperlink_HoaViz${EXE} 6; ./0.Demo_Hyperlink_HoaViz${EXE} 7
+#	export SIGHT_FILE_OUT=1; rm -rf dbg.0.Demo_Hyperlink_HoaViz; ../hier_merge dbg.0.Demo_Hyperlink_HoaViz dbg.0.Demo_Hyperlink_HoaViz.maxDepth_5/structure dbg.0.Demo_Hyperlink_HoaViz.maxDepth_6/structure dbg.0.Demo_Hyperlink_HoaViz.maxDepth_7/structure
+#	rm -rf dbg.0.Demo_Hyperlink_HoaViz.*;
+#	../slayout${EXE} dbg.0.Demo_Hyperlink_HoaViz/structure;
 
 #	./1.StructuredFormatting${EXE};
 #	
@@ -97,7 +99,7 @@ run: ${TESTERS}
 
 #	./12.HoaVizAPI${EXE};
 
-	./12.Hyperlink_HoaViz${EXE} 5;
+#	./12.Hyperlink_HoaViz${EXE} 5;
 
 #	export SIGHT_FILE_OUT=1; rm -rf dbg.12.HoaVizAPI*; ./12.HoaVizAPI${EXE} 1; ./12.HoaVizAPI${EXE} 2; ./12.HoaVizAPI${EXE} 3; ./12.HoaVizAPI${EXE} 4; ./12.HoaVizAPI${EXE} 5; ./12.HoaVizAPI${EXE} 6; 
 #	export SIGHT_FILE_OUT=1; ../hier_merge${EXE} dbg.12.HoaVizAPI dbg.12.HoaVizAPI.*/structure
@@ -112,12 +114,12 @@ run: ${TESTERS}
 #	rm -rf dbg.12.HoaVizAPI.*;
 #	../slayout${EXE} dbg.12.HoaVizAPI/structure;
 
-0.Demo${EXE}: 0.Demo.C ../libsight_structure.so ${sight_H}
-	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" 0.Demo.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 0.Demo${EXE}
+#0.Demo${EXE}: 0.Demo.C ../libsight_structure.so ${sight_H}
+#	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" 0.Demo.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 0.Demo${EXE}
 
 
-0.Demo_Hyperlink_HoaViz${EXE}: 0.Demo_Hyperlink_HoaViz.C ../libsight_structure.so ${sight_H}
-	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" 0.Demo_Hyperlink_HoaViz.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 0.Demo_Hyperlink_HoaViz${EXE}
+#0.Demo_Hyperlink_HoaViz${EXE}: 0.Demo_Hyperlink_HoaViz.C ../libsight_structure.so ${sight_H}
+#	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" 0.Demo_Hyperlink_HoaViz.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 0.Demo_Hyperlink_HoaViz${EXE}
 	
 #1.StructuredFormatting${EXE}: 1.StructuredFormatting.C ../libsight_structure.so ${sight_H}
 #	${CCC} ${SIGHT_CFLAGS} 1.StructuredFormatting.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 1.StructuredFormatting${EXE}
@@ -159,57 +161,57 @@ run: ${TESTERS}
 #./12.HoaVizAPI${EXE}: ./12.HoaVizAPI.C ../libsight_structure.so ${sight_H}
 #	${CCC} ${SIGHT_CFLAGS} ./12.HoaVizAPI.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o ./12.HoaVizAPI${EXE}
 
-./12.Hyperlink_HoaViz${EXE}: ./12.Hyperlink_HoaViz.C ../libsight_structure.so ${sight_H}
-	${CCC} ${SIGHT_CFLAGS} ./12.Hyperlink_HoaViz.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o ./12.Hyperlink_HoaViz${EXE}
+#./12.Hyperlink_HoaViz${EXE}: ./12.Hyperlink_HoaViz.C ../libsight_structure.so ${sight_H}
+#	${CCC} ${SIGHT_CFLAGS} ./12.Hyperlink_HoaViz.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o ./12.Hyperlink_HoaViz${EXE}
 
 
 #./13.OpenMP1${EXE}: ./13.OpenMP1.C ../libsight_structure.so ${sight_H}
 #	${CC} ${SIGHT_CFLAGS} ./13.OpenMP1.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o ./13.OpenMP1${EXE} 
 
-#runPthread: ${PTHREAD_TESTERS}
-#
-#	./runPthreadEx pthreadFib 5
-#	./runPthreadEx pthreadThreadsEx 5
-#	./runPthreadEx pthreadMutexEx 5
-#	./runPthreadEx pthreadCondEx 5
-#	./runPthreadEx pthreadArrayLoops 5
-#	./runPthreadEx dotprodPthreads 5
-#
-#pthreadThreadsEx${EXE}: pthreadThreadsEx.C ../libsight_structure.so ${sight_H}
-#	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
-#
-#pthreadMutexEx${EXE}: pthreadMutexEx.C ../libsight_structure.so ${sight_H}
-#	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
-#
-#pthreadCondEx${EXE}: pthreadCondEx.C ../libsight_structure.so ${sight_H}
-#	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
-#
-#pthreadFib${EXE}: pthreadFib.C ../libsight_structure.so ${sight_H}
-#	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
-#
-#pthreadArrayLoops${EXE}: pthreadArrayLoops.C ../libsight_structure.so ${sight_H}
-#	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
-#
-#dotprodPthreads${EXE}: dotprodPthreads.C ../libsight_structure.so ${sight_H}
-#	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
-#
-#pthreadBug1${EXE}: pthreadBug1.C ../libsight_structure.so ${sight_H}
-#	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
-#
-#pthreadBug2${EXE}: pthreadBug2.C ../libsight_structure.so ${sight_H}
-#	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
-#
-#pthreadBug3${EXE}: pthreadBug3.C ../libsight_structure.so ${sight_H}
-#	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
-#
-#pthreadBug4${EXE}: pthreadBug4.C ../libsight_structure.so ${sight_H}
-#	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
-#
-#pthreadBug5${EXE}: pthreadBug5.C ../libsight_structure.so ${sight_H}
-#	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
-#
-#pthreadBug6${EXE}: pthreadBug6.C ../libsight_structure.so ${sight_H}
-#	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
+runPthread: ${PTHREAD_TESTERS}
+
+	./runPthreadEx pthreadFib 5
+	./runPthreadEx pthreadThreadsEx 5
+	./runPthreadEx pthreadMutexEx 5
+	./runPthreadEx pthreadCondEx 5
+	./runPthreadEx pthreadArrayLoops 5
+	./runPthreadEx dotprodPthreads 5
+
+pthreadThreadsEx${EXE}: pthreadThreadsEx.C ../libsight_structure.so ${sight_H}
+	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
+
+pthreadMutexEx${EXE}: pthreadMutexEx.C ../libsight_structure.so ${sight_H}
+	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
+
+pthreadCondEx${EXE}: pthreadCondEx.C ../libsight_structure.so ${sight_H}
+	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
+
+pthreadFib${EXE}: pthreadFib.C ../libsight_structure.so ${sight_H}
+	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
+
+pthreadArrayLoops${EXE}: pthreadArrayLoops.C ../libsight_structure.so ${sight_H}
+	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
+
+dotprodPthreads${EXE}: dotprodPthreads.C ../libsight_structure.so ${sight_H}
+	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
+
+pthreadBug1${EXE}: pthreadBug1.C ../libsight_structure.so ${sight_H}
+	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
+
+pthreadBug2${EXE}: pthreadBug2.C ../libsight_structure.so ${sight_H}
+	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
+
+pthreadBug3${EXE}: pthreadBug3.C ../libsight_structure.so ${sight_H}
+	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
+
+pthreadBug4${EXE}: pthreadBug4.C ../libsight_structure.so ${sight_H}
+	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
+
+pthreadBug5${EXE}: pthreadBug5.C ../libsight_structure.so ${sight_H}
+	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
+
+pthreadBug6${EXE}: pthreadBug6.C ../libsight_structure.so ${sight_H}
+	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
 
 clean:
 	rm -rf ${TESTERS} dbg.*

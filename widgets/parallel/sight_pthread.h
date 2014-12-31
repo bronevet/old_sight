@@ -11,13 +11,15 @@
 
 namespace sight {
 namespace structure {
+
 /**************************************************
  ***** Thread Initialization and Finalization *****
  **************************************************/
 
-class PthreadThreadInitFinInstantiator: public ThreadInitFinInstantiator
+class PthreadThreadInitFinInstantiator: public ThreadInitFinInstantiator 
 {
-  public:
+
+  //public:
   // In many cases we'll want to place the log of each thread or process into a separate 
   // region of output. This is accomplished by creating a comparison object. Logs with
   // comparison objects that have the same IDs are merged with each other and logs with
@@ -33,7 +35,7 @@ class PthreadThreadInitFinInstantiator: public ThreadInitFinInstantiator
   // are stored globalComparisons
   //static ThreadLocalStorage0<comparison*> globalComparisons;
   //ThreadLocalStorageList<modularApp*> globalModularApps;
-  
+  public:
   PthreadThreadInitFinInstantiator();
   
   static void initialize();

@@ -1012,7 +1012,8 @@ void dbgBuf::enterBlock(block* b, bool isAttrSubBlock)
 block* dbgBuf::exitBlock(bool isAttrSubBlock)
 {
   //cout << "exitBlock("<<funcName<<") numOpenAngles="<<numOpenAngles<<endl;
-  /*if(funcName != blocks.back()) { 
+  /*
+  if(funcName != blocks.back()) { 
     cout << "dbgStream::exitBlock() ERROR: exiting from block "<<b.getLabel()<<" which is not the most recent function entered!\n";
     cout << "blocks=\n";
     for(list<string>::iterator f=blocks.begin(); f!=blocks.end(); f++)
@@ -1020,7 +1021,8 @@ block* dbgBuf::exitBlock(bool isAttrSubBlock)
     cout.flush();
     baseBuf->pubsync();
     exit(-1);
-  }*/
+  }
+  */
   
   assert(blocks.size()>0);
   block* lastB = blocks.back();
@@ -1671,13 +1673,14 @@ std::string dbgStream::genLoadSubFile(const location& loc) {
 //    the start of this major block and the next setting of an attribute.
 string dbgStream::enterBlock(block* b, bool newFileEntered, bool addSummaryEntry, bool recursiveEnterBlock)
 {
-  //cout <<"dbgStream::enterBlock() recursiveEnterBlock="<<recursiveEnterBlock<<", label="<<b->getLabel()<<endl;
-  //cout << "<<<enter(newFileEntered="<<newFileEntered<<", addSummaryEntry="<<addSummaryEntry<<", recursiveEnterBlock="<<recursiveEnterBlock<<") b="<<b<<"="<<(b? b->getLabel(): "NULL")<<endl;
+  // hoa uncomment
+  cout <<"dbgStream::enterBlock() recursiveEnterBlock="<<recursiveEnterBlock<<", label="<<b->getLabel()<<endl;
+  cout << "<<<enter(newFileEntered="<<newFileEntered<<", addSummaryEntry="<<addSummaryEntry<<", recursiveEnterBlock="<<recursiveEnterBlock<<") b="<<b<<"="<<(b? b->getLabel(): "NULL")<<endl;
 //!!!  dbg << "<<<enter() fileBufs.size()="<<fileBufs.size()<<" && #blocks="<<blocks.size()<<", #blocks.back().second="<<blocks.back().second.size()<<", #fileBufs.back()->blocks="<<(fileBufs.size()==0? -1: fileBufs.back()->blocks.size())<<endl;
 /*  if(!recursiveEnterBlock)
     exitAttrSubBlock();*/
+  cout << "<<<enterBlock: b="<<b<<", newFileEntered="<<newFileEntered<<", addSummaryEntry="<<addSummaryEntry<<", recursiveEnterBlock="<<recursiveEnterBlock<<endl;
   
-  //cout << "<<<enterBlock: b="<<b<<", newFileEntered="<<newFileEntered<<", addSummaryEntry="<<addSummaryEntry<<", recursiveEnterBlock="<<recursiveEnterBlock<<endl;
   // if recursiveEnterBlock, newFileEntered and addSummaryEntry may not be
   assert(!addSummaryEntry || !(recursiveEnterBlock && newFileEntered));
   //(*this) << "dbgStream::enterBlock("<<(b? b->getLabel(): "NULL")<<")"<<endl;

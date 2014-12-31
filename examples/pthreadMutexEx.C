@@ -1,10 +1,10 @@
 //#include <pthread.h>
 #include "sight.h"
 #include "sight_pthread.h"
-using namespace sight;
 #include <stdio.h>
 #include <stdlib.h>
 
+using namespace sight;
 /*   
 The following structure contains the necessary information  
 to allow the function "dotprod" to access its input data and 
