@@ -5,8 +5,7 @@ endif
 
 sight_H := ../*.h ../*/*.h ../widgets/*/*.h
 
-TESTERS = 
-#13.OpenMP1${EXE}
+TESTERS = 13.OpenMP1${EXE}
 #0.Demo_Hyperlink_HoaViz${EXE} 
 #0.Demo${EXE} 12.Hyperlink_HoaViz${EXE}
 #12.Hyperlink_HoaViz${EXE}
@@ -29,11 +28,10 @@ TESTERS =
 #          11.ExternTraceProcess${EXE} \
 #		  12.HoaVizAPI${EXE}
           
-PTHREAD_TESTERS = pthreadMutexEx${EXE}
-#pthreadMutexEx${EXE} pthreadCondEx${EXE} pthreadThreadsEx${EXE} \
-#                 pthreadArrayLoops${EXE} dotprodPthreads${EXE} pthreadFib${EXE} 
-
+PTHREAD_TESTERS = 
 #openMPex1${EXE} 
+#pthreadMutexEx${EXE} pthreadCondEx${EXE} pthreadThreadsEx${EXE} \
+#                  pthreadArrayLoops${EXE} dotprodPthreads${EXE} pthreadFib${EXE} 
 
 all: ${TESTERS} ${PTHREAD_TESTERS}
 
@@ -113,10 +111,10 @@ run: ${TESTERS}
 #	export OMP_NUM_THREADS=5;
 #	./13.OpenMP1${EXE};
 
-#	export SIGHT_FILE_OUT=1;./13.OpenMP1${EXE};
-#	../hier_merge${EXE} dbg.13.OpenMP1 dbg.13.OpenMP1.thread_*/structure;
-#	rm -rf dbg.13.OpenMP1.*;
-#	../slayout${EXE} dbg.13.OpenMP1/structure;
+	export SIGHT_FILE_OUT=1; rm -rf dbg.13.OpenMP1*; ./13.OpenMP1${EXE};
+	export SIGHT_FILE_OUT=1; ../hier_merge${EXE} dbg.13.OpenMP1 dbg.13.OpenMP1.thread_*/structure;
+	rm -rf dbg.13.OpenMP1.*;
+	../slayout${EXE} dbg.13.OpenMP1/structure;
 
 #	export SIGHT_FILE_OUT=1; rm -rf dbg.12.HoaVizAPI*; ./12.HoaVizAPI${EXE} 1 10; ./12.HoaVizAPI${EXE} 1 30; ./12.HoaVizAPI${EXE} 1 100; ./12.HoaVizAPI${EXE} 2 10; ./12.HoaVizAPI${EXE} 2 30; ./12.HoaVizAPI${EXE} 2 100; ./12.HoaVizAPI${EXE} 3 10; ./12.HoaVizAPI${EXE} 3 30; ./12.HoaVizAPI${EXE} 3 100;
 #	export SIGHT_FILE_OUT=1; ../hier_merge dbg.12.HoaVizAPI dbg.12.HoaVizAPI.*/structure
@@ -174,14 +172,14 @@ run: ${TESTERS}
 #	${CCC} ${SIGHT_CFLAGS} ./12.Hyperlink_HoaViz.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o ./12.Hyperlink_HoaViz${EXE}
 
 
-#./13.OpenMP1${EXE}: ./13.OpenMP1.C ../libsight_structure.so ${sight_H}
-#	${CCC} ${SIGHT_CFLAGS} ./13.OpenMP1.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o ./13.OpenMP1${EXE} 
+./13.OpenMP1${EXE}: ./13.OpenMP1.C ../libsight_structure.so ${sight_H}
+	${CCC} ${SIGHT_CFLAGS} ./13.OpenMP1.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o ./13.OpenMP1${EXE} 
 
 runPthread: ${PTHREAD_TESTERS}
 #	./runPthreadEx openMPex1 5
 #	./runPthreadEx pthreadFib 5
 #	./runPthreadEx pthreadThreadsEx 5
-	./runPthreadEx pthreadMutexEx 5
+#	./runPthreadEx pthreadMutexEx 5
 #	./runPthreadEx pthreadCondEx 5
 #	./runPthreadEx pthreadArrayLoops 5
 #	./runPthreadEx dotprodPthreads 5
@@ -192,8 +190,8 @@ runPthread: ${PTHREAD_TESTERS}
 #pthreadThreadsEx${EXE}: pthreadThreadsEx.C ../libsight_structure.so ${sight_H}
 #	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
 
-pthreadMutexEx${EXE}: pthreadMutexEx.C ../libsight_structure.so ${sight_H}
-	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
+#pthreadMutexEx${EXE}: pthreadMutexEx.C ../libsight_structure.so ${sight_H}
+#	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
 
 #pthreadCondEx${EXE}: pthreadCondEx.C ../libsight_structure.so ${sight_H}
 #	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
