@@ -28,10 +28,17 @@ __thread comparison* globalComparisons;
 
 PthreadThreadInitFinInstantiator::PthreadThreadInitFinInstantiator() { 
   //cout << "PthreadThreadInitFinInstantiator::PthreadThreadInitFinInstantiator()"<<endl;
+  // hoa sua
+  /*
   addFuncs("pthread", 
            PthreadThreadInitFinInstantiator::initialize, 
            PthreadThreadInitFinInstantiator::finalize,
            common::easyset<std::string>("mpi"), common::easyset<std::string>());
+           */
+  addFuncs("pthread", 
+           PthreadThreadInitFinInstantiator::initialize, 
+           PthreadThreadInitFinInstantiator::finalize,
+           common::easyset<std::string>("openMP"), common::easyset<std::string>());
 }
 
 void PthreadThreadInitFinInstantiator::initialize() {

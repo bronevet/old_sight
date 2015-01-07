@@ -1,5 +1,7 @@
 #include "sight.h"
+#include "sight_pthread.h"
 #include <map>
+#include <vector>
 #include <assert.h>
 #include <omp.h>
 #include <stdio.h>
@@ -7,7 +9,7 @@
 // for example 2
 #define CHUNKSIZE   10
 #define N       100
-
+	
 using namespace std;
 using namespace sight;
 
@@ -51,10 +53,10 @@ int main(int argc, char** argv)
 	*/
 
 	// example 2 - Loop Work-sharing
-	 
 	int nthreads, tid, i, chunk;
 	float a[N], b[N], c[N];
-
+	
+	nthreads = 4;
 	// Some initializations
 	for (i=0; i < N; i++)
 	a[i] = b[i] = i * 1.0;
@@ -78,14 +80,12 @@ int main(int argc, char** argv)
 			c[i] = a[i] + b[i];
 			dbg << "Thread " << tid <<": c["<< i << "] = " << c[i] << endl;
 			stringstream ss;
-	                ss << c[i];
-	                string thr= ss.str();
-	
-        	        g.graphNodeStart(thr);
-	                g.graphNodeEnd(thr);
+            ss << c[i];
+            string thr= ss.str();
 
+	        g.graphNodeStart(thr);
+            g.graphNodeEnd(thr);
 		}
-
 	}  // end of parallel section
 	
 
@@ -113,6 +113,5 @@ int main(int argc, char** argv)
         g.graphNodeEnd(thsum);
 	*/
 	
-
 	return 0;
 }

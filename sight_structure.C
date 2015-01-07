@@ -2005,7 +2005,7 @@ block::~block() {
     //cout << "exitBlock Thread - " << pthread_self() << endl;
 
     //dbg->exitBlock();
-     outStream->exitBlock();
+    outStream->exitBlock();
   }
 }
 
