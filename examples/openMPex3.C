@@ -16,6 +16,8 @@ using namespace std;
 using namespace sight;
 
 int numThreads = 4;
+pthread_mutex_t mutexsum;
+int rel = 0;
 
 void *subfun(void *t)
 {
@@ -25,13 +27,15 @@ void *subfun(void *t)
 	int x;
 	x = 2;
 	int y = 0;
+
    	#pragma omp parallel num_threads(numThreads) shared(x)
 	{
 		y = 0;
 		if (omp_get_thread_num() == 0) {
 			x = 10;
 			y = x;
-		} else {		
+		} else {
+			x = 2;		
 			if(omp_get_thread_num() == tid)
 			{
 				//printf("Thread# %d: x = %d\n", omp_get_thread_num(),x );
@@ -39,7 +43,18 @@ void *subfun(void *t)
 			}
 		}
 	}
-    dbg << "Thread "<<tid<<" done. y = "<< y <<"\n";
+
+    rel += y;
+    
+    stringstream ss;
+    ss << tid;
+    string ts= ss.str();
+	
+	flowgraph g;
+	g.graphNodeStart(ts);
+    g.graphNodeEnd(ts);
+
+    dbg << "Thread "<<tid<<" done. result = "<< rel <<"\n";
     pthread_exit((void*) t);
 }
 
@@ -54,7 +69,7 @@ int main (int argc, char *argv[])
 	long t;
 	void *status;
 	
-	SightInit(argc, argv, "openMPex1", "dbg.openMPex1.individual");
+	SightInit(argc, argv, "openMPex3", "dbg.openMPex3.individual");
 	
 	   /* Initialize and set thread detached attribute */
 	pthread_attr_init(&attr);

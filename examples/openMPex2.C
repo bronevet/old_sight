@@ -16,6 +16,7 @@ using namespace std;
 using namespace sight;
 
 int numThreads = 4;
+pthread_mutex_t mutexsum;
 
 void *subfun(void *t)
 {
@@ -25,6 +26,7 @@ void *subfun(void *t)
 	int x;
 	x = 2;
 	int y = 0;
+	int rel = 0;
    	#pragma omp parallel num_threads(numThreads) shared(x)
 	{
 		y = 0;
@@ -39,7 +41,19 @@ void *subfun(void *t)
 			}
 		}
 	}
-    dbg << "Thread "<<tid<<" done. y = "<< y <<"\n";
+
+	 /*
+   Lock a mutex prior to updating the value in the shared
+   structure, and unlock it upon updating.
+   */
+   pthread_mutex_lock (&mutexsum);
+   {
+		scope s("Updating result", scope::minimum);
+		rel += y;
+   }
+   pthread_mutex_unlock (&mutexsum);
+   
+    dbg << "Thread "<<tid<<" done. result = "<< rel <<"\n";
     pthread_exit((void*) t);
 }
 
@@ -54,7 +68,7 @@ int main (int argc, char *argv[])
 	long t;
 	void *status;
 	
-	SightInit(argc, argv, "openMPex1", "dbg.openMPex1.individual");
+	SightInit(argc, argv, "openMPex2", "dbg.openMPex2.individual");
 	
 	   /* Initialize and set thread detached attribute */
 	pthread_attr_init(&attr);
