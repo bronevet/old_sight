@@ -49,11 +49,9 @@ int main(int argc, char** argv)
 
 	// It is possible to write arbitrary text to the debug output
 	dbg << "<h1>Example 13: OpenMP1</h1>" << endl;
-
-	// example 0_1
 	
-
-    if(argc>=2) numThreads = atoi(argv[1]);
+	// example 0_1
+	if(argc>=2) numThreads = atoi(argv[1]);
 
     std::vector<pthread_t> thread(numThreads);
 	pthread_attr_t attr;
@@ -61,8 +59,7 @@ int main(int argc, char** argv)
 	long t;
 	void *status;
 
-	   /* Initialize and set thread detached attribute */
-    pthread_attr_init(&attr);
+	pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
     for(t=0; t<numThreads; t++) {
@@ -89,6 +86,7 @@ int main(int argc, char** argv)
    dbg << "Main: program completed. Exiting.\n";
    pthread_exit(NULL);  
 	
+
 	// example 0_2
 	/*
 	omp_set_nested(1);

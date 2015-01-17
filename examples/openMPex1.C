@@ -1,6 +1,6 @@
 
 #include "sight.h"
-#include "sight_pthread.h"
+#include "sight_ompthread.h"
 #include <map>
 #include <vector>
 #include <assert.h>
@@ -16,73 +16,55 @@ using namespace std;
 using namespace sight;
 
 int numThreads = 4;
+int x = 2;
 
-void *subfun(void *t)
-{
+//void *subfun(void *t){
+void subfun(){
+
+	//long tid = (long)t;
 	long tid;
-	tid = (long)t;
+	tid = omp_get_thread_num();
+
 	dbg << "Thread "<<tid<<" starting..."<<endl;
-	int x;
-	x = 2;
-	int y = 0;
-   	#pragma omp parallel num_threads(numThreads) shared(x)
-	{
-		y = 0;
-		if (omp_get_thread_num() == 0) {
-			x = 10;
-			y = x;
-		} else {		
-			if(omp_get_thread_num() == tid)
-			{
-				//printf("Thread# %d: x = %d\n", omp_get_thread_num(),x );
-				y = x + 3;
-			}
-		}
-	}
-    dbg << "Thread "<<tid<<" done. y = "<< y <<"\n";
-    pthread_exit((void*) t);
+	if (tid == 0) {
+		x = 5;
+		printf("1: Thread# %d: x = %d\n", tid,x );
+	} else {		
+		x = 2;
+		// Print 1: the following read of x has a race
+		printf("2: Thread# %d: x = %d\n", tid,x );
+	}	
+
+	dbg << "Thread "<<tid<<" done. x = "<< x <<"\n";
+	sight_ompthread_exit((void*) tid);
 }
 
 int main (int argc, char *argv[])
 {
+	SightInit(argc, argv, "openMPex1", "dbg.openMPex1.individual");
 
 	if(argc>=2) numThreads = atoi(argv[1]);
 
-	std::vector<pthread_t> thread(numThreads);
-	pthread_attr_t attr;
-	int rc;
-	long t;
-	void *status;
-	
-	SightInit(argc, argv, "openMPex1", "dbg.openMPex1.individual");
-	
-	   /* Initialize and set thread detached attribute */
-	pthread_attr_init(&attr);
-	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+    sight_ompthread_create();
+	#pragma omp parallel num_threads(numThreads) shared(x)
+	{
+		//long t = omp_get_thread_num();
+		if(omp_get_thread_num() != 0)
+	      sightOMPThreadInitializer();
 
-	for(t=0; t<numThreads; t++) {
-	  dbg << "Main: creating thread "<<t<<"\n";
-	  //cout << pthread_self()<<"Main: creating thread "<<t<<", dbg="<<&dbg<<"\n";
-	  pthread_t thr;
-	  rc = pthread_create(&thread[t], &attr, subfun, (void *)t); 
-	  if (rc) {
-	     dbg << "ERROR; return code from pthread_create() is "<<rc<<"\n";
-	     exit(-1);
-	  }
-	}
+	    //subfun((void *)t);
+	    subfun();
 
-	pthread_attr_destroy(&attr);
-	for(t=0; t<numThreads; t++) {
-	  rc = pthread_join(thread[t], &status);
-	  if (rc) {
-	     dbg << "ERROR; return code from pthread_join() is "<<rc<<"\n";
-	     exit(-1);
-	  }
-	  dbg << "Main: completed join with thread "<<t<<" having a status of "<<long(status)<<endl;
-	}
+	    if(omp_get_thread_num() != 0)
+	      ompthreadCleanup(NULL);
+  	}
+  	for(int t=1; t<numThreads; ++t){
+    	sight_ompthread_join(t); 
+    	dbg << "Main: completed join with thread "<<t<<endl;
+    }
 
 	dbg << "Main: program completed. Exiting.\n";
-	pthread_exit(NULL);  
+	sight_ompthread_exit(NULL);
 
 	return 0;
 }
