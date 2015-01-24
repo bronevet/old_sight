@@ -8,9 +8,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-// for example 2
-#define CHUNKSIZE   10
-#define N       100
 	
 using namespace std;
 using namespace sight;
@@ -18,9 +15,7 @@ using namespace sight;
 int numThreads = 4;
 int x = 2;
 
-//void *subfun(void *t){
 void subfun(){
-
 	//long tid = (long)t;
 	long tid;
 	tid = omp_get_thread_num();
@@ -28,15 +23,14 @@ void subfun(){
 	dbg << "Thread "<<tid<<" starting..."<<endl;
 	if (tid == 0) {
 		x = 5;
-		printf("1: Thread# %d: x = %d\n", tid,x );
-	} else {		
-		x = 2;
+		printf("Master Thread# %d: x = %d\n", tid,x );
+		} else {		
+		//x = 2;
 		// Print 1: the following read of x has a race
-		printf("2: Thread# %d: x = %d\n", tid,x );
-	}	
-
-	dbg << "Thread "<<tid<<" done. x = "<< x <<"\n";
-	sight_ompthread_exit((void*) tid);
+		printf("Non-master Thread# %d: x = %d\n", tid,x );
+	}
+	
+	dbg << "Thread# "<< tid <<" done. x = "<< x <<"\n";
 }
 
 int main (int argc, char *argv[])
@@ -48,24 +42,21 @@ int main (int argc, char *argv[])
     sight_ompthread_create();
 	#pragma omp parallel num_threads(numThreads) shared(x)
 	{
-		//long t = omp_get_thread_num();
 		if(omp_get_thread_num() != 0)
-	      sightOMPThreadInitializer();
-
-	    //subfun((void *)t);
-	    subfun();
-
+		  	sightOMPThreadInitializer();
+	
+		subfun();	
+	    
 	    if(omp_get_thread_num() != 0)
-	      ompthreadCleanup(NULL);
+	     	ompthreadCleanup(NULL);
   	}
   	for(int t=1; t<numThreads; ++t){
-    	sight_ompthread_join(t); 
+  		sight_ompthread_join(t); 
     	dbg << "Main: completed join with thread "<<t<<endl;
     }
 
 	dbg << "Main: program completed. Exiting.\n";
-	sight_ompthread_exit(NULL);
-
+	
 	return 0;
 }
 

@@ -13,6 +13,7 @@
 using namespace sight;
 using namespace sight::structure;
 
+//hoa edit
 //#define VERBOSE
 
 namespace sight {

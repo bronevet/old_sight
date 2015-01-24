@@ -485,7 +485,7 @@ void SightThreadFinalize() {
   // Unregister this thread's soStacks from threadSoStacks
   pthread_mutex_lock(&threadSoStacksMutex);
   if(threadSoStacks.find(pthread_self()) != threadSoStacks.end()) {
-//    cout << pthread_self()<<": SightThreadFinalize()"<<endl;
+    //cout << pthread_self()<<": SightThreadFinalize()"<<endl;
     threadSoStacks.erase(pthread_self());
 
     ThreadInitFinInstantiator::finalize();

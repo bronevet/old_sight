@@ -29,7 +29,7 @@ static std::map<long, scalarCausalClock*> causalityOMP;
 __thread comparison* globalComparisonsOMP;
 
 ompthreadThreadInitFinInstantiator::ompthreadThreadInitFinInstantiator() { 
-  addFuncs("pthread", 
+  addFuncs("ompthread", 
            ompthreadThreadInitFinInstantiator::initialize, 
            ompthreadThreadInitFinInstantiator::finalize,
            common::easyset<std::string>("mpi"), common::easyset<std::string>());
@@ -72,6 +72,7 @@ void sendcausalityOMP(const std::string& sendID, const std::string& recvID,
   if(!cmHeld) {
     omp_set_lock(&causalityLock); 
   }
+  //cout << "Thread# " << omp_get_thread_num()<< " commsend sendID="  << sendID << " recvID=" << recvID << endl;
   
   checkcausalityOMP(true);
 
@@ -182,23 +183,41 @@ typedef struct {
 //ThreadLocalStorage1<void*, void*> retVal(NULL);
 
 void ompthreadCleanup(void * arg) {
-//  cout << pthread_self()<<": threadCleanup() <<<<"<<endl;
+  //cout << omp_get_thread_num() <<": threadCleanup() <<<<"<<endl;
+  sendcausalityOMP(txt()<<"End_"<<omp_get_thread_num(), "Terminating");
+  
+  // hoa edit
+  // use finalizeSight instead of SightThreadFinalize()
+  AbortHandlerInstantiator::finalizeSight();
+  //SightThreadFinalize();
+
+//  cout << pthread_self()<<": threadCleanup() >>>>"<<endl;
+  /*
+  cout << omp_get_thread_num()<<": threadCleanup() <<<<"<<endl;
   sendcausalityOMP(txt()<<"End_"<<omp_get_thread_num(), "Terminating");
   //AbortHandlerInstantiator::finalizeSight();
   SightThreadFinalize();
 //  cout << pthread_self()<<": threadCleanup() >>>>"<<endl;
+*/
 }
 
 // Function that wraps the execution of each thread spawned using pthread_create()
 // and ensures that all appropriate initialization is performed
+//void sightOMPThreadInitializer() {
+//void sightOMPThreadInitializer(void (*subfun)(long)){
+//void sightOMPThreadInitializer(void (*subfun)()){
 void sightOMPThreadInitializer() {
+
+  // not work here
+  //ompthreadCleanup(NULL);
   // Initialize Sight for this thread before we initialize its clock
   SightInit_NewThread();
  
   //void* ret;
 
   //pthread_cleanup_push(threadCleanup, NULL);
-  
+  //work here
+  //ompthreadCleanup(NULL);
   {
     // Initialize the new thread's causality clock, while under control of causalityLock
     omp_set_lock(&causalityLock);
@@ -233,9 +252,15 @@ void sightOMPThreadInitializer() {
     //commSend(txt()<<"End_"<<pthread_self(), "");
     //rc = sendCausality(txt()<<"End_"<<pthread_self(), "Terminating");
 
+    //long t = omp_get_thread_num();
+    //subfun(t);
+
+    // work here
     //ompthreadCleanup(NULL);
   }
 
+  //work here
+  //ompthreadCleanup(NULL);
   /*cout << pthread_self()<<": Calling SightThreadFinalize()\n"; cout.flush();
   SightThreadFinalize();
   cout << pthread_self()<<": End of thread\n"; cout.flush();*/
@@ -248,7 +273,7 @@ void sightOMPThreadInitializer() {
 // Counts the number of times each thread has spawned another thread
 // Making numThreadsSpawned a global variable so that all threads can access it
 //static ThreadLocalStorage1<int, int> numThreadsSpawned(0);
-int numThreadsSpawned=0;
+//int numThreadsSpawned=0;
 
 void sight_ompthread_create() {
   // Create a scalarCausalClock for the spawning thread if it does not yet have one
@@ -269,11 +294,11 @@ void sight_ompthread_create() {
   sendcausalityOMP(txt()<<"Spawner_"<<0, "Spawn");
   }
   
-  numThreadsSpawned++;
+  //numThreadsSpawned++;
 }
 
 void sight_ompthread_exit(void *value_ptr) {
-  //cout << pthread_self()<<": sight_pthread_exit()"<<endl;
+  //cout << omp_get_thread_num()<<": sight_ompthread_exit()"<<endl;
   // Add a causalityOMP send edge from the thread's termination to the join call
   //commSend(txt()<<"End_"<<pthread_self(), "");
   sendcausalityOMP(txt()<<"End_"<<omp_get_thread_num(), "Terminating");

@@ -96,8 +96,9 @@ void SightInit_LowLevel();
 void SightInit_internal(properties* props);
 
 void SightThreadInit();
-void SightThreadFinalize();
 
+// hoa edit
+void SightThreadFinalize();
 
 // Generic check to perform before emitting objects to the Sight log to ensure that
 // Sight is correctly initialized 

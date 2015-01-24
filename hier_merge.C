@@ -18,7 +18,6 @@ int main(int argc, char** argv) {
   for(int i=2; i<argc; i++) {
     fileParsers.push_back(new FILEStructureParser(argv[i], 10000));
   }
-  
   #ifdef VERBOSE
   SightInit(argc, argv, "hier_merge", txt()<<outDir<<".hier_merge");
   dbg << "#fileParserRefs="<<fileParsers.size()<<endl;

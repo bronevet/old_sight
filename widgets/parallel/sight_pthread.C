@@ -28,28 +28,34 @@ __thread comparison* globalComparisons;
 
 PthreadThreadInitFinInstantiator::PthreadThreadInitFinInstantiator() { 
   //cout << "PthreadThreadInitFinInstantiator::PthreadThreadInitFinInstantiator()"<<endl;
+/*
   addFuncs("pthread", 
            PthreadThreadInitFinInstantiator::initialize, 
            PthreadThreadInitFinInstantiator::finalize,
            common::easyset<std::string>("mpi"), common::easyset<std::string>());
+           */
 }
 
 void PthreadThreadInitFinInstantiator::initialize() {
+  /*
   // Assign each thread to a separate log based on its thread ID
   if(getenv("DISABLE_PTHREAD_COMPARISON")==NULL)
     globalComparisons = new comparison(txt()<<pthread_self());
   else
     globalComparisons = NULL;
   //cout << pthread_self()<<": PthreadThreadInitFinInstantiator::initialize() *globalComparisons="<<globalComparisons<<endl;
+  */
 }
 
 void PthreadThreadInitFinInstantiator::finalize() {
+  /*
   //cout << pthread_self()<<": PthreadThreadInitFinInstantiator::finalize() *globalComparisons="<<globalComparisons<<endl;
   // Assign each thread to a separate log based on its thread ID
   if(getenv("DISABLE_PTHREAD_COMPARISON")==NULL) {
     assert(globalComparisons != NULL);
     delete globalComparisons;
   }
+  */
 }
 
 PthreadThreadInitFinInstantiator PthreadThreadInitFinInstance;

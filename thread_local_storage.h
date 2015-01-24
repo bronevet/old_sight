@@ -1,5 +1,8 @@
 #pragma once
 #include <pthread.h>
+//hoa edit
+#include <omp.h>
+
 //#include <stdio.h>
 //#include <stdlib.h>
 #include <iostream>

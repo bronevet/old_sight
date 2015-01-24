@@ -1,4 +1,5 @@
 // Licence information included in file LICENCE
+#include <omp.h>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -49,6 +50,9 @@ properties* commSend::setProperties(const std::string& recvID, const attrOp* ono
   }
   else
     props->active = false;
+  
+  //cout << "commSend::setProperties Thread# " << omp_get_thread_num()<< " recvID=" << recvID << endl;
+
   return props;
 }
 
