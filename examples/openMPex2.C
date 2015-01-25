@@ -38,19 +38,20 @@ int main (int argc, char *argv[])
 		if(omp_get_thread_num() != 0)
 		  	sightOMPThreadInitializer();
 	
-		tid = omp_get_thread_num();
-		if (tid == 0)
+		if (omp_get_thread_num() == 0)
 		{
 			dbg << "Number of threads = " << numThreads << endl;
 		}
-		dbg << "Thread "<< tid << " starting..." << endl;
+		dbg << "Thread "<< omp_get_thread_num() << " starting..." << endl;
 
+		//#pragma omp for schedule(dynamic,chunk)
 		for (i=0; i<N; i++)
 		{
 			c[i] = a[i] + b[i];
-			dbg << "Thread " << tid <<": c["<< i << "] = " << c[i] << endl;			
+			dbg << "Thread " << omp_get_thread_num() <<": c["<< i << "] = " << c[i] << endl;							
 		}	
-	    dbg << "Thread "<< tid << " done." << endl;
+
+	    dbg << "Thread "<< omp_get_thread_num() << " done." << endl;
 
 	    if(omp_get_thread_num() != 0)
 	     	ompthreadCleanup(NULL);

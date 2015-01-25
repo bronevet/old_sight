@@ -1,6 +1,6 @@
 
 #include "sight.h"
-#include "sight_pthread.h"
+#include "sight_ompthread.h"
 #include <map>
 #include <vector>
 #include <assert.h>
@@ -8,97 +8,49 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-// for example 2
-#define CHUNKSIZE   10
-#define N       100
 	
 using namespace std;
 using namespace sight;
 
-int numThreads = 4;
-pthread_mutex_t mutexsum;
-int rel = 0;
-
-void *subfun(void *t)
-{
-	long tid;
-	tid = (long)t;
-	dbg << "Thread "<<tid<<" starting..."<<endl;
-	int x;
-	x = 2;
-	int y = 0;
-
-   	#pragma omp parallel num_threads(numThreads) shared(x)
-	{
-		y = 0;
-		if (omp_get_thread_num() == 0) {
-			x = 10;
-			y = x;
-		} else {
-			x = 2;		
-			if(omp_get_thread_num() == tid)
-			{
-				//printf("Thread# %d: x = %d\n", omp_get_thread_num(),x );
-				y = x + 3;
-			}
-		}
-	}
-
-    rel += y;
-    
-    stringstream ss;
-    ss << tid;
-    string ts= ss.str();
-	
-	flowgraph g;
-	g.graphNodeStart(ts);
-    g.graphNodeEnd(ts);
-
-    dbg << "Thread "<<tid<<" done. result = "<< rel <<"\n";
-    pthread_exit((void*) t);
-}
-
 int main (int argc, char *argv[])
 {
-
+	int numThreads = 4;
 	if(argc>=2) numThreads = atoi(argv[1]);
 
-	std::vector<pthread_t> thread(numThreads);
-	pthread_attr_t attr;
-	int rc;
-	long t;
-	void *status;
-	
 	SightInit(argc, argv, "openMPex3", "dbg.openMPex3.individual");
 	
-	   /* Initialize and set thread detached attribute */
-	pthread_attr_init(&attr);
-	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+	int j, k, jlast, klast;
 
-	for(t=0; t<numThreads; t++) {
-	  dbg << "Main: creating thread "<<t<<"\n";
-	  //cout << pthread_self()<<"Main: creating thread "<<t<<", dbg="<<&dbg<<"\n";
-	  pthread_t thr;
-	  rc = pthread_create(&thread[t], &attr, subfun, (void *)t); 
-	  if (rc) {
-	     dbg << "ERROR; return code from pthread_create() is "<<rc<<"\n";
-	     exit(-1);
-	  }
+	sight_ompthread_create();
+	#pragma omp parallel num_threads(numThreads)
+	{
+		if(omp_get_thread_num() != 0)
+		  	sightOMPThreadInitializer();
+
+		#pragma omp for collapse(2) lastprivate(jlast, klast)
+		for (k=1; k<=2; k++)
+		for (j=1; j<=3; j++)
+		{
+			jlast=j;
+			klast=k;
+		}
+		
+		//#pragma omp single
+		//printf("%d %d\n", klast, jlast);
+		
+		dbg << "Thread "<< omp_get_thread_num() << " klast = " << klast << " jlast =" << jlast << endl;
+		dbg << "Thread "<< omp_get_thread_num() << " done." << endl;
+	    
+	    if(omp_get_thread_num() != 0)
+     		ompthreadCleanup(NULL);
 	}
 
-	pthread_attr_destroy(&attr);
-	for(t=0; t<numThreads; t++) {
-	  rc = pthread_join(thread[t], &status);
-	  if (rc) {
-	     dbg << "ERROR; return code from pthread_join() is "<<rc<<"\n";
-	     exit(-1);
-	  }
-	  dbg << "Main: completed join with thread "<<t<<" having a status of "<<long(status)<<endl;
-	}
+	for(int t=1; t<numThreads; ++t){
+  		sight_ompthread_join(t); 
+    	dbg << "Main: completed join with thread "<<t<<endl;
+    }
 
 	dbg << "Main: program completed. Exiting.\n";
-	pthread_exit(NULL);  
-
 	return 0;
 }
 

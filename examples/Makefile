@@ -29,7 +29,8 @@ TESTERS =
 #          11.ExternTraceProcess${EXE} \
 #		  12.HoaVizAPI${EXE}
           
-PTHREAD_TESTERS = openMPex1${EXE} openMPex2${EXE}
+PTHREAD_TESTERS = openMPex1${EXE} openMPex2${EXE} openMPex3${EXE} openMPex4${EXE}
+#openMPex1${EXE} openMPex2${EXE} openMPex3${EXE}
 #openMPex1${EXE} pthreadThreadsEx${EXE}
 #openMPex2${EXE} openMPex3${EXE}
 #pthreadMutexEx${EXE} pthreadCondEx${EXE} pthreadThreadsEx${EXE} \
@@ -176,8 +177,9 @@ run: ${TESTERS}
 
 runPthread: ${PTHREAD_TESTERS}
 	./runPthreadEx openMPex1 5
-	./runPthreadEx openMPex2 3
-#	./runPthreadEx openMPex3 6
+	./runPthreadEx openMPex2 5
+	./runPthreadEx openMPex3 5
+	./runPthreadEx openMPex4 5
 #	./runPthreadEx pthreadFib 5
 #	./runPthreadEx pthreadThreadsEx 5
 #	./runPthreadEx pthreadMutexEx 5
@@ -191,8 +193,11 @@ openMPex1${EXE}: openMPex1.C ../libsight_structure.so ${sight_H}
 openMPex2${EXE}: openMPex2.C ../libsight_structure.so ${sight_H}
 	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
 
-#openMPex3${EXE}: openMPex3.C ../libsight_structure.so ${sight_H}
-#	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
+openMPex3${EXE}: openMPex3.C ../libsight_structure.so ${sight_H}
+	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
+
+openMPex4${EXE}: openMPex4.C ../libsight_structure.so ${sight_H}
+	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
 
 #pthreadThreadsEx${EXE}: pthreadThreadsEx.C ../libsight_structure.so ${sight_H}
 #	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
