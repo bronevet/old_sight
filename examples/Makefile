@@ -176,6 +176,7 @@ run: ${TESTERS}
 #	${CCC} ${SIGHT_CFLAGS} ./13.OpenMP1.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o ./13.OpenMP1${EXE} 
 
 runPthread: ${PTHREAD_TESTERS}
+	export SIGHT_FILE_OUT=1
 	./runPthreadEx openMPex1 5
 	./runPthreadEx openMPex2 5
 	./runPthreadEx openMPex3 5

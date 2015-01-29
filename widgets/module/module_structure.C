@@ -96,7 +96,7 @@ ModuleThreadInitFinInstantiator::ModuleThreadInitFinInstantiator() {
            ModuleThreadInitFinInstantiator::initialize,
            ModuleThreadInitFinInstantiator::finalize,
            /*mustFollow*/ common::easyset<std::string>(),
-           /*mustPrecede*/  common::easyset<std::string>("mpi", "pthread"));
+           /*mustPrecede*/  common::easyset<std::string>("mpi", "pthread", "ompthread"));
 }
 
 void ModuleThreadInitFinInstantiator::initialize() {

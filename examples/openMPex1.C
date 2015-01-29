@@ -46,6 +46,8 @@ int main (int argc, char *argv[])
 	    
 	    if(omp_get_thread_num() != 0)
 	     	ompthreadCleanup(NULL);
+
+	     dbg << "Thread# "<< omp_get_thread_num() <<" finished. \n";
   	}
   	for(int t=1; t<numThreads; ++t){
   		sight_ompthread_join(t); 
@@ -53,7 +55,6 @@ int main (int argc, char *argv[])
     }
 
 	dbg << "Main: program completed. Exiting.\n";
-	
 	return 0;
 }
 

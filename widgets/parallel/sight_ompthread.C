@@ -46,12 +46,18 @@ void ompthreadThreadInitFinInstantiator::initialize() {
 }
 
 void ompthreadThreadInitFinInstantiator::finalize() {
-  //cout << pthread_self()<<": PthreadThreadInitFinInstantiator::finalize() *globalComparisons="<<globalComparisons<<endl;
+  
+  //cout << pthread_self()<<": PthreadThreadInitFinInstantiator::finalize() A *globalComparisonsOMP="<<globalComparisonsOMP<<endl;
+  //dbg << pthread_self()<<": PthreadThreadInitFinInstantiator::finalize() A *globalComparisonsOMP="<<globalComparisonsOMP<<endl;
   // Assign each thread to a separate log based on its thread ID
   if(getenv("DISABLE_OMPTHREAD_COMPARISON")==NULL) {
+    //cout << pthread_self()<<": PthreadThreadInitFinInstantiator::finalize() B *globalComparisonsOMP="<<globalComparisonsOMP<<endl;
+    //dbg << pthread_self()<<": PthreadThreadInitFinInstantiator::finalize() B *globalComparisonsOMP="<<globalComparisonsOMP<<endl;
     assert(globalComparisonsOMP != NULL);
     delete globalComparisonsOMP;
   } 
+  //cout << pthread_self()<<": PthreadThreadInitFinInstantiator::finalize() C *globalComparisonsOMP="<<globalComparisonsOMP<<endl;
+  //dbg << pthread_self()<<": PthreadThreadInitFinInstantiator::finalize() C *globalComparisonsOMP="<<globalComparisonsOMP<<endl;
 }
 
 ompthreadThreadInitFinInstantiator ompthreadThreadInitFinInstance;
@@ -188,8 +194,8 @@ void ompthreadCleanup(void * arg) {
   
   // hoa edit
   // use finalizeSight instead of SightThreadFinalize()
-  AbortHandlerInstantiator::finalizeSight();
-  //SightThreadFinalize();
+  //AbortHandlerInstantiator::finalizeSight();
+  SightThreadFinalize();
 
 //  cout << pthread_self()<<": threadCleanup() >>>>"<<endl;
   /*
@@ -298,7 +304,7 @@ void sight_ompthread_create() {
 }
 
 void sight_ompthread_exit(void *value_ptr) {
-  //cout << omp_get_thread_num()<<": sight_ompthread_exit()"<<endl;
+  cout << omp_get_thread_num()<<": sight_ompthread_exit()"<<endl;
   // Add a causalityOMP send edge from the thread's termination to the join call
   //commSend(txt()<<"End_"<<pthread_self(), "");
   sendcausalityOMP(txt()<<"End_"<<omp_get_thread_num(), "Terminating");

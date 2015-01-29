@@ -43,8 +43,6 @@ int main (int argc, char *argv[])
     sight_ompthread_create();
     #pragma omp parallel num_threads(numThreads) shared(x, g)
 	{
-			 
-		string newnode;       
 		
 		if(omp_get_thread_num() != 0)
 		  	sightOMPThreadInitializer();
