@@ -1,5 +1,5 @@
 #include "sight.h"
-#include "sight_pthread.h"
+#include "sight_ompthread.h"
 #include <map>
 #include <vector>
 #include <assert.h>
@@ -12,6 +12,8 @@
 
 using namespace std;
 using namespace sight;
+
+static omp_lock_t omplock;
 
 int numThreads = 4;
 
@@ -47,10 +49,11 @@ int main ( int argc, char **argv )
 
 */
 {
-	SightInit(argc, argv, "13.OpenMP1", "dbg.13.OpenMP1");
-	dbg << "<h1>Example 13: OpenMP1</h1>" << endl;
+  omp_init_lock(&omplock);
 
-	if(argc>=2) numThreads = atoi(argv[1]);
+  SightInit(argc, argv, "openMPex5", "dbg.openMPex5.individual");
+
+  if(argc>=2) numThreads = atoi(argv[1]);
 
   int i;
   int i4_huge = 2147483647;
@@ -97,7 +100,7 @@ int main ( int argc, char **argv )
 /*
   Carry out the algorithm.
 */
-  mind = dijkstra_distance ( ohd );  
+  mind = dijkstra_distance ( ohd );    
 /*
   Print the results.
 */
@@ -111,7 +114,7 @@ int main ( int argc, char **argv )
 /*
   Free memory.
 */
-  free ( mind );
+  //free ( mind );
 /*
   Terminate.
 */
@@ -185,6 +188,7 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
   int my_mv;
   int my_step;
   int nth;
+  int barCounter;
 /*
   Start out with only node 0 connected to the tree.
 */
@@ -207,9 +211,17 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
 /*
   Begin the parallel region.
 */
-  # pragma omp parallel private ( my_first, my_id, my_last, my_md, my_mv, my_step ) \
+  flowgraph g;
+  sight_ompthread_create();
+  # pragma omp parallel private ( my_first, my_id, my_last, my_md, my_mv, my_step, barCounter ) \
   shared ( connected, md, mind, mv, nth, ohd )
   {
+    if(omp_get_thread_num() != 0)
+        sightOMPThreadInitializer();
+    {
+    scope s("Thread start", scope::minimum);
+    dbg << "Thread "<<omp_get_thread_num()<<" starting..."<<endl;
+    }
     my_id = omp_get_thread_num ( );
     nth = omp_get_num_threads ( ); 
     my_first =   (   my_id       * NV ) / nth;
@@ -218,25 +230,61 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
   The SINGLE directive means that the block is to be executed by only
   one thread, and that thread will be whichever one gets here first.
 */
+    sendcausalityOMP(txt()<<"End_"<<omp_get_thread_num(), "commSend");
     # pragma omp single
     {
+      receivecausalityOMP(txt()<<"Spawner_"<<0,
+                          0,
+                          txt()<<"Spawnee_"<<omp_get_thread_num(),
+                          "commRecv", true);
+        
       printf ( "\n" );
-      printf ( "  P%d: Parallel region begins with %d threads\n", my_id, nth );
+      printf ( "  P%d: Parallel region begins with %d threads\n", my_id, nth );      
       printf ( "\n" );
+      //omp_set_lock(&omplock);
+      {
+      scope s("init node", scope::minimum);
+      dbg << "  P"<<my_id <<": Parallel region begins with" << nth <<" threads\n";
+      }
+      //omp_unset_lock(&omplock);
+      sendcausalityOMP(txt()<<"End_"<<omp_get_thread_num(), "commSend");    
     }
+    receivecausalityOMP(txt()<<"Spawner_"<<0,
+                          0,
+                          txt()<<"Spawnee_"<<omp_get_thread_num(),
+                          "commRecv", true);
     fprintf ( stdout, "  P%d:  First=%d  Last=%d\n", my_id, my_first, my_last );
-
+  
+    //omp_set_lock(&omplock);
+    {
+    scope s("info node", scope::minimum);
+    dbg << "  P: " << my_id << " First=" << my_first <<" Last=" << my_last <<"\n";
+    }
+    //omp_unset_lock(&omplock);
+    
     for ( my_step = 1; my_step < NV; my_step++ )
     {
 /*
   Before we compare the results of each thread, set the shared variable 
   MD to a big value.  Only one thread needs to do this.
 */
+      sendcausalityOMP(txt()<<"End_"<<omp_get_thread_num(), "commSend");
       # pragma omp single 
       {
+        receivecausalityOMP(txt()<<"Spawner_"<<0,
+                          0,
+                          txt()<<"Spawnee_"<<omp_get_thread_num(),
+                          "commRecv", true);
+        
         md = i4_huge;
         mv = -1; 
+        sendcausalityOMP(txt()<<"End_"<<omp_get_thread_num(), "commSend");
       }
+      receivecausalityOMP(txt()<<"Spawner_"<<0,
+                          0,
+                          txt()<<"Spawnee_"<<omp_get_thread_num(),
+                          "commRecv", true);
+        
 /*
   Each thread finds the nearest unconnected node in its part of the graph.
   Some threads might have no unconnected nodes left.
@@ -248,11 +296,23 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
 */
       # pragma omp critical
       {
+        receivecausalityOMP(txt()<<"Spawner_"<<0,
+                          0,
+                          txt()<<"Spawnee_"<<omp_get_thread_num(),
+                          "commRecv", true);
+        //commRecv("commSend",txt()<<omp_get_thread_num(),"");
         if ( my_md < md )  
         {
           md = my_md;
           mv = my_mv;
+          {
+            scope s("md and mv:", scope::minimum);
+            dbg << "md = " << md << endl;
+            dbg << "mv = " << mv << endl;
+          }
         }
+        //commSend("commSend",0, txt()<<omp_get_thread_num());
+        sendcausalityOMP(txt()<<"End_"<<omp_get_thread_num(), "commSend");
       }
 /*
   This barrier means that ALL threads have executed the critical
@@ -260,26 +320,48 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
   can we proceed.
 */
       # pragma omp barrier
+      commBar("Barrier", txt()<<"ompbar"<<(barCounter++));
+      
 /*
   If MV is -1, then NO thread found an unconnected node, so we're done early. 
   OpenMP does not like to BREAK out of a parallel region, so we'll just have 
   to let the iteration run to the end, while we avoid doing any more updates.
 
   Otherwise, we connect the nearest node.
-*/
+*/    sendcausalityOMP(txt()<<"End_"<<omp_get_thread_num(), "commSend");
       # pragma omp single 
       {
+        receivecausalityOMP(txt()<<"Spawner_"<<0,
+                          0,
+                          txt()<<"Spawnee_"<<omp_get_thread_num(),
+                          "commRecv", true);
+        
         if ( mv != - 1 )
         {
           connected[mv] = 1;
           printf ( "  P%d: Connecting node %d.\n", my_id, mv );
+          
+          //omp_set_lock(&omplock);
+          {
+          scope s("connecting node", scope::minimum);
+          dbg << "  P" << my_id <<": Connecting node "<< mv << ".\n";
+          }
+          //omp_unset_lock(&omplock);
+          
         }
+        sendcausalityOMP(txt()<<"End_"<<omp_get_thread_num(), "commSend");
       }
+      receivecausalityOMP(txt()<<"Spawner_"<<0,
+                          0,
+                          txt()<<"Spawnee_"<<omp_get_thread_num(),
+                          "commRecv", true);
+
 /*
   Again, we don't want any thread to proceed until the value of
   CONNECTED is updated.
 */
       # pragma omp barrier
+      //commBar("Barrier", txt()<<"ompbar"<<(barCounter++));
 /*
   Now each thread should update its portion of the MIND vector,
   by checking to see whether the trip from 0 to MV plus the step
@@ -288,23 +370,72 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
       if ( mv != -1 )
       {
         update_mind ( my_first, my_last, mv, connected, ohd, mind );
+
+        {
+          scope s("Update Distance from node 0:", scope::minimum);
+          for ( i = 0; i < NV; i++ )
+            dbg<< i <<" - "<< mind[i] << "\n";
+        }
       }
 /*
   Before starting the next step of the iteration, we need all threads 
   to complete the updating, so we set a BARRIER here.
 */
       #pragma omp barrier
+      //commBar("Barrier", txt()<<"ompbar"<<(barCounter++));
+      
     }
 /*
   Once all the nodes have been connected, we can exit.
-*/
+*/  
+    sendcausalityOMP(txt()<<"End_"<<omp_get_thread_num(), "commSend");
     # pragma omp single
     {
+      receivecausalityOMP(txt()<<"Spawner_"<<0,
+                          0,
+                          txt()<<"Spawnee_"<<omp_get_thread_num(),
+                          "commRecv", true);
+        
+      // print out distance
+      //omp_set_lock(&omplock);
+      {
+      scope s("Distance", scope::minimum);
+      dbg<<"Minimum Distance from node 0:\n";
+      for ( i = 0; i < NV; i++ )
+        dbg<< i <<" - "<< mind[i] << "\n";
+      
+      //scope s("Updating node", scope::minimum);
+
       printf ( "\n" );
       printf ( "  P%d: Exiting parallel region.\n", my_id );
+      dbg << "  P"<< my_id << ": Exiting parallel region.\n";
+      }
+      //omp_unset_lock(&omplock);
+      sendcausalityOMP(txt()<<"End_"<<omp_get_thread_num(), "commSend");
     }
+    receivecausalityOMP(txt()<<"Spawner_"<<0,
+                          0,
+                          txt()<<"Spawnee_"<<omp_get_thread_num(),
+                          "commRecv", true);
+
+    //omp_set_lock(&omplock);
+    {
+      scope s("End thread", scope::minimum);
+      dbg << "Thread# "<< omp_get_thread_num() <<" done. \n";
+    }
+    //omp_unset_lock(&omplock);
+   
+    if(omp_get_thread_num() != 0)
+      ompthreadCleanup(NULL);
   }
 
+
+  for(int t=1; t<nth; ++t){
+    sight_ompthread_join(t); 
+    dbg << "Main: completed join with thread "<<t<<endl;
+  }
+  dbg << "Main: program completed. Exiting.\n";
+  
   free ( connected );
 
   return mind;
@@ -559,200 +690,3 @@ void update_mind ( int s, int e, int mv, int connected[NV], int ohd[NV][NV],
   }
   return;
 }
-	// example 0_1
-    /*
-	if(argc>=2) numThreads = atoi(argv[1]);
-
-    std::vector<pthread_t> thread(numThreads);
-	pthread_attr_t attr;
-	int rc;
-	long t;
-	void *status;
-
-	pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-
-    for(t=0; t<numThreads; t++) {
-      dbg << "Main: creating thread "<<t<<"\n";
-      //cout << pthread_self()<<"Main: creating thread "<<t<<", dbg="<<&dbg<<"\n";
-      pthread_t thr;
-      rc = pthread_create(&thread[t], &attr, subfun, (void *)t); 
-      if (rc) {
-         dbg << "ERROR; return code from pthread_create() is "<<rc<<"\n";
-         exit(-1);
-      }
-   }
-
-    pthread_attr_destroy(&attr);
-    for(t=0; t<numThreads; t++) {
-      rc = pthread_join(thread[t], &status);
-      if (rc) {
-         dbg << "ERROR; return code from pthread_join() is "<<rc<<"\n";
-         exit(-1);
-      }
-      dbg << "Main: completed join with thread "<<t<<" having a status of "<<long(status)<<endl;
-   }
-   
-   dbg << "Main: program completed. Exiting.\n";
-   pthread_exit(NULL);  
-   */	
-
-	// example 0_2
-	/*
-	omp_set_nested(1);
-	omp_set_max_active_levels(8);
-	omp_set_dynamic(0);
-	omp_set_num_threads(2);
-	#pragma omp parallel
-	{
-		omp_set_num_threads(3);
-		#pragma omp parallel
-		{
-			omp_set_num_threads(4);
-			#pragma omp single
-			{
-				//
-				// The following should print:
-				// Inner: max_act_lev=8, num_thds=3, max_thds=4
-				// Inner: max_act_lev=8, num_thds=3, max_thds=4
-				//
-				
-				printf ("Inner: max_act_lev=%d, num_thds=%d, max_thds=%d\n",
-				omp_get_max_active_levels(), omp_get_num_threads(),
-				omp_get_max_threads());
-				//dbg << "Inner: max_act_lev=" << omp_get_max_active_levels() << ", num_thds=" << omp_get_num_threads() <<", max_thds=" << omp_get_max_threads() << endl;
-			}
-		}
-		#pragma omp barrier
-		#pragma omp single
-		{
-			//
-			// The following should print:
-			// Outer: max_act_lev=8, num_thds=2, max_thds=3
-			//
-			printf ("Outer: max_act_lev=%d, num_thds=%d, max_thds=%d\n",
-			omp_get_max_active_levels(), omp_get_num_threads(),
-			omp_get_max_threads());
-
-			//dbg << "Inner: max_act_lev=" << omp_get_max_active_levels() << ", num_thds=" << omp_get_num_threads() <<", max_thds=" << omp_get_max_threads() << endl;
-		}
-	}
-	*/
-
-    /*
-	// example 1 - Hello World  
-	//flowgraph g;
-	int nthreads , tid;
-	// Fork a team of threads giving them their own copies of variables 
-	//#pragma omp parallel private(nthreads, tid, g)
-	#pragma omp parallel private(nthreads, tid)	
-	{
-		//flowgraph g;
-                		
-		// Obtain thread number 
-		tid = omp_get_thread_num();
-		
-		dbg << "Hello World from thread = " << tid << endl;
-		
-		stringstream ss;
-		ss << tid;
-		string threid= ss.str();
-		//g.graphNodeStart(threid);
-		//g.graphNodeEnd(threid);
-
-		// Only master thread does this 
-		if (tid == 0) 
-		{
-			nthreads = omp_get_num_threads();
-			dbg << "Number of threads = " << nthreads << endl;
-		}
-
-	}  // All threads join master thread and disband 
-	*/
-
-
-	/*
-	// example 2 - Loop Work-sharing
-	int nthreads, tid, i, chunk;
-	float a[N], b[N], c[N];
-	
-	nthreads = 4;
-	// Some initializations
-	for (i=0; i < N; i++)
-	a[i] = b[i] = i * 1.0;
-	chunk = CHUNKSIZE;
-	flowgraph g;
-	
-	#pragma omp parallel shared(a,b,c,nthreads,chunk, g) private(i,tid)
-	//#pragma omp parallel shared(a,b,c,nthreads,chunk) private(i,tid)
-	{
-		//flowgraph g;
-		tid = omp_get_thread_num();
-		if (tid == 0)
-		{
-			nthreads = omp_get_num_threads();
-			dbg << "Number of threads = " << nthreads << endl;
-		}
-		dbg << "Thread "<< tid << " starting..." << endl;
-
-		#pragma omp for schedule(dynamic,chunk)
-		for (i=0; i<N; i++)
-		{
-			c[i] = a[i] + b[i];
-			dbg << "Thread " << tid <<": c["<< i << "] = " << c[i] << endl;
-			stringstream ss;
-            ss << c[i];
-            string thr= ss.str();
-
-	        g.graphNodeStart(thr);
-            g.graphNodeEnd(thr);
-		}
-	}  // end of parallel section
-	*/
-
- 	// example 3 - reduction
- 	/* 
-	flowgraph g; 
-	int   i, n;
-	float a[100], b[100], sum; 
-
-	// Some initializations
-	n = 100;
-	for (i=0; i < n; i++)
-		a[i] = b[i] = i * 1.0;
-	sum = 0.0;
-
-	#pragma omp parallel for reduction(+:sum)
-	for (i=0; i < n; i++)
-		sum = sum + (a[i] * b[i]);
-
-	dbg << "   Sum = "<< sum << endl;
-        stringstream ss;
-        ss << sum;
-        string thsum= ss.str();
-        g.graphNodeStart(thsum);
-        g.graphNodeEnd(thsum);
-	*/
-	
-	/*
-	int x;
-	x = 2;
-	#pragma omp parallel num_threads(2) shared(x)
-	{
-		if (omp_get_thread_num() == 0) {
-			x = 5;
-		} else {		
-			// Print 1: the following read of x has a race
-			printf("1: Thread# %d: x = %d\n", omp_get_thread_num(),x );
-		}
-		#pragma omp barrier
-		if (omp_get_thread_num() == 0) {
-			// Print 2 
-			printf("2: Thread# %d: x = %d\n", omp_get_thread_num(),x );
-		} else {
-			// Print 3 
-			printf("3: Thread# %d: x = %d\n", omp_get_thread_num(),x );
-		}
-	}
-	*/
-	

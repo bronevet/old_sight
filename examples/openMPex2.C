@@ -33,7 +33,7 @@ int main (int argc, char *argv[])
 	chunk = CHUNKSIZE;
 
     sight_ompthread_create();
-	#pragma omp parallel num_threads(numThreads) shared(a,b,c,numThreads,chunk)
+	#pragma omp parallel num_threads(numThreads) shared(a,b,c,numThreads,chunk) private(i,tid)
 	{
 		if(omp_get_thread_num() != 0)
 		  	sightOMPThreadInitializer();
@@ -44,13 +44,14 @@ int main (int argc, char *argv[])
 		}
 		dbg << "Thread "<< omp_get_thread_num() << " starting..." << endl;
 
-		//#pragma omp for schedule(dynamic,chunk)
+		#pragma omp for schedule(dynamic,chunk)
 		for (i=0; i<N; i++)
 		{
 			c[i] = a[i] + b[i];
+			scope s("scope:", scope::high);
 			dbg << "Thread " << omp_get_thread_num() <<": c["<< i << "] = " << c[i] << endl;							
-		}	
-
+		}
+		
 	    dbg << "Thread "<< omp_get_thread_num() << " done." << endl;
 
 	    if(omp_get_thread_num() != 0)

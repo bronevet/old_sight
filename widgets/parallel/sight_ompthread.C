@@ -209,33 +209,15 @@ void ompthreadCleanup(void * arg) {
 
 // Function that wraps the execution of each thread spawned using pthread_create()
 // and ensures that all appropriate initialization is performed
-//void sightOMPThreadInitializer() {
-//void sightOMPThreadInitializer(void (*subfun)(long)){
-//void sightOMPThreadInitializer(void (*subfun)()){
 void sightOMPThreadInitializer() {
 
-  // not work here
-  //ompthreadCleanup(NULL);
   // Initialize Sight for this thread before we initialize its clock
   SightInit_NewThread();
  
-  //void* ret;
-
-  //pthread_cleanup_push(threadCleanup, NULL);
-  //work here
-  //ompthreadCleanup(NULL);
   {
     // Initialize the new thread's causality clock, while under control of causalityLock
     omp_set_lock(&causalityLock);
-    //if(rc!=0) { fprintf(stderr, "sightOMPThreadInitializer() ERROR locking causalityLock! %s\n", strerror(rc)); assert(0); }
-
-    //checkCausality(true);
-    //cout << "causality["<<pthread_self()<<"]="<<causality[pthread_self()]->send()<<endl;
-
-    // Add a causality send edge from the spawner thread to the spawnee thread
-    /*commRecv(txt()<<"Spawner_"<<((pthreadRoutineData*)data)->spawner<<"_"<<((pthreadRoutineData*)data)->spawnCnt,
-             txt()<<"Spawnee_"<<pthread_self());*/
-
+    
     {
     attr a("Causal", "SpawnJoin"); 
     receivecausalityOMP(txt()<<"Spawner_"<<0,
@@ -245,81 +227,38 @@ void sightOMPThreadInitializer() {
     }
 
     omp_unset_lock(&causalityLock);
-    //if(rc!=0) { fprintf(stderr, "sightThreadInitializer() ERROR unlocking causalityLock! %s\n", strerror(rc)); assert(0); }
-
-    //if(rc!=0) { fprintf(stderr, "sightThreadInitializer() ERROR unlocking causalityLock! %s\n", strerror(rc)); assert(0); }
-
-    //dbg << "Calling routine("<<arg<<") dbg="<<&dbg<<endl;
-    // Run the function itself
-    //ret = routine(arg);
-    //dbg << "Finished routine("<<arg<<") dbg="<<&dbg<<endl;
-
-    // Add a causality send edge from the thread's termination to the join call
-    //commSend(txt()<<"End_"<<pthread_self(), "");
-    //rc = sendCausality(txt()<<"End_"<<pthread_self(), "Terminating");
-
-    //long t = omp_get_thread_num();
-    //subfun(t);
-
-    // work here
-    //ompthreadCleanup(NULL);
+   
   }
-
-  //work here
-  //ompthreadCleanup(NULL);
-  /*cout << pthread_self()<<": Calling SightThreadFinalize()\n"; cout.flush();
-  SightThreadFinalize();
-  cout << pthread_self()<<": End of thread\n"; cout.flush();*/
-
-  //pthread_cleanup_pop(0);
- 
-  //return ret;
 }
 
 // Counts the number of times each thread has spawned another thread
 // Making numThreadsSpawned a global variable so that all threads can access it
 //static ThreadLocalStorage1<int, int> numThreadsSpawned(0);
-//int numThreadsSpawned=0;
 
 void sight_ompthread_create() {
   // Create a scalarCausalClock for the spawning thread if it does not yet have one
   {
     omp_set_lock(&causalityLock);
-    //if(rc!=0) { fprintf(stderr, "sightOMPThreadInitializer() ERROR locking causalityLock! %s\n", strerror(rc)); assert(0); }
-
+  
     checkcausalityOMP(true);
 
     omp_unset_lock(&causalityLock);
-    //if(rc!=0) { fprintf(stderr, "sightOMPThreadInitializer() ERROR unlocking causalityLock! %s\n", strerror(rc)); assert(0); }
   }
   
-  // Add a causality send edge from the spawner thread to the spawnee thread
-  //commSend(txt()<<"Spawner_"<<pthread_self()<<"_"<<data->spawnCnt, "");
   {
   attr a("Causal", "SpawnJoin"); 
   sendcausalityOMP(txt()<<"Spawner_"<<0, "Spawn");
-  }
-  
-  //numThreadsSpawned++;
+  }  
 }
 
 void sight_ompthread_exit(void *value_ptr) {
-  cout << omp_get_thread_num()<<": sight_ompthread_exit()"<<endl;
+  //cout << omp_get_thread_num()<<": sight_ompthread_exit()"<<endl;
   // Add a causalityOMP send edge from the thread's termination to the join call
-  //commSend(txt()<<"End_"<<pthread_self(), "");
   sendcausalityOMP(txt()<<"End_"<<omp_get_thread_num(), "Terminating");
-  
-  //AbortHandlerInstantiator::finalizeSight();
-
-  //pthread_exit(value_ptr);
 }
 
 void sight_ompthread_join(int tid) {
-
-  //int rc = pthread_join(thread, value_ptr);
-
   // Add a causality send edge from the thread's termination to the join call
-  //commRecv(txt()<<"End_"<<thread, txt()<<"Joiner_"<<pthread_self()<<"_"<<thread);
   {
     attr a("Causal", "SpawnJoin"); 
     receivecausalityOMP(txt()<<"End_"<<tid, tid, 

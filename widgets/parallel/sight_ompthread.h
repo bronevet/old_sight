@@ -80,17 +80,10 @@ void checkcausalityOMP(bool cmHeld);
  **********************************/
 
 void sightOMPThreadInitializer();
-//void sightOMPThreadInitializer(void (*subfun)(long));
-
-//void ompthreadCleanup(long t);
 void ompthreadCleanup(void * arg);
-
 void sight_ompthread_create();
-
 void sight_ompthread_exit(void *value_ptr);
-
 void sight_ompthread_join(int tid);
-
 
 }; // namespace structure 
 }; // namespace sight

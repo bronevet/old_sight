@@ -29,10 +29,8 @@ TESTERS =
 #          11.ExternTraceProcess${EXE} \
 #		  12.HoaVizAPI${EXE}
           
-PTHREAD_TESTERS = openMPex1${EXE} openMPex2${EXE} openMPex3${EXE} openMPex4${EXE}
-#openMPex1${EXE} openMPex2${EXE} openMPex3${EXE}
-#openMPex1${EXE} pthreadThreadsEx${EXE}
-#openMPex2${EXE} openMPex3${EXE}
+PTHREAD_TESTERS = openMPex1${EXE} openMPex5${EXE}
+#openMPex1${EXE} openMPex2${EXE} openMPex3${EXE} openMPex4${EXE}
 #pthreadMutexEx${EXE} pthreadCondEx${EXE} pthreadThreadsEx${EXE} \
 #                  pthreadArrayLoops${EXE} dotprodPthreads${EXE} pthreadFib${EXE} 
 
@@ -111,6 +109,8 @@ run: ${TESTERS}
 #	rm -rf dbg.12.HoaVizAPI.*;
 #	../slayout${EXE} dbg.12.HoaVizAPI/structure;
 
+#	./13.OpenMP1${EXE};
+
 #	export SIGHT_FILE_OUT=1; rm -rf dbg.13.OpenMP1*; ./13.OpenMP1${EXE};
 #	export SIGHT_FILE_OUT=1; ../hier_merge${EXE} dbg.13.OpenMP1 dbg.13.OpenMP1.thread_*/structure;
 #	rm -rf dbg.13.OpenMP1.*;
@@ -176,11 +176,12 @@ run: ${TESTERS}
 #	${CCC} ${SIGHT_CFLAGS} ./13.OpenMP1.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o ./13.OpenMP1${EXE} 
 
 runPthread: ${PTHREAD_TESTERS}
-	export SIGHT_FILE_OUT=1
+#	export SIGHT_FILE_OUT=1
 	./runPthreadEx openMPex1 5
-	./runPthreadEx openMPex2 5
-	./runPthreadEx openMPex3 5
-	./runPthreadEx openMPex4 5
+#	./runPthreadEx openMPex2 5
+#	./runPthreadEx openMPex3 5
+#	./runPthreadEx openMPex4 5
+	./runPthreadEx openMPex5 16
 #	./runPthreadEx pthreadFib 5
 #	./runPthreadEx pthreadThreadsEx 5
 #	./runPthreadEx pthreadMutexEx 5
@@ -191,13 +192,16 @@ runPthread: ${PTHREAD_TESTERS}
 openMPex1${EXE}: openMPex1.C ../libsight_structure.so ${sight_H}
 	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
 
-openMPex2${EXE}: openMPex2.C ../libsight_structure.so ${sight_H}
-	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
+#openMPex2${EXE}: openMPex2.C ../libsight_structure.so ${sight_H}
+#	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
 
-openMPex3${EXE}: openMPex3.C ../libsight_structure.so ${sight_H}
-	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
+#openMPex3${EXE}: openMPex3.C ../libsight_structure.so ${sight_H}
+#	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
 
-openMPex4${EXE}: openMPex4.C ../libsight_structure.so ${sight_H}
+#openMPex4${EXE}: openMPex4.C ../libsight_structure.so ${sight_H}
+#	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
+
+openMPex5${EXE}: openMPex5.C ../libsight_structure.so ${sight_H}
 	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" $< -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o $@
 
 #pthreadThreadsEx${EXE}: pthreadThreadsEx.C ../libsight_structure.so ${sight_H}

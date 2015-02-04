@@ -69,8 +69,9 @@ void *dotprod(void *arg)
    structure, and unlock it upon updating.
    */
    pthread_mutex_lock (&mutexsum);
-   {scope s("Updating dotstr.sum", scope::minimum);
-   dotstr.sum += mysum;
+   {
+      scope s("Updating dotstr.sum", scope::minimum);
+      dotstr.sum += mysum;
    }
    pthread_mutex_unlock (&mutexsum);
    

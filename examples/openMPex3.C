@@ -35,11 +35,13 @@ int main (int argc, char *argv[])
 			klast=k;
 		}
 		
-		//#pragma omp single
-		//printf("%d %d\n", klast, jlast);
-		
-		dbg << "Thread "<< omp_get_thread_num() << " klast = " << klast << " jlast =" << jlast << endl;
-		dbg << "Thread "<< omp_get_thread_num() << " done." << endl;
+		#pragma omp single
+		{
+			printf("%d %d\n", klast, jlast);
+			dbg << "Thread "<< omp_get_thread_num() << " klast = " << klast << " jlast =" << jlast << endl;
+		}
+
+	    dbg << "Thread "<< omp_get_thread_num() << " done." << endl;
 	    
 	    if(omp_get_thread_num() != 0)
      		ompthreadCleanup(NULL);
