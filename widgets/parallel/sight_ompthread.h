@@ -85,5 +85,20 @@ void sight_ompthread_create();
 void sight_ompthread_exit(void *value_ptr);
 void sight_ompthread_join(int tid);
 
+/*****************
+ **** OMP Lock ***
+ *****************/
+
+typedef struct {
+  long numLockOwners;
+  int lastLockOwner;
+  omp_lock_t ompLock;
+} sight_omp_lock_t;
+
+void sight_omp_lock_init(sight_omp_lock_t *slock);
+void sight_omp_lock_destroy(sight_omp_lock_t *slock);
+void sight_omp_lock(sight_omp_lock_t* slock);
+void sight_omp_unlock(sight_omp_lock_t* slock);
+
 }; // namespace structure 
 }; // namespace sight

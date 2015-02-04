@@ -267,6 +267,53 @@ void sight_ompthread_join(int tid) {
   }
 }
 
+/*****************
+ **** OMP Lock ***
+ *****************/
+
+void sight_omp_lock_init(sight_omp_lock_t *slock){
+  slock->numLockOwners=0;
+  checkcausalityOMP(true);
+  omp_init_lock(&(slock->ompLock));
+}
+
+void sight_omp_lock_destroy(sight_omp_lock_t *slock){
+  omp_destroy_lock(&(slock->ompLock));
+}
+
+void sight_omp_lock(sight_omp_lock_t* slock){
+  omp_set_lock(&(slock->ompLock));
+
+  // If this lock was previously owned by this or another thread, record the happens-before relationship
+  if(slock->numLockOwners>0) {
+    omp_set_lock(&causalityLock);
+    
+    // Update the causality info
+    long long lastClockTime = causalityOMP[slock->lastLockOwner]->send();
+    receivecausalityOMP(txt()<<"S_"<<slock->lastLockOwner<<"_"<<lastClockTime, slock->lastLockOwner,
+                          txt()<<"R_"<<omp_get_thread_num()<<"_"<<lastClockTime, 
+                          "Lock", true);
+    
+    omp_unset_lock(&causalityLock);    
+  }
+
+  // Record that this thread was the last owner of this lock
+  slock->numLockOwners++;
+  slock->lastLockOwner = omp_get_thread_num();
+}
+
+void sight_omp_unlock(sight_omp_lock_t* slock){
+  omp_set_lock(&causalityLock);
+  
+  checkcausalityOMP(true);
+
+  // Update the causality info
+  sendcausalityOMP(txt()<<"S_"<<omp_get_thread_num()<<"_"<<causalityOMP[omp_get_thread_num()]->send(), "Unlock", true);
+  
+  omp_unset_lock(&causalityLock);
+  
+  omp_unset_lock(&(slock->ompLock));  
+}
 
 }; // namespace structure 
 }; // namespace sight
