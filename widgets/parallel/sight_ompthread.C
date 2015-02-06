@@ -282,6 +282,7 @@ void sight_omp_lock_destroy(sight_omp_lock_t *slock){
 }
 
 void sight_omp_lock(sight_omp_lock_t* slock){
+  //cout << "lock threadID = " << omp_get_thread_num() << " slock->lastLockOwner" << slock->lastLockOwner << "slock->numLockOwners" << slock->numLockOwners<<endl;
   omp_set_lock(&(slock->ompLock));
 
   // If this lock was previously owned by this or another thread, record the happens-before relationship

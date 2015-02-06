@@ -181,7 +181,7 @@ runPthread: ${PTHREAD_TESTERS}
 #	./runPthreadEx openMPex2 5
 #	./runPthreadEx openMPex3 5
 #	./runPthreadEx openMPex4 5
-	./runPthreadEx openMPex5 16
+	./runPthreadEx openMPex5 3
 #	./runPthreadEx pthreadFib 5
 #	./runPthreadEx pthreadThreadsEx 5
 #	./runPthreadEx pthreadMutexEx 5

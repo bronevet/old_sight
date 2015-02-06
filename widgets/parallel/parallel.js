@@ -319,7 +319,8 @@ function showParallelArrows() {
                });
                
        mapBarriers(function(barriers, label) {
-                if(barriers.length<2) { alert("mapBarriers() ERROR: barriers has <2 divs"); }
+                //hoa edit
+                if(barriers.length<2) { alert("mapBarriers() ERROR: barriers has <2 divs"); alert("barriers[0].blockID = " + barriers[0].blockID);}
                 
                 // Sort the barriers list according to the x coordinate
                 barriers.sort(function(a, b){ return a.center.x-a.center.b; });

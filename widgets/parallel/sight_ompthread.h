@@ -90,7 +90,7 @@ void sight_ompthread_join(int tid);
  *****************/
 
 typedef struct {
-  long numLockOwners;
+  int numLockOwners;
   int lastLockOwner;
   omp_lock_t ompLock;
 } sight_omp_lock_t;

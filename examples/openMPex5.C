@@ -186,10 +186,9 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
   int my_mv;
   int my_step;
   int nth;
-  int barCounter;
+  int barCounter = 0;
 
-  sight_omp_lock_init(&omplock);
-
+  
 /*
   Start out with only node 0 connected to the tree.
 */
@@ -214,11 +213,16 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
 */
   flowgraph g;
   sight_ompthread_create();
-  # pragma omp parallel private ( my_first, my_id, my_last, my_md, my_mv, my_step, barCounter ) \
+
+  sight_omp_lock_init(&omplock);
+
+  # pragma omp parallel num_threads(numThreads) private ( my_first, my_id, my_last, my_md, my_mv, my_step, barCounter ) \
   shared ( connected, md, mind, mv, nth, ohd )
   {
     if(omp_get_thread_num() != 0)
         sightOMPThreadInitializer();
+    else
+      dbg << "Master Thread start" << endl;
     {
     scope s("Thread start", scope::minimum);
     dbg << "Thread "<<omp_get_thread_num()<<" starting..."<<endl;
@@ -234,6 +238,7 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
     //sendcausalityOMP(txt()<<"End_"<<omp_get_thread_num(), "commSend");
     # pragma omp single
     {
+    
       // receivecausalityOMP(txt()<<"Spawner_"<<0,
       //                     0,
       //                     txt()<<"Spawnee_"<<omp_get_thread_num(),
@@ -248,7 +253,7 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
       dbg << "  P"<<my_id <<": Parallel region begins with" << nth <<" threads\n";
       }
       //omp_unset_lock(&omplock);
-      // sendcausalityOMP(txt()<<"End_"<<omp_get_thread_num(), "commSend");    
+      // sendcausalityOMP(txt()<<"End_"<<omp_get_thread_num(), "commSend"); 
     }
     // receivecausalityOMP(txt()<<"Spawner_"<<0,
     //                       0,
@@ -297,23 +302,22 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
 */
       # pragma omp critical
       {
-        // receivecausalityOMP(txt()<<"StartCritical"<<0,
-        //                   0,
-        //                   txt()<<"EndCritical_"<<omp_get_thread_num(),
-        //                   "commRecv", true);
-        sight_omp_lock(&omplock);
-        if ( my_md < md )  
+        if(omp_get_thread_num() !=0 )
         {
-          md = my_md;
-          mv = my_mv;
+          sight_omp_lock(&omplock);
           {
             scope s("md and mv:", scope::minimum);
+             
+            if ( my_md < md )  
+            {
+              md = my_md;
+              mv = my_mv;       
+            }
             dbg << "md = " << md << endl;
-            dbg << "mv = " << mv << endl;
+            dbg << "mv = " << mv << endl;   
           }
+          sight_omp_unlock(&omplock);
         }
-        // sendcausalityOMP(txt()<<"EndCritical_"<<omp_get_thread_num(), "commSend");
-        sight_omp_unlock(&omplock);
       }
 /*
   This barrier means that ALL threads have executed the critical
@@ -321,7 +325,9 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
   can we proceed.
 */
       # pragma omp barrier
-      commBar("Barrier", txt()<<"ompbar"<<(barCounter++));
+      {
+        commBar("Barrier", txt()<<"ompbar"<<(barCounter++));
+      }
       
 /*
   If MV is -1, then NO thread found an unconnected node, so we're done early. 
@@ -333,6 +339,7 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
       //sendcausalityOMP(txt()<<"End_"<<omp_get_thread_num(), "commSend");
       # pragma omp single 
       {
+      
         // receivecausalityOMP(txt()<<"Spawner_"<<0,
         //                   0,
         //                   txt()<<"Spawnee_"<<omp_get_thread_num(),
@@ -353,6 +360,7 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
         }
         //sendcausalityOMP(txt()<<"End_"<<omp_get_thread_num(), "commSend");
       }
+      
       // receivecausalityOMP(txt()<<"Spawner_"<<0,
       //                     0,
       //                     txt()<<"Spawnee_"<<omp_get_thread_num(),
@@ -440,7 +448,7 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
   
   free ( connected );
 
-  sight_omp_lock_destroy(&omplock);
+  //sight_omp_lock_destroy(&omplock);
   return mind;
 }
 /******************************************************************************/
