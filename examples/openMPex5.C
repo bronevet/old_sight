@@ -326,7 +326,13 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
 */
       # pragma omp barrier
       {
-        commBar("Barrier", txt()<<"ompbar"<<(barCounter++));
+        if(omp_get_thread_num() !=0 )
+        {
+          barCounter += 1;
+          //checkcausalityOMP(true);
+          block();
+          commBar("Barrier", txt()<<"ompbar"<<barCounter);        
+        }
       }
       
 /*
@@ -339,7 +345,6 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
       //sendcausalityOMP(txt()<<"End_"<<omp_get_thread_num(), "commSend");
       # pragma omp single 
       {
-      
         // receivecausalityOMP(txt()<<"Spawner_"<<0,
         //                   0,
         //                   txt()<<"Spawnee_"<<omp_get_thread_num(),

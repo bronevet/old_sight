@@ -100,5 +100,19 @@ void sight_omp_lock_destroy(sight_omp_lock_t *slock);
 void sight_omp_lock(sight_omp_lock_t* slock);
 void sight_omp_unlock(sight_omp_lock_t* slock);
 
+
+/*******************
+ *** OMP Barrier ***
+ *******************/
+
+typedef struct {
+  int count; // counts the number of times this barrier has been reached
+  long long maxTime; // The maximum causal time reached during the most recent barrier
+} sight_omp_barrier_t;
+
+
+void sight_omp_barrier_init(sight_omp_barrier_t* sbar);
+void sight_omp_barrier_wait(sight_omp_barrier_t* sbar);
+
 }; // namespace structure 
 }; // namespace sight

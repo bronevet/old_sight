@@ -289,6 +289,7 @@ void sight_omp_lock(sight_omp_lock_t* slock){
   if(slock->numLockOwners>0) {
     omp_set_lock(&causalityLock);
     
+    checkcausalityOMP(true);
     // Update the causality info
     long long lastClockTime = causalityOMP[slock->lastLockOwner]->send();
     receivecausalityOMP(txt()<<"S_"<<slock->lastLockOwner<<"_"<<lastClockTime, slock->lastLockOwner,
@@ -312,8 +313,46 @@ void sight_omp_unlock(sight_omp_lock_t* slock){
   sendcausalityOMP(txt()<<"S_"<<omp_get_thread_num()<<"_"<<causalityOMP[omp_get_thread_num()]->send(), "Unlock", true);
   
   omp_unset_lock(&causalityLock);
-  
+
   omp_unset_lock(&(slock->ompLock));  
+}
+
+/*******************
+ *** OMP Barrier ***
+ *******************/
+
+void sight_omp_barrier_init(sight_omp_barrier_t* sbar){
+  sbar->count = 0;
+  checkcausalityOMP(true);   
+}
+
+void sight_omp_barrier_wait(sight_omp_barrier_t* sbar){
+//cout << pthread_self()<<": sight_pthread_barrier_wait("<<sbar<<")"<<endl;
+
+  // Increment the number of times this barrier has been reached, but do
+  // so only on one thread
+    sbar->count++;
+
+    // Set the local scalar clock to the maximum of each thread's scalar clock
+    omp_set_lock(&causalityLock);
+  
+    /*
+    sbar->maxTime=-1;
+    for(map<long, scalarCausalClock*>::const_iterator i=causalityOMP.begin(); i!=causalityOMP.end(); i++) {
+      if(i->first != omp_get_thread_num()) 
+        sbar->maxTime = (i->second->send()>sbar->maxTime? i->second->send(): sbar->maxTime);
+    }
+    */
+
+  //cout << pthread_self() << ": maxTime="<<maxTime<<endl;
+  //causalityOMP[omp_get_thread_num()]->recv(sbar->maxTime);
+  // Insert a dummy block before the barrier to enable the JavaScript to vertically align all the barrier instances
+  block();
+  //causalityOMP[omp_get_thread_num()]->recv(sbar->maxTime+1);
+  //{ scope s("Barrier", scope::minimum); 
+  commBar("Barrier", txt()<<"B_"<<sbar<<"_"<<sbar->count);
+
+  omp_unset_lock(&causalityLock);
 }
 
 }; // namespace structure 
