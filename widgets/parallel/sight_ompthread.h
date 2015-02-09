@@ -108,6 +108,7 @@ void sight_omp_unlock(sight_omp_lock_t* slock);
 typedef struct {
   int count; // counts the number of times this barrier has been reached
   long long maxTime; // The maximum causal time reached during the most recent barrier
+  //omp_lock_t ompBarLock;
 } sight_omp_barrier_t;
 
 

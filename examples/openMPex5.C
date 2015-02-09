@@ -14,6 +14,7 @@ using namespace std;
 using namespace sight;
 
 static sight_omp_lock_t omplock;
+static sight_omp_barrier_t ompbarrier;
 
 int numThreads = 4;
 
@@ -215,6 +216,7 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
   sight_ompthread_create();
 
   sight_omp_lock_init(&omplock);
+  sight_omp_barrier_init(&ompbarrier);
 
   # pragma omp parallel num_threads(numThreads) private ( my_first, my_id, my_last, my_md, my_mv, my_step, barCounter ) \
   shared ( connected, md, mind, mv, nth, ohd )
@@ -317,7 +319,7 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
             dbg << "mv = " << mv << endl;   
           }
           sight_omp_unlock(&omplock);
-        }
+        }   
       }
 /*
   This barrier means that ALL threads have executed the critical
@@ -326,13 +328,15 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
 */
       # pragma omp barrier
       {
-        if(omp_get_thread_num() !=0 )
-        {
+        /*
           barCounter += 1;
-          //checkcausalityOMP(true);
+          checkcausalityOMP(false);
+          cout << "Thread# " << omp_get_thread_num() << " barCounter=" << barCounter << endl;
           block();
           commBar("Barrier", txt()<<"ompbar"<<barCounter);        
-        }
+        */
+        if(omp_get_thread_num() !=0 )
+          sight_omp_barrier_wait(&ompbarrier);
       }
       
 /*
@@ -376,7 +380,8 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
   CONNECTED is updated.
 */
       # pragma omp barrier
-      //commBar("Barrier", txt()<<"ompbar"<<(barCounter++));
+      //  if(omp_get_thread_num() !=0 )
+      //    sight_omp_barrier_wait(&ompbarrier);
 /*
   Now each thread should update its portion of the MIND vector,
   by checking to see whether the trip from 0 to MV plus the step
@@ -397,7 +402,8 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
   to complete the updating, so we set a BARRIER here.
 */
       #pragma omp barrier
-      //commBar("Barrier", txt()<<"ompbar"<<(barCounter++));
+      //  if(omp_get_thread_num() !=0 )
+      //    sight_omp_barrier_wait(&ompbarrier);
       
     }
 /*
