@@ -289,7 +289,7 @@ void sight_omp_lock(sight_omp_lock_t* slock){
   if(slock->numLockOwners>0) {
     omp_set_lock(&causalityLock);
     
-    checkcausalityOMP(true);
+    //checkcausalityOMP(true);
     // Update the causality info
     long long lastClockTime = causalityOMP[slock->lastLockOwner]->send();
     receivecausalityOMP(txt()<<"S_"<<slock->lastLockOwner<<"_"<<lastClockTime, slock->lastLockOwner,
@@ -307,7 +307,7 @@ void sight_omp_lock(sight_omp_lock_t* slock){
 void sight_omp_unlock(sight_omp_lock_t* slock){
   omp_set_lock(&causalityLock);
   
-  checkcausalityOMP(true);
+  //checkcausalityOMP(true);
 
   // Update the causality info
   sendcausalityOMP(txt()<<"S_"<<omp_get_thread_num()<<"_"<<causalityOMP[omp_get_thread_num()]->send(), "Unlock", true);
@@ -345,7 +345,7 @@ void sight_omp_barrier_wait(sight_omp_barrier_t* sbar){
     
   causalityOMP[omp_get_thread_num()]->recv(sbar->maxTime);
   block();
-  //causalityOMP[omp_get_thread_num()]->recv(sbar->maxTime);
+  causalityOMP[omp_get_thread_num()]->recv(sbar->maxTime-1);
   
   commBar("Barrier", txt()<<"B_"<<sbar->count);
 

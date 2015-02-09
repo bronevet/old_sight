@@ -336,7 +336,7 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
           commBar("Barrier", txt()<<"ompbar"<<barCounter);        
         */
         if(omp_get_thread_num() !=0 )
-          sight_omp_barrier_wait(&ompbarrier);
+          sight_omp_barrier_wait(&ompbarrier);        
       }
       
 /*
@@ -380,22 +380,36 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
   CONNECTED is updated.
 */
       # pragma omp barrier
-      //  if(omp_get_thread_num() !=0 )
-      //    sight_omp_barrier_wait(&ompbarrier);
-/*
-  Now each thread should update its portion of the MIND vector,
-  by checking to see whether the trip from 0 to MV plus the step
-  from MV to a node is closer than the current record.
-*/
-      if ( mv != -1 )
-      {
-        update_mind ( my_first, my_last, mv, connected, ohd, mind );
-
+      { 
+        //if(omp_get_thread_num() !=0 )
+        //  sight_omp_barrier_wait(&ompbarrier);        
+        /*
+          Now each thread should update its portion of the MIND vector,
+          by checking to see whether the trip from 0 to MV plus the step
+          from MV to a node is closer than the current record.
+        */
+        if ( mv != -1 )
         {
-          scope s("Update Distance from node 0:", scope::minimum);
-          for ( i = 0; i < NV; i++ )
-            dbg<< i <<" - "<< mind[i] << "\n";
+          update_mind ( my_first, my_last, mv, connected, ohd, mind );
+
+          {
+            scope s("Update Distance from node 0:", scope::minimum);
+            for ( i = 0; i < NV; i++ )
+              dbg<< i <<" - "<< mind[i] << "\n";
+          }
+          /*
+          {
+            scope s("Distance", scope::minimum);
+            dbg<<"Minimum Distance from node 0:\n";
+            for ( i = 0; i < NV; i++ )
+              dbg<< i <<" - "<< mind[i] << "\n";
+          }
+          */
+          
         }
+
+        //if(omp_get_thread_num() !=0 )
+        //    sight_omp_barrier_wait(&ompbarrier);      
       }
 /*
   Before starting the next step of the iteration, we need all threads 
@@ -404,48 +418,34 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
       #pragma omp barrier
       //  if(omp_get_thread_num() !=0 )
       //    sight_omp_barrier_wait(&ompbarrier);
-      
     }
 /*
   Once all the nodes have been connected, we can exit.
 */  
-    //sendcausalityOMP(txt()<<"End_"<<omp_get_thread_num(), "commSend");
+    /*
     # pragma omp single
-    {
-      // receivecausalityOMP(txt()<<"Spawner_"<<0,
-      //                     0,
-      //                     txt()<<"Spawnee_"<<omp_get_thread_num(),
-      //                     "commRecv", true);
-        
-      // print out distance
-      //omp_set_lock(&omplock);
+    {    
       {
-      scope s("Distance", scope::minimum);
-      dbg<<"Minimum Distance from node 0:\n";
-      for ( i = 0; i < NV; i++ )
-        dbg<< i <<" - "<< mind[i] << "\n";
-      
-      //scope s("Updating node", scope::minimum);
-
-      printf ( "\n" );
-      printf ( "  P%d: Exiting parallel region.\n", my_id );
-      dbg << "  P"<< my_id << ": Exiting parallel region.\n";
+        scope s("Distance", scope::minimum);
+        dbg<<"Minimum Distance from node 0:\n";
+        for ( i = 0; i < NV; i++ )
+          dbg<< i <<" - "<< mind[i] << "\n";
+        
+        printf ( "\n" );
+        printf ( " P%d: Exiting parallel region.\n", my_id );
+        dbg << " P"<< my_id << ": Exiting parallel region.\n";
       }
-      //omp_unset_lock(&omplock);
-      //sendcausalityOMP(txt()<<"End_"<<omp_get_thread_num(), "commSend");
     }
-    // receivecausalityOMP(txt()<<"Spawner_"<<0,
-    //                       0,
-    //                       txt()<<"Spawnee_"<<omp_get_thread_num(),
-    //                       "commRecv", true);
-
-    //omp_set_lock(&omplock);
+    */
+    
+    /*
+    
     {
       scope s("End thread", scope::minimum);
       dbg << "Thread# "<< omp_get_thread_num() <<" done. \n";
     }
-    //omp_unset_lock(&omplock);
-   
+    */
+    
     if(omp_get_thread_num() != 0)
       ompthreadCleanup(NULL);
   }
