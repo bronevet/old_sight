@@ -32,15 +32,15 @@ ifeq (${CCC},icpc)
   OMPFLAG = -openmp
 endif
 
-RAPL_ENABLED = 1
+RAPL_ENABLED = 0
 ifeq (${RAPL_ENABLED}, 1)
 SIGHT_CFLAGS += -I${ROOT_PATH}/widgets/libmsr/include
 SIGHT_LINKFLAGS += ${ROOT_PATH}/widgets/libmsr/lib/libmsr.so \
                     -Wl,-rpath ${ROOT_PATH}/widgets/libmsr/lib
 endif
 	                
-override CC=icc#clang #icc #gcc
-override CCC=icpc#clang++ #icpc #clang++ #g++
+override CC=gcc #icc#clang #icc #gcc
+override CCC=g++  #icpc#clang++ #icpc #clang++ #g++
 MPICC = mpi${CC}
 MPICCC = mpi${CCC} #${ROOT_PATH}/tools/mpi${CCC}
 
@@ -109,7 +109,7 @@ MAKE_DEFINES = ROOT_PATH=${ROOT_PATH} RAPL_ENABLED=${RAPL_ENABLED} REMOTE_ENABLE
 
 # Set to "!" if we wish to enable examples that use MPI
 #MPI_ENABLED = 0
-MPI_ENABLED = 1
+MPI_ENABLED = 0
 
 .PHONY: apps
 ifeq (${MPI_ENABLED}, 1)
@@ -246,6 +246,22 @@ binreloc.o: binreloc.c binreloc.h
 
 utils.o: utils.C utils.h
 	${CCC} ${SIGHT_CFLAGS} utils.C -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o utils.o
+
+#build C_API library
+
+.PHONY: api_c_example
+api_c_example: sight_api.o 1.C_API_Formatting.o libsight_structure.so libsight_layout.so
+	${CC} ${SIGHT_CFLAGS} ${SIGHT_LINKFLAGS} -o api_c_test sight_api.o 1.C_API_Formatting.o -L. -lsight_structure -lsight_layout -lstdc++ -L${ROOT_PATH}/tools/callpath/lib -lcallpath -L${ROOT_PATH}/widgets/papi/lib -lpapi
+
+sight_api.o: sight_api.C sight_api.h
+	${CCC} ${SIGHT_CFLAGS} sight_api.C -c -o sight_api.o
+	
+1.C_API_Formatting.o: 1.C_API_Formatting.c sight_api.h
+	${CC} ${SIGHT_CFLAGS} 1.C_API_Formatting.c -c -o 1.C_API_Formatting.o
+
+clean_api:
+	rm sight_api.o 1.C_API_Formatting.o api_c_test	
+#end of build C_API library
 
 HOSTNAME_ARG=$(shell ./getHostnameArg.pl)
 getAllHostnames.o: getAllHostnames.C getAllHostnames.h

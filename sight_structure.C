@@ -471,6 +471,8 @@ void SightInit_internal(int argc, char** argv, string title, string workDir, boo
 }
 
 void SightThreadInit() {
+
+  atexit(AbortHandlerInstantiator::appExited);
   //cout << pthread_self()<<": SightThreadInit\n";
   // Set this thread to be cancelable
   pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
@@ -3146,7 +3148,9 @@ void AbortHandlerInstantiator::init() {
   struct sigaction new_action;
      
   // Register AbortHandlerInstantiator::appExited to be called when the application calls exit
-  atexit(AbortHandlerInstantiator::appExited);
+  
+  //moved to #ThreadInit
+  //atexit(AbortHandlerInstantiator::appExited);
   
   // Register AbortHandlerInstantiator::killSignal() to be called when the application receives a kill signal
   new_action.sa_handler = AbortHandlerInstantiator::killSignal;
