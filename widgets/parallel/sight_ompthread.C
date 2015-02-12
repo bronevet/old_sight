@@ -317,6 +317,46 @@ void sight_omp_unlock(sight_omp_lock_t* slock){
   omp_unset_lock(&(slock->ompLock));  
 }
 
+void sight_omp_lock_single(sight_omp_lock_t* slock){
+  //cout << "lock threadID = " << omp_get_thread_num() << " slock->lastLockOwner" << slock->lastLockOwner << "slock->numLockOwners" << slock->numLockOwners<<endl;
+  omp_set_lock(&(slock->ompLock));
+  omp_set_lock(&causalityLock);
+    
+  //checkcausalityOMP(true);
+  int n = omp_get_num_threads();
+
+  for(int i=0; i<n; i++){
+    // Update the causality info
+    receivecausalityOMP(txt()<<"S_"<<i<<"_"<<causalityOMP[i]->send(), i,
+                           txt()<<"R_"<<omp_get_thread_num()<<"_"<<causalityOMP[i]->send(), 
+                           "Lock", true);      
+    // receivecausalityOMP(txt()<<"S_"<<i<<"_"<<lastClockTime, i,
+    //                     txt()<<"R_"<<omp_get_thread_num()<<"_"<<lastClockTime, 
+    //                     "Lock", true);
+    
+  }
+  omp_unset_lock(&causalityLock);    
+  
+  // Record that this thread was the last owner of this lock
+  slock->numLockOwners++;
+  slock->lastLockOwner = omp_get_thread_num();
+}
+
+void sight_omp_unlock_single(sight_omp_lock_t* slock){
+  omp_set_lock(&causalityLock);
+  //checkcausalityOMP(true);
+
+  //int n = omp_get_num_threads();
+
+  //for(int i=0; i<n; i++){
+    // Update the causality info
+    sendcausalityOMP(txt()<<"S_"<<omp_get_thread_num()<<"_"<<causalityOMP[omp_get_thread_num()]->send(), "Unlock", true);
+    //sendcausalityOMP(txt()<<"S_"<<i<<"_"<<causalityOMP[i]->send(), "Unlock", true);
+  //}
+  omp_unset_lock(&causalityLock);
+  omp_unset_lock(&(slock->ompLock));  
+}
+
 /*******************
  *** OMP Barrier ***
  *******************/
@@ -345,7 +385,7 @@ void sight_omp_barrier_wait(sight_omp_barrier_t* sbar){
     
   causalityOMP[omp_get_thread_num()]->recv(sbar->maxTime);
   block();
-  causalityOMP[omp_get_thread_num()]->recv(sbar->maxTime-1);
+  causalityOMP[omp_get_thread_num()]->recv(sbar->maxTime+1);
   
   commBar("Barrier", txt()<<"B_"<<sbar->count);
 

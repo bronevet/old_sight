@@ -99,6 +99,8 @@ void sight_omp_lock_init(sight_omp_lock_t *slock);
 void sight_omp_lock_destroy(sight_omp_lock_t *slock);
 void sight_omp_lock(sight_omp_lock_t* slock);
 void sight_omp_unlock(sight_omp_lock_t* slock);
+void sight_omp_lock_single(sight_omp_lock_t* slock);
+void sight_omp_unlock_single(sight_omp_lock_t* slock);
 
 
 /*******************

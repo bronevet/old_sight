@@ -30,7 +30,8 @@ TESTERS =
 #		  12.HoaVizAPI${EXE}
           
 PTHREAD_TESTERS = openMPex5${EXE}
-#openMPex1${EXE} openMPex2${EXE} openMPex3${EXE} openMPex4${EXE}
+# openMPex3${EXE} openMPex5${EXE}
+#openMPex1${EXE} openMPex2${EXE} openMPex3${EXE} openMPex4${EXE} openMPex5${EXE}
 #pthreadMutexEx${EXE} pthreadCondEx${EXE} pthreadThreadsEx${EXE} \
 #                  pthreadArrayLoops${EXE} dotprodPthreads${EXE} pthreadFib${EXE} 
 
@@ -181,7 +182,7 @@ runPthread: ${PTHREAD_TESTERS}
 #	./runPthreadEx openMPex2 5
 #	./runPthreadEx openMPex3 5
 #	./runPthreadEx openMPex4 5
-	./runPthreadEx openMPex5 3
+	./runPthreadEx openMPex5 5
 #	./runPthreadEx pthreadFib 5
 #	./runPthreadEx pthreadThreadsEx 5
 #	./runPthreadEx pthreadMutexEx 5

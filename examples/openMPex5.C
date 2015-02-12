@@ -237,30 +237,17 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
   The SINGLE directive means that the block is to be executed by only
   one thread, and that thread will be whichever one gets here first.
 */
-    //sendcausalityOMP(txt()<<"End_"<<omp_get_thread_num(), "commSend");
     # pragma omp single
     {
-    
-      // receivecausalityOMP(txt()<<"Spawner_"<<0,
-      //                     0,
-      //                     txt()<<"Spawnee_"<<omp_get_thread_num(),
-      //                     "commRecv", true);
-        
+  
       printf ( "\n" );
       printf ( "  P%d: Parallel region begins with %d threads\n", my_id, nth );      
       printf ( "\n" );
-      //omp_set_lock(&omplock);
       {
       scope s("init node", scope::minimum);
       dbg << "  P"<<my_id <<": Parallel region begins with" << nth <<" threads\n";
       }
-      //omp_unset_lock(&omplock);
-      // sendcausalityOMP(txt()<<"End_"<<omp_get_thread_num(), "commSend"); 
     }
-    // receivecausalityOMP(txt()<<"Spawner_"<<0,
-    //                       0,
-    //                       txt()<<"Spawnee_"<<omp_get_thread_num(),
-    //                       "commRecv", true);
     fprintf ( stdout, "  P%d:  First=%d  Last=%d\n", my_id, my_first, my_last );
   
     //omp_set_lock(&omplock);
@@ -276,22 +263,24 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
   Before we compare the results of each thread, set the shared variable 
   MD to a big value.  Only one thread needs to do this.
 */
-      //sendcausalityOMP(txt()<<"End_"<<omp_get_thread_num(), "commSend");
+      //sight_omp_unlock(&omplock);
+      //if(omp_get_thread_num() !=0 )
+        sight_omp_unlock_single(&omplock);
       # pragma omp single 
       {
-        // receivecausalityOMP(txt()<<"Spawner_"<<0,
-        //                   0,
-        //                   txt()<<"Spawnee_"<<omp_get_thread_num(),
-        //                   "commRecv", true);
-        
-        md = i4_huge;
-        mv = -1; 
-        //sendcausalityOMP(txt()<<"End_"<<omp_get_thread_num(), "commSend");
+        if(omp_get_thread_num() !=0 )
+          sight_omp_lock_single(&omplock);
+          {
+            scope s("single 1:", scope::minimum);
+            md = i4_huge;
+            mv = -1; 
+            dbg << "md = " << md << endl;
+            dbg << "mv = " << mv << endl;  
+          }
+          //sight_omp_unlock_single(&omplock);        
       }
-      // receivecausalityOMP(txt()<<"Spawner_"<<0,
-      //                     0,
-      //                     txt()<<"Spawnee_"<<omp_get_thread_num(),
-      //                     "commRecv", true);
+      //sight_omp_lock_single(&omplock);
+      //sight_omp_lock(&omplock);
         
 /*
   Each thread finds the nearest unconnected node in its part of the graph.
@@ -304,9 +293,8 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
 */
       # pragma omp critical
       {
-        if(omp_get_thread_num() !=0 )
-        {
-          sight_omp_lock(&omplock);
+         if(omp_get_thread_num() !=0 )
+           sight_omp_lock(&omplock);
           {
             scope s("md and mv:", scope::minimum);
              
@@ -318,8 +306,8 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
             dbg << "md = " << md << endl;
             dbg << "mv = " << mv << endl;   
           }
-          sight_omp_unlock(&omplock);
-        }   
+        if(omp_get_thread_num() !=0 )
+          sight_omp_unlock(&omplock);          
       }
 /*
   This barrier means that ALL threads have executed the critical
@@ -335,8 +323,8 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
           block();
           commBar("Barrier", txt()<<"ompbar"<<barCounter);        
         */
-        if(omp_get_thread_num() !=0 )
-          sight_omp_barrier_wait(&ompbarrier);        
+        //if(omp_get_thread_num() !=0 )
+        // sight_omp_barrier_wait(&ompbarrier);   
       }
       
 /*
@@ -346,35 +334,22 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
 
   Otherwise, we connect the nearest node.
 */    
-      //sendcausalityOMP(txt()<<"End_"<<omp_get_thread_num(), "commSend");
       # pragma omp single 
       {
-        // receivecausalityOMP(txt()<<"Spawner_"<<0,
-        //                   0,
-        //                   txt()<<"Spawnee_"<<omp_get_thread_num(),
-        //                   "commRecv", true);
-        
+        //sight_omp_lock_single(&omplock);
         if ( mv != - 1 )
         {
           connected[mv] = 1;
           printf ( "  P%d: Connecting node %d.\n", my_id, mv );
           
-          //omp_set_lock(&omplock);
           {
           scope s("connecting node", scope::minimum);
           dbg << "  P" << my_id <<": Connecting node "<< mv << ".\n";
           }
-          //omp_unset_lock(&omplock);
-          
         }
-        //sendcausalityOMP(txt()<<"End_"<<omp_get_thread_num(), "commSend");
+        //sight_omp_unlock_single(&omplock);
       }
       
-      // receivecausalityOMP(txt()<<"Spawner_"<<0,
-      //                     0,
-      //                     txt()<<"Spawnee_"<<omp_get_thread_num(),
-      //                     "commRecv", true);
-
 /*
   Again, we don't want any thread to proceed until the value of
   CONNECTED is updated.
@@ -396,16 +371,7 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
             scope s("Update Distance from node 0:", scope::minimum);
             for ( i = 0; i < NV; i++ )
               dbg<< i <<" - "<< mind[i] << "\n";
-          }
-          /*
-          {
-            scope s("Distance", scope::minimum);
-            dbg<<"Minimum Distance from node 0:\n";
-            for ( i = 0; i < NV; i++ )
-              dbg<< i <<" - "<< mind[i] << "\n";
-          }
-          */
-          
+          }          
         }
 
         //if(omp_get_thread_num() !=0 )
@@ -422,9 +388,9 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
 /*
   Once all the nodes have been connected, we can exit.
 */  
-    /*
     # pragma omp single
     {    
+      //sight_omp_lock_single(&omplock);
       {
         scope s("Distance", scope::minimum);
         dbg<<"Minimum Distance from node 0:\n";
@@ -435,16 +401,14 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
         printf ( " P%d: Exiting parallel region.\n", my_id );
         dbg << " P"<< my_id << ": Exiting parallel region.\n";
       }
+      //sight_omp_unlock_single(&omplock);
     }
-    */
     
-    /*
     
     {
       scope s("End thread", scope::minimum);
       dbg << "Thread# "<< omp_get_thread_num() <<" done. \n";
     }
-    */
     
     if(omp_get_thread_num() != 0)
       ompthreadCleanup(NULL);
