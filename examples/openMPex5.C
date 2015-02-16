@@ -188,6 +188,7 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
   int my_step;
   int nth;
   int barCounter = 0;
+  int singleThread = 0;
 
   
 /*
@@ -239,7 +240,7 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
 */
     # pragma omp single
     {
-  
+    
       printf ( "\n" );
       printf ( "  P%d: Parallel region begins with %d threads\n", my_id, nth );      
       printf ( "\n" );
@@ -248,6 +249,7 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
       dbg << "  P"<<my_id <<": Parallel region begins with" << nth <<" threads\n";
       }
     }
+    
     fprintf ( stdout, "  P%d:  First=%d  Last=%d\n", my_id, my_first, my_last );
   
     //omp_set_lock(&omplock);
@@ -263,24 +265,25 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
   Before we compare the results of each thread, set the shared variable 
   MD to a big value.  Only one thread needs to do this.
 */
-      //sight_omp_unlock(&omplock);
-      //if(omp_get_thread_num() !=0 )
-        sight_omp_unlock_single(&omplock);
+      
       # pragma omp single 
       {
-        if(omp_get_thread_num() !=0 )
-          sight_omp_lock_single(&omplock);
-          {
-            scope s("single 1:", scope::minimum);
-            md = i4_huge;
-            mv = -1; 
-            dbg << "md = " << md << endl;
-            dbg << "mv = " << mv << endl;  
-          }
-          //sight_omp_unlock_single(&omplock);        
+        {
+          scope s("single 1:", scope::minimum);
+          md = i4_huge;
+          mv = -1; 
+          dbg << "md = " << md << endl;
+          dbg << "mv = " << mv << endl;  
+        }
+        for(int i=1; i<omp_get_num_threads(); i++)
+          if(i!= omp_get_thread_num())
+            sight_omp_send_single(i);
+        
+        singleThread = omp_get_thread_num();
+        #pragma omp flush
       }
-      //sight_omp_lock_single(&omplock);
-      //sight_omp_lock(&omplock);
+      #pragma omp flush
+      sight_omp_receive_single(singleThread);
         
 /*
   Each thread finds the nearest unconnected node in its part of the graph.
@@ -323,8 +326,8 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
           block();
           commBar("Barrier", txt()<<"ompbar"<<barCounter);        
         */
-        //if(omp_get_thread_num() !=0 )
-        // sight_omp_barrier_wait(&ompbarrier);   
+        if(omp_get_thread_num() !=0 )
+         sight_omp_barrier_wait(&ompbarrier);   
       }
       
 /*
@@ -336,7 +339,6 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
 */    
       # pragma omp single 
       {
-        //sight_omp_lock_single(&omplock);
         if ( mv != - 1 )
         {
           connected[mv] = 1;
@@ -347,7 +349,6 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
           dbg << "  P" << my_id <<": Connecting node "<< mv << ".\n";
           }
         }
-        //sight_omp_unlock_single(&omplock);
       }
       
 /*
@@ -374,23 +375,23 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
           }          
         }
 
-        //if(omp_get_thread_num() !=0 )
-        //    sight_omp_barrier_wait(&ompbarrier);      
+        if(omp_get_thread_num() !=0 )
+            sight_omp_barrier_wait(&ompbarrier);      
       }
 /*
   Before starting the next step of the iteration, we need all threads 
   to complete the updating, so we set a BARRIER here.
 */
       #pragma omp barrier
-      //  if(omp_get_thread_num() !=0 )
-      //    sight_omp_barrier_wait(&ompbarrier);
+        if(omp_get_thread_num() !=0 )
+          sight_omp_barrier_wait(&ompbarrier);
     }
 /*
   Once all the nodes have been connected, we can exit.
 */  
+
     # pragma omp single
     {    
-      //sight_omp_lock_single(&omplock);
       {
         scope s("Distance", scope::minimum);
         dbg<<"Minimum Distance from node 0:\n";
@@ -401,8 +402,15 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
         printf ( " P%d: Exiting parallel region.\n", my_id );
         dbg << " P"<< my_id << ": Exiting parallel region.\n";
       }
-      //sight_omp_unlock_single(&omplock);
+      for(int i=1; i<omp_get_num_threads(); i++)
+        if(i!= omp_get_thread_num())
+          sight_omp_send_single(i);
+      
+      singleThread = omp_get_thread_num();
+      #pragma omp flush
     }
+    #pragma omp flush
+    sight_omp_receive_single(singleThread);
     
     
     {

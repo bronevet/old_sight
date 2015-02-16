@@ -289,7 +289,7 @@ void sight_omp_lock(sight_omp_lock_t* slock){
   if(slock->numLockOwners>0) {
     omp_set_lock(&causalityLock);
     
-    //checkcausalityOMP(true);
+    checkcausalityOMP(true);
     // Update the causality info
     long long lastClockTime = causalityOMP[slock->lastLockOwner]->send();
     receivecausalityOMP(txt()<<"S_"<<slock->lastLockOwner<<"_"<<lastClockTime, slock->lastLockOwner,
@@ -307,7 +307,7 @@ void sight_omp_lock(sight_omp_lock_t* slock){
 void sight_omp_unlock(sight_omp_lock_t* slock){
   omp_set_lock(&causalityLock);
   
-  //checkcausalityOMP(true);
+  checkcausalityOMP(true);
 
   // Update the causality info
   sendcausalityOMP(txt()<<"S_"<<omp_get_thread_num()<<"_"<<causalityOMP[omp_get_thread_num()]->send(), "Unlock", true);
@@ -317,44 +317,18 @@ void sight_omp_unlock(sight_omp_lock_t* slock){
   omp_unset_lock(&(slock->ompLock));  
 }
 
-void sight_omp_lock_single(sight_omp_lock_t* slock){
-  //cout << "lock threadID = " << omp_get_thread_num() << " slock->lastLockOwner" << slock->lastLockOwner << "slock->numLockOwners" << slock->numLockOwners<<endl;
-  omp_set_lock(&(slock->ompLock));
-  omp_set_lock(&causalityLock);
-    
-  //checkcausalityOMP(true);
-  int n = omp_get_num_threads();
+void sight_omp_receive_single(int singleThread){
+  //cout << "Thread# " << omp_get_thread_num() << " sight_omp_receive_single" << endl;
+  long long lastClockTime = causalityOMP[singleThread]->send();
 
-  for(int i=0; i<n; i++){
-    // Update the causality info
-    receivecausalityOMP(txt()<<"S_"<<i<<"_"<<causalityOMP[i]->send(), i,
-                           txt()<<"R_"<<omp_get_thread_num()<<"_"<<causalityOMP[i]->send(), 
-                           "Lock", true);      
-    // receivecausalityOMP(txt()<<"S_"<<i<<"_"<<lastClockTime, i,
-    //                     txt()<<"R_"<<omp_get_thread_num()<<"_"<<lastClockTime, 
-    //                     "Lock", true);
-    
-  }
-  omp_unset_lock(&causalityLock);    
-  
-  // Record that this thread was the last owner of this lock
-  slock->numLockOwners++;
-  slock->lastLockOwner = omp_get_thread_num();
+  receivecausalityOMP(txt()<<"SingleSend_"<<omp_get_thread_num()<<"_"<<causalityOMP[omp_get_thread_num()]->send(), singleThread,
+                      txt()<<"SingleRecv_"<<singleThread<<"_"<<causalityOMP[singleThread]->send(), 
+                      "After Single", false);
 }
 
-void sight_omp_unlock_single(sight_omp_lock_t* slock){
-  omp_set_lock(&causalityLock);
-  //checkcausalityOMP(true);
-
-  //int n = omp_get_num_threads();
-
-  //for(int i=0; i<n; i++){
-    // Update the causality info
-    sendcausalityOMP(txt()<<"S_"<<omp_get_thread_num()<<"_"<<causalityOMP[omp_get_thread_num()]->send(), "Unlock", true);
-    //sendcausalityOMP(txt()<<"S_"<<i<<"_"<<causalityOMP[i]->send(), "Unlock", true);
-  //}
-  omp_unset_lock(&causalityLock);
-  omp_unset_lock(&(slock->ompLock));  
+void sight_omp_send_single(int ite){
+  //cout << "Thread# " << omp_get_thread_num() << " sight_omp_send_single" << endl;
+  sendcausalityOMP(txt()<<"SingleSend_"<<ite<<"_"<<causalityOMP[ite]->send(), "Single Done", false);        
 }
 
 /*******************
@@ -363,7 +337,6 @@ void sight_omp_unlock_single(sight_omp_lock_t* slock){
 
 void sight_omp_barrier_init(sight_omp_barrier_t* sbar){
   sbar->count = 0;
-  //omp_init_lock(&(sbar->ompBarLock));
   checkcausalityOMP(true);   
 }
 
@@ -373,7 +346,6 @@ void sight_omp_barrier_wait(sight_omp_barrier_t* sbar){
   
   // Set the local scalar clock to the maximum of each thread's scalar clock
   omp_set_lock(&causalityLock);
-  //omp_set_lock(&(sbar->ompBarLock));
   
   checkcausalityOMP(true); 
   
@@ -390,7 +362,6 @@ void sight_omp_barrier_wait(sight_omp_barrier_t* sbar){
   commBar("Barrier", txt()<<"B_"<<sbar->count);
 
   omp_unset_lock(&causalityLock);
-  //omp_unset_lock(&(sbar->ompBarLock));
 }
 
 }; // namespace structure 
