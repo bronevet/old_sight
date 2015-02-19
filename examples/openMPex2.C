@@ -16,10 +16,10 @@ using namespace std;
 using namespace sight;
 
 int numThreads = 4;
-int x = 2;
+static sight_omp_barrier_t ompbarrier;
 
 int main (int argc, char *argv[])
-{
+{ 
 	SightInit(argc, argv, "openMPex2", "dbg.openMPex2.individual");
 
 	if(argc>=2) numThreads = atoi(argv[1]);
@@ -44,15 +44,28 @@ int main (int argc, char *argv[])
 		}
 		dbg << "Thread "<< omp_get_thread_num() << " starting..." << endl;
 
-		#pragma omp for schedule(dynamic,chunk)
+		#pragma omp for
 		for (i=0; i<N; i++)
 		{
+			#pragma omp barrier
+	        if(omp_get_thread_num() !=0 )
+	          sight_omp_barrier_wait(&ompbarrier);
+
 			c[i] = a[i] + b[i];
-			scope s("scope:", scope::high);
-			dbg << "Thread " << omp_get_thread_num() <<": c["<< i << "] = " << c[i] << endl;							
+			scope s("scope:", scope::minimum);
+			dbg << "Thread " << omp_get_thread_num() <<": c["<< i << "] = " << c[i] << endl;	
+			cout << "Thread " << omp_get_thread_num() <<": c["<< i << "] = " << c[i] << endl;												
+
+			#pragma omp barrier
+	        if(omp_get_thread_num() !=0 )
+	          sight_omp_barrier_wait(&ompbarrier);
 		}
+
+		dbg << "Thread "<< omp_get_thread_num() << " done." << endl;
 		
-	    dbg << "Thread "<< omp_get_thread_num() << " done." << endl;
+		#pragma omp barrier
+	        if(omp_get_thread_num() !=0 )
+	          sight_omp_barrier_wait(&ompbarrier);
 
 	    if(omp_get_thread_num() != 0)
 	     	ompthreadCleanup(NULL);
