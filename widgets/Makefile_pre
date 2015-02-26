@@ -1,9 +1,9 @@
-WIDGETS_COMMON_O := scope/scope_common.o graph/graph_common.o valSelector/valSelector_common.o trace/trace_common.o module/module_common.o source/source_common.o flowgraph/flowgraph_common.o
-WIDGETS_COMMON_H := scope/scope_common.h graph/graph_common.h valSelector/valSelector_common.h trace/trace_common.h module/module_common.h source/source_common.h flowgraph/flowgraph_common.h
-WIDGETS_STRUCTURE_O := scope/scope_structure.o graph/graph_structure.o valSelector/valSelector_structure.o trace/trace_structure.o module/module_structure.o source/source_structure.o clock/clock_structure.o parallel/parallel_structure.o parallel/sight_pthread.o parallel/sight_ompthread.o flowgraph/flowgraph_structure.o
-WIDGETS_STRUCTURE_H := scope/scope_structure.h graph/graph_structure.h valSelector/valSelector_structure.h trace/trace_structure.h module/module_structure.h source/source_structure.h clock/clock_structure.h parallel/parallel_structure.h parallel/sight_pthread.h parallel/sight_ompthread.h flowgraph/flowgraph_structure.h
-WIDGETS_LAYOUT_O := scope/scope_layout.o graph/graph_layout.o valSelector/valSelector_layout.o trace/trace_layout.o module/module_layout.o source/source_layout.o clock/clock_layout.o parallel/parallel_layout.o flowgraph/flowgraph_layout.o
-WIDGETS_LAYOUT_H := scope/scope_layout.h graph/graph_layout.h valSelector/valSelector_layout.h trace/trace_layout.h module/module_layout.h source/source_layout.o clock/clock_layout.h parallel/parallel_layout.h flowgraph/flowgraph_layout.h
+WIDGETS_COMMON_O := scope/scope_common.o scopeOMP/scopeOMP_common.o graph/graph_common.o valSelector/valSelector_common.o trace/trace_common.o module/module_common.o source/source_common.o flowgraph/flowgraph_common.o
+WIDGETS_COMMON_H := scope/scope_common.h scopeOMP/scopeOMP_common.h graph/graph_common.h valSelector/valSelector_common.h trace/trace_common.h module/module_common.h source/source_common.h flowgraph/flowgraph_common.h
+WIDGETS_STRUCTURE_O := scope/scope_structure.o scopeOMP/scopeOMP_structure.o graph/graph_structure.o valSelector/valSelector_structure.o trace/trace_structure.o module/module_structure.o source/source_structure.o clock/clock_structure.o parallel/parallel_structure.o parallel/sight_pthread.o parallel/sight_ompthread.o flowgraph/flowgraph_structure.o
+WIDGETS_STRUCTURE_H := scope/scope_structure.h scopeOMP/scopeOMP_structure.h graph/graph_structure.h valSelector/valSelector_structure.h trace/trace_structure.h module/module_structure.h source/source_structure.h clock/clock_structure.h parallel/parallel_structure.h parallel/sight_pthread.h parallel/sight_ompthread.h flowgraph/flowgraph_structure.h
+WIDGETS_LAYOUT_O := scope/scope_layout.o scopeOMP/scopeOMP_layout.o graph/graph_layout.o valSelector/valSelector_layout.o trace/trace_layout.o module/module_layout.o source/source_layout.o clock/clock_layout.o parallel/parallel_layout.o flowgraph/flowgraph_layout.o
+WIDGETS_LAYOUT_H := scope/scope_layout.h scopeOMP/scopeOMP_layout.h graph/graph_layout.h valSelector/valSelector_layout.h trace/trace_layout.h module/module_layout.h source/source_layout.o clock/clock_layout.h parallel/parallel_layout.h flowgraph/flowgraph_layout.h
 WIDGETS := ${WIDGETS_O} ${WIDGETS_H}
 
 MAKE_DEFINES = ROOT_PATH=${ROOT_PATH} RAPL_ENABLED=${RAPL_ENABLED} REMOTE_ENABLED=${REMOTE_ENABLED} GDB_PORT=${GDB_PORT} OS=${OS} SIGHT_CFLAGS="${SIGHT_CFLAGS}" SIGHT_LINKFLAGS="${SIGHT_LINKFLAGS}" CC=${CC} CCC=${CCC} KULFI_ENABLED=${KULFI_ENABLED} LLVM32_SRC_PATH=${LLVM32_SRC_PATH} LLVM32_BUILD_PATH=${LLVM32_BUILD_PATH} LLVM32_INSTALL_PATH=${LLVM32_INSTALL_PATH}
@@ -15,6 +15,7 @@ all: gsl papi libmsr synoptic \
      shellinabox/bin/shellinaboxd${EXE} mongoose/mongoose${EXE} graphviz/bin/dot${EXE} \
      vnc \
      source/sh_main.js source/sh_cpp.js \
+     scopeOMP/scopeOMP.js \
      threejs \
      jsPlumb \
      external_scripts
@@ -43,6 +44,14 @@ scope/scope_structure.o: scope/scope_structure.C scope/scope_structure.h ../attr
 scope/scope_layout.o: scope/scope_layout.C scope/scope_layout.h ../attributes/attributes_layout.h ../sight_layout.h
 	${CCC} ${SIGHT_CFLAGS} scope/scope_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o scope/scope_layout.o
 
+scopeOMP/scopeOMP_common.o: scopeOMP/scopeOMP_common.C scopeOMP/scopeOMP_common.h ../attributes/attributes_common.h ../sight_common.h
+	${CCC} ${SIGHT_CFLAGS} scopeOMP/scopeOMP_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o scopeOMP/scopeOMP_common.o
+
+scopeOMP/scopeOMP_structure.o: scopeOMP/scopeOMP_structure.C scopeOMP/scopeOMP_structure.h ../attributes/attributes_structure.h ../sight_structure.h
+	${CCC} ${SIGHT_CFLAGS} scopeOMP/scopeOMP_structure.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o scopeOMP/scopeOMP_structure.o
+
+scopeOMP/scopeOMP_layout.o: scopeOMP/scopeOMP_layout.C scopeOMP/scopeOMP_layout.h ../attributes/attributes_layout.h ../sight_layout.h
+	${CCC} ${SIGHT_CFLAGS} scopeOMP/scopeOMP_layout.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o scopeOMP/scopeOMP_layout.o
 
 graph/graph_common.o: graph/graph_common.C graph/graph_common.h ../attributes/attributes_common.h ../sight_common.h
 	${CCC} ${SIGHT_CFLAGS} graph/graph_common.C -I.. -DROOT_PATH="\"${ROOT_PATH}\"" -DREMOTE_ENABLED=${REMOTE_ENABLED} -DGDB_PORT=${GDB_PORT} -c -o graph/graph_common.o

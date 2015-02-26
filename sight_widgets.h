@@ -2,6 +2,7 @@
 // so that application developers don't need to include them explicitly.
 #include "widgets/graph/graph_structure.h"
 #include "widgets/scope/scope_structure.h"
+#include "widgets/scopeOMP/scopeOMP_structure.h"
 #include "widgets/valSelector/valSelector_structure.h"
 #include "widgets/trace/trace_structure.h"
 #include "widgets/module/module_structure.h"

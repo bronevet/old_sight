@@ -43,29 +43,25 @@ int main (int argc, char *argv[])
 			dbg << "Number of threads = " << numThreads << endl;
 		}
 		dbg << "Thread "<< omp_get_thread_num() << " starting..." << endl;
+			
+		// #pragma omp barrier
+	 //        if(omp_get_thread_num() !=0 )
+	 //          sight_omp_barrier_wait(&ompbarrier);
 
+		int forID = 1;
 		#pragma omp for
 		for (i=0; i<N; i++)
 		{
-			#pragma omp barrier
-	        if(omp_get_thread_num() !=0 )
-	          sight_omp_barrier_wait(&ompbarrier);
-
 			c[i] = a[i] + b[i];
-			scope s("scope:", scope::minimum);
+			scopeOMP s("scope:", forID, N, i);
 			dbg << "Thread " << omp_get_thread_num() <<": c["<< i << "] = " << c[i] << endl;	
 			cout << "Thread " << omp_get_thread_num() <<": c["<< i << "] = " << c[i] << endl;												
-
-			#pragma omp barrier
-	        if(omp_get_thread_num() !=0 )
-	          sight_omp_barrier_wait(&ompbarrier);
 		}
-
+		// #pragma omp barrier
+	 //        if(omp_get_thread_num() !=0 )
+	 //          sight_omp_barrier_wait(&ompbarrier);
+	
 		dbg << "Thread "<< omp_get_thread_num() << " done." << endl;
-		
-		#pragma omp barrier
-	        if(omp_get_thread_num() !=0 )
-	          sight_omp_barrier_wait(&ompbarrier);
 
 	    if(omp_get_thread_num() != 0)
 	     	ompthreadCleanup(NULL);

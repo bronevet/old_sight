@@ -1,5 +1,6 @@
 #include "sight_merge.h"
 #include "widgets/scope/scope_structure.h"
+#include "widgets/scopeOMP/scopeOMP_structure.h"
 #include "widgets/graph/graph_structure.h"
 using namespace std;
 
