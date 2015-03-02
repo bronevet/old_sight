@@ -42,7 +42,10 @@ int main (int argc, char *argv[])
 		{
 			dbg << "Number of threads = " << numThreads << endl;
 		}
-		dbg << "Thread "<< omp_get_thread_num() << " starting..." << endl;
+		{
+			scope s("Start:", scope::minimum);
+			dbg << "Thread "<< omp_get_thread_num() << " starting..." << endl;
+		}
 			
 		// #pragma omp barrier
 	 //        if(omp_get_thread_num() !=0 )
@@ -57,11 +60,17 @@ int main (int argc, char *argv[])
 			dbg << "Thread " << omp_get_thread_num() <<": c["<< i << "] = " << c[i] << endl;	
 			cout << "Thread " << omp_get_thread_num() <<": c["<< i << "] = " << c[i] << endl;												
 		}
+		{
+			scope s("endFor", scope::minimum);
+			dbg<< "End For" << endl;
+		}
 		// #pragma omp barrier
 	 //        if(omp_get_thread_num() !=0 )
 	 //          sight_omp_barrier_wait(&ompbarrier);
-	
-		dbg << "Thread "<< omp_get_thread_num() << " done." << endl;
+		{
+			scope s("completed:", scope::minimum);
+			dbg << "Thread "<< omp_get_thread_num() << " done." << endl;
+		}
 
 	    if(omp_get_thread_num() != 0)
 	     	ompthreadCleanup(NULL);
