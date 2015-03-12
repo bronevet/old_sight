@@ -253,10 +253,11 @@ void flowgraph::outputDataFlowGraph(std::string graphdata) {
 	int ind = 0;
 	int drawNodeGraph = 0;
 	std::string vertID, horiID;
+	std::string nodeName;
 
 	if(graphdata.find("graphNodeStart:") == 0 || graphdata.find("graphNodeEnd:") == 0 ||  graphdata.find("verhorNodeStart") == 0 || graphdata.find("drawNodeGraph:") == 0)
 	{
-		std::string graphtmp, nodeName;
+		std::string graphtmp;
 		std::istringstream grd(graphdata);
 		ind=0;
 		while(std::getline(grd, t1, ':'))	{
@@ -326,12 +327,12 @@ if(graphdata.find("graphNodeStart:") == 0 || graphdata.find("verhorNodeStart") =
 
 		if(graphdata.find("graphNodeStart:") == 0)
 			dataFile << "["+nodeName;
-			if(graphdata.find("verhorNodeStart:") == 0)
-					{
-			   dataFile << "["+nodeName;
-			   //vhFile << nodeName + ":" + vertID + ":" + horiID + "\n";
+		
+		if(graphdata.find("verhorNodeStart:") == 0){
+		    dataFile << "["+nodeName;
 			vhFile << nodeName + ":" + vertID + ":" + horiID + "\n";
 		}
+		
 		if(graphdata.find("graphNodeEnd:") == 0)
 			dataFile << "]";
 		dataFile.close();
@@ -414,11 +415,12 @@ if(graphdata.find("graphNodeStart:") == 0 || graphdata.find("verhorNodeStart") =
 	{
 		std::string datatmp_add, datatmp, data;
 		int add_edge = 0;
-		std::string tok1, tok2;
+		std::string tok1, tok2, tok3, tok4;
 		//int ind = 0;
 
-		if(graphdata.find("addnode:") == 0 || graphdata.find("addedge:") == 0)
+		if(graphdata.find("addnode:") == 0 || graphdata.find("addedge:") == 0 || graphdata.find("verhoraddnode:") == 0)
 		{
+			
 			std::string graphtmp;
 			std::istringstream grd(graphdata);
 			std::string to;
@@ -434,10 +436,49 @@ if(graphdata.find("graphNodeStart:") == 0 || graphdata.find("verhorNodeStart") =
 			while(std::getline(grdata1, tok1, '{'))	{
 				if(ind == 0)
 					graphName = tok1;
-				else
-					datatmp_add = tok1;
+				else{					
+					if(graphdata.find("verhoraddnode") == 0){
+						int in1=0;
+						std::istringstream grdata2(tok1);
+						while(std::getline(grdata2, t2, '|'))	{
+							if(in1 == 0)
+								datatmp_add = t2+"}";
+							if(in1 == 1)
+								vertID = t2;
+							if(in1 == 2)
+								horiID = t2;
+							in1++;
+						}
+					}
+					else{
+						datatmp_add = tok1;
+					}
+
+					std::istringstream grdata3(datatmp_add);
+					int i1 = 0;
+					int i2 = 0;
+					while(std::getline(grdata3, tok3, '}'))	{
+						if(i1 == 0){
+							std::istringstream grdata3(tok3);
+							while(std::getline(grdata3, tok4, '-'))	{
+								if(i2 == 0)
+									nodeName = tok4;
+								if(i2 == 1)
+									nodeName = tok4;
+								i2++;
+							}
+						}
+						i1++;
+					}
+				}
 				ind++;
 			}
+
+			
+			ostringstream vhFName;
+			vhFName << outDir << "/vert_hori_"<<graphName<<".txt";
+			ofstream vhFile;
+			vhFile.open(vhFName.str().c_str(), std::fstream::app);
 
 			std::string line,preData;
 			ostringstream dataFName;
@@ -449,6 +490,12 @@ if(graphdata.find("graphNodeStart:") == 0 || graphdata.find("verhorNodeStart") =
 			}
 			dataF.close();
 
+			ostringstream linkFName;
+			linkFName << outDir << "/link_"<<graphName<<".txt";
+			ofstream linkFile;
+			linkFile.open(linkFName.str().c_str(), std::fstream::app);
+			linkFile.close();
+
 			if(graphdata.find("addnode:") == 0)
 			{
 				if(preData.compare("") == 0)
@@ -456,6 +503,38 @@ if(graphdata.find("graphNodeStart:") == 0 || graphdata.find("verhorNodeStart") =
 				else
 					graphdata = graphName+"{"+preData +";"+datatmp_add;
 			}
+
+			if(graphdata.find("verhoraddnode:") == 0){	
+				std::string l, pre_nodeName;
+				int rep =0;
+				ifstream vhF;
+				vhF.open(vhFName.str().c_str());
+				while ( getline (vhF,l) ) {
+					int in1=0;
+					std::istringstream gr(l);
+					while(std::getline(gr, t2, ':'))	{
+						if(in1 == 0){
+							pre_nodeName = t2;
+							if(nodeName.compare(pre_nodeName) == 0)
+								rep = 1;
+						}
+						in1++;
+					}
+				}
+				vhF.close();
+				
+				if(rep == 0)
+					vhFile << nodeName + ":" + vertID + ":" + horiID + "\n";
+				
+				
+
+				if(preData.compare("") == 0)
+					graphdata = graphName+"{"+preData +datatmp_add;
+				else
+					graphdata = graphName+"{"+preData +";"+datatmp_add;
+			}
+			vhFile.close();
+
 			if(graphdata.find("addedge:") == 0)
 			{
 				add_edge = 1;

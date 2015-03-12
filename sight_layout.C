@@ -1639,8 +1639,33 @@ void dbgStream::printDetailFileContainerHTML(string absoluteFileName, string tit
   det << "\t\t\t<tr width=\"100%\"><td width=50></td><td width=\"100%\">\n";
   
   // hoa edit
-  det << "\t\t\t<div id=\"canvas\" width=\"100%\" height=\"100%\" class=\"unhidden\"> <div id = \"content\"> </div> </div>\n";
-  det << "\t\t\t<div id=\"canvas2\" width=\"100%\" height=\"100%\" class=\"unhidden\"> <div id = \"content2\"> </div> </div>\n";
+  /*
+  ifstream in("widgets/module/node_0.txt");
+  if(in.is_open())
+  {
+    bool empty = ( in.get(), in.eof() );
+    if( empty == 0)
+      det << "\t\t\t<div id=\"canvas\" width=\"100%\" height=\"100%\" class=\"hidden\"> <div id = \"content\"> </div> </div>\n";
+    else
+      det << "\t\t\t<div id=\"canvas\" width=\"100%\" height=\"100%\" class=\"unhidden\"> <div id = \"content\"> </div> </div>\n";
+  }
+  
+  ifstream in2("widgets/flowgraph/node_0.txt");
+  if(in2.is_open())
+  {
+    bool empty2 = ( in2.get(), in2.eof() );
+    if( empty2 == 0)
+      det << "\t\t\t<div id=\"canvas2\" width=\"100%\" height=\"100%\" class=\"hidden\"> <div id = \"content2\"> </div> </div>\n";
+    else
+      det << "\t\t\t<div id=\"canvas2\" width=\"100%\" height=\"100%\" class=\"unhidden\"> <div id = \"content2\"> </div> </div>\n";
+  }
+  */
+
+  //det << "\t\t\t<div id=\"canvas\" width=\"100%\" height=\"100%\" class=\"unhidden\"> <div id = \"content\"> </div> </div>\n";
+  //det << "\t\t\t<div id=\"canvas2\" width=\"100%\" height=\"100%\" class=\"unhidden\"> <div id = \"content2\"> </div> </div>\n";
+
+  det << "\t\t\t<div id=\"canvas\" width=\"2\" height=\"2\" class=\"unhidden\"> <div id = \"content\"> </div> </div>\n";
+  det << "\t\t\t<div id=\"canvas2\" width=\"2\" height=\"2\" class=\"unhidden\"> <div id = \"content2\"> </div> </div>\n";
 
   det << "\t\t\t<div id='detailContents'></div>\n";
   det << "\t\t\t</td></tr>\n";

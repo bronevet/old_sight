@@ -99,7 +99,10 @@ String graphname;
 int hori_vert_layout;
 int link_node, chosen_link;
 float link_pos, link_width, link_height;
-  
+
+int max_verID = 0;
+int max_horID = 0;
+
 void setup() 
 { 
   // size of window
@@ -429,8 +432,7 @@ void setup()
   // update node_depth when change vertical/horizontal layout
   if(hori_vert_layout == 1)
   {
-    int max_verID = 0;
-    int max_horID = 0;
+
     int[] tmpVH = new int[nsi];
     
     for(int i=0; i<vert_hori.length; i++)
@@ -446,6 +448,9 @@ void setup()
         max_horID = horID[i];
     }
     
+    //println("max_verID = "+max_verID);
+    //println("max_horID = "+max_horID);
+  
     depth_length = max_verID + 1;
     for(int i=0; i<depth_length;i++)
     {
@@ -493,11 +498,11 @@ void setup()
   /*
   for(int i=0; i<lnodes_length; i++)
   {
-    println("lnodes["+i+"]="+lnodes[i]);
+   //println("lnodes["+i+"]="+lnodes[i]);
    //println("node_endw["+i+"]="+node_endw[i]); 
    //println("node_depth["+i+"]="+node_depth[i]); 
    //println("node_relation["+i+"]="+node_relation[i]); 
-   //println("nodrel_len["+i+"]="+nodrel_len[i]);   
+   println("nodrel_len["+i+"]="+nodrel_len[i]);   
    // println("temp["+i+"]="+temp[i]); 
   }
   */
@@ -580,6 +585,9 @@ void draw()
   //nodeheight = height/(10*depth_length);
   //nodewidth = width/(depth_width + 7);
     
+  if(hori_vert_layout == 1)
+    depth_width = max_horID;
+ 
   // width, height of nodes
   for(int i=0; i<lnodes_length; i++)
   { 
@@ -615,7 +623,12 @@ void draw()
         if(i == int(delis[k]))
         { 
           if(viewMeth == 2)
-            xcnode[i] = xnode + k*(width-xnode)/(depth_width+font_size/2) + j*font_size/4;
+          {
+            if(hori_vert_layout == 1)
+              xcnode[i] = xnode + k*(width-xnode)/(depth_width+font_size/2);
+            else
+              xcnode[i] = xnode + k*(width-xnode)/(depth_width+font_size/2) + j*font_size/4;
+          }
           else
             xcnode[i] = xnode + k*(width-xnode)/(depth_width+font_size/2); 
         }
@@ -664,20 +677,39 @@ void draw()
                 {
                   for(int h = 0; h<(depnod.length-2); h++)
                   {
-                    if(node_endw[int(depnod[h])] > node_endw[int(depnod[depnod.length-2])])
-                      wnode[i] =  xcnode[int(depnod[h])] - xcnode[int(depnod[1])] + wnode[int(depnod[h])] + font_size/2;
+                    if(hori_vert_layout == 1)
+                    {
+                      if(node_endw[int(depnod[h])] > node_endw[int(depnod[depnod.length-2])])
+                        wnode[i] =  wnode[int(depnod[h])] + font_size/2;
+                      else
+                        wnode[i] =  wnode[int(depnod[depnod.length-2])] + font_size/2;
+                    }
                     else
-                      wnode[i] =  xcnode[int(depnod[depnod.length-2])] - xcnode[int(depnod[1])] + wnode[int(depnod[depnod.length-2])] + font_size/2;
+                    {
+                        if(node_endw[int(depnod[h])] > node_endw[int(depnod[depnod.length-2])])
+                        wnode[i] =  xcnode[int(depnod[h])] - xcnode[int(depnod[1])] + wnode[int(depnod[h])] + font_size/2;
+                      else
+                        wnode[i] =  xcnode[int(depnod[depnod.length-2])] - xcnode[int(depnod[1])] + wnode[int(depnod[depnod.length-2])] + font_size/2;
+                    }
                   }
                 }
                 else if(nodrel_len[i] == 2)
-                  wnode[i] = wnode[int(depnod[1])] + font_size/2;
+                {
+                  if(hori_vert_layout == 1)
+                    wnode[i] = wnode[int(depnod[1])];
+                  else
+                    wnode[i] = wnode[int(depnod[1])] + font_size/2;
+                }
             }
           }
         }
       }
     }
   }
+  
+  //println("depth_distance = "+depth_distance);
+  //println("depth_length = "+ depth_length);
+  //println("depth_width = "+ depth_width);
   
   // resize windows
   int newWid, newHei;
@@ -693,59 +725,28 @@ void draw()
   }
   for(int k=0; k< (depth_length); k++)
   {
-     
      link_pos = newHei - nodeheight;
      link_width = 400;
      link_height = nodeheight;
      newHei += int(hnode[k]);
   }
   
-  
   if(scaleFactor == 1)
-    size(newWid, newHei);
-    
-   
-  // for node link
-  /*
-  if(link_node == 1)
-  { 
-    int texhei = nodeheight + 5;
-    for(int i=0; i<linkNodes.length; i++)
-    {
-        String[] linkText = split(linkNodes[i],'{'); 
-        String ltex = linkText[1];
-        
-        stroke(0);
-        strokeWeight(1);
-        if(chosen_link == i)
-        {
-          fill(#88FAF9);
-          rect(xnode, link_pos + i*texhei, link_width, nodeheight);
-          fill(#FF1212);
-          text(ltex,xnode + link_width/2, link_pos+i*texhei+nodeheight/1.5); 
-        }
-        else
-        {
-          fill(255);
-          rect(xnode, link_pos + i*texhei, link_width, nodeheight);
-          fill(50);
-          text(ltex,xnode + link_width/2, link_pos+i*texhei+nodeheight/1.5); 
-        }
-    }
-  }
-  */
-  
-  /*
-  if(link_node == 1)
   {
-      for(int i=0; i<linkNodes.length; i++)
+    if(hori_vert_layout == 1)
+    {
+      //nodewidth * 2 * max_horID, nodeheight * 2.5* max_verID);
+      newWid = int(200+nodewidth*(depth_width+5));
+      newHei = 0;
+      for(int k=0; k< max_verID-7; k++)
       {
-        String[] linkText = split(linkNodes[i],':');
-        
-      } 
+         newHei += int(hnode[k]);
+      }
+    }
+    
+    size(newWid, newHei);
   }
-  */
-  
+      
   if(viewMeth == 1 || viewMeth == 2)
     draw_methButton(viewMeth);
   // Draw nodes
@@ -1095,13 +1096,13 @@ void draw_nodes(int inod, float xc, float yc, float wn, float hn)
           String[] depnod = split(node_relation[inod],":");
           int tpDep = node_depth[int(depnod[0])];
           int endDep = current_depth_length-1;
-          for(int k=1; k<nodrel_len[inod];k++)
+          for(int k=1; k<node_depth[inod];k++)
           {
             if(node_depth[int(depnod[k])] >= tpDep)
               endDep = node_depth[int(depnod[k])]+nodrel_len[int(depnod[k])];
           }
-           
-          for(int k=node_depth[inod]; k<endDep;k++)
+          
+          for(int k=node_depth[inod]; k<endDep-1;k++)
           {
             len += nodedepth_height[k];
           }

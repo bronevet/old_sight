@@ -147,12 +147,46 @@ void flowgraph::addNode(std::string nodeName){
 	flowgraph g("addnode:"+str+"{"+nodeName+"}");
 }
 
+void flowgraph::addNode(std::string nodeName, int verID, int horID){
+  stGraph++;
+  stringstream ss;
+  ss << flowgraphID;
+  string str = ss.str();
+
+  stringstream ss1;
+  ss1 << verID;
+  string str1 = ss1.str();
+
+  stringstream ss2;
+  ss2 << horID;;
+  string str2 = ss2.str();
+
+  flowgraph g("verhoraddnode:"+str+"{"+nodeName+"|"+str1+"|"+str2+"|}");
+}
+
 void flowgraph::addNode(std::string childNode, std::string parentNode){
 	stGraph++;
 	stringstream ss;
 	ss << flowgraphID;
 	string str = ss.str();
 	flowgraph g("addnode:"+str+"{"+parentNode+"-"+childNode+"}");
+}
+
+void flowgraph::addNode(std::string childNode, std::string parentNode, int verID, int horID){
+  stGraph++;
+  stringstream ss;
+  ss << flowgraphID;
+  string str = ss.str();
+
+  stringstream ss1;
+  ss1 << verID;
+  string str1 = ss1.str();
+
+  stringstream ss2;
+  ss2 << horID;;
+  string str2 = ss2.str();
+
+  flowgraph g("verhoraddnode:"+str+"{"+parentNode+"-"+childNode+"|"+str1+"|"+str2+"|}");
 }
 
 void flowgraph::addEdge(std::string startNode, std::string endNode){
@@ -193,13 +227,14 @@ void flowgraph::graphNodeStart(std::string nodeName, int verID, int horID){
 	ss << flowgraphID;
 	string str = ss.str();
 
-        stringstream ss1;
-        ss1 << verID;
-        string str1 = ss1.str();
+  stringstream ss1;
+  ss1 << verID;
+  string str1 = ss1.str();
 
-        stringstream ss2;
-        ss2 << horID;;
-        string str2 = ss2.str();
+  stringstream ss2;
+  ss2 << horID;;
+  string str2 = ss2.str();
+
 	flowgraph g("verhorNodeStart:"+str+"{"+"{"+nodeName+"-"+str1+"-"+str2);
 
 }

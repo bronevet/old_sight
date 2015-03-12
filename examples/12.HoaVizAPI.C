@@ -14,6 +14,19 @@ int main(int argc, char** argv)
     // node link graph example
     
     // generate graph by vertical/horizontal layout - example 1
+	
+	flowgraph gra;
+	gra.addNode("a", 0, 0);
+	gra.addNode("b","a", 1, 0);
+	gra.addNode("c","b", 2, 0);
+	gra.addNode("d","b", 3, 0);
+	gra.addNode("e","b", 4, 0);
+	gra.addNode("f","b", 5, 0);
+	
+	gra.addEdge("a","c");
+	gra.addEdge("a","e");
+
+	/*
 	flowgraph g;
        
 	g.graphNodeStart("a",0,0);
@@ -46,6 +59,7 @@ int main(int argc, char** argv)
 	g.graphNodeEnd("t3");
 	g.graphNodeEnd("t2");
 	g.graphNodeEnd("t1");
+	*/
 
 	 // generate graph by vertical/horizontal layout - example 2
 	/*
@@ -90,16 +104,16 @@ int main(int argc, char** argv)
     
     // generate graph 2 by method 2
 	/*
-    flowgraph gra;
+	flowgraph gra;
 	gra.addNode("a");
 	gra.addNode("b","a");
 	gra.addNode("c","b");
 	gra.addNode("d","b");
 	gra.addNode("e","d");
+	gra.addEdge("a","c");
+	gra.addEdge("a","e");
 	*/
-    //gr.addEdge("a","c");
-	//gr.addEdge("a","e");
-
+	
 	/*
 	// generate graph 3
 	flowgraph g3;

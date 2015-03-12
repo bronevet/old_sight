@@ -73,7 +73,9 @@ class flowgraph: public structure::block
   void genFlowGraph(std::string data);
   void startGraph();
   void addNode(std::string nodeName);
+  void addNode(std::string nodeName, int verID, int horID);
   void addNode(std::string childNode, std::string parentNode);
+  void addNode(std::string childNode, std::string parentNode, int verID, int horID);
   void addEdge(std::string startNode, std::string endNode);
   void endGraph();
 

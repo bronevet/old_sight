@@ -294,7 +294,7 @@ void sight_omp_lock(sight_omp_lock_t* slock){
     long long lastClockTime = causalityOMP[slock->lastLockOwner]->send();
     receivecausalityOMP(txt()<<"S_"<<slock->lastLockOwner<<"_"<<lastClockTime, slock->lastLockOwner,
                           txt()<<"R_"<<omp_get_thread_num()<<"_"<<lastClockTime, 
-                          "Lock", true);
+                          "Lock", true);    
     
     omp_unset_lock(&causalityLock);    
   }
