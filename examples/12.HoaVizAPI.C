@@ -1,6 +1,8 @@
 #include "sight.h"
 #include <map>
+#include <map>
 #include <assert.h>
+#include <unistd.h>
 using namespace std;
 using namespace sight;
 
@@ -17,6 +19,10 @@ int main(int argc, char** argv)
 	
 	flowgraph gra;
 	gra.addNode("a", 0, 0);
+	scope s("test scope");
+	anchor sAnchor = s.getAnchor();
+	gra.addNodeHyperlink("a",sAnchor);	
+
 	gra.addNode("b","a", 1, 0);
 	gra.addNode("c","b", 2, 0);
 	gra.addNode("d","b", 3, 0);
@@ -26,6 +32,10 @@ int main(int argc, char** argv)
 	gra.addEdge("a","c");
 	gra.addEdge("a","e");
 
+	// scope s("test scope");
+	// anchor sAnchor = s.getAnchor();
+	// gra.addNodeHyperlink("a",sAnchor);	
+	
 	/*
 	flowgraph g;
        

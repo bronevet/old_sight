@@ -95,6 +95,9 @@ class flowgraph: public block
   // data for input and output variable information
   void add_ioInfo(int nodeID, int num_polyFit, std::string fitText);
 
+  void addNodeHyperlink(std::string fromNode, anchor to);
+  static void* addNodeHyperlink(properties::iterator props);
+  //void addNodeHyperlink(properties::iterator props);
   // Add a directed edge from the location of the from anchor to the location of the to anchor
   void addDirEdgeFG(anchor from, anchor to);
   static void* addDirEdgeFG(properties::iterator props);

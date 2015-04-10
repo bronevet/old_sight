@@ -76,6 +76,7 @@ class flowgraph: public structure::block
   void addNode(std::string nodeName, int verID, int horID);
   void addNode(std::string childNode, std::string parentNode);
   void addNode(std::string childNode, std::string parentNode, int verID, int horID);
+  void addNode(std::string childNode, std::string parentNode, int verID, int horID, anchor toAnchor);
   void addEdge(std::string startNode, std::string endNode);
   void endGraph();
 
@@ -87,6 +88,7 @@ class flowgraph: public structure::block
   void addNodeEdge(std::string startNode, std::string endNode);
   void endNodeGraph();
 
+  void addNodeHyperlink(std::string nodeName, anchor to);
   /*
   static void flowGraphStart(std::string graphName);
   static void flowGraphNodeStart(std::string nameNode);
@@ -185,6 +187,7 @@ class FlowGraphStreamRecord: public streamRecord {
   friend class FlowGraphMerger;
   friend class DirEdgeMergerFG;
   friend class UndirEdgeMergerFG;
+  friend class NodeHyperlinkFG;
   
   class streamFlowGraphEdge : public printable {
     public:
@@ -261,6 +264,29 @@ class FlowGraphStreamRecord: public streamRecord {
     
   std::string str(std::string indent="") const;
 }; // class GraphStreamRecord
+
+class NodeHyperlinkFG : public Merger {
+  public:
+  NodeHyperlinkFG(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+                std::map<std::string, streamRecord*>& outStreamRecords,
+                std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                properties* props=NULL);
+
+  static Merger* create(const std::vector<std::pair<properties::tagType, properties::iterator> >& tags,
+                        std::map<std::string, streamRecord*>& outStreamRecords,
+                        std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                        properties* props)
+  { return new NodeHyperlinkFG(tags, outStreamRecords, inStreamRecords, props); }
+
+  // Sets a list of strings that denotes a unique ID according to which instances of this merger's 
+  // tags should be differentiated for purposes of merging. Tags with different IDs will not be merged.
+  // Each level of the inheritance hierarchy may add zero or more elements to the given list and 
+  // call their parents so they can add any info. Keys from base classes must precede keys from derived classes.
+  static void mergeKey(properties::tagType type, properties::iterator tag, 
+                       const std::map<std::string, streamRecord*>& inStreamRecords, MergeInfo& info) {
+    Merger::mergeKey(type, tag.next(), inStreamRecords, info);
+  }
+}; // class NodeHyperlinkFG
 
 class DirEdgeMergerFG : public Merger {
   public:

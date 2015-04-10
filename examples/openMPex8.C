@@ -282,22 +282,22 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
       
       # pragma omp single 
       {
-       
-        g.addNode(txt()<<"single_"<<omp_get_thread_num()<<"_"<<my_step, txt()<<omp_get_thread_num(), (my_step-1)*4+1, omp_get_thread_num());
+        scope s("single 1:", scope::minimum);
+        anchor sAnchor = s.getAnchor();      
+        md = i4_huge;
+        mv = -1; 
+        dbg << "md = " << md << endl;
+        dbg << "mv = " << mv << endl;  
         
+        g.addNode(txt()<<"single_"<<omp_get_thread_num()<<"_"<<my_step, txt()<<omp_get_thread_num(), (my_step-1)*4+1, omp_get_thread_num(), sAnchor);
+        //g.addNodeHyperlink(txt()<<"single_"<<omp_get_thread_num()<<"_"<<my_step,sAnchor);
+
         for(int i = 1; i<omp_get_num_threads(); i++){
           if(i!= omp_get_thread_num())
-            g.addNode(txt()<<"wait_single_"<<i<<"_"<<my_step, txt()<<i, (my_step-1)*4+1, i);      
+            g.addNode(txt()<<"wait_single_"<<i<<"_"<<my_step, txt()<<i, (my_step-1)*4+1, i, sAnchor); 
+            //g.addNodeHyperlink(txt()<<"wait_single_"<<i<<"_"<<my_step, sAnchor);     
         }
 
-        {
-          scope s("single 1:", scope::minimum);
-          md = i4_huge;
-          mv = -1; 
-          dbg << "md = " << md << endl;
-          dbg << "mv = " << mv << endl;  
-
-        }
 
         //g.addNode(txt()<<"md_" <<md << " mv_"<< mv, txt()<<omp_get_thread_num());
         //g.graphNodeStart(txt()<<"md_" <<md << " mv_"<< mv, my_t, omp_get_thread_num());
@@ -329,17 +329,18 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
          if(omp_get_thread_num() !=0 )
            sight_omp_lock(&omplock);
           {
-            g.addNode(txt()<<"critical_"<<omp_get_thread_num()<<"_"<<my_step, txt()<<omp_get_thread_num(), (my_step-1)*4+2, omp_get_thread_num());
-        
             scope s("md and mv:", scope::minimum);
-            
+            anchor sAnchor = s.getAnchor();  
             if ( my_md < md )  
             {
               md = my_md;
               mv = my_mv;       
             }
             dbg << "md = " << md << endl;
-            dbg << "mv = " << mv << endl;   
+            dbg << "mv = " << mv << endl; 
+             
+            g.addNode(txt()<<"critical_"<<omp_get_thread_num()<<"_"<<my_step, txt()<<omp_get_thread_num(), (my_step-1)*4+2, omp_get_thread_num(), sAnchor);
+                          
             //g.addNode(txt()<<"md_" <<md << " mv_"<< mv, txt()<<omp_get_thread_num());
             // g.graphNodeStart(txt()<<"md_" <<md << " mv_"<< mv);
             // g.graphNodeEnd(txt()<<"md_" <<md << " mv_"<< mv);

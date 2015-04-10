@@ -6,6 +6,7 @@ endif
 sight_H := ../*.h ../*/*.h ../widgets/*/*.h
 
 TESTERS = 
+#12.HoaVizAPI${EXE}
 #12.Hyperlink_HoaViz${EXE} 8.Modules${EXE}
 #12.HoaVizAPI${EXE}
 #13.OpenMP1${EXE}

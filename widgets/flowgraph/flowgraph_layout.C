@@ -27,7 +27,9 @@ flowgraphLayoutHandlerInstantiator::flowgraphLayoutHandlerInstantiator() {
   (*layoutEnterHandlers)["dataEncodingFG"] = &flowgraph::setFlowGraphEncoding;
   (*layoutExitHandlers )["dataEncodingFG"] = &defaultExitHandler;
   (*layoutEnterHandlers)["dirEdgeFG"]     = &flowgraph::addDirEdgeFG;
-  (*layoutExitHandlers )["dirEdgeFG"]     = &defaultExitHandler;
+  (*layoutExitHandlers )["dirEdgeFG"]     = &defaultExitHandler;  
+  (*layoutEnterHandlers)["nodeHyperlink"]     = &flowgraph::addNodeHyperlink;
+  (*layoutExitHandlers )["nodeHyperlink"]     = &defaultExitHandler;
   (*layoutEnterHandlers)["undirEdgeFG"]   = &flowgraph::addUndirEdgeFG;
   (*layoutExitHandlers )["undirEdgeFG"]   = &defaultExitHandler;
   (*layoutEnterHandlers)["invisEdgeFG"]   = &flowgraph::addInvisEdgeFG;
@@ -254,6 +256,8 @@ void flowgraph::outputDataFlowGraph(std::string graphdata) {
 	int drawNodeGraph = 0;
 	std::string vertID, horiID;
 	std::string nodeName;
+	std::string toAnch;
+	
 
 	if(graphdata.find("graphNodeStart:") == 0 || graphdata.find("graphNodeEnd:") == 0 ||  graphdata.find("verhorNodeStart") == 0 || graphdata.find("drawNodeGraph:") == 0)
 	{
@@ -447,7 +451,10 @@ if(graphdata.find("graphNodeStart:") == 0 || graphdata.find("verhorNodeStart") =
 								vertID = t2;
 							if(in1 == 2)
 								horiID = t2;
+							if(in1 == 3)
+								toAnch = t2;
 							in1++;
+
 						}
 					}
 					else{
@@ -474,7 +481,7 @@ if(graphdata.find("graphNodeStart:") == 0 || graphdata.find("verhorNodeStart") =
 				ind++;
 			}
 
-			
+				
 			ostringstream vhFName;
 			vhFName << outDir << "/vert_hori_"<<graphName<<".txt";
 			ofstream vhFile;
@@ -526,8 +533,6 @@ if(graphdata.find("graphNodeStart:") == 0 || graphdata.find("verhorNodeStart") =
 				if(rep == 0)
 					vhFile << nodeName + ":" + vertID + ":" + horiID + "\n";
 				
-				
-
 				if(preData.compare("") == 0)
 					graphdata = graphName+"{"+preData +datatmp_add;
 				else
@@ -540,6 +545,7 @@ if(graphdata.find("graphNodeStart:") == 0 || graphdata.find("verhorNodeStart") =
 				add_edge = 1;
 				graphdata = graphName+"{"+preData+"}";
 			}
+
 		}
 
 
@@ -626,8 +632,11 @@ if(graphdata.find("graphNodeStart:") == 0 || graphdata.find("verhorNodeStart") =
 							nodesFG.push_back(std::make_pair(nodeID, t));
 							parentsFG.push_back(std::make_pair(nodeID, nod_num));
 							nodeID++;
+
+
 						}
 					}
+
 					rel_num++;
 				}
 			}
@@ -705,6 +714,28 @@ if(graphdata.find("graphNodeStart:") == 0 || graphdata.find("verhorNodeStart") =
 		}
 	}
 
+
+    //if(toAnch.compare("}") != 0){		
+		int fromNodID = 0;
+		anchor toAnc(atoi(toAnch.c_str()));
+		for(int i=0; i < (int)nodesFG.size(); i++) {
+			if(nodeName.compare(nodesFG[i].second) == 0)
+				fromNodID = nodesFG[i].first;
+		}
+		std::cout << "nodeID=" << fromNodID << " nodeName" << nodeName << " toAnc_link = " << toAnc.getLinkJS() << std::endl;			
+		anchor fromAnc(fromNodID);
+		//addDirEdgeFG(fromAnc, toAnc);
+
+	  	//edges.push_back(flowgraphEdge(fromAnc, toAnc, true, true));
+		ostringstream linkFName;
+		linkFName << outDir << "/link_"<<graphName<<".txt";
+		ofstream linkFile;
+		linkFile.open(linkFName.str().c_str(), std::fstream::app);
+	    linkFile << fromNodID << ":" << toAnc.getLinkJS() << endl;
+	    linkFile.close();
+	//}
+	//addNodeHyperlink(nodeName, toAnc);
+
 	flowgraphOutput = true;
 }
 
@@ -735,6 +766,29 @@ void* flowgraph::addDirEdgeFG(properties::iterator props) {
   assert(active.find(flowgraphID) != active.end());
   
   active[flowgraphID]->addDirEdgeFG(from, to);
+  return NULL;
+}
+
+void flowgraph::addNodeHyperlink(std::string fromNode, anchor to){
+  int from_nodeID;
+  for(int i=0; i < (int)nodesFG.size(); i++) {
+  	cout << "nodesFG[" << i << "]=" << nodesFG[i].first << " - " << nodesFG[i].second;
+  if(fromNode.compare(nodesFG[i].second) == 0)
+		from_nodeID = nodesFG[i].first;
+  }
+  anchor from(from_nodeID);
+  edges.push_back(flowgraphEdge(from, to, true, true));
+}
+
+void* flowgraph::addNodeHyperlink(properties::iterator props){
+  std::string fromNode = properties::get(props, "fromNode");
+  anchor to(properties::getInt(props, "toAnchor"));  
+  cout << "fromNode = " << fromNode;
+  cout << "to = " << to.getID();
+  
+  int flowgraphID = properties::getInt(props, "flowgraphID");
+  assert(active.find(flowgraphID) != active.end());  
+  active[flowgraphID]->addNodeHyperlink(fromNode, to);
   return NULL;
 }
 

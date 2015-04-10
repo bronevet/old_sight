@@ -183,10 +183,29 @@ void flowgraph::addNode(std::string childNode, std::string parentNode, int verID
   string str1 = ss1.str();
 
   stringstream ss2;
-  ss2 << horID;;
+  ss2 << horID;
   string str2 = ss2.str();
 
   flowgraph g("verhoraddnode:"+str+"{"+parentNode+"-"+childNode+"|"+str1+"|"+str2+"|}");
+}
+
+void flowgraph::addNode(std::string childNode, std::string parentNode, int verID, int horID, anchor toAnchor){
+  stGraph++;
+  stringstream ss;
+  ss << flowgraphID;
+  string str = ss.str();
+
+  stringstream ss1;
+  ss1 << verID;
+  string str1 = ss1.str();
+
+  stringstream ss2;
+  ss2 << horID;
+  string str2 = ss2.str();
+
+  string str3 = txt()<<toAnchor.getID();
+
+  flowgraph g("verhoraddnode:"+str+"{"+parentNode+"-"+childNode+"|"+str1+"|"+str2+"|"+str3+"|}");
 }
 
 void flowgraph::addEdge(std::string startNode, std::string endNode){
@@ -281,7 +300,15 @@ void flowgraph::endNodeGraph(){
 	flowgraph g("drawNodeGraph:"+str);
 }
 
-
+void flowgraph::addNodeHyperlink(std::string nodeName, anchor to){
+  properties p;
+  map<string, string> pMap;
+  pMap["fromNode"] = txt()<<nodeName;
+  pMap["toAnchor"]   = txt()<<to.getID();
+  pMap["flowgraphID"] = txt()<<flowgraphID;
+  p.add("nodeHyperlink", pMap);
+  dbg->tag(p);
+}
 /*
 // generate flow graph by string
 void flowgraph::genFlowGraph(std::string dataText) {
@@ -351,6 +378,7 @@ void flowgraph::addDirEdgeFG(anchor from, anchor to) {
   //dbg->tag("dirEdge", properties, false);
   dbg->tag(p);
 }
+
 
 // Add an undirected edge between the location of the a anchor and the location of the b anchor
 void flowgraph::addUndirEdgeFG(anchor a, anchor b) {
@@ -485,7 +513,7 @@ subflowgraph::~subflowgraph() {
 
 /*****************************************
  ***** FlowGraphMergeHandlerInstantiator *****
- *****************************************/
+ ****************************************/
 
 FlowGraphMergeHandlerInstantiator::FlowGraphMergeHandlerInstantiator() { 
   (*MergeHandlers   )["flowgraph"]     = FlowGraphMerger::create;
@@ -494,6 +522,8 @@ FlowGraphMergeHandlerInstantiator::FlowGraphMergeHandlerInstantiator() {
   (*MergeKeyHandlers)["nodeFG"]      = NodeMergerFG::mergeKey;
   (*MergeHandlers   )["dirEdgeFG"]   = DirEdgeMergerFG::create;
   (*MergeKeyHandlers)["dirEdgeFG"]   = DirEdgeMergerFG::mergeKey;
+  (*MergeHandlers   )["nodeHyperlink"]   = NodeHyperlinkFG::create;
+  (*MergeKeyHandlers)["nodeHyperlink"]   = NodeHyperlinkFG::mergeKey;
   (*MergeHandlers   )["undirEdgeFG"] = UndirEdgeMergerFG::create;
   (*MergeKeyHandlers)["undirEdgeFG"] = UndirEdgeMergerFG::mergeKey;
   
@@ -782,6 +812,38 @@ std::string FlowGraphStreamRecord::str(std::string indent) const {
   return s.str();
 }
 
+NodeHyperlinkFG::NodeHyperlinkFG(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
+                             std::map<std::string, streamRecord*>& outStreamRecords,
+                             std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
+                             properties* props) : 
+                                     Merger(advance(tags), outStreamRecords, inStreamRecords, props) {
+  if(props==NULL) props = new properties();
+  this->props = props;
+                                      
+  assert(tags.size()>0);
+  vector<string> names = getNames(tags); assert(allSame<string>(names));
+  assert(*names.begin() == "nodeHyperlink");
+
+  // map<string, string> pMap;
+  // properties::tagType type = streamRecord::getTagType(tags); 
+  // if(type==properties::unknownTag) { cerr << "ERROR: inconsistent tag types when merging nodeHyperlink!"<<endl; exit(-1); }
+  // if(type==properties::enterTag) {
+  //   vector<map<std::string, streamRecord*> >::iterator r=inStreamRecords.begin();
+  //   for(int i=0; i<tags.size(); i++, r++) {
+  //     streamID fromInSID(properties::get(tags[i].second, "fromNode"), inStreamRecords[i]["flowgraph"]->getVariantID());
+  //     streamID toInSID  (properties::getInt(tags[i].second, "toAnchor"),   inStreamRecords[i]["flowgraph"]->getVariantID());
+      
+  //     ((FlowGraphStreamRecord*)(*r)["flowgraph"])->addEdgeFG(properties::getInt(tags[i].second, "flowgraphID"),
+  //                                                  FlowGraphStreamRecord::streamFlowGraphEdge(
+  //                                                             streamAnchor(fromInSID, inStreamRecords[i]),
+  //                                                             streamAnchor(toInSID,   inStreamRecords[i]),
+  //                                                             true));
+  //   }
+  // }
+  
+  dontEmit();
+}
+
 DirEdgeMergerFG::DirEdgeMergerFG(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                              std::map<std::string, streamRecord*>& outStreamRecords,
                              std::vector<std::map<std::string, streamRecord*> >& inStreamRecords,
@@ -819,6 +881,7 @@ DirEdgeMergerFG::DirEdgeMergerFG(std::vector<std::pair<properties::tagType, prop
   // We do not emit edge tags until we're done reading the graph
   dontEmit();
 }
+
 
 UndirEdgeMergerFG::UndirEdgeMergerFG(std::vector<std::pair<properties::tagType, properties::iterator> > tags,
                                  std::map<std::string, streamRecord*>& outStreamRecords,
