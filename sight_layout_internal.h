@@ -71,6 +71,7 @@ extern std::list<std::string> hostnames;
 // The current user's user name
 extern std::string username;
 
+
 // Initializes the debug sub-system
 void* SightInit(properties::iterator props);
 

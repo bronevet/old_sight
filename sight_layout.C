@@ -130,7 +130,7 @@ void invokeExitHandler(map<string, list<void*> >& stack, string objName) {
 void layoutStructure(structureParser& parser) {
   #ifdef VERBOSE
   //dbg << "<font color=\"#ff0000\">"<<endl;
-  cout << "layoutHandlers:\n";
+  //cout << "layoutHandlers:\n";
   for(map<std::string, layoutEnterHandler>::iterator i=layoutHandlerInstantiator::layoutEnterHandlers->begin(); i!=layoutHandlerInstantiator::layoutEnterHandlers->end(); i++)
     cout << i->first << endl;
   //dbg  << "</font>"<<endl;
@@ -676,6 +676,11 @@ int block::blockCount=0;
 block::block(properties::iterator props) : sightObj(props.next()), startA(/*false,*/ -1) /*=noAnchor, except that noAnchor may not yet be initialized)*/ {
   assert(initializedDebug);
   label = properties::get(props, "label");
+  //cout << "block label - " << label << endl;
+
+  // flowgraph f;
+  // f.addNode(txt()<<label, txt()<<omp_get_thread_num(), 1, 1, startA);
+        
   // Record the ID assigned to this block in the structure layer
   blockIDFromStructure = properties::getInt(props, "ID");
   long numAnchors = properties::getInt(props, "numAnchors");
@@ -1537,6 +1542,17 @@ void dbgStream::printSummaryFileContainerHTML(string absoluteFileName, string re
   sum << "\t<script src=\"script/core.js\"></script>\n";
   sum << "\t<script src=\"script/orderedDivs.js\"></script>\n";
   sum << "\t<script src=\"script/uniqueMark.js\"></script>\n";
+  // hoa edit
+  sum << "\t<script src=\"widgets/module/processing.js\"></script>\n";
+  sum << "\t<script type=\"text/javascript\"> function getProcessingSketchId () { return 'flGra'; } </script>\n";
+  sum << "\t<script src=\"widgets/module/module.js\"></script>\n";
+  sum << "\t<script src=\"widgets/module/flgr.js\"></script>\n";
+  sum << "\t<script src=\"widgets/flowgraph/flgr.js\"></script>\n";
+  sum << "\t<script src=\"script/taffydb/taffy.js\"></script>\n";
+
+  sum << "\t<script> loadURLIntoDiv2(document, 'widgets/module/hoaviz_canvas.txt', 'canvas') </script>\n";
+  sum << "\t<script> loadURLIntoDiv2(document, 'widgets/flowgraph/hoaviz_canvas2.txt', 'canvas2') </script>\n";
+
   sum << "\t<script type=\"text/javascript\">\n";
   sum << "\tfunction loadURLIntoDiv(doc, url, divName) {\n";
   sum << "\t\tvar xhr= new XMLHttpRequest();\n";
@@ -1555,6 +1571,10 @@ void dbgStream::printSummaryFileContainerHTML(string absoluteFileName, string re
   sum << "\t</head>\n";
   sum << "\t<body>\n";
   sum << "\t<h1>Summary</h1>\n";
+  // hoa edit
+  //sum << "\t\t\t<div id=\"canvas\" width=\"2\" height=\"2\" class=\"unhidden\"> <div id = \"content\"> </div> </div>\n";
+  sum << "\t\t\t<div id=\"canvas2\" width=\"2\" height=\"2\" class=\"unhidden\"> <div id = \"content2\"> </div> </div>\n";
+
   sum << "\t<div id='detailContents'></div>\n";
   sum << "\t</body>\n";
   sum << "</html>\n\n";
@@ -1661,11 +1681,9 @@ void dbgStream::printDetailFileContainerHTML(string absoluteFileName, string tit
   }
   */
 
-  //det << "\t\t\t<div id=\"canvas\" width=\"100%\" height=\"100%\" class=\"unhidden\"> <div id = \"content\"> </div> </div>\n";
-  //det << "\t\t\t<div id=\"canvas2\" width=\"100%\" height=\"100%\" class=\"unhidden\"> <div id = \"content2\"> </div> </div>\n";
-
-  det << "\t\t\t<div id=\"canvas\" width=\"2\" height=\"2\" class=\"unhidden\"> <div id = \"content\"> </div> </div>\n";
-  det << "\t\t\t<div id=\"canvas2\" width=\"2\" height=\"2\" class=\"unhidden\"> <div id = \"content2\"> </div> </div>\n";
+  
+  //det << "\t\t\t<div id=\"canvas\" width=\"2\" height=\"2\" class=\"unhidden\"> <div id = \"content\"> </div> </div>\n";
+  //det << "\t\t\t<div id=\"canvas2\" width=\"2\" height=\"2\" class=\"unhidden\"> <div id = \"content2\"> </div> </div>\n";
 
   det << "\t\t\t<div id='detailContents'></div>\n";
   det << "\t\t\t</td></tr>\n";
@@ -1699,13 +1717,15 @@ std::string dbgStream::genLoadSubFile(const location& loc) {
 string dbgStream::enterBlock(block* b, bool newFileEntered, bool addSummaryEntry, bool recursiveEnterBlock)
 {
   // hoa uncomment
-  cout <<"dbgStream::enterBlock() recursiveEnterBlock="<<recursiveEnterBlock<<", label="<<b->getLabel()<<endl;
-  cout << "<<<enter(newFileEntered="<<newFileEntered<<", addSummaryEntry="<<addSummaryEntry<<", recursiveEnterBlock="<<recursiveEnterBlock<<") b="<<b<<"="<<(b? b->getLabel(): "NULL")<<endl;
+  //cout <<"dbgStream::enterBlock() recursiveEnterBlock="<<recursiveEnterBlock<<", label="<<b->getLabel()<<endl;
+ // cout << "<<<enter(newFileEntered="<<newFileEntered<<", addSummaryEntry="<<addSummaryEntry<<", recursiveEnterBlock="<<recursiveEnterBlock<<") b="<<b<<"="<<(b? b->getLabel(): "NULL")<<endl;
 //!!!  dbg << "<<<enter() fileBufs.size()="<<fileBufs.size()<<" && #blocks="<<blocks.size()<<", #blocks.back().second="<<blocks.back().second.size()<<", #fileBufs.back()->blocks="<<(fileBufs.size()==0? -1: fileBufs.back()->blocks.size())<<endl;
 /*  if(!recursiveEnterBlock)
     exitAttrSubBlock();*/
-  cout << "<<<enterBlock: b="<<b<<", newFileEntered="<<newFileEntered<<", addSummaryEntry="<<addSummaryEntry<<", recursiveEnterBlock="<<recursiveEnterBlock<<endl;
+ // cout << "<<<enterBlock: b="<<b<<", newFileEntered="<<newFileEntered<<", addSummaryEntry="<<addSummaryEntry<<", recursiveEnterBlock="<<recursiveEnterBlock<<endl;
   
+  //cout << "enterBlock - " << b->getLabel() << endl;
+
   // if recursiveEnterBlock, newFileEntered and addSummaryEntry may not be
   assert(!addSummaryEntry || !(recursiveEnterBlock && newFileEntered));
   //(*this) << "dbgStream::enterBlock("<<(b? b->getLabel(): "NULL")<<")"<<endl;

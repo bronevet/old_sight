@@ -248,6 +248,20 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
   The SINGLE directive means that the block is to be executed by only
   one thread, and that thread will be whichever one gets here first.
 */
+
+    int forID = 1;
+    int N = 100;
+    g.addNode(txt()<<"For_"<<omp_get_thread_num(), txt()<<omp_get_thread_num(), 1, omp_get_thread_num());        
+    #pragma omp for
+    for (i=0; i<N; i++)
+    {
+      scopeOMP s("scope:", forID, N, i);
+      dbg << "Thread " << omp_get_thread_num() <<": a["<< i << "] = " << i << endl;                       
+    }
+    {
+      scope s("endFor", scope::minimum);
+      dbg<< "End For" << endl;
+    }
     
     # pragma omp single
     {    
@@ -289,12 +303,12 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
         dbg << "md = " << md << endl;
         dbg << "mv = " << mv << endl;  
         
-        g.addNode(txt()<<"single_"<<omp_get_thread_num()<<"_"<<my_step, txt()<<omp_get_thread_num(), (my_step-1)*4+1, omp_get_thread_num(), sAnchor);
+        g.addNode(txt()<<"single_"<<omp_get_thread_num()<<"_"<<my_step, txt()<<omp_get_thread_num(), (my_step-1)*4+2, omp_get_thread_num(), sAnchor);
         //g.addNodeHyperlink(txt()<<"single_"<<omp_get_thread_num()<<"_"<<my_step,sAnchor);
 
         for(int i = 1; i<omp_get_num_threads(); i++){
           if(i!= omp_get_thread_num())
-            g.addNode(txt()<<"wait_single_"<<i<<"_"<<my_step, txt()<<i, (my_step-1)*4+1, i, sAnchor); 
+            g.addNode(txt()<<"wait_single_"<<i<<"_"<<my_step, txt()<<i, (my_step-1)*4+2, i, sAnchor); 
             //g.addNodeHyperlink(txt()<<"wait_single_"<<i<<"_"<<my_step, sAnchor);     
         }
 
@@ -339,7 +353,7 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
             dbg << "md = " << md << endl;
             dbg << "mv = " << mv << endl; 
              
-            g.addNode(txt()<<"critical_"<<omp_get_thread_num()<<"_"<<my_step, txt()<<omp_get_thread_num(), (my_step-1)*4+2, omp_get_thread_num(), sAnchor);
+            g.addNode(txt()<<"critical_"<<omp_get_thread_num()<<"_"<<my_step, txt()<<omp_get_thread_num(), (my_step-1)*4+3, omp_get_thread_num(), sAnchor);
                           
             //g.addNode(txt()<<"md_" <<md << " mv_"<< mv, txt()<<omp_get_thread_num());
             // g.graphNodeStart(txt()<<"md_" <<md << " mv_"<< mv);
@@ -354,6 +368,7 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
   can we proceed.
 */
       
+
       # pragma omp barrier
       {
         /*
@@ -365,7 +380,7 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
         */
         if(omp_get_thread_num() !=0 )
          sight_omp_barrier_wait(&ompbarrier);   
-        g.addNode(txt()<<"barrier_"<<omp_get_thread_num()<<"_"<<my_step, txt()<<omp_get_thread_num(), (my_step-1)*4+3, omp_get_thread_num());
+        g.addNode(txt()<<"barrier_"<<omp_get_thread_num()<<"_"<<my_step, txt()<<omp_get_thread_num(), (my_step-1)*4+4, omp_get_thread_num());
       }
       
 /*
@@ -467,18 +482,16 @@ int *dijkstra_distance ( int ohd[NV][NV]  )
     }
     #pragma omp flush
     sight_omp_receive_single(singleThread);
-    
-    g.addNode(txt()<<"End_"<<omp_get_thread_num(), txt()<<omp_get_thread_num(), (my_step-1)*4+4, omp_get_thread_num());        
+
+
+    g.addNode(txt()<<"End_"<<omp_get_thread_num(), txt()<<omp_get_thread_num(), (my_step-1)*4+5, omp_get_thread_num());        
     
     {
       scope s("End thread", scope::minimum);
       dbg << "Thread# "<< omp_get_thread_num() <<" done. \n";
-      //g.addNode(txt()<<"Thread_"<< omp_get_thread_num() <<" done", txt()<<omp_get_thread_num());
-      //g.graphNodeStart(txt()<<"Thread_"<< omp_get_thread_num() <<" done", my_t, omp_get_thread_num());
-      // g.graphNodeStart(txt()<<"Thread_"<< omp_get_thread_num() <<" done");
-      // g.graphNodeEnd(txt()<<"Thread_"<< omp_get_thread_num() <<" done");
     }
     
+
     if(omp_get_thread_num() != 0)
       ompthreadCleanup(NULL);
   }

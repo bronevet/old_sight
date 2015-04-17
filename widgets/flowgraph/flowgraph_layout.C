@@ -722,7 +722,7 @@ if(graphdata.find("graphNodeStart:") == 0 || graphdata.find("verhorNodeStart") =
 			if(nodeName.compare(nodesFG[i].second) == 0)
 				fromNodID = nodesFG[i].first;
 		}
-		std::cout << "nodeID=" << fromNodID << " nodeName" << nodeName << " toAnc_link = " << toAnc.getLinkJS() << std::endl;			
+		//std::cout << "nodeID=" << fromNodID << " nodeName" << nodeName << " toAnc_link = " << toAnc.getLinkJS() << std::endl;			
 		anchor fromAnc(fromNodID);
 		//addDirEdgeFG(fromAnc, toAnc);
 
@@ -772,7 +772,7 @@ void* flowgraph::addDirEdgeFG(properties::iterator props) {
 void flowgraph::addNodeHyperlink(std::string fromNode, anchor to){
   int from_nodeID;
   for(int i=0; i < (int)nodesFG.size(); i++) {
-  	cout << "nodesFG[" << i << "]=" << nodesFG[i].first << " - " << nodesFG[i].second;
+  	//cout << "nodesFG[" << i << "]=" << nodesFG[i].first << " - " << nodesFG[i].second;
   if(fromNode.compare(nodesFG[i].second) == 0)
 		from_nodeID = nodesFG[i].first;
   }
@@ -783,8 +783,8 @@ void flowgraph::addNodeHyperlink(std::string fromNode, anchor to){
 void* flowgraph::addNodeHyperlink(properties::iterator props){
   std::string fromNode = properties::get(props, "fromNode");
   anchor to(properties::getInt(props, "toAnchor"));  
-  cout << "fromNode = " << fromNode;
-  cout << "to = " << to.getID();
+  //cout << "fromNode = " << fromNode;
+  //cout << "to = " << to.getID();
   
   int flowgraphID = properties::getInt(props, "flowgraphID");
   assert(active.find(flowgraphID) != active.end());  
