@@ -5,7 +5,7 @@ endif
 
 sight_H := ../*.h ../*/*.h ../widgets/*/*.h
 
-TESTERS = 
+TESTERS = 0.Demo${EXE} 
 #12.HoaVizAPI${EXE}
 #12.Hyperlink_HoaViz${EXE} 8.Modules${EXE}
 #12.HoaVizAPI${EXE}
@@ -44,6 +44,7 @@ all: ${TESTERS} ${PTHREAD_TESTERS}
 #	make -C MPI_examples
 
 run: ${TESTERS}
+	./0.Demo${EXE} 5
 
 #	export SIGHT_FILE_OUT=1; ./0.Demo${EXE} 5; ./0.Demo${EXE} 6; ./0.Demo${EXE} 7
 #	export SIGHT_FILE_OUT=1; rm -rf dbg.0.Demo; ../hier_merge dbg.0.Demo dbg.0.Demo.maxDepth_5/structure dbg.0.Demo.maxDepth_6/structure dbg.0.Demo.maxDepth_7/structure
@@ -125,8 +126,8 @@ run: ${TESTERS}
 #	rm -rf dbg.12.HoaVizAPI.*;
 #	../slayout${EXE} dbg.12.HoaVizAPI/structure;
 
-#0.Demo${EXE}: 0.Demo.C ../libsight_structure.so ${sight_H}
-#	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" 0.Demo.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 0.Demo${EXE}
+0.Demo${EXE}: 0.Demo.C ../libsight_structure.so ${sight_H}
+	${CCC} ${SIGHT_CFLAGS} -DROOT_PATH="\"${ROOT_PATH}\"" 0.Demo.C -I.. -I../widgets -L.. -lsight_structure ${SIGHT_LINKFLAGS} -o 0.Demo${EXE}
 
 
 #0.Demo_Hyperlink_HoaViz${EXE}: 0.Demo_Hyperlink_HoaViz.C ../libsight_structure.so ${sight_H}

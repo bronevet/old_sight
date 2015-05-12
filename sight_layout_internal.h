@@ -250,7 +250,10 @@ class anchor
 /*****************
  ***** block *****
  *****************/
-
+ // hoa edit
+static std::string outDir;
+static std::string htmlOutDir;
+  
 void* blockEnterHandler(properties::iterator props);
 void  blockExitHandler(void* obj);
 
@@ -532,8 +535,12 @@ public:
   int blockDepth() const;
   // Index of the current block in the current fil
   int blockIndex() const;
+  // hoa note
   // Index of the current block's parent block in the current file
   int parentBlockIndex() const;
+
+  // Returns a pointer to the parent block
+  block* getParentBlock() const;
 
   // Enter a new file level. Return a string that contains the JavaScript command to open this file in the current view.
   std::string enterFileLevel(block* b, bool topLevel=false);
