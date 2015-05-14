@@ -128,25 +128,25 @@ void setup()
   viewMeth = 3;
   
   graphname = 0;
-  lnodes = loadStrings("widgets/flowgraph/node_"+graphname+".txt");
+  lnodes = loadStrings("widgets/sum_graph/node_"+graphname+".txt");
   lnodes_length = lnodes.length;
   // connection between input and output of nodes   
-  lconn = loadStrings("widgets/flowgraph/inout_"+graphname+".txt");
+  lconn = loadStrings("widgets/sum_graph/inout_"+graphname+".txt");
   // visualization methods: sc3d, ccp, pcp, ... 
-  vizMeth = loadStrings("widgets/flowgraph/dat_"+graphname+".txt");
+  vizMeth = loadStrings("widgets/sum_graph/dat_"+graphname+".txt");
    
   if(vizMeth.length>0)
     statistic_viz = 1;
   // detail information of input and output relationship text
-  ioInfo = loadStrings("widgets/flowgraph/ioInfo_"+graphname+".txt");
+  ioInfo = loadStrings("widgets/sum_graph/ioInfo_"+graphname+".txt");
   if(ioInfo.length>0)
     iorel_info = 1;
     
-  vert_hori = loadStrings("widgets/flowgraph/vert_hori_"+graphname+".txt");
+  vert_hori = loadStrings("widgets/sum_graph/vert_hori_"+graphname+".txt");
   if(vert_hori.length>0)
     hori_vert_layout = 1;
   
-  linkNodes = loadStrings("widgets/flowgraph/link_"+graphname+".txt");
+  linkNodes = loadStrings("widgets/sum_graph/link_"+graphname+".txt");
   if(linkNodes.length>0)
     link_node = 1;
   

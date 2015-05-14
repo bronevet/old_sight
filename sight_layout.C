@@ -743,14 +743,19 @@ block::block(properties::iterator props) : sightObj(props.next()), startA(/*fals
   tFName << outDir << "/node_0.txt";
   std::ofstream tFile;
   tFile.open(tFName.str().c_str(), std::fstream::app);
-  tFile << blockIDFromStructure << ":" << blockIDFromStructure<<"_"<<label << ":0:0:" << dbg.getParentBlock()->blockIDFromStructure << endl;
+  int par = dbg.getParentBlock()->blockIDFromStructure - 1;
+  if(par > 20000)
+    par = -1;
+  int bID = blockIDFromStructure-1;
+
+  tFile << bID << ":" << bID<<"_"<<label << ":0:0:" << par << endl;
   tFile.close();
 
   ostringstream linkFName;
   linkFName << outDir << "/link_0.txt";
   ofstream linkFile;
   linkFile.open(linkFName.str().c_str(), std::fstream::app);
-  linkFile << blockIDFromStructure << ":" << startA.getLinkJS() << endl;
+  linkFile << bID << ":" << startA.getLinkJS() << endl;
   linkFile.close();
 
   // input_output file
@@ -1625,6 +1630,8 @@ void dbgStream::printSummaryFileContainerHTML(string absoluteFileName, string re
   catch (ofstream::failure e)
   { cout << "dbgStream::init() ERROR opening file \""<<fullFName.str()<<"\" for writing!"; exit(-1); }
   
+  cout << "print summary html" << endl;
+  
   sum << "<html>\n";
   sum << "\t<head>\n";
   sum << "\t<title>"<<title<<"</title>\n";
@@ -1637,9 +1644,34 @@ void dbgStream::printSummaryFileContainerHTML(string absoluteFileName, string re
   sum << "\t<script src=\"script/uniqueMark.js\"></script>\n";
   // hoa edit
   sum << "\t<script src=\"script/taffydb/taffy.js\"></script>\n";
-  sum << "\t<script src=\"widgets/sum_graph/processing.js\"></script>\n";
-  sum << "\t<script type=\"text/javascript\"> function getProcessingSketchId () { return 'flGra'; } </script>\n";
+  sum << "\t<script src=\"widgets/sum_graph/processing.js\"></script>\n";  
   sum << "\t<script src=\"widgets/sum_graph/flgr.js\"></script>\n";
+  sum << "\t<script type=\"text/javascript\"> function getProcessingSketchId () { return 'flGra'; } </script>\n";
+ 
+  sum << "\t<STYLE TYPE=\"text/css\">\n";
+  sum << "\tBODY\n";
+  sum << "\t\t{\n";
+  sum << "\t\tfont-family:courier;\n";
+  sum << "\t\t}\n";
+  sum << "\t.hidden { display: none; }\n";
+  sum << "\t.unhidden { display: block; }\n";
+  sum << "\t</style>\n";
+  sum << "\t<script type=\"text/javascript\">\n";
+  sum << "\t\twindow.onload=function () { \n";
+  string fileID = fileLevelStr(loc);
+  sum << "\t\t\tloadScriptsInFile(document, 'script/script_includes', \n";
+  sum << "\t\t\t\tfunction() { loadURLIntoDiv(document, 'summary."<<fileID<<".body', 'detailContents', \n";
+  sum << "\t\t\t\t\tfunction() { loadjscssfile('script/script."<<fileID<<".prolog', 'text/javascript',\n";
+  sum << "\t\t\t\t\t\tfunction() { loadjscssfile('script/script."<<fileID<<"', 'text/javascript',\n";//, \n";
+  sum << "\t\t\t\t\t\tfunction() { loadjscssfile('script/script."<<fileID<<".epilog', 'text/javascript'\n";//, \n";
+  sum << "\t\t\t\t\t\t\t); }\n";
+  sum << "\t\t\t\t\t\t); }\n";
+  sum << "\t\t\t\t\t); }\n";
+  sum << "\t\t\t\t); }\n";
+  sum << "\t\t\t);\n";
+  sum << "\t\t}\n";
+  sum << "\t</script>\n";
+
 
   sum << "\t<script> loadURLIntoDiv2(document, 'widgets/sum_graph/hoaviz_canvas3.txt', 'canvas3') </script>\n";
 
@@ -1661,7 +1693,7 @@ void dbgStream::printSummaryFileContainerHTML(string absoluteFileName, string re
   sum << "\t</head>\n";
   sum << "\t<body>\n";
   sum << "\t<h1>Summary</h1>\n";
-  sum << "\t\t\t<div id=\"canvas3\" width=\"2\" height=\"2\" class=\"unhidden\"> <div id = \"content3\"> </div> </div>\n";
+  sum << "\t\t\t<div id=\"canvas3\" width=\"2\" height=\"2\" class=\"unhidden\"> <div id = \"content\"> Test Summary</div> </div>\n";
 
   sum << "\t<div id='detailContents'></div>\n";
   sum << "\t</body>\n";
