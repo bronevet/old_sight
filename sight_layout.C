@@ -668,16 +668,7 @@ std::string anchor::str(std::string indent) const {
  *****************/
 
 void* blockEnterHandler(properties::iterator props) { 
-  // hoa edit
-  pair<string, string> paths = dbg.createWidgetDir("/sum_graph");
-
-  outDir = paths.first;
-  htmlOutDir = paths.second;
   
-  dbg.includeFile("/sum_graph/processing.js"); dbg.includeWidgetScript("/sum_graph/processing.js", "text/javascript");
-  dbg.includeFile("/sum_graph/flgr.js"); dbg.includeWidgetScript("/sum_graph/flgr.js", "text/javascript");
-  dbg.includeFile("/sum_graph/flGra.pde");
-  dbg.includeFile("/sum_graph/index.html");
 
   return new block(props); 
 }
@@ -686,9 +677,31 @@ void  blockExitHandler(void* obj) { block* b = static_cast<block*>(obj); delete 
 
 int block::blockCount=0;
 
+
+void sumDir()
+{
+  static bool hasBlock = false;
+  if(hasBlock == false)
+  {
+    pair<string, string> paths = dbg.createWidgetDir("sum_graph");
+
+    outDir = paths.first;
+    htmlOutDir = paths.second;
+    
+    dbg.includeFile("sum_graph/processing.js"); dbg.includeWidgetScript("sum_graph/processing.js", "text/javascript");
+    dbg.includeFile("sum_graph/flgr.js"); dbg.includeWidgetScript("sum_graph/flgr.js", "text/javascript");
+    dbg.includeFile("sum_graph/flGra.pde");
+    dbg.includeFile("sum_graph/index.html");
+    hasBlock = true;
+  }
+}
+
 // Initializes this block with the given properties
 block::block(properties::iterator props) : sightObj(props.next()), startA(/*false,*/ -1) /*=noAnchor, except that noAnchor may not yet be initialized)*/ {
   assert(initializedDebug);
+ 
+  sumDir();
+
   label = properties::get(props, "label");
 
   // Record the ID assigned to this block in the structure layer
@@ -785,6 +798,7 @@ block::block(string label) : sightObj(), label(label), startA(/*false,*/ -1) /*=
   scriptEpilogFile = dbg.getCurScriptEpilogFile();// assert(scriptEpilogFile); 
 
   blockCount++;
+  sumDir();
 }
 
 block::~block() {
