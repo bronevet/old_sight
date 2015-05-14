@@ -128,6 +128,7 @@ void setup()
   viewMeth = 3;
   
   graphname = 0;
+  
   lnodes = loadStrings("widgets/sum_graph/node_"+graphname+".txt");
   lnodes_length = lnodes.length;
   // connection between input and output of nodes   
@@ -150,31 +151,32 @@ void setup()
   if(linkNodes.length>0)
     link_node = 1;
   
-  /*
-  // for test
-    lnodes = loadStrings("node_"+graphname+".txt");
-  lnodes_length = lnodes.length;
-  // connection between input and output of nodes   
-  lconn = loadStrings("inout_"+graphname+".txt");
-  // visualization methods: sc3d, ccp, pcp, ... 
-  vizMeth = loadStrings("dat_"+graphname+".txt");
-   
-  if(vizMeth.length>0)
-    statistic_viz = 1;
-  // detail information of input and output relationship text
-  ioInfo = loadStrings("ioInfo_"+graphname+".txt");
-  if(ioInfo.length>0)
-    iorel_info = 1;
-    
-  vert_hori = loadStrings("vert_hori_"+graphname+".txt");
-  if(vert_hori.length>0)
-    hori_vert_layout = 1;
   
-  linkNodes = loadStrings("link_"+graphname+".txt");
-  if(linkNodes.length>0)
-    link_node = 1;
-  // end for test  
-  */
+//  // for test
+//    lnodes = loadStrings("node_"+graphname+".txt");
+//  lnodes_length = lnodes.length;
+//  // connection between input and output of nodes   
+//  lconn = loadStrings("inout_"+graphname+".txt");
+//  // visualization methods: sc3d, ccp, pcp, ... 
+//  vizMeth = loadStrings("dat_"+graphname+".txt");
+//   
+//  if(vizMeth.length>0)
+//    statistic_viz = 1;
+//  // detail information of input and output relationship text
+//  ioInfo = loadStrings("ioInfo_"+graphname+".txt");
+//  if(ioInfo.length>0)
+//    iorel_info = 1;
+//    
+//  vert_hori = loadStrings("vert_hori_"+graphname+".txt");
+//  if(vert_hori.length>0)
+//    hori_vert_layout = 1;
+//  
+//  linkNodes = loadStrings("link_"+graphname+".txt");
+//  if(linkNodes.length>0)
+//    link_node = 1;
+//  // end for test
+  
+  
   /*
   // update lnodes
   for(int i=0; i< lnodes_length; i++)
@@ -241,7 +243,10 @@ void setup()
     if(containerID[i] >= 0)
       viewMeth = 2;
      
-    collapse[i] = 0;  
+    if(i == 0)
+      collapse[i] = 0;
+    else
+      collapse[i] = 2;  
     // compute io information 
     if(iorel_info == 1)
     {

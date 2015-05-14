@@ -1693,7 +1693,7 @@ void dbgStream::printSummaryFileContainerHTML(string absoluteFileName, string re
   sum << "\t</head>\n";
   sum << "\t<body>\n";
   sum << "\t<h1>Summary</h1>\n";
-  sum << "\t\t\t<div id=\"canvas3\" width=\"2\" height=\"2\" class=\"unhidden\"> <div id = \"content\"> Test Summary</div> </div>\n";
+  sum << "\t\t\t<div id=\"canvas3\" width=\"2\" height=\"2\" class=\"unhidden\"> <div id = \"content\"></div> </div>\n";
 
   sum << "\t<div id='detailContents'></div>\n";
   sum << "\t</body>\n";
