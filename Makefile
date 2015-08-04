@@ -28,10 +28,6 @@ SIGHT_LINKFLAGS = \
                   -Wl,-rpath ${ROOT_PATH}/widgets/gsl/lib \
 	          -lpthread
                   #-L ${PNMPI_PATH}lib -lpnmpi -Wl,-rpath,${PNMPI_PATH}
-ifeq (${CCC},icpc)
-  OMPFLAG = -openmp
-endif
-
 RAPL_ENABLED = 1
 ifeq (${RAPL_ENABLED}, 1)
 SIGHT_CFLAGS += -I${ROOT_PATH}/widgets/libmsr/include
@@ -43,6 +39,10 @@ override CC=icc#clang #icc #gcc
 override CCC=icpc#clang++ #icpc #clang++ #g++
 MPICC = mpi${CC}
 MPICCC = mpi${CCC} #${ROOT_PATH}/tools/mpi${CCC}
+
+ifeq (${CCC},icpc)
+  OMPFLAG = -openmp
+endif
 
 OS := $(shell uname -o)
 ifeq (${OS}, Cygwin)
@@ -66,8 +66,8 @@ REMOTE_ENABLED := 0
 else
 # Default distribution disables remote access since this capability requires us to run a web server
 # and many compute centers disallow this
-#REMOTE_ENABLED := 1
-REMOTE_ENABLED := 0
+REMOTE_ENABLED := 1
+#REMOTE_ENABLED := 0
 endif
 
 ifneq (${OS}, Cygwin)

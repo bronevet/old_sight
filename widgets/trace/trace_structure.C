@@ -957,12 +957,12 @@ void PAPIMeasure::init() {
           rawEvents.insert(PAPI_L1_DCM);
           break;
         case PAPI_L2_DC_MR: // L2 Data cache miss rate
-          rawEvents.insert(PAPI_L1_DCA);
-          rawEvents.insert(PAPI_L1_DCM);
+          rawEvents.insert(PAPI_L2_DCA);
+          rawEvents.insert(PAPI_L2_DCM);
           break;
         case PAPI_L3_DC_MR: // L3 Data cache miss rate
-          rawEvents.insert(PAPI_L1_DCA);
-          rawEvents.insert(PAPI_L1_DCM);
+          rawEvents.insert(PAPI_L3_DCA);
+          rawEvents.insert(PAPI_L3_DCM);
           break;
         case PAPI_L1_IC_MR: // L1 Instruction cache miss rate
           rawEvents.insert(PAPI_L1_ICA);

@@ -5,7 +5,7 @@ endif
 
 sight_H := ../*.h ../*/*.h ../widgets/*/*.h
 
-TESTERS = 0.Demo${EXE} \
+TESTERS = 0.Demo${EXE} #\
           1.StructuredFormatting${EXE} \
           2.ConditionalFormatting${EXE} \
           3.Navigation${EXE} \
@@ -23,65 +23,66 @@ TESTERS = 0.Demo${EXE} \
 PTHREAD_TESTERS = pthreadThreadsEx${EXE} pthreadMutexEx${EXE} pthreadCondEx${EXE} \
                   pthreadArrayLoops${EXE} dotprodPthreads${EXE} #pthreadFib${EXE} 
 
-all:  ${TESTERS} ${PTHREAD_TESTERS}
+all:  ${TESTERS} # ${PTHREAD_TESTERS}
 
 #MPI-examples:
 #	make -C MPI_examples
 
 run: ${TESTERS}
 	# 0.Demo
-	export SIGHT_FILE_OUT=1; ./0.Demo${EXE} 5; ./0.Demo${EXE} 6; ./0.Demo${EXE} 7
-	export SIGHT_FILE_OUT=1; rm -rf dbg.0.Demo; ../hier_merge dbg.0.Demo dbg.0.Demo.maxDepth_5/structure dbg.0.Demo.maxDepth_6/structure dbg.0.Demo.maxDepth_7/structure
-	rm -rf dbg.0.Demo.*;
-	../slayout${EXE} dbg.0.Demo/structure;
-	# 1.StructuredFormatting
-	./1.StructuredFormatting${EXE};
-	# 2.ConditionalFormatting
-	./2.ConditionalFormatting${EXE};
-	# 3.Navigation
-	./3.Navigation${EXE};
-	# 4.AttributeAnnotationFiltering        
-	./4.AttributeAnnotationFiltering${EXE}; 
-	export SIGHT_FILE_OUT=1; ./4.AttributeAnnotationFiltering${EXE} 0 20; ./4.AttributeAnnotationFiltering${EXE} 1 20; ./4.AttributeAnnotationFiltering${EXE} 2 20; ./4.AttributeAnnotationFiltering${EXE} 3 20
-	export SIGHT_FILE_OUT=1; rm -rf dbg.4.AttributeAnnotationFiltering; ../hier_merge dbg.4.AttributeAnnotationFiltering dbg.4.AttributeAnnotationFiltering.client_0.numIters_20/structure dbg.4.AttributeAnnotationFiltering.client_1.numIters_20/structure dbg.4.AttributeAnnotationFiltering.client_2.numIters_20/structure dbg.4.AttributeAnnotationFiltering.client_3.numIters_20/structure
-	rm -rf dbg.4.AttributeAnnotationFiltering.*;
-	../slayout${EXE} dbg.4.AttributeAnnotationFiltering/structure;
-	# 5.Tracing
-	./5.Tracing${EXE};
-	# 6. PerfAnalysis
-	./6.PerfAnalysis${EXE};
-	# 7.Merging
-	export SIGHT_FILE_OUT=1; rm -rf dbg.7.Merging*; ./7.Merging${EXE} 1; ./7.Merging${EXE} 2; ./7.Merging${EXE} 3; ./7.Merging${EXE} 4; ./7.Merging${EXE} 5; ./7.Merging${EXE} 6; 
-	export SIGHT_FILE_OUT=1; ../hier_merge${EXE} dbg.7.Merging dbg.7.Merging.*/structure
-	rm -rf dbg.7.Merging.*;
-	../slayout${EXE} dbg.7.Merging/structure;
-	# 8.Modules
-	export SIGHT_FILE_OUT=1; rm -rf dbg.8.Modules*; ./8.Modules${EXE} 1 10; ./8.Modules${EXE} 1 30; ./8.Modules${EXE} 1 100; ./8.Modules${EXE} 2 10; ./8.Modules${EXE} 2 30; ./8.Modules${EXE} 2 100; ./8.Modules${EXE} 3 10; ./8.Modules${EXE} 3 30; ./8.Modules${EXE} 3 100;
-	export SIGHT_FILE_OUT=1; ../hier_merge dbg.8.Modules dbg.8.Modules.*/structure
-	rm -rf dbg.8.Modules.*;
-	../slayout${EXE} dbg.8.Modules/structure;
-	# 9.CompModules
-#	export SIGHT_FILE_OUT=1; ./9.CompModules.merged${EXE} 1 .025 .025 .0001 .05; ./9.CompModules.merged${EXE} 0 .025 .025 .0005 .05; ./9.CompModules.merged${EXE} 0 .025 .025 .001 .05; ./9.CompModules.merged${EXE} 0 .025 .025 .005 .05;
-	export SIGHT_FILE_OUT=1; ./9.CompModules.merged${EXE} 0 .05  .05  .0001 .05; ./9.CompModules.merged${EXE} 0 .05  .05  .0005 .05; ./9.CompModules.merged${EXE} 0 .05  .05  .001 .05; ./9.CompModules.merged${EXE} 0 .05  .05  .005 .05;
-	export SIGHT_FILE_OUT=1; ./9.CompModules.merged${EXE} 0 .1   .1   .0001 .05; ./9.CompModules.merged${EXE} 0 .1   .1   .0005 .05; ./9.CompModules.merged${EXE} 0 .1   .1   .001 .05; ./9.CompModules.merged${EXE} 0 .1   .1   .005 .05;
-	export SIGHT_FILE_OUT=1; ../hier_merge dbg.9.CompModules dbg.9.CompModules.*/structure
-	rm -rf dbg.9.CompModules.*;
-	../slayout${EXE} dbg.9.CompModules/structure;
-	./9.CompModules.single${EXE} 0 .1 .1 .05 .01
-	# 10.SpringModules
-	rm -rf dbg.10.SpringModules*; 
-	export SIGHT_FILE_OUT=1; export SPRING_BUF_SIZE=0;       ./10.SpringModules${EXE} 0 .1 .1 .01 .05; 
-	export SIGHT_FILE_OUT=1; export SPRING_BUF_SIZE=1024;    ./10.SpringModules${EXE} 0 .1 .1 .01 .05; ./10.SpringModules${EXE} 1 .1 .1 .01 .05; ./10.SpringModules${EXE} 2 .1 .1 .01 .05; ./10.SpringModules${EXE} 3 .1 .1 .01 .05;  ./10.SpringModules${EXE} 4 .1 .1 .01 .05;
-	export SIGHT_FILE_OUT=1; export SPRING_BUF_SIZE=8096;    ./10.SpringModules${EXE} 0 .1 .1 .01 .05; ./10.SpringModules${EXE} 1 .1 .1 .01 .05; ./10.SpringModules${EXE} 2 .1 .1 .01 .05; ./10.SpringModules${EXE} 3 .1 .1 .01 .05;  ./10.SpringModules${EXE} 4 .1 .1 .01 .05;
-	export SIGHT_FILE_OUT=1; export SPRING_BUF_SIZE=524288;  ./10.SpringModules${EXE} 0 .1 .1 .01 .05; ./10.SpringModules${EXE} 1 .1 .1 .01 .05; ./10.SpringModules${EXE} 2 .1 .1 .01 .05; ./10.SpringModules${EXE} 3 .1 .1 .01 .05;  ./10.SpringModules${EXE} 4 .1 .1 .01 .05;
-#	export SIGHT_FILE_OUT=1; export SPRING_BUF_SIZE=4194304; ./10.SpringModules${EXE} 0 .1 .1 .01 .05; ./10.SpringModules${EXE} 1 .1 .1 .01 .05; ./10.SpringModules${EXE} 2 .1 .1 .01 .05; ./10.SpringModules${EXE} 3 .1 .1 .01 .05;  ./10.SpringModules${EXE} 4 .1 .1 .01 .05;
-	export SIGHT_FILE_OUT=1; ../hier_merge dbg.10.SpringModules dbg.10.SpringModules.*/structure
-	rm -rf dbg.10.SpringModules.*;
-	../slayout${EXE} dbg.10.SpringModules/structure;
-	# 11.ExternTraceProcess
-	./11.ExternTraceProcess
-	./12.HoaVizAPI${EXE};
-	export OMP_NUM_THREADS=8; ./13.OpenMP1${EXE};
+	./0.Demo${EXE} 5
+#	export SIGHT_FILE_OUT=1; ./0.Demo${EXE} 5; ./0.Demo${EXE} 6; ./0.Demo${EXE} 7
+#	export SIGHT_FILE_OUT=1; rm -rf dbg.0.Demo; ../hier_merge dbg.0.Demo dbg.0.Demo.maxDepth_5/structure dbg.0.Demo.maxDepth_6/structure dbg.0.Demo.maxDepth_7/structure
+#	rm -rf dbg.0.Demo.*;
+#	../slayout${EXE} dbg.0.Demo/structure;
+#	# 1.StructuredFormatting
+#	./1.StructuredFormatting${EXE};
+#	# 2.ConditionalFormatting
+#	./2.ConditionalFormatting${EXE};
+#	# 3.Navigation
+#	./3.Navigation${EXE};
+#	# 4.AttributeAnnotationFiltering        
+#	./4.AttributeAnnotationFiltering${EXE}; 
+#	export SIGHT_FILE_OUT=1; ./4.AttributeAnnotationFiltering${EXE} 0 20; ./4.AttributeAnnotationFiltering${EXE} 1 20; ./4.AttributeAnnotationFiltering${EXE} 2 20; ./4.AttributeAnnotationFiltering${EXE} 3 20
+#	export SIGHT_FILE_OUT=1; rm -rf dbg.4.AttributeAnnotationFiltering; ../hier_merge dbg.4.AttributeAnnotationFiltering dbg.4.AttributeAnnotationFiltering.client_0.numIters_20/structure dbg.4.AttributeAnnotationFiltering.client_1.numIters_20/structure dbg.4.AttributeAnnotationFiltering.client_2.numIters_20/structure dbg.4.AttributeAnnotationFiltering.client_3.numIters_20/structure
+#	rm -rf dbg.4.AttributeAnnotationFiltering.*;
+#	../slayout${EXE} dbg.4.AttributeAnnotationFiltering/structure;
+#	# 5.Tracing
+#	./5.Tracing${EXE};
+#	# 6. PerfAnalysis
+#	./6.PerfAnalysis${EXE};
+#	# 7.Merging
+#	export SIGHT_FILE_OUT=1; rm -rf dbg.7.Merging*; ./7.Merging${EXE} 1; ./7.Merging${EXE} 2; ./7.Merging${EXE} 3; ./7.Merging${EXE} 4; ./7.Merging${EXE} 5; ./7.Merging${EXE} 6; 
+#	export SIGHT_FILE_OUT=1; ../hier_merge${EXE} dbg.7.Merging dbg.7.Merging.*/structure
+#	rm -rf dbg.7.Merging.*;
+#	../slayout${EXE} dbg.7.Merging/structure;
+#	# 8.Modules
+#	export SIGHT_FILE_OUT=1; rm -rf dbg.8.Modules*; ./8.Modules${EXE} 1 10; ./8.Modules${EXE} 1 30; ./8.Modules${EXE} 1 100; ./8.Modules${EXE} 2 10; ./8.Modules${EXE} 2 30; ./8.Modules${EXE} 2 100; ./8.Modules${EXE} 3 10; ./8.Modules${EXE} 3 30; ./8.Modules${EXE} 3 100;
+#	export SIGHT_FILE_OUT=1; ../hier_merge dbg.8.Modules dbg.8.Modules.*/structure
+#	rm -rf dbg.8.Modules.*;
+#	../slayout${EXE} dbg.8.Modules/structure;
+#	# 9.CompModules
+##	export SIGHT_FILE_OUT=1; ./9.CompModules.merged${EXE} 1 .025 .025 .0001 .05; ./9.CompModules.merged${EXE} 0 .025 .025 .0005 .05; ./9.CompModules.merged${EXE} 0 .025 .025 .001 .05; ./9.CompModules.merged${EXE} 0 .025 .025 .005 .05;
+#	export SIGHT_FILE_OUT=1; ./9.CompModules.merged${EXE} 0 .05  .05  .0001 .05; ./9.CompModules.merged${EXE} 0 .05  .05  .0005 .05; ./9.CompModules.merged${EXE} 0 .05  .05  .001 .05; ./9.CompModules.merged${EXE} 0 .05  .05  .005 .05;
+#	export SIGHT_FILE_OUT=1; ./9.CompModules.merged${EXE} 0 .1   .1   .0001 .05; ./9.CompModules.merged${EXE} 0 .1   .1   .0005 .05; ./9.CompModules.merged${EXE} 0 .1   .1   .001 .05; ./9.CompModules.merged${EXE} 0 .1   .1   .005 .05;
+#	export SIGHT_FILE_OUT=1; ../hier_merge dbg.9.CompModules dbg.9.CompModules.*/structure
+#	rm -rf dbg.9.CompModules.*;
+#	../slayout${EXE} dbg.9.CompModules/structure;
+#	./9.CompModules.single${EXE} 0 .1 .1 .05 .01
+#	# 10.SpringModules
+#	rm -rf dbg.10.SpringModules*; 
+#	export SIGHT_FILE_OUT=1; export SPRING_BUF_SIZE=0;       ./10.SpringModules${EXE} 0 .1 .1 .01 .05; 
+#	export SIGHT_FILE_OUT=1; export SPRING_BUF_SIZE=1024;    ./10.SpringModules${EXE} 0 .1 .1 .01 .05; ./10.SpringModules${EXE} 1 .1 .1 .01 .05; ./10.SpringModules${EXE} 2 .1 .1 .01 .05; ./10.SpringModules${EXE} 3 .1 .1 .01 .05;  ./10.SpringModules${EXE} 4 .1 .1 .01 .05;
+#	export SIGHT_FILE_OUT=1; export SPRING_BUF_SIZE=8096;    ./10.SpringModules${EXE} 0 .1 .1 .01 .05; ./10.SpringModules${EXE} 1 .1 .1 .01 .05; ./10.SpringModules${EXE} 2 .1 .1 .01 .05; ./10.SpringModules${EXE} 3 .1 .1 .01 .05;  ./10.SpringModules${EXE} 4 .1 .1 .01 .05;
+#	export SIGHT_FILE_OUT=1; export SPRING_BUF_SIZE=524288;  ./10.SpringModules${EXE} 0 .1 .1 .01 .05; ./10.SpringModules${EXE} 1 .1 .1 .01 .05; ./10.SpringModules${EXE} 2 .1 .1 .01 .05; ./10.SpringModules${EXE} 3 .1 .1 .01 .05;  ./10.SpringModules${EXE} 4 .1 .1 .01 .05;
+##	export SIGHT_FILE_OUT=1; export SPRING_BUF_SIZE=4194304; ./10.SpringModules${EXE} 0 .1 .1 .01 .05; ./10.SpringModules${EXE} 1 .1 .1 .01 .05; ./10.SpringModules${EXE} 2 .1 .1 .01 .05; ./10.SpringModules${EXE} 3 .1 .1 .01 .05;  ./10.SpringModules${EXE} 4 .1 .1 .01 .05;
+#	export SIGHT_FILE_OUT=1; ../hier_merge dbg.10.SpringModules dbg.10.SpringModules.*/structure
+#	rm -rf dbg.10.SpringModules.*;
+#	../slayout${EXE} dbg.10.SpringModules/structure;
+#	# 11.ExternTraceProcess
+#	./11.ExternTraceProcess
+#	./12.HoaVizAPI${EXE};
+#	export OMP_NUM_THREADS=8; ./13.OpenMP1${EXE};
 
 #	export SIGHT_FILE_OUT=1; rm -rf dbg.12.HoaVizAPI*; ./12.HoaVizAPI${EXE} 1 10; ./12.HoaVizAPI${EXE} 1 30; ./12.HoaVizAPI${EXE} 1 100; ./12.HoaVizAPI${EXE} 2 10; ./12.HoaVizAPI${EXE} 2 30; ./12.HoaVizAPI${EXE} 2 100; ./12.HoaVizAPI${EXE} 3 10; ./12.HoaVizAPI${EXE} 3 30; ./12.HoaVizAPI${EXE} 3 100;
 #	export SIGHT_FILE_OUT=1; ../hier_merge dbg.12.HoaVizAPI dbg.12.HoaVizAPI.*/structure

@@ -36,7 +36,51 @@ int main(int argc, char** argv)
   SightInit(argc, argv, "Demo", txt()<<"dbg.0.Demo.maxDepth_"<<maxDepth);
   
   dbg << "<h1>Demonstration of Sight</h1>" << endl;
-  
+
+  int i, j;
+  for(i=0; i<3; ++i) {
+    scope s(txt()<<"i="<<i);
+    for(j=0; j<3; ++j) {
+      indent ind(txt()<<"j="<<j<<": ");
+      dbg << "product: "<<(i*j)<<endl;
+    }
+  }
+
+  {
+    graph g;
+    for(i=0; i<3; ++i) {
+      scope sOuter(txt()<<"i="<<i);
+      for(j=0; j<3; ++j) {
+        scope sInner(txt()<<"j="<<j);
+        g.addDirEdge(sOuter.getAnchor(), sInner.getAnchor());
+        dbg << "product: "<<(i*j)<<endl;
+      }
+    }
+  }
+
+  {
+    scope s("Simulation");
+
+    for(int t=0; t<5; ++t) {
+      scope s2(txt()<<"Time Step "<<t);
+
+      {
+        scope s3("Set up implicit solve");
+
+        { scope s4("Magnetism"); }
+        { scope s4("Crack propagation"); }
+        { scope s4("Hydro-dynamics"); }
+      }
+      {
+        scope s3("Conjugate Gradient");
+        for(int j=0; j<5; ++j) {
+          scope s3(txt()<<"Iteration "<<j);
+        }
+      }
+    }
+  }
+
+/*
   { 
     scope s("No formatting", scope::high);
     { sight::structure::source src("source", source::regions(source::reg(thisFile, "NFStart",      "NFEnd"),
@@ -160,7 +204,7 @@ int main(int argc, char** argv)
 #pragma sightLoc ModularStart
     fibModule(10, 0);
 #pragma sightLoc ModularEnd
-  }
+  }*/
 
   
 /*  { 

@@ -184,7 +184,7 @@ class port {
 
   // Adds the given key/attrValue pair to the port's context
   void addCtxt(const std::string& key, const attrValue& val) {
-    assert(ctxt);
+    if(!ctxt) ctxt = new context();
     ctxt->configuration[key] = val;
   }
 
