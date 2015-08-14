@@ -24,9 +24,6 @@ PTHREAD_TESTERS = pthreadMutexEx${EXE} pthreadCondEx${EXE} pthreadThreadsEx${EXE
 
 all: ${TESTERS} # ${PTHREAD_TESTERS}
 
-MPI-examples:
-	make -C MPI_examples
-
 run: ${TESTERS}
 	# 0.Demo
 	export SIGHT_FILE_OUT=1; ./0.Demo${EXE} 5; ./0.Demo${EXE} 6; ./0.Demo${EXE} 7

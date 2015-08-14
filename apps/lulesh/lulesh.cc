@@ -2858,7 +2858,7 @@ int main(int argc, char *argv[])
                                                     #endif
                                                     ".rank_"<<myRank<<
                                                     (getenv("EXP_ID")? txt()<<".exp_"<<getenv("EXP_ID"): string("")));
-   sightModularApp LuleshApp("LULESH");
+   //sightModularApp LuleshApp("LULESH");
    
    // Set up the mesh and decompose. Assumes regular cubes for now
    Int_t col, row, plane, side;
